@@ -19,6 +19,7 @@ pub struct Model {
     pub display_name: String,
     pub tier: String,
     pub industry: Option<String>,
+    pub stakeholder_role: Option<String>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

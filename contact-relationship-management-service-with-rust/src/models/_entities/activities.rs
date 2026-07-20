@@ -22,6 +22,7 @@ pub struct Model {
     pub summary: String,
     pub due_on: Option<Date>,
     pub done: bool,
+    pub sentiment: Option<String>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 
