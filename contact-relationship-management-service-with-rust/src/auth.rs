@@ -1826,6 +1826,38 @@ mod tests {
         )
     }
 
+    /// Subject attributes as the tests write them.
+    type Attrs<'a> = &'a [(&'a str, &'a [&'a str])];
+
+    /// One row of the persona matrix: what the reference policy should
+    /// decide for a persona.
+    struct Persona<'a> {
+        name: &'a str,
+        attrs: Attrs<'a>,
+        /// `(allowed, masked)` for a read.
+        read: (bool, bool),
+        write: bool,
+        destructive: bool,
+    }
+
+    impl<'a> Persona<'a> {
+        fn new(
+            name: &'a str,
+            attrs: Attrs<'a>,
+            read: (bool, bool),
+            write: bool,
+            destructive: bool,
+        ) -> Self {
+            Self {
+                name,
+                attrs,
+                read,
+                write,
+                destructive,
+            }
+        }
+    }
+
     /// The persona matrix over the shipped reference policy (CRM-T32,
     /// `auth.md`): who may read unmasked, read masked, write, and take the
     /// admin/service tier (destructive actions and privileged reads).
@@ -1840,42 +1872,47 @@ mod tests {
         let break_glass: BTreeMap<String, Vec<String>> =
             [("break_glass".to_string(), vec!["true".to_string()])].into();
 
-        // (persona, attrs, read (allowed, masked), write allowed, destructive allowed)
-        type Attrs<'a> = &'a [(&'a str, &'a [&'a str])];
-        let personas: [(&str, Attrs, (bool, bool), bool, bool); 7] = [
-            ("service", &[("svc", &["true"])], (true, false), true, true),
-            (
+        let personas = [
+            Persona::new("service", &[("svc", &["true"])], (true, false), true, true),
+            Persona::new(
                 "admin",
                 &[("access", &["admin"])],
                 (true, false),
                 true,
                 true,
             ),
-            (
+            Persona::new(
                 "manager",
                 &[("manager", &["true"])],
                 (true, false),
                 true,
                 false,
             ),
-            ("rep", &[("rep", &["true"])], (true, true), true, false),
-            (
+            Persona::new("rep", &[("rep", &["true"])], (true, true), true, false),
+            Persona::new(
                 "marketing",
                 &[("marketing", &["true"])],
                 (true, true),
                 true,
                 false,
             ),
-            (
+            Persona::new(
                 "support",
                 &[("support", &["true"])],
                 (true, true),
                 true,
                 false,
             ),
-            ("plain reader", &[], (true, true), false, false),
+            Persona::new("plain reader", &[], (true, true), false, false),
         ];
-        for (name, attrs, read, write, destructive) in personas {
+        for persona in personas {
+            let Persona {
+                name,
+                attrs,
+                read,
+                write,
+                destructive,
+            } = persona;
             assert_eq!(
                 reference_decision(attrs, Action::Read, &none, &none),
                 read,
