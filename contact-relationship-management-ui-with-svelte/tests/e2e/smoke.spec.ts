@@ -878,6 +878,79 @@ test("an idle signed-in session is signed out (CRM-T43)", async ({ page }) => {
   await expect(page).toHaveURL(/\/signin$/);
 });
 
+test.describe("break-glass page (CRM-T44)", () => {
+  test.beforeEach(async ({ page }) => {
+    await signIn(page);
+  });
+
+  test("a thin reason cannot be submitted; a good one shows the expiry", async ({ page }) => {
+    let body: { reason?: string; minutes?: number } = {};
+    await page.route("**/api/proxy/break-glass", (route) => {
+      body = route.request().postDataJSON();
+      return route.fulfill({
+        json: { pid: "g1", expires_at: new Date(Date.now() + 30 * 60_000).toISOString(), minutes: 30 },
+      });
+    });
+    await page.goto("/break-glass");
+    await expect(page.getByTestId("bg-request")).toBeDisabled();
+    await page.getByLabel("Reason").fill("too short");
+    await expect(page.getByTestId("bg-request")).toBeDisabled();
+    await page.getByLabel("Reason").fill("Patient collapsed, covering colleague absent");
+    await page.getByTestId("bg-request").click();
+    await expect(page.getByTestId("bg-granted")).toBeVisible();
+    expect(body.reason).toBe("Patient collapsed, covering colleague absent");
+    expect(body.minutes).toBe(30);
+  });
+
+  test("the review page lists grants and records a review", async ({ page }) => {
+    const grant = {
+      pid: "g1",
+      subject: "dr-reader",
+      reason: "Patient collapsed, covering colleague absent",
+      granted_at: "2026-10-10T09:00:00Z",
+      expires_at: "2026-10-10T09:30:00Z",
+      reviewed_at: null,
+      reviewed_by: null,
+      review_note: null,
+    };
+    let reviewed: { note?: string } = {};
+    await page.route("**/api/proxy/break-glass", (route) =>
+      route.fulfill({ json: { unreviewed: reviewed.note ? 0 : 1, grants: [reviewed.note ? { ...grant, reviewed_at: "2026-10-10T10:00:00Z", reviewed_by: "dpo", review_note: reviewed.note } : grant] } }),
+    );
+    await page.route("**/api/proxy/break-glass/g1/review", (route) => {
+      reviewed = route.request().postDataJSON();
+      return route.fulfill({ json: { pid: "g1", reviewed_by: "dpo" } });
+    });
+    await page.goto("/break-glass/review");
+    await expect(page.getByTestId("unreviewed")).toContainText("1");
+    const record = page.getByRole("button", { name: "Record review" });
+    await expect(record).toBeDisabled();
+    await page.getByLabel("Review note").fill("Confirmed against the incident log");
+    await record.click();
+    await expect(page.getByTestId("unreviewed")).toContainText("0");
+    await expect(page.getByTestId("grants")).toContainText("Confirmed against the incident log");
+    expect(reviewed.note).toBe("Confirmed against the incident log");
+  });
+
+  test("the review page shows a refusal for a non-reviewer", async ({ page }) => {
+    await page.route("**/api/proxy/break-glass", (route) =>
+      route.fulfill({ status: 403, json: { description: "forbidden" } }),
+    );
+    await page.goto("/break-glass/review");
+    await expect(page.getByTestId("error")).toContainText("forbidden");
+  });
+
+  test("shows the service's refusal", async ({ page }) => {
+    await page.route("**/api/proxy/break-glass", (route) =>
+      route.fulfill({ status: 403, json: { description: "denied by policy" } }),
+    );
+    await page.goto("/break-glass");
+    await page.getByLabel("Reason").fill("Patient collapsed, covering colleague absent");
+    await page.getByTestId("bg-request").click();
+    await expect(page.getByTestId("bg-error")).toContainText("denied by policy");
+  });
+});
+
 test("responses carry the security headers and a CSP (CRM-T33)", async ({ page }) => {
   const response = await page.goto("/tour");
   const headers = response?.headers() ?? {};

@@ -97,6 +97,7 @@
     { href: "/followups", key: "nav.followups" },
     { href: "/executive", key: "nav.executive" },
     { href: "/dpo", key: "nav.dpo" },
+    { href: "/break-glass", key: "nav.breakGlass" },
     { href: "/engagement", key: "nav.engagement" },
     { href: "/partners", key: "nav.partners" },
     { href: "/tour", key: "nav.tour" },

@@ -631,3 +631,42 @@ export function membershipsView(
 }> {
   return api(`/insights/memberships${days ? `?days=${days}` : ""}`, init);
 }
+
+/**
+ * Take a time-limited emergency read elevation (CRM-T44). The reason is
+ * recorded and reviewed later by someone else; the grant lifts masking for
+ * reads only.
+ */
+export function requestBreakGlass(
+  reason: string,
+  minutes: number,
+): Promise<{ pid: string; expires_at: string; minutes: number }> {
+  return api("/break-glass", { method: "POST", body: { reason, minutes } });
+}
+
+/** One break-glass grant as the review list shows it. */
+export interface BreakGlassGrant {
+  pid: string;
+  subject: string;
+  reason: string;
+  granted_at: string;
+  expires_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  review_note: string | null;
+}
+
+/** Grants newest first plus the unreviewed count (admin/service tier). */
+export function listBreakGlass(
+  init?: FetchLike,
+): Promise<{ unreviewed: number; grants: BreakGlassGrant[] }> {
+  return api("/break-glass", init);
+}
+
+/** Record the review of one grant; refused for the grantee, once only. */
+export function reviewBreakGlass(
+  pid: string,
+  note: string,
+): Promise<{ pid: string; reviewed_by: string }> {
+  return api(`/break-glass/${pid}/review`, { method: "POST", body: { note } });
+}
