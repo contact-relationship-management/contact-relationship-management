@@ -71,6 +71,12 @@ async fn grant(
     .await?;
     txn.commit().await?;
     rules::registry().grant(&claims.sub, expires_at);
+    if let Some(shared) = crate::redis_store::global()
+        && let Err(error) = shared.put_grant(&claims.sub, expires_at).await
+    {
+        // The database copy still reaches other replicas within one refresh.
+        tracing::warn!(%error, "break-glass grant not published to Redis");
+    }
     format::json(serde_json::json!({ "pid": pid, "expires_at": expires_at, "minutes": minutes }))
 }
 
@@ -167,7 +173,9 @@ async fn review(
 /// # Errors
 ///
 /// When the query fails.
-pub async fn refresh(db: &DatabaseConnection) -> std::result::Result<(), sea_orm::DbErr> {
+pub async fn refresh(
+    db: &DatabaseConnection,
+) -> std::result::Result<HashMap<String, DateTime<Utc>>, sea_orm::DbErr> {
     let rows = db
         .query_all_raw(Statement::from_string(
             DatabaseBackend::Postgres,
@@ -185,8 +193,7 @@ pub async fn refresh(db: &DatabaseConnection) -> std::result::Result<(), sea_orm
             live.insert(subject, expires_at);
         }
     }
-    rules::registry().replace(live);
-    Ok(())
+    Ok(live)
 }
 
 /// The break-glass routes.

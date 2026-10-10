@@ -581,7 +581,15 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       (`compose.test.yaml` now starts Redis). **Limits:** a policy reload or
       revoked token shows up only after the 30 s TTL (a revoked token is still
       refused, since auth runs first); a Redis outage makes cached insights
-      recompute and counters fall back to per replica; break-glass grants still
-      propagate through the database (10 s), not Redis; Redis holds insight
+      recompute and counters fall back to per replica; Redis holds insight
       bodies, which include personal data, so protect it as you do the
       database (TLS, auth, no public exposure, eviction policy).
+      **Break-glass on Redis (later):** a new grant is also published to
+      `crm:bg:<subject>` (expiring with the grant, never shortened), and each
+      replica polls Redis every second, so a grant reaches the others in about
+      a second instead of 10. The database stays the record: it is re-read every
+      10 s, the live set is the union of both, and a Redis error leaves the
+      database path working. Without `CRM_REDIS_URL` nothing changes (10 s).
+      Tests: Redis grant publish/never-shorten/expired pin; the break-glass
+      enforcement flow was also run against a real Redis. **Limit:** there is
+      still no revoke endpoint, so a grant ends only by expiry.

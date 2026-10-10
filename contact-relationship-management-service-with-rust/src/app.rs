@@ -337,23 +337,51 @@ impl Hooks for App {
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();
-        // CRM-T44: keep the live break-glass set fresh across replicas.
+        let shared = redis_store::Shared::from_env()
+            .await
+            .map_err(|e| loco_rs::Error::string(&format!("CRM_REDIS_URL: {e}")))?;
+        if let Some(shared) = &shared {
+            redis_store::set_global(shared.clone());
+        }
+        // CRM-T44: keep the live break-glass set fresh across replicas. The
+        // database is the record (re-read every 10 s); with Redis, new grants
+        // also arrive within a second, and the live set is the union of both.
         let db = ctx.db.clone();
+        let poll = shared.clone();
         tokio::spawn(async move {
+            let (tick, db_every) = if poll.is_some() { (1, 10) } else { (10, 1) };
+            let mut from_db = std::collections::HashMap::new();
+            let mut count = 0_u64;
             loop {
-                if let Err(error) = controllers::break_glass::refresh(&db).await {
-                    tracing::warn!(%error, "break-glass refresh failed");
+                if count.is_multiple_of(db_every) {
+                    match controllers::break_glass::refresh(&db).await {
+                        Ok(live) => from_db = live,
+                        Err(error) => tracing::warn!(%error, "break-glass refresh failed"),
+                    }
                 }
-                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+                let mut live = from_db.clone();
+                if let Some(shared) = &poll {
+                    match shared.grants().await {
+                        Ok(grants) => {
+                            for (subject, expires_at) in grants {
+                                let entry = live.entry(subject).or_insert(expires_at);
+                                if expires_at > *entry {
+                                    *entry = expires_at;
+                                }
+                            }
+                        }
+                        Err(error) => tracing::warn!(%error, "break-glass Redis poll failed"),
+                    }
+                }
+                crate::break_glass::registry().replace(live);
+                count += 1;
+                tokio::time::sleep(std::time::Duration::from_secs(tick)).await;
             }
         });
         let guard = std::sync::Arc::new(rate_limit::Guard::from_env(matches!(
             ctx.environment,
             Environment::Production
         )));
-        let shared = redis_store::Shared::from_env()
-            .await
-            .map_err(|e| loco_rs::Error::string(&format!("CRM_REDIS_URL: {e}")))?;
         Ok(router
             .layer(axum::middleware::from_fn_with_state(
                 ctx.cache.clone(),

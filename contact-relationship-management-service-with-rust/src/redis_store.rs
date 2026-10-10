@@ -7,8 +7,27 @@
 //! and uses the in-process counter, so an outage degrades to per-process
 //! limits instead of an outage of the API.
 
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
+use chrono::{DateTime, Utc};
 use redis::AsyncCommands;
 use redis::aio::ConnectionManager;
+
+static GLOBAL: OnceLock<Shared> = OnceLock::new();
+
+/// Install the process-wide handle (once, at start-up).
+pub fn set_global(shared: Shared) {
+    let _ = GLOBAL.set(shared);
+}
+
+/// The process-wide handle, if `CRM_REDIS_URL` is set.
+#[must_use]
+pub fn global() -> Option<&'static Shared> {
+    GLOBAL.get()
+}
+
+const GRANT_PREFIX: &str = "crm:bg:";
 
 /// A cloneable handle to the shared Redis connection.
 #[derive(Clone)]
@@ -71,6 +90,66 @@ impl Shared {
     }
 }
 
+impl Shared {
+    /// Publish a break-glass grant so every replica sees it within one poll.
+    /// The key expires with the grant, and a later expiry is never shortened.
+    ///
+    /// # Errors
+    ///
+    /// On any Redis error.
+    pub async fn put_grant(
+        &self,
+        subject: &str,
+        expires_at: DateTime<Utc>,
+    ) -> Result<(), redis::RedisError> {
+        let key = format!("{GRANT_PREFIX}{subject}");
+        let secs = (expires_at - Utc::now()).num_seconds();
+        if secs <= 0 {
+            return Ok(());
+        }
+        let mut conn = self.conn.clone();
+        let existing: Option<String> = conn.get(&key).await?;
+        if existing
+            .and_then(|v| DateTime::parse_from_rfc3339(&v).ok())
+            .is_some_and(|e| e.with_timezone(&Utc) >= expires_at)
+        {
+            return Ok(());
+        }
+        conn.set_ex::<_, _, ()>(&key, expires_at.to_rfc3339(), secs.unsigned_abs())
+            .await
+    }
+
+    /// Every live grant in Redis, by subject.
+    ///
+    /// # Errors
+    ///
+    /// On any Redis error.
+    pub async fn grants(&self) -> Result<HashMap<String, DateTime<Utc>>, redis::RedisError> {
+        let mut conn = self.conn.clone();
+        let keys: Vec<String> = {
+            let mut iter = conn
+                .scan_match::<_, String>(format!("{GRANT_PREFIX}*"))
+                .await?;
+            let mut keys = Vec::new();
+            while let Some(key) = iter.next_item().await {
+                keys.push(key?);
+            }
+            keys
+        };
+        let mut live = HashMap::new();
+        for key in keys {
+            let value: Option<String> = conn.get(&key).await?;
+            if let (Some(subject), Some(expires_at)) = (
+                key.strip_prefix(GRANT_PREFIX),
+                value.and_then(|v| DateTime::parse_from_rfc3339(&v).ok()),
+            ) {
+                live.insert(subject.to_string(), expires_at.with_timezone(&Utc));
+            }
+        }
+        Ok(live)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,5 +169,30 @@ mod tests {
         assert!((1..=30).contains(&ttl));
         assert_eq!(shared.peek(&key).await.unwrap().0, 2);
         assert_eq!(shared.peek(&key).await.unwrap().0, 2);
+    }
+
+    /// A published grant is visible through `grants`, is never shortened by
+    /// an earlier expiry, and an expired one is not stored.
+    #[tokio::test]
+    #[ignore = "requires Redis on CRM_REDIS_URL"]
+    async fn grants_are_published_and_never_shortened() {
+        let Some(shared) = Shared::from_env().await.unwrap() else {
+            eprintln!("CRM_REDIS_URL unset; skipping");
+            return;
+        };
+        let subject = format!("user-{}", uuid::Uuid::new_v4());
+        let later = Utc::now() + chrono::Duration::minutes(30);
+        let sooner = Utc::now() + chrono::Duration::minutes(5);
+        shared.put_grant(&subject, later).await.unwrap();
+        shared.put_grant(&subject, sooner).await.unwrap();
+        let live = shared.grants().await.unwrap();
+        let seen = live.get(&subject).expect("grant published");
+        assert!((*seen - later).num_seconds().abs() <= 1, "kept the later");
+        let expired = format!("user-{}", uuid::Uuid::new_v4());
+        shared
+            .put_grant(&expired, Utc::now() - chrono::Duration::minutes(1))
+            .await
+            .unwrap();
+        assert!(!shared.grants().await.unwrap().contains_key(&expired));
     }
 }
