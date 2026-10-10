@@ -3,13 +3,13 @@
 # Runtime: distroless, non-root, no shell, read-only-rootfs compatible.
 # Pin the base images by digest in your registry mirror before release.
 
-FROM docker.io/library/rust:1.96-bookworm AS build
+FROM docker.io/library/rust:1.96-bookworm@sha256:a339861ae23e9abb272cea45dfafde21760d2ce6577a70f8a926153677902663 AS build
 WORKDIR /src
 COPY . .
 RUN cargo build --release --locked --features keycloak \
  && strip target/release/contact-relationship-management-service
 
-FROM gcr.io/distroless/cc-debian12:nonroot
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f
 COPY --from=build /src/target/release/contact-relationship-management-service /app/crm-service
 COPY --from=build /src/config /app/config
 WORKDIR /app

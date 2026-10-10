@@ -562,3 +562,4 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 - [ ] CRM-T49 **GDS API checklist review and build signing.** Review the API
       against the GDS standards, and sign release builds and pin image digests
       (Software Security Code of Practice). *Open.*
+      **Partly done (2026-10-10):** the four base images in both Containerfiles are now pinned by digest (the UI image builds with the pins; the service image was not rebuilt). Digests do not update themselves: refresh them on a schedule (for example Renovate or Dependabot) or they will pin known-vulnerable layers. **Still open:** the GDS API review and release-build signing.
