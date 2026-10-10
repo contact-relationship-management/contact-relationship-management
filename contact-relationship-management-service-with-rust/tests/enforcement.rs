@@ -333,6 +333,131 @@ async fn enforcement_gates_the_real_stack() {
             assert!(stage["totals_minor"].is_null(), "{stage}");
             assert!(stage["count"].is_number());
         }
+
+        // CRM-T32: the insights views follow the same masking.
+        let exec_masked: Value = request
+            .get("/api/insights/executive")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert!(
+            exec_masked["won_value_by_currency_minor"].is_null(),
+            "{exec_masked}"
+        );
+        assert!(exec_masked["deals_won"].is_number());
+        let exec_full: Value = request
+            .get("/api/insights/executive")
+            .add_header("authorization", bearer(&service))
+            .await
+            .json();
+        assert!(
+            exec_full["won_value_by_currency_minor"].is_object(),
+            "{exec_full}"
+        );
+        assert_eq!(
+            request
+                .get("/api/insights/forecast-trends")
+                .add_header("authorization", bearer(&reader))
+                .await
+                .status_code(),
+            200
+        );
+
+        // CRM-T44: break-glass. A reasoned, time-limited grant lifts the mask
+        // for reads; the grant is listed and reviewed by someone else.
+        let short = request
+            .post("/api/break-glass")
+            .add_header("authorization", bearer(&reader))
+            .json(&json!({ "reason": "because" }))
+            .await;
+        assert_eq!(short.status_code(), 422, "a thin reason is refused");
+        let too_long = request
+            .post("/api/break-glass")
+            .add_header("authorization", bearer(&reader))
+            .json(&json!({ "reason": "Patient collapsed, covering colleague absent", "minutes": 600 }))
+            .await;
+        assert_eq!(too_long.status_code(), 422, "the duration is capped");
+        let before: Value = request
+            .get("/api/forecast")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert!(before["totals_minor"].is_null(), "masked before the grant");
+        let granted = request
+            .post("/api/break-glass")
+            .add_header("authorization", bearer(&reader))
+            .json(&json!({ "reason": "Patient collapsed, covering colleague absent" }))
+            .await;
+        assert_eq!(granted.status_code(), 200, "a plain reader may take break-glass");
+        let grant: Value = granted.json();
+        let unmasked: Value = request
+            .get("/api/forecast")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert!(unmasked["totals_minor"].is_object(), "elevated read is unmasked: {unmasked}");
+        // Elevation is read-only: a reader still cannot write.
+        assert_eq!(
+            request
+                .post("/api/contacts")
+                .add_header("authorization", bearer(&reader))
+                .json(&json!({ "person_ref": "person:x" }))
+                .await
+                .status_code(),
+            403
+        );
+        // The review surface is admin/service tier.
+        assert_eq!(
+            request
+                .get("/api/break-glass")
+                .add_header("authorization", bearer(&reader))
+                .await
+                .status_code(),
+            403
+        );
+        let listing: Value = request
+            .get("/api/break-glass")
+            .add_header("authorization", bearer(&service))
+            .await
+            .json();
+        assert!(listing["unreviewed"].as_u64().unwrap() >= 1, "{listing}");
+        let pid = grant["pid"].as_str().unwrap();
+        // The grantee cannot review their own grant.
+        let own = request
+            .post("/api/break-glass")
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "reason": "Service account incident drill, supervised" }))
+            .await
+            .json::<Value>();
+        assert_eq!(
+            request
+                .post(&format!("/api/break-glass/{}/review", own["pid"].as_str().unwrap()))
+                .add_header("authorization", bearer(&service))
+                .json(&json!({ "note": "reviewing my own grant" }))
+                .await
+                .status_code(),
+            403
+        );
+        // Someone else reviews it, once.
+        let review_path = format!("/api/break-glass/{pid}/review");
+        assert_eq!(
+            request
+                .post(&review_path)
+                .add_header("authorization", bearer(&service))
+                .json(&json!({ "note": "Confirmed against the incident log" }))
+                .await
+                .status_code(),
+            200
+        );
+        assert_eq!(
+            request
+                .post(&review_path)
+                .add_header("authorization", bearer(&service))
+                .json(&json!({ "note": "Confirmed against the incident log" }))
+                .await
+                .status_code(),
+            422
+        );
     })
     .await;
 }

@@ -11,7 +11,7 @@ Evidence paths are relative to the repository root.
 | Authenticated access to every non-public route | NIST AC-3, IA-2; HIPAA §164.312(d); ISO A.5.15, A.8.5; GDPR 32 | Implemented when `CRM_REQUIRE_AUTH=1`; production refuses to start without it | `src/auth.rs`, `src/hardening.rs` (CRM-T30), `tests/enforcement.rs` |
 | Fail-safe default | NIST SA-8, CM-6 | Implemented | production boot check, T30 |
 | Attribute-based authorization, least privilege | NIST AC-6; HIPAA §164.312(a)(1); ISO A.8.2 | Partial | contact and deal reads/writes are record-checked; other handlers use the coarse gate (auth.md known limits) |
-| Data masking by role | NIST AC-3(7) | Partial (CRM-T32) | contacts, deals, forecast, sales dashboard, campaign cost/ROI, bundled contact rows; `/api/insights/*` and snapshots not yet |
+| Data masking by role | NIST AC-3(7) | Partial (CRM-T32) | contacts, deals, forecast and snapshots, sales dashboard, insights money views, campaign cost/ROI, bundled contact rows; persona matrix pinned over the reference policy |
 | Destructive actions restricted to admin/service | NIST AC-6(9) | Implemented | `DESTRUCTIVE_POST_SUFFIXES` + pins |
 | Session management, idle timeout, re-authentication | NIST AC-11, AC-12; HIPAA §164.312(a)(2)(iii) | Partial (CRM-T43) | HttpOnly cookie sessions, BFF, 15-minute client-side idle sign-out; step-up re-auth before destructive actions is a Gap |
 | Emergency access procedure | HIPAA §164.312(a)(2)(ii) | Implemented (CRM-T44) | reasoned, time-limited, audited, reviewed by another person; UI at `/break-glass` and `/break-glass/review`; alerting on grants is the deployer's to add |

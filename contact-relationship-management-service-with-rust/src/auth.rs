@@ -1807,4 +1807,106 @@ mod tests {
         let passthrough = mask_text_json(serde_json::json!([1, 2]), &["preferred_channel"]);
         assert_eq!(passthrough, serde_json::json!([1, 2]));
     }
+
+    /// Evaluate the **shipped reference policy** for one persona:
+    /// `(allowed, masked)` for `action` against `resource`/`env`.
+    fn reference_decision(
+        attrs: &[(&str, &[&str])],
+        action: Action,
+        resource: &BTreeMap<String, Vec<String>>,
+        env: &BTreeMap<String, Vec<String>>,
+    ) -> (bool, bool) {
+        let policy = Policy::from_json(include_str!("../config/abac-policy.reference.json"))
+            .expect("the reference policy parses");
+        let decision =
+            policy.evaluate_with_context(&claims_with_attrs(attrs), action, ENTITY, resource, env);
+        (
+            decision.allowed,
+            decision.obligations.iter().any(|o| o == "mask"),
+        )
+    }
+
+    /// The persona matrix over the shipped reference policy (CRM-T32,
+    /// `auth.md`): who may read unmasked, read masked, write, and take the
+    /// admin/service tier (destructive actions and privileged reads).
+    #[test]
+    fn reference_policy_persona_matrix() {
+        let none = BTreeMap::new();
+        let owned: BTreeMap<String, Vec<String>> = [(
+            "owner".to_string(),
+            vec!["11111111-1111-1111-1111-111111111111".to_string()],
+        )]
+        .into();
+        let break_glass: BTreeMap<String, Vec<String>> =
+            [("break_glass".to_string(), vec!["true".to_string()])].into();
+
+        // (persona, attrs, read (allowed, masked), write allowed, destructive allowed)
+        type Attrs<'a> = &'a [(&'a str, &'a [&'a str])];
+        let personas: [(&str, Attrs, (bool, bool), bool, bool); 7] = [
+            ("service", &[("svc", &["true"])], (true, false), true, true),
+            (
+                "admin",
+                &[("access", &["admin"])],
+                (true, false),
+                true,
+                true,
+            ),
+            (
+                "manager",
+                &[("manager", &["true"])],
+                (true, false),
+                true,
+                false,
+            ),
+            ("rep", &[("rep", &["true"])], (true, true), true, false),
+            (
+                "marketing",
+                &[("marketing", &["true"])],
+                (true, true),
+                true,
+                false,
+            ),
+            (
+                "support",
+                &[("support", &["true"])],
+                (true, true),
+                true,
+                false,
+            ),
+            ("plain reader", &[], (true, true), false, false),
+        ];
+        for (name, attrs, read, write, destructive) in personas {
+            assert_eq!(
+                reference_decision(attrs, Action::Read, &none, &none),
+                read,
+                "{name} read"
+            );
+            assert_eq!(
+                reference_decision(attrs, Action::Write, &none, &none).0,
+                write,
+                "{name} write"
+            );
+            assert_eq!(
+                reference_decision(attrs, Action::Destructive, &none, &none).0,
+                destructive,
+                "{name} destructive / privileged read"
+            );
+        }
+
+        // The record's owner reads unmasked and may write their own record.
+        assert_eq!(
+            reference_decision(&[], Action::Read, &owned, &none),
+            (true, false)
+        );
+        assert!(reference_decision(&[], Action::Write, &owned, &none).0);
+        assert!(!reference_decision(&[], Action::Destructive, &owned, &none).0);
+
+        // Break-glass lifts the mask for reads and nothing else.
+        assert_eq!(
+            reference_decision(&[], Action::Read, &none, &break_glass),
+            (true, false)
+        );
+        assert!(!reference_decision(&[], Action::Write, &none, &break_glass).0);
+        assert!(!reference_decision(&[], Action::Destructive, &none, &break_glass).0);
+    }
 }

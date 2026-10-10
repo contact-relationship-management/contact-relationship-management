@@ -102,8 +102,8 @@ in the wrong direction: less is actually enforced today):
   deployments accordingly until that wiring lands.
 - **Update (CRM-T32, 2026-10-10): `mask` now covers** contact and deal
   reads, the forecast, the sales dashboard, campaign cost, funnel revenue
-  and ROI, and the rows bundled into a contact read. It does **not** yet
-  cover `/api/insights/*` or forecast snapshots. The next bullet describes
+  and ROI, and the rows bundled into a contact read. The insights money views and
+  forecast snapshots are covered too (follow-up). The next bullet describes
   the earlier state and is kept for history.
 - **The `mask` obligation is not yet applied by any read handler.**
   `auth::mask_json` exists and is unit-tested (nulls named keys,

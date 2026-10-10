@@ -763,6 +763,7 @@ async fn forecast_snapshot(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
 ) -> Result<Response> {
+    let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
     let open = deals::Entity::find()
         .filter(deals::Column::DeletedAt.is_null())
         .filter(deals::Column::ClosedAt.is_null())
@@ -798,6 +799,10 @@ async fn forecast_snapshot(
     )
     .await?;
     txn.commit().await?;
+    // The snapshot is stored in full; a masked caller's response omits the totals.
+    if masked {
+        return format::json(auth::mask_json(serde_json::json!(row), &["totals"]));
+    }
     format::json(row)
 }
 

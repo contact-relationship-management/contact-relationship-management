@@ -19,6 +19,8 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use super::dashboards::conditional;
+use super::record_rejection;
+use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{
     accounts, activities, audit_logs, consent_events, contacts, deals, forecast_snapshots, leads,
     memberships, partnerships, pipeline_stages, tickets,
@@ -55,6 +57,7 @@ struct DaysQuery {
 async fn stale_deals(
     axum::extract::Query(query): axum::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
     headers: HeaderMap,
 ) -> Result<Response> {
     let threshold = days_or(query.days, 14);
@@ -84,25 +87,34 @@ async fn stale_deals(
     }
     let mut rows: Vec<(i64, serde_json::Value)> = open
         .iter()
-        .map(|deal| {
+        .filter_map(|deal| {
+            // Record-level read decision per deal (CRM-T32): a denied deal is
+            // omitted, a masked one keeps its row without the amount.
+            let obligations = auth::authorize_record(
+                &caller,
+                authentication_verifier::Action::Read,
+                &auth::deal_resource_attrs(deal),
+            )
+            .ok()?;
             let entered = last_move
                 .get(&deal.pid)
                 .copied()
                 .unwrap_or_else(|| deal.created_at.to_utc());
             let days_in_stage = (now - entered).num_days();
-            (
-                days_in_stage,
-                serde_json::json!({
-                    "pid": deal.pid,
-                    "name": deal.name,
-                    "stage": stage_names.get(&deal.stage_pid),
-                    "owner_ref": deal.owner_ref,
-                    "amount_minor": deal.amount_minor,
-                    "currency": deal.currency,
-                    "days_in_stage": days_in_stage,
-                    "stale": days_in_stage > threshold,
-                }),
-            )
+            let mut row = serde_json::json!({
+                "pid": deal.pid,
+                "name": deal.name,
+                "stage": stage_names.get(&deal.stage_pid),
+                "owner_ref": deal.owner_ref,
+                "amount_minor": deal.amount_minor,
+                "currency": deal.currency,
+                "days_in_stage": days_in_stage,
+                "stale": days_in_stage > threshold,
+            });
+            if obligations.iter().any(|o| o == "mask") {
+                row = auth::mask_json(row, &["amount_minor"]);
+            }
+            Some((days_in_stage, row))
         })
         .collect();
     rows.sort_by_key(|(days, _)| std::cmp::Reverse(*days));
@@ -313,8 +325,10 @@ fn parse_instant(raw: &str, end_of_day: bool) -> Option<chrono::DateTime<chrono:
 async fn executive(
     axum::extract::Query(query): axum::extract::Query<WindowQuery>,
     State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
     headers: HeaderMap,
 ) -> Result<Response> {
+    let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
     let now = chrono::Utc::now();
     let to = query
         .to
@@ -388,31 +402,37 @@ async fn executive(
         .filter(consent_events::Column::OccurredAt.lte(to))
         .count(&ctx.db)
         .await?;
-    Ok(conditional(
-        &headers,
-        serde_json::json!({
-            "window": { "from": from, "to": to },
-            "deals_won": won,
-            "deals_lost": lost,
-            "won_value_by_currency_minor": won_value,
-            "lost_reasons": lost_reasons,
-            "new_leads": new_leads,
-            "tickets_opened": tickets_opened,
-            "tickets_resolved": tickets_resolved,
-            "campaigns_started": campaigns_started,
-            "activities_logged": activities_logged,
-            "consent_withdrawals": consent_withdrawals,
-            "note": "per-currency won value is never merged or converted; \
-                     tickets_resolved / campaigns_started derive from status audits",
-        }),
-    ))
+    let mut body = serde_json::json!({
+        "window": { "from": from, "to": to },
+        "deals_won": won,
+        "deals_lost": lost,
+        "won_value_by_currency_minor": won_value,
+        "lost_reasons": lost_reasons,
+        "new_leads": new_leads,
+        "tickets_opened": tickets_opened,
+        "tickets_resolved": tickets_resolved,
+        "campaigns_started": campaigns_started,
+        "activities_logged": activities_logged,
+        "consent_withdrawals": consent_withdrawals,
+        "note": "per-currency won value is never merged or converted; \
+                 tickets_resolved / campaigns_started derive from status audits",
+    });
+    if masked {
+        body = auth::mask_json(body, &["won_value_by_currency_minor"]);
+    }
+    Ok(conditional(&headers, body))
 }
 
 /// `GET /api/insights/forecast-trends` — the stored forecast-snapshot
 /// series, oldest first (cap 200). History is only ever what
 /// `POST /api/forecast/snapshot` actually captured — no interpolation.
 #[debug_handler]
-async fn forecast_trends(State(ctx): State<AppContext>, headers: HeaderMap) -> Result<Response> {
+async fn forecast_trends(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    headers: HeaderMap,
+) -> Result<Response> {
+    let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
     let rows: Vec<forecast_snapshots::Model> = forecast_snapshots::Entity::find()
         .filter(forecast_snapshots::Column::DeletedAt.is_null())
         .order_by_asc(forecast_snapshots::Column::TakenOn)
@@ -421,7 +441,14 @@ async fn forecast_trends(State(ctx): State<AppContext>, headers: HeaderMap) -> R
     let series: Vec<serde_json::Value> = rows
         .iter()
         .take(200)
-        .map(|row| serde_json::json!({ "taken_on": row.taken_on, "totals": row.totals }))
+        .map(|row| {
+            let entry = serde_json::json!({ "taken_on": row.taken_on, "totals": row.totals });
+            if masked {
+                auth::mask_json(entry, &["totals"])
+            } else {
+                entry
+            }
+        })
         .collect();
     Ok(conditional(
         &headers,
