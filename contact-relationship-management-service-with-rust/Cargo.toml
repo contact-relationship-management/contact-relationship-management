@@ -47,6 +47,7 @@ uuid = { version = "1.26", features = ["v4", "serde"] }
 mimalloc = { version = "0.1.52" }
 # Tamper-evident audit hash chain (CRM-T31).
 sha2 = { version = "0.11" }
+base64 = { version = "0.22" }
 prometheus = { version = "0.14" }
 # Upstream display-name lookups (`http` client mode only; stub is the
 # default). Same minimal reqwest configuration as the verifier's fetch.
@@ -61,6 +62,7 @@ entity-ref = "0.2.0"
 
 # Offline PASETO v4.public verification + the shared ABAC engine.
 authentication-verifier = { git = "https://github.com/SixArm/main-x-service.git", rev = "eeb10523a89c3aa1e4ac922d615fc34a456bdcd9", default-features = false }
+aes-gcm = "0.10"
 
 [features]
 # PASETO bearer verification (the family default): `Verifier`, the boot key
@@ -95,4 +97,3 @@ serial_test = { version = "3.5.0" }
 # the auth path is verified without the auth service or a network.
 ed25519-dalek = { version = "3.0.0" }
 rusty_paseto = { version = "0.10", default-features = false, features = ["v4_public", "serde_json"] }
-base64 = { version = "0.22" }

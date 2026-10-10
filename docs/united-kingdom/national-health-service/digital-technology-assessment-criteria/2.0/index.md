@@ -1,123 +1,186 @@
-# UK NHS Digital Technology Assessment Criteria (DTAC) checklist
+# DTAC v2.0 assessment — Contact Relationship Management
 
-Converted from the DTAC Form v2.0 (24 February 2026). From 6 April 2026, manufacturers must provide this form instead of v1.0 when health and care organisations request it.
+Self-assessment of this repository against the NHS Digital Technology Assessment
+Criteria form v2.0, using the [checklist](checklist.md). Assessed 2026-10-10
+against the repository after the field-level encryption work (CRM-T41). It is an engineering assessment by the maintainer's tooling, not a
+submission, an attestation, or legal advice, and nobody has audited it.
 
-- Sections A and B are non-assessed context.
-- Sections C1–C4 are assessed. The product must meet them to pass.
-- Section D is scored for comparison only, not pass/fail.
-- The manufacturer of the digital health technology (DHT) completes the form. If the seller is not the manufacturer, they work together.
-- Answer for the specific product and version under assessment, not for the organisation in general.
+## Verdict
+
+**This product cannot pass DTAC today, and it is doubtful that DTAC is the right
+route for it.**
+
+1. **Applicability is the first question.** DTAC is for digital health
+   technologies. This is a general-purpose contact relationship management system
+   (sales, marketing, support, analytics). It has no clinical purpose, and its
+   own documentation says it is demo software with synthetic data and no real
+   email sending ([regulatory.md](../../../../../spec/regulatory.md)). An NHS
+   organization buying a CRM for non-clinical use (for example stakeholder,
+   partner, supplier, or membership management) would normally assess it under
+   its own information governance and procurement checks, with DTAC asked for
+   only if the buyer decides it applies.
+2. **If DTAC is required anyway**, the assessed sections fail on missing
+   evidence rather than on missing design: no named Clinical Safety Officer (if
+   C1 applies), no Cyber Essentials certificate, no external penetration test,
+   no Data Security and Protection Toolkit return, no completed DPIA, no ICO
+   registration evidence, no published accessibility statement.
+3. **The engineering is a reasonable base** for the technical parts of C2 and C3
+   and for the accessibility part of D1; see the question-by-question table.
+
+Counts by assessed section (questions that need an answer, after the
+skip-logic in the form):
+
+| Section | Result today |
+|---|---|
+| C1 Clinical safety | Not applicable if the product is not used for direct care, but that justification must be written and a commissioner can challenge it |
+| C2 Data protection | Fails: no DSPT, no ICO evidence, no completed DPIA, no privacy notice for a hosted service |
+| C3 Technical security | Fails: no Cyber Essentials, no pen test; MFA and logging partly met |
+| C4 Interoperability | Passes by skip-logic if the product is declared not to exchange patient-identifiable data with national systems; otherwise fails (no NHS number, PDS, or NHS login) |
+| D1 (scored) | Partial: automated WCAG 2.2 AA checks pass, nothing else evidenced |
+
+## How to read the table
+
+- **Met** — a control exists in this repository and is pinned by a test or CI check.
+- **Partial** — some of the control exists; the gap is stated.
+- **Not met** — nothing exists today.
+- **Deployer** — depends on who operates the service. This project ships
+  software; it does not host it or hold anyone's data. Where the form asks about
+  "your product", the answer changes if the maintainer or a vendor hosts it.
+- **N/A** — the form's own skip-logic removes the question, given the stated answer.
+- Evidence paths are relative to the repository root.
 
 ## A. Company information (non-assessed)
 
-| Code | Question | Options |
+| Code | Status | Note |
 |---|---|---|
-| A1 | Name of your company. | Free text |
-| A2 | Name of your product. | Free text |
-| A3 | Version number of the product this form corresponds to. | Free text |
-| A4 | Type of product. | Standalone Software Application or Mobile Application \| Wearable \| Software as a Service (SaaS) \| Other (describe) |
-| A5 | Name and job title of the key contact. | Free text |
-| A6 | Key contact's email address. | Free text |
-| A7 | Key contact's phone number. | Free text |
-| A8 | Registered address of your company. | Free text |
-| A9 | Country where your organisation is registered. | Free text |
-| A10 | Companies House number, charity number, or other organisational reference. | Free text |
-| A11 | Date of your last CQC assessment, if you must register with the CQC. | Date \| Not applicable |
-| A12 | Latest CQC report, if applicable. | Provided \| Not applicable |
+| A1 | Info needed | The legal entity that would be the manufacturer. The repository names an individual maintainer ([MAINTAINERS.md](../../../../../MAINTAINERS.md)), not a company. |
+| A2 | Met | Contact Relationship Management. |
+| A3 | Info needed | Pin the version under assessment; the service is `0.1.0`, unreleased. |
+| A4 | Met | Software as a Service if hosted by a vendor; standalone software if self-hosted. Decide, because it changes C2 and C3. |
+| A5–A7 | Info needed | Key contact (the maintainer's email is in [MAINTAINERS.md](../../../../../MAINTAINERS.md)); phone not held. |
+| A8–A10 | Info needed | No registered company, charity, or Companies House number is recorded. |
+| A11–A12 | N/A | No CQC registration applies to a software supplier. |
 
 ## B. Value proposition (non-assessed)
 
-| Code | Question | Options |
+| Code | Status | Note |
 |---|---|---|
-| B1 | Intended use of the product. | Patient Care or Support \| Diagnostics \| Clinical Support \| Workforce Support or Management \| Other |
-| B2 | Clear, high-level description of what the product does and how it is used. | Free text |
-| B3 | Intended users and the intended or proven benefits, and how the benefits were validated. Include any evaluation or clinical trial information. | Free text |
-| B4 | Data flow between the product and the Health IT system, and a user journey map where applicable. May be included in the DPIA, in which case attach it separately. | Provided \| Not available |
+| B1 | Met | "Other". It is not patient care, diagnostics, or clinical support; "Workforce Support or Management" is the nearest listed option if a buyer prefers it. |
+| B2 | Met | [spec/purpose.md](../../../../../spec/purpose.md) and [spec/index.md](../../../../../spec/index.md). |
+| B3 | Partial | Intended users are described (sales, marketing, support, analytics roles). No benefits have been validated, no evaluation, no trial. |
+| B4 | Partial | Data flows are in [spec/architecture.md](../../../../../spec/architecture.md) and pre-filled in the [DPIA template](../../../../../spec/compliance/dpia-template.md); no user journey map exists. |
 
 ## C1. Clinical safety (assessed)
 
-Provide responses and documentation for the specific version being assessed. If the product ships with hardware, the DCB0129 documentation covers the whole Health IT system, hardware included. If you consider C1 not applicable, submit your rationale.
-
-| Code | Question | Options | Notes |
-|---|---|---|---|
-| C1.1.1 | Does the product or any component qualify as Software or AI as a Medical Device under the UK Medical Devices Regulations 2002? | Yes \| No | Pass: if Yes, a completed [Pre-acquisition questionnaire (PAQ)](https://www.england.nhs.uk/publication/pre-acquisition-questionnaire/) is provided.<br>If No, skip to C1.2. |
-| C1.1.2 | Is the product classified as a standalone medical device? | Yes \| No | Read the [DCB0129 and DCB0160 applicability guidance](https://digital.nhs.uk/services/clinical-safety/applicability-of-dcb-0129-and-dcb-0160) first.<br>If Yes, go to C2. If No, go to C1.2. |
-| C1.2 | Is the product designed to provide electronic information that influences, supports or manages real-time or near-real-time direct care? | Yes \| No | If Yes, skip to C1.2.2. If No, answer C1.2.1 and then go to C2. |
-| C1.2.1 | If No to C1.2, justify why the product is not in scope of DCB0129. | Free Text | Commissioners can challenge the justification. |
-| C1.2.2 | Have you carried out clinical risk management activities that comply with DCB0129? | Yes \| No | Pass: the manufacturer confirms compliance. |
-| C1.2.3 | Detail your clinical risk management system. | Provided \| Not provided | Pass: a DCB0129-compliant system exists and was followed throughout development, with evidence that risks were identified, evaluated and mitigated across the lifecycle. |
-| C1.2.4 | Supply your Clinical Safety Case Report and Hazard Log. | Provided \| Not provided | Include:<br>- scope of the assessment<br>- summary of your clinical risk management approach and activities<br>- summary of the hazard assessment: risks, evaluation, and mitigations considered and implemented<br>- test summary showing functional and non-functional testing<br>- summary of test issues (defects)<br>- hazards that need user or commissioner action to reach acceptable mitigation (for example training or business process change)<br>- hazard log (can be appended)<br>- declaration of the risk scoring scheme you used<br>- residual clinical risks and related operational constraints<br>- hazards transferred to the deploying organisation, with declared risk controls<br>- outstanding test issues with a possible clinical safety impact<br>- hazards you could not mitigate as low as reasonably practicable<br><br>Pass: the report and log comply with DCB0129 and are proportionate to the product's scale and clinical functionality. |
-| C1.2.5 | Name, profession and registration details of your Clinical Safety Officer (CSO). | Free Text | The CSO must be a suitably qualified and experienced clinician, hold current registration with an appropriate professional body, know risk management as applied to clinical domains, and have enough responsibility to ensure DCB0129 processes are followed.<br>Pass: a named CSO, which may be outsourced.<br>The v1.0 requirement for NHS DTAC-specific CSO training no longer applies. Suitable training is still strongly recommended. |
+| Code | Status | Assessment |
+|---|---|---|
+| C1.1.1 | Met (answer: No) | Nothing in the product has a medical purpose, so it is not Software as a Medical Device under the UK Medical Devices Regulations 2002. No PAQ is needed. A deployer that adds a medical purpose (for example triage, or a patient-facing feature) would change this answer. |
+| C1.1.2 | N/A | Follows from C1.1.1. |
+| C1.2 | Met (answer: No), but challengeable | The product is not designed to influence, support, or manage real-time or near-real-time direct care. Customer-support tickets and SLA timers are about service requests, not patients. |
+| C1.2.1 | **Not met** | The justification must be written and submitted. Draft: "A CRM for managing relationships with customers, partners, and stakeholders; it holds no clinical information and no workflow depends on it for direct care." State plainly that an organization recording **patients as contacts** or using tickets for care requests would put it in scope and must do its own DCB0129/DCB0160 work. Not written yet. |
+| C1.2.2–C1.2.5 | Not met, and required only if C1.2 is answered Yes | No clinical risk management system, safety case, hazard log, or named Clinical Safety Officer exists. If a buyer rules C1 applicable, this is a substantial piece of new work that needs a clinician, not engineering. |
 
 ## C2. Data protection (assessed)
 
-| Code | Question | Options | Notes |
-|---|---|---|---|
-| C2.1 | If you have direct or remote access to patient data or NHS systems, confirm your Data Security and Protection Toolkit ([DSPT](https://www.dsptoolkit.nhs.uk/)) status. | Confirmed \| Unable to Confirm \| No access to patient data or national NHS System | Pass: Standards Met or Exceeded for the current year, or the previous year if you have no current return yet. Assessors validate this against the DSPT database. |
-| C2.2 | Does the product or service process any personal data or data about deceased individuals, including data processed by a sub-processor? | Yes \| No | If No, skip to C3.<br>You may answer No if you have no role in operating or hosting the product and no means of accessing its data, including remote support access. |
-| C2.2.1 | Evidence of current ICO registration. | Provided \| Not provided | Pass: evidence with expiry date, such as a screenshot of the registration number. Assessors validate it against the ICO Register of Fee Payers. |
-| C2.2.2 | Data Protection Impact Assessment (DPIA) for the product. | Provided \| Not provided | Must cover:<br>- summary of the product and how it processes data<br>- list of data fields required<br>- how data flows into, within and out of the product<br>- end-user security controls: on/off-boarding and access limits<br>- technical and organisational measures for data in transit and at rest, proportionate to risk<br>- countries where data is stored or flows through<br>- whether the manufacturer's staff can access personal data, with proportionate access and an identified legal basis<br>- who is the controller for each element of processing<br>- retention and disposal arrangements<br>- processors and sub-processors, with confirmation of legally binding agreements<br>- confidentiality, availability and integrity risks and their mitigations<br>- how the product supports data subject rights |
-| C2.2.3 | Copy or link to the product's transparency information (privacy notice). | Provided \| Not provided | Pass: transparency materials are available to the buyer to help meet UK GDPR transparency requirements. |
-| C2.2.4 | Product terms and conditions on use of user data, end user licence agreement or equivalent. If this does not apply, state why. | Provided \| Not provided \| Not applicable | Pass: the terms are clear and fair on privacy and data use. |
-| C2.2.5 | Where does the product, including third-party components, store and process data? | UK only \| Outside of UK | If UK only, skip to C3. |
-| C2.2.6 | If outside the UK, name the country and explain how the arrangements comply with current legislation. | Free text | Pass: a statement that the arrangements comply, such as UK adequacy status, an IDTA, or binding corporate rules. Non-adequacy routes need a transfer risk assessment. |
+| Code | Status | Assessment |
+|---|---|---|
+| C2.1 | **Not met** / Deployer | No DSPT return exists for the maintainer. If the software is self-hosted by the buyer and the manufacturer has no remote access, the honest answer is "No access to patient data or national NHS System". A hosted service, or any remote support access, needs a DSPT return at Standards Met or Exceeded. |
+| C2.2 | Deployer | Per the form's note, "No" is available only when the manufacturer has no role in operating or hosting the product and no means of accessing its data. Self-hosted: No. Vendor-hosted: Yes, and everything below applies. |
+| C2.2.1 | **Not met** | No ICO registration evidence. Required if the manufacturer is a controller or processor in a hosted service. |
+| C2.2.2 | Partial | A pre-filled [DPIA template](../../../../../spec/compliance/dpia-template.md) exists, but no completed DPIA. The template covers the form's required headings, but every risk and residual rating is blank. Supporting facts that are true today: URN wrappers so identity data stays upstream; subject access, erasure, and retention endpoints ([auth.md](../../../../../spec/auth.md)); an audit trail with a tamper-evident hash chain; security headers and a CSP; rate limiting and lockout. Field-level AES-256-GCM encryption of the contact channel and activity text exists (CRM-T41) with key rotation, but keys come from the environment or a file rather than a key-management service, and other columns are not covered; whole-database encryption at rest is still the deployer's. |
+| C2.2.3 | **Not met** | No privacy notice or transparency information. A self-hosting buyer writes their own; a hosting vendor must publish one. |
+| C2.2.4 | Partial | A licence exists ([LICENSE.md](../../../../../LICENSE.md)) but no terms on use of user data or end-user licence agreement. "Not applicable" is defensible for self-hosted software, with a stated reason. |
+| C2.2.5 | Deployer | Data location is chosen by the deployer. The software makes no cross-border transfers itself; the optional Keycloak and key-fetch URLs are configured by the deployer. |
+| C2.2.6 | Deployer | Only if hosted outside the UK. |
 
 ## C3. Technical security (assessed)
 
-| Code | Question | Options | Notes |
-|---|---|---|---|
-| C3.1 | Attach your Cyber Essentials certificate. | Provided \| Not Provided | Pass: the certificate is valid and in date (12-month validity). Assessors check it against the IASME database. |
-| C3.2 | Have you signed the [Cyber Security Charter for Suppliers to the NHS](https://digital.nhs.uk/cyber-and-data-security/guidance-and-assurance/cyber-security-charter-for-suppliers-to-the-nhs)? | Yes \| No | If Yes, skip the rest of C3. If No, answer C3.3 to C3.6. |
-| C3.3 | For internet-based or internet-accessible products, provide the summary report of an external penetration test from the last 12 months that covered the OWASP Top 10. | Provided \| Not provided | Pass: a third-party test covering the OWASP Top 10, with no vulnerabilities scoring 7.0 or above on CVSS. |
-| C3.4 | Confirm the software was produced in line with the DSIT/NCSC [Software Security Code of Practice](https://www.gov.uk/government/publications/software-security-code-of-practice/software-security-code-of-practice), and that you commit to its principles: secure design and development, secure build environment, secure deployment and maintenance, and communication with customers. | Confirmed / Unable to Confirm | Pass: development aligns to the code and you commit to its principles. |
-| C3.5 | Confirm you have a plan to implement multi-factor authentication (MFA) for all account types, preferably through identity federation. | Yes \| No | Pass: a plan is in place. |
-| C3.5.1 | If applicable, confirm all supplier accounts with privileged access to the product have MFA, or equivalent MFA at the remote end. | Yes \| No \| Not applicable as supplier has no access to the product | Pass: MFA is enforced on all privileged and remote access connections. It need not be enforced on the product itself. |
-| C3.6 | Confirm logging and reporting requirements have been defined. | Yes \| No | To answer Yes, logging such as audit trails of all access must be in place.<br>Pass: requirements are defined. |
+| Code | Status | Assessment |
+|---|---|---|
+| C3.1 | **Not met** | No Cyber Essentials certificate. It is organization-level, so it is the manufacturer's to obtain; it cannot be derived from the code. |
+| C3.2 | **Not met** | The Cyber Security Charter for Suppliers to the NHS has not been signed. Signing it skips C3.3 to C3.6 on the form, so it is the cheapest route to a pass here. |
+| C3.3 | **Not met** | No external penetration test (CRM-T42, open). The CI gates (`cargo audit`, `cargo deny`, `pnpm audit`, SBOM) and the hardening in [plan.md](../../../../../spec/plan.md) are not a substitute: the form requires a third-party OWASP Top 10 test from the last 12 months with nothing at CVSS 7.0 or above. |
+| C3.4 | Partial | Mapped to the four principles of the Software Security Code of Practice below. Evidence exists for most, but no one has reviewed it against the code. |
+| C3.5 | Partial / Deployer | The product delegates authentication to an identity provider (PASETO tokens or Keycloak/OIDC); MFA is therefore the identity provider's to enforce, which fits the form's "preferably through identity federation". The service refuses to start in production without authentication enabled. The plan itself is not written down; it should be stated in the runbook. |
+| C3.5.1 | N/A / Deployer | Not applicable when the supplier has no access to the product. A hosting vendor needs MFA on all privileged and remote access. |
+| C3.6 | Partial | Logging requirements are defined ([audit.md](../../../../../spec/audit.md)) and an audit trail exists, but "audit trails of all access" is not fully true: contacts, leads, tickets, and activities are read-audited; deals, accounts, and insights views are not (CRM-T40 limits). |
+
+### C3.4 mapped to the Software Security Code of Practice
+
+| Principle | Evidence today | Gap |
+|---|---|---|
+| Secure design and development | ABAC with record-level checks, masking, input validation, `forbid(unsafe_code)`, clippy pedantic, fail-closed production start | No threat model document; masking not complete for every view |
+| Secure build environment | Lockfiles, pinned git revision, CI on two providers, `cargo deny` source policy, SBOMs | Builds are not signed or attested; CI runners are the provider's |
+| Secure deployment and maintenance | Distroless non-root images, read-only compatible, security headers, rate limiting, runbook | No image digest pinning or signing; no stated patch SLA beyond the runbook's targets |
+| Communication with customers | [SECURITY.md](../../../../../SECURITY.md) with a private reporting route and a 7-day acknowledgement | Single maintainer; no advisory publication process or coordinated-disclosure timeline |
 
 ## C4. Interoperability (assessed)
 
-| Code | Question | Options | Notes |
-|---|---|---|---|
-| C4.1 | Does the product expose any APIs or integration channels for other products used in health or social care? | Yes \| No | If No, skip to C4.2. |
-| C4.1.1 | List the international or industry interoperability standards your APIs use and explain why they are appropriate. | Free text | Pass: relevant standards are listed and justified. |
-| C4.1.2 | Confirm the APIs follow GDS Open API best practice and are openly documented and freely available to third parties. | Confirm \| Cannot confirm | Pass: confirmed, or an approach is set out in C4.1.3. |
-| C4.1.3 | If you cannot confirm C4.1.2, set out the basis on which your APIs are documented and made available to third parties. | Free Text | Pass: you set out the basis on which third parties can build integrations. |
-| C4.2 | Is the product intended to share or receive data with national or local care or administrative systems where patient identity is relevant? | Yes \| No | If No, skip to C4.3. |
-| C4.2.1 | Can the product use the NHS number to identify patient data when exchanging data? | Yes \| No | Pass: Yes, or an alternative approach for data quality.<br>If No, go to C4.2.3. |
-| C4.2.2 | Does the product integrate with the NHS Personal Demographics Service, or other local record systems, to establish or validate the NHS number? | Yes \| No | Pass: Yes, or an alternative approach for data quality.<br>If onboarding to PDS is incomplete, describe it in C4.2.3.<br>If Yes, skip to C4.2.4. |
-| C4.2.3 | If you answered No to C4.2.1 or C4.2.2, describe how you identify patient records correctly and keep data quality. | Free Text | Pass: you set out how patients are correctly identified and how data accuracy is maintained when integrating with other systems. |
-| C4.2.4 | If the product is used directly by patients, do you use NHS login to verify and authenticate users? | Yes \| No \| Not Applicable – product is not used directly by patients. | Pass: Yes, or adequate data protection measures in C4.2.6.<br>If Yes, skip to Section D. If No, go to C4.2.5. |
-| C4.2.5 | If public health or adult social care organisations use the product to deliver care services, does it support compliance with the [DAPB3051](https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb3051-identity-verification-and-authentication-standard-for-digital-health-and-care-services) identity verification and authentication standard? | Yes \| No \| Not Applicable – product is not used by public health or adult social care services | Pass: Yes, if applicable.<br>If Yes, skip to Section D. If Not applicable, complete C4.2.6. |
-| C4.2.6 | If you do not use NHS login, describe how you authenticate users and what data protection measures are in place. | Free Text | Pass: the approach protects user privacy. |
+| Code | Status | Assessment |
+|---|---|---|
+| C4.1 | Met (answer: Yes) | A REST/JSON API with an OpenAPI 3 document served at `/api-docs/openapi.json`. |
+| C4.1.1 | Partial | Standards used: HTTP, JSON, OpenAPI 3, OAuth/OIDC (Keycloak), PASETO for service tokens. **No health-care standard (FHIR, HL7) is implemented**; there is nothing to justify as appropriate for health data because it does not handle any. |
+| C4.1.2 | Partial | The API is openly documented and the code is under open licences ([LICENSE.md](../../../../../LICENSE.md)). It has not been checked against GDS API guidance (for example versioning, error format, and caching are present via `Accepts-version` and ETags; other points are unverified). Confirm after a review. |
+| C4.1.3 | N/A | Only if C4.1.2 cannot be confirmed. |
+| C4.2 | Met (answer: No) | The product is not intended to exchange data with national or local care systems where patient identity matters. Contacts are `person:` URN references to an upstream registry. Answering No skips the rest of C4.2. |
+| C4.2.1–C4.2.6 | N/A, with a caveat | If a buyer uses it with patient records: no NHS number support, no PDS integration, and no NHS login. All of these would be Not met. |
 
 ## D1. Usability and accessibility (scored, not pass/fail)
 
-| Code | Question | Options | Notes |
-|---|---|---|---|
-| D1.1 | Explain how the product fits into existing systems or care pathways. For example, provide a user journey or instructions for use. | Provided \| Not provided | |
-| D1.2 | Do you test with intended users to validate usability? | Yes \| No | |
-| D1.3 | Confirm you have read the [Accessible Information Standard](https://www.england.nhs.uk/about/equality/equality-hub/patient-equalities-programme/equality-frameworks-and-information-standards/accessibleinfo/) and considered it in your design. | Confirm \| Cannot confirm | |
-| D1.4 | Is the product a web or mobile application? | Yes \| No | If No, Section D is complete. |
-| D1.4.1 | Does it comply with WCAG 2.2 level AA or higher? | Yes \| No, but a plan and timeline for achieving WCAG 2.2 AA or higher is in place \| No \| Not applicable as not a web of mobile application | If you have a plan, answer D1.4.2. Otherwise go to D1.4.3. |
-| D1.4.2 | If you have a plan, give the timescale for achieving WCAG 2.2 AA. | Free Text | |
-| D1.4.3 | Link to your published accessibility statement. | Free text | |
-| D1.5 | Average service availability over the past 12 months, as a percentage to two decimal places. | Free text | |
+| Code | Status | Assessment |
+|---|---|---|
+| D1.1 | Partial | A guided tour exists in the UI (`/tour`) and the spec describes the roles; no instructions for use or pathway document. |
+| D1.2 | Not met | No usability testing with intended users. |
+| D1.3 | Not met | The Accessible Information Standard has not been reviewed or considered in design. It concerns communicating with disabled patients, so its relevance to a non-patient-facing CRM should be stated. |
+| D1.4 | Met (answer: Yes) | A web application. |
+| D1.4.1 | Partial | Answer: "No, but a plan is in place" is the honest choice. Automated axe-core checks with WCAG 2.0 to 2.2 A and AA tags pass on 11 pages (`tests/e2e/a11y.spec.ts`); automated tools find roughly a third of issues; no manual audit with assistive technology, no screen-reader test, no keyboard-only audit of the drag-and-drop boards. |
+| D1.4.2 | Not met | No dated plan. |
+| D1.4.3 | **Not met** | No accessibility statement exists, published or drafted. |
+| D1.5 | Not met | The service has never run in production, so there are no availability figures. Do not invent one. |
 
-## Supporting documentation
+## Supporting documents
 
-Label each document with your company name, the question number and the date of submission.
+| Code | Document | State |
+|---|---|---|
+| A12 | CQC report | N/A |
+| B4 | User journeys and data flows | Data flows partial; no journey map |
+| C1.1.1 | PAQ | N/A (not a medical device) |
+| C1.2.3, C1.2.4 | Clinical risk management and safety case | Not produced; needed only if C1.2 is Yes |
+| C1.2.4 | Hazard log | Not produced |
+| C2.2.1 | ICO registration | Not held |
+| C2.2.2 | DPIA | Template only |
+| C2.2.3 | Privacy notice | Not written |
+| C2.2.4 | Terms on use of user data / EULA | Licence only |
+| C3.1 | Cyber Essentials certificate | Not held |
+| C3.3 | Penetration test summary | Not done |
+| D1.1 | User journeys | Partial |
 
-| Code | Document |
-|---|---|
-| A12 | CQC report |
-| B4 | User journeys and data flows |
-| C1.1.1 | Pre-acquisition questionnaire (PAQ) form |
-| C1.2.3, C1.2.4 | Clinical risk management system and Clinical Safety Case Report |
-| C1.2.4 | Hazard Log |
-| C2.2.1 | ICO registration |
-| C2.2.2 | Data Protection Impact Assessment (DPIA) |
-| C2.2.3 | Transparency information (privacy notice) |
-| C2.2.4 | Product terms and conditions on use of user data, end user licence agreement or equivalent |
-| C3.1 | Cyber Essentials certificate |
-| C3.3 | External penetration test summary report |
-| D1.1 | User journeys, or how the product fits into a user pathway |
+## Actions, cheapest route first
+
+1. **Decide applicability and say so in writing.** Agree with the buyer whether DTAC
+   applies. If not, record that decision and stop. If so, write the C1.2.1
+   justification (a short document) and state the patients-as-contacts caveat.
+2. **Choose the deployment model** (self-hosted software or vendor-hosted SaaS)
+   because C2.1, C2.2, C2.2.5, and C3.5.1 turn on it.
+3. **Sign the Cyber Security Charter for Suppliers to the NHS** (C3.2). It removes
+   C3.3 to C3.6 from the form.
+4. **Obtain Cyber Essentials** (C3.1), which is organization-level.
+5. **If hosted:** DSPT return, ICO registration, completed DPIA, privacy notice,
+   user-data terms. These are legal and organizational documents.
+6. **If the Charter is not signed:** commission the independent OWASP Top 10
+   penetration test (C3.3, CRM-T42) and write the MFA plan (C3.5).
+7. **Accessibility (D1):** run a manual WCAG 2.2 AA audit with a keyboard and a
+   screen reader, fix what it finds, then publish an accessibility statement
+   (D1.4.3). Consider an alternative to drag-and-drop for the boards.
+8. **Close the logging gap** (C3.6): audit reads of deals, accounts, and insights
+   (CRM-T40 limits), or state the exclusion in the answer.
+9. **Only if a buyer will use it for patient-identifiable data:** the whole of C1.2
+   (a Clinical Safety Officer is a registered clinician, so this is not an
+   engineering task) and the NHS number, PDS, and NHS login work in C4.2.
+
+## Related documents
+
+- [Compliance evidence pack](../../../../../spec/compliance/index.md): control
+  mapping, DPIA template, operations runbook.
+- [Production readiness plan](../../../../../spec/plan.md) and the open tasks in
+  [tasks.md](../../../../../spec/tasks.md) (T39, T41, T42).

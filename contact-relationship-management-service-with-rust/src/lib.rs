@@ -37,6 +37,7 @@ pub mod auth;
 pub mod break_glass;
 pub mod clients;
 pub mod controllers;
+pub mod crypto;
 pub mod hardening;
 pub mod metrics;
 pub mod models;

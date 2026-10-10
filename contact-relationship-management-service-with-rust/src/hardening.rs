@@ -49,8 +49,46 @@ pub fn check_process(production: bool) -> Result<(), &'static str> {
     Ok(())
 }
 
+/// Whether `CRM_REQUIRE_FIELD_ENCRYPTION` demands keys that are missing
+/// (CRM-T41): with it on, the service refuses to start without a keyring, so a
+/// misconfigured deployment cannot quietly store plaintext.
+///
+/// # Errors
+///
+/// A message when encryption is required but no keyring is configured.
+pub fn field_encryption_check(required: bool, configured: bool) -> Result<(), &'static str> {
+    if required && !configured {
+        Err(
+            "CRM_REQUIRE_FIELD_ENCRYPTION is on but no valid CRM_FIELD_KEYS / CRM_FIELD_KEYS_FILE is configured",
+        )
+    } else {
+        Ok(())
+    }
+}
+
+/// [`field_encryption_check`] over the process environment and keyring.
+///
+/// # Errors
+///
+/// As [`field_encryption_check`].
+pub fn check_field_encryption() -> Result<(), &'static str> {
+    field_encryption_check(
+        parse_bool(&std::env::var("CRM_REQUIRE_FIELD_ENCRYPTION").unwrap_or_default()),
+        crate::crypto::current().is_some(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn field_encryption_is_required_only_when_asked() {
+        use super::field_encryption_check as check;
+        assert!(check(false, false).is_ok());
+        assert!(check(true, true).is_ok());
+        assert!(check(false, true).is_ok());
+        assert!(check(true, false).is_err());
+    }
+
     use super::*;
 
     #[test]

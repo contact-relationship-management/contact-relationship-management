@@ -34,7 +34,7 @@ Evidence paths are relative to the repository root.
 | Control | Reference | Status | Evidence / note |
 |---|---|---|---|
 | Transport encryption | NIST SC-8, SC-13; HIPAA §164.312(e); ISO A.8.24 | Deployer | terminate TLS 1.2+ at the ingress; HSTS is set by both services |
-| Encryption at rest | NIST SC-28; HIPAA §164.312(a)(2)(iv) | Deployer | PostgreSQL volume or TDE encryption; field-level encryption is T41 |
+| Encryption at rest | NIST SC-28; HIPAA §164.312(a)(2)(iv) | Deployer, plus field-level for two columns (CRM-T41) | PostgreSQL volume or TDE encryption; AES-256-GCM on contact channel and activity text with key rotation; keys not in a KMS; other columns not covered |
 | Security response headers, CSP | OWASP ASVS V14; NIST SC-18 | Implemented (CRM-T33) | `config/production.yaml`, `src/lib/server/headers.ts`, `vite.config.ts`; vitest and Playwright pins |
 | CORS closed by default | OWASP ASVS V14.5 | Implemented | `config/production.yaml` |
 | Request size limits | NIST SC-5 | Implemented | `limit_payload` 2 MB |

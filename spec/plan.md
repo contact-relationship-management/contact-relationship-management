@@ -45,7 +45,7 @@ Severity: **B** blocks any non-demo deployment; **H** blocks regulated buyers;
 | 9 | `/api/audits*`, `/api/events/recent`, `/api/retention` are readable by any caller that clears the coarse read gate; `/metrics.prom` and OpenAPI are unauthenticated | H | T38 |
 | 10 | Real send path (ESP adapter), processor agreements, bounce/complaint handling absent | B | T39 |
 | 11 | Reads of personal data are not audited (spec claims sensitive reads are; only the consent-history read is) | H | T40 |
-| 12 | No field-level encryption or key-management integration; at-rest encryption is deployment-only | M | T41 |
+| 12 | Field-level encryption now covers two columns with local keys; no KMS integration and other columns are plaintext at the field level | M | T41 |
 | 13 | No independent penetration test, risk analysis, or accreditation evidence | B | T42 |
 | 14 | No rate limiting or lockout; no UI idle-session timeout or re-authentication for destructive actions | M | T43 |
 | 15 | Break-glass / emergency access with mandatory reason and after-the-fact review absent | M | T44 |

@@ -4,6 +4,7 @@
 
 mod audit_chain;
 mod engagement;
+mod field_encryption;
 mod insights;
 mod marketing;
 mod privacy;

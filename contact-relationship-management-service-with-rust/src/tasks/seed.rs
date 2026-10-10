@@ -54,7 +54,7 @@ impl Task for Seed {
                     display_name: ActiveValue::set(format!("Demo Contact {:02}-{c}", index + 1)),
                     status: ActiveValue::set("active".to_string()),
                     job_title: ActiveValue::set(Some("Buyer".to_string())),
-                    preferred_channel: ActiveValue::set("email".to_string()),
+                    preferred_channel: ActiveValue::set("email".into()),
                     // Two of three consented, one never — the segment
                     // gate is visible in the demo.
                     marketing_consent: ActiveValue::set(

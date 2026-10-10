@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — field-level encryption (CRM-T41, 2026-10-10)
+
+AES-256-GCM on `contacts.preferred_channel` and `activities.summary` through
+an `EncryptedText` column type, keyring with rotation (`CRM_FIELD_KEYS`),
+`rotate_field_keys` task, and `CRM_REQUIRE_FIELD_ENCRYPTION` start-up check.
+
 ### Added — break-glass access (CRM-T44, 2026-10-10)
 
 Reasoned, time-limited, audited read elevation (`/api/break-glass`) with a

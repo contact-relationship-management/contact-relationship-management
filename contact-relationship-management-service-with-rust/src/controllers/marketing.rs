@@ -111,7 +111,7 @@ async fn contact_facts<C: sea_orm::ConnectionTrait>(
     Ok(segment_rules::ContactFacts {
         consent: contact.marketing_consent.clone(),
         status: contact.status.clone(),
-        channel: contact.preferred_channel.clone(),
+        channel: contact.preferred_channel.as_str().to_string(),
         account_tier: tier,
     })
 }
@@ -452,7 +452,7 @@ async fn run_campaign(
             kind: ActiveValue::set("email".to_string()),
             occurred_at: ActiveValue::set(now),
             actor_ref: ActiveValue::set(None),
-            summary: ActiveValue::set(format!("Campaign touch: {}", campaign.name)),
+            summary: ActiveValue::set(format!("Campaign touch: {}", campaign.name).into()),
             due_on: ActiveValue::set(None),
             done: ActiveValue::set(false),
             deleted_at: ActiveValue::set(None),
@@ -726,10 +726,9 @@ async fn advance_nurture(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
             kind: ActiveValue::set("email".to_string()),
             occurred_at: ActiveValue::set(now),
             actor_ref: ActiveValue::set(None),
-            summary: ActiveValue::set(format!(
-                "Nurture step {} ({})",
-                step.position, step.template_ref
-            )),
+            summary: ActiveValue::set(
+                format!("Nurture step {} ({})", step.position, step.template_ref).into(),
+            ),
             due_on: ActiveValue::set(None),
             done: ActiveValue::set(false),
             deleted_at: ActiveValue::set(None),

@@ -34,8 +34,13 @@ Commands assume the container images from the repository's `Containerfile`s.
 - PostgreSQL 18, TLS required between service and database, a dedicated role
   with DML only, a separate migration role.
 - **Encryption at rest:** use an encrypted volume or managed-database
-  encryption with a customer-managed key. The application does not encrypt
-  fields (CRM-T41 is open).
+  encryption with a customer-managed key. The application also encrypts the
+  contact channel and activity text (CRM-T41): set `CRM_FIELD_KEYS`
+  (`id:base64,...`, 32-byte keys, first is active) or `CRM_FIELD_KEYS_FILE`
+  from your secret manager, and `CRM_REQUIRE_FIELD_ENCRYPTION=1` so a missing
+  key stops the service instead of storing plaintext. Back up the keys
+  separately from the database: losing them makes the data unreadable.
+  Audit snapshots and the event outbox may hold copies and are not encrypted.
 - **Backups:** continuous WAL archiving or daily full plus frequent
   incrementals; encrypt backups; keep at least one copy off the primary
   account or region. Test a restore at least quarterly and record the result.
@@ -75,6 +80,15 @@ table owner, so keep the owner role out of day-to-day use.
 - Secrets (database URL, SMTP, any signing keys) come from your secret manager
   at runtime, never baked into images or committed.
 - Record who can read each secret and review quarterly.
+
+### Rotating the field keys
+
+1. Add a new key **first** in `CRM_FIELD_KEYS`, keeping the old one after it.
+2. Roll the service so every replica has both.
+3. Run `cargo loco task rotate_field_keys` (idempotent; it also seals any
+   legacy plaintext) and confirm it reports zero on a second run.
+4. Only then remove the old key. A value sealed under a removed key cannot be
+   read and the service returns an error for that row.
 
 ## 5. Logging and monitoring
 

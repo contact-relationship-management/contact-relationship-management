@@ -140,6 +140,7 @@ impl Hooks for App {
         // so the check lives here, which every start path reaches.)
         crate::hardening::check_process(matches!(ctx.environment, Environment::Production))
             .map_err(loco_rs::Error::string)?;
+        crate::hardening::check_field_encryption().map_err(loco_rs::Error::string)?;
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();
@@ -171,6 +172,7 @@ impl Hooks for App {
 
     fn register_tasks(tasks: &mut Tasks) {
         tasks.register(tasks::seed::Seed);
+        tasks.register(tasks::rotate_field_keys::RotateFieldKeys);
         // tasks-inject (do not remove)
     }
 

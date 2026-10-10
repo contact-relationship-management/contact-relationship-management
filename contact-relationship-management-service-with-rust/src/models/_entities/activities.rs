@@ -19,7 +19,7 @@ pub struct Model {
     pub kind: String,
     pub occurred_at: DateTimeWithTimeZone,
     pub actor_ref: Option<String>,
-    pub summary: String,
+    pub summary: crate::models::encrypted::EncryptedText,
     pub due_on: Option<Date>,
     pub done: bool,
     pub sentiment: Option<String>,

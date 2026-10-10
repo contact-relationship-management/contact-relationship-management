@@ -20,7 +20,7 @@ pub struct Model {
     pub display_name: String,
     pub status: String,
     pub job_title: Option<String>,
-    pub preferred_channel: String,
+    pub preferred_channel: crate::models::encrypted::EncryptedText,
     pub marketing_consent: String,
     pub consent_changed_at: Option<DateTimeWithTimeZone>,
     pub stakeholder_role: Option<String>,
