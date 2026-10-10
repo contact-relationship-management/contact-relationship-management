@@ -8,6 +8,7 @@
   import { Kanban, Willow, getCardShape } from "@svar-ui/svelte-kanban";
   import type { KanbanInstanceApi } from "@svar-ui/svelte-kanban";
   import { listTickets, ticketStatus, type Ticket } from "#lib/api/crm.js";
+  import { slaBreached } from "#lib/format.js";
   import { t } from "#lib/i18n.svelte.js";
 
   let tickets = $state<Ticket[] | null>(null);
@@ -38,7 +39,7 @@
       label: ticket.title,
       description:
         ticket.priority +
-        (ticket.live_first_response_breached || ticket.live_resolution_breached
+        (slaBreached(ticket)
           ? " · SLA breached"
           : ""),
       status: ticket.status,

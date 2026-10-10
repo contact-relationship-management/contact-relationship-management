@@ -3,6 +3,7 @@
   import type { KanbanInstanceApi } from "@svar-ui/svelte-kanban";
   import { forecast, funnel, listDeals, listPipelines, money, moveDeal } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
 
   let stages = $state<Stage[]>([]);
@@ -38,7 +39,7 @@
   const columns = $derived(
     stages.map((stage) => ({
       id: stage.pid,
-      label: `${stage.name} ${stage.probability_percent}%`,
+      label: stageLabel(stage),
       addCard: false,
     })),
   );
@@ -138,10 +139,8 @@
           <td>{row.entered}</td>
           <td>
             {#if row.conversion_from_previous}
-              {row.conversion_from_previous.value === null
-                ? "—"
-                : `${(row.conversion_from_previous.value * 100).toFixed(0)}%`}
-              ({row.conversion_from_previous.numerator}/{row.conversion_from_previous.denominator})
+              {ratioPercent(row.conversion_from_previous)}
+              ({ratioFraction(row.conversion_from_previous)})
             {:else}
               —
             {/if}

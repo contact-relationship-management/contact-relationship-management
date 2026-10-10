@@ -757,6 +757,80 @@ test.describe("signed-in smoke coverage", () => {
   });
 });
 
+test.describe("contact subject rights", () => {
+  test.beforeEach(async ({ page }) => {
+    await signIn(page);
+  });
+
+  const CONTACT = {
+    pid: "c1",
+    display_name: "Ada Subject",
+    job_title: "CTO",
+    status: "active",
+    marketing_consent: "granted",
+  };
+
+  async function stubContact(page: Page) {
+    await page.route("**/api/proxy/contacts/c1", (route) =>
+      route.fulfill({
+        json: { contact: CONTACT, activities: [], deals: [], tickets: [] },
+      }),
+    );
+    await page.route("**/api/proxy/contacts", (route) =>
+      route.fulfill({ json: [] }),
+    );
+  }
+
+  test("offers a subject-access download and a confirm-gated erase", async ({ page }) => {
+    await stubContact(page);
+    let erased = false;
+    await page.route("**/api/proxy/contacts/c1/erase", (route) => {
+      erased = true;
+      return route.fulfill({ json: { erased: "c1", note: "anonymised" } });
+    });
+    page.on("dialog", (dialog) => void dialog.accept());
+    await page.goto("/contacts/c1");
+    await expect(page.getByTestId("subject-access")).toHaveAttribute(
+      "href",
+      "/api/proxy/contacts/c1/subject-access",
+    );
+    await page.getByTestId("erase").click();
+    await expect(page).toHaveURL(/\/contacts$/);
+    expect(erased).toBe(true);
+  });
+
+  test("declining the confirm does not erase", async ({ page }) => {
+    await stubContact(page);
+    let erased = false;
+    await page.route("**/api/proxy/contacts/c1/erase", (route) => {
+      erased = true;
+      return route.fulfill({ json: {} });
+    });
+    page.on("dialog", (dialog) => void dialog.dismiss());
+    await page.goto("/contacts/c1");
+    await page.getByTestId("erase").click();
+    await expect(page).toHaveURL(/\/contacts\/c1$/);
+    expect(erased).toBe(false);
+  });
+
+  test("surfaces the service's 422 reason when erase is blocked", async ({ page }) => {
+    await stubContact(page);
+    await page.route("**/api/proxy/contacts/c1/erase", (route) =>
+      route.fulfill({
+        status: 422,
+        json: { description: "contact has an active nurture enrolment" },
+      }),
+    );
+    page.on("dialog", (dialog) => void dialog.accept());
+    await page.goto("/contacts/c1");
+    await page.getByTestId("erase").click();
+    await expect(page.getByTestId("action-error")).toContainText(
+      "active nurture enrolment",
+    );
+    await expect(page).toHaveURL(/\/contacts\/c1$/);
+  });
+});
+
 test("the tour renders for a signed-out visitor", async ({ page }) => {
   await page.goto("/tour");
   await expect(page).toHaveURL(/\/tour$/);

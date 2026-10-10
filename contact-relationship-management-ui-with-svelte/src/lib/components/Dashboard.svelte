@@ -1,5 +1,6 @@
 <script lang="ts">
   import { forecast, money, salesDashboard, slaDashboard } from "#lib/api/crm.js";
+  import { ratioLabel } from "#lib/format.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
   let sales = $state<Awaited<ReturnType<typeof salesDashboard>> | null>(null);
@@ -27,9 +28,7 @@
   const winRateLabel = $derived(
     sales === null
       ? ""
-      : sales.win_rate.value === null
-        ? t("dash.noData")
-        : `${Math.round(sales.win_rate.value * 100)}% (${sales.win_rate.numerator}/${sales.win_rate.denominator})`,
+      : ratioLabel(sales.win_rate, t("dash.noData")),
   );
 </script>
 

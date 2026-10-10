@@ -286,7 +286,7 @@ code + tests in one PR.
 > (`contact-relationship-management-ui-with-svelte`) were not
 > otherwise touched by this round.
 
-- [ ] CRM-T23 **Front-end "Download my data" + Erase action.** The
+- [x] CRM-T23 **Front-end "Download my data" + Erase action.** *(resolved 2026-10-10: the page and i18n keys already existed; the missing Playwright spec landed — download link, confirm-gated erase, declined confirm, 422 reason.)* The
       follow-up flagged above when CRM-T21/T22 landed: the contact
       detail page has no subject-access download link and no
       confirm-gated erase action, matching WPM-T32's shape (verified:
@@ -407,7 +407,7 @@ code + tests in one PR.
       playwright test` (15 passed), `npx vitest run` (5 passed,
       unchanged).
 
-- [ ] CRM-T27 **Front-end test coverage for honesty rendering.**
+- [x] CRM-T27 **Front-end test coverage for honesty rendering.** *(resolved 2026-10-10: `src/lib/format.ts` + `tests/unit/format.test.ts`.)*
       `tests/unit/crm.test.ts` is the only vitest file, covering
       `money()`, i18n parity, and the API path map only (verified:
       `find tests src -iname "*.test.ts"` returns exactly one file);

@@ -6,6 +6,7 @@
     createArrayFilter,
   } from "@svar-ui/svelte-filter";
   import { listTickets, ticketStatus } from "#lib/api/crm.js";
+  import { breachedCount, slaBreached } from "#lib/format.js";
   import { t } from "#lib/i18n.svelte.js";
   import type { Ticket } from "#lib/api/crm.js";
 
@@ -34,11 +35,7 @@
     void load();
   });
 
-  function breached(ticket: Ticket): boolean {
-    return Boolean(ticket.live_first_response_breached || ticket.live_resolution_breached);
-  }
-
-  const breachedCount = $derived((tickets ?? []).filter(breached).length);
+  const breachedTotal = $derived(breachedCount(tickets ?? []));
   const selected = $derived((tickets ?? []).find((x) => x.pid === selectedPid) ?? null);
 
   const columns = $derived([
@@ -58,7 +55,7 @@
       due: x.first_response_due_at
         ? new Date(x.first_response_due_at).toLocaleString()
         : "",
-      breach: breached(x) ? t("ticket.breached") : "",
+      breach: slaBreached(x) ? t("ticket.breached") : "",
     })),
   );
 
@@ -101,8 +98,8 @@
 {:else if tickets === null}
   <p>{t("common.loading")}</p>
 {:else}
-  {#if breachedCount > 0}
-    <p><strong class="breach" data-testid="breached">{t("ticket.breached")}: {breachedCount}</strong></p>
+  {#if breachedTotal > 0}
+    <p><strong class="breach" data-testid="breached">{t("ticket.breached")}: {breachedTotal}</strong></p>
   {/if}
   <div data-testid="ticket-queue">
     <GridTheme>
