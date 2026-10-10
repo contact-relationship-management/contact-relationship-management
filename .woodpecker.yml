@@ -1,0 +1,47 @@
+# Codeberg CI (Woodpecker). Same entry point as .github/workflows/ci.yml.
+when:
+  - event: [push, pull_request, manual]
+
+variables:
+  # rust-toolchain.toml carries the exact pin; rustup honours it.
+  - &rust_image 'rust:1.96-bookworm'
+
+services:
+  - name: postgres
+    image: postgres:18
+    environment:
+      POSTGRES_USER: loco
+      POSTGRES_PASSWORD: loco
+      POSTGRES_DB: postgres
+
+steps:
+  - name: fmt
+    image: *rust_image
+    commands:
+      - rustup component add rustfmt
+      - scripts/ci-check.sh fmt
+
+  - name: clippy
+    image: *rust_image
+    commands:
+      - rustup component add clippy
+      - scripts/ci-check.sh clippy
+
+  - name: test
+    image: *rust_image
+    commands:
+      - scripts/ci-check.sh test
+
+  - name: test-db
+    image: *rust_image
+    environment:
+      PG_HOST: postgres
+    commands:
+      - apt-get update && apt-get install -y --no-install-recommends postgresql-client
+      - scripts/ci-check.sh test-db
+
+  - name: front-end
+    image: 'node:24-bookworm'
+    commands:
+      - corepack enable && corepack prepare pnpm@11.0.8 --activate
+      - scripts/ci-check.sh front-end
