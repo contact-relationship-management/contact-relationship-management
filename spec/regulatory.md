@@ -28,3 +28,9 @@
   with the identity services; and — if scoring ever influences
   significant decisions — automated-decision-making review.
   Tracked as production gates in [tasks.md](tasks.md).
+
+## Production readiness
+
+[plan.md](plan.md) assesses readiness for medical and governmental
+organizations and lists the gaps; [compliance/](compliance/index.md) holds the
+control mapping, DPIA template, and operations runbook.

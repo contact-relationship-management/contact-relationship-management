@@ -2,6 +2,7 @@
 //! consent-gated marketing journey in [`marketing`], and the support
 //! journey + contract pins in [`support`].
 
+mod audit_chain;
 mod engagement;
 mod insights;
 mod marketing;

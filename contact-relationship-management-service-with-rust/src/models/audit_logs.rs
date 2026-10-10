@@ -6,7 +6,9 @@
 //! relevant — which is what the owner-scoped query filters on).
 
 use loco_rs::prelude::*;
-use sea_orm::{ConnectionTrait, QueryOrder, QuerySelect};
+use sea_orm::{ConnectionTrait, DatabaseBackend, QueryOrder, QuerySelect, Statement};
+
+use crate::rules::audit_chain;
 use uuid::Uuid;
 
 pub use super::_entities::audit_logs::{self, ActiveModel, Entity, Model};
@@ -32,17 +34,47 @@ impl Model {
         actor: Option<&str>,
         snapshot: Option<serde_json::Value>,
     ) -> ModelResult<Self> {
+        // Serialize chain writers: the previous hash must be read and the new
+        // row appended without another writer slipping in between. The lock
+        // is released when the surrounding transaction ends.
+        let backend = db.get_database_backend();
+        if backend == DatabaseBackend::Postgres {
+            db.execute_raw(Statement::from_string(
+                backend,
+                "SELECT pg_advisory_xact_lock(7203197)".to_string(),
+            ))
+            .await?;
+        }
+        let prev_hash = audit_logs::Entity::find()
+            .order_by_desc(audit_logs::Column::Id)
+            .one(db)
+            .await?
+            .and_then(|row| row.hash)
+            .unwrap_or_default();
         let entry = audit_logs::ActiveModel {
             entity: ActiveValue::set(entity.to_string()),
             entity_pid: ActiveValue::set(entity_pid),
             action: ActiveValue::set(action.to_string()),
             actor: ActiveValue::set(actor.map(ToString::to_string)),
             snapshot: ActiveValue::set(snapshot),
+            prev_hash: ActiveValue::set(Some(prev_hash)),
             ..Default::default()
         }
         .insert(db)
         .await?;
-        Ok(entry)
+        // Hash the row as the database stored it (jsonb normalises the
+        // snapshot), so the verifier recomputes the identical bytes.
+        let chain_hash = chain_hash_of(&entry);
+        db.execute_raw(Statement::from_sql_and_values(
+            backend,
+            "UPDATE audit_logs SET hash = $1 WHERE id = $2",
+            [chain_hash.clone().into(), entry.id.into()],
+        ))
+        .await?;
+        Ok(Self {
+            hash: Some(chain_hash),
+            ..entry
+        })
     }
 
     /// Most-recent audit entries, capped at `limit`.
@@ -106,4 +138,62 @@ impl Model {
             .collect();
         Ok(rows)
     }
+}
+
+/// The chain hash of a stored row.
+#[must_use]
+pub fn chain_hash_of(row: &Model) -> String {
+    let snapshot = row
+        .snapshot
+        .as_ref()
+        .map(|value| serde_json::to_string(value).unwrap_or_default());
+    audit_chain::hash(&audit_chain::Link {
+        id: row.id,
+        prev_hash: row.prev_hash.as_deref().unwrap_or(""),
+        entity: &row.entity,
+        entity_pid: &row.entity_pid.to_string(),
+        action: &row.action,
+        actor: row.actor.as_deref(),
+        snapshot: snapshot.as_deref(),
+        created_micros: row.created_at.timestamp_micros(),
+    })
+}
+
+/// Verify the whole stored chain, oldest first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn verify_chain(db: &DatabaseConnection) -> ModelResult<audit_chain::Verdict> {
+    let rows = audit_logs::Entity::find()
+        .order_by_asc(audit_logs::Column::Id)
+        .all(db)
+        .await?;
+    let prepared: Vec<(String, String, Option<String>)> = rows
+        .iter()
+        .map(|row| {
+            (
+                row.entity_pid.to_string(),
+                row.prev_hash.clone().unwrap_or_default(),
+                row.snapshot
+                    .as_ref()
+                    .map(|value| serde_json::to_string(value).unwrap_or_default()),
+            )
+        })
+        .collect();
+    Ok(audit_chain::verify(rows.iter().zip(&prepared).map(
+        |(row, (pid, prev, snapshot))| audit_chain::Stored {
+            link: audit_chain::Link {
+                id: row.id,
+                prev_hash: prev,
+                entity: &row.entity,
+                entity_pid: pid,
+                action: &row.action,
+                actor: row.actor.as_deref(),
+                snapshot: snapshot.as_deref(),
+                created_micros: row.created_at.timestamp_micros(),
+            },
+            hash: row.hash.as_deref(),
+        },
+    )))
 }

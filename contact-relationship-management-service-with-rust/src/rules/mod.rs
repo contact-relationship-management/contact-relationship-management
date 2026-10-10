@@ -6,6 +6,7 @@
 //! re-implement them.
 
 pub mod analytics;
+pub mod audit_chain;
 pub mod engagement;
 pub mod lifecycle;
 pub mod privacy;

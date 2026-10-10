@@ -86,7 +86,11 @@ impl Hooks for App {
             .add_route(controllers::metrics::routes())
     }
 
-    async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
+        // CRM-T30: fail closed. (`Hooks::boot` is bypassed by `loco start`,
+        // so the check lives here, which every start path reaches.)
+        crate::hardening::check_process(matches!(ctx.environment, Environment::Production))
+            .map_err(loco_rs::Error::string)?;
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();

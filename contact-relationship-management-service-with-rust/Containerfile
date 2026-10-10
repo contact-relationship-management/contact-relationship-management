@@ -1,0 +1,23 @@
+# Hardened image for the CRM service (CRM-T35).
+#   podman build -f Containerfile -t crm-service .   (run in this directory)
+# Runtime: distroless, non-root, no shell, read-only-rootfs compatible.
+# Pin the base images by digest in your registry mirror before release.
+
+FROM docker.io/library/rust:1.96-bookworm AS build
+WORKDIR /src
+COPY . .
+RUN cargo build --release --locked --features keycloak \
+ && strip target/release/contact-relationship-management-service
+
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY --from=build /src/target/release/contact-relationship-management-service /app/crm-service
+COPY --from=build /src/config /app/config
+WORKDIR /app
+ENV LOCO_ENV=production \
+    CRM_REQUIRE_AUTH=1 \
+    PORT=5150
+USER nonroot:nonroot
+EXPOSE 5150
+# The binary refuses to start in production without authentication (CRM-T30).
+# Secrets (DATABASE_URL, token keys) come from the orchestrator, never the image.
+ENTRYPOINT ["/app/crm-service", "start"]

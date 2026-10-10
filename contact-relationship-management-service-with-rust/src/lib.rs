@@ -36,6 +36,7 @@ pub mod app;
 pub mod auth;
 pub mod clients;
 pub mod controllers;
+pub mod hardening;
 pub mod metrics;
 pub mod models;
 pub mod openapi;

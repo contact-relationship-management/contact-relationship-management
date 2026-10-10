@@ -45,3 +45,11 @@ steps:
     commands:
       - corepack enable && corepack prepare pnpm@11.0.8 --activate
       - scripts/ci-check.sh front-end
+
+  - name: supply-chain
+    image: *rust_image
+    commands:
+      - cargo install --locked cargo-audit cargo-deny cargo-cyclonedx
+      - curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && apt-get install -y nodejs
+      - corepack enable && corepack prepare pnpm@11.0.8 --activate
+      - scripts/ci-check.sh supply-chain

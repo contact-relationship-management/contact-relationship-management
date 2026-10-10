@@ -115,3 +115,11 @@ in the wrong direction: less is actually enforced today):
   first bullet) — a deployment relying on true per-rep ownership needs
   the record-level wiring above before this persona means what the
   spec table implies.
+
+## Production start-up check (CRM-T30)
+
+In the `production` environment the service refuses to start unless
+`CRM_REQUIRE_AUTH` is on. `CRM_ALLOW_INSECURE=1` overrides it and logs an
+error. The default stays off in development and test. The full readiness
+assessment, with the remaining access-model gaps (mask coverage, admin-only
+audit reads, read auditing, break-glass), is in [plan.md](plan.md).

@@ -1,4 +1,4 @@
-import adapter from "@sveltejs/adapter-auto";
+import adapter from "@sveltejs/adapter-node";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
@@ -12,7 +12,25 @@ export default defineConfig({
         sveltekit({
             preprocess: vitePreprocess(),
             adapter: adapter(),
-            alias: { $lib: "src/lib" }
+            alias: { $lib: "src/lib" },
+            // CRM-T33: CSP with hashes for the framework's inline bootstrap.
+            // Component libraries set inline styles, so style-src keeps
+            // 'unsafe-inline'; scripts do not.
+            csp: {
+                mode: "auto",
+                directives: {
+                    "default-src": ["self"],
+                    "script-src": ["self"],
+                    "style-src": ["self", "unsafe-inline"],
+                    "img-src": ["self", "data:"],
+                    "font-src": ["self", "data:"],
+                    "connect-src": ["self"],
+                    "object-src": ["none"],
+                    "base-uri": ["self"],
+                    "form-action": ["self"],
+                    "frame-ancestors": ["none"]
+                }
+            }
         }),
         svelteTesting()
     ],

@@ -20,6 +20,10 @@ pub struct Model {
     pub action: String,
     pub actor: Option<String>,
     pub snapshot: Option<Json>,
+    /// Hash of the previous chained row (CRM-T31); `None` before the chain.
+    pub prev_hash: Option<String>,
+    /// This row's chain hash; `None` for rows written before the chain.
+    pub hash: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

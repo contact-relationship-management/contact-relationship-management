@@ -16,6 +16,21 @@ async fn recent(State(ctx): State<AppContext>) -> Result<Response> {
     format::json(Audit::recent(&ctx.db, 100).await?)
 }
 
+/// `GET /api/audits/verify` — recompute the tamper-evident hash chain
+/// (CRM-T31). Returns the row count, legacy (pre-chain) rows, the head hash
+/// to anchor outside the database, and the first break if any.
+#[debug_handler]
+async fn verify(State(ctx): State<AppContext>) -> Result<Response> {
+    let verdict = crate::models::audit_logs::verify_chain(&ctx.db).await?;
+    format::json(serde_json::json!({
+        "ok": verdict.ok(),
+        "rows": verdict.rows,
+        "legacy_rows": verdict.legacy_rows,
+        "head": verdict.head,
+        "first_break": verdict.first_break.map(|(id, why)| serde_json::json!({"id": id, "reason": why})),
+    }))
+}
+
 /// `GET /api/audits/{entity_pid}` — one record's trail.
 #[debug_handler]
 async fn for_entity(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Result<Response> {
@@ -55,6 +70,7 @@ pub fn routes() -> Routes {
         .prefix("/api")
         .add("/audits/recent", get(recent))
         .add("/audits", get(owner))
+        .add("/audits/verify", get(verify))
         .add("/audits/{entity_pid}", get(for_entity))
         .add("/events/recent", get(events_recent))
 }

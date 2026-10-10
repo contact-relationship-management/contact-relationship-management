@@ -52,3 +52,25 @@ jobs:
         with:
           node-version: 24
       - run: scripts/ci-check.sh front-end
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contact-relationship-management-service-with-rust
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny,cargo-cyclonedx
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: scripts/ci-check.sh supply-chain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom/

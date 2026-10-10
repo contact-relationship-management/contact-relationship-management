@@ -1,3 +1,7 @@
 target/
 node_modules/
 .svelte-kit/
+test-results/
+playwright-report/
+sbom/
+build/

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — production-readiness hardening (CRM-T30, T31, T33, T34, T35, 2026-10-10)
+
+Production boot refuses to start with `CRM_REQUIRE_AUTH` off
+(`CRM_ALLOW_INSECURE=1` overrides). `audit_logs` is now a tamper-evident hash
+chain with an append-only trigger and `GET /api/audits/verify`
+(migration `m20261010_000008_audit_chain`). `config/production.yaml` adds
+security headers, a closed CORS list and no `x-powered-by`, and its SMTP
+credentials no longer break parsing when empty. `deny.toml`, a hardened
+`Containerfile`, and a CI `supply-chain` stage (audit, deny, SBOM).
+
 ### Added — optional Keycloak bearer acceptance; PASETO is now a feature (KC-1, 2026-09-29)
 
 `keycloak` cargo feature (off by default): the blanket guard and the

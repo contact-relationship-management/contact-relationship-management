@@ -831,6 +831,16 @@ test.describe("contact subject rights", () => {
   });
 });
 
+test("responses carry the security headers and a CSP (CRM-T33)", async ({ page }) => {
+  const response = await page.goto("/tour");
+  const headers = response?.headers() ?? {};
+  expect(headers["x-content-type-options"]).toBe("nosniff");
+  expect(headers["x-frame-options"]).toBe("DENY");
+  expect(headers["referrer-policy"]).toBe("no-referrer");
+  expect(headers["strict-transport-security"]).toContain("max-age=");
+  expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+});
+
 test("the tour renders for a signed-out visitor", async ({ page }) => {
   await page.goto("/tour");
   await expect(page).toHaveURL(/\/tour$/);

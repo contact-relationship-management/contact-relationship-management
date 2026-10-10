@@ -45,6 +45,8 @@ sea-orm = { version = "2.0", features = [
 chrono = { version = "0.4" }
 uuid = { version = "1.26", features = ["v4", "serde"] }
 mimalloc = { version = "0.1.52" }
+# Tamper-evident audit hash chain (CRM-T31).
+sha2 = { version = "0.11" }
 prometheus = { version = "0.14" }
 # Upstream display-name lookups (`http` client mode only; stub is the
 # default). Same minimal reqwest configuration as the verifier's fetch.
@@ -93,5 +95,4 @@ serial_test = { version = "3.5.0" }
 # the auth path is verified without the auth service or a network.
 ed25519-dalek = { version = "3.0.0" }
 rusty_paseto = { version = "0.10", default-features = false, features = ["v4_public", "serde_json"] }
-sha2 = { version = "0.11" }
 base64 = { version = "0.22" }

@@ -27,3 +27,20 @@ State transitions + audit + outbox share one transaction; lead
 conversion (lead → contact + deal) is atomic; the nurture scheduler
 is idempotent per (enrolment, step); Kanban reorder races serialize
 on the deal row lock (`FOR UPDATE`).
+
+## Tamper evidence (CRM-T31)
+
+Each audit row stores `prev_hash` and `hash`: SHA-256 over the row's id,
+previous hash, entity, pid, action, actor, snapshot, and timestamp. Altering,
+deleting, or reordering a row breaks the chain from that row on.
+`GET /api/audits/verify` recomputes it and returns `ok`, `rows`,
+`legacy_rows` (written before the chain), `head`, and `first_break`. On
+PostgreSQL an append-only trigger also refuses `DELETE` and any `UPDATE`
+other than filling an empty `hash`. Limits: audited writes are serialized by
+a transaction advisory lock; deleting the newest rows leaves a valid shorter
+chain, so anchor `head` outside the database
+([compliance/operations-runbook.md](compliance/operations-runbook.md)); a
+table owner can drop the trigger.
+
+Correction to the section above: only consent-history and subject-access reads
+are audited today. Auditing other personal-data reads is CRM-T40 (open).

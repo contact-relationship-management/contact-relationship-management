@@ -448,3 +448,77 @@ code + tests in one PR.
       / `auth::enforce_request`; `tests/keycloak_guard.rs` (DB-free).
       Verifier side: `authentication-verifier` KC-1; reference:
       organization-service.
+
+## Production readiness for medical and governmental organizations
+
+Derived from [plan.md](plan.md) (2026-10-10). Phase 1–2 rows are implemented
+in the same round; phase 3–4 rows stay open because they need decisions or
+parties outside the repository.
+
+- [x] CRM-T30 *(resolved 2026-10-10.)* **Fail-closed production boot.** In the `production`
+      environment the service refuses to start unless `CRM_REQUIRE_AUTH` is
+      on and a verifier is configured, unless `CRM_ALLOW_INSECURE=1` is set
+      explicitly (which logs an error). **Acceptance:** pure pins for the
+      decision function; clippy pedantic clean. (plan gap 1)
+- [x] CRM-T31 *(resolved 2026-10-10.)* **Tamper-evident audit trail.** `audit_logs` gains
+      `prev_hash` and `hash` (SHA-256 over the previous hash and the row's
+      canonical fields); `GET /api/audits/verify` recomputes the chain and
+      reports the first break. **Acceptance:** pure chain pins (valid,
+      altered row, deleted row, reordered); migration reversible; DB test
+      appends and verifies. (plan gap 2)
+- [ ] CRM-T32 **Finish `mask` coverage.** Apply the obligation to forecast
+      values, campaign cost/ROI, and the activities/deals/tickets bundled in
+      `get_contact`; extend `tests/enforcement.rs` with the full persona
+      matrix. (plan gap 3; auth.md known limits) *Open: design decision per
+      row on masked vs omitted.*
+- [x] CRM-T33 *(resolved 2026-10-10.)* **Security headers and CORS.** Service: secure-headers
+      middleware and a deny-by-default CORS origin list in production
+      config. UI: CSP, `X-Content-Type-Options`, `Referrer-Policy`,
+      `Permissions-Policy`, frame denial via `hooks.server.ts`.
+      **Acceptance:** vitest pin for the header set; Playwright asserts them
+      on a page response. (plan gap 4)
+- [x] CRM-T34 *(resolved 2026-10-10.)* **Supply-chain gates.** `scripts/ci-check.sh supply-chain`
+      runs `cargo audit`, `cargo deny check`, `pnpm audit --prod`, and
+      writes CycloneDX SBOMs; wired into both CI providers. (plan gap 5)
+- [x] CRM-T35 *(resolved 2026-10-10.)* **Hardened container images.** Multi-stage Containerfiles for
+      the service and UI: non-root user, minimal runtime image, no shell
+      tools, healthcheck, read-only-rootfs-compatible. (plan gap 6)
+      **Resolution:** `Containerfile`s for the service (distroless `cc`, non-root, release build with `keycloak`) and the UI (distroless Node 24, `adapter-node`). Both built and run with `--read-only --cap-drop ALL`: the UI served the security headers and CSP, the service booted in production mode and served HSTS, both as `nonroot`. Not done: image digests are not pinned (do that in your registry mirror), and no `HEALTHCHECK` is set (distroless has no shell or curl; use the orchestrator probe on `/_health`). The build warns about `ENV CRM_REQUIRE_AUTH`; that is a flag, not a secret.
+- [x] CRM-T36 *(resolved 2026-10-10.)* **Compliance evidence pack.** `spec/compliance/`: control
+      mapping (NIST SP 800-53 rev 5, HIPAA Security Rule, ISO 27001 Annex A,
+      GDPR Art. 32) to implemented controls and gaps; DPIA template;
+      operations runbook (backup/restore, encryption at rest, key
+      management, incident response, log retention). (plan gap 7)
+- [x] CRM-T37 *(resolved 2026-10-10.)* **Accessibility gate.** axe-core scan inside Playwright over
+      the signed-in routes with WCAG 2.2 AA tags; known violations either
+      fixed or listed with a justification. (plan gap 8)
+- [ ] CRM-T38 **Admin-only operational reads.** `/api/audits*`,
+      `/api/events/recent`, `/api/retention` classified above the plain read
+      gate; `/metrics.prom` and OpenAPI optionally authenticated. (plan gap 9)
+      *Open.*
+- [ ] CRM-T39 **Real ESP adapter** behind the existing send trait, with
+      bounce/complaint webhooks, suppression list, and the processor
+      agreement and lawful-basis review (CRM-G2). (plan gap 10) *Open:
+      legal and vendor dependency.*
+- [ ] CRM-T40 **Audit personal-data reads.** Contact, lead, ticket and
+      activity reads write an audit row (actor, record, masked or not);
+      bulk list reads write one summarizing row. (plan gap 11) *Open.*
+- [ ] CRM-T41 **Field-level encryption and KMS.** Envelope encryption for
+      contact channel details and activity content, key rotation, KMS
+      adapter. (plan gap 12) *Open.*
+- [ ] CRM-T42 **Independent assurance.** Penetration test, formal risk
+      analysis, accreditation evidence (ATO / DSPT / HIPAA / ISO 27001).
+      (plan gap 13) *Open: external.*
+- [ ] CRM-T43 **Abuse resistance.** Rate limiting and lockout on the
+      service; UI idle-session timeout and re-authentication before
+      destructive actions. (plan gap 14) *Open.*
+- [ ] CRM-T44 **Break-glass access.** Emergency elevation with mandatory
+      reason, time limit, and after-the-fact review report. (plan gap 15)
+      *Open.*
+
+      **Resolution:** `src/hardening.rs`: `production_start_check` (4 pins). Checked in `Hooks::after_routes`, because `loco start` bypasses `Hooks::boot`. Verified live: production without `CRM_REQUIRE_AUTH` exits with the refusal; with it, boots. Scope note: it checks the enforcement flag, not that a verifier or key set is configured (auth already fails closed on an empty key set). Also fixed an existing bug found on the way: an empty `SMTP_USER`/`SMTP_PASSWORD` rendered YAML `null` and stopped `production.yaml` from parsing.
+      **Resolution:** Migration `m20261010_000008_audit_chain` (`prev_hash`, `hash`, append-only trigger on PostgreSQL); `rules/audit_chain.rs` (8 pins: intact, altered, deleted, reordered, legacy rows, unchained-after-chain, field boundaries); `Model::record` takes a transaction advisory lock, appends, then hashes the row as stored; `GET /api/audits/verify` returns `ok`, `rows`, `legacy_rows`, `head`, `first_break`. DB test `audit_chain_detects_tampering` proves the trigger refuses edit and delete and the chain reports an edit made behind a disabled trigger. Full `--ignored` suite 10/10 against PostgreSQL 18. **Limits stated:** the advisory lock serializes audited writes; deleting the newest rows leaves a valid shorter chain (anchor `head` externally, see the runbook); the table owner can drop the trigger.
+      **Resolution:** Service: `config/production.yaml` gains `secure_headers` (HSTS, nosniff, frame options, CSP preset), a closed CORS origin list (`CRM_CORS_ORIGIN`), and `server.ident: ""` to drop `x-powered-by`; verified with curl against a production boot. UI: `src/lib/server/headers.ts` applied in `hooks.server.ts`, plus `kit.csp` (hash-based, `frame-ancestors none`) in `vite.config.ts`; vitest pins the header set, Playwright asserts the headers and CSP on a real response. UI adapter changed from `adapter-auto` to `adapter-node` (needed for T35).
+      **Resolution:** `scripts/ci-check.sh supply-chain` (cargo audit, cargo deny with `deny.toml`, pnpm audit, CycloneDX SBOMs to `sbom/`); jobs added to GitHub Actions and Woodpecker. Run locally: advisories, bans, licenses, sources ok; both SBOMs produced; no known vulnerabilities.
+      **Resolution:** `spec/compliance/`: `control-mapping.md`, `dpia-template.md`, `operations-runbook.md`, `index.md`. Controls are marked Implemented only where code or CI enforces them; the rest are Deployer or Gap with a task reference.
+      **Resolution:** `tests/e2e/a11y.spec.ts` (axe-core, WCAG 2.0 to 2.2 A/AA tags) over `/`, `/tour`, `/signin`, and six list pages: 9 pass, and a sanity check confirmed axe does detect an injected violation. **Limit:** automated checks cover roughly a third of accessibility issues, and detail pages and data-filled states are not scanned; manual testing with assistive technology is still needed.

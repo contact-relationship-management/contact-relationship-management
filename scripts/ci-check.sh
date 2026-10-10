@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end
+#   fmt | clippy | test | test-db | front-end | supply-chain
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -11,7 +11,7 @@ FE=contact-relationship-management-ui-with-svelte
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|supply-chain>}"
 
 case "${stage}" in
   fmt)
@@ -49,6 +49,19 @@ case "${stage}" in
     pnpm exec vitest run
     pnpm run build
     pnpm run lint
+    ;;
+  supply-chain)
+    # CRM-T34: known-vulnerability, licence, and source gates, plus SBOMs
+    # (CycloneDX) written to sbom/ for the release record.
+    mkdir -p sbom
+    (cd "${SVC}" && cargo audit && cargo deny check advisories bans licenses sources)
+    (cd "${SVC}" && cargo cyclonedx --format json --spec-version 1.5 --override-filename service.cdx \
+      && mv service.cdx.json ../sbom/service.cdx.json)
+    # The migration crate is a path dependency, already covered by the
+    # service SBOM; remove the duplicate file cargo-cyclonedx leaves there.
+    rm -f "${SVC}/migration/service.cdx.json"
+    (cd "${FE}" && pnpm install --frozen-lockfile && pnpm audit --prod \
+      && pnpm sbom --sbom-format cyclonedx --prod > ../sbom/ui.cdx.json)
     ;;
   *)
     echo "unknown stage: ${stage}" >&2
