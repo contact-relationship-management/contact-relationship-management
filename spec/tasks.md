@@ -562,7 +562,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 - [ ] CRM-T49 **GDS API checklist review and build signing.** Review the API
       against the GDS standards, and sign release builds and pin image digests
       (Software Security Code of Practice). *Open.*
-      **Partly done (2026-10-10):** the four base images in both Containerfiles are now pinned by digest (the UI image builds with the pins; the service image was not rebuilt). Digests do not update themselves: refresh them on a schedule (for example Renovate or Dependabot) or they will pin known-vulnerable layers. **Still open:** the GDS API review and release-build signing.
+      **Partly done (2026-10-10):** the four base images in both Containerfiles are now pinned by digest (the UI image builds with the pins; the service image was not rebuilt). Digests do not update themselves: refresh them on a schedule (for example Renovate or Dependabot) or they will pin known-vulnerable layers. **API review (2026-10-10):** a self-review is in `spec/compliance/gds-api-review.md`; it fixed the OpenAPI document (22 missing paths, security scheme, shared error responses) and opened T51 (pagination) and T52 (idempotency keys). It is a draft that has not been checked against the standards' published text. **Still open:** a reviewer's check of that draft and release-build signing.
 
 - [x] CRM-T50 **Redis cache.** Loco's cache is now Redis (`cache_redis`;
       `config/production.yaml` requires `CRM_REDIS_URL`, use `rediss://` for TLS;
@@ -593,3 +593,14 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       Tests: Redis grant publish/never-shorten/expired pin; the break-glass
       enforcement flow was also run against a real Redis. **Limit:** there is
       still no revoke endpoint, so a grant ends only by expiry.
+
+- [ ] CRM-T51 **Pagination for list endpoints.** List reads cap results
+      silently (`LIMIT` 500 to 5000, 11 sites) with no page parameters, total
+      or next link, so a consumer cannot tell rows were dropped. Add `limit`
+      plus a cursor and a next link, keep the caps as maximums, and test a
+      list larger than one page. Found by the API review
+      (`spec/compliance/gds-api-review.md`). *Open.*
+- [ ] CRM-T52 **Idempotency keys for creates.** A retried `POST` after a
+      timeout makes a duplicate. Accept an `Idempotency-Key` header on create
+      endpoints and replay the first result (store it in Redis or the
+      database, with an expiry). *Open.*

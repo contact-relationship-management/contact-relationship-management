@@ -19,7 +19,7 @@ pub fn spec() -> Value {
         "200": { "description": "The updated record" },
         "422": { "description": "Illegal transition (names the current state)" }
     });
-    json!({
+    let mut doc = json!({
         "openapi": "3.0.3",
         "info": {
             "title": "Contact Relationship Management Service API",
@@ -115,13 +115,81 @@ pub fn spec() -> Value {
             "/api/audits": { "get": { "tags": ["audit"], "summary": "Owner-scoped trail (?owner=&since=)", "responses": ok("Audit entries") } },
             "/api/audits/{entity_pid}": { "get": { "tags": ["audit"], "summary": "One record's audit trail", "responses": ok("Audit entries") } },
             "/api/events/recent": { "get": { "tags": ["events"], "summary": "Recent events (memory ring or outbox)", "responses": ok("Events") } },
+            "/api/accounts/{pid}/partnerships": {
+                "post": { "tags": ["engagement"], "summary": "Open a partnership with an account", "responses": created },
+                "get": { "tags": ["engagement"], "summary": "An account's partnerships", "responses": ok("Partnerships") }
+            },
+            "/api/partnerships/{pid}/stage": { "post": { "tags": ["engagement"], "summary": "Partnership stage transition", "responses": transition } },
+            "/api/accounts/{pid}/membership": { "put": { "tags": ["engagement"], "summary": "Create or update an account's membership", "responses": ok("Membership") } },
+            "/api/groups": {
+                "post": { "tags": ["engagement"], "summary": "Create a group", "responses": created },
+                "get": { "tags": ["engagement"], "summary": "List groups", "responses": ok("Groups") }
+            },
+            "/api/groups/{pid}": { "get": { "tags": ["engagement"], "summary": "A group and its members", "responses": ok("Group") } },
+            "/api/groups/{pid}/members": { "post": { "tags": ["engagement"], "summary": "Add a member to a group", "responses": created } },
+            "/api/audits/verify": { "get": { "tags": ["audit"], "summary": "Recompute the audit hash chain; returns the row count, head hash and first break; admin/service tier", "responses": ok("Chain verdict") } },
+            "/api/insights/stale-deals": { "get": { "tags": ["insights"], "summary": "Open deals by days in stage (?days=); audited read; cached 30 s", "responses": ok("Stale deals") } },
+            "/api/insights/followups": { "get": { "tags": ["insights"], "summary": "Overdue and upcoming follow-ups", "responses": ok("Follow-ups") } },
+            "/api/insights/pipeline-hygiene": { "get": { "tags": ["insights"], "summary": "Deals with missing amounts or close dates", "responses": ok("Hygiene findings") } },
+            "/api/insights/executive": { "get": { "tags": ["insights"], "summary": "Executive pack (ETag conditional)", "responses": ok("Executive pack") } },
+            "/api/insights/forecast-trends": { "get": { "tags": ["insights"], "summary": "Forecast snapshot series", "responses": ok("Trends") } },
+            "/api/insights/sla": { "get": { "tags": ["insights"], "summary": "SLA register", "responses": ok("SLA register") } },
+            "/api/insights/dpo": { "get": { "tags": ["insights"], "summary": "Data-protection view: consent coverage, withdrawals, duplicates (ETag conditional)", "responses": ok("DPO view") } },
+            "/api/insights/cadence": { "get": { "tags": ["insights"], "summary": "Contact cadence", "responses": ok("Cadence") } },
+            "/api/insights/engagement": { "get": { "tags": ["insights"], "summary": "Engagement view", "responses": ok("Engagement") } },
+            "/api/insights/funnel": { "get": { "tags": ["insights"], "summary": "Stage funnel (?pipeline= required)", "responses": ok("Funnel") } },
+            "/api/insights/members": { "get": { "tags": ["insights"], "summary": "Membership view", "responses": ok("Members") } },
+            "/api/insights/consent-by-account": { "get": { "tags": ["insights"], "summary": "Consent coverage by account", "responses": ok("Consent by account") } },
+            "/api/insights/stakeholders": { "get": { "tags": ["insights"], "summary": "Stakeholder register", "responses": ok("Stakeholders") } },
+            "/api/insights/partnerships": { "get": { "tags": ["insights"], "summary": "Partnerships register", "responses": ok("Partnerships register") } },
+            "/api/insights/memberships": { "get": { "tags": ["insights"], "summary": "Memberships view", "responses": ok("Memberships") } },
             "/metrics.prom": { "get": { "tags": ["ops"], "summary": "Prometheus metrics (public)", "responses": ok("Exposition text") } }
+        },
+        "components": { "securitySchemes": { "bearerAuth": {
+            "type": "http", "scheme": "bearer", "bearerFormat": "PASETO v4.public",
+            "description": "Required when the service runs with CRM_REQUIRE_AUTH (always in production); probes, metrics and docs are public."
+        } } },
+        "security": [{ "bearerAuth": [] }]
+    });
+    add_shared_errors(&mut doc);
+    doc
+}
+
+/// Every operation can answer the cross-cutting statuses the middleware
+/// produces; stating them once here keeps the paths above readable.
+fn add_shared_errors(doc: &mut Value) {
+    let shared = [
+        ("401", "Missing, expired or invalid bearer token"),
+        ("403", "Denied by the authorization policy"),
+        ("406", "Unsupported Accepts-version"),
+        ("429", "Rate limited or locked out; see Retry-After"),
+    ];
+    let Some(paths) = doc["paths"].as_object_mut() else {
+        return;
+    };
+    for (path, item) in paths.iter_mut() {
+        if !path.starts_with("/api/") {
+            continue;
         }
-    })
+        let Some(item) = item.as_object_mut() else {
+            continue;
+        };
+        for operation in item.values_mut() {
+            if let Some(responses) = operation["responses"].as_object_mut() {
+                for (status, description) in shared {
+                    responses
+                        .entry(status)
+                        .or_insert_with(|| json!({ "description": description }));
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     /// The document parses, declares `OpenAPI` 3, and covers the mounted
     /// API surface (spot-checked against the route table).
     #[test]
@@ -142,8 +210,19 @@ mod tests {
             "/api/contacts/{pid}/erase",
             "/api/retention",
             "/api/retention/sweep",
+            "/api/insights/stale-deals",
+            "/api/insights/funnel",
+            "/api/groups",
+            "/api/partnerships/{pid}/stage",
+            "/api/audits/verify",
         ] {
             assert!(paths.contains_key(p), "missing {p}");
         }
+        assert_eq!(doc["security"][0]["bearerAuth"], json!([]));
+        assert_eq!(
+            doc["paths"]["/api/contacts"]["get"]["responses"]["429"]["description"],
+            "Rate limited or locked out; see Retry-After"
+        );
+        assert!(doc["paths"]["/metrics.prom"]["get"]["responses"]["401"].is_null());
     }
 }
