@@ -99,6 +99,26 @@ pub const ENTITY: &str = "crm";
 pub const DESTRUCTIVE_POST_SUFFIXES: [&str; 5] =
     ["/merge", "/deduplicate", "/import", "/erase", "/sweep"];
 
+/// Path prefixes whose **reads** are operational or compliance material
+/// (the audit trail and its verification, the event stream, the retention
+/// report; CRM-T38). A `GET` under one of these derives
+/// [`Action::Destructive`], so only `svc=true` or `access=admin` reach it
+/// under the shipped policies; an ordinary reader, manager, marketing or
+/// support caller does not. (The shared engine has no "privileged read"
+/// action, and `Destructive` is already the admin/service tier.)
+pub const PRIVILEGED_READ_PREFIXES: [&str; 3] = ["/api/audits", "/api/events", "/api/retention"];
+
+/// Whether `path` is under a [`PRIVILEGED_READ_PREFIXES`] entry, matched on
+/// whole path segments so `/api/auditsfoo` does not qualify.
+fn is_privileged_read(path: &str) -> bool {
+    PRIVILEGED_READ_PREFIXES.iter().any(|prefix| {
+        path == *prefix
+            || path
+                .strip_prefix(prefix)
+                .is_some_and(|rest| rest.starts_with('/'))
+    })
+}
+
 /// Default issuer expected in tokens (`iss`).
 #[cfg(feature = "paseto")]
 const DEFAULT_ISSUER: &str = "authentication-service";
@@ -315,11 +335,23 @@ pub fn parse_bool(value: &str) -> bool {
 /// scraper needs no bearer token). Everything else requires a valid bearer
 /// token.
 fn is_public_path(path: &str) -> bool {
-    path == "/_health"
-        || path == "/_ping"
-        || path == "/api-docs/openapi.json"
-        || path.starts_with("/swagger-ui")
-        || path == "/metrics.prom"
+    path == "/_health" || path == "/_ping" || (!protect_operational() && is_operational_path(path))
+}
+
+/// The operational endpoints that are public by default: the `OpenAPI` doc,
+/// Swagger UI, and Prometheus metrics.
+fn is_operational_path(path: &str) -> bool {
+    path == "/api-docs/openapi.json" || path.starts_with("/swagger-ui") || path == "/metrics.prom"
+}
+
+/// Whether `CRM_PROTECT_OPERATIONAL` is on (CRM-T38): the operational
+/// endpoints then require a bearer token like everything else, and a metrics
+/// scraper must present one. Read once; off by default so a scraper inside
+/// a private network keeps working.
+fn protect_operational() -> bool {
+    static PROTECT: OnceLock<bool> = OnceLock::new();
+    *PROTECT
+        .get_or_init(|| parse_bool(&std::env::var("CRM_PROTECT_OPERATIONAL").unwrap_or_default()))
 }
 
 /// Derive the request's ABAC action from its HTTP method and path (per
@@ -335,6 +367,9 @@ pub fn derive_action(method: &Method, path: &str) -> Action {
     // let an `access=write` (non-admin) caller reach a destructive op.
     let path = path.trim_end_matches('/');
     match *method {
+        Method::GET | Method::HEAD | Method::OPTIONS if is_privileged_read(path) => {
+            Action::Destructive
+        }
         Method::GET | Method::HEAD | Method::OPTIONS => Action::Read,
         Method::DELETE => Action::Delete,
         Method::POST
@@ -694,6 +729,22 @@ pub fn authorize_record(
     } else {
         Err((StatusCode::FORBIDDEN, decision.reason))
     }
+}
+
+/// Whether the caller's **collection-level** read carries the `mask`
+/// obligation (CRM-T32). Aggregate views (forecast, pipeline value,
+/// campaign cost and ROI) have no single record to match, so the decision
+/// is made with no `resource.*` attributes: a rule that depends on
+/// `resource.owner` does not apply, and a caller is unmasked only by a
+/// rule that does not need one (service, admin, manager in the reference
+/// policy). With enforcement off this is always `false`.
+///
+/// # Errors
+///
+/// `401` without a token and `403` when the policy denies the read.
+pub fn aggregate_masked(caller: &MaybeAuthUser) -> Result<bool, (StatusCode, String)> {
+    authorize_record(caller, Action::Read, &BTreeMap::new())
+        .map(|obligations| obligations.iter().any(|o| o == "mask"))
 }
 
 /// Read env var `name`, treating unset/blank as absent and falling back
@@ -1205,6 +1256,29 @@ mod tests {
     /// methods read; DELETE deletes; the crate's destructive named
     /// POSTs (merge / deduplicate / import) are destructive, not
     /// write; every other POST/PUT/PATCH writes.
+    #[test]
+    fn privileged_reads_derive_the_admin_tier() {
+        for path in [
+            "/api/audits/recent",
+            "/api/audits/verify",
+            "/api/audits",
+            "/api/audits/0c4f1e2a-0000-4000-8000-000000000001",
+            "/api/events/recent",
+            "/api/retention",
+            "/api/retention/", // trailing slash normalised
+        ] {
+            assert_eq!(
+                derive_action(&Method::GET, path),
+                Action::Destructive,
+                "{path}"
+            );
+        }
+        // Segment-wise match: lookalikes stay ordinary reads.
+        for path in ["/api/auditsfoo", "/api/contacts", "/api/insights/dpo"] {
+            assert_eq!(derive_action(&Method::GET, path), Action::Read, "{path}");
+        }
+    }
+
     #[test]
     fn derive_action_matrix() {
         for method in [Method::GET, Method::HEAD, Method::OPTIONS] {

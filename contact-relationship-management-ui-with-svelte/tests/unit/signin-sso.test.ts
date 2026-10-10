@@ -5,9 +5,9 @@ import { isHttpError, isRedirect } from "@sveltejs/kit";
 const mockEnv: { PUBLIC_OIDC_SIGNIN_ENABLED?: string } = {};
 
 vi.mock("$app/env/public", () => ({
-    get PUBLIC_OIDC_SIGNIN_ENABLED() {
-        return mockEnv.PUBLIC_OIDC_SIGNIN_ENABLED;
-    },
+  get PUBLIC_OIDC_SIGNIN_ENABLED() {
+    return mockEnv.PUBLIC_OIDC_SIGNIN_ENABLED;
+  },
 }));
 
 describe("oidcLoginUrl", () => {
@@ -48,7 +48,9 @@ describe("GET /signin/sso", () => {
       if (isRedirect(err)) {
         expect(err.status).toBe(303);
         expect(err.location).toContain("/api/auth/oidc/login?");
-        expect(err.location).toContain(encodeURIComponent("https://crm.example.test"));
+        expect(err.location).toContain(
+          encodeURIComponent("https://crm.example.test"),
+        );
       }
     }
   });

@@ -55,3 +55,39 @@ async fn audit_chain_detects_tampering() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn personal_data_reads_are_audited() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let pid = seed_contact!(&request, "Read Audit Subject").await;
+        request
+            .get(&format!("/api/contacts/{pid}"))
+            .await
+            .assert_status_ok();
+        request.get("/api/contacts").await.assert_status_ok();
+
+        let trail: Value = request.get(&format!("/api/audits/{pid}")).await.json();
+        let actions: Vec<&str> = trail
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|row| row["action"].as_str())
+            .collect();
+        assert!(actions.contains(&"contact_read"), "{actions:?}");
+
+        let recent: Value = request.get("/api/audits/recent").await.json();
+        let listed = recent
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["action"] == "contact_list_read");
+        assert!(listed, "a list read writes one summary row");
+
+        // Read audits join the chain rather than breaking it.
+        let verdict: Value = request.get("/api/audits/verify").await.json();
+        assert_eq!(verdict["ok"], true, "{verdict}");
+    })
+    .await;
+}

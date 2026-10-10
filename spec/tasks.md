@@ -466,11 +466,12 @@ parties outside the repository.
       reports the first break. **Acceptance:** pure chain pins (valid,
       altered row, deleted row, reordered); migration reversible; DB test
       appends and verifies. (plan gap 2)
-- [ ] CRM-T32 **Finish `mask` coverage.** Apply the obligation to forecast
+- [x] CRM-T32 *(resolved 2026-10-10.)* **Finish `mask` coverage.** Apply the obligation to forecast
       values, campaign cost/ROI, and the activities/deals/tickets bundled in
       `get_contact`; extend `tests/enforcement.rs` with the full persona
-      matrix. (plan gap 3; auth.md known limits) *Open: design decision per
-      row on masked vs omitted.*
+      matrix. (plan gap 3; auth.md known limits)
+      **Resolution:** `auth::aggregate_masked` decides a collection-level read with no `resource.*` attributes, so only rules that need no record (service, admin, manager in the reference policy) read unmasked. Applied to `GET /api/forecast` (`totals_minor`), `GET /api/dashboards/sales` (per-stage `totals_minor`), `GET /api/campaigns` (`cost_minor`), the campaign funnel (revenue, ROI, cost), and the activities, deals and tickets bundled in `get_contact` (`summary`, `amount_minor`, `description`). Masked amounts are `null`, never zero; counts stay. The UI treats null totals, revenue and ROI as dashes (Playwright pin). `tests/enforcement.rs` proves a masked reader gets null forecast and dashboard totals while a service credential gets the numbers. **Not done:** the full persona matrix (manager, marketing, support) in the enforcement test, the insights endpoints (`/api/insights/*`), and forecast snapshots; those still return amounts to any caller that clears the coarse read gate.
+
 - [x] CRM-T33 *(resolved 2026-10-10.)* **Security headers and CORS.** Service: secure-headers
       middleware and a deny-by-default CORS origin list in production
       config. UI: CSP, `X-Content-Type-Options`, `Referrer-Policy`,
@@ -492,17 +493,21 @@ parties outside the repository.
 - [x] CRM-T37 *(resolved 2026-10-10.)* **Accessibility gate.** axe-core scan inside Playwright over
       the signed-in routes with WCAG 2.2 AA tags; known violations either
       fixed or listed with a justification. (plan gap 8)
-- [ ] CRM-T38 **Admin-only operational reads.** `/api/audits*`,
+- [x] CRM-T38 *(resolved 2026-10-10.)* **Admin-only operational reads.** `/api/audits*`,
       `/api/events/recent`, `/api/retention` classified above the plain read
       gate; `/metrics.prom` and OpenAPI optionally authenticated. (plan gap 9)
-      *Open.*
+     
+      **Resolution:** `PRIVILEGED_READ_PREFIXES` (`/api/audits`, `/api/events`, `/api/retention`) derive the admin/service tier for `GET`, matched on whole path segments; 2 unit pins; enforcement test shows reader and writer get 403 and a service credential 200 on four endpoints. `CRM_PROTECT_OPERATIONAL=1` additionally puts `/metrics.prom` and the OpenAPI/Swagger paths behind authentication (off by default so an in-network scraper keeps working). **Note:** the tier reuses the engine's `destructive` action, because the shared engine has no privileged-read action; policies must grant `destructive` to whoever may read audits.
+
 - [ ] CRM-T39 **Real ESP adapter** behind the existing send trait, with
       bounce/complaint webhooks, suppression list, and the processor
       agreement and lawful-basis review (CRM-G2). (plan gap 10) *Open:
       legal and vendor dependency.*
-- [ ] CRM-T40 **Audit personal-data reads.** Contact, lead, ticket and
+- [x] CRM-T40 *(resolved 2026-10-10.)* **Audit personal-data reads.** Contact, lead, ticket and
       activity reads write an audit row (actor, record, masked or not);
-      bulk list reads write one summarizing row. (plan gap 11) *Open.*
+      bulk list reads write one summarizing row. (plan gap 11)
+      **Resolution:** `Audit::record_read` writes a read audit row in its own short transaction (it joins the hash chain). Audited: single reads of contacts (with `masked` flag), leads and tickets; list reads of contacts, leads, tickets and activities as one summary row with the returned count. A failed audit write fails the read. DB test `personal_data_reads_are_audited`. **Not done:** deal-amount reads (the deal board polls, which would flood the trail), account reads, and insights views; and the audit table will grow with read traffic, so size retention for it.
+
 - [ ] CRM-T41 **Field-level encryption and KMS.** Envelope encryption for
       contact channel details and activity content, key rotation, KMS
       adapter. (plan gap 12) *Open.*

@@ -163,7 +163,17 @@ async fn list_contacts(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> 
         .limit(1000)
         .all(&ctx.db)
         .await?;
-    format::json(readable_contacts(&rows, &caller))
+    let readable = readable_contacts(&rows, &caller);
+    Audit::record_read(
+        &ctx.db,
+        "contact",
+        Uuid::nil(),
+        "contact_list_read",
+        caller.actor(),
+        Some(serde_json::json!({ "returned": readable.len() })),
+    )
+    .await?;
+    format::json(readable)
 }
 
 /// Filter `rows` down to the ones `caller`'s record-level ABAC policy
@@ -190,6 +200,11 @@ fn readable_contacts(rows: &[contacts::Model], caller: &MaybeAuthUser) -> Vec<se
             Some(value)
         })
         .collect()
+}
+
+/// Serialize rows to JSON values for masking.
+fn to_values<T: serde::Serialize>(rows: &[T]) -> Vec<serde_json::Value> {
+    rows.iter().map(|row| serde_json::json!(row)).collect()
 }
 
 /// `GET /api/contacts/{pid}` — the contact + its merged timeline
@@ -238,14 +253,50 @@ async fn get_contact(
         .all(&ctx.db)
         .await?;
     let mut contact_json = serde_json::json!(contact);
-    if obligations.iter().any(|o| o == "mask") {
+    let masked = obligations.iter().any(|o| o == "mask");
+    if masked {
         contact_json = auth::mask_text_json(contact_json, &["preferred_channel"]);
     }
+    Audit::record_read(
+        &ctx.db,
+        "contact",
+        contact.pid,
+        "contact_read",
+        caller.actor(),
+        Some(serde_json::json!({ "masked": masked })),
+    )
+    .await?;
+    // The bundled rows follow the contact's own decision: a masked contact
+    // read must not leak, through its timeline, what a masked deal or
+    // activity list would hide (CRM-T32).
+    let (activities_json, deals_json, tickets_json) = if masked {
+        let each = |rows: &[serde_json::Value],
+                    f: &dyn Fn(serde_json::Value) -> serde_json::Value| {
+            rows.iter().cloned().map(f).collect::<Vec<_>>()
+        };
+        (
+            each(&to_values(&activity_rows), &|v| {
+                auth::mask_text_json(v, &["summary"])
+            }),
+            each(&to_values(&deal_rows), &|v| {
+                auth::mask_json(v, &["amount_minor"])
+            }),
+            each(&to_values(&ticket_rows), &|v| {
+                auth::mask_text_json(v, &["description"])
+            }),
+        )
+    } else {
+        (
+            to_values(&activity_rows),
+            to_values(&deal_rows),
+            to_values(&ticket_rows),
+        )
+    };
     format::json(serde_json::json!({
         "contact": contact_json,
-        "activities": activity_rows,
-        "deals": deal_rows,
-        "tickets": ticket_rows,
+        "activities": activities_json,
+        "deals": deals_json,
+        "tickets": tickets_json,
     }))
 }
 
@@ -471,6 +522,7 @@ struct ActivityListParams {
 #[debug_handler]
 async fn list_activities(
     State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
     Query(params): Query<ActivityListParams>,
 ) -> Result<Response> {
     let mut query = activities::Entity::find().filter(activities::Column::DeletedAt.is_null());
@@ -485,6 +537,15 @@ async fn list_activities(
         .limit(200)
         .all(&ctx.db)
         .await?;
+    Audit::record_read(
+        &ctx.db,
+        "activity",
+        Uuid::nil(),
+        "activity_list_read",
+        caller.actor(),
+        Some(serde_json::json!({ "returned": rows.len() })),
+    )
+    .await?;
     format::json(rows)
 }
 

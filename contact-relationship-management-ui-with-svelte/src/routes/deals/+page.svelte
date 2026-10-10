@@ -23,7 +23,7 @@
       selectedPipeline = active?.pipeline.pid ?? "";
       stages = active?.stages ?? [];
       deals = active ? await listDeals(active.pipeline.pid) : [];
-      totals = (await forecast()).totals_minor;
+      totals = (await forecast()).totals_minor ?? {};
       stageFunnel = active ? await funnel(active.pipeline.pid) : null;
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause);

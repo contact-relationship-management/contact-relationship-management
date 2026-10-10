@@ -19,7 +19,10 @@ describe("verify load", () => {
       fetch: vi.fn(),
       cookies,
     } as unknown as Parameters<typeof load>[0]);
-    expect(result).toEqual({ error: "missingToken", title: "Sign-in link — Contact Relationship Management" });
+    expect(result).toEqual({
+      error: "missingToken",
+      title: "Sign-in link — Contact Relationship Management",
+    });
   });
 
   // Pins the fix: a network-level failure (fetch rejects) must not
@@ -40,6 +43,9 @@ describe("verify load", () => {
       fetch: vi.fn().mockResolvedValue(new Response(null, { status: 401 })),
       cookies,
     } as unknown as Parameters<typeof load>[0]);
-    expect(result).toEqual({ error: "invalidToken", title: "Sign-in link — Contact Relationship Management" });
+    expect(result).toEqual({
+      error: "invalidToken",
+      title: "Sign-in link — Contact Relationship Management",
+    });
   });
 });

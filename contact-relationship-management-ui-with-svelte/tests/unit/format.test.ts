@@ -33,16 +33,26 @@ describe("ratios", () => {
   });
 
   it("rounds to a whole percent and shows provenance", () => {
-    expect(ratioLabel({ numerator: 1, denominator: 3, value: 1 / 3 })).toBe("33% (1/3)");
-    expect(ratioLabel({ numerator: 2, denominator: 3, value: 2 / 3 })).toBe("67% (2/3)");
-    expect(ratioPercent({ numerator: 1, denominator: 1, value: 1 })).toBe("100%");
+    expect(ratioLabel({ numerator: 1, denominator: 3, value: 1 / 3 })).toBe(
+      "33% (1/3)",
+    );
+    expect(ratioLabel({ numerator: 2, denominator: 3, value: 2 / 3 })).toBe(
+      "67% (2/3)",
+    );
+    expect(ratioPercent({ numerator: 1, denominator: 1, value: 1 })).toBe(
+      "100%",
+    );
   });
 });
 
 describe("stageLabel", () => {
   it("shows the stage name and its probability", () => {
-    expect(stageLabel({ name: "Proposal", probability_percent: 60 })).toBe("Proposal 60%");
-    expect(stageLabel({ name: "Lost", probability_percent: 0 })).toBe("Lost 0%");
+    expect(stageLabel({ name: "Proposal", probability_percent: 60 })).toBe(
+      "Proposal 60%",
+    );
+    expect(stageLabel({ name: "Lost", probability_percent: 0 })).toBe(
+      "Lost 0%",
+    );
   });
 });
 
@@ -50,12 +60,22 @@ describe("SLA breach", () => {
   it("flags a ticket when either clock breached", () => {
     expect(slaBreached({ live_first_response_breached: true })).toBe(true);
     expect(slaBreached({ live_resolution_breached: true })).toBe(true);
-    expect(slaBreached({ live_first_response_breached: true, live_resolution_breached: true })).toBe(true);
+    expect(
+      slaBreached({
+        live_first_response_breached: true,
+        live_resolution_breached: true,
+      }),
+    ).toBe(true);
   });
 
   it("does not flag unbreached or unknown flags", () => {
     expect(slaBreached({})).toBe(false);
-    expect(slaBreached({ live_first_response_breached: false, live_resolution_breached: false })).toBe(false);
+    expect(
+      slaBreached({
+        live_first_response_breached: false,
+        live_resolution_breached: false,
+      }),
+    ).toBe(false);
   });
 
   it("counts breached tickets, and zero for an empty queue", () => {

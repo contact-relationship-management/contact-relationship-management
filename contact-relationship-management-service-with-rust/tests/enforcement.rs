@@ -96,6 +96,7 @@ async fn enforcement_gates_the_real_stack() {
     }
     let reader = sign_as(&kid, "reader-user", &[]);
     let writer = sign_as(&kid, "writer-user", &[("access", &["write"])]);
+    let service = sign_as(&kid, "svc-user", &[("svc", &["true"])]);
 
     request::<App, _, _>(|request, _ctx| async move {
         let bearer = |token: &str| format!("Bearer {token}");
@@ -268,6 +269,69 @@ async fn enforcement_gates_the_real_stack() {
             .await;
         assert_eq!(deals_as_stranger.status_code(), 200);
         assert!(find_amount(&deals_as_stranger.json::<Value>()).is_null());
+
+        // CRM-T38: the audit trail, event stream, and retention report are
+        // admin/service-tier reads. An ordinary reader or writer is refused;
+        // a service credential is not.
+        for path in [
+            "/api/audits/recent",
+            "/api/audits/verify",
+            "/api/events/recent",
+            "/api/retention",
+        ] {
+            for token in [&reader, &writer] {
+                assert_eq!(
+                    request
+                        .get(path)
+                        .add_header("authorization", bearer(token))
+                        .await
+                        .status_code(),
+                    403,
+                    "{path} must be refused to a non-admin caller"
+                );
+            }
+            assert_eq!(
+                request
+                    .get(path)
+                    .add_header("authorization", bearer(&service))
+                    .await
+                    .status_code(),
+                200,
+                "{path} must be open to a service credential"
+            );
+        }
+
+        // CRM-T32: aggregate money is masked for a masked reader (absent,
+        // never zero) and visible to a service credential.
+        let forecast_masked: Value = request
+            .get("/api/forecast")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert!(
+            forecast_masked["totals_minor"].is_null(),
+            "{forecast_masked}"
+        );
+        assert!(forecast_masked["open_deals"].is_number());
+        let forecast_full: Value = request
+            .get("/api/forecast")
+            .add_header("authorization", bearer(&service))
+            .await
+            .json();
+        assert!(forecast_full["totals_minor"].is_object(), "{forecast_full}");
+        let dash_masked: Value = request
+            .get("/api/dashboards/sales")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        for stage in dash_masked["pipeline_by_stage"]
+            .as_object()
+            .unwrap()
+            .values()
+        {
+            assert!(stage["totals_minor"].is_null(), "{stage}");
+            assert!(stage["count"].is_number());
+        }
     })
     .await;
 }

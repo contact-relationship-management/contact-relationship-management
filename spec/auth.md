@@ -100,6 +100,11 @@ in the wrong direction: less is actually enforced today):
   a **policy aspiration**, not yet an enforced boundary — any caller
   who clears the coarse write/read gate can act on any record. Plan
   deployments accordingly until that wiring lands.
+- **Update (CRM-T32, 2026-10-10): `mask` now covers** contact and deal
+  reads, the forecast, the sales dashboard, campaign cost, funnel revenue
+  and ROI, and the rows bundled into a contact read. It does **not** yet
+  cover `/api/insights/*` or forecast snapshots. The next bullet describes
+  the earlier state and is kept for history.
 - **The `mask` obligation is not yet applied by any read handler.**
   `auth::mask_json` exists and is unit-tested (nulls named keys,
   never fakes a zero), and `subject_access` treats *any* `mask`
@@ -123,3 +128,11 @@ In the `production` environment the service refuses to start unless
 error. The default stays off in development and test. The full readiness
 assessment, with the remaining access-model gaps (mask coverage, admin-only
 audit reads, read auditing, break-glass), is in [plan.md](plan.md).
+
+## Privileged reads (CRM-T38)
+
+`GET` under `/api/audits`, `/api/events`, and `/api/retention` derives the
+`destructive` action (the admin/service tier), so an ordinary reader,
+manager, marketing, or support caller is refused. A policy must grant
+`destructive` to whoever may review audits. `CRM_PROTECT_OPERATIONAL=1`
+also requires authentication on `/metrics.prom` and the OpenAPI paths.

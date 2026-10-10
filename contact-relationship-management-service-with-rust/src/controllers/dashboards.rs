@@ -11,6 +11,7 @@ use sea_orm::{QueryOrder, QuerySelect};
 use serde::Deserialize;
 
 use super::sales;
+use crate::auth::MaybeAuthUser;
 use crate::metrics::Metrics;
 use crate::models::_entities::{activities, deals, tickets};
 use crate::models::records;
@@ -45,7 +46,12 @@ pub(crate) fn conditional(headers: &HeaderMap, payload: serde_json::Value) -> Re
 /// `GET /api/dashboards/sales` — win rate + pipeline value by stage
 /// (per currency) over live data.
 #[debug_handler]
-async fn sales_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Result<Response> {
+async fn sales_dashboard(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    headers: HeaderMap,
+) -> Result<Response> {
+    let masked = crate::auth::aggregate_masked(&caller).map_err(super::record_rejection)?;
     let (won, lost) = sales::closed_counts(&ctx.db).await?;
     let rate = analytics::win_rate(
         i64::try_from(won).unwrap_or(i64::MAX),
@@ -78,6 +84,12 @@ async fn sales_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> R
     Metrics::global()
         .deals_open
         .set(i64::try_from(open.len()).unwrap_or(i64::MAX));
+    if masked {
+        // Counts and structure stay visible; the money is absent, never zero.
+        for entry in by_stage.values_mut() {
+            *entry = crate::auth::mask_json(entry.take(), &["totals_minor"]);
+        }
+    }
     Ok(conditional(
         &headers,
         serde_json::json!({ "win_rate": rate, "open_deals": open.len(), "pipeline_by_stage": by_stage }),

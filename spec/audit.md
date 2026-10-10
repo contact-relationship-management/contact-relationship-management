@@ -42,5 +42,7 @@ chain, so anchor `head` outside the database
 ([compliance/operations-runbook.md](compliance/operations-runbook.md)); a
 table owner can drop the trigger.
 
-Correction to the section above: only consent-history and subject-access reads
-are audited today. Auditing other personal-data reads is CRM-T40 (open).
+Personal-data reads (CRM-T40): single reads of contacts, leads, and tickets
+write `contact_read`, `lead_read`, `ticket_read`; list reads write one summary
+row (`*_list_read`, with the returned count). Deal-amount, account, and
+insights reads are not audited yet, and the trail grows with read traffic.

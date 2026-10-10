@@ -6,7 +6,9 @@
 //! relevant — which is what the owner-scoped query filters on).
 
 use loco_rs::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, QueryOrder, QuerySelect, Statement};
+use sea_orm::{
+    ConnectionTrait, DatabaseBackend, QueryOrder, QuerySelect, Statement, TransactionTrait,
+};
 
 use crate::rules::audit_chain;
 use uuid::Uuid;
@@ -75,6 +77,29 @@ impl Model {
             hash: Some(chain_hash),
             ..entry
         })
+    }
+
+    /// Record a **read** of personal data (CRM-T40) in its own short
+    /// transaction, so the chain lock is taken and released around just the
+    /// audit row. A single-record read passes that record's pid; a list read
+    /// passes [`Uuid::nil`] and a summary snapshot (count, never the rows).
+    ///
+    /// # Errors
+    ///
+    /// When the transaction or insert fails; callers should fail the read,
+    /// because an unaudited disclosure is worse than an error.
+    pub async fn record_read(
+        db: &DatabaseConnection,
+        entity: &str,
+        entity_pid: Uuid,
+        action: &str,
+        actor: Option<&str>,
+        snapshot: Option<serde_json::Value>,
+    ) -> ModelResult<Self> {
+        let txn = db.begin().await?;
+        let row = Self::record(&txn, entity, entity_pid, action, actor, snapshot).await?;
+        txn.commit().await?;
+        Ok(row)
     }
 
     /// Most-recent audit entries, capped at `limit`.

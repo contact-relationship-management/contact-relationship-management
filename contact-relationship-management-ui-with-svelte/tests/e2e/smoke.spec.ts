@@ -831,6 +831,37 @@ test.describe("contact subject rights", () => {
   });
 });
 
+test.describe("masked amounts (CRM-T32)", () => {
+  test.beforeEach(async ({ page }) => {
+    await signIn(page);
+  });
+
+  test("campaign funnel renders masked revenue and ROI as dashes", async ({ page }) => {
+    const campaign = {
+      pid: "k1",
+      name: "Spring push",
+      status: "completed",
+      recipients: 10,
+      delivered: 9,
+      opened: 5,
+      clicked: 2,
+      currency: "GBP",
+      cost_minor: null,
+    };
+    await page.route("**/api/proxy/campaigns", (route) => route.fulfill({ json: [campaign] }));
+    await page.route("**/api/proxy/campaigns/k1/funnel", (route) =>
+      route.fulfill({
+        json: { campaign, leads: 3, won_deals: 1, won_revenue_minor: null, roi: null },
+      }),
+    );
+    await page.goto("/campaigns");
+    await page.getByRole("button", { name: "Funnel" }).click();
+    const funnel = page.getByTestId("funnel");
+    await expect(funnel).toContainText("—");
+    await expect(funnel).not.toContainText("0%");
+  });
+});
+
 test("responses carry the security headers and a CSP (CRM-T33)", async ({ page }) => {
   const response = await page.goto("/tour");
   const headers = response?.headers() ?? {};

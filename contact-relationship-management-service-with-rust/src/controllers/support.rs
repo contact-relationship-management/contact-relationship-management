@@ -222,6 +222,7 @@ struct TicketListParams {
 #[debug_handler]
 async fn list_tickets(
     State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
     Query(params): Query<TicketListParams>,
 ) -> Result<Response> {
     let mut query = tickets::Entity::find().filter(tickets::Column::DeletedAt.is_null());
@@ -251,13 +252,35 @@ async fn list_tickets(
             value
         })
         .collect();
+    Audit::record_read(
+        &ctx.db,
+        "ticket",
+        Uuid::nil(),
+        "ticket_list_read",
+        caller.actor(),
+        Some(serde_json::json!({ "returned": rows.len() })),
+    )
+    .await?;
     format::json(rows)
 }
 
 /// `GET /api/tickets/{pid}` — one ticket + its activities.
 #[debug_handler]
-async fn get_ticket(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Result<Response> {
+async fn get_ticket(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Path(pid): Path<String>,
+) -> Result<Response> {
     let ticket = records::find_ticket(&ctx.db, records::parse_pid(&pid)?).await?;
+    Audit::record_read(
+        &ctx.db,
+        "ticket",
+        ticket.pid,
+        "ticket_read",
+        caller.actor(),
+        None,
+    )
+    .await?;
     let activity_rows = activities::Entity::find()
         .filter(activities::Column::SubjectKind.eq("ticket"))
         .filter(activities::Column::SubjectPid.eq(ticket.pid))

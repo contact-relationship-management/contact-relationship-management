@@ -1,10 +1,16 @@
 <script lang="ts">
   import { campaignFunnel, campaignStatus, listCampaigns, money, runCampaign } from "#lib/api/crm.js";
+  import { ratioPercent } from "#lib/format.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
   import type { Campaign, Ratio } from "#lib/api/crm.js";
 
   let campaigns = $state<Campaign[] | null>(null);
-  let funnel = $state<{ pid: string; leads: number; won_revenue_minor: number; roi: Ratio } | null>(null);
+  let funnel = $state<{
+    pid: string;
+    leads: number;
+    won_revenue_minor: number | null;
+    roi: Ratio | null;
+  } | null>(null);
   let error = $state<string | null>(null);
   let actionError = $state<string | null>(null);
 
@@ -43,8 +49,8 @@
     };
   }
 
-  function roiLabel(roi: Ratio): string {
-    return roi.value === null ? "—" : `${Math.round(roi.value * 100)}%`;
+  function roiLabel(roi: Ratio | null): string {
+    return ratioPercent(roi);
   }
 </script>
 
@@ -88,9 +94,11 @@
               {t("nav.leads")}: {funnel.leads} ·
               {money(funnel.won_revenue_minor, campaign.currency, i18n.locale)} ·
               {t("campaign.roi")}: <strong>{roiLabel(funnel.roi)}</strong>
-              <span class="muted">
-                ({funnel.roi.numerator} / {funnel.roi.denominator})
-              </span>
+              {#if funnel.roi}
+                <span class="muted">
+                  ({funnel.roi.numerator} / {funnel.roi.denominator})
+                </span>
+              {/if}
             </td>
           </tr>
         {/if}

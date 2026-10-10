@@ -18,7 +18,7 @@
         ]);
         sales = salesData;
         sla = slaData;
-        totals = forecastData.totals_minor;
+        totals = forecastData.totals_minor ?? {};
       } catch (cause) {
         error = cause instanceof Error ? cause.message : String(cause);
       }

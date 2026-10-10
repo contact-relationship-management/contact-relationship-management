@@ -11,7 +11,7 @@ Evidence paths are relative to the repository root.
 | Authenticated access to every non-public route | NIST AC-3, IA-2; HIPAA §164.312(d); ISO A.5.15, A.8.5; GDPR 32 | Implemented when `CRM_REQUIRE_AUTH=1`; production refuses to start without it | `src/auth.rs`, `src/hardening.rs` (CRM-T30), `tests/enforcement.rs` |
 | Fail-safe default | NIST SA-8, CM-6 | Implemented | production boot check, T30 |
 | Attribute-based authorization, least privilege | NIST AC-6; HIPAA §164.312(a)(1); ISO A.8.2 | Partial | contact and deal reads/writes are record-checked; other handlers use the coarse gate (auth.md known limits) |
-| Data masking by role | NIST AC-3(7) | Partial | contacts, deals masked; forecast, campaign ROI, bundled `get_contact` rows not yet (T32) |
+| Data masking by role | NIST AC-3(7) | Partial (CRM-T32) | contacts, deals, forecast, sales dashboard, campaign cost/ROI, bundled contact rows; `/api/insights/*` and snapshots not yet |
 | Destructive actions restricted to admin/service | NIST AC-6(9) | Implemented | `DESTRUCTIVE_POST_SUFFIXES` + pins |
 | Session management, idle timeout, re-authentication | NIST AC-11, AC-12; HIPAA §164.312(a)(2)(iii) | Partial | HttpOnly cookie sessions, BFF; idle timeout and step-up re-auth are a Gap (T43) |
 | Emergency access procedure | HIPAA §164.312(a)(2)(ii) | Gap | T44 |
@@ -25,8 +25,8 @@ Evidence paths are relative to the repository root.
 | Audit of mutations, committed with the mutation | NIST AU-2, AU-12; HIPAA §164.312(b); ISO A.8.15 | Implemented | `models/audit_logs.rs` |
 | Tamper-evident, append-only audit trail | NIST AU-9, AU-10; HIPAA §164.312(c)(1) | Implemented (CRM-T31) | hash chain, `GET /api/audits/verify`, append-only trigger, `tests/requests/audit_chain.rs` |
 | External anchoring of the chain head | NIST AU-9(3) | Deployer | ship `head` to WORM/off-host storage; see runbook |
-| Audit of personal-data reads | NIST AU-2; HIPAA §164.312(b); GDPR 5(2) | Partial | consent-history and subject-access reads only; T40 |
-| Audit review and protection from casual readers | NIST AU-6, AU-9(4) | Gap | `/api/audits*` readable by any reader under the coarse gate; T38 |
+| Audit of personal-data reads | NIST AU-2; HIPAA §164.312(b); GDPR 5(2) | Partial (CRM-T40) | contact, lead, ticket single reads and list summaries; not deals, accounts, insights |
+| Audit review and protection from casual readers | NIST AU-6, AU-9(4) | Implemented (CRM-T38) | audit, event, and retention reads are admin/service tier; enforcement test |
 | Time source | NIST AU-8 | Deployer | NTP on hosts; timestamps are database time |
 
 ## System and communications protection
@@ -40,7 +40,7 @@ Evidence paths are relative to the repository root.
 | Request size limits | NIST SC-5 | Implemented | `limit_payload` 2 MB |
 | Input validation | NIST SI-10 | Implemented | `src/validation.rs` |
 | Memory safety | NIST SA-15 | Implemented | `#![forbid(unsafe_code)]` |
-| Unauthenticated operational endpoints | NIST AC-3 | Partial | `/metrics.prom` and OpenAPI are public by design; restrict at the ingress or see T38 |
+| Unauthenticated operational endpoints | NIST AC-3 | Implemented (opt-in) | `CRM_PROTECT_OPERATIONAL=1` requires auth on metrics and OpenAPI; public by default |
 
 ## Supply chain and configuration
 
@@ -76,6 +76,7 @@ Evidence paths are relative to the repository root.
 ## Reading this table
 
 Several rows read **Deployer** or **Gap**. That is the honest state: the code
-side of production hardening is largely in place after CRM-T30–T37, but the
-access model is not complete (T32, T38, T40), real sending is absent (T39),
+side of production hardening is largely in place after CRM-T30–T40, but the
+access model is not complete (masking of insights, read auditing of deals and
+accounts, rate limiting, break-glass), real sending is absent (T39),
 and no external assurance exists (T42).

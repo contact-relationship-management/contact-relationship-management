@@ -88,7 +88,8 @@ export interface Campaign {
   pid: string;
   name: string;
   status: string;
-  cost_minor: number;
+  /** `null` when the caller's policy masks amounts. */
+  cost_minor: number | null;
   currency: string;
   recipients: number;
   delivered: number;
@@ -236,7 +237,8 @@ export function moveDeal(
 export function forecast(init?: FetchLike): Promise<{
   as_of: string;
   open_deals: number;
-  totals_minor: Record<string, number>;
+  /** `null` when the caller's policy masks amounts. */
+  totals_minor: Record<string, number> | null;
 }> {
   return api("/forecast", init);
 }
@@ -254,8 +256,9 @@ export function campaignFunnel(
   campaign: Campaign;
   leads: number;
   won_deals: number;
-  won_revenue_minor: number;
-  roi: Ratio;
+  /** `null` when the caller's policy masks amounts. */
+  won_revenue_minor: number | null;
+  roi: Ratio | null;
 }> {
   return api(`/campaigns/${pid}/funnel`, init);
 }

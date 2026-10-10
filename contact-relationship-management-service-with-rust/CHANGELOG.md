@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — access-model completion (CRM-T32, T38, T40, 2026-10-10)
+
+`mask` now covers the forecast, sales dashboard, campaign cost/funnel and the
+rows bundled into a contact read. Audit, event and retention reads are
+admin/service tier; `CRM_PROTECT_OPERATIONAL=1` also protects metrics and
+OpenAPI. Personal-data reads (contacts, leads, tickets, activities) are
+audited into the hash chain.
+
 ### Added — production-readiness hardening (CRM-T30, T31, T33, T34, T35, 2026-10-10)
 
 Production boot refuses to start with `CRM_REQUIRE_AUTH` off

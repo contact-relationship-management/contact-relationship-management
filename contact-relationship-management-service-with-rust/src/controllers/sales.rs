@@ -195,21 +195,35 @@ async fn create_lead(
 
 /// `GET /api/leads` — the queue, score-sorted (CRM-R3).
 #[debug_handler]
-async fn list_leads(State(ctx): State<AppContext>) -> Result<Response> {
+async fn list_leads(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
     let rows = leads::Entity::find()
         .filter(leads::Column::DeletedAt.is_null())
         .order_by_desc(leads::Column::Score)
         .limit(1000)
         .all(&ctx.db)
         .await?;
+    Audit::record_read(
+        &ctx.db,
+        "lead",
+        Uuid::nil(),
+        "lead_list_read",
+        caller.actor(),
+        Some(serde_json::json!({ "returned": rows.len() })),
+    )
+    .await?;
     format::json(rows)
 }
 
 /// `GET /api/leads/{pid}` — the lead + its live score breakdown.
 #[debug_handler]
-async fn get_lead(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Result<Response> {
+async fn get_lead(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Path(pid): Path<String>,
+) -> Result<Response> {
     let lead = records::find_lead(&ctx.db, records::parse_pid(&pid)?).await?;
     let breakdown = score_lead(&ctx.db, &lead).await?;
+    Audit::record_read(&ctx.db, "lead", lead.pid, "lead_read", caller.actor(), None).await?;
     format::json(serde_json::json!({ "lead": lead, "score": breakdown }))
 }
 
@@ -710,7 +724,8 @@ async fn reopen_deal(
 /// `GET /api/forecast` — the live stage-weighted forecast per
 /// currency over open deals (CRM-R5); stamped `as_of`.
 #[debug_handler]
-async fn forecast(State(ctx): State<AppContext>) -> Result<Response> {
+async fn forecast(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
+    let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
     let open = deals::Entity::find()
         .filter(deals::Column::DeletedAt.is_null())
         .filter(deals::Column::ClosedAt.is_null())
@@ -729,11 +744,16 @@ async fn forecast(State(ctx): State<AppContext>) -> Result<Response> {
     Metrics::global()
         .deals_open
         .set(i64::try_from(open.len()).unwrap_or(i64::MAX));
-    format::json(serde_json::json!({
+    let body = serde_json::json!({
         "as_of": chrono::Utc::now(),
         "open_deals": open.len(),
         "totals_minor": totals,
-    }))
+    });
+    format::json(if masked {
+        auth::mask_json(body, &["totals_minor"])
+    } else {
+        body
+    })
 }
 
 /// `POST /api/forecast/snapshot` — freeze the current roll-up

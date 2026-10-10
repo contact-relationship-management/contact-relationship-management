@@ -347,12 +347,20 @@ async fn create_campaign(
 
 /// `GET /api/campaigns`.
 #[debug_handler]
-async fn list_campaigns(State(ctx): State<AppContext>) -> Result<Response> {
+async fn list_campaigns(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
+    let masked = crate::auth::aggregate_masked(&caller).map_err(super::record_rejection)?;
     let rows = campaigns::Entity::find()
         .filter(campaigns::Column::DeletedAt.is_null())
         .order_by_asc(campaigns::Column::Id)
         .all(&ctx.db)
         .await?;
+    if masked {
+        let masked_rows: Vec<serde_json::Value> = rows
+            .iter()
+            .map(|row| crate::auth::mask_json(serde_json::json!(row), &["cost_minor"]))
+            .collect();
+        return format::json(masked_rows);
+    }
     format::json(rows)
 }
 
@@ -494,8 +502,10 @@ async fn run_campaign(
 #[debug_handler]
 async fn campaign_funnel(
     State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
     Path(pid): Path<String>,
 ) -> Result<Response> {
+    let masked = crate::auth::aggregate_masked(&caller).map_err(super::record_rejection)?;
     let campaign = records::find_campaign(&ctx.db, records::parse_pid(&pid)?).await?;
     let lead_rows = crate::models::_entities::leads::Entity::find()
         .filter(crate::models::_entities::leads::Column::CampaignPid.eq(campaign.pid))
@@ -521,14 +531,25 @@ async fn campaign_funnel(
         }
     }
     let roi = analytics::roi(same_currency_revenue, campaign.cost_minor);
-    format::json(serde_json::json!({
+    let mut body = serde_json::json!({
         "campaign": campaign,
         "leads": lead_rows.len(),
         "won_deals": attributed_deals.len(),
         "won_revenue_minor": same_currency_revenue,
         "won_revenue_other_currencies": other_currency,
         "roi": roi,
-    }))
+    });
+    if masked {
+        // Cost, revenue and ROI are commercial; counts and structure stay.
+        body = crate::auth::mask_json(
+            body,
+            &["won_revenue_minor", "won_revenue_other_currencies", "roi"],
+        );
+        if let Some(campaign) = body.get_mut("campaign") {
+            *campaign = crate::auth::mask_json(campaign.take(), &["cost_minor"]);
+        }
+    }
+    format::json(body)
 }
 
 /// `POST /api/nurture-sequences` — create with ordered steps.

@@ -58,9 +58,11 @@ Severity: **B** blocks any non-demo deployment; **H** blocks regulated buyers;
    All code-side; implemented 2026-10-10.
 2. **Evidence (T35, T36, T37)** — container hardening, control mapping and
    runbooks, accessibility gate. Implemented 2026-10-10.
-3. **Complete the access model (T32, T38, T40, T43, T44)** — finish masking,
-   admin-only operational reads, read auditing, rate limits, break-glass.
-   Open: each needs design decisions from the deploying organization.
+3. **Complete the access model (T32, T38, T40, T43, T44)** — masking,
+   admin-only operational reads, and read auditing landed 2026-10-10 with
+   stated limits (insights unmasked; deal/account reads unaudited). Rate
+   limits and break-glass (T43, T44) stay open: they need design decisions
+   from the deploying organization.
 4. **Real-world exposure (T39, T41, T42)** — ESP integration and contracts,
    field-level encryption with a KMS, independent test and accreditation.
    Open: external parties and legal work, not code.
