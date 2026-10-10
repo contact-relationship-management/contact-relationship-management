@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Contact Relationship Management"
+type: software
+abstract: >-
+  Demo contact relationship management software: sales automation,
+  marketing automation, customer support, and analytics, as a Rust JSON API
+  and a Svelte front end.
+authors:
+  - family-names: Henderson
+    given-names: Joel Parker
+    email: joel@joelparkerhenderson.com
+    # TODO: add the author's ORCID, e.g. orcid: "https://orcid.org/0000-0000-0000-0000"
+license:
+  - MIT
+  - Apache-2.0
+  - BSD-3-Clause
+  - GPL-2.0-only
+  - GPL-3.0-only
+keywords:
+  - crm
+  - sales
+  - marketing
+  - support

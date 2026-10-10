@@ -13,7 +13,7 @@ forecasting, email campaigns / segments / nurture sequences with
 consent-first enforcement, support tickets with SLA tracking, a
 knowledge base, and derived dashboards (win rate, ROI, CLV, SLA
 health). There is no built-in UI — the
-[Svelte sibling](../contact-relationship-management-front-end-with-svelte/)
+[Svelte sibling](../contact-relationship-management-ui-with-svelte/)
 is the sales / marketing / support client.
 
 **Domain ownership.** CRM **owns relationship state** (its own

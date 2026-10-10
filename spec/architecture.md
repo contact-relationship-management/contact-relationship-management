@@ -4,7 +4,7 @@
  rep / manager / marketing / support browser
         │  (cookie session; no token in JS)
         ▼
- contact-relationship-management-front-end-with-svelte  (SvelteKit BFF)
+ contact-relationship-management-ui-with-svelte  (SvelteKit BFF)
         │  Authorization: Bearer v4.public.…
         ▼
  contact-relationship-management-service-with-rust  (Loco: Axum + SeaORM + PostgreSQL)

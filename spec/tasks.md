@@ -113,7 +113,7 @@ code + tests in one PR.
 ## Phase 7 — front-end (all CRM-R*)
 
 - [x] CRM-T17 Scaffold
-  `contact-relationship-management-front-end-with-svelte`:
+  `contact-relationship-management-ui-with-svelte`:
   SvelteKit 2 + Svelte 5 runes SPA, BFF proxy + session flow,
   13-locale i18n from the start, typed API client + `money()`.
   (CRM-D12)
@@ -283,7 +283,7 @@ code + tests in one PR.
 > matching WPM-T32's shape. Skipped in CRM-T21/T22 to keep this round
 > scoped to the service-side code the two gates were actually missing;
 > the front-end pages/routes this would touch
-> (`contact-relationship-management-front-end-with-svelte`) were not
+> (`contact-relationship-management-ui-with-svelte`) were not
 > otherwise touched by this round.
 
 - [ ] CRM-T23 **Front-end "Download my data" + Erase action.** The
@@ -291,7 +291,7 @@ code + tests in one PR.
       detail page has no subject-access download link and no
       confirm-gated erase action, matching WPM-T32's shape (verified:
       `grep -rln "subject-access\|/erase"
-      contact-relationship-management-front-end-with-svelte/src`
+      contact-relationship-management-ui-with-svelte/src`
       returns nothing, while the service's
       `GET /api/contacts/{pid}/subject-access` and `POST …/erase`
       have been live since CRM-T21). **Acceptance:** a "Download my

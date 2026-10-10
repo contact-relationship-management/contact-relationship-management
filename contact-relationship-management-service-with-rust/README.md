@@ -9,7 +9,7 @@ base, and derived dashboards (win rate, pipeline value, campaign
 ROI, CLV, SLA health). Implemented in Rust on
 [Loco](https://loco.rs) (Axum + SeaORM + PostgreSQL). No built-in
 UI — the
-[Svelte sibling](../contact-relationship-management-front-end-with-svelte/)
+[Svelte sibling](../contact-relationship-management-ui-with-svelte/)
 provides the sales, marketing, and support client.
 
 > ⚠️ **Demo software.** Not a production CRM; no real email is sent

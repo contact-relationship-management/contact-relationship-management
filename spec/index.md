@@ -42,7 +42,7 @@ them.
 | Subproject                                                                                                         | Role                           | Stack                                   |
 | ------------------------------------------------------------------------------------------------------------------ | ------------------------------ | --------------------------------------- |
 | [contact-relationship-management-service-with-rust](../contact-relationship-management-service-with-rust/)         | Back-end JSON API              | Rust, Loco (Axum + SeaORM), PostgreSQL  |
-| [contact-relationship-management-front-end-with-svelte](../contact-relationship-management-front-end-with-svelte/) | Sales / marketing / support UI | SvelteKit 2, Svelte 5 runes, TypeScript |
+| [contact-relationship-management-ui-with-svelte](../contact-relationship-management-ui-with-svelte/) | Sales / marketing / support UI | SvelteKit 2, Svelte 5 runes, TypeScript |
 
 ## Specification (topic files)
 

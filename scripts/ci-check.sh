@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 SVC=contact-relationship-management-service-with-rust
-FE=contact-relationship-management-front-end-with-svelte
+FE=contact-relationship-management-ui-with-svelte
 # `keycloak` gates the optional Keycloak bearer path and the `test-idp`
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
