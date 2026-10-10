@@ -33,7 +33,7 @@ services:
       # One shared init script rather than a copy per service; it enables
       # the extensions in template1, so every database created later
       # inherits them.
-      - ../../ci/postgres-init:/docker-entrypoint-initdb.d:ro,z
+      - ../ci/postgres-init:/docker-entrypoint-initdb.d:ro,z
     tmpfs:
       # PGDATA lives under /var/lib/postgresql in the 18 image
       # (/var/lib/postgresql/18/docker — *not* the /var/lib/postgresql/data
