@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — abuse resistance (CRM-T43, 2026-10-10)
+
+Per-client request limit and failed-authentication lockout (`429` with
+`Retry-After`), on by default in production; probes exempt. The UI signs out
+an idle session after 15 minutes.
+
 ### Added — access-model completion (CRM-T32, T38, T40, 2026-10-10)
 
 `mask` now covers the forecast, sales dashboard, campaign cost/funnel and the

@@ -12,3 +12,11 @@ export const API_BASE_URL = "/api/proxy";
 
 /** Whiteboard poll interval (ms). */
 export const BOARD_POLL_MS = 15_000;
+
+/**
+ * Idle sign-out (CRM-T43): after this long with no pointer, key, or scroll
+ * activity in the tab, the session is revoked and the user is sent to sign
+ * in. Polling does not count as activity. 15 minutes matches the common
+ * HIPAA/NIST AC-11 guidance for clinical and government workstations.
+ */
+export const IDLE_TIMEOUT_MS = 15 * 60 * 1000;

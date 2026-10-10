@@ -862,6 +862,22 @@ test.describe("masked amounts (CRM-T32)", () => {
   });
 });
 
+test("an idle signed-in session is signed out (CRM-T43)", async ({ page }) => {
+  await signIn(page);
+  let signedOut = false;
+  await page.route("**/signout", (route) => {
+    signedOut = true;
+    return route.fulfill({ status: 303, headers: { location: "/" } });
+  });
+  await page.clock.install();
+  await page.route("**/api/proxy/**", (route) => route.fulfill({ json: [] }));
+  await page.goto("/contacts");
+  await expect(page.locator("main")).toBeVisible();
+  await page.clock.runFor(15 * 60 * 1000 + 1000);
+  await expect.poll(() => signedOut).toBe(true);
+  await expect(page).toHaveURL(/\/signin$/);
+});
+
 test("responses carry the security headers and a CSP (CRM-T33)", async ({ page }) => {
   const response = await page.goto("/tour");
   const headers = response?.headers() ?? {};

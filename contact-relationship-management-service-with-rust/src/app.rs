@@ -24,7 +24,7 @@ use loco_rs::{
 use migration::Migrator;
 use std::path::Path;
 
-use crate::{auth, controllers, models::_entities::prelude::*, tasks};
+use crate::{auth, controllers, models::_entities::prelude::*, rate_limit, tasks};
 
 /// Blanket auth-enforcement middleware: reads `CRM_REQUIRE_AUTH` per
 /// request and delegates to [`auth::enforce_request`]. Off by
@@ -38,6 +38,54 @@ async fn require_auth_mw(req: Request, next: Next) -> Response {
         Ok(()) => next.run(req).await,
         Err((status, msg)) => (status, msg).into_response(),
     }
+}
+
+/// Abuse guard (CRM-T43): per-client request limit and a failed-auth
+/// lockout, answering `429` with `Retry-After`. Runs outside the auth
+/// middleware so it sees the `401`s the auth middleware produces.
+async fn abuse_guard_mw(
+    axum::extract::State(guard): axum::extract::State<std::sync::Arc<rate_limit::Guard>>,
+    req: Request,
+    next: Next,
+) -> Response {
+    // Orchestrator probes must never be throttled or locked out: a refused
+    // probe would restart a healthy pod.
+    if matches!(req.uri().path(), "/_health" | "/_ping" | "/_readiness") {
+        return next.run(req).await;
+    }
+    let key = {
+        let header = |name: &str| req.headers().get(name).and_then(|v| v.to_str().ok());
+        let trust_forwarded =
+            auth::parse_bool(&std::env::var("CRM_TRUST_FORWARDED_FOR").unwrap_or_default());
+        rate_limit::client_key(
+            header("authorization"),
+            header("x-forwarded-for"),
+            trust_forwarded,
+        )
+    };
+    let now = std::time::Instant::now();
+    let refused = |retry_after_secs: u64| {
+        (
+            axum::http::StatusCode::TOO_MANY_REQUESTS,
+            [(
+                axum::http::header::RETRY_AFTER,
+                retry_after_secs.to_string(),
+            )],
+            "too many requests",
+        )
+            .into_response()
+    };
+    if let rate_limit::Decision::Limited { retry_after_secs } = guard.failures.blocked(&key, now) {
+        return refused(retry_after_secs);
+    }
+    if let rate_limit::Decision::Limited { retry_after_secs } = guard.requests.hit(&key, now) {
+        return refused(retry_after_secs);
+    }
+    let response = next.run(req).await;
+    if response.status() == axum::http::StatusCode::UNAUTHORIZED {
+        let _ = guard.failures.hit(&key, now);
+    }
+    response
 }
 
 /// The loco.rs application hooks for
@@ -94,8 +142,13 @@ impl Hooks for App {
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();
+        let guard = std::sync::Arc::new(rate_limit::Guard::from_env(matches!(
+            ctx.environment,
+            Environment::Production
+        )));
         Ok(router
             .layer(axum::middleware::from_fn(require_auth_mw))
+            .layer(axum::middleware::from_fn_with_state(guard, abuse_guard_mw))
             .layer(axum::middleware::from_fn(
                 crate::version::require_version_mw,
             )))

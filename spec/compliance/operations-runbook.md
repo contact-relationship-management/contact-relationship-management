@@ -20,8 +20,13 @@ Commands assume the container images from the repository's `Containerfile`s.
 6. Configure token verification (`CRM_PASETO_KEYS_URL` or Keycloak settings).
 7. Restrict `/metrics.prom` and `/api-docs/*` at the ingress to the monitoring
    network; both are public inside the service.
-8. Set `CRM_CORS_ORIGIN` only if a browser must call the service directly.
-9. Run migrations as a separate, privileged step (`auto_migrate` is off in
+8. Abuse limits are on by default in production (`CRM_RATE_LIMIT_PER_MIN`,
+   `CRM_AUTH_FAIL_LIMIT`, `CRM_AUTH_FAIL_WINDOW_SECS`; `0` disables). Counters
+   are per replica, so also limit at the ingress. Set
+   `CRM_TRUST_FORWARDED_FOR=1` only behind a proxy that overwrites
+   `X-Forwarded-For`, otherwise all unauthenticated callers share one bucket.
+9. Set `CRM_CORS_ORIGIN` only if a browser must call the service directly.
+10. Run migrations as a separate, privileged step (`auto_migrate` is off in
    production). The runtime database role needs no DDL rights.
 
 ## 2. Database

@@ -13,9 +13,9 @@ Evidence paths are relative to the repository root.
 | Attribute-based authorization, least privilege | NIST AC-6; HIPAA §164.312(a)(1); ISO A.8.2 | Partial | contact and deal reads/writes are record-checked; other handlers use the coarse gate (auth.md known limits) |
 | Data masking by role | NIST AC-3(7) | Partial (CRM-T32) | contacts, deals, forecast, sales dashboard, campaign cost/ROI, bundled contact rows; `/api/insights/*` and snapshots not yet |
 | Destructive actions restricted to admin/service | NIST AC-6(9) | Implemented | `DESTRUCTIVE_POST_SUFFIXES` + pins |
-| Session management, idle timeout, re-authentication | NIST AC-11, AC-12; HIPAA §164.312(a)(2)(iii) | Partial | HttpOnly cookie sessions, BFF; idle timeout and step-up re-auth are a Gap (T43) |
+| Session management, idle timeout, re-authentication | NIST AC-11, AC-12; HIPAA §164.312(a)(2)(iii) | Partial (CRM-T43) | HttpOnly cookie sessions, BFF, 15-minute client-side idle sign-out; step-up re-auth before destructive actions is a Gap |
 | Emergency access procedure | HIPAA §164.312(a)(2)(ii) | Gap | T44 |
-| Rate limiting, lockout | NIST AC-7, SC-5 | Gap at the app; Deployer at the gateway | T43 |
+| Rate limiting, lockout | NIST AC-7, SC-5 | Implemented (CRM-T43), per process | `src/rate_limit.rs`; enforce a global limit at the ingress as well |
 | Identity provider, MFA | NIST IA-2(1) | Deployer | Keycloak/OIDC feature or the family auth service |
 
 ## Audit and accountability

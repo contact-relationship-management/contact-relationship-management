@@ -514,9 +514,11 @@ parties outside the repository.
 - [ ] CRM-T42 **Independent assurance.** Penetration test, formal risk
       analysis, accreditation evidence (ATO / DSPT / HIPAA / ISO 27001).
       (plan gap 13) *Open: external.*
-- [ ] CRM-T43 **Abuse resistance.** Rate limiting and lockout on the
+- [x] CRM-T43 *(resolved 2026-10-10, in part.)* **Abuse resistance.** Rate limiting and lockout on the
       service; UI idle-session timeout and re-authentication before
       destructive actions. (plan gap 14) *Open.*
+      **Resolution:** Service: `src/rate_limit.rs` (8 pins) and an outermost abuse-guard middleware: a per-client fixed-window request limit (default 600 a minute) and a lockout after repeated `401`s (default 10 in 5 minutes), answering `429` with `Retry-After`. On by default only in production; `CRM_RATE_LIMIT_PER_MIN`, `CRM_AUTH_FAIL_LIMIT`, `CRM_AUTH_FAIL_WINDOW_SECS` override and `0` disables. Probes (`/_health`, `/_ping`, `/_readiness`) are exempt so a lockout cannot restart a healthy pod. Verified live against a production boot (401, 401, then 429). UI: 15-minute idle sign-out (`src/lib/idle.ts`, `IDLE_TIMEOUT_MS`) revokes the session and returns to sign-in; polling does not count as activity; vitest (4) and a Playwright test that fails at 10 minutes and passes at 15. **Not done:** re-authentication before destructive actions (needs a step-up flow from the identity provider). **Limits:** counters are per process, so enforce a global limit at the ingress too; unauthenticated callers share one bucket unless `CRM_TRUST_FORWARDED_FOR=1` is set behind a proxy that overwrites `X-Forwarded-For`, which means an attacker can lock out other unauthenticated callers (not authenticated ones, and not probes); the idle timer is client-side, so a client that blocks JavaScript keeps its session until the server-side session lifetime ends.
+
 - [ ] CRM-T44 **Break-glass access.** Emergency elevation with mandatory
       reason, time limit, and after-the-fact review report. (plan gap 15)
       *Open.*

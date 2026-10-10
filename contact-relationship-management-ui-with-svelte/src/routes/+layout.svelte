@@ -4,6 +4,8 @@
   import { browser } from '$app/env';
   import type { Snippet } from "svelte";
   import type { LayoutData } from "./$types";
+  import { IDLE_TIMEOUT_MS } from "#lib/config.js";
+  import { watchIdle } from "#lib/idle.js";
   import { i18n, isRtl, t, LOCALES, LOCALE_LABELS } from "#lib/i18n.svelte.js";
   import PickerBar from "@lilydesignsystem/svelte-picker-bar";
   import type { ShareTarget } from "@lilydesignsystem/svelte-share-picker";
@@ -66,6 +68,17 @@
     if (!browser) return;
     document.documentElement.lang = i18n.locale;
     document.documentElement.dir = isRtl(i18n.locale) ? "rtl" : "ltr";
+  });
+
+  // Idle sign-out (CRM-T43): revoke the session and return to sign-in after
+  // a quiet period. Only while signed in; polling is not activity.
+  $effect(() => {
+    if (!browser || !signedIn) return;
+    return watchIdle(window, IDLE_TIMEOUT_MS, () => {
+      void fetch("/signout", { method: "POST" }).finally(() => {
+        window.location.assign("/signin");
+      });
+    });
   });
 
   // Hamburger toggle state for the primary navigation.
