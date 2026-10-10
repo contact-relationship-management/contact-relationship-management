@@ -426,6 +426,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "authentication-verifier"
 version = "0.9.0"
+source = "git+https://github.com/SixArm/main-x-service.git?rev=eeb10523a89c3aa1e4ac922d615fc34a456bdcd9#eeb10523a89c3aa1e4ac922d615fc34a456bdcd9"
 dependencies = [
  "axum-keycloak-auth",
  "base64 0.23.1",
@@ -1837,6 +1838,8 @@ dependencies = [
 [[package]]
 name = "entity-ref"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d083a8302a3eb2f403bed151bcd9e90cd571fbefc7221f06d35aed83cc6a273f"
 dependencies = [
  "serde",
  "thiserror 2.0.21",

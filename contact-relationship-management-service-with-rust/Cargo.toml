@@ -55,10 +55,10 @@ reqwest = { version = "0.12", default-features = false, features = [
 
 # Cross-service entity references (EntityRef URN + entity-type registry):
 # people/workers/organizations/courses are referenced, never duplicated.
-entity-ref = { path = "../../link/entity-ref-rust-crate" }
+entity-ref = "0.2.0"
 
 # Offline PASETO v4.public verification + the shared ABAC engine.
-authentication-verifier = { path = "../../authentication/authentication-verifier-rust-crate", default-features = false }
+authentication-verifier = { git = "https://github.com/SixArm/main-x-service.git", rev = "eeb10523a89c3aa1e4ac922d615fc34a456bdcd9", default-features = false }
 
 [features]
 # PASETO bearer verification (the family default): `Verifier`, the boot key
@@ -78,7 +78,7 @@ required-features = []
 [dev-dependencies]
 # A local OIDC provider so tests/keycloak_guard.rs can push a Keycloak access
 # token through the real guard without a Keycloak container. Tests only.
-authentication-verifier = { path = "../../authentication/authentication-verifier-rust-crate", default-features = false, features = ["test-idp"] }
+authentication-verifier = { git = "https://github.com/SixArm/main-x-service.git", rev = "eeb10523a89c3aa1e4ac922d615fc34a456bdcd9", default-features = false, features = ["test-idp"] }
 loco-rs = { workspace = true, features = ["testing"] }
 # Name the `TestServer` type in shared request-test helpers (same
 # version loco's testing feature uses internally).
