@@ -60,7 +60,7 @@ Severity: **B** blocks any non-demo deployment; **H** blocks regulated buyers;
    runbooks, accessibility gate. Implemented 2026-10-10.
 3. **Complete the access model (T32, T38, T40, T43, T44)** — masking,
    admin-only operational reads, and read auditing landed 2026-10-10 with
-   stated limits (insights unmasked; deal/account reads unaudited). Rate
+   stated limits (insights unmasked). Rate
    limits and idle sign-out (T43) landed too, without step-up re-auth.
    Break-glass (T44) landed with stated defaults, API and UI.
 4. **Real-world exposure (T39, T41, T42)** — ESP integration and contracts,

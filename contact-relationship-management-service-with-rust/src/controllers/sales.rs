@@ -538,6 +538,15 @@ async fn list_deals(
         .limit(2000)
         .all(&ctx.db)
         .await?;
+    Audit::record_read(
+        &ctx.db,
+        "deal",
+        Uuid::nil(),
+        "deal_list_read",
+        caller.actor(),
+        Some(serde_json::json!({ "returned": rows.len() })),
+    )
+    .await?;
     format::json(readable_deals(&rows, &caller))
 }
 

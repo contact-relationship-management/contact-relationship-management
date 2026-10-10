@@ -55,10 +55,11 @@ row in the same transaction; consent history is doubly recorded; reads of
 contacts, accounts, leads, tickets, and activities are audited (single reads and
 list summaries) with the caller, the record, and whether the result was masked;
 break-glass grants and reviews are audited; the audit table is a tamper-evident
-hash chain, verifiable at `GET /api/audits/verify`. **Exclusions to state in the
-answer:** reads of deals and of the insights views are not audited (the deal
-board polls, so auditing it would flood the trail), and the operator is expected
-to anchor the chain head outside the database.
+hash chain, verifiable at `GET /api/audits/verify`. Deal list reads and insights views are audited too, as one summary row per
+request. **Exclusions to state in the answer:** single-deal reads do not exist
+as a separate endpoint, the deal board polls so the trail grows quickly
+(size retention), and the operator is expected to anchor the chain head outside
+the database.
 
 ## Threat model (summary)
 

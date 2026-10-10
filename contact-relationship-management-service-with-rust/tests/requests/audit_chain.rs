@@ -91,3 +91,28 @@ async fn personal_data_reads_are_audited() {
     })
     .await;
 }
+
+/// Deal-list and insight reads are audited (CRM-T47 remainder).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn deal_and_insight_reads_are_audited() {
+    request::<App, _, _>(|request, _ctx| async move {
+        assert_eq!(request.get("/api/deals").await.status_code(), 200);
+        assert_eq!(
+            request.get("/api/insights/stale-deals").await.status_code(),
+            200
+        );
+        let recent: Value = request.get("/api/audits/recent").await.json();
+        let has = |action: &str| {
+            recent
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|row| row["action"] == action)
+        };
+        assert!(has("deal_list_read"), "{recent}");
+        assert!(has("insight_read"), "{recent}");
+    })
+    .await;
+}
