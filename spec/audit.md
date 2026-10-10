@@ -46,5 +46,5 @@ Personal-data reads (CRM-T40): single reads of contacts, leads, and tickets
 write `contact_read`, `lead_read`, `ticket_read`; list reads write one summary
 row (`*_list_read`, with the returned count). Account reads (single and list) are audited too (CRM-T47). Deal list reads (`deal_list_read`) and
 every `GET /api/insights/*` view (`insight_read`, naming the view) are audited
-too. The trail grows with read traffic, and the deal board polls, so size
+too. The trail grows with read traffic, so size
 retention for it.

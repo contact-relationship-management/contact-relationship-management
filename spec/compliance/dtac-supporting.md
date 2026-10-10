@@ -57,7 +57,7 @@ list summaries) with the caller, the record, and whether the result was masked;
 break-glass grants and reviews are audited; the audit table is a tamper-evident
 hash chain, verifiable at `GET /api/audits/verify`. Deal list reads and insights views are audited too, as one summary row per
 request. **Exclusions to state in the answer:** single-deal reads do not exist
-as a separate endpoint, the deal board polls so the trail grows quickly
+as a separate endpoint, a polling client would grow the trail quickly
 (size retention), and the operator is expected to anchor the chain head outside
 the database.
 
