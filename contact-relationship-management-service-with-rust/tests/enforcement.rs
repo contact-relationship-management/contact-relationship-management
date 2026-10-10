@@ -75,6 +75,7 @@ fn test_policy() -> String {
           "when": { "svc": ["true"] } },
         { "effect": "allow", "actions": ["read"], "when": { "resource.owner": ["$sub"] } },
         { "effect": "allow", "actions": ["write"], "when": { "access": ["write"] } },
+        { "effect": "allow", "actions": ["read"], "when": { "env.break_glass": ["true"] } },
         { "effect": "allow", "actions": ["read"], "when": {}, "obligations": ["mask"] }
     ] })
     .to_string()

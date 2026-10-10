@@ -130,6 +130,7 @@ impl Hooks for App {
             .add_route(controllers::engagement::routes())
             .add_route(controllers::privacy::routes())
             .add_route(controllers::audits::routes())
+            .add_route(controllers::break_glass::routes())
             .add_route(controllers::docs::routes())
             .add_route(controllers::metrics::routes())
     }
@@ -142,6 +143,16 @@ impl Hooks for App {
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();
+        // CRM-T44: keep the live break-glass set fresh across replicas.
+        let db = ctx.db.clone();
+        tokio::spawn(async move {
+            loop {
+                if let Err(error) = controllers::break_glass::refresh(&db).await {
+                    tracing::warn!(%error, "break-glass refresh failed");
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+            }
+        });
         let guard = std::sync::Arc::new(rate_limit::Guard::from_env(matches!(
             ctx.environment,
             Environment::Production

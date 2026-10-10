@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — break-glass access (CRM-T44, 2026-10-10)
+
+Reasoned, time-limited, audited read elevation (`/api/break-glass`) with a
+review queue; reference policy lifts the mask for reads while a grant is live.
+
 ### Added — abuse resistance (CRM-T43, 2026-10-10)
 
 Per-client request limit and failed-authentication lockout (`429` with

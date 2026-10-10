@@ -96,8 +96,14 @@ pub const ENTITY: &str = "crm";
 /// retention sweep (`/sweep`, CRM-R20). A POST whose path ends with
 /// one of these derives [`Action::Destructive`] instead of
 /// [`Action::Write`].
-pub const DESTRUCTIVE_POST_SUFFIXES: [&str; 5] =
-    ["/merge", "/deduplicate", "/import", "/erase", "/sweep"];
+pub const DESTRUCTIVE_POST_SUFFIXES: [&str; 6] = [
+    "/merge",
+    "/deduplicate",
+    "/import",
+    "/erase",
+    "/sweep",
+    "/review",
+];
 
 /// Path prefixes whose **reads** are operational or compliance material
 /// (the audit trail and its verification, the event stream, the retention
@@ -106,7 +112,12 @@ pub const DESTRUCTIVE_POST_SUFFIXES: [&str; 5] =
 /// under the shipped policies; an ordinary reader, manager, marketing or
 /// support caller does not. (The shared engine has no "privileged read"
 /// action, and `Destructive` is already the admin/service tier.)
-pub const PRIVILEGED_READ_PREFIXES: [&str; 3] = ["/api/audits", "/api/events", "/api/retention"];
+pub const PRIVILEGED_READ_PREFIXES: [&str; 4] = [
+    "/api/audits",
+    "/api/events",
+    "/api/retention",
+    "/api/break-glass",
+];
 
 /// Whether `path` is under a [`PRIVILEGED_READ_PREFIXES`] entry, matched on
 /// whole path segments so `/api/auditsfoo` does not qualify.
@@ -367,6 +378,9 @@ pub fn derive_action(method: &Method, path: &str) -> Action {
     // let an `access=write` (non-admin) caller reach a destructive op.
     let path = path.trim_end_matches('/');
     match *method {
+        // Taking a break-glass grant is open to any authenticated caller
+        // (CRM-T44); the grant, not the route, carries the privilege.
+        Method::POST if path == "/api/break-glass" => Action::Read,
         Method::GET | Method::HEAD | Method::OPTIONS if is_privileged_read(path) => {
             Action::Destructive
         }
@@ -717,18 +731,26 @@ pub fn authorize_record(
     let claims = caller
         .claims()
         .ok_or((StatusCode::UNAUTHORIZED, "missing bearer token".to_string()))?;
-    let decision = policy().current().evaluate_with_context(
-        claims,
-        action,
-        ENTITY,
-        resource,
-        &request_env_attrs(),
-    );
+    let mut env = request_env_attrs();
+    if crate::break_glass::registry().active(&claims.sub, chrono::Utc::now()) {
+        env.insert("break_glass".to_string(), vec!["true".to_string()]);
+    }
+    let decision = policy()
+        .current()
+        .evaluate_with_context(claims, action, ENTITY, resource, &env);
     if decision.allowed {
         Ok(decision.obligations)
     } else {
         Err((StatusCode::FORBIDDEN, decision.reason))
     }
+}
+
+/// Whether the caller currently holds a live break-glass grant (CRM-T44).
+#[must_use]
+pub fn break_glass_active(caller: &MaybeAuthUser) -> bool {
+    caller
+        .actor()
+        .is_some_and(|sub| crate::break_glass::registry().active(sub, chrono::Utc::now()))
 }
 
 /// Whether the caller's **collection-level** read carries the `mask`
@@ -1256,6 +1278,29 @@ mod tests {
     /// methods read; DELETE deletes; the crate's destructive named
     /// POSTs (merge / deduplicate / import) are destructive, not
     /// write; every other POST/PUT/PATCH writes.
+    #[test]
+    fn break_glass_routes_are_classified() {
+        assert_eq!(
+            derive_action(&Method::POST, "/api/break-glass"),
+            Action::Read
+        );
+        assert_eq!(
+            derive_action(&Method::POST, "/api/break-glass/"),
+            Action::Read
+        );
+        assert_eq!(
+            derive_action(&Method::GET, "/api/break-glass"),
+            Action::Destructive
+        );
+        assert_eq!(
+            derive_action(
+                &Method::POST,
+                "/api/break-glass/0c4f1e2a-0000-4000-8000-000000000001/review"
+            ),
+            Action::Destructive
+        );
+    }
+
     #[test]
     fn privileged_reads_derive_the_admin_tier() {
         for path in [

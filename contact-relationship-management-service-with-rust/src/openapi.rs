@@ -109,6 +109,8 @@ pub fn spec() -> Value {
             "/api/contacts/{pid}/erase": { "post": { "tags": ["privacy"], "summary": "Erase (anonymise): refused 422 while an open deal, open ticket, or active nurture enrolment exists; destructive-classified", "responses": transition } },
             "/api/retention": { "get": { "tags": ["privacy"], "summary": "Retention report: soft-deleted rows past the floored horizon, per table", "responses": ok("RetentionReport") } },
             "/api/retention/sweep": { "post": { "tags": ["privacy"], "summary": "Hard-delete soft-deleted rows past the horizon; destructive-classified, audited with counts", "responses": ok("Sweep result") } },
+            "/api/break-glass": { "post": { "tags": ["break-glass"], "summary": "Take a time-limited read elevation: written reason (20+ chars), 1-60 minutes (default 30); audited; any authenticated caller", "responses": ok("Grant") }, "get": { "tags": ["break-glass"], "summary": "Grants newest first with the unreviewed count; admin/service tier", "responses": ok("Grants") } },
+            "/api/break-glass/{pid}/review": { "post": { "tags": ["break-glass"], "summary": "Record the after-the-fact review; refused 403 for the grantee, 422 if already reviewed; admin/service tier", "responses": transition } },
             "/api/audits/recent": { "get": { "tags": ["audit"], "summary": "Recent audit entries", "responses": ok("Audit entries") } },
             "/api/audits": { "get": { "tags": ["audit"], "summary": "Owner-scoped trail (?owner=&since=)", "responses": ok("Audit entries") } },
             "/api/audits/{entity_pid}": { "get": { "tags": ["audit"], "summary": "One record's audit trail", "responses": ok("Audit entries") } },

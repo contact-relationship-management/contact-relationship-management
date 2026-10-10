@@ -46,6 +46,14 @@ Commands assume the container images from the repository's `Containerfile`s.
   credential) at the cadence your policy states, and keep the audit rows it
   writes.
 
+## 2a. Break-glass review
+
+Alert on audit rows with action `break_glass_granted`. A reviewer other than
+the grantee works the queue from `GET /api/break-glass` (the `unreviewed`
+count) and records the outcome with `POST /api/break-glass/{pid}/review`.
+Define your own review deadline (for example one working day) and report
+overdue reviews.
+
 ## 3. Audit chain anchoring
 
 The chain proves internal consistency. Deleting the newest rows leaves a valid

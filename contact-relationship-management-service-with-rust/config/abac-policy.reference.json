@@ -20,6 +20,10 @@
       "when": { "manager": ["true"] } },
 
     { "effect": "allow",
+      "actions": ["read"],
+      "when": { "env.break_glass": ["true"] } },
+
+    { "effect": "allow",
       "actions": ["write"],
       "when": { "rep": ["true"] } },
 

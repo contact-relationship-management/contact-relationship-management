@@ -263,7 +263,10 @@ async fn get_contact(
         contact.pid,
         "contact_read",
         caller.actor(),
-        Some(serde_json::json!({ "masked": masked })),
+        Some(serde_json::json!({
+            "masked": masked,
+            "break_glass": auth::break_glass_active(&caller),
+        })),
     )
     .await?;
     // The bundled rows follow the contact's own decision: a masked contact

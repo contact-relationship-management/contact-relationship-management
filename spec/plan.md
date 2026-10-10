@@ -62,8 +62,7 @@ Severity: **B** blocks any non-demo deployment; **H** blocks regulated buyers;
    admin-only operational reads, and read auditing landed 2026-10-10 with
    stated limits (insights unmasked; deal/account reads unaudited). Rate
    limits and idle sign-out (T43) landed too, without step-up re-auth.
-   Break-glass (T44) stays open: it needs design decisions from the
-   deploying organization.
+   Break-glass (T44) landed with stated defaults (API only).
 4. **Real-world exposure (T39, T41, T42)** — ESP integration and contracts,
    field-level encryption with a KMS, independent test and accreditation.
    Open: external parties and legal work, not code.

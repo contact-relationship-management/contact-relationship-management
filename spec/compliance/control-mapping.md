@@ -14,7 +14,7 @@ Evidence paths are relative to the repository root.
 | Data masking by role | NIST AC-3(7) | Partial (CRM-T32) | contacts, deals, forecast, sales dashboard, campaign cost/ROI, bundled contact rows; `/api/insights/*` and snapshots not yet |
 | Destructive actions restricted to admin/service | NIST AC-6(9) | Implemented | `DESTRUCTIVE_POST_SUFFIXES` + pins |
 | Session management, idle timeout, re-authentication | NIST AC-11, AC-12; HIPAA §164.312(a)(2)(iii) | Partial (CRM-T43) | HttpOnly cookie sessions, BFF, 15-minute client-side idle sign-out; step-up re-auth before destructive actions is a Gap |
-| Emergency access procedure | HIPAA §164.312(a)(2)(ii) | Gap | T44 |
+| Emergency access procedure | HIPAA §164.312(a)(2)(ii) | Implemented (CRM-T44), API only | reasoned, time-limited, audited, reviewed by another person; alerting on grants and a UI are the deployer's to add |
 | Rate limiting, lockout | NIST AC-7, SC-5 | Implemented (CRM-T43), per process | `src/rate_limit.rs`; enforce a global limit at the ingress as well |
 | Identity provider, MFA | NIST IA-2(1) | Deployer | Keycloak/OIDC feature or the family auth service |
 
@@ -78,5 +78,5 @@ Evidence paths are relative to the repository root.
 Several rows read **Deployer** or **Gap**. That is the honest state: the code
 side of production hardening is largely in place after CRM-T30–T40, but the
 access model is not complete (masking of insights, read auditing of deals and
-accounts, rate limiting, break-glass), real sending is absent (T39),
+accounts, step-up re-authentication), real sending is absent (T39),
 and no external assurance exists (T42).

@@ -136,3 +136,13 @@ audit reads, read auditing, break-glass), is in [plan.md](plan.md).
 manager, marketing, or support caller is refused. A policy must grant
 `destructive` to whoever may review audits. `CRM_PROTECT_OPERATIONAL=1`
 also requires authentication on `/metrics.prom` and the OpenAPI paths.
+
+## Break-glass (CRM-T44)
+
+`POST /api/break-glass` (reason of 20+ characters, 1 to 60 minutes) gives the
+caller `env.break_glass=true` for the grant's life. A policy matches it with
+`"when": {"env.break_glass": ["true"]}`; the reference policy lifts the mask
+for reads and nothing else. Grants are audited, listed at
+`GET /api/break-glass`, and reviewed by someone other than the grantee at
+`POST /api/break-glass/{pid}/review`. Other replicas honor a grant within 10
+seconds.
