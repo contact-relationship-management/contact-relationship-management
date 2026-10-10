@@ -4,6 +4,7 @@
 
 use contact_relationship_management_service::app::App;
 use loco_rs::testing::prelude::*;
+use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -186,6 +187,47 @@ async fn insight_views_round_trip() {
             .add_header("if-none-match", etag)
             .await;
         assert_eq!(replay.status_code(), 304);
+    })
+    .await;
+}
+
+/// The insight cache serves a repeat read from cache, and a write through
+/// the API makes the next read fresh at once (generation bump).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn insight_cache_hits_then_write_invalidates() {
+    request::<App, _, _>(|request, ctx| async move {
+        let (pipeline_pid, _stages) = seed_pipeline!(&request).await;
+        for name in ["Cached one", "Cached two"] {
+            request
+                .post("/api/deals")
+                .json(&json!({ "name": name, "pipeline_pid": pipeline_pid,
+                                "amount_minor": 1_i64, "currency": "GBP" }))
+                .await
+                .assert_status_ok();
+        }
+        let count = |v: &Value| v["open_deals"].as_u64().unwrap_or(99);
+        let first: Value = request.get("/api/insights/stale-deals?days=0").await.json();
+        assert_eq!(count(&first), 2, "{first}");
+
+        // Behind the API's back (no generation bump) the cached body stays.
+        ctx.db
+            .execute_unprepared("UPDATE deals SET deleted_at = now()")
+            .await
+            .unwrap();
+        let second: Value = request.get("/api/insights/stale-deals?days=0").await.json();
+        assert_eq!(count(&second), 2, "second read must come from cache");
+
+        // A write through the API bumps the generation: fresh again.
+        request
+            .post("/api/deals")
+            .json(&json!({ "name": "Fresh", "pipeline_pid": pipeline_pid,
+                            "amount_minor": 1_i64, "currency": "GBP" }))
+            .await
+            .assert_status_ok();
+        let third: Value = request.get("/api/insights/stale-deals?days=0").await.json();
+        assert_eq!(count(&third), 1, "write must invalidate: {third}");
     })
     .await;
 }

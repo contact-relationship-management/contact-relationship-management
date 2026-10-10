@@ -43,6 +43,7 @@ pub mod metrics;
 pub mod models;
 pub mod openapi;
 pub mod rate_limit;
+pub mod redis_store;
 pub mod rules;
 pub mod streaming;
 pub mod tasks;

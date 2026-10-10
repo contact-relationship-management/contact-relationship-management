@@ -97,3 +97,8 @@ auth:
     secret: uDpkqVzF9zmBz9d3Z7l4
     # Token expiration time in seconds
     expiration: 604800 # 7 days
+
+# Hermetic in-process cache for tests (production uses Redis; see CRM_REDIS_URL).
+cache:
+  kind: InMem
+  max_capacity: 33554432

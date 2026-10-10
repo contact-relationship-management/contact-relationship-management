@@ -44,6 +44,12 @@ impl Window {
         }
     }
 
+    /// The events allowed per window.
+    #[must_use]
+    pub fn limit(&self) -> u32 {
+        self.limit
+    }
+
     /// Whether this counter is switched off.
     #[must_use]
     pub fn disabled(&self) -> bool {
@@ -128,6 +134,12 @@ impl Guard {
                 Duration::from_secs(failure_window_secs.max(1)),
             ),
         }
+    }
+
+    /// Seconds in the failed-authentication window.
+    #[must_use]
+    pub fn failure_window_secs(&self) -> u64 {
+        self.failures.span.as_secs()
     }
 
     /// Defaults: on in production (600 requests a minute, lockout after 10

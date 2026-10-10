@@ -22,7 +22,7 @@ include = ["src/**/*", "README.md"]
 # and this family issues PASETO v4.public rather than JWT — see
 # agents/share/jwt.md. Dropping it removes the vulnerable crate from the
 # dependency graph rather than suppressing the advisory.
-loco-rs = { version = "1.2.0", default-features = false, features = ["cli", "with-db", "cache_inmem", "worker"] }
+loco-rs = { version = "1.2.0", default-features = false, features = ["cli", "with-db", "cache_inmem", "cache_redis", "worker"] }
 
 [dependencies]
 loco-rs = { workspace = true }
@@ -63,6 +63,7 @@ entity-ref = "0.2.0"
 # Offline PASETO v4.public verification + the shared ABAC engine.
 authentication-verifier = { git = "https://github.com/SixArm/main-x-service.git", rev = "eeb10523a89c3aa1e4ac922d615fc34a456bdcd9", default-features = false }
 aes-gcm = "0.10"
+redis = { version = "1.7.1", default-features = false, features = ["tokio-comp", "connection-manager", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
 
 [features]
 # PASETO bearer verification (the family default): `Verifier`, the boot key

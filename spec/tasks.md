@@ -563,3 +563,25 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       against the GDS standards, and sign release builds and pin image digests
       (Software Security Code of Practice). *Open.*
       **Partly done (2026-10-10):** the four base images in both Containerfiles are now pinned by digest (the UI image builds with the pins; the service image was not rebuilt). Digests do not update themselves: refresh them on a schedule (for example Renovate or Dependabot) or they will pin known-vulnerable layers. **Still open:** the GDS API review and release-build signing.
+
+- [x] CRM-T50 **Redis cache.** Loco's cache is now Redis (`cache_redis`;
+      `config/production.yaml` requires `CRM_REDIS_URL`, use `rediss://` for TLS;
+      development defaults to a local Redis; `config/test.yaml` stays in-process
+      so the suites need no Redis).
+      **Resolution:** (1) `GET /api/insights/*` responses are cached for 30 s,
+      inside auth and the read audit, so every request is still authenticated
+      and audited. The key is a hash of the caller's bearer token, their
+      break-glass state, the path and query, and a generation that every
+      successful API write bumps, so masking never crosses callers and a write
+      is visible at once; ETag and other headers are kept; requests with
+      `If-None-Match` bypass the cache. (2) The rate limit and failed-auth
+      lockout count in Redis (`src/redis_store.rs`) when `CRM_REDIS_URL` is
+      set, so they hold across replicas. Tests: `insight_cache_hits_then_write_invalidates`
+      (also run once against a real Redis), `redis_store` counter test
+      (`compose.test.yaml` now starts Redis). **Limits:** a policy reload or
+      revoked token shows up only after the 30 s TTL (a revoked token is still
+      refused, since auth runs first); a Redis outage makes cached insights
+      recompute and counters fall back to per replica; break-glass grants still
+      propagate through the database (10 s), not Redis; Redis holds insight
+      bodies, which include personal data, so protect it as you do the
+      database (TLS, auth, no public exposure, eviction policy).
