@@ -114,6 +114,7 @@ const STRINGS = {
     "contact.subjectAccess": "تنزيل بياناتي",
     "contact.erase": "محو (إخفاء الهوية)",
     "nav.breakGlass": "وصول طارئ",
+    "footer.accessibility": "إمكانية الوصول",
     "breakGlass.title": "وصول طارئ للقراءة",
     "breakGlass.intro":
       "يرفع هذا الإخفاء عن البيانات للقراءة فقط لمدة محدودة. يُسجَّل السبب وتتم مراجعته لاحقًا من شخص آخر.",
@@ -350,6 +351,7 @@ const STRINGS = {
     "contact.subjectAccess": "Lawrlwytho fy nata",
     "contact.erase": "Dileu (dienw)",
     "nav.breakGlass": "Mynediad brys",
+    "footer.accessibility": "Hygyrchedd",
     "breakGlass.title": "Mynediad darllen brys",
     "breakGlass.intro":
       "Mae hyn yn codi'r masgio ar gyfer darllen yn unig am gyfnod cyfyngedig. Cofnodir y rheswm a bydd rhywun arall yn ei adolygu wedyn.",
@@ -590,6 +592,7 @@ const STRINGS = {
     "contact.subjectAccess": "Meine Daten herunterladen",
     "contact.erase": "Löschen (anonymisieren)",
     "nav.breakGlass": "Notfallzugriff",
+    "footer.accessibility": "Barrierefreiheit",
     "breakGlass.title": "Notfall-Lesezugriff",
     "breakGlass.intro":
       "Hebt die Maskierung für lesende Zugriffe zeitlich begrenzt auf. Der Grund wird protokolliert und später von einer anderen Person geprüft.",
@@ -830,6 +833,7 @@ const STRINGS = {
     "contact.subjectAccess": "Download my data",
     "contact.erase": "Erase (anonymise)",
     "nav.breakGlass": "Emergency access",
+    "footer.accessibility": "Accessibility",
     "breakGlass.title": "Emergency read access",
     "breakGlass.intro":
       "Lifts masking for reads only, for a limited time. Your reason is recorded and reviewed later by someone else.",
@@ -1069,6 +1073,7 @@ const STRINGS = {
     "contact.subjectAccess": "Descargar mis datos",
     "contact.erase": "Borrar (anonimizar)",
     "nav.breakGlass": "Acceso de emergencia",
+    "footer.accessibility": "Accesibilidad",
     "breakGlass.title": "Acceso de lectura de emergencia",
     "breakGlass.intro":
       "Levanta el enmascaramiento solo para lecturas y por tiempo limitado. El motivo queda registrado y lo revisa después otra persona.",
@@ -1309,6 +1314,7 @@ const STRINGS = {
     "contact.subjectAccess": "Télécharger mes données",
     "contact.erase": "Effacer (anonymiser)",
     "nav.breakGlass": "Accès d'urgence",
+    "footer.accessibility": "Accessibilité",
     "breakGlass.title": "Accès en lecture d'urgence",
     "breakGlass.intro":
       "Lève le masquage pour la lecture seule, pour une durée limitée. Le motif est enregistré puis examiné par une autre personne.",
@@ -1549,6 +1555,7 @@ const STRINGS = {
     "contact.subjectAccess": "मेरा डेटा डाउनलोड करें",
     "contact.erase": "मिटाएँ (गुमनाम करें)",
     "nav.breakGlass": "आपातकालीन पहुँच",
+    "footer.accessibility": "सुगम्यता",
     "breakGlass.title": "आपातकालीन पठन पहुँच",
     "breakGlass.intro":
       "यह सीमित समय के लिए केवल पढ़ने हेतु मास्किंग हटाता है। कारण दर्ज होता है और बाद में कोई अन्य व्यक्ति उसकी समीक्षा करता है।",
@@ -1789,6 +1796,7 @@ const STRINGS = {
     "contact.subjectAccess": "下载我的数据",
     "contact.erase": "删除(匿名化)",
     "nav.breakGlass": "紧急访问",
+    "footer.accessibility": "无障碍",
     "breakGlass.title": "紧急只读访问",
     "breakGlass.intro":
       "在有限时间内解除只读数据的屏蔽。原因将被记录,并由他人事后审核。",

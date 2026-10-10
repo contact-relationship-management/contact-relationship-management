@@ -197,9 +197,16 @@
   <main>
     {@render children()}
   </main>
+  <footer class="site-footer">
+    <a href="/accessibility">{t("footer.accessibility")}</a>
+  </footer>
 </div>
 
 <style>
+  .site-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--mxi-color-border, currentColor);
+  }
   .layout {
     display: flex;
     flex-direction: column;

@@ -20,7 +20,7 @@ import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 
 /** Routes reachable with no session (prefix match). */
-const PUBLIC_PATHS = ["/signin", "/verify", "/tour"];
+const PUBLIC_PATHS = ["/signin", "/verify", "/tour", "/accessibility"];
 
 /**
  * The home page is public too (exact match, since "/" is a prefix of

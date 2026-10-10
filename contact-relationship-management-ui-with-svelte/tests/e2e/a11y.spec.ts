@@ -34,7 +34,7 @@ function summarize(
 }
 
 test.describe("public pages", () => {
-  for (const path of ["/", "/tour", "/signin"]) {
+  for (const path of ["/", "/tour", "/signin", "/accessibility"]) {
     test(`${path} has no WCAG A/AA violations`, async ({ page }) => {
       await page.goto(path);
       await page.waitForLoadState("networkidle");

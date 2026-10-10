@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — accessibility statement (CRM-T45, 2026-10-10)
+
+Public `/accessibility` page linked from the footer; it does not claim WCAG
+compliance. Break-glass request and review pages, idle sign-out, security
+headers and CSP landed earlier in the same release.
+
 ### Changed — PickerBar now uses Lily's default themes and text sizes, not app-specific lists
 
 `spec/lily-design-system-svelte-with-picker-bar/index.md` calls for

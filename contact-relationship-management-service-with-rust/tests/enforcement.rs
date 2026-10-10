@@ -271,6 +271,41 @@ async fn enforcement_gates_the_real_stack() {
         assert_eq!(deals_as_stranger.status_code(), 200);
         assert!(find_amount(&deals_as_stranger.json::<Value>()).is_null());
 
+        // CRM-T32: an account's detail bundles its deals and contacts; they
+        // follow the same masking as their own endpoints.
+        let account = request
+            .post("/api/accounts")
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Bundled Account" }))
+            .await;
+        assert_eq!(account.status_code(), 200);
+        let account_pid = account.json::<Value>()["pid"].as_str().unwrap().to_string();
+        let bundled = request
+            .post("/api/deals")
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "name": "Bundled Deal", "pipeline_pid": pipeline_pid,
+                           "amount_minor": 700_000, "currency": "GBP",
+                           "account_pid": account_pid }))
+            .await;
+        assert_eq!(bundled.status_code(), 200);
+        let masked_account: Value = request
+            .get(&format!("/api/accounts/{account_pid}"))
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert_eq!(masked_account["deals"].as_array().unwrap().len(), 1);
+        assert!(
+            masked_account["deals"][0]["amount_minor"].is_null(),
+            "{masked_account}"
+        );
+        let full_account: Value = request
+            .get(&format!("/api/accounts/{account_pid}"))
+            .add_header("authorization", bearer(&service))
+            .await
+            .json();
+        assert_eq!(full_account["deals"][0]["amount_minor"], 700_000);
+
         // CRM-T38: the audit trail, event stream, and retention report are
         // admin/service-tier reads. An ordinary reader or writer is refused;
         // a service credential is not.

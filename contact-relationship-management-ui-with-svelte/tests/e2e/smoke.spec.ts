@@ -961,6 +961,14 @@ test("responses carry the security headers and a CSP (CRM-T33)", async ({ page }
   expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
 });
 
+test("the accessibility statement is public and linked from the footer (CRM-T45)", async ({ page }) => {
+  await page.goto("/tour");
+  await page.getByRole("link", { name: "Accessibility" }).click();
+  await expect(page).toHaveURL(/\/accessibility$/);
+  await expect(page.getByRole("heading", { name: "Accessibility statement" })).toBeVisible();
+  await expect(page.getByText("not yet shown to comply")).toBeVisible();
+});
+
 test("the tour renders for a signed-out visitor", async ({ page }) => {
   await page.goto("/tour");
   await expect(page).toHaveURL(/\/tour$/);

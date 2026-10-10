@@ -401,19 +401,32 @@ async fn create_account(
 
 /// `GET /api/accounts`.
 #[debug_handler]
-async fn list_accounts(State(ctx): State<AppContext>) -> Result<Response> {
+async fn list_accounts(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
     let rows = accounts::Entity::find()
         .filter(accounts::Column::DeletedAt.is_null())
         .order_by_asc(accounts::Column::Id)
         .limit(500)
         .all(&ctx.db)
         .await?;
+    Audit::record_read(
+        &ctx.db,
+        "account",
+        Uuid::nil(),
+        "account_list_read",
+        caller.actor(),
+        Some(serde_json::json!({ "returned": rows.len() })),
+    )
+    .await?;
     format::json(rows)
 }
 
 /// `GET /api/accounts/{pid}` — account + its contacts and deals.
 #[debug_handler]
-async fn get_account(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Result<Response> {
+async fn get_account(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Path(pid): Path<String>,
+) -> Result<Response> {
     let account = records::find_account(&ctx.db, records::parse_pid(&pid)?).await?;
     let contact_rows = contacts::Entity::find()
         .filter(contacts::Column::AccountPid.eq(account.pid))
@@ -425,8 +438,38 @@ async fn get_account(State(ctx): State<AppContext>, Path(pid): Path<String>) -> 
         .filter(deals::Column::DeletedAt.is_null())
         .all(&ctx.db)
         .await?;
+    // The bundled contacts and deals follow the same record-level decisions
+    // as their own endpoints (CRM-T32): a denied row is omitted, a masked
+    // one loses its channel detail or amount.
+    let contacts_json = readable_contacts(&contact_rows, &caller);
+    let deals_json: Vec<serde_json::Value> = deal_rows
+        .iter()
+        .filter_map(|deal| {
+            let obligations = auth::authorize_record(
+                &caller,
+                authentication_verifier::Action::Read,
+                &auth::deal_resource_attrs(deal),
+            )
+            .ok()?;
+            let value = serde_json::json!(deal);
+            Some(if obligations.iter().any(|o| o == "mask") {
+                auth::mask_json(value, &["amount_minor"])
+            } else {
+                value
+            })
+        })
+        .collect();
+    Audit::record_read(
+        &ctx.db,
+        "account",
+        account.pid,
+        "account_read",
+        caller.actor(),
+        None,
+    )
+    .await?;
     format::json(serde_json::json!({
-        "account": account, "contacts": contact_rows, "deals": deal_rows,
+        "account": account, "contacts": contacts_json, "deals": deals_json,
     }))
 }
 

@@ -18,3 +18,4 @@ configuration in this repository enforces it and a test or check pins it;
 **Deployer** when the organization running the software must supply it;
 **Gap** when neither is true today (each gap names its task in
 [../tasks.md](../tasks.md)).
+- [dtac-supporting.md](dtac-supporting.md) — draft statements for the NHS DTAC form.

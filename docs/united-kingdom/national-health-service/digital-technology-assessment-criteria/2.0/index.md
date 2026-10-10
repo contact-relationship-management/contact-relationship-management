@@ -77,7 +77,7 @@ skip-logic in the form):
 | C1.1.1 | Met (answer: No) | Nothing in the product has a medical purpose, so it is not Software as a Medical Device under the UK Medical Devices Regulations 2002. No PAQ is needed. A deployer that adds a medical purpose (for example triage, or a patient-facing feature) would change this answer. |
 | C1.1.2 | N/A | Follows from C1.1.1. |
 | C1.2 | Met (answer: No), but challengeable | The product is not designed to influence, support, or manage real-time or near-real-time direct care. Customer-support tickets and SLA timers are about service requests, not patients. |
-| C1.2.1 | **Not met** | The justification must be written and submitted. Draft: "A CRM for managing relationships with customers, partners, and stakeholders; it holds no clinical information and no workflow depends on it for direct care." State plainly that an organization recording **patients as contacts** or using tickets for care requests would put it in scope and must do its own DCB0129/DCB0160 work. Not written yet. |
+| C1.2.1 | Partial | A draft justification is written in [dtac-supporting.md](../../../../../spec/compliance/dtac-supporting.md), tied to intended use, with the patients-as-contacts caveat. The manufacturer must adopt it and be ready for a commissioner to challenge it. |
 | C1.2.2–C1.2.5 | Not met, and required only if C1.2 is answered Yes | No clinical risk management system, safety case, hazard log, or named Clinical Safety Officer exists. If a buyer rules C1 applicable, this is a substantial piece of new work that needs a clinician, not engineering. |
 
 ## C2. Data protection (assessed)
@@ -101,9 +101,9 @@ skip-logic in the form):
 | C3.2 | **Not met** | The Cyber Security Charter for Suppliers to the NHS has not been signed. Signing it skips C3.3 to C3.6 on the form, so it is the cheapest route to a pass here. |
 | C3.3 | **Not met** | No external penetration test (CRM-T42, open). The CI gates (`cargo audit`, `cargo deny`, `pnpm audit`, SBOM) and the hardening in [plan.md](../../../../../spec/plan.md) are not a substitute: the form requires a third-party OWASP Top 10 test from the last 12 months with nothing at CVSS 7.0 or above. |
 | C3.4 | Partial | Mapped to the four principles of the Software Security Code of Practice below. Evidence exists for most, but no one has reviewed it against the code. |
-| C3.5 | Partial / Deployer | The product delegates authentication to an identity provider (PASETO tokens or Keycloak/OIDC); MFA is therefore the identity provider's to enforce, which fits the form's "preferably through identity federation". The service refuses to start in production without authentication enabled. The plan itself is not written down; it should be stated in the runbook. |
+| C3.5 | Partial / Deployer | The product delegates authentication to an identity provider (PASETO tokens or Keycloak/OIDC); MFA is therefore the identity provider's to enforce, which fits the form's "preferably through identity federation". The service refuses to start in production without authentication enabled. The plan is drafted in [dtac-supporting.md](../../../../../spec/compliance/dtac-supporting.md); the product does not itself check that tokens assert MFA. |
 | C3.5.1 | N/A / Deployer | Not applicable when the supplier has no access to the product. A hosting vendor needs MFA on all privileged and remote access. |
-| C3.6 | Partial | Logging requirements are defined ([audit.md](../../../../../spec/audit.md)) and an audit trail exists, but "audit trails of all access" is not fully true: contacts, leads, tickets, and activities are read-audited; deals, accounts, and insights views are not (CRM-T40 limits). |
+| C3.6 | Partial | Logging requirements are defined ([audit.md](../../../../../spec/audit.md)) and an audit trail exists, but "audit trails of all access" is not fully true: contacts, accounts, leads, tickets, and activities are read-audited; deals and insights views are not. The statement of exclusions is drafted in [dtac-supporting.md](../../../../../spec/compliance/dtac-supporting.md). |
 
 ### C3.4 mapped to the Software Security Code of Practice
 
@@ -134,8 +134,8 @@ skip-logic in the form):
 | D1.3 | Not met | The Accessible Information Standard has not been reviewed or considered in design. It concerns communicating with disabled patients, so its relevance to a non-patient-facing CRM should be stated. |
 | D1.4 | Met (answer: Yes) | A web application. |
 | D1.4.1 | Partial | Answer: "No, but a plan is in place" is the honest choice. Automated axe-core checks with WCAG 2.0 to 2.2 A and AA tags pass on 11 pages (`tests/e2e/a11y.spec.ts`); automated tools find roughly a third of issues; no manual audit with assistive technology, no screen-reader test, no keyboard-only audit of the drag-and-drop boards. |
-| D1.4.2 | Not met | No dated plan. |
-| D1.4.3 | **Not met** | No accessibility statement exists, published or drafted. |
+| D1.4.2 | Not met | No dated plan; the manual audit (CRM-T48) is the first step. |
+| D1.4.3 | Partial | An accessibility statement is published in the UI at `/accessibility` (CRM-T45). It honestly says compliance is not yet shown. A deployer must publish one at their own URL. |
 | D1.5 | Not met | The service has never run in production, so there are no availability figures. Do not invent one. |
 
 ## Supporting documents
@@ -170,10 +170,10 @@ skip-logic in the form):
 6. **If the Charter is not signed:** commission the independent OWASP Top 10
    penetration test (C3.3, CRM-T42) and write the MFA plan (C3.5).
 7. **Accessibility (D1):** run a manual WCAG 2.2 AA audit with a keyboard and a
-   screen reader, fix what it finds, then publish an accessibility statement
-   (D1.4.3). Consider an alternative to drag-and-drop for the boards.
-8. **Close the logging gap** (C3.6): audit reads of deals, accounts, and insights
-   (CRM-T40 limits), or state the exclusion in the answer.
+   screen reader (CRM-T48), fix what it finds, and update the statement
+   (published). Consider an alternative to drag-and-drop for the boards.
+8. **Close the logging gap** (C3.6): audit reads of deals and insights, or state
+   the exclusion in the answer (drafted).
 9. **Only if a buyer will use it for patient-identifiable data:** the whole of C1.2
    (a Clinical Safety Officer is a registered clinician, so this is not an
    engineering task) and the NHS number, PDS, and NHS login work in C4.2.
