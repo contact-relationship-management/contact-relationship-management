@@ -17,8 +17,7 @@ Source text: `en-gb-oxendict`, 2026-10-11.
 | hi-001 | 11 | Byte copy of hi-in | **No** |
 | cy-gb | 11 | Translated by Claude (Welsh), Welsh slugs | **No** |
 | cy-001 | 11 | Byte copy of cy-gb | **No** |
-
-Not done: `ar-001` (listed in the locale priority order; not requested).
+| ar-001 | 11 | Translated by Claude (Modern Standard Arabic, right-to-left), native-script slugs; no regional variant | **No** |
 
 ## Rules applied
 
@@ -34,10 +33,11 @@ Not done: `ar-001` (listed in the locale priority order; not requested).
 
 ## Known limits
 
-- Translations into Chinese, Hindi and Welsh are machine-produced and
+- Translations into Arabic, Chinese, Hindi and Welsh are machine-produced and
   **unreviewed**. Legal, risk and compliance wording in particular needs a
   qualified native-speaking reviewer before anyone relies on it.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
+- The source briefs predate three later changes and still say the old thing: response schemas now cover the reads and dashboards (T53), errors are now RFC 9457 problem documents (T54), and release signing and digest refresh are partly built (T49). Test totals and "48 of 53" are also out of date. Refresh the English source, then every locale.
 - The English facts in the source (counts such as "48 of 53" tasks, test totals)
   are a snapshot and are copied as is; refresh all locales when they change.
