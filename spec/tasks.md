@@ -686,7 +686,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       request bodies and the rows of all 11 lists against the schemas with a
       JSON Schema validator. That test caught a wrong schema on its first run
       (`/api/pipelines` returns `{pipeline, stages}`), and my first draft had
-      marked four defaulted fields as required (`kind`, `currency`, `tier`,
+      marked five defaulted fields as required (`kind`, `currency`, `tier`,
       `preferred_channel`, `channel`), which the existing tests exposed.
       Also fixed a bug from the idempotency work: the document-building
       helpers indexed missing keys on `serde_json` values, which inserts `null`
