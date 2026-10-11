@@ -19,23 +19,54 @@ cargo test -- --ignored                      # database-backed tests
 See the service [README](contact-relationship-management-service-with-rust/README.md)
 for the quick start, configuration, and endpoints.
 
-## Local mail server (for the email send work)
+## Sending email
 
-The service does not send real email yet (CRM-T39), but the send path needs a
-server to talk to. `scripts/email-dev.sh` runs [Stalwart](https://stalw.art) in
-Podman and configures a domain `crm.test` with one account:
+By default the service sends nothing: campaign sends are simulated. To send
+real mail, set `CRM_MAIL_MODE=smtp` and the `CRM_SMTP_*` variables. The
+service refuses to start with a bad combination.
+
+| Variable | Meaning |
+|---|---|
+| `CRM_MAIL_MODE` | `simulated` (default) or `smtp` |
+| `CRM_SMTP_HOST`, `CRM_SMTP_PORT` | The server; port defaults to 587 (465 with `implicit`) |
+| `CRM_SMTP_TLS` | `starttls` (default), `implicit` or `none` |
+| `CRM_SMTP_USERNAME`, `CRM_SMTP_PASSWORD` | Set together, or neither |
+| `CRM_MAIL_FROM` | The `From` mailbox, for example `CRM <crm@example.org>` |
+| `CRM_MAIL_BATCH` | Contacts sent per `run` call (default 200) |
+| `CRM_SMTP_ACCEPT_INVALID_CERTS` | Development only; refused in production |
+| `CRM_MAIL_ALLOW_PRODUCTION` | Required to use `smtp` in production, because the unsubscribe link, suppression list and bounce handling are not built (CRM-T39) |
+| `CRM_MAIL_DEV_DOMAIN` | Development only: in `stub` upstream mode, mail goes to `<person id>@<domain>` |
+
+The CRM holds no email addresses. In `CRM_UPSTREAM_MODE=http` it asks the
+person service for an `email` field at send time and stores nothing.
+
+### Local mail server
+
+`scripts/email-dev.sh` runs [Stalwart](https://stalw.art) in Podman and
+configures a domain `crm.test` (with a catch-all) and one account:
 
 ```bash
 scripts/email-dev.sh up      # start and configure (safe to repeat)
 scripts/email-dev.sh check   # send a message and read it back
+scripts/email-dev.sh live    # run the service's real-SMTP test against it
 scripts/email-dev.sh down    # stop; mail is kept
 scripts/email-dev.sh reset   # stop and delete all mail
 ```
 
-Submission is `127.0.0.1:2587` (STARTTLS), login `crm@crm.test` /
-`crm-dev-password`; the web admin and JMAP are at `http://127.0.0.1:8081`
-(`admin` / `dev-admin-change-me`). **Development only**: fixed passwords, a
-self-signed certificate, loopback ports. Details are in
+To send a campaign through it from the service:
+
+```bash
+CRM_MAIL_MODE=smtp CRM_SMTP_HOST=127.0.0.1 CRM_SMTP_PORT=2587 \
+CRM_SMTP_USERNAME=crm@crm.test CRM_SMTP_PASSWORD=crm-dev-password \
+CRM_MAIL_FROM='CRM <crm@crm.test>' CRM_SMTP_ACCEPT_INVALID_CERTS=1 \
+CRM_MAIL_DEV_DOMAIN=crm.test cargo run -- start
+```
+
+Mail lands in the `crm@crm.test` mailbox; read it over JMAP at
+`http://127.0.0.1:8081` (`crm@crm.test` / `crm-dev-password`) or IMAPS on
+`2993`. The web admin is the same address (`admin` / `dev-admin-change-me`).
+**Development only**: fixed passwords, a self-signed certificate, loopback
+ports. Details are in
 `contact-relationship-management-service-with-rust/compose.email.yaml`.
 
 ## Svelte front end

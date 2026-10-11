@@ -52,9 +52,9 @@ report per-currency lines, never a silent sum; no FX in v1.
 
 Nurture advancement (idempotent per enrolment+step), the SLA breach
 sweep (one `sla_breached` per breach fact), and simulated campaign
-sends run inline in the request handler (no job queue, no external broker);
-the roadmap ESP adapter needs a sender trait and an asynchronous send that
-do not exist yet (CRM-T39).
+sends run inline in the request handler (no job queue, no external broker),
+in batches, through `mail::Sender` (simulated by default; SMTP with
+`CRM_MAIL_MODE=smtp`, CRM-T39). A background job is still future work.
 
 ## CRM-D9 — Transactional integrity
 

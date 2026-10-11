@@ -116,7 +116,10 @@ fn base_schemas() -> Value {
             "name": string(), "filter": { "type": "object" } })),
         "CampaignPayload": object(&["name"], &json!({
             "name": string(), "kind": string(), "currency": string(),
-            "cost_minor": { "type": "integer", "format": "int64" }, "segment_pid": uuid() })),
+            "cost_minor": { "type": "integer", "format": "int64" }, "segment_pid": uuid(),
+            "subject": { "type": "string", "description": "Defaults to the campaign name" },
+            "body": { "type": "string", "maxLength": 20000,
+                "description": "Plain text. Required before a campaign can send through a real sender" } })),
         "StatusPayload": object(&["to"], &json!({ "to": string() })),
         "SequenceStep": object(&["delay_hours", "template_ref"], &json!({
             "delay_hours": integer(), "template_ref": string() })),
@@ -189,7 +192,8 @@ fn base_schemas() -> Value {
             "pid": uuid(), "name": string(), "kind": string(), "status": string(),
             "cost_minor": { "type": "integer", "format": "int64", "nullable": true,
                 "description": "Null when masked for the caller" }, "currency": string(),
-            "segment_pid": nullable(uuid()), "recipients": integer(), "delivered": integer(),
+            "segment_pid": nullable(uuid()), "subject": nullable(string()),
+            "body": nullable(string()), "recipients": integer(), "delivered": integer(),
             "opened": integer(), "clicked": integer(), "unsubscribed": integer() })),
         "Segment": resource(&["pid", "name"], &json!({
             "pid": uuid(), "name": string(), "filter": { "type": "object" } })),
@@ -290,6 +294,16 @@ fn view_schemas() -> Value {
             "won_revenue_minor": { "type": "integer", "format": "int64", "nullable": true },
             "won_revenue_other_currencies": masked_money_by_currency(),
             "roi": { "allOf": [reference("Ratio")], "nullable": true } })),
+        "Deliveries": object(&["campaign_pid", "total", "remaining", "by_state"], &json!({
+            "campaign_pid": uuid(), "total": integer(),
+            "remaining": { "type": "integer",
+                "description": "Rows a further run could still send" },
+            "by_state": counts() })),
+        "EmailDelivery": resource(&["pid", "campaign_pid", "contact_pid", "state", "attempts"], &json!({
+            "pid": uuid(), "campaign_pid": uuid(), "contact_pid": uuid(),
+            "state": { "type": "string", "enum": ["pending", "sending", "sent", "failed", "no_address", "suppressed"] },
+            "attempts": integer(), "message_id": nullable(string()), "error": nullable(string()),
+            "sent_at": nullable(date_time()) })),
         "NurtureSweep": object(&["sent", "completed"], &json!({
             "sent": integer(), "completed": integer() })),
         "SlaSweep": object(&["new_breaches"], &json!({ "new_breaches": integer() })),
@@ -299,12 +313,14 @@ fn view_schemas() -> Value {
 
         // ---- privacy
         "SubjectAccessExport": object(&["as_of", "contact", "consent_history", "activities",
-            "leads", "deals_as_primary_contact", "tickets", "nurture_enrollments", "exclusions"], &json!({
+            "leads", "deals_as_primary_contact", "tickets", "nurture_enrollments", "email_deliveries",
+            "exclusions"], &json!({
             "as_of": date_time(), "contact": reference("Contact"),
             "consent_history": { "type": "array", "items": { "type": "object" } },
             "activities": list_of("Activity"), "leads": list_of("Lead"),
             "deals_as_primary_contact": list_of("Deal"), "tickets": list_of("Ticket"),
             "nurture_enrollments": { "type": "array", "items": { "type": "object" } },
+            "email_deliveries": list_of("EmailDelivery"),
             "exclusions": strings() })),
         "Erased": object(&["erased", "note"], &json!({ "erased": uuid(), "note": string() })),
         "RetentionReport": object(&["as_of", "horizon_days", "soft_deleted_past_horizon",
@@ -528,6 +544,7 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/dashboards/sla") => "SlaDashboard",
         ("get", "/api/dashboards/activity") => "ActivityDashboard",
         ("get", "/api/segments/{pid}/preview") => "Preview",
+        ("get", "/api/campaigns/{pid}/deliveries") => "Deliveries",
         ("get", "/api/campaigns/{pid}/funnel") => "CampaignFunnel",
         ("post", "/api/nurture/advance") => "NurtureSweep",
         ("post", "/api/sla/sweep") => "SlaSweep",

@@ -52,7 +52,7 @@ code + tests in one PR.
   evaluation with the structural consent AND-gate + preview
   (count + sample). (CRM-D6; CRM-R7)
 - [x] CRM-T10 Campaigns: lifecycle machine, simulated send
-  (inline in the request, no ESP trait yet; see CRM-T39), touch activities + engagement
+  (inline in the request through `mail::Sender`; see CRM-T39), touch activities + engagement
   counters, funnel + ROI derivation (zero-cost `null`). (CRM-D3,
   CRM-D4, CRM-D7, CRM-D8; CRM-R8)
 - [x] CRM-T11 Nurture: sequence/step/enrollment models + the
@@ -499,11 +499,39 @@ parties outside the repository.
      
       **Resolution:** `PRIVILEGED_READ_PREFIXES` (`/api/audits`, `/api/events`, `/api/retention`) derive the admin/service tier for `GET`, matched on whole path segments; 2 unit pins; enforcement test shows reader and writer get 403 and a service credential 200 on four endpoints. `CRM_PROTECT_OPERATIONAL=1` additionally puts `/metrics.prom` and the OpenAPI/Swagger paths behind authentication (off by default so an in-network scraper keeps working). **Note:** the tier reuses the engine's `destructive` action, because the shared engine has no privileged-read action; policies must grant `destructive` to whoever may read audits.
 
-- [ ] CRM-T39 **Real ESP adapter** (the send is simulated inline today, so a sender
-      trait and an asynchronous send come first), with
-      bounce/complaint webhooks, suppression list, and the processor
-      agreement and lawful-basis review (CRM-G2). (plan gap 10) *Open:
-      legal and vendor dependency.* The brief to hand a vendor and legal is `spec/compliance/email-provider-brief.md`, which also records that the send is inline and has no sender trait yet. A local test mail server is available (Stalwart in Podman: `scripts/email-dev.sh up`, `INSTALL.md`); it is development only and the service does not send through it yet.
+- [ ] CRM-T39 **Real ESP adapter** with
+      bounce/complaint webhooks, suppression list, unsubscribe link, and the
+      processor agreement and lawful-basis review (CRM-G2). (plan gap 10)
+      *Open: legal and vendor dependency.*
+      **Built (2026-10-11):** the send seam and an SMTP sender. `mail::Sender`
+      (simulated by default; real SMTP with `CRM_MAIL_MODE=smtp` and
+      `CRM_SMTP_*`; a recording variant for tests). `email_deliveries` holds one
+      row per (campaign, contact): an atomic claim means a re-run or a
+      concurrent run never mails a contact twice, consent is re-read from the
+      live contact immediately before each send, a transient failure is retried
+      (5 attempts) and a permanent one is not, and a campaign completes only
+      when nothing is left to retry. Sends are batched (`CRM_MAIL_BATCH`, 200) so
+      a long audience takes several `run` calls. Campaigns gain `subject` and
+      `body`. `GET /api/campaigns/{pid}/deliveries` reports progress; subject
+      access lists a contact's deliveries (state, time, message id; no address or
+      body). Addresses are not stored: they come from the person service
+      (`email` field, `CRM_UPSTREAM_MODE=http`), a primed value in tests, or
+      `<id>@$CRM_MAIL_DEV_DOMAIN` against the local Stalwart server
+      (`scripts/email-dev.sh`). Production refuses `smtp` mode unless
+      `CRM_MAIL_ALLOW_PRODUCTION=1`, and always refuses an unchecked certificate
+      or no TLS. Tests: recorder-based request tests (send once, retry without
+      double mail, withdrawn consent, no address, body required, disjoint claims;
+      one mutation was checked to fail), config unit tests, a live test against
+      Stalwart (`scripts/email-dev.sh live`), and a manual end-to-end run of the
+      real service sending two messages that arrived with our `Message-ID`s.
+      **Still open:** the unsubscribe link and `List-Unsubscribe` headers, the
+      suppression list, authenticated bounce/complaint/delivery webhooks (so
+      `delivered`, `opened`, `clicked` stay 0 on a real send), the nurture
+      sequences (still simulated), a background job instead of batched requests,
+      the address contract with the person service (the `email` field is
+      assumed and unverified), and the vendor, agreement and legal review.
+      The brief for a vendor and legal is `spec/compliance/email-provider-brief.md`;
+      the local server is `scripts/email-dev.sh` (`INSTALL.md`).
 - [x] CRM-T40 *(resolved 2026-10-10.)* **Audit personal-data reads.** Contact, lead, ticket and
       activity reads write an audit row (actor, record, masked or not);
       bulk list reads write one summarizing row. (plan gap 11)

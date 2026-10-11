@@ -86,6 +86,59 @@ pub fn prime(urn: &str, name: &str) {
         .insert(urn.to_string(), name.to_string());
 }
 
+/// Process-wide primed addresses (URN → mailbox), for tests and local
+/// development. Never filled from a lookup: an address is personal data and is
+/// asked for at send time, not kept.
+fn addresses() -> &'static Mutex<HashMap<String, String>> {
+    static ADDRESSES: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
+    ADDRESSES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Seed an address for tests and local development.
+pub fn prime_email(urn: &str, address: &str) {
+    addresses()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .insert(urn.to_string(), address.to_string());
+}
+
+/// The mailbox to send to for `person_ref` (CRM-T39), or `None`.
+///
+/// The CRM holds no addresses (identity data stays in the person service), so
+/// this asks for one each time: a primed address (tests, development), then in
+/// `http` mode the person service's `email` field, then, in `stub` mode only,
+/// `<id>@$CRM_MAIL_DEV_DOMAIN` when that is set (for a local mail server with a
+/// catch-all). Failures are swallowed like the display-name lookups, and the
+/// caller records the contact as having no address.
+pub async fn email_address(person_ref: &str) -> Option<String> {
+    if let Some(hit) = addresses()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get(person_ref)
+    {
+        return Some(hit.clone());
+    }
+    let entity_ref = <EntityRef as std::str::FromStr>::from_str(person_ref).ok()?;
+    if mode() == Mode::Http {
+        let base = std::env::var(base_url_var(&entity_ref)).ok()?;
+        let url = format!(
+            "{}/api/{}s/{}",
+            base.trim_end_matches('/'),
+            entity_ref.entity_type.as_str(),
+            entity_ref.id
+        );
+        let body = reqwest_get_json(&url).await?;
+        return body
+            .get("email")
+            .and_then(serde_json::Value::as_str)
+            .filter(|address| address.contains('@'))
+            .map(ToString::to_string);
+    }
+    let domain = std::env::var("CRM_MAIL_DEV_DOMAIN").ok()?;
+    let domain = domain.trim();
+    (!domain.is_empty()).then(|| format!("{}@{domain}", entity_ref.id))
+}
+
 /// The env var naming the base URL for an entity type's service.
 fn base_url_var(entity_ref: &EntityRef) -> String {
     format!(
@@ -134,6 +187,18 @@ mod tests {
     use std::str::FromStr;
 
     /// Stub mode misses; a primed cache hits regardless of mode.
+    #[tokio::test]
+    async fn a_primed_address_is_found_and_an_unknown_one_is_not() {
+        let urn = format!("person:{}", uuid::Uuid::new_v4());
+        assert_eq!(email_address(&urn).await, None);
+        prime_email(&urn, "ada@example.test");
+        assert_eq!(
+            email_address(&urn).await.as_deref(),
+            Some("ada@example.test")
+        );
+        assert_eq!(email_address("not a urn").await, None);
+    }
+
     #[tokio::test]
     async fn stub_mode_misses_and_cache_hits() {
         let urn = format!("person:{}", uuid::Uuid::new_v4());

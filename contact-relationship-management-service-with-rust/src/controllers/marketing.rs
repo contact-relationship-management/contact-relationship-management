@@ -14,12 +14,15 @@ use uuid::Uuid;
 
 use super::{ensure_valid, unprocessable};
 use crate::auth::MaybeAuthUser;
+use crate::clients;
+use crate::mail;
 use crate::metrics::Metrics;
 use crate::models::_entities::{
     accounts, activities, campaigns, consent_events, contacts, deals, nurture_enrollments,
     nurture_sequences, nurture_steps, segments,
 };
 use crate::models::audit_logs::Model as Audit;
+use crate::models::deliveries;
 use crate::models::records;
 use crate::rules::{analytics, lifecycle, segment as segment_rules, tokens};
 use crate::streaming;
@@ -52,7 +55,16 @@ struct CampaignPayload {
     currency: String,
     #[serde(default)]
     segment_pid: Option<Uuid>,
+    /// Message subject; the campaign name when absent.
+    #[serde(default)]
+    subject: Option<String>,
+    /// Plain-text message body. Required before a campaign can really send.
+    #[serde(default)]
+    body: Option<String>,
 }
+
+/// Longest campaign message body accepted.
+const MAX_BODY_LEN: usize = 20_000;
 
 /// `POST /api/campaigns/{pid}/status` body.
 #[derive(Debug, Deserialize)]
@@ -315,6 +327,19 @@ async fn create_campaign(
     if payload.cost_minor < 0 {
         problems.push("cost_minor must be non-negative".to_string());
     }
+    if let Some(subject) = payload.subject.as_deref() {
+        problems.cap_opt("subject", Some(subject));
+        if subject.contains(['\r', '\n']) {
+            problems.push("subject must be a single line".to_string());
+        }
+    }
+    if payload
+        .body
+        .as_deref()
+        .is_some_and(|body| body.len() > MAX_BODY_LEN)
+    {
+        problems.push(format!("body exceeds {MAX_BODY_LEN} characters"));
+    }
     ensure_valid(&problems.into_vec())?;
     if let Some(segment) = payload.segment_pid {
         records::find_segment(&ctx.db, segment).await?;
@@ -333,6 +358,8 @@ async fn create_campaign(
         opened: ActiveValue::set(0),
         clicked: ActiveValue::set(0),
         unsubscribed: ActiveValue::set(0),
+        subject: ActiveValue::set(payload.subject.clone()),
+        body: ActiveValue::set(payload.body.clone()),
         deleted_at: ActiveValue::set(None),
         ..Default::default()
     }
@@ -417,11 +444,133 @@ async fn campaign_status(
     format::json(row)
 }
 
-/// `POST /api/campaigns/{pid}/run` — the **simulated send** (demo
-/// mode; a real ESP adapter is roadmap, CRM-D8): enumerates the
-/// segment **re-checking consent at send time**, writes per-contact
-/// touch activities, advances the engagement counters
-/// deterministically, and completes the campaign.
+/// Contacts handled per `run` call when mail really leaves
+/// (`CRM_MAIL_BATCH`, default 200): a send is network I/O inside a request, so
+/// a long audience is walked in several calls, each resuming where the last
+/// stopped.
+fn batch_size() -> i64 {
+    std::env::var("CRM_MAIL_BATCH")
+        .ok()
+        .and_then(|v| v.trim().parse::<i64>().ok())
+        .map_or(200, |n| n.clamp(1, 5000))
+}
+
+/// What one `run` call did.
+#[derive(Debug, Default, Clone, Copy)]
+struct RunOutcome {
+    sent: u64,
+    failed: u64,
+    no_address: u64,
+    suppressed: u64,
+}
+
+/// Settle one claimed delivery: re-check consent against the live row,
+/// resolve the address, hand the message to the sender, and record the result.
+async fn deliver_one(
+    ctx: &AppContext,
+    campaign: &campaigns::Model,
+    sender: &mail::Sender,
+    item: deliveries::Claimed,
+    audience: &std::collections::HashSet<Uuid>,
+    outcome: &mut RunOutcome,
+) -> Result<()> {
+    // The audience was listed a moment ago and consent can change at any time,
+    // so read the contact again immediately before sending (CRM-D6).
+    let contact = contacts::Entity::find()
+        .filter(contacts::Column::Pid.eq(item.contact_pid))
+        .filter(contacts::Column::DeletedAt.is_null())
+        .one(&ctx.db)
+        .await?;
+    let Some(contact) = contact.filter(|c| c.marketing_consent == "granted") else {
+        deliveries::settle(
+            &ctx.db,
+            item.id,
+            "suppressed",
+            None,
+            Some("consent not granted at send time"),
+        )
+        .await?;
+        outcome.suppressed += 1;
+        return Ok(());
+    };
+    if !audience.contains(&contact.pid) {
+        deliveries::settle(
+            &ctx.db,
+            item.id,
+            "suppressed",
+            None,
+            Some("no longer in the segment"),
+        )
+        .await?;
+        outcome.suppressed += 1;
+        return Ok(());
+    }
+    let message_id = if sender.needs_address() {
+        let Some(address) = clients::email_address(&contact.person_ref).await else {
+            deliveries::settle(
+                &ctx.db,
+                item.id,
+                "no_address",
+                None,
+                Some("no address on file"),
+            )
+            .await?;
+            outcome.no_address += 1;
+            return Ok(());
+        };
+        let message = mail::Message {
+            to: address,
+            to_name: contact.display_name.clone(),
+            subject: campaign
+                .subject
+                .clone()
+                .unwrap_or_else(|| campaign.name.clone()),
+            text: campaign.body.clone().unwrap_or_default(),
+            message_id: sender.new_message_id(),
+        };
+        if let Err(error) = sender.send(&message).await {
+            deliveries::settle(&ctx.db, item.id, "failed", None, Some(&error.describe())).await?;
+            outcome.failed += 1;
+            return Ok(());
+        }
+        message.message_id
+    } else {
+        sender.new_message_id()
+    };
+    // The delivery row and the touch activity commit together.
+    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let txn = ctx.db.begin().await?;
+    deliveries::settle(&txn, item.id, "sent", Some(&message_id), None).await?;
+    activities::ActiveModel {
+        pid: ActiveValue::set(Uuid::new_v4()),
+        subject_kind: ActiveValue::set("contact".to_string()),
+        subject_pid: ActiveValue::set(contact.pid),
+        kind: ActiveValue::set("email".to_string()),
+        occurred_at: ActiveValue::set(now),
+        actor_ref: ActiveValue::set(None),
+        summary: ActiveValue::set(format!("Campaign touch: {}", campaign.name).into()),
+        due_on: ActiveValue::set(None),
+        done: ActiveValue::set(false),
+        deleted_at: ActiveValue::set(None),
+        ..Default::default()
+    }
+    .insert(&txn)
+    .await?;
+    txn.commit().await?;
+    outcome.sent += 1;
+    Ok(())
+}
+
+/// `POST /api/campaigns/{pid}/run` — send the campaign (CRM-R8, CRM-T39).
+///
+/// Lists the segment (consent is structural in the evaluator, CRM-D6), records
+/// one delivery row per contact, claims a batch atomically, and for each
+/// contact re-checks consent, resolves the address, and sends through the
+/// configured [`mail::Sender`] (`CRM_MAIL_MODE`). The default sender is
+/// **simulated**: nothing leaves the process and the engagement counters are
+/// the deterministic demo values. A re-run sends only what is not yet sent, so
+/// a contact is never mailed twice. The campaign completes when nothing is left
+/// to retry; until then it stays `running` and the same call resumes it.
 #[debug_handler]
 async fn run_campaign(
     State(ctx): State<AppContext>,
@@ -439,61 +588,118 @@ async fn run_campaign(
         .segment_pid
         .ok_or_else(|| unprocessable("campaign has no segment"))?;
     let segment = records::find_segment(&ctx.db, segment_pid).await?;
-    // Consent is structural in the evaluator (CRM-D6) — this IS the
-    // send-time re-check.
-    let audience = evaluate_segment(&ctx.db, &segment).await?;
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
-    let txn = ctx.db.begin().await?;
-    for contact in &audience {
-        activities::ActiveModel {
-            pid: ActiveValue::set(Uuid::new_v4()),
-            subject_kind: ActiveValue::set("contact".to_string()),
-            subject_pid: ActiveValue::set(contact.pid),
-            kind: ActiveValue::set("email".to_string()),
-            occurred_at: ActiveValue::set(now),
-            actor_ref: ActiveValue::set(None),
-            summary: ActiveValue::set(format!("Campaign touch: {}", campaign.name).into()),
-            due_on: ActiveValue::set(None),
-            done: ActiveValue::set(false),
-            deleted_at: ActiveValue::set(None),
-            ..Default::default()
-        }
-        .insert(&txn)
-        .await?;
+    let sender = mail::current();
+    if sender.needs_address()
+        && campaign
+            .body
+            .as_deref()
+            .is_none_or(|body| body.trim().is_empty())
+    {
+        return Err(unprocessable("campaign has no body to send"));
     }
-    let recipients = i32::try_from(audience.len()).unwrap_or(i32::MAX);
+    let audience = evaluate_segment(&ctx.db, &segment).await?;
+    let audience_pids: std::collections::HashSet<Uuid> = audience.iter().map(|c| c.pid).collect();
+    let pids: Vec<Uuid> = audience.iter().map(|c| c.pid).collect();
+    deliveries::ensure_rows(&ctx.db, campaign.pid, &pids).await?;
+
     let campaign_pid = campaign.pid;
     let name = campaign.name.clone();
+    let was_scheduled = campaign.status == "scheduled";
+    let mut campaign = campaign;
+    if was_scheduled {
+        let mut active: campaigns::ActiveModel = campaign.clone().into();
+        active.status = ActiveValue::set("running".to_string());
+        campaign = active.update(&ctx.db).await?;
+    }
+
+    let limit = if sender.needs_address() {
+        batch_size()
+    } else {
+        i64::from(i32::MAX)
+    };
+    let claimed = deliveries::claim(&ctx.db, campaign_pid, limit).await?;
+    let mut outcome = RunOutcome::default();
+    for item in claimed {
+        deliver_one(&ctx, &campaign, &sender, item, &audience_pids, &mut outcome).await?;
+    }
+
+    let remaining = deliveries::retriable(&ctx.db, campaign_pid).await?;
+    let counts = deliveries::summary(&ctx.db, campaign_pid).await?;
+    let sent_total = counts.get("sent").copied().unwrap_or(0);
+    let recipients = i32::try_from(sent_total).unwrap_or(i32::MAX);
+    if sender.needs_address() {
+        Audit::record(
+            &ctx.db,
+            "campaign",
+            campaign_pid,
+            "campaign_run",
+            caller.actor(),
+            Some(serde_json::json!({
+                "sent": outcome.sent, "failed": outcome.failed,
+                "no_address": outcome.no_address, "suppressed": outcome.suppressed,
+                "remaining": remaining,
+            })),
+        )
+        .await?;
+    }
+    let txn = ctx.db.begin().await?;
     let mut active: campaigns::ActiveModel = campaign.into();
-    active.status = ActiveValue::set("completed".to_string());
     active.recipients = ActiveValue::set(recipients);
-    // Deterministic demo engagement: all delivered, 3/5 opened, 1/4
-    // clicked, none unsubscribed by the simulation.
-    active.delivered = ActiveValue::set(recipients);
-    active.opened = ActiveValue::set(recipients * 3 / 5);
-    active.clicked = ActiveValue::set(recipients / 4);
+    if remaining == 0 {
+        active.status = ActiveValue::set("completed".to_string());
+        if sender.is_simulated() {
+            // Deterministic demo engagement: all delivered, 3/5 opened, 1/4
+            // clicked, none unsubscribed by the simulation. A real sender
+            // leaves these at zero: SMTP acceptance is not delivery, and the
+            // provider's delivery, open and click events are not wired yet.
+            active.delivered = ActiveValue::set(recipients);
+            active.opened = ActiveValue::set(recipients * 3 / 5);
+            active.clicked = ActiveValue::set(recipients / 4);
+        }
+    }
     let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
-        "campaign",
-        campaign_pid,
-        "campaign_completed",
-        caller.actor(),
-        Some(serde_json::json!({ "recipients": recipients })),
-    )
-    .await?;
-    streaming::emit_on(
-        &txn,
-        "campaign",
-        "campaign_completed",
-        &campaign_pid.to_string(),
-        &name,
-        caller.actor(),
-        None,
-    )
-    .await?;
+    if remaining == 0 {
+        Audit::record(
+            &txn,
+            "campaign",
+            campaign_pid,
+            "campaign_completed",
+            caller.actor(),
+            Some(serde_json::json!({ "recipients": recipients })),
+        )
+        .await?;
+        streaming::emit_on(
+            &txn,
+            "campaign",
+            "campaign_completed",
+            &campaign_pid.to_string(),
+            &name,
+            caller.actor(),
+            None,
+        )
+        .await?;
+    }
     txn.commit().await?;
     format::json(row)
+}
+
+/// `GET /api/campaigns/{pid}/deliveries` — how a send is going: rows per state
+/// and how many a further `run` could still send. Counts only; no addresses.
+#[debug_handler]
+async fn campaign_deliveries(
+    State(ctx): State<AppContext>,
+    Path(pid): Path<String>,
+) -> Result<Response> {
+    let campaign = records::find_campaign(&ctx.db, records::parse_pid(&pid)?).await?;
+    let by_state = deliveries::summary(&ctx.db, campaign.pid).await?;
+    let total: i64 = by_state.values().sum();
+    let remaining = deliveries::retriable(&ctx.db, campaign.pid).await?;
+    format::json(serde_json::json!({
+        "campaign_pid": campaign.pid,
+        "total": total,
+        "remaining": remaining,
+        "by_state": by_state,
+    }))
 }
 
 /// `GET /api/campaigns/{pid}/funnel` — the funnel + ROI (CRM-R8):
@@ -810,6 +1016,7 @@ pub fn routes() -> Routes {
         .add("/campaigns", get(list_campaigns))
         .add("/campaigns/{pid}/status", post(campaign_status))
         .add("/campaigns/{pid}/run", post(run_campaign))
+        .add("/campaigns/{pid}/deliveries", get(campaign_deliveries))
         .add("/campaigns/{pid}/funnel", get(campaign_funnel))
         .add("/nurture-sequences", post(create_sequence))
         .add("/nurture-sequences", get(list_sequences))

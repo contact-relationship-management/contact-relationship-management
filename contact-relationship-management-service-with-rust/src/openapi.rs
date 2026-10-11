@@ -76,7 +76,8 @@ pub fn spec() -> Value {
                 "get": { "tags": ["marketing"], "summary": "List campaigns", "responses": ok("Campaigns") }
             },
             "/api/campaigns/{pid}/status": { "post": { "tags": ["marketing"], "summary": "Campaign transition (draft→scheduled→running→completed|cancelled)", "responses": transition } },
-            "/api/campaigns/{pid}/run": { "post": { "tags": ["marketing"], "summary": "Simulated send (demo mode): consent re-checked at send time; touch activities; deterministic counters", "responses": transition } },
+            "/api/campaigns/{pid}/run": { "post": { "tags": ["marketing"], "summary": "Send the campaign: consent re-checked per contact at send time, one delivery row per contact so a re-run never mails twice, batched (CRM_MAIL_BATCH). The default sender is simulated (CRM_MAIL_MODE); smtp mode really sends", "responses": transition } },
+            "/api/campaigns/{pid}/deliveries": { "get": { "tags": ["marketing"], "summary": "How a send is going: delivery rows per state and how many a further run could still send (counts only, no addresses)", "responses": ok("Deliveries") } },
             "/api/campaigns/{pid}/funnel": { "get": { "tags": ["marketing"], "summary": "Funnel + ROI (null on zero cost; per-currency honesty)", "responses": ok("Funnel") } },
             "/api/nurture-sequences": {
                 "post": { "tags": ["marketing"], "summary": "Create a drip sequence (ordered delayed steps)", "responses": created },

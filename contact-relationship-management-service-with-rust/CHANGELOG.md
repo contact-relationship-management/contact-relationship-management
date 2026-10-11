@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — local mail server (CRM-T39 groundwork, 2026-10-11)
+### Added — real email send path (CRM-T39, 2026-10-11)
 
-`compose.email.yaml` and `scripts/email-dev.sh` run Stalwart in Podman with a
-`crm.test` domain, one account and an SMTP submission listener, for developing
-the real send path. Development only; the service does not use it yet.
+`mail::Sender` (simulated by default, SMTP with `CRM_MAIL_MODE=smtp`), an
+`email_deliveries` table with one row per campaign and contact (atomic claim,
+retry, consent re-read before each send), campaign `subject` and `body`, and
+`GET /api/campaigns/{pid}/deliveries`. Production refuses `smtp` mode without
+`CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: unsubscribe link, suppression list,
+bounce and complaint webhooks, nurture sends. A local Stalwart server for
+development is in `compose.email.yaml` and `scripts/email-dev.sh`.
 
 ### Changed — RFC 9457 error bodies (CRM-T54, 2026-10-11)
 

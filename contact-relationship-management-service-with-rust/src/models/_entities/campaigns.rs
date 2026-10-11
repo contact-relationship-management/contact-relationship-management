@@ -25,6 +25,10 @@ pub struct Model {
     pub opened: i32,
     pub clicked: i32,
     pub unsubscribed: i32,
+    /// Message subject; the campaign name when absent.
+    pub subject: Option<String>,
+    /// Plain-text message body.
+    pub body: Option<String>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

@@ -103,6 +103,15 @@ print("FAILED: the message was accepted but did not arrive", file=sys.stderr)
 sys.exit(1)
 PY
     ;;
+  live)
+    # Run the service's real-SMTP test against this server.
+    (cd "$dir" && \
+      CRM_MAIL_MODE=smtp CRM_SMTP_HOST=127.0.0.1 CRM_SMTP_PORT="$submission_port" \
+      CRM_SMTP_USERNAME=crm@crm.test CRM_SMTP_PASSWORD=crm-dev-password \
+      CRM_MAIL_FROM='CRM <crm@crm.test>' CRM_SMTP_ACCEPT_INVALID_CERTS=1 \
+      CRM_TEST_JMAP_URL="http://127.0.0.1:$http_port" \
+      cargo test --test smtp_live -- --ignored --nocapture)
+    ;;
   down)
     "${compose[@]}" down
     ;;
@@ -110,7 +119,7 @@ PY
     "${compose[@]}" down -v
     ;;
   *)
-    echo "usage: $0 up|check|down|reset" >&2
+    echo "usage: $0 up|check|live|down|reset" >&2
     exit 2
     ;;
 esac

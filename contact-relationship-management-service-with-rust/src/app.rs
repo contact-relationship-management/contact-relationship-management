@@ -525,6 +525,10 @@ impl Hooks for App {
         crate::hardening::check_process(matches!(ctx.environment, Environment::Production))
             .map_err(loco_rs::Error::string)?;
         crate::hardening::check_field_encryption().map_err(loco_rs::Error::string)?;
+        // CRM-T39: choose the mail sender (simulated unless CRM_MAIL_MODE=smtp);
+        // a bad or unsafe setting stops the start rather than failing at send time.
+        crate::mail::init(matches!(ctx.environment, Environment::Production))
+            .map_err(|e| loco_rs::Error::string(&e))?;
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();
@@ -629,7 +633,7 @@ impl Hooks for App {
         {
             use sea_orm::ConnectionTrait;
             ctx.db
-                .execute_unprepared("TRUNCATE idempotency_keys")
+                .execute_unprepared("TRUNCATE idempotency_keys, email_deliveries")
                 .await?;
         }
         truncate_table(&ctx.db, EventOutbox).await?;

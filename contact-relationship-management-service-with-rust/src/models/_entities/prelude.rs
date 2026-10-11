@@ -8,6 +8,7 @@ pub use super::campaigns::Entity as Campaigns;
 pub use super::consent_events::Entity as ConsentEvents;
 pub use super::contacts::Entity as Contacts;
 pub use super::deals::Entity as Deals;
+pub use super::email_deliveries::Entity as EmailDeliveries;
 pub use super::event_outbox::Entity as EventOutbox;
 pub use super::forecast_snapshots::Entity as ForecastSnapshots;
 pub use super::leads::Entity as Leads;

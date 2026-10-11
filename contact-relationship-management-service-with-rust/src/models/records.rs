@@ -13,9 +13,9 @@ use sea_orm::ConnectionTrait;
 use uuid::Uuid;
 
 use super::_entities::{
-    accounts, activities, articles, campaigns, consent_events, contacts, deals, forecast_snapshots,
-    leads, nurture_enrollments, nurture_sequences, nurture_steps, pipeline_stages, pipelines,
-    segments, sla_policies, tickets,
+    accounts, activities, articles, campaigns, consent_events, contacts, deals, email_deliveries,
+    forecast_snapshots, leads, nurture_enrollments, nurture_sequences, nurture_steps,
+    pipeline_stages, pipelines, segments, sla_policies, tickets,
 };
 
 impl ActiveModelBehavior for contacts::ActiveModel {}
@@ -29,6 +29,7 @@ impl ActiveModelBehavior for deals::ActiveModel {}
 impl ActiveModelBehavior for forecast_snapshots::ActiveModel {}
 impl ActiveModelBehavior for segments::ActiveModel {}
 impl ActiveModelBehavior for campaigns::ActiveModel {}
+impl ActiveModelBehavior for email_deliveries::ActiveModel {}
 impl ActiveModelBehavior for nurture_sequences::ActiveModel {}
 impl ActiveModelBehavior for nurture_steps::ActiveModel {}
 impl ActiveModelBehavior for nurture_enrollments::ActiveModel {}

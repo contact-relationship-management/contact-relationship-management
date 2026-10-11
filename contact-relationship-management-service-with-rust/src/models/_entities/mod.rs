@@ -8,6 +8,7 @@ pub mod campaigns;
 pub mod consent_events;
 pub mod contacts;
 pub mod deals;
+pub mod email_deliveries;
 pub mod event_outbox;
 pub mod forecast_snapshots;
 pub mod leads;

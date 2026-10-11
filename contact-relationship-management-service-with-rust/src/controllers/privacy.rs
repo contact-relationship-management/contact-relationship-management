@@ -13,7 +13,8 @@ use uuid::Uuid;
 use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{
-    activities, consent_events, contacts, deals, leads, nurture_enrollments, tickets,
+    activities, consent_events, contacts, deals, email_deliveries, leads, nurture_enrollments,
+    tickets,
 };
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
@@ -85,9 +86,11 @@ async fn subject_access(
         "deals_as_primary_contact": rows_for!(db, deals, PrimaryContactPid, cpid),
         "tickets": rows_for!(db, tickets, ContactPid, cpid),
         "nurture_enrollments": rows_for!(db, nurture_enrollments, ContactPid, cpid),
+        "email_deliveries": rows_for!(db, email_deliveries, ContactPid, cpid),
         "exclusions": [
-            "campaign recipient/delivery/open/click counters: aggregate simulated counters, \
-             not a per-recipient log — CRM stores no row attributing one send to one contact",
+            "campaign delivery/open/click counters: aggregate counters. Which messages were \
+             sent to this contact is in email_deliveries (state, time and message id, no \
+             address or body); open and click events are not recorded per contact",
             "the contact's account (organization-level relationship data): a separate \
              subject; request its own export if the account itself is a data subject",
             "upstream person/organization/worker records: held by the identity services, \

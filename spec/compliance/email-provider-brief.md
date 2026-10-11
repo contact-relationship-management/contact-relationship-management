@@ -7,31 +7,40 @@ brief, not legal advice, and it picks no vendor.
 
 ## What exists today
 
-- **No email leaves the system.** `POST /api/campaigns/{pid}/run` simulates a
-  send inside the request: it lists the segment, writes one `email` touch
-  activity per contact, sets `delivered`, `opened` and `clicked` to fixed
-  fractions of the audience, and marks the campaign completed. `POST
-  /api/nurture/advance` does the same for nurture steps.
-- **There is no sender trait and no background job.** The specification once
-  said the send was "a trait seam" run as a Postgres-backed job. It is neither;
-  that wording has been corrected. A real adapter needs both built first.
-- **Consent is enforced at send time, in the segment query**
-  (`evaluate_segment`): only contacts with `marketing_consent = granted` are
-  listed, so a withdrawal between scheduling and sending is honoured. Consent
-  history is an append-only log of `granted` and `withdrawn` events with source
-  and time.
-- **There is no unsubscribe link, suppression list, bounce handling,
-  complaint handling, or per-recipient send log.** Campaign counters are
-  aggregates. The subject-access export names this as an exclusion.
-- **The funnel, ROI and lead score read the counters.** A real provider's
-  numbers would replace the simulated ones.
+- **A send seam and an SMTP sender, off by default.** `POST
+  /api/campaigns/{pid}/run` sends through `mail::Sender`. The default is
+  **simulated**: nothing leaves the process, a touch activity is written per
+  contact, and the engagement counters are fixed demo fractions. With
+  `CRM_MAIL_MODE=smtp` it submits each message to the SMTP server named by
+  `CRM_SMTP_*`. `POST /api/nurture/advance` is still simulated.
+- **One delivery row per (campaign, contact).** It is claimed atomically, so a
+  re-run or a concurrent run never mails a contact twice. States: pending,
+  sending, sent, failed, no_address, suppressed. A transient failure is retried
+  up to five times; a permanent one is not. A campaign completes only when
+  nothing is left to retry.
+- **Consent is checked twice:** in the segment query that lists the audience,
+  and again by reading the live contact immediately before each message, so a
+  withdrawal between listing and sending is honoured.
+- **Content and addresses.** A campaign has an optional `subject` (defaults to
+  the name) and a plain-text `body` (required for a real send). The CRM holds no
+  email addresses: each is asked for from the person service at send time
+  (assumed `email` field; unverified) and not stored.
+- **Progress.** `GET /api/campaigns/{pid}/deliveries` gives counts per state.
+  Subject access lists a contact's deliveries (state, time, message id).
+- **Production guard.** `smtp` mode refuses to start in production unless
+  `CRM_MAIL_ALLOW_PRODUCTION=1`, because what follows is not built.
+- **Not built:** the unsubscribe link and `List-Unsubscribe` headers, the
+  suppression list, bounce, complaint and delivery webhooks (so `delivered`,
+  `opened` and `clicked` stay at zero on a real send), a background job (sends
+  are batched inside the request), and nurture sends.
 
 ## A local server to build against
 
 `scripts/email-dev.sh up` starts a Stalwart mail server in Podman with the
-domain `crm.test` and one account (see `INSTALL.md`). It lets the engineering
-work below be built and tested without a vendor: submit over STARTTLS, deliver
-into a mailbox, read it back over JMAP. It is **not** a vendor substitute: it
+domain `crm.test` and one account (see `INSTALL.md`). The service can
+send through it (see `INSTALL.md`), so the remaining work can be built and
+tested without a vendor: submit over STARTTLS, deliver into a mailbox, read it
+back over JMAP. It is **not** a vendor substitute: it
 has no public DNS, SPF or DKIM, no reputation, and no bounce or complaint
 traffic from real mailbox providers.
 
@@ -39,10 +48,10 @@ traffic from real mailbox providers.
 
 | Need | Why | Today |
 |---|---|---|
-| Re-check consent per recipient immediately before handing to the provider | Consent can be withdrawn at any time | Done for the audience list; not per message |
-| A per-recipient delivery record (campaign, contact, provider message id, state, time) | Subject access, complaint handling, idempotent retries, honest funnel numbers | None |
-| Idempotent send per (campaign, contact) | A retry must never email twice | Nurture steps are idempotent per (enrolment, step); campaigns are not |
-| Asynchronous send with retry and back-off | A real send takes minutes and the provider will throttle or fail | Inline in the request |
+| Re-check consent per recipient immediately before handing to the provider | Consent can be withdrawn at any time | Done: the live contact is re-read before each message |
+| A per-recipient delivery record (campaign, contact, provider message id, state, time) | Subject access, complaint handling, idempotent retries, honest funnel numbers | Done (`email_deliveries`); no address or body stored |
+| Idempotent send per (campaign, contact) | A retry must never email twice | Done for campaigns (atomic claim per row); nurture steps are idempotent per (enrolment, step) but simulated |
+| Asynchronous send with retry and back-off | A real send takes minutes and the provider will throttle or fail | Retry without back-off, batched inside the request; no background job |
 | One-click unsubscribe: a link in the body and the `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058) | Bulk-sender rules at the large mailbox providers, and PECR | None |
 | An unsubscribe endpoint that writes a `withdrawn` consent event immediately | The consent log is the source of truth | The event can be written by API; no public link |
 | A suppression list the send path checks, filled by bounces, complaints and unsubscribes | Never mail an address that bounced hard or complained | None |
@@ -78,20 +87,19 @@ traffic from real mailbox providers.
 
 ## What the engineering work is
 
-1. Define a sender interface (send one message, return a provider id) with a
-   simulated implementation that keeps today's behaviour for demo mode.
-2. Add a per-recipient delivery table and move the send into a background
-   job, idempotent per (campaign, contact), with retry.
-3. Add the unsubscribe link and headers, a public unsubscribe endpoint that
-   writes the consent event, and the suppression list.
-4. Add authenticated webhook endpoints for outcomes, updating the delivery
-   table and the campaign counters from real events.
-5. Add the delivery table to the subject-access export and the erasure and
-   retention rules.
-6. Update the funnel and scoring tests to run against both senders.
+Done: the sender interface, the SMTP sender, the per-recipient delivery table,
+idempotent claiming, retry, consent re-check and the progress endpoint.
 
-Estimate this after the vendor is chosen, because the webhook format and the
-suppression model are the vendor's.
+Remaining, after the vendor is chosen (the webhook format and the suppression
+model are the vendor's):
+
+1. The unsubscribe link and headers, a public unsubscribe endpoint that writes
+   the consent event, and the suppression list the send checks.
+2. Authenticated webhook endpoints for outcomes, updating the delivery table
+   and the campaign counters from real events.
+3. Move the send into a background job, and send nurture steps the same way.
+4. Agree the address contract with the person service and test it.
+5. Run the funnel and scoring tests against both senders.
 
 ## Decisions for the business
 

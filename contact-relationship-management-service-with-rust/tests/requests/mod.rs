@@ -3,6 +3,7 @@
 //! journey + contract pins in [`support`].
 
 mod audit_chain;
+mod email_delivery;
 mod engagement;
 mod field_encryption;
 mod idempotency;
