@@ -3,7 +3,7 @@
 Status of the role briefs under `locales/<code>/for/<slug>/` (see
 [locales-x-for-roles](../locales-x-for-roles/index.md) and
 [locales-for-global-sharing-with-svelte](../locales-for-global-sharing-with-svelte/index.md)).
-Source text: `en-gb-oxendict`, 2026-10-11.
+Source text: `en-gb-oxendict`, refreshed 2026-10-11.
 
 | Locale | Briefs | Method | Reviewed by a native speaker |
 |---|---|---|---|
@@ -38,6 +38,6 @@ Source text: `en-gb-oxendict`, 2026-10-11.
   qualified native-speaking reviewer before anyone relies on it.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
-- The source briefs predate three later changes and still say the old thing: response schemas now cover the reads and dashboards (T53), errors are now RFC 9457 problem documents (T54), and release signing and digest refresh are partly built (T49). Test totals and "48 of 53" are also out of date. Refresh the English source, then every locale.
+- The briefs were refreshed on 2026-10-11 for T49 (Dependabot and the signed-release workflow), T53 (response schemas), T54 (RFC 9457 errors) and the current counts (51 of 55 work items; 124 unit, 26 database, 44 front-end unit and 42 Playwright tests). Counts and states are a snapshot; refresh the English source, then every locale, when they change.
 - The English facts in the source (counts such as "48 of 53" tasks, test totals)
   are a snapshot and are copied as is; refresh all locales when they change.
