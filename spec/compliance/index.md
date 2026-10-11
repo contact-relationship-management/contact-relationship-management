@@ -19,3 +19,7 @@ configuration in this repository enforces it and a test or check pins it;
 **Gap** when neither is true today (each gap names its task in
 [../tasks.md](../tasks.md)).
 - [dtac-supporting.md](dtac-supporting.md) — draft statements for the NHS DTAC form.
+- [gds-api-review.md](gds-api-review.md) — self-review against UK government API standards (a draft).
+- [api-lifecycle.md](api-lifecycle.md) — error format (RFC 9457), versioning, and the deprecation policy.
+- [email-provider-brief.md](email-provider-brief.md) — what to hand an email provider and its legal reviewers (CRM-T39).
+- [first-release-checklist.md](first-release-checklist.md) — the dry run that proves release signing and verification (CRM-T49).

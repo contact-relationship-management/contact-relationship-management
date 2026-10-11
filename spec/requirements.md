@@ -99,7 +99,7 @@ before sending.*
 - Campaign lifecycle `draft → scheduled → running → completed |
   cancelled` (pure core); demo-mode simulated delivery writes
   per-contact touch activities + engagement counters via a `bg_pg`
-  job behind a trait seam.
+  job (today inline in the request; a sender trait is needed for a real adapter, CRM-T39).
 - Funnel view (recipients → delivered → opened → clicked → leads →
   deals → won revenue) + ROI = (attributed won revenue − cost) ÷
   cost, per currency; zero cost reports `null` + absolutes.

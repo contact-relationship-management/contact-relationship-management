@@ -51,8 +51,8 @@ code + tests in one PR.
 - [x] CRM-T9 Segments: declarative filter model + pure-core
   evaluation with the structural consent AND-gate + preview
   (count + sample). (CRM-D6; CRM-R7)
-- [x] CRM-T10 Campaigns: lifecycle machine, simulated send `bg_pg`
-  job behind the ESP trait seam, touch activities + engagement
+- [x] CRM-T10 Campaigns: lifecycle machine, simulated send
+  (inline in the request, no ESP trait yet; see CRM-T39), touch activities + engagement
   counters, funnel + ROI derivation (zero-cost `null`). (CRM-D3,
   CRM-D4, CRM-D7, CRM-D8; CRM-R8)
 - [x] CRM-T11 Nurture: sequence/step/enrollment models + the
@@ -499,10 +499,11 @@ parties outside the repository.
      
       **Resolution:** `PRIVILEGED_READ_PREFIXES` (`/api/audits`, `/api/events`, `/api/retention`) derive the admin/service tier for `GET`, matched on whole path segments; 2 unit pins; enforcement test shows reader and writer get 403 and a service credential 200 on four endpoints. `CRM_PROTECT_OPERATIONAL=1` additionally puts `/metrics.prom` and the OpenAPI/Swagger paths behind authentication (off by default so an in-network scraper keeps working). **Note:** the tier reuses the engine's `destructive` action, because the shared engine has no privileged-read action; policies must grant `destructive` to whoever may read audits.
 
-- [ ] CRM-T39 **Real ESP adapter** behind the existing send trait, with
+- [ ] CRM-T39 **Real ESP adapter** (the send is simulated inline today, so a sender
+      trait and an asynchronous send come first), with
       bounce/complaint webhooks, suppression list, and the processor
       agreement and lawful-basis review (CRM-G2). (plan gap 10) *Open:
-      legal and vendor dependency.*
+      legal and vendor dependency.* The brief to hand a vendor and legal is `spec/compliance/email-provider-brief.md`, which also records that the send is inline and has no sender trait yet.
 - [x] CRM-T40 *(resolved 2026-10-10.)* **Audit personal-data reads.** Contact, lead, ticket and
       activity reads write an audit row (actor, record, masked or not);
       bulk list reads write one summarizing row. (plan gap 11)
@@ -562,7 +563,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 - [ ] CRM-T49 **GDS API checklist review and build signing.** Review the API
       against the GDS standards, and sign release builds and pin image digests
       (Software Security Code of Practice). *Open.*
-      **Partly done (2026-10-10):** the four base images in both Containerfiles are now pinned by digest (the UI image builds with the pins; the service image was not rebuilt). Digests do not update themselves: refresh them on a schedule (for example Renovate or Dependabot) or they will pin known-vulnerable layers. **API review (2026-10-10):** a self-review is in `spec/compliance/gds-api-review.md`; it fixed the OpenAPI document (22 missing paths, security scheme, shared error responses) and opened T51 (pagination) and T52 (idempotency keys). It is a draft that has not been checked against the standards' published text. **Build signing and digest refresh (2026-10-11):** `.github/dependabot.yml` opens weekly pull requests for Cargo, npm, both Containerfiles' digest pins, the compose file and the Actions, so the pins do not freeze. `.github/workflows/release.yml` runs on a `v*` tag: it builds and pushes both images to GitHub Container Registry, signs each by digest with keyless cosign (workflow OIDC identity, no stored key), attaches a build-provenance attestation, and signs and publishes the CycloneDX SBOMs to the release. The runbook has the `cosign verify` and `gh attestation verify` commands and says to deploy by digest. The service image was rebuilt from the pinned bases: it builds, runs as `nonroot`, and exits with a clear error without `DATABASE_URL`. **Not verified:** the workflow has not run (it needs a pushed tag and a repository with Packages and attestations enabled), and the actions are pinned to the commit hashes their version tags pointed at on 2026-10-11 (read with `git ls-remote`; the action code itself was not audited), with Dependabot proposing bumps. **Still open:** a reviewer's check of the GDS draft and a first real tagged release to prove the signing and verification commands.
+      **Partly done (2026-10-10):** the four base images in both Containerfiles are now pinned by digest (the UI image builds with the pins; the service image was not rebuilt). Digests do not update themselves: refresh them on a schedule (for example Renovate or Dependabot) or they will pin known-vulnerable layers. **API review (2026-10-10):** a self-review is in `spec/compliance/gds-api-review.md`; it fixed the OpenAPI document (22 missing paths, security scheme, shared error responses) and opened T51 (pagination) and T52 (idempotency keys). It is a draft that has not been checked against the standards' published text. **Build signing and digest refresh (2026-10-11):** `.github/dependabot.yml` opens weekly pull requests for Cargo, npm, both Containerfiles' digest pins, the compose file and the Actions, so the pins do not freeze. `.github/workflows/release.yml` runs on a `v*` tag: it builds and pushes both images to GitHub Container Registry, signs each by digest with keyless cosign (workflow OIDC identity, no stored key), attaches a build-provenance attestation, and signs and publishes the CycloneDX SBOMs to the release. The runbook has the `cosign verify` and `gh attestation verify` commands and says to deploy by digest. The service image was rebuilt from the pinned bases: it builds, runs as `nonroot`, and exits with a clear error without `DATABASE_URL`. **Not verified:** the workflow has not run (it needs a pushed tag and a repository with Packages and attestations enabled), and the actions are pinned to the commit hashes their version tags pointed at on 2026-10-11 (read with `git ls-remote`; the action code itself was not audited), with Dependabot proposing bumps. **Still open:** a reviewer's check of the GDS draft and a first real tagged release to prove the signing and verification commands. The dry-run steps are in `spec/compliance/first-release-checklist.md`.
 
 - [x] CRM-T50 **Redis cache.** Loco's cache is now Redis (`cache_redis`;
       `config/production.yaml` requires `CRM_REDIS_URL`, use `rediss://` for TLS;

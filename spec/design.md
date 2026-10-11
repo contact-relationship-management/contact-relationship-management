@@ -52,8 +52,9 @@ report per-currency lines, never a silent sum; no FX in v1.
 
 Nurture advancement (idempotent per enrolment+step), the SLA breach
 sweep (one `sla_breached` per breach fact), and simulated campaign
-sends run as loco Postgres-backed jobs — no external broker; the
-send is a trait seam for the roadmap ESP adapter.
+sends run inline in the request handler (no job queue, no external broker);
+the roadmap ESP adapter needs a sender trait and an asynchronous send that
+do not exist yet (CRM-T39).
 
 ## CRM-D9 — Transactional integrity
 

@@ -16,7 +16,8 @@ machine). A campaign targets one Segment, carries `cost_minor`, and
 in **demo mode simulates delivery**: the send job enumerates the
 segment, writes per-contact touch activities, and advances
 engagement counters via a deterministic stub (a real ESP adapter is
-roadmap — the send path is a trait seam). Engagement feeds lead
+roadmap — the simulated send is inline in `run_campaign`; there is no
+sender trait yet, see CRM-T39). Engagement feeds lead
 scoring (campaign click) and attribution.
 
 ## Segments
