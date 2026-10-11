@@ -17,7 +17,7 @@ that only the adopting organisation or outside parties can supply.
 | 2 | Disclosure of sensitive fields to the wrong role | Complex access rules | Role-based masking on records, aggregates and insights; a persona-matrix test; a leak found and fixed on account detail (T47) | Medium: masking is tested, not independently verified |
 | 3 | Insider misuse of emergency access | Break-glass elevates reads | Written reason, 60-minute cap, read-only, mandatory second-person review, audited | Medium: no alert is wired; no revoke |
 | 4 | Audit trail altered | Needs database access | Hash chain plus append-only trigger; reports the first break | Low-Medium: head hash must be anchored outside the DB |
-| 5 | Unlawful marketing | Consent errors | Send path enforces consent, not the UI; immutable consent history | Medium until a real sender, bounce and complaint handling exist (T39) |
+| 5 | Unlawful marketing | Consent errors | Send path enforces consent, not the UI; immutable consent history | Medium until a real provider is integrated and reviewed (T39) |
 | 6 | Availability / abuse | Public API | Rate limit and lockout, shared via Redis | Medium: limits fall back per replica if Redis fails |
 | 7 | Accessibility non-compliance | Public-sector duty | Automated axe scans; honest accessibility statement | **Unquantified** until manual audit (T48) |
 | 8 | Supply chain | Dependencies and images | `cargo deny/audit`, `pnpm audit`, SBOM, digest pins refreshed by Dependabot, a keyless-signed release workflow | Medium: signing has not run on a real release (T49) |

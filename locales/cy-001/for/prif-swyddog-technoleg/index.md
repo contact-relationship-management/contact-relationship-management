@@ -12,7 +12,7 @@
 
 ## Tystiolaeth ansawdd
 
-Profion uned (135), profion cronfa ddata (32, gan gynnwys gorfodi, cuddio, archwilio, tudaleniad, storio dros dro, idempotency, gwirio sgemâu), profion uned parth blaen (44) a Playwright (42) gan gynnwys sganiau hygyrchedd axe. Mae CI yn rhedeg fmt, clippy, profion, adeiladu/lint y parth blaen a cham cadwyn gyflenwi (`cargo audit`, `cargo deny`, `pnpm audit`, SBOMau CycloneDX) ar GitHub Actions a Woodpecker. Mae un gorchymyn yn ei atgynhyrchu: `scripts/ci-check.sh`.
+Profion uned (146), profion cronfa ddata (34, gan gynnwys gorfodi, cuddio, archwilio, tudaleniad, storio dros dro, idempotency, gwirio sgemâu), profion uned parth blaen (44) a Playwright (42) gan gynnwys sganiau hygyrchedd axe. Mae CI yn rhedeg fmt, clippy, profion, adeiladu/lint y parth blaen a cham cadwyn gyflenwi (`cargo audit`, `cargo deny`, `pnpm audit`, SBOMau CycloneDX) ar GitHub Actions a Woodpecker. Mae un gorchymyn yn ei atgynhyrchu: `scripts/ci-check.sh`.
 
 ## Dyled dechnegol a chyfyngiadau gonest
 
