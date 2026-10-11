@@ -7,6 +7,7 @@ use sea_orm::{QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::paging::{Page, PageParams};
 use super::{ensure_valid, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{accounts, activities, contacts, deals, tickets};
@@ -156,13 +157,22 @@ async fn create_contact(
 
 /// `GET /api/contacts` — active contacts.
 #[debug_handler]
-async fn list_contacts(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
-    let rows = contacts::Entity::find()
-        .filter(contacts::Column::DeletedAt.is_null())
-        .order_by_asc(contacts::Column::Id)
-        .limit(1000)
+async fn list_contacts(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Query(paging): Query<PageParams>,
+    uri: axum::http::Uri,
+) -> Result<Response> {
+    let page = Page::new(&paging, 1000)?;
+    let rows = page
+        .apply(
+            contacts::Entity::find()
+                .filter(contacts::Column::DeletedAt.is_null())
+                .order_by_asc(contacts::Column::Id),
+        )
         .all(&ctx.db)
         .await?;
+    let (rows, more) = page.split(rows);
     let readable = readable_contacts(&rows, &caller);
     Audit::record_read(
         &ctx.db,
@@ -173,7 +183,7 @@ async fn list_contacts(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> 
         Some(serde_json::json!({ "returned": readable.len() })),
     )
     .await?;
-    format::json(readable)
+    page.respond(readable, more, &uri)
 }
 
 /// Filter `rows` down to the ones `caller`'s record-level ABAC policy
@@ -401,13 +411,22 @@ async fn create_account(
 
 /// `GET /api/accounts`.
 #[debug_handler]
-async fn list_accounts(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
-    let rows = accounts::Entity::find()
-        .filter(accounts::Column::DeletedAt.is_null())
-        .order_by_asc(accounts::Column::Id)
-        .limit(500)
+async fn list_accounts(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Query(paging): Query<PageParams>,
+    uri: axum::http::Uri,
+) -> Result<Response> {
+    let page = Page::new(&paging, 500)?;
+    let rows = page
+        .apply(
+            accounts::Entity::find()
+                .filter(accounts::Column::DeletedAt.is_null())
+                .order_by_asc(accounts::Column::Id),
+        )
         .all(&ctx.db)
         .await?;
+    let (rows, more) = page.split(rows);
     Audit::record_read(
         &ctx.db,
         "account",
@@ -417,7 +436,7 @@ async fn list_accounts(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> 
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    format::json(rows)
+    page.respond(rows, more, &uri)
 }
 
 /// `GET /api/accounts/{pid}` — account + its contacts and deals.
@@ -570,7 +589,10 @@ async fn list_activities(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(params): Query<ActivityListParams>,
+    Query(paging): Query<PageParams>,
+    uri: axum::http::Uri,
 ) -> Result<Response> {
+    let page = Page::new(&paging, 200)?;
     let mut query = activities::Entity::find().filter(activities::Column::DeletedAt.is_null());
     if let Some(kind) = &params.subject_kind {
         query = query.filter(activities::Column::SubjectKind.eq(kind));
@@ -578,11 +600,15 @@ async fn list_activities(
     if let Some(pid) = params.subject_pid {
         query = query.filter(activities::Column::SubjectPid.eq(pid));
     }
-    let rows = query
-        .order_by_desc(activities::Column::OccurredAt)
-        .limit(200)
+    let rows = page
+        .apply(
+            query
+                .order_by_desc(activities::Column::OccurredAt)
+                .order_by_desc(activities::Column::Id),
+        )
         .all(&ctx.db)
         .await?;
+    let (rows, more) = page.split(rows);
     Audit::record_read(
         &ctx.db,
         "activity",
@@ -592,7 +618,7 @@ async fn list_activities(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    format::json(rows)
+    page.respond(rows, more, &uri)
 }
 
 /// `PUT /api/activities/{pid}/done` — tick a task activity.

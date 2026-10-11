@@ -2,7 +2,7 @@
 // formatter. Paths mirror the service routes one-to-one — the
 // Playwright suite stubs these exact paths, so drift fails loudly.
 
-import { api } from "#lib/api/client.js";
+import { api, apiAll } from "#lib/api/client.js";
 
 type FetchLike = { fetch?: typeof fetch };
 
@@ -142,7 +142,7 @@ export function money(
 
 /** Contacts. */
 export function listContacts(init?: FetchLike): Promise<Contact[]> {
-  return api("/contacts", init);
+  return apiAll("/contacts", init);
 }
 
 /** One contact + timeline. */
@@ -182,12 +182,12 @@ export function eraseContact(
 
 /** Accounts. */
 export function listAccounts(init?: FetchLike): Promise<Account[]> {
-  return api("/accounts", init);
+  return apiAll("/accounts", init);
 }
 
 /** The score-sorted lead queue. */
 export function listLeads(init?: FetchLike): Promise<Lead[]> {
-  return api("/leads", init);
+  return apiAll("/leads", init);
 }
 
 /** One lead + live breakdown. */
@@ -215,7 +215,7 @@ export function listDeals(
   pipeline?: string,
   init?: FetchLike,
 ): Promise<Deal[]> {
-  return api(`/deals${pipeline ? `?pipeline=${pipeline}` : ""}`, init);
+  return apiAll(`/deals${pipeline ? `?pipeline=${pipeline}` : ""}`, init);
 }
 
 /** Move a deal to a stage. */
@@ -275,7 +275,7 @@ export function campaignStatus(pid: string, to: string): Promise<Campaign> {
 
 /** Tickets with live breach flags. */
 export function listTickets(init?: FetchLike): Promise<Ticket[]> {
-  return api("/tickets", init);
+  return apiAll("/tickets", init);
 }
 
 /** Ticket status transition. */
@@ -285,7 +285,7 @@ export function ticketStatus(pid: string, to: string): Promise<Ticket> {
 
 /** Articles (searchable). */
 export function listArticles(q?: string, init?: FetchLike): Promise<Article[]> {
-  return api(`/articles${q ? `?q=${encodeURIComponent(q)}` : ""}`, init);
+  return apiAll(`/articles${q ? `?q=${encodeURIComponent(q)}` : ""}`, init);
 }
 
 /** Publish / archive an article. */

@@ -16,7 +16,7 @@ Scope: the REST API in `contact-relationship-management-service-with-rust`
 | Authentication stated | Met after this review | `bearerAuth` scheme and global `security` added; probes, metrics and docs stay public | none |
 | Error responses stated | Met after this review | 401, 403, 406 and 429 added to every `/api/*` operation | Bodies are Loco's `{error, description}` shape, not RFC 9457 `application/problem+json` |
 | Versioning | Met, with a risk | `Accepts-version` header, `406` for an unsupported value, response stamped with the version | A client that sends no header gets the current version, so it breaks silently when 2.0 ships; no deprecation or sunset policy is written down |
-| Pagination | **Not met** | List endpoints cap results silently (`LIMIT` 500 to 5000, 11 sites) | No page parameters, no total, no next link: a consumer cannot tell that rows were dropped |
+| Pagination | Met after this review (CRM-T51) | The seven list endpoints take `limit` and `cursor` and answer `Link: rel="next"` | Offset cursor (can skip or repeat a row if data changes mid-walk); no total count by design; timelines and feeds are bounded, not paged |
 | Idempotent retries | **Not met** | Create endpoints (`POST`) have no idempotency key | A retried create after a timeout makes a duplicate |
 | Rate limiting | Partly met | `429` with `Retry-After`; shared across replicas when Redis is configured | No `RateLimit-*` headers telling a client its budget |
 | Caching | Partly met | ETag and `If-None-Match` on dashboards and some insights | Not applied to ordinary list and detail reads |
@@ -26,6 +26,7 @@ Scope: the REST API in `contact-relationship-management-service-with-rust`
 
 ## Changes made with this review
 
+- Pagination (CRM-T51) was built after this review; see `tasks.md`.
 - `src/openapi.rs`: added the 22 missing paths, the `bearerAuth` scheme and
   global `security`, and the shared 401, 403, 406 and 429 responses; the unit
   test now pins them.
@@ -34,10 +35,7 @@ Scope: the REST API in `contact-relationship-management-service-with-rust`
 
 Each is a new open task in `spec/tasks.md`:
 
-1. Pagination (CRM-T51): add `limit` and a cursor to list endpoints and
-   return a next link. This is the most serious finding because truncation is
-   silent.
-2. Idempotency keys (CRM-T52) for `POST` creates.
-3. Request and response schemas in the OpenAPI document, and a test that
+1. Idempotency keys (CRM-T52) for `POST` creates.
+2. Request and response schemas in the OpenAPI document, and a test that
    fails when a mounted route is undocumented.
-4. Decide on RFC 9457 error bodies and a written deprecation policy.
+3. Decide on RFC 9457 error bodies and a written deprecation policy.

@@ -172,6 +172,10 @@ const fn default_days() -> i64 {
     30
 }
 
+/// Most recent activities the activity dashboard counts.
+const ACTIVITY_SAMPLE: u64 = 5000;
+const ACTIVITY_SAMPLE_ROWS: usize = 5000;
+
 #[debug_handler]
 async fn activity_dashboard(
     State(ctx): State<AppContext>,
@@ -182,16 +186,20 @@ async fn activity_dashboard(
         .filter(activities::Column::DeletedAt.is_null())
         .filter(activities::Column::OccurredAt.gte(since))
         .order_by_desc(activities::Column::OccurredAt)
-        .limit(5000)
+        .limit(ACTIVITY_SAMPLE + 1)
         .all(&ctx.db)
         .await?;
+    // Counts cover at most ACTIVITY_SAMPLE rows; say so rather than undercount quietly.
+    let truncated = rows.len() > ACTIVITY_SAMPLE_ROWS;
+    let rows = &rows[..rows.len().min(ACTIVITY_SAMPLE_ROWS)];
     let mut by_kind: std::collections::BTreeMap<String, i64> = std::collections::BTreeMap::new();
-    for activity in &rows {
+    for activity in rows {
         *by_kind.entry(activity.kind.clone()).or_insert(0) += 1;
     }
     format::json(serde_json::json!({
         "window_days": params.days,
         "total": rows.len(),
+        "truncated": truncated,
         "by_kind": by_kind,
         "as_of": chrono::Utc::now(),
     }))

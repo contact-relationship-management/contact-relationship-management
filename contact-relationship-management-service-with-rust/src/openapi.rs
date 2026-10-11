@@ -152,7 +152,44 @@ pub fn spec() -> Value {
         "security": [{ "bearerAuth": [] }]
     });
     add_shared_errors(&mut doc);
+    add_paging(&mut doc);
     doc
+}
+
+/// The paginated lists (CRM-T51) and the largest page each allows.
+const PAGED: [(&str, u64); 7] = [
+    ("/api/contacts", 1000),
+    ("/api/accounts", 500),
+    ("/api/activities", 200),
+    ("/api/leads", 1000),
+    ("/api/deals", 2000),
+    ("/api/tickets", 1000),
+    ("/api/articles", 500),
+];
+
+/// Document `limit`, `cursor` and the `Link: rel="next"` header on each
+/// paginated list.
+fn add_paging(doc: &mut Value) {
+    for (path, cap) in PAGED {
+        let operation = &mut doc["paths"][path]["get"];
+        if !operation.is_object() {
+            continue;
+        }
+        let mut parameters = operation["parameters"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        parameters.push(json!({ "name": "limit", "in": "query", "required": false,
+            "description": format!("Rows per page, 1 to {cap}; default {cap}. Out of range is 422."),
+            "schema": { "type": "integer", "minimum": 1, "maximum": cap } }));
+        parameters.push(json!({ "name": "cursor", "in": "query", "required": false,
+            "description": "Opaque position from a previous Link rel=next. Anything else is 422.",
+            "schema": { "type": "string" } }));
+        operation["parameters"] = Value::Array(parameters);
+        operation["responses"]["200"]["headers"] = json!({ "Link": {
+            "description": "Present when more rows exist: </path?...&cursor=...>; rel=\"next\". Follow it until it is absent.",
+            "schema": { "type": "string" } } });
+    }
 }
 
 /// Every operation can answer the cross-cutting statuses the middleware
@@ -219,6 +256,10 @@ mod tests {
             assert!(paths.contains_key(p), "missing {p}");
         }
         assert_eq!(doc["security"][0]["bearerAuth"], json!([]));
+        let contacts = &doc["paths"]["/api/contacts"]["get"];
+        assert_eq!(contacts["parameters"][0]["name"], "limit");
+        assert!(contacts["responses"]["200"]["headers"]["Link"].is_object());
+        assert!(doc["paths"]["/api/pipelines"]["get"]["parameters"].is_null());
         assert_eq!(
             doc["paths"]["/api/contacts"]["get"]["responses"]["429"]["description"],
             "Rate limited or locked out; see Retry-After"

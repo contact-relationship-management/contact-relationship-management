@@ -7,6 +7,7 @@ use sea_orm::{PaginatorTrait, QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::paging::{Page, PageParams};
 use super::{ensure_valid, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::metrics::Metrics;
@@ -195,13 +196,23 @@ async fn create_lead(
 
 /// `GET /api/leads` — the queue, score-sorted (CRM-R3).
 #[debug_handler]
-async fn list_leads(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
-    let rows = leads::Entity::find()
-        .filter(leads::Column::DeletedAt.is_null())
-        .order_by_desc(leads::Column::Score)
-        .limit(1000)
+async fn list_leads(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Query(paging): Query<PageParams>,
+    uri: axum::http::Uri,
+) -> Result<Response> {
+    let page = Page::new(&paging, 1000)?;
+    let rows = page
+        .apply(
+            leads::Entity::find()
+                .filter(leads::Column::DeletedAt.is_null())
+                .order_by_desc(leads::Column::Score)
+                .order_by_asc(leads::Column::Id),
+        )
         .all(&ctx.db)
         .await?;
+    let (rows, more) = page.split(rows);
     Audit::record_read(
         &ctx.db,
         "lead",
@@ -211,7 +222,7 @@ async fn list_leads(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Res
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    format::json(rows)
+    page.respond(rows, more, &uri)
 }
 
 /// `GET /api/leads/{pid}` — the lead + its live score breakdown.
@@ -528,16 +539,23 @@ async fn list_deals(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(params): Query<DealListParams>,
+    Query(paging): Query<PageParams>,
+    uri: axum::http::Uri,
 ) -> Result<Response> {
+    let page = Page::new(&paging, 2000)?;
     let mut query = deals::Entity::find().filter(deals::Column::DeletedAt.is_null());
     if let Some(pipeline) = params.pipeline {
         query = query.filter(deals::Column::PipelinePid.eq(pipeline));
     }
-    let rows = query
-        .order_by_asc(deals::Column::KanbanPosition)
-        .limit(2000)
+    let rows = page
+        .apply(
+            query
+                .order_by_asc(deals::Column::KanbanPosition)
+                .order_by_asc(deals::Column::Id),
+        )
         .all(&ctx.db)
         .await?;
+    let (rows, more) = page.split(rows);
     Audit::record_read(
         &ctx.db,
         "deal",
@@ -547,7 +565,7 @@ async fn list_deals(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    format::json(readable_deals(&rows, &caller))
+    page.respond(readable_deals(&rows, &caller), more, &uri)
 }
 
 /// Filter `rows` down to the ones `caller`'s record-level ABAC policy

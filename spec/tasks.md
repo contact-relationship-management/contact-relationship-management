@@ -594,12 +594,32 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       enforcement flow was also run against a real Redis. **Limit:** there is
       still no revoke endpoint, so a grant ends only by expiry.
 
-- [ ] CRM-T51 **Pagination for list endpoints.** List reads cap results
+- [x] CRM-T51 **Pagination for list endpoints.** List reads cap results
       silently (`LIMIT` 500 to 5000, 11 sites) with no page parameters, total
       or next link, so a consumer cannot tell rows were dropped. Add `limit`
       plus a cursor and a next link, keep the caps as maximums, and test a
       list larger than one page. Found by the API review
-      (`spec/compliance/gds-api-review.md`). *Open.*
+      (`spec/compliance/gds-api-review.md`).
+      **Resolution:** the seven lists that cut silently (contacts, accounts,
+      activities, leads, deals, tickets, articles) take `?limit=` (1 to the old
+      cap, default the old cap) and an opaque `?cursor=`, and answer
+      `Link: <...>; rel="next"` when more rows exist (`src/controllers/paging.rs`).
+      The body stays a bare array, so existing clients are unchanged until they
+      pass the cap, and then they are told. Orders now end in `id`, so pages are
+      stable; bad `limit` or `cursor` is 422. Article search moved into SQL: it
+      used to filter after the 500-row cut, which hid matches past the cut.
+      The activity dashboard now reports `truncated` when it counted only its
+      latest 5000 rows. OpenAPI documents the parameters and header. UI:
+      `apiAll` follows the links (50-page safety stop that throws rather than
+      return a partial list), the six list calls use it, and the BFF proxy
+      forwards and re-points `Link`. Tests: 4 paging unit pins, 3 DB tests
+      (follow `next` visits every row once; bad input is 422; search past the
+      page and a literal `%`), 5 vitest, existing Playwright. **Limits:** the
+      cursor is an offset, so a row added or removed between page fetches can
+      make a later page skip or repeat a row; there is deliberately no total
+      count (it would include rows a record-level policy hides); the contact
+      timeline (latest 200), group feed (50) and the nurture sweep (500 per
+      run) are bounded by design and not paginated; insights are not paginated.
 - [ ] CRM-T52 **Idempotency keys for creates.** A retried `POST` after a
       timeout makes a duplicate. Accept an `Idempotency-Key` header on create
       endpoints and replay the first result (store it in Redis or the

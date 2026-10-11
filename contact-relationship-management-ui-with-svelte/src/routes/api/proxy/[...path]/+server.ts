@@ -47,6 +47,12 @@ const proxy: RequestHandler = async ({
     const value = upstream.headers.get(name);
     if (value) responseHeaders.set(name, value);
   }
+  // Pagination (CRM-T51): forward the next-page link, re-pointed from the
+  // service's /api/... path at this proxy so the browser can follow it.
+  const link = upstream.headers.get("link");
+  if (link) {
+    responseHeaders.set("link", link.replace("</api/", "</api/proxy/"));
+  }
   return new Response(upstream.body, {
     status: upstream.status,
     headers: responseHeaders,

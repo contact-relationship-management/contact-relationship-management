@@ -3,10 +3,11 @@
 //! and the versioned knowledge base.
 
 use loco_rs::prelude::*;
-use sea_orm::{QueryOrder, QuerySelect, TransactionTrait};
+use sea_orm::{QueryOrder, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::paging::{Page, PageParams};
 use super::{ensure_valid, unprocessable};
 use crate::auth::MaybeAuthUser;
 use crate::metrics::Metrics;
@@ -224,16 +225,19 @@ async fn list_tickets(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(params): Query<TicketListParams>,
+    Query(paging): Query<PageParams>,
+    uri: axum::http::Uri,
 ) -> Result<Response> {
+    let page = Page::new(&paging, 1000)?;
     let mut query = tickets::Entity::find().filter(tickets::Column::DeletedAt.is_null());
     if let Some(status) = &params.status {
         query = query.filter(tickets::Column::Status.eq(status));
     }
-    let rows = query
-        .order_by_asc(tickets::Column::Id)
-        .limit(1000)
+    let rows = page
+        .apply(query.order_by_asc(tickets::Column::Id))
         .all(&ctx.db)
         .await?;
+    let (rows, more) = page.split(rows);
     let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
     let rows: Vec<serde_json::Value> = rows
         .into_iter()
@@ -261,7 +265,7 @@ async fn list_tickets(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    format::json(rows)
+    page.respond(rows, more, &uri)
 }
 
 /// `GET /api/tickets/{pid}` — one ticket + its activities.
@@ -556,28 +560,30 @@ struct ArticleSearchParams {
 async fn list_articles(
     State(ctx): State<AppContext>,
     Query(params): Query<ArticleSearchParams>,
+    Query(paging): Query<PageParams>,
+    uri: axum::http::Uri,
 ) -> Result<Response> {
-    let rows = articles::Entity::find()
-        .filter(articles::Column::DeletedAt.is_null())
-        .order_by_asc(articles::Column::Id)
-        .limit(500)
+    let page = Page::new(&paging, 500)?;
+    let mut query = articles::Entity::find().filter(articles::Column::DeletedAt.is_null());
+    // Search in SQL, before the page is cut: filtering after the cut would
+    // hide matches that sit beyond the first page.
+    if let Some(q) = params.q.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
+        let escaped = q
+            .to_lowercase()
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
+        query = query.filter(sea_orm::sea_query::Expr::cust_with_values(
+            "(lower(title) LIKE $1 OR lower(coalesce(keywords, '')) LIKE $1)",
+            [format!("%{escaped}%")],
+        ));
+    }
+    let rows = page
+        .apply(query.order_by_asc(articles::Column::Id))
         .all(&ctx.db)
         .await?;
-    let rows: Vec<_> = if let Some(q) = params.q.as_deref().map(str::to_ascii_lowercase) {
-        rows.into_iter()
-            .filter(|a| {
-                a.title.to_ascii_lowercase().contains(&q)
-                    || a.keywords
-                        .as_deref()
-                        .unwrap_or("")
-                        .to_ascii_lowercase()
-                        .contains(&q)
-            })
-            .collect()
-    } else {
-        rows
-    };
-    format::json(rows)
+    let (rows, more) = page.split(rows);
+    page.respond(rows, more, &uri)
 }
 
 /// The support routes.
