@@ -641,9 +641,20 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       the same record and creates one; no key means two records; reused key and
       bad keys are 422; a failed attempt does not stick; two simultaneous
       identical requests create one). **Limits:** opt-in, so a client that sends
-      no key is not protected, and the bundled UI does not send one yet; only
+      no key is not protected (the bundled UI now does send one, see below); only
       successes are replayed (an error is re-run on retry); bodies over 1 MiB
       are refused 413 when a key is sent; a crash after the work but before the
       result is recorded leaves the key `in_progress` for 2 minutes, then a
       retry repeats the work; the key is scoped to the caller's subject, so a
       different caller reusing a key gets their own execution.
+      **UI (later):** `api()` in `src/lib/api/client.ts` sends an
+      `Idempotency-Key` on every `POST` (a fresh random key per call, with a
+      fallback where `crypto.randomUUID` is unavailable) and accepts an explicit
+      `idempotencyKey` so a caller can keep one key across retries of one
+      action. Two identical `POST`s issued while the first is in flight share
+      one request, so a double click sends one. Tests: 5 vitest and a
+      Playwright assertion on the break-glass request. **Limits:** the key is
+      fresh per call unless a caller passes one, so a user re-submitting after
+      a failure gets a new key (safe, because a failed attempt is forgotten
+      server-side); no page passes a stable per-form key yet; `apiAll` is
+      GET-only and unaffected.

@@ -89,17 +89,70 @@ export async function apiAll<T>(
   return rows;
 }
 
-/** Perform one JSON request against the proxy; throws [`ApiError`] on non-2xx. */
-export async function api<T>(
+/** A fresh random key; `crypto.randomUUID` needs a secure context, so fall back. */
+export function newIdempotencyKey(): string {
+  const c = globalThis.crypto;
+  if (typeof c?.randomUUID === "function") return c.randomUUID();
+  const bytes = new Uint8Array(16);
+  if (c?.getRandomValues) c.getRandomValues(bytes);
+  else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.random() * 256;
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Identical POSTs currently in flight, so a double click sends one request. */
+const inflight = new Map<string, Promise<unknown>>();
+
+/**
+ * Perform one JSON request against the proxy; throws [`ApiError`] on non-2xx.
+ *
+ * Every `POST` carries an `Idempotency-Key` (CRM-T52): a retry that reuses the
+ * key gets the first response back instead of repeating the work. Pass
+ * `idempotencyKey` to keep one key across a user's retries of the same
+ * action; otherwise each call gets a fresh one. Two identical `POST`s issued
+ * while the first is still in flight share that one request.
+ */
+export function api<T>(
   path: string,
-  init?: { method?: string; body?: unknown; fetch?: typeof fetch },
+  init?: {
+    method?: string;
+    body?: unknown;
+    fetch?: typeof fetch;
+    idempotencyKey?: string;
+  },
+): Promise<T> {
+  const method = init?.method ?? "GET";
+  if (method !== "POST") return send<T>(path, init, method);
+  const dedupe = `${path}\u0000${JSON.stringify(init?.body ?? null)}`;
+  const pending = inflight.get(dedupe);
+  if (pending) return pending as Promise<T>;
+  const request = send<T>(path, init, method).finally(() => {
+    inflight.delete(dedupe);
+  });
+  inflight.set(dedupe, request);
+  return request;
+}
+
+async function send<T>(
+  path: string,
+  init:
+    | {
+        body?: unknown;
+        fetch?: typeof fetch;
+        idempotencyKey?: string;
+      }
+    | undefined,
+  method: string,
 ): Promise<T> {
   const doFetch = init?.fetch ?? fetch;
   const url = `${API_BASE_URL}${path}`;
+  const headers: Record<string, string> = {};
+  if (init?.body !== undefined) headers["content-type"] = "application/json";
+  if (method === "POST") {
+    headers["idempotency-key"] = init?.idempotencyKey ?? newIdempotencyKey();
+  }
   const response = await doFetch(url, {
-    method: init?.method ?? "GET",
-    headers:
-      init?.body !== undefined ? { "content-type": "application/json" } : {},
+    method,
+    headers,
     body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
   const text = await response.text();

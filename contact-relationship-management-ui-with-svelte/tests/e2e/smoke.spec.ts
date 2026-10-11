@@ -885,7 +885,9 @@ test.describe("break-glass page (CRM-T44)", () => {
 
   test("a thin reason cannot be submitted; a good one shows the expiry", async ({ page }) => {
     let body: { reason?: string; minutes?: number } = {};
+    let idempotencyKey: string | undefined;
     await page.route("**/api/proxy/break-glass", (route) => {
+      idempotencyKey = route.request().headers()["idempotency-key"];
       body = route.request().postDataJSON();
       return route.fulfill({
         json: { pid: "g1", expires_at: new Date(Date.now() + 30 * 60_000).toISOString(), minutes: 30 },
@@ -900,6 +902,8 @@ test.describe("break-glass page (CRM-T44)", () => {
     await expect(page.getByTestId("bg-granted")).toBeVisible();
     expect(body.reason).toBe("Patient collapsed, covering colleague absent");
     expect(body.minutes).toBe(30);
+    // CRM-T52: every POST carries an Idempotency-Key.
+    expect(idempotencyKey).toMatch(/^[\x21-\x7e]{1,255}$/);
   });
 
   test("the review page lists grants and records a review", async ({ page }) => {
