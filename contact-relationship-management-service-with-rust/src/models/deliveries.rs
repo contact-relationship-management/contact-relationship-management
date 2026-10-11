@@ -175,3 +175,105 @@ pub async fn retriable<C: ConnectionTrait>(db: &C, campaign_pid: Uuid) -> Result
         None => 0,
     })
 }
+
+/// Whether the contact's mailbox is on the suppression list (a hard bounce or
+/// a complaint was reported).
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn is_suppressed<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Result<bool> {
+    let row = db
+        .query_one_raw(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            "SELECT 1 AS one FROM email_suppressions WHERE contact_pid = $1",
+            [contact_pid.into()],
+        ))
+        .await?;
+    Ok(row.is_some())
+}
+
+/// What a provider event did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventEffect {
+    /// No delivery carries that message id.
+    UnknownMessage,
+    /// The same event for the same message was already recorded.
+    Duplicate,
+    /// Recorded; carries the contact when it must now be suppressed.
+    Recorded {
+        /// The contact the message was sent to.
+        contact_pid: Uuid,
+        /// The campaign it was sent for.
+        campaign_pid: Uuid,
+    },
+}
+
+/// Record one provider event once. Returns what it matched; the caller applies
+/// the consequences in the same transaction.
+///
+/// # Errors
+///
+/// When a statement fails.
+pub async fn record_event<C: ConnectionTrait>(
+    db: &C,
+    message_id: &str,
+    event: &str,
+) -> Result<EventEffect> {
+    let found = db
+        .query_one_raw(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            "SELECT contact_pid, campaign_pid FROM email_deliveries WHERE message_id = $1",
+            [message_id.into()],
+        ))
+        .await?;
+    let Some(found) = found else {
+        return Ok(EventEffect::UnknownMessage);
+    };
+    let inserted = db
+        .execute_raw(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            "INSERT INTO email_events (message_id, event) VALUES ($1, $2) \
+             ON CONFLICT (message_id, event) DO NOTHING",
+            [message_id.into(), event.into()],
+        ))
+        .await?;
+    if inserted.rows_affected() == 0 {
+        return Ok(EventEffect::Duplicate);
+    }
+    Ok(EventEffect::Recorded {
+        contact_pid: found.try_get("", "contact_pid")?,
+        campaign_pid: found.try_get("", "campaign_pid")?,
+    })
+}
+
+/// Put a contact on the suppression list (idempotent).
+///
+/// # Errors
+///
+/// When the statement fails.
+pub async fn suppress<C: ConnectionTrait>(db: &C, contact_pid: Uuid, reason: &str) -> Result<()> {
+    db.execute_raw(Statement::from_sql_and_values(
+        DatabaseBackend::Postgres,
+        "INSERT INTO email_suppressions (contact_pid, reason) VALUES ($1, $2) \
+         ON CONFLICT (contact_pid) DO NOTHING",
+        [contact_pid.into(), reason.into()],
+    ))
+    .await?;
+    Ok(())
+}
+
+/// Count one confirmed delivery on the campaign.
+///
+/// # Errors
+///
+/// When the statement fails.
+pub async fn count_delivered<C: ConnectionTrait>(db: &C, campaign_pid: Uuid) -> Result<()> {
+    db.execute_raw(Statement::from_sql_and_values(
+        DatabaseBackend::Postgres,
+        "UPDATE campaigns SET delivered = delivered + 1 WHERE pid = $1",
+        [campaign_pid.into()],
+    ))
+    .await?;
+    Ok(())
+}

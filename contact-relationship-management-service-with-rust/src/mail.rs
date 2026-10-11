@@ -13,7 +13,8 @@
 //! [`Sender::Recording`] without boxing, and so every variant is visible here.
 //!
 //! **Not built yet** (see `spec/compliance/email-provider-brief.md`): the
-//! address-level suppression list and bounce and complaint webhooks. Until they are, `smtp` mode refuses to start in production unless
+//! a provider-specific webhook adapter, a way to clear a suppression, and a
+//! background job. Until they are, `smtp` mode refuses to start in production unless
 //! `CRM_MAIL_ALLOW_PRODUCTION=1` acknowledges that.
 
 use std::collections::HashSet;
@@ -141,6 +142,11 @@ impl Recorder {
     #[must_use]
     pub fn sent(&self) -> Vec<Message> {
         lock(&self.sent).clone()
+    }
+
+    /// Forget the messages recorded so far.
+    pub fn clear(&self) {
+        lock(&self.sent).clear();
     }
 
     /// Make every send to `address` fail with a transient error until
@@ -350,7 +356,7 @@ pub fn from_settings(
                 if !flag("CRM_MAIL_ALLOW_PRODUCTION") {
                     return Err(
                         "CRM_MAIL_MODE=smtp in production needs CRM_MAIL_ALLOW_PRODUCTION=1: \
-                         bounce and complaint handling is not built yet (CRM-T39)"
+                         no provider is integrated and the vendor, agreement and legal review is open (CRM-T39)"
                             .to_string(),
                     );
                 }

@@ -532,8 +532,19 @@ parties outside the repository.
       404. `CRM_UNSUBSCRIBE_SECRET` and `CRM_PUBLIC_URL` are required for `smtp`
       mode. Request test covers scanner GET, one-click POST, repeat, forged
       token, and no further mail to the contact.
-      **Still open:** the address-level suppression list (bounces, complaints),
-      authenticated bounce/complaint/delivery webhooks (so
+      **Webhooks and suppression (built 2026-10-11):** `POST /webhooks/email`,
+      authenticated by an HMAC-SHA256 signature with a five-minute window
+      (`CRM_WEBHOOK_SECRET`), takes a generic outcome (`message_id`, `event` of
+      `delivered`, `bounce_hard`, `bounce_soft`, `complaint`). Each
+      (message, event) applies once. `delivered` counts on the campaign; a hard
+      bounce or complaint puts the contact on `email_suppressions` (the send
+      path skips them; audited) and a complaint also withdraws consent. The CRM
+      stores no addresses, so suppression is per contact, not per address; a
+      changed address in the person service stays suppressed until cleared in
+      the database (no clearing endpoint yet). A real provider's payload needs a
+      small adapter to this shape, which waits on the vendor choice.
+      **Still open:** a clearing path for suppressions, a provider adapter,
+      `opened` and `clicked` events, authenticated bounce/complaint/delivery webhooks (so
       `delivered`, `opened`, `clicked` stay 0 on a real send), the nurture
       sequences (still simulated), a background job instead of batched requests,
       the address contract with the person service (the `email` field is

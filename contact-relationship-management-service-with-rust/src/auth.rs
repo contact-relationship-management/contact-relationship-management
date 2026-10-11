@@ -349,6 +349,7 @@ fn is_public_path(path: &str) -> bool {
     path == "/_health"
         || path == "/_ping"
         || path.starts_with("/unsubscribe/")
+        || path == "/webhooks/email"
         || (!protect_operational() && is_operational_path(path))
 }
 

@@ -8,6 +8,7 @@ use contact_relationship_management_service::app::App;
 use contact_relationship_management_service::mail::{self, Recorder, Sender};
 use contact_relationship_management_service::models::deliveries;
 use contact_relationship_management_service::unsubscribe::{self, Unsubscriber};
+use contact_relationship_management_service::webhook;
 use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -423,4 +424,98 @@ async fn the_unsubscribe_link_withdraws_consent_and_stops_the_next_send() {
         assert_eq!(to_ada, 1, "Ada was mailed after unsubscribing");
     })
     .await;
+}
+
+const WEBHOOK_SECRET: &str = "webhook-secret-0123456789abcdef-xyz";
+
+/// Post a signed provider event; expands to the response.
+macro_rules! provider_event {
+    ($request:expr, $message_id:expr, $event:expr) => {{
+        let body = json!({ "message_id": $message_id, "event": $event }).to_string();
+        let timestamp = chrono::Utc::now().timestamp().to_string();
+        let signature = webhook::sign(WEBHOOK_SECRET, &timestamp, body.as_bytes());
+        $request
+            .post("/webhooks/email")
+            .add_header("x-crm-timestamp", timestamp)
+            .add_header("x-crm-signature", signature)
+            .add_header("content-type", "application/json")
+            .bytes(body.into())
+            .await
+    }};
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn provider_events_count_deliveries_and_suppress_bounces_and_complaints() {
+    // SAFETY: serial tests; nothing else reads the environment concurrently.
+    unsafe { std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET) };
+    request::<App, _, _>(|request, _ctx| async move {
+        let (recorder, _restore) = recording();
+        let ada = seed_contact!(&request, "Ada Lovelace").await;
+        let grace = seed_contact!(&request, "Grace Hopper").await;
+        let alan = seed_contact!(&request, "Alan Turing").await;
+        give_address!(&request, ada, "ada@example.test");
+        give_address!(&request, grace, "grace@example.test");
+        give_address!(&request, alan, "alan@example.test");
+        let first = scheduled_campaign!(&request, Some("Hello"));
+        request
+            .post(&format!("/api/campaigns/{first}/run"))
+            .await
+            .assert_status_ok();
+        let id_of = |to: &str| {
+            recorder
+                .sent()
+                .into_iter()
+                .find(|m| m.to == to)
+                .unwrap()
+                .message_id
+        };
+
+        // Unsigned, badly signed and stale requests are refused.
+        request
+            .post("/webhooks/email")
+            .json(&json!({ "message_id": id_of("ada@example.test"), "event": "delivered" }))
+            .await
+            .assert_status_unauthorized();
+
+        // A delivery is counted once, however often it is reported.
+        let ada_id = id_of("ada@example.test");
+        let first_report: Value = provider_event!(&request, &ada_id, "delivered").json();
+        assert_eq!(first_report["result"], "recorded");
+        let repeat: Value = provider_event!(&request, &ada_id, "delivered").json();
+        assert_eq!(repeat["result"], "duplicate");
+        let campaigns: Value = request.get("/api/campaigns").await.json();
+        let row = campaigns
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["pid"] == first)
+            .unwrap();
+        assert_eq!(row["delivered"], 1, "{row}");
+
+        // A message we never sent is acknowledged and ignored.
+        let unknown: Value = provider_event!(&request, "<nope@crm.invalid>", "bounce_hard").json();
+        assert_eq!(unknown["result"], "unknown_message");
+
+        // A hard bounce suppresses the mailbox; a complaint also withdraws consent.
+        provider_event!(&request, &id_of("grace@example.test"), "bounce_hard").assert_status_ok();
+        provider_event!(&request, &id_of("alan@example.test"), "complaint").assert_status_ok();
+        let alan_now: Value = request.get(&format!("/api/contacts/{alan}")).await.json();
+        assert_eq!(alan_now["contact"]["marketing_consent"], "withdrawn");
+        let grace_now: Value = request.get(&format!("/api/contacts/{grace}")).await.json();
+        assert_eq!(grace_now["contact"]["marketing_consent"], "granted");
+
+        // A later campaign mails only Ada.
+        recorder.clear();
+        let second = scheduled_campaign!(&request, Some("Again"));
+        request
+            .post(&format!("/api/campaigns/{second}/run"))
+            .await
+            .assert_status_ok();
+        let to: Vec<String> = recorder.sent().iter().map(|m| m.to.clone()).collect();
+        assert_eq!(to, ["ada@example.test"], "a suppressed mailbox was mailed");
+    })
+    .await;
+    unsafe { std::env::remove_var("CRM_WEBHOOK_SECRET") };
 }

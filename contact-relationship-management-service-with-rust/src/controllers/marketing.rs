@@ -166,8 +166,21 @@ async fn apply_consent(
     source: &str,
     actor: Option<&str>,
 ) -> Result<()> {
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
     let txn = db.begin().await?;
+    apply_consent_in(&txn, contact, action, source, actor).await?;
+    txn.commit().await?;
+    Ok(())
+}
+
+/// The body of [`apply_consent`], inside the caller's transaction.
+async fn apply_consent_in(
+    txn: &sea_orm::DatabaseTransaction,
+    contact: contacts::Model,
+    action: &str,
+    source: &str,
+    actor: Option<&str>,
+) -> Result<()> {
+    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
     consent_events::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         contact_pid: ActiveValue::set(contact.pid),
@@ -176,31 +189,31 @@ async fn apply_consent(
         occurred_at: ActiveValue::set(now),
         ..Default::default()
     }
-    .insert(&txn)
+    .insert(txn)
     .await?;
     let contact_pid = contact.pid;
     let mut active: contacts::ActiveModel = contact.into();
     active.marketing_consent = ActiveValue::set(action.to_string());
     active.consent_changed_at = ActiveValue::set(Some(now));
-    active.update(&txn).await?;
+    active.update(txn).await?;
     if action == "withdrawn" {
         // Exit every active enrolment immediately.
         let enrollments = nurture_enrollments::Entity::find()
             .filter(nurture_enrollments::Column::ContactPid.eq(contact_pid))
             .filter(nurture_enrollments::Column::Status.eq("active"))
             .filter(nurture_enrollments::Column::DeletedAt.is_null())
-            .all(&txn)
+            .all(txn)
             .await?;
         for enrollment in enrollments {
             let mut active: nurture_enrollments::ActiveModel = enrollment.into();
             active.status = ActiveValue::set("exited".to_string());
             active.next_due_at = ActiveValue::set(None);
-            active.update(&txn).await?;
+            active.update(txn).await?;
         }
     }
     let kind = format!("consent_{action}");
     Audit::record(
-        &txn,
+        txn,
         "contact",
         contact_pid,
         &kind,
@@ -209,7 +222,7 @@ async fn apply_consent(
     )
     .await?;
     streaming::emit_on(
-        &txn,
+        txn,
         "contact",
         &kind,
         &contact_pid.to_string(),
@@ -218,7 +231,6 @@ async fn apply_consent(
         None,
     )
     .await?;
-    txn.commit().await?;
     Ok(())
 }
 
@@ -494,6 +506,21 @@ fn with_unsubscribe(body: String, url: Option<&str>) -> String {
     }
 }
 
+/// Why a consented contact is still not mailed this time, if so.
+async fn skip_reason(
+    db: &sea_orm::DatabaseConnection,
+    contact_pid: Uuid,
+    audience: &std::collections::HashSet<Uuid>,
+) -> Result<Option<&'static str>> {
+    if deliveries::is_suppressed(db, contact_pid).await? {
+        return Ok(Some("mailbox suppressed after a bounce or complaint"));
+    }
+    if !audience.contains(&contact_pid) {
+        return Ok(Some("no longer in the segment"));
+    }
+    Ok(None)
+}
+
 /// Settle one claimed delivery: re-check consent against the live row,
 /// resolve the address, hand the message to the sender, and record the result.
 async fn deliver_one(
@@ -523,15 +550,8 @@ async fn deliver_one(
         outcome.suppressed += 1;
         return Ok(());
     };
-    if !audience.contains(&contact.pid) {
-        deliveries::settle(
-            &ctx.db,
-            item.id,
-            "suppressed",
-            None,
-            Some("no longer in the segment"),
-        )
-        .await?;
+    if let Some(reason) = skip_reason(&ctx.db, contact.pid, audience).await? {
+        deliveries::settle(&ctx.db, item.id, "suppressed", None, Some(reason)).await?;
         outcome.suppressed += 1;
         return Ok(());
     }
@@ -1140,11 +1160,102 @@ async fn unsubscribe_post(State(ctx): State<AppContext>, Path(token): Path<Strin
     }
 }
 
+/// `POST /webhooks/email` body: one provider outcome.
+#[derive(Debug, serde::Deserialize)]
+struct EmailEvent {
+    /// The `Message-ID` we assigned (with angle brackets).
+    message_id: String,
+    /// `delivered`, `bounce_hard`, `bounce_soft` or `complaint`.
+    event: String,
+}
+
+/// `POST /webhooks/email` — an outcome from the mail provider. Authenticated by
+/// an HMAC signature, not a bearer token (see [`crate::webhook`]). A hard
+/// bounce suppresses the contact's mailbox; a complaint also withdraws
+/// marketing consent; `delivered` is counted on the campaign. Each
+/// (message, event) is applied once, so a replay changes nothing. Not found
+/// when no secret is configured.
+#[debug_handler]
+async fn email_webhook(
+    State(ctx): State<AppContext>,
+    headers: axum::http::HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<Response> {
+    use axum::http::StatusCode;
+    let Some(secret) = crate::webhook::secret() else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+    let header = |name: &str| {
+        headers
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+            .to_string()
+    };
+    let now = chrono::Utc::now().timestamp();
+    if !crate::webhook::verify(
+        &secret,
+        &header("x-crm-timestamp"),
+        &header("x-crm-signature"),
+        &body,
+        now,
+    ) {
+        return Ok(StatusCode::UNAUTHORIZED.into_response());
+    }
+    let Ok(event) = serde_json::from_slice::<EmailEvent>(&body) else {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    };
+    if !["delivered", "bounce_hard", "bounce_soft", "complaint"].contains(&event.event.as_str()) {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    }
+    let txn = ctx.db.begin().await?;
+    let effect = deliveries::record_event(&txn, &event.message_id, &event.event).await?;
+    let result = match effect {
+        deliveries::EventEffect::UnknownMessage => "unknown_message",
+        deliveries::EventEffect::Duplicate => "duplicate",
+        deliveries::EventEffect::Recorded {
+            contact_pid,
+            campaign_pid,
+        } => {
+            match event.event.as_str() {
+                "delivered" => deliveries::count_delivered(&txn, campaign_pid).await?,
+                "bounce_hard" | "complaint" => {
+                    deliveries::suppress(&txn, contact_pid, &event.event).await?;
+                    Audit::record(
+                        &txn,
+                        "contact",
+                        contact_pid,
+                        "email_suppressed",
+                        None,
+                        Some(serde_json::json!({ "reason": event.event })),
+                    )
+                    .await?;
+                }
+                _ => {}
+            }
+            if event.event == "complaint" {
+                let contact = contacts::Entity::find()
+                    .filter(contacts::Column::Pid.eq(contact_pid))
+                    .filter(contacts::Column::DeletedAt.is_null())
+                    .one(&txn)
+                    .await?;
+                if let Some(contact) = contact.filter(|c| c.marketing_consent != "withdrawn") {
+                    apply_consent_in(&txn, contact, "withdrawn", "complaint", None).await?;
+                }
+            }
+            "recorded"
+        }
+    };
+    txn.commit().await?;
+    format::json(serde_json::json!({ "result": result }))
+}
+
 /// The public unsubscribe routes (outside `/api`; see `auth::is_public_path`).
 pub fn public_routes() -> Routes {
     Routes::new()
         .add("/unsubscribe/{token}", get(unsubscribe_page_get))
         .add("/unsubscribe/{token}", post(unsubscribe_post))
+        .add("/webhooks/email", post(email_webhook))
 }
 
 /// The marketing routes.

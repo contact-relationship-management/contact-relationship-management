@@ -23,6 +23,7 @@ mod m20261010_000008_audit_chain;
 mod m20261010_000009_break_glass;
 mod m20261011_000010_idempotency_keys;
 mod m20261011_000011_email_deliveries;
+mod m20261011_000012_email_events;
 
 /// The crate's migrator.
 pub struct Migrator;
@@ -43,6 +44,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261010_000009_break_glass::Migration),
             Box::new(m20261011_000010_idempotency_keys::Migration),
             Box::new(m20261011_000011_email_deliveries::Migration),
+            Box::new(m20261011_000012_email_events::Migration),
             // inject-above (do not remove this comment)
         ]
     }

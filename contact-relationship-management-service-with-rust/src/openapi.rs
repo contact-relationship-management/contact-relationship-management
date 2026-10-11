@@ -150,6 +150,7 @@ pub fn spec() -> Value {
                 "get": { "tags": ["marketing"], "summary": "Public: the page an email's unsubscribe link opens; changes nothing", "security": [], "responses": ok("HTML page") },
                 "post": { "tags": ["marketing"], "summary": "Public: withdraw marketing consent through a signed link (RFC 8058 one-click); idempotent, body ignored", "security": [], "responses": ok("HTML page") }
             },
+            "/webhooks/email": { "post": { "tags": ["marketing"], "summary": "Public, HMAC-signed (X-CRM-Timestamp, X-CRM-Signature): a provider outcome for a message (delivered, bounce_hard, bounce_soft, complaint). Hard bounces and complaints suppress the mailbox; a complaint also withdraws consent. Each event is applied once", "security": [], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["message_id", "event"], "properties": { "message_id": { "type": "string" }, "event": { "type": "string", "enum": ["delivered", "bounce_hard", "bounce_soft", "complaint"] } } } } } }, "responses": ok("Result") } },
             "/metrics.prom": { "get": { "tags": ["ops"], "summary": "Prometheus metrics (public)", "responses": ok("Exposition text") } }
         },
         "components": { "securitySchemes": { "bearerAuth": {

@@ -16,6 +16,14 @@ retry, consent re-read before each send), campaign `subject` and `body`, and
 `CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: address-level suppression list,
 bounce and complaint webhooks, nurture sends.
 
+### Added — outcome webhook and suppression list (CRM-T39, 2026-10-11)
+
+`POST /webhooks/email` (HMAC-signed, `CRM_WEBHOOK_SECRET`) records provider
+outcomes once per message and event. `delivered` counts on the campaign; a hard
+bounce or complaint suppresses the contact (`email_suppressions`, skipped by
+the send path), and a complaint withdraws consent. Migration
+`m20261011_000012_email_events`.
+
 ### Added — unsubscribe link and headers (CRM-T39, 2026-10-11)
 
 Every real message ends with a signed unsubscribe link and carries

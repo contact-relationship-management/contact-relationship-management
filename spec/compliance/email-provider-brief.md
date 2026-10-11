@@ -39,10 +39,15 @@ brief, not legal advice, and it picks no vendor.
   `CRM_UNSUBSCRIBE_SECRET` (32+ characters) and `CRM_PUBLIC_URL` (https in
   production); `smtp` mode will not start without them. A withdrawn contact is
   suppressed at the next send, because consent is re-read before each message.
-- **Not built:** an address-level suppression list (hard bounces and
-  complaints), bounce, complaint and delivery webhooks (so `delivered`,
-  `opened` and `clicked` stay at zero on a real send), a background job (sends
-  are batched inside the request), and nurture sends.
+- **Outcome webhook.** `POST /webhooks/email` takes a generic, HMAC-signed
+  event (`delivered`, `bounce_hard`, `bounce_soft`, `complaint`) keyed by our
+  `Message-ID`, applied once per message and event. A hard bounce or complaint
+  suppresses the contact (the send skips them); a complaint also withdraws
+  consent. Suppression is per contact because the CRM holds no addresses.
+- **Not built:** an adapter from a chosen provider's payload and signature
+  scheme to this shape, `opened` and `clicked` events, a way to clear a
+  suppression, a background job (sends are batched inside the request), and
+  nurture sends.
 
 ## A local server to build against
 
@@ -64,7 +69,7 @@ traffic from real mailbox providers.
 | Asynchronous send with retry and back-off | A real send takes minutes and the provider will throttle or fail | Retry without back-off, batched inside the request; no background job |
 | One-click unsubscribe: a link in the body and the `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058) | Bulk-sender rules at the large mailbox providers, and PECR | Built; not yet tried against a large mailbox provider |
 | An unsubscribe endpoint that writes a `withdrawn` consent event immediately | The consent log is the source of truth | Built: signed link, public endpoint, tested |
-| A suppression list the send path checks, filled by bounces, complaints and unsubscribes | Never mail an address that bounced hard or complained | Needs the webhooks first; unsubscribes already suppress through consent |
+| A suppression list the send path checks, filled by bounces, complaints and unsubscribes | Never mail an address that bounced hard or complained | Built per contact; unsubscribes also suppress through consent |
 | Signed, authenticated webhooks for delivered, bounced, complained, opened and clicked | The provider reports outcomes asynchronously | None |
 | Sender identification and a postal or contact address in each message | PECR and equivalent rules | None |
 | SPF, DKIM and DMARC aligned for the sending domain | Delivery and anti-spoofing | A deployer task |
@@ -103,8 +108,8 @@ idempotent claiming, retry, consent re-check and the progress endpoint.
 Remaining, after the vendor is chosen (the webhook format and the suppression
 model are the vendor's):
 
-1. The address-level suppression list the send checks, filled from bounces and
-   complaints (the unsubscribe link and headers are built).
+1. A clearing path for suppressions (the unsubscribe link, headers, suppression
+   list and generic webhook are built).
 2. Authenticated webhook endpoints for outcomes, updating the delivery table
    and the campaign counters from real events.
 3. Move the send into a background job, and send nurture steps the same way.

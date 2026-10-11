@@ -640,7 +640,9 @@ impl Hooks for App {
         {
             use sea_orm::ConnectionTrait;
             ctx.db
-                .execute_unprepared("TRUNCATE idempotency_keys, email_deliveries")
+                .execute_unprepared(
+                    "TRUNCATE idempotency_keys, email_deliveries, email_events, email_suppressions",
+                )
                 .await?;
         }
         truncate_table(&ctx.db, EventOutbox).await?;
