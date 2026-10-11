@@ -17,13 +17,13 @@
 | 5 | Marchnata anghyfreithlon | Gwallau cydsyniad | Mae'r llwybr anfon (nid y rhyngwyneb) yn gorfodi cydsyniad; hanes cydsyniad na ellir ei newid | Canolig nes bod anfonwr go iawn a thrin bownsys a chwynion yn bodoli (T39) |
 | 6 | Argaeledd / camddefnydd | API cyhoeddus | Cyfyngu cyfradd a chloi allan, a rennir drwy Redis | Canolig: mae terfynau'n dychwelyd i fesul replica os bydd Redis yn methu |
 | 7 | Diffyg cydymffurfio â hygyrchedd | Dyletswydd y sector cyhoeddus | Sganiau axe awtomataidd; datganiad hygyrchedd gonest | **Heb ei fesur** nes archwiliad â llaw (T48) |
-| 8 | Cadwyn gyflenwi | Dibyniaethau a delweddau | `cargo deny/audit`, `pnpm audit`, SBOM, pinio crynodebau | Canolig: mae crynodebau'n dyddio heb broses adnewyddu; adeiladau heb eu llofnodi (T49) |
-| 9 | Cofnodion dyblyg o ailgeisiadau | Mae allweddi idempotency yn ddewisol (T52) | Ailchwarae ar gyfer cleientiaid sy'n anfon yr allwedd | Isel |
+| 8 | Cadwyn gyflenwi | Dibyniaethau a delweddau | `cargo deny/audit`, `pnpm audit`, SBOM, pinio crynodebau a adnewyddir gan Dependabot, llif gwaith rhyddhau â llofnodi di-allwedd | Canolig: nid yw llofnodi wedi rhedeg ar ryddhad go iawn (T49) |
+| 9 | Cofnodion dyblyg o ailgeisiadau | Mae allweddi idempotency yn ddewisol ar lefel yr API (T52) | Ailchwarae ar gyfer cleientiaid sy'n anfon yr allwedd; mae'r rhyngwyneb cyfun bob amser yn gwneud | Isel |
 | 10 | Camddosbarthu data | Mae'r defnyddiwr sy'n lleoli yn penderfynu beth yw “cyswllt” | Nodyn cwmpas a thempled DPIA | Mae'n dibynnu arnoch chi |
 
 ## Bylchau sy'n aros ar agor wrth natur
 
-T39 (darparwr e-bost go iawn), T42 (sicrwydd annibynnol), T48 (archwiliad hygyrchedd â llaw), T49 (llofnodi, adolygu API). Gweler [tasks.md](../../../../spec/tasks.md) a [plan.md](../../../../spec/plan.md).
+T39 (darparwr e-bost go iawn), T42 (sicrwydd annibynnol), T48 (archwiliad hygyrchedd â llaw), T49 (rhyddhad cyntaf wedi'i lofnodi, adolygydd yn gwirio drafft yr API). Gweler [tasks.md](../../../../spec/tasks.md) a [plan.md](../../../../spec/plan.md).
 
 ## Camau risg a awgrymir
 

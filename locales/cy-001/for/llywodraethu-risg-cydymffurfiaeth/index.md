@@ -13,6 +13,7 @@ Y pecyn tystiolaeth yw [spec/compliance](../../../../spec/compliance/index.md). 
 | [operations-runbook](../../../../spec/compliance/operations-runbook.md) | Caledu, wrth gefn ac adfer, allweddi, logio, ymateb i ddigwyddiadau |
 | [dtac-supporting](../../../../spec/compliance/dtac-supporting.md) | Datganiadau DTAC drafft y GIG i'r gwneuthurwr eu mabwysiadu |
 | [gds-api-review](../../../../spec/compliance/gds-api-review.md) | Hunanadolygiad yn erbyn safonau API llywodraeth y DU (drafft, heb ei wirio yn erbyn y testun cyhoeddedig) |
+| [api-lifecycle](../../../../spec/compliance/api-lifecycle.md) | Ffurf gwallau (RFC 9457), beth sy'n newid torri, y camau dibrisio a'r cyfnod rhybudd |
 | [Asesiad DTAC v2.0 y GIG](../../../../docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/index.md) | Canlyniad cwestiwn wrth gwestiwn: yn debygol y tu allan i gwmpas DTAC, ac y byddai'n methu'r adrannau perthnasol oherwydd diffyg tystiolaeth sefydliadol |
 | [plan](../../../../spec/plan.md) | Dyfarniad parodrwydd (ddim yn barod) a'r gofrestr bylchau |
 | [tasks](../../../../spec/tasks.md) | Tasg pob bwlch, ei datrysiad a'r cyfyngiadau a nodwyd |
@@ -35,7 +36,7 @@ Mae'r olwg ar risg yn [briff y Prif Swyddog Risg](../prif-swyddog-risg/index.md)
 | Archwilio | Wedi'i weithredu a'i brofi: cadwyn hash, atodi-yn-unig, o fewn y trafodyn, archwilio darlleniadau gan gynnwys rhestrau, rhestrau bargeinion a mewnwelediadau. **Defnyddiwr sy'n lleoli:** angori pen y gadwyn y tu allan i'r gronfa ddata |
 | Hawliau preifatrwydd | Wedi'i weithredu: allforio mynediad at ddata personol, dileu (a wrthodir tra bo rhwymedigaethau ar agor), ysgubo cadw. **Defnyddiwr sy'n lleoli:** sail gyfreithlon, amserlen gadw, cofnodion prosesu |
 | Amgryptio | Yn rhannol: AES-256-GCM ar lefel maes ar ddau golofn gydag allweddi lleol, dim KMS. Amgryptio wrth orffwys ac wrth drosglwyddo yw cyfrifoldeb y defnyddiwr sy'n lleoli |
-| Cadwyn gyflenwi | Wedi'i weithredu: `cargo audit`, `cargo deny`, `pnpm audit`, SBOMau, delweddau sylfaen wedi'u pinio yn ôl crynodeb. **Bwlch:** adeiladau heb eu llofnodi ac mae angen amserlen adnewyddu ar gyfer crynodebau (T49) |
+| Cadwyn gyflenwi | Wedi'i weithredu: `cargo audit`, `cargo deny`, `pnpm audit`, SBOMau, delweddau sylfaen wedi'u pinio yn ôl crynodeb, diweddariadau Dependabot. **Bwlch:** nid yw'r llif gwaith rhyddhau wedi'i lofnodi wedi rhedeg ar ryddhad go iawn (T49) |
 | Hygyrchedd | Yn rhannol: sganiau axe awtomataidd a datganiad cyhoeddus gonest. **Bwlch:** dim archwiliad â llaw (T48), cyfieithiadau heb eu hadolygu |
 | Sicrwydd annibynnol | **Bwlch:** dim (T42) |
 | Cyfraith e-bost a marchnata | Llwybr anfon sy'n rhoi cydsyniad yn gyntaf wedi'i weithredu; mae anfon go iawn, cytundeb prosesydd a thrin bownsys a chwynion yn absennol (T39) |
@@ -48,6 +49,7 @@ Mae'r olwg ar risg yn [briff y Prif Swyddog Risg](../prif-swyddog-risg/index.md)
 4. Trin dechreuwyr, symudwyr a gadawyr yn eich darparwr hunaniaeth.
 5. Cadw ar gyfer y tabl archwilio, sy'n tyfu gyda thraffig darllen.
 6. Diogelu Redis fel y gronfa ddata: mae'n dal data mewnwelediadau a storiwyd dros dro.
+7. Cyfuno diweddariadau Dependabot, a gwirio rhyddhad wedi'i lofnodi cyn ei ddefnyddio.
 
 ## Beth i wrthod ei lofnodi
 

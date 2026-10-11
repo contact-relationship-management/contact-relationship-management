@@ -34,7 +34,7 @@ Ehangder nodweddion. Mae dyfynbrisiau, contractau, teleffoni, sgorio dysgu peiri
 
 1. Prawf diogelwch annibynnol ac archwiliad hygyrchedd â llaw (T42, T48): maent yn penderfynu a yw B yn bosibl o gwbl.
 2. Darparwr e-bost go iawn y tu ôl i'r trait anfon presennol (T39), unwaith y dewisir gwerthwr a thelerau prosesu data ([roadmap](../../../../spec/roadmap.md)).
-3. Llofnodi adeiladau (T49): gofynion sylfaenol ar gyfer caffael.
+3. Profi llofnodi rhyddhau gyda rhyddhad cyntaf wedi'i dagio (T49): gofynion sylfaenol ar gyfer caffael. Mae'r llif gwaith wedi'i adeiladu; nid yw wedi rhedeg.
 4. Dim ond wedyn y nodweddion cynnyrch ar y map ffordd (priodoli, tiriogaethau, clociau SLA oriau busnes, porth sylfaen wybodaeth gyhoeddus).
 
 ## Risgiau strategol

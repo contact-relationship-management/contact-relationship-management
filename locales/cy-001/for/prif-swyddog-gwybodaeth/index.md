@@ -18,8 +18,8 @@ Mae'r CRM hwn yn dal **data perthnasoedd**: cysylltiadau a chyfrifon fel amlenni
 ## Integreiddio a hunaniaeth
 
 - Daw mewngofnodi o wasanaeth hunaniaeth sy'n cyhoeddi tocynnau PASETO, neu Keycloak. Felly mae dechreuwyr/symudwyr/gadawyr, MFA a pholisi sesiwn yn eiddo i **ddarparwr hunaniaeth chi**; mae'r CRM yn gorfodi'r hyn y mae'r tocyn yn ei ddweud ac yn gwrthod rhai sydd wedi dod i ben.
-- Dogfennir yr API yn OpenAPI ([gds-api-review](../../../../spec/compliance/gds-api-review.md)), fersiynir ef gan bennawd, ac erbyn hyn mae wedi'i dudalennu gyda phenawdau `Link`.
-- Cynhyrchir SBOMau (CycloneDX) ar gyfer y gwasanaeth a'r rhyngwyneb yn CI.
+- Dogfennir yr API yn OpenAPI ([gds-api-review](../../../../spec/compliance/gds-api-review.md)), fersiynir ef gan bennawd, mae wedi'i dudalennu gyda phenawdau `Link`, ac mae'n dychwelyd gwallau fel dogfennau problem RFC 9457. Mae'r rheolau newid a dibrisio yn [api-lifecycle](../../../../spec/compliance/api-lifecycle.md).
+- Cynhyrchir SBOMau (CycloneDX) ar gyfer y gwasanaeth a'r rhyngwyneb yn CI; mae'r llif gwaith rhyddhau yn llofnodi'r SBOMau a'r delweddau.
 
 ## Dyletswyddau llywodraethu gwybodaeth sy'n aros gyda chi
 

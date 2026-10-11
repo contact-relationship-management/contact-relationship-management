@@ -43,7 +43,7 @@ Mae adroddiad glân yn dweud bod tîm a enwir, mewn amser a enwir, â chwmpas a 
 3. **Un cyfrif fesul rôl**, fel y gellir profi awdurdodi o bob ochr. Y polisi cyfeirio yw `config/abac-policy.reference.json`.
 4. Y dogfennau a gysylltir uchod, dogfen OpenAPI yn `/api-docs/openapi.json`, a mynediad darllen i'r ystorfa, fel y gall y prawf gyfuno profi blwch du ac adolygu cod.
 5. Y **gwendidau hysbys**, fel y bydd profwyr yn treulio eu hamser ar yr hyn nad yw eisoes wedi'i ysgrifennu:
-   - adeiladau heb eu llofnodi (T49);
+   - mae llofnodi rhyddhau wedi'i adeiladu ond heb redeg ar ryddhad go iawn (T49);
    - mae amgryptio meysydd yn cwmpasu dwy golofn gydag allweddi lleol, dim KMS;
    - nid yw ailddilysu cam-i-fyny wedi'i adeiladu;
    - ni ellir dirymu torri'r gwydr, dim ond ei adael i ddod i ben, ac nid oes rhybudd wedi'i gysylltu;
@@ -76,7 +76,7 @@ Mae adroddiad glân yn dweud bod tîm a enwir, mewn amser a enwir, â chwmpas a 
 
 ## Trefn y gwaith
 
-1. Caewch yr hyn sy'n rhad ac yn hysbys yn gyntaf, fel nad yw'r profwyr yn gwario'r gyllideb yn ei ailddarganfod: dalfa allweddi a llofnodi adeiladau (T49), rhybuddio ar dorri'r gwydr ac ar fethiannau gwirio'r archwilio, Redis y tu ôl i TLS a manylion mewngofnodi.
+1. Caewch yr hyn sy'n rhad ac yn hysbys yn gyntaf, fel nad yw'r profwyr yn gwario'r gyllideb yn ei ailddarganfod: rhyddhad cyntaf wedi'i lofnodi (T49), rhybuddio ar dorri'r gwydr ac ar fethiannau gwirio'r archwilio, Redis y tu ôl i TLS a manylion mewngofnodi.
 2. Paratowch yr adeiladwaith llwyfannu, y cyfrifon a'r data hadu.
 3. Cytunwch ar y cwmpas, y contract a'r rheolau ymgysylltu.
 4. Profwch; derbyniwch ganfyddiadau critigol ar unwaith.
