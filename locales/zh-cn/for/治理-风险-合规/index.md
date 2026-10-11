@@ -13,6 +13,7 @@
 | [operations-runbook](../../../../spec/compliance/operations-runbook.md) | 加固、备份与恢复、密钥、日志、事件响应 |
 | [dtac-supporting](../../../../spec/compliance/dtac-supporting.md) | 供制造商采用的 NHS DTAC 声明草稿 |
 | [gds-api-review](../../../../spec/compliance/gds-api-review.md) | 对照英国政府 API 标准的自我评审（草稿，未对照已发布的文本核对） |
+| [api-lifecycle](../../../../spec/compliance/api-lifecycle.md) | 错误格式（RFC 9457）、什么算破坏性变更、弃用步骤和通知期 |
 | [NHS DTAC v2.0 评估](../../../../docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/index.md) | 逐题结果：很可能不在 DTAC 范围内，并且因缺乏组织层面的证据，在适用的部分不会通过 |
 | [plan](../../../../spec/plan.md) | 就绪度结论（尚未就绪）和差距登记册 |
 | [tasks](../../../../spec/tasks.md) | 每个差距对应的任务、解决情况和已说明的限制 |
@@ -35,7 +36,7 @@
 | 审计 | 已实现并经过测试：哈希链、仅追加、在事务内写入，读取审计涵盖列表、交易列表和洞察。**部署方：** 在数据库之外锚定链头 |
 | 隐私权利 | 已实现：主体访问导出、删除（存在未了结义务时被拒绝）、保留清理。**部署方：** 合法依据、保留计划、处理活动记录 |
 | 加密 | 部分：两列使用本地密钥的字段级 AES-256-GCM，没有 KMS。静态加密和传输加密由部署方负责 |
-| 供应链 | 已实现：`cargo audit`、`cargo deny`、`pnpm audit`、SBOM、按摘要固定的基础镜像。**差距：** 构建未签名，且摘要需要刷新计划（T49） |
+| 供应链 | 已实现：`cargo audit`、`cargo deny`、`pnpm audit`、SBOM、按摘要固定的基础镜像、Dependabot 更新。**差距：** 已签名发布的工作流尚未在真实发布上运行（T49） |
 | 无障碍 | 部分：自动 axe 扫描和如实的公开声明。**差距：** 没有人工审计（T48），译文未经审阅 |
 | 独立保证 | **差距：** 没有（T42） |
 | 电子邮件与营销法规 | 以同意为先的发送路径已实现；真实发送、处理者协议、退信和投诉处理均缺失（T39） |
@@ -48,6 +49,7 @@
 4. 在您的身份提供方中处理入职、调动和离职。
 5. 审计表的保留期限——它会随读取流量增长。
 6. 像保护数据库一样保护 Redis：它保存着缓存的洞察数据。
+7. 合并 Dependabot 更新，并在部署前验证已签名的发布。
 
 ## 应当拒绝签署的内容
 
