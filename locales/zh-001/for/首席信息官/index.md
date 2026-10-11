@@ -18,8 +18,8 @@
 ## 集成与身份
 
 - 登录来自签发 PASETO 令牌的身份服务，或 Keycloak。因此入职/调动/离职、多因素认证和会话策略属于**您的身份提供方**；CRM 只执行令牌所声明的内容，并拒绝已过期的令牌。
-- API 以 OpenAPI 文档化（[gds-api-review](../../../../spec/compliance/gds-api-review.md)），通过请求头进行版本管理，现在已使用 `Link` 头分页。
-- CI 会为服务和 UI 生成 SBOM（CycloneDX）。
+- API 以 OpenAPI 文档化（[gds-api-review](../../../../spec/compliance/gds-api-review.md)），通过请求头进行版本管理，使用 `Link` 头分页，并以 RFC 9457 问题文档返回错误。变更和弃用规则见 [api-lifecycle](../../../../spec/compliance/api-lifecycle.md)。
+- CI 会为服务和 UI 生成 SBOM（CycloneDX）；发布工作流会对 SBOM 和镜像签名。
 
 ## 仍由您承担的信息治理职责
 

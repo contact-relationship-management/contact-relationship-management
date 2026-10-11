@@ -18,13 +18,14 @@
 | 抗滥用 | 限流（每分钟 600 次）和锁定（5 分钟内 10 次失败），通过 Redis 共享；探针豁免 | T43 |
 | 浏览器与传输 | 带哈希的严格 CSP、禁止嵌套框架、`nosniff`、引用来源策略、关闭的 CORS、安全响应头；令牌不进入浏览器 JavaScript（BFF） | UI `hooks.server.ts` |
 | 数据保护 | 两列使用 AES-256-GCM 并支持轮换；本地密钥，没有 KMS | T41 |
-| 供应链 | `cargo audit`、`cargo deny`、`pnpm audit`、SBOM、按摘要固定的加固非 root 镜像 | [control-mapping](../../../../spec/compliance/control-mapping.md) |
+| 供应链 | `cargo audit`、`cargo deny`、`pnpm audit`、SBOM、按摘要固定的加固非 root 镜像、每周 Dependabot 更新、对镜像和 SBOM 无密钥签名的发布工作流 | [control-mapping](../../../../spec/compliance/control-mapping.md)、[operations-runbook](../../../../spec/compliance/operations-runbook.md) |
+| 错误 | 每个错误都是一份 RFC 9457 问题文档；`401` 会指明可接受的认证方案 | [api-lifecycle](../../../../spec/compliance/api-lifecycle.md) |
 | 内存安全 | `forbid(unsafe_code)`、clippy pedantic | `src/lib.rs` |
 
 ## 已知弱点（如实说明，不隐瞒）
 
 - **没有独立渗透测试或威胁建模演练**（T42）。[dtac-supporting](../../../../spec/compliance/dtac-supporting.md) 中的威胁模型只是摘要，不是结构化的威胁模型。
-- **构建未签名**；没有刷新计划，固定的摘要会过时（T49）。
+- **发布签名尚未在真实发布上运行**（T49）。工作流和验证命令已存在；在推出标签之前它们未经测试，且 Actions 固定的是版本标签，而不是提交哈希。
 - **字段加密**仅覆盖两列，使用本地密钥，没有 KMS。
 - 破坏性操作前的**升级再认证**尚未构建。
 - **Redis 保存个人数据**（缓存的洞察、授权键），必须像数据库一样保护：TLS、密码、不对公网暴露。
@@ -32,7 +33,7 @@
 - 如果 Redis 故障，**限流与锁定**退回为各副本各自计数；除非在可信代理之后设置 `CRM_TRUST_FORWARDED_FOR=1`，否则未认证调用者共用一个桶，因此攻击者可以锁定其他未认证的调用者。
 - **策略重新加载**在缓存的洞察中最多需要 30 秒才会反映。
 - **空闲登出**在客户端实现。
-- **幂等键是可选启用的**（T52）：不发送 `Idempotency-Key` 的客户端，无法避免重试的创建请求造成重复记录。
+- **幂等键在 API 层是可选启用的**（T52）：不发送 `Idempotency-Key` 的客户端，无法避免重试的创建请求造成重复记录。随附的 UI 会发送。
 
 ## 部署方必须做的事
 
@@ -40,7 +41,7 @@
 2. 对 `break_glass_granted` 设置告警，并及时审查授权。
 3. 在数据库之外锚定审计链头，并按计划验证（`GET /api/audits/verify`）。
 4. 保护 PostgreSQL 和 Redis（网络、TLS、凭据、备份、静态加密）；使用提供的任务轮换字段密钥。
-5. 执行依赖和镜像更新；重新运行供应链阶段。
+5. 合并 Dependabot 更新；重新运行供应链阶段；部署前验证已签名的发布。
 6. 按运维手册进行事件响应（[operations-runbook](../../../../spec/compliance/operations-runbook.md)）。
 
 ## 漏洞处理
@@ -50,7 +51,7 @@
 ## 建议的安全行动，按顺序
 
 1. 确定范围并委托独立渗透测试（T42）。
-2. 决定密钥保管方式，然后对发布构建签名并制定摘要刷新计划（T49）。
+2. 推出第一个发布标签以验证签名和验证流程，并按提交哈希固定 Actions（T49）。
 3. 为破玻璃和审计链验证失败接入告警。
 4. 在所有环境中让 Redis 使用 TLS 和凭据。
 5. 由 KMS 支持的字段密钥以及更广的字段覆盖（T41 的剩余部分）。

@@ -12,14 +12,14 @@
 
 ## 质量证据
 
-单元测试（116 个）、数据库测试（22 个，包括强制执行、脱敏、审计、分页、缓存）、前端单元测试（35 个）以及 Playwright（39 个），其中包含 axe 无障碍扫描。CI 运行 fmt、clippy、测试、前端构建/lint，以及供应链阶段（`cargo audit`、`cargo deny`、`pnpm audit`、CycloneDX SBOM），运行于 GitHub Actions 和 Woodpecker。一条命令即可复现：`scripts/ci-check.sh`。
+单元测试（124 个）、数据库测试（26 个，包括强制执行、脱敏、审计、分页、缓存、幂等、模式校验）、前端单元测试（44 个）以及 Playwright（42 个），其中包含 axe 无障碍扫描。CI 运行 fmt、clippy、测试、前端构建/lint，以及供应链阶段（`cargo audit`、`cargo deny`、`pnpm audit`、CycloneDX SBOM），运行于 GitHub Actions 和 Woodpecker。一条命令即可复现：`scripts/ci-check.sh`。
 
 ## 技术债务与如实说明的限制
 
 - 分页使用偏移量游标（如果遍历期间数据发生变化，行可能被跳过或重复）；按设计不提供总数。
-- 幂等键是可选启用的（T52）：客户端必须在创建请求上发送 `Idempotency-Key`，才能避免重试造成重复记录。
-- OpenAPI 的请求和资源模式是手写的，涵盖主要的创建和列表端点；洞察视图、仪表盘、报表和打包的详情读取尚无类型。路由与文档不一致时测试会失败，另有测试用真实响应校验这些模式（[gds-api-review](../../../../spec/compliance/gds-api-review.md)）。
-- 错误格式是 Loco 的 `{error, description}`，而不是 RFC 9457。
+- 幂等键在 API 层是可选启用的（T52）：客户端必须在创建请求上发送 `Idempotency-Key`，才能避免重试造成重复记录。随附的 UI 在每个创建请求上都会发送。
+- OpenAPI 模式是手写的，涵盖请求、列表、详情读取、仪表盘、洞察视图、审计、隐私和破玻璃；返回更新后记录的状态转换和 upsert 尚无类型。路由与文档不一致时测试会失败，另有测试用真实响应（包括被脱敏的响应）校验这些模式（[gds-api-review](../../../../spec/compliance/gds-api-review.md)）。
+- 错误是 RFC 9457 问题文档（T54），并保留原有的 `error` 和 `description` 成员；路由器之外的层（大小限制、超时）产生的错误不会被转换。版本管理和弃用政策见 [api-lifecycle](../../../../spec/compliance/api-lifecycle.md)；`Deprecation` 和 `Sunset` 头已有规定但尚未构建。
 - 字段加密仅覆盖两列；没有集成 KMS。
 - 限流和缓存状态需要 Redis 才能在多副本下保持正确。
 - 洞察视图按角色脱敏，但按调用者令牌缓存 30 秒。
@@ -27,7 +27,7 @@
 
 ## 建议的技术顺序
 
-1. 为洞察视图、仪表盘和详情读取补充模式。
-2. 由 KMS 支持的字段密钥以及更广的字段覆盖（T41 的剩余部分）。
-3. 在确定密钥保管方式后，对发布构建进行签名（T49）。
+1. 由 KMS 支持的字段密钥以及更广的字段覆盖（T41 的剩余部分）。
+2. 打第一个发布标签，以验证无密钥签名和验证流程（T49），并请评审人核对 API 标准草稿。
+3. 在第一次弃用时构建 `Deprecation` 和 `Sunset` 头。
 4. 针对预发布（staging）构建委托独立测试（T42）。
