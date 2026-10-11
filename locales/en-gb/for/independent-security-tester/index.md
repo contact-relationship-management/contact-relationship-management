@@ -1,4 +1,4 @@
-# Independent Security Testing
+# Independent Security Tester
 
 > Engineering briefing, not legal advice, certification or an audit. It states
 > what the repository shows as of 2026-10-11. Nothing here claims accreditation.
