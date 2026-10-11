@@ -49,7 +49,7 @@ accessibility (T48), and data classification, which is the adopter's call.
 | Supply chain | Implemented: `cargo audit`, `cargo deny`, `pnpm audit`, SBOMs, base images pinned by digest, Dependabot updates. **Gap:** the signed-release workflow has not run on a real release (T49) |
 | Accessibility | Partly: automated axe scans and an honest public statement. **Gap:** no manual audit (T48), translations unreviewed |
 | Independent assurance | **Gap:** none (T42) |
-| Email and marketing law | Consent-first send path implemented; real sending, processor agreement, bounce and complaint handling are absent (T39) |
+| Email and marketing law | Consent-first send path implemented; real sending exists only as an SMTP path for development; the unsubscribe link, suppression list, processor agreement, bounce and complaint handling are absent (T39) |
 
 ## Controls that need an owner in your organization
 

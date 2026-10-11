@@ -38,6 +38,6 @@ Source text: `en-gb-oxendict`, refreshed 2026-10-11.
   qualified native-speaking reviewer before anyone relies on it.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
-- The briefs were refreshed on 2026-10-11 for T49 (Dependabot and the signed-release workflow), T53 (response schemas), T54 (RFC 9457 errors) and the current counts (51 of 55 work items; 124 unit, 26 database, 44 front-end unit and 42 Playwright tests). Counts and states are a snapshot; refresh the English source, then every locale, when they change.
+- The briefs were refreshed on 2026-10-11 for T49 (Dependabot and the signed-release workflow), T53 (response schemas), T54 (RFC 9457 errors) and the current counts (51 of 55 work items; 135 unit, 32 database-backed, 44 front-end unit and 42 Playwright tests), and for the T39 send path (an SMTP sender and delivery rows now exist; the unsubscribe link, suppression list and bounce handling do not). Counts and states are a snapshot; refresh the English source, then every locale, when they change.
 - The English facts in the source (counts such as "48 of 53" tasks, test totals)
   are a snapshot and are copied as is; refresh all locales when they change.

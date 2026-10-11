@@ -47,7 +47,7 @@ needs this and what they would require, not on certifications nobody has asked f
 1. Independent security test and manual accessibility audit (T42, T48): they
    decide whether B is possible at all.
 2. Real email provider (T39) once a vendor and data-processing terms are
-   chosen; the send is simulated inline today, so a sender abstraction comes first ([roadmap](../../../../spec/roadmap.md)).
+   chosen; the sender seam and an SMTP path exist and run against a local test server, but the unsubscribe link, suppression list and bounce handling do not yet ([roadmap](../../../../spec/roadmap.md)).
 3. Prove release signing with a first tagged release (T49): table stakes for
    procurement. The workflow is built; it has not run.
 4. Only then the product features on the roadmap (attribution, territories,

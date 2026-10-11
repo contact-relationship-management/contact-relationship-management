@@ -39,7 +39,7 @@ Mae'r olwg ar risg yn [briff y Prif Swyddog Risg](../prif-swyddog-risg/index.md)
 | Cadwyn gyflenwi | Wedi'i weithredu: `cargo audit`, `cargo deny`, `pnpm audit`, SBOMau, delweddau sylfaen wedi'u pinio yn ôl crynodeb, diweddariadau Dependabot. **Bwlch:** nid yw'r llif gwaith rhyddhau wedi'i lofnodi wedi rhedeg ar ryddhad go iawn (T49) |
 | Hygyrchedd | Yn rhannol: sganiau axe awtomataidd a datganiad cyhoeddus gonest. **Bwlch:** dim archwiliad â llaw (T48), cyfieithiadau heb eu hadolygu |
 | Sicrwydd annibynnol | **Bwlch:** dim (T42) |
-| Cyfraith e-bost a marchnata | Llwybr anfon sy'n rhoi cydsyniad yn gyntaf wedi'i weithredu; mae anfon go iawn, cytundeb prosesydd a thrin bownsys a chwynion yn absennol (T39) |
+| Cyfraith e-bost a marchnata | Llwybr anfon sy'n rhoi cydsyniad yn gyntaf wedi'i weithredu; dim ond fel llwybr SMTP ar gyfer datblygu y mae anfon go iawn yn bodoli; mae'r ddolen ddad-danysgrifio, y rhestr atal, cytundeb prosesydd a thrin bownsys a chwynion yn absennol (T39) |
 
 ## Rheolaethau sydd angen perchennog yn eich sefydliad
 
