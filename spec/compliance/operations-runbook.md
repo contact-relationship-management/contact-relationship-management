@@ -105,11 +105,33 @@ table owner, so keep the owner role out of day-to-day use.
 
 - CI runs `cargo audit`, `cargo deny`, `pnpm audit`, and publishes SBOMs on
   every change. Review a failure the same day.
+- Dependabot (`.github/dependabot.yml`) opens weekly pull requests for Cargo,
+  npm, the pinned base-image digests, and the GitHub Actions. Digest pins do
+  not update themselves; without these pull requests they would freeze on
+  vulnerable layers.
 - Patch critical dependency advisories within 72 hours, high within 14 days,
   or record a risk acceptance.
 - Every change lands by pull request; the sole-maintainer limit is stated in
   [GOVERNANCE.md](../../GOVERNANCE.md). A deployer needing two-person review
   should add it at their fork or deployment pipeline.
+
+### Verify a release before deploying it
+
+A tag `vX.Y.Z` runs `.github/workflows/release.yml`, which pushes
+`ghcr.io/<owner>/<repo>/service` and `/ui`, signs each image by digest with
+keyless cosign (the workflow's OIDC identity; no key to store), and attaches a
+build-provenance attestation and signed CycloneDX SBOMs. Before deploying,
+verify the image you will run:
+
+```bash
+cosign verify ghcr.io/<owner>/<repo>/service:vX.Y.Z \
+  --certificate-identity-regexp '^https://github.com/<owner>/<repo>/\.github/workflows/release\.yml@refs/tags/v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify oci://ghcr.io/<owner>/<repo>/service:vX.Y.Z --owner <owner>
+```
+
+Deploy by digest (`image@sha256:...`), not by tag. Refuse an image that fails
+either check.
 
 ## 7. Incident response
 

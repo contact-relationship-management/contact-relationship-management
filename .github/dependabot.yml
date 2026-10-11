@@ -1,0 +1,39 @@
+# Keeps dependencies and the pinned base-image digests current (CRM-T49).
+# Digest pins never update themselves; without this they would freeze on
+# known-vulnerable layers.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /contact-relationship-management-service-with-rust
+    schedule:
+      interval: weekly
+    groups:
+      cargo-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: cargo
+    directory: /contact-relationship-management-service-with-rust/migration
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /contact-relationship-management-ui-with-svelte
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: docker
+    directory: /contact-relationship-management-service-with-rust
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /contact-relationship-management-ui-with-svelte
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker-compose
+    directory: /contact-relationship-management-service-with-rust
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
