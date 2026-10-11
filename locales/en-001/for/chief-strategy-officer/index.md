@@ -48,7 +48,8 @@ needs this and what they would require, not on certifications nobody has asked f
    decide whether B is possible at all.
 2. Real email provider behind the existing send trait (T39), once a vendor and
    data-processing terms are chosen ([roadmap](../../../../spec/roadmap.md)).
-3. Build signing (T49): table stakes for procurement.
+3. Prove release signing with a first tagged release (T49): table stakes for
+   procurement. The workflow is built; it has not run.
 4. Only then the product features on the roadmap (attribution, territories,
    business-hours SLA clocks, public knowledge-base portal).
 

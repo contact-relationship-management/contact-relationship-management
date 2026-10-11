@@ -37,4 +37,8 @@ several, and lists what a deployer must add ([regulatory](../../../../spec/regul
   the reason field is evidence, not authority.
 - **Scoring** of leads: if it ever influences significant decisions about
   people, automated-decision rules apply ([regulatory](../../../../spec/regulatory.md)).
+- **API commitments:** [api-lifecycle](../../../../spec/compliance/api-lifecycle.md)
+  sets a 180-day notice period before an API change is removed. That is the
+  maintainer's choice; if customers will rely on it, decide whether it belongs
+  in a contract.
 - **Public claims:** do not state compliance, certification or approval.
