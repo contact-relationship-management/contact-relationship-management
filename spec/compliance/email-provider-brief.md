@@ -26,6 +26,15 @@ brief, not legal advice, and it picks no vendor.
 - **The funnel, ROI and lead score read the counters.** A real provider's
   numbers would replace the simulated ones.
 
+## A local server to build against
+
+`scripts/email-dev.sh up` starts a Stalwart mail server in Podman with the
+domain `crm.test` and one account (see `INSTALL.md`). It lets the engineering
+work below be built and tested without a vendor: submit over STARTTLS, deliver
+into a mailbox, read it back over JMAP. It is **not** a vendor substitute: it
+has no public DNS, SPF or DKIM, no reputation, and no bounce or complaint
+traffic from real mailbox providers.
+
 ## What a real send must do
 
 | Need | Why | Today |

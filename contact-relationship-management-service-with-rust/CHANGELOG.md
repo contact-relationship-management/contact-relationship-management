@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — local mail server (CRM-T39 groundwork, 2026-10-11)
+
+`compose.email.yaml` and `scripts/email-dev.sh` run Stalwart in Podman with a
+`crm.test` domain, one account and an SMTP submission listener, for developing
+the real send path. Development only; the service does not use it yet.
+
 ### Changed — RFC 9457 error bodies (CRM-T54, 2026-10-11)
 
 Every `4xx`/`5xx` is now `application/problem+json` with `type`, `title`,

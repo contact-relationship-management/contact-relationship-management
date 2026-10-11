@@ -503,7 +503,7 @@ parties outside the repository.
       trait and an asynchronous send come first), with
       bounce/complaint webhooks, suppression list, and the processor
       agreement and lawful-basis review (CRM-G2). (plan gap 10) *Open:
-      legal and vendor dependency.* The brief to hand a vendor and legal is `spec/compliance/email-provider-brief.md`, which also records that the send is inline and has no sender trait yet.
+      legal and vendor dependency.* The brief to hand a vendor and legal is `spec/compliance/email-provider-brief.md`, which also records that the send is inline and has no sender trait yet. A local test mail server is available (Stalwart in Podman: `scripts/email-dev.sh up`, `INSTALL.md`); it is development only and the service does not send through it yet.
 - [x] CRM-T40 *(resolved 2026-10-10.)* **Audit personal-data reads.** Contact, lead, ticket and
       activity reads write an audit row (actor, record, masked or not);
       bulk list reads write one summarizing row. (plan gap 11)

@@ -1,0 +1,44 @@
+# A local mail server for developing the real email send path (CRM-T39).
+#
+#   scripts/email-dev.sh up      start it and configure it (idempotent)
+#   scripts/email-dev.sh check   send a message and read it back
+#   scripts/email-dev.sh down    stop it (mail is kept)
+#   scripts/email-dev.sh reset   stop it and delete all mail
+#
+# Stalwart (https://stalw.art), a single-binary SMTP/IMAP/JMAP server. This is
+# DEVELOPMENT ONLY: fixed passwords, a self-signed certificate, and ports bound
+# to 127.0.0.1. Nothing here is a production mail configuration. A message to
+# any address outside crm.test is NOT delivered to the internet in a useful way
+# (there is no public DNS, SPF or DKIM here); use crm.test addresses.
+#
+# Podman, like compose.test.yaml. Plain Compose spec, so
+# `podman compose -f compose.email.yaml up -d` also works, but the script is
+# needed to create the domain, account and submission listener.
+#
+# After `up`:
+#   SMTP submission  127.0.0.1:2587  STARTTLS, user crm@crm.test / crm-dev-password
+#   SMTP inbound     127.0.0.1:2525  accepts mail for crm.test, no login
+#   IMAPS            127.0.0.1:2993  implicit TLS, same login
+#   Web admin + JMAP http://127.0.0.1:8081  admin / dev-admin-change-me
+services:
+  stalwart:
+    # Pinned by digest (the multi-architecture index). Dependabot proposes bumps.
+    image: docker.io/stalwartlabs/stalwart:v0.16@sha256:254ce5d7f3dbe4bb628ce2c7912e664ecb1c3466db79907f4a44d9a00117776b
+    container_name: mxi-contact-relationship-management-mail
+    environment:
+      # Sets the administrator for the web UI, the API and stalwart-cli.
+      STALWART_RECOVERY_ADMIN: "admin:${MAIL_ADMIN_PASSWORD:-dev-admin-change-me}"
+    ports:
+      # Loopback only. Override a port to run two stacks side by side.
+      - "127.0.0.1:${MAIL_SMTP_PORT:-2525}:25"
+      - "127.0.0.1:${MAIL_SUBMISSION_PORT:-2587}:587"
+      - "127.0.0.1:${MAIL_IMAPS_PORT:-2993}:993"
+      - "127.0.0.1:${MAIL_HTTP_PORT:-8081}:8080"
+    volumes:
+      # Only the data store is configured here; everything else lives in the
+      # store and is set by dev/stalwart/plan.ndjson (see scripts/email-dev.sh).
+      - ./dev/stalwart/config.json:/etc/stalwart/config.json:ro,z
+      - stalwart-data:/var/lib/stalwart
+
+volumes:
+  stalwart-data:
