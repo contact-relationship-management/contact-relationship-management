@@ -1,4 +1,4 @@
-# Profi Diogelwch Annibynnol
+# Profwr Diogelwch Annibynnol
 
 > Briff peirianneg, nid cyngor cyfreithiol, ardystiad nac archwiliad. Mae'n nodi'r hyn y mae'r ystorfa yn ei ddangos ar 2026-10-11. Nid yw unrhyw beth yma yn honni achrediad.
 
