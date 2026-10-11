@@ -7,16 +7,16 @@ Source text: `en-gb-oxendict`, 2026-10-11.
 
 | Locale | Briefs | Method | Reviewed by a native speaker |
 |---|---|---|---|
-| en-gb-oxendict | 10 | Source (Oxford -ize spelling, British otherwise) | n/a |
-| en-001 | 10 | Same text as en-gb-oxendict (Oxford spelling is the international convention used here) | n/a |
-| en-gb | 10 | Spelling rules applied to the source (-ise family) | n/a |
-| en-us | 10 | Spelling rules applied to the source (license, program, behavior, enrollment) | n/a |
-| zh-cn | 10 | Translated by Claude (Simplified Chinese), native-script slugs | **No** |
-| zh-001 | 10 | Byte copy of zh-cn | **No** |
-| hi-in | 10 | Translated by Claude (Hindi), native-script slugs | **No** |
-| hi-001 | 10 | Byte copy of hi-in | **No** |
-| cy-gb | 10 | Translated by Claude (Welsh), Welsh slugs | **No** |
-| cy-001 | 10 | Byte copy of cy-gb | **No** |
+| en-gb-oxendict | 11 | Source (Oxford -ize spelling, British otherwise) | n/a |
+| en-001 | 11 | Same text as en-gb-oxendict (Oxford spelling is the international convention used here) | n/a |
+| en-gb | 11 | Spelling rules applied to the source (-ise family) | n/a |
+| en-us | 11 | Spelling rules applied to the source (license, program, behavior, enrollment) | n/a |
+| zh-cn | 11 | Translated by Claude (Simplified Chinese), native-script slugs | **No** |
+| zh-001 | 11 | Byte copy of zh-cn | **No** |
+| hi-in | 11 | Translated by Claude (Hindi), native-script slugs | **No** |
+| hi-001 | 11 | Byte copy of hi-in | **No** |
+| cy-gb | 11 | Translated by Claude (Welsh), Welsh slugs | **No** |
+| cy-001 | 11 | Byte copy of cy-gb | **No** |
 
 Not done: `ar-001` (listed in the locale priority order; not requested).
 
