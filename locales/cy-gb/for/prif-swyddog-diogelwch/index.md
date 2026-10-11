@@ -32,7 +32,7 @@ Mae'r gwasanaeth yn **methu'n ddiogel**, yn rheoli mynediad yn ôl rôl ac yn ô
 - Mae **cyfyngu cyfradd a chloi allan** yn dychwelyd i gyfrif fesul replica os bydd Redis yn methu; mae'r bwced anawdurdodedig yn cael ei rannu oni bai bod `CRM_TRUST_FORWARDED_FOR=1` y tu ôl i ddirprwy y gellir ymddiried ynddo, felly gall ymosodwr gloi galwyr anawdurdodedig eraill allan.
 - Mae **ail-lwytho polisi** yn ymddangos mewn mewnwelediadau a storiwyd dros dro ar ôl hyd at 30 eiliad.
 - Mae **allgofnodi segur** ar ochr y cleient.
-- Mae **allweddi idempotency** ar goll (T52), felly gall cais creu a ailgeisir ddyblygu cofnod.
+- Mae **allweddi idempotency yn ddewisol** (T52): nid yw cleient nad yw'n anfon `Idempotency-Key` wedi'i ddiogelu rhag i gais creu a ailgeisir ddyblygu cofnod.
 
 ## Beth mae'n rhaid i'r sawl sy'n lleoli ei wneud
 

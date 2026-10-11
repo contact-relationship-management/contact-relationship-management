@@ -81,6 +81,197 @@ async fn insight_audit_mw(
     }
 }
 
+/// Idempotency keys (CRM-T52); see [`crate::idempotency`] for the contract.
+/// Runs inside auth, so only authenticated callers reach it and the key is
+/// scoped to the caller. Fails closed: a caller who asked for idempotency
+/// never gets an unprotected execution because the store was unavailable.
+#[allow(clippy::too_many_lines)] // one linear claim / run / record walk
+async fn idempotency_mw(
+    axum::extract::State(db): axum::extract::State<sea_orm::DatabaseConnection>,
+    req: Request,
+    next: Next,
+) -> Response {
+    use axum::http::{HeaderValue, StatusCode, header};
+    use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+    let wants = req.method() == axum::http::Method::POST
+        && req.uri().path().starts_with("/api/")
+        && req.headers().contains_key(crate::idempotency::HEADER);
+    if !wants {
+        return next.run(req).await;
+    }
+    let problem = |status: StatusCode, message: &str| {
+        (
+            status,
+            axum::Json(serde_json::json!({ "error": "idempotency", "description": message })),
+        )
+            .into_response()
+    };
+    let key = req
+        .headers()
+        .get(crate::idempotency::HEADER)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    if let Err(message) = crate::idempotency::validate_key(&key) {
+        return problem(StatusCode::UNPROCESSABLE_ENTITY, &message);
+    }
+    let scope = auth::request_claims(req.headers())
+        .await
+        .map_or_else(|_| "anon".to_string(), |c| c.sub);
+    let (parts, body) = req.into_parts();
+    let Ok(bytes) = axum::body::to_bytes(body, crate::idempotency::MAX_BODY).await else {
+        return problem(StatusCode::PAYLOAD_TOO_LARGE, "request body too large");
+    };
+    let fingerprint = crate::idempotency::fingerprint(
+        parts.method.as_str(),
+        parts.uri.path(),
+        parts.uri.query().unwrap_or(""),
+        &bytes,
+    );
+    let pg = DatabaseBackend::Postgres;
+    let unavailable = |error: sea_orm::DbErr| {
+        tracing::error!(%error, "idempotency store failed");
+        problem(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "idempotency store unavailable",
+        )
+    };
+
+    // Claim the key. An expired row, or one whose first attempt crashed, is
+    // taken over; anything else leaves the existing row alone.
+    let claimed = match db
+        .query_all_raw(Statement::from_sql_and_values(
+            pg,
+            "INSERT INTO idempotency_keys (scope, key, fingerprint, state) \
+             VALUES ($1, $2, $3, 'in_progress') \
+             ON CONFLICT (scope, key) DO UPDATE SET fingerprint = EXCLUDED.fingerprint, \
+               state = 'in_progress', status = NULL, content_type = NULL, body = NULL, \
+               created_at = now() \
+             WHERE idempotency_keys.created_at < now() - interval '24 hours' \
+                OR (idempotency_keys.state = 'in_progress' \
+                    AND idempotency_keys.created_at < now() - interval '2 minutes') \
+             RETURNING 1",
+            [
+                scope.clone().into(),
+                key.clone().into(),
+                fingerprint.clone().into(),
+            ],
+        ))
+        .await
+    {
+        Ok(rows) => !rows.is_empty(),
+        Err(error) => return unavailable(error),
+    };
+
+    if !claimed {
+        let existing = match db
+            .query_one_raw(Statement::from_sql_and_values(
+                pg,
+                "SELECT fingerprint, state, status, content_type, body \
+                 FROM idempotency_keys WHERE scope = $1 AND key = $2",
+                [scope.into(), key.into()],
+            ))
+            .await
+        {
+            Ok(row) => row,
+            Err(error) => return unavailable(error),
+        };
+        let Some(row) = existing else {
+            // The first attempt failed and cleaned up between our two
+            // statements; the client can retry at once.
+            return problem(
+                StatusCode::CONFLICT,
+                "the original request just finished without a stored result; retry",
+            );
+        };
+        let stored: String = row.try_get("", "fingerprint").unwrap_or_default();
+        if stored != fingerprint {
+            return problem(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "Idempotency-Key was already used with a different request",
+            );
+        }
+        let state: String = row.try_get("", "state").unwrap_or_default();
+        if state != "done" {
+            let mut response = problem(
+                StatusCode::CONFLICT,
+                "the original request is still being processed; retry shortly",
+            );
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, HeaderValue::from_static("1"));
+            return response;
+        }
+        let status: i32 = row.try_get("", "status").unwrap_or(200);
+        let content_type: Option<String> = row.try_get("", "content_type").ok();
+        let text: String = row.try_get("", "body").unwrap_or_default();
+        let mut response = Response::new(axum::body::Body::from(text));
+        *response.status_mut() = u16::try_from(status)
+            .ok()
+            .and_then(|s| StatusCode::from_u16(s).ok())
+            .unwrap_or(StatusCode::OK);
+        if let Some(value) = content_type.and_then(|v| HeaderValue::from_str(&v).ok()) {
+            response.headers_mut().insert(header::CONTENT_TYPE, value);
+        }
+        response
+            .headers_mut()
+            .insert("idempotent-replayed", HeaderValue::from_static("true"));
+        return response;
+    }
+
+    // We own the key: run the request, then record or forget the outcome.
+    let response = next
+        .run(Request::from_parts(parts, axum::body::Body::from(bytes)))
+        .await;
+    let (head, body) = response.into_parts();
+    let body = axum::body::to_bytes(body, crate::idempotency::MAX_BODY)
+        .await
+        .ok();
+    let text = body
+        .as_ref()
+        .and_then(|b| String::from_utf8(b.to_vec()).ok());
+    let record = match (&text, crate::idempotency::remember(head.status.as_u16())) {
+        (Some(text), true) => Some(text.clone()),
+        _ => None,
+    };
+    let result = if let Some(text) = record {
+        let content_type = head
+            .headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string);
+        db.execute_raw(Statement::from_sql_and_values(
+            pg,
+            "UPDATE idempotency_keys SET state = 'done', status = $3, content_type = $4, \
+             body = $5 WHERE scope = $1 AND key = $2",
+            [
+                scope.into(),
+                key.into(),
+                i32::from(head.status.as_u16()).into(),
+                content_type.into(),
+                text.into(),
+            ],
+        ))
+        .await
+    } else {
+        // Failed, oversized or not text: forget the key so a retry runs again.
+        db.execute_raw(Statement::from_sql_and_values(
+            pg,
+            "DELETE FROM idempotency_keys WHERE scope = $1 AND key = $2",
+            [scope.into(), key.into()],
+        ))
+        .await
+    };
+    if let Err(error) = result {
+        // The work is done but could not be recorded: a retry would repeat it.
+        tracing::error!(%error, "idempotency result not recorded");
+    }
+    match body {
+        Some(bytes) => Response::from_parts(head, axum::body::Body::from(bytes)),
+        None => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
+
 /// Abuse guard (CRM-T43): per-client request limit and a failed-auth
 /// lockout, answering `429` with `Retry-After`. Runs outside the auth
 /// middleware so it sees the `401`s the auth middleware produces.
@@ -378,11 +569,31 @@ impl Hooks for App {
                 tokio::time::sleep(std::time::Duration::from_secs(tick)).await;
             }
         });
+        // CRM-T52: drop idempotency keys past their 24 hours.
+        let idem_db = ctx.db.clone();
+        tokio::spawn(async move {
+            use sea_orm::ConnectionTrait;
+            loop {
+                if let Err(error) = idem_db
+                    .execute_unprepared(
+                        "DELETE FROM idempotency_keys WHERE created_at < now() - interval '24 hours'",
+                    )
+                    .await
+                {
+                    tracing::warn!(%error, "idempotency cleanup failed");
+                }
+                tokio::time::sleep(std::time::Duration::from_hours(1)).await;
+            }
+        });
         let guard = std::sync::Arc::new(rate_limit::Guard::from_env(matches!(
             ctx.environment,
             Environment::Production
         )));
         Ok(router
+            .layer(axum::middleware::from_fn_with_state(
+                ctx.db.clone(),
+                idempotency_mw,
+            ))
             .layer(axum::middleware::from_fn_with_state(
                 ctx.cache.clone(),
                 insight_cache_mw,
@@ -412,6 +623,12 @@ impl Hooks for App {
     }
 
     async fn truncate(ctx: &AppContext) -> Result<()> {
+        {
+            use sea_orm::ConnectionTrait;
+            ctx.db
+                .execute_unprepared("TRUNCATE idempotency_keys")
+                .await?;
+        }
         truncate_table(&ctx.db, EventOutbox).await?;
         truncate_table(&ctx.db, AuditLogs).await?;
         truncate_table(&ctx.db, Articles).await?;

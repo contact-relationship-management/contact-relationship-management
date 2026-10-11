@@ -28,7 +28,6 @@ fund the remaining external work, not to switch it on.
 | No independent security test (T42) | Hospitals and government buyers usually require one; our own tests are not independent | An outside firm |
 | No manual accessibility audit (T48) | Public bodies must publish an accessibility statement they can stand behind | People with assistive technology |
 | Build signing and API standards review unfinished (T49) | Procurement checklists ask for both | Engineering, with a decision on key custody |
-| Idempotency keys missing (T52) | A retried create can duplicate a record | Engineering |
 
 ## Decisions that are yours
 

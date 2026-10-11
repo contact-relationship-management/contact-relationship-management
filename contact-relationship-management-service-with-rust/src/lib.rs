@@ -39,6 +39,7 @@ pub mod clients;
 pub mod controllers;
 pub mod crypto;
 pub mod hardening;
+pub mod idempotency;
 pub mod metrics;
 pub mod models;
 pub mod openapi;

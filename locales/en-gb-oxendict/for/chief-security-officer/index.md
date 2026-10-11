@@ -42,7 +42,8 @@ as "built and self-tested", not "verified".
   trusted proxy, so an attacker can lock out other unauthenticated callers.
 - **Policy reloads** show in cached insights after up to 30 seconds.
 - **Idle sign-out** is client-side.
-- **Idempotency keys** are missing (T52), so a retried create can duplicate.
+- **Idempotency keys** are opt-in (T52): a client that does not send
+  `Idempotency-Key` is not protected from a retried create duplicating a record.
 
 ## What the deployer must do
 

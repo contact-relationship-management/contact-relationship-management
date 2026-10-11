@@ -5,6 +5,7 @@
 mod audit_chain;
 mod engagement;
 mod field_encryption;
+mod idempotency;
 mod insights;
 mod marketing;
 mod pagination;

@@ -12,12 +12,12 @@
 
 ## 质量证据
 
-单元测试（113 个）、数据库测试（17 个，包括强制执行、脱敏、审计、分页、缓存）、前端单元测试（35 个）以及 Playwright（39 个），其中包含 axe 无障碍扫描。CI 运行 fmt、clippy、测试、前端构建/lint，以及供应链阶段（`cargo audit`、`cargo deny`、`pnpm audit`、CycloneDX SBOM），运行于 GitHub Actions 和 Woodpecker。一条命令即可复现：`scripts/ci-check.sh`。
+单元测试（116 个）、数据库测试（22 个，包括强制执行、脱敏、审计、分页、缓存）、前端单元测试（35 个）以及 Playwright（39 个），其中包含 axe 无障碍扫描。CI 运行 fmt、clippy、测试、前端构建/lint，以及供应链阶段（`cargo audit`、`cargo deny`、`pnpm audit`、CycloneDX SBOM），运行于 GitHub Actions 和 Woodpecker。一条命令即可复现：`scripts/ci-check.sh`。
 
 ## 技术债务与如实说明的限制
 
 - 分页使用偏移量游标（如果遍历期间数据发生变化，行可能被跳过或重复）；按设计不提供总数。
-- 创建操作缺少幂等键（T52）。
+- 幂等键是可选启用的（T52）：客户端必须在创建请求上发送 `Idempotency-Key`，才能避免重试造成重复记录。
 - OpenAPI 是手写的，没有请求/响应模式；有路由未文档化时，构建不会失败（[gds-api-review](../../../../spec/compliance/gds-api-review.md)）。
 - 错误格式是 Loco 的 `{error, description}`，而不是 RFC 9457。
 - 字段加密仅覆盖两列；没有集成 KMS。
@@ -27,7 +27,7 @@
 
 ## 建议的技术顺序
 
-1. 幂等键（T52）和 OpenAPI 模式，外加路由覆盖测试。
+1. OpenAPI 模式，外加路由覆盖测试。
 2. 由 KMS 支持的字段密钥以及更广的字段覆盖（T41 的剩余部分）。
 3. 在确定密钥保管方式后，对发布构建进行签名（T49）。
 4. 针对预发布（staging）构建委托独立测试（T42）。

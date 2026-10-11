@@ -153,6 +153,7 @@ pub fn spec() -> Value {
     });
     add_shared_errors(&mut doc);
     add_paging(&mut doc);
+    add_idempotency(&mut doc);
     doc
 }
 
@@ -166,6 +167,32 @@ const PAGED: [(&str, u64); 7] = [
     ("/api/tickets", 1000),
     ("/api/articles", 500),
 ];
+
+/// Document the optional `Idempotency-Key` header (CRM-T52) on every `POST`
+/// under `/api/`, and the statuses it adds.
+fn add_idempotency(doc: &mut Value) {
+    let Some(paths) = doc["paths"].as_object_mut() else {
+        return;
+    };
+    for (path, item) in paths.iter_mut() {
+        if !path.starts_with("/api/") {
+            continue;
+        }
+        let operation = &mut item["post"];
+        if !operation.is_object() {
+            continue;
+        }
+        let mut parameters = operation["parameters"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        parameters.push(json!({ "name": "Idempotency-Key", "in": "header", "required": false,
+            "description": "Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After.",
+            "schema": { "type": "string", "minLength": 1, "maxLength": 255 } }));
+        operation["parameters"] = Value::Array(parameters);
+        operation["responses"]["409"] = json!({ "description": "Idempotency-Key: the original request is still running; retry shortly" });
+    }
+}
 
 /// Document `limit`, `cursor` and the `Link: rel="next"` header on each
 /// paginated list.
@@ -260,6 +287,11 @@ mod tests {
         assert_eq!(contacts["parameters"][0]["name"], "limit");
         assert!(contacts["responses"]["200"]["headers"]["Link"].is_object());
         assert!(doc["paths"]["/api/pipelines"]["get"]["parameters"].is_null());
+        assert_eq!(
+            doc["paths"]["/api/contacts"]["post"]["parameters"][0]["name"],
+            "Idempotency-Key"
+        );
+        assert!(doc["paths"]["/api/contacts"]["get"]["responses"]["409"].is_null());
         assert_eq!(
             doc["paths"]["/api/contacts"]["get"]["responses"]["429"]["description"],
             "Rate limited or locked out; see Retry-After"

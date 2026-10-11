@@ -48,8 +48,7 @@ needs this and what they would require, not on certifications nobody has asked f
    decide whether B is possible at all.
 2. Real email provider behind the existing send trait (T39), once a vendor and
    data-processing terms are chosen ([roadmap](../../../../spec/roadmap.md)).
-3. Idempotency keys, OpenAPI schemas, build signing (T52, T49): table stakes
-   for procurement.
+3. OpenAPI schemas and build signing (T49): table stakes for procurement.
 4. Only then the product features on the roadmap (attribution, territories,
    business-hours SLA clocks, public knowledge-base portal).
 

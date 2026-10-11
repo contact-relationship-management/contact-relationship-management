@@ -20,7 +20,6 @@ System CRM lefel arddangos yw hon, gyda sylfaen diogelwch a phreifatrwydd anarfe
 | Dim prawf diogelwch annibynnol (T42) | Mae ysbytai a phrynwyr y llywodraeth fel arfer yn gofyn amdano; nid yw ein profion ein hunain yn annibynnol | Cwmni allanol |
 | Dim archwiliad hygyrchedd â llaw (T48) | Rhaid i gyrff cyhoeddus gyhoeddi datganiad hygyrchedd y gallant sefyll y tu ôl iddo | Pobl â thechnoleg gynorthwyol |
 | Adolygiad llofnodi adeiladau a safonau API heb ei orffen (T49) | Mae rhestrau gwirio caffael yn gofyn am y ddau | Peirianneg, gyda phenderfyniad ar ddalfa allweddi |
-| Diffyg allweddi idempotency (T52) | Gall cais creu a ailgeisir ddyblygu cofnod | Peirianneg |
 
 ## Penderfyniadau sy'n eiddo i chi
 

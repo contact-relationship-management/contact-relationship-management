@@ -620,7 +620,30 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       count (it would include rows a record-level policy hides); the contact
       timeline (latest 200), group feed (50) and the nurture sweep (500 per
       run) are bounded by design and not paginated; insights are not paginated.
-- [ ] CRM-T52 **Idempotency keys for creates.** A retried `POST` after a
+- [x] CRM-T52 **Idempotency keys for creates.** A retried `POST` after a
       timeout makes a duplicate. Accept an `Idempotency-Key` header on create
       endpoints and replay the first result (store it in Redis or the
-      database, with an expiry). *Open.*
+      database, with an expiry).
+      **Resolution:** any authenticated `POST` under `/api/` that carries
+      `Idempotency-Key: <1-255 visible ASCII>` runs at most once per
+      `(caller, key)` (`src/idempotency.rs`, a middleware inside auth, table
+      `idempotency_keys` from migration `m20261011_000010`). The claim is one
+      `INSERT ... ON CONFLICT` on the primary key, so it holds across replicas.
+      Same key and same request after a `2xx`: the stored response is replayed
+      with `Idempotent-Replayed: true`. Same key, different request: 422. Same
+      key while the first attempt runs: 409 with `Retry-After: 1`. A first
+      attempt that is not `2xx` is forgotten, so the retry runs again. Keys
+      expire after 24 hours (hourly cleanup); a row stuck `in_progress` for 2
+      minutes (a crash) is taken over. Fails closed: if the store is down the
+      request is refused 503 rather than run unprotected. Without the header
+      nothing changes. OpenAPI documents the header, 409 and the replay header;
+      production CORS allows it. Tests: 3 unit pins, 5 DB tests (replay returns
+      the same record and creates one; no key means two records; reused key and
+      bad keys are 422; a failed attempt does not stick; two simultaneous
+      identical requests create one). **Limits:** opt-in, so a client that sends
+      no key is not protected, and the bundled UI does not send one yet; only
+      successes are replayed (an error is re-run on retry); bodies over 1 MiB
+      are refused 413 when a key is sent; a crash after the work but before the
+      result is recorded leaves the key `in_progress` for 2 minutes, then a
+      retry repeats the work; the key is scoped to the caller's subject, so a
+      different caller reusing a key gets their own execution.

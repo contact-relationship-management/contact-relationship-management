@@ -21,7 +21,7 @@
 
 ## Quality evidence
 
-Unit tests (113), database tests (17 including enforcement, masking, audit,
+Unit tests (116), database tests (22 including enforcement, masking, audit,
 pagination, caching), front-end unit (35) and Playwright (39) including axe
 accessibility scans. CI runs fmt, clippy, tests, front-end build/lint and a
 supply-chain stage (`cargo audit`, `cargo deny`, `pnpm audit`, CycloneDX SBOMs)
@@ -31,7 +31,8 @@ on GitHub Actions and Woodpecker. One command reproduces it: `scripts/ci-check.s
 
 - Pagination uses an offset cursor (rows can skip or repeat if data changes
   mid-walk); no total count by design.
-- Idempotency keys for creates are missing (T52).
+- Idempotency keys are opt-in (T52): a client must send `Idempotency-Key` on a
+  create to be protected from a retry duplicating a record.
 - OpenAPI is hand-written and has no request/response schemas; nothing fails the
   build when a route is undocumented ([gds-api-review](../../../../spec/compliance/gds-api-review.md)).
 - Errors are Loco's `{error, description}`, not RFC 9457.
@@ -42,7 +43,7 @@ on GitHub Actions and Woodpecker. One command reproduces it: `scripts/ci-check.s
 
 ## Recommended technical sequence
 
-1. Idempotency keys (T52) and OpenAPI schemas plus a route-coverage test.
+1. OpenAPI schemas plus a route-coverage test.
 2. KMS-backed field keys and broader field coverage (T41 remainder).
 3. Release-build signing (T49) once key custody is decided.
 4. Commission the independent test (T42) against a staging build.

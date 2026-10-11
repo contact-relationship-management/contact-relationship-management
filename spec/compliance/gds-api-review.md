@@ -17,7 +17,7 @@ Scope: the REST API in `contact-relationship-management-service-with-rust`
 | Error responses stated | Met after this review | 401, 403, 406 and 429 added to every `/api/*` operation | Bodies are Loco's `{error, description}` shape, not RFC 9457 `application/problem+json` |
 | Versioning | Met, with a risk | `Accepts-version` header, `406` for an unsupported value, response stamped with the version | A client that sends no header gets the current version, so it breaks silently when 2.0 ships; no deprecation or sunset policy is written down |
 | Pagination | Met after this review (CRM-T51) | The seven list endpoints take `limit` and `cursor` and answer `Link: rel="next"` | Offset cursor (can skip or repeat a row if data changes mid-walk); no total count by design; timelines and feeds are bounded, not paged |
-| Idempotent retries | **Not met** | Create endpoints (`POST`) have no idempotency key | A retried create after a timeout makes a duplicate |
+| Idempotent retries | Met after this review (CRM-T52), opt-in | `POST` accepts `Idempotency-Key`; a retry replays the first success | Clients must send the key; keys are per caller and kept 24 hours; only `2xx` responses are replayed |
 | Rate limiting | Partly met | `429` with `Retry-After`; shared across replicas when Redis is configured | No `RateLimit-*` headers telling a client its budget |
 | Caching | Partly met | ETag and `If-None-Match` on dashboards and some insights | Not applied to ordinary list and detail reads |
 | Data formats | Met (by design) | Money in minor units with ISO 4217; JSON throughout | Date and time conventions are not stated in the OpenAPI document |
@@ -33,9 +33,8 @@ Scope: the REST API in `contact-relationship-management-service-with-rust`
 
 ## Recommended next steps
 
-Each is a new open task in `spec/tasks.md`:
+Idempotency keys (CRM-T52) were built after this review. What remains:
 
-1. Idempotency keys (CRM-T52) for `POST` creates.
-2. Request and response schemas in the OpenAPI document, and a test that
+1. Request and response schemas in the OpenAPI document, and a test that
    fails when a mounted route is undocumented.
-3. Decide on RFC 9457 error bodies and a written deprecation policy.
+2. Decide on RFC 9457 error bodies and a written deprecation policy.
