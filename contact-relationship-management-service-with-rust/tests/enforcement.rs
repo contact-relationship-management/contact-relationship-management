@@ -102,10 +102,40 @@ async fn enforcement_gates_the_real_stack() {
     let writer = sign_as(&kid, "writer-user", &[("access", &["write"])]);
     let service = sign_as(&kid, "svc-user", &[("svc", &["true"])]);
 
+    // Break-glass grants outlive a run when Redis is configured (they last 30
+    // minutes there); a leftover grant would lift this test's masks.
+    if let Ok(url) = std::env::var("CRM_REDIS_URL")
+        && !url.is_empty()
+    {
+        let client = redis::Client::open(url).expect("CRM_REDIS_URL");
+        let mut conn = client
+            .get_multiplexed_async_connection()
+            .await
+            .expect("redis connection");
+        let _: () = redis::cmd("DEL")
+            .arg("crm:bg:reader-user")
+            .arg("crm:bg:svc-user")
+            .arg("crm:bg:writer-user")
+            .query_async(&mut conn)
+            .await
+            .expect("clear leftover grants");
+    }
+
     request::<App, _, _>(|request, _ctx| async move {
         let bearer = |token: &str| format!("Bearer {token}");
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
         schema_check::to_json_schema(&mut doc);
+
+        // A refusal is a problem document and names the accepted scheme.
+        let refused = request.get("/api/contacts").await;
+        assert_eq!(refused.status_code(), 401);
+        assert_eq!(
+            refused.headers().get("www-authenticate").map(|v| v.to_str().unwrap()),
+            Some("Bearer")
+        );
+        let problem: Value = refused.json();
+        schema_check::check(&doc, "Error", &problem, "401 without a token");
+        assert_eq!(problem["status"], 401);
 
         // Public allow-list stays open without a token.
         assert_eq!(request.get("/_health").await.status_code(), 200);

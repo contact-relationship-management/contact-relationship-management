@@ -344,3 +344,75 @@ async fn read_responses_match_the_documented_schemas() {
     })
     .await;
 }
+
+/// Every error, whoever produced it, is an RFC 9457 problem document that
+/// satisfies the documented `Error` schema and still carries the earlier
+/// `error` and `description` members.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn errors_are_problem_documents() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
+        to_json_schema(&mut doc);
+        let missing = uuid::Uuid::new_v4();
+
+        let cases = [
+            (
+                "validation (422, controller)",
+                request
+                    .post("/api/contacts")
+                    .json(&json!({ "person_ref": "nope", "display_name": "" }))
+                    .await,
+                422,
+                "urn:crm:problem:validation",
+            ),
+            (
+                "unknown record (404, controller)",
+                request.get(&format!("/api/contacts/{missing}")).await,
+                404,
+                "about:blank",
+            ),
+            (
+                "unknown version (406, middleware)",
+                request
+                    .get("/api/contacts")
+                    .add_header("accepts-version", "9.9")
+                    .await,
+                406,
+                "urn:crm:problem:unsupported-api-version",
+            ),
+            (
+                "unknown route (404, router)",
+                request.get("/api/no-such-thing").await,
+                404,
+                "about:blank",
+            ),
+            (
+                "wrong method (405, router)",
+                request.delete("/api/contacts").await,
+                405,
+                "about:blank",
+            ),
+        ];
+        for (what, response, status, kind) in cases {
+            assert_eq!(response.status_code(), status, "{what}");
+            let content_type = response
+                .headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or_default()
+                .to_string();
+            assert!(
+                content_type.starts_with("application/problem+json"),
+                "{what}: content-type {content_type}"
+            );
+            let body: Value = response.json();
+            check(&doc, "Error", &body, what);
+            assert_eq!(body["status"], status, "{what}");
+            assert_eq!(body["type"], kind, "{what}: {body}");
+            assert_eq!(body["detail"], body["description"], "{what}");
+        }
+    })
+    .await;
+}

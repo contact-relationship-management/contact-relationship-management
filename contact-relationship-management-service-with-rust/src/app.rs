@@ -609,7 +609,10 @@ impl Hooks for App {
             ))
             .layer(axum::middleware::from_fn(
                 crate::version::require_version_mw,
-            )))
+            ))
+            // Outermost: every error above, whoever produced it, leaves as
+            // `application/problem+json` (CRM-T54).
+            .layer(axum::middleware::from_fn(crate::problem::problem_mw)))
     }
 
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {

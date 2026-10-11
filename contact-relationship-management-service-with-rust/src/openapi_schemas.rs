@@ -66,8 +66,12 @@ pub fn schemas() -> Value {
 #[allow(clippy::too_many_lines)] // one literal table of schemas
 fn base_schemas() -> Value {
     json!({
-        "Error": object(&["error", "description"], &json!({
-            "error": string(), "description": string() })),
+        "Error": resource(&["type", "title", "status", "detail", "instance", "error", "description"], &json!({
+            "type": { "type": "string", "description": "`about:blank`, or a `urn:crm:problem:` URN for the machine code" },
+            "title": string(), "status": integer(), "detail": string(),
+            "instance": { "type": "string", "description": "The request path" },
+            "error": { "type": "string", "description": "Stable machine code (kept from the earlier body)" },
+            "description": { "type": "string", "description": "Same text as `detail` (kept from the earlier body)" } })),
         "Created": resource(&["pid"], &json!({ "pid": uuid() })),
 
         // ---- requests
@@ -613,7 +617,8 @@ pub fn attach(doc: &mut Value) {
                         && !status.starts_with('2')
                         && response.get("content").is_none()
                     {
-                        response["content"] = json_body(reference("Error"));
+                        response["content"] = json!({
+                            "application/problem+json": { "schema": reference("Error") } });
                     }
                 }
             }

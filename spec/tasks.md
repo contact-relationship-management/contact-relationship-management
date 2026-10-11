@@ -710,3 +710,28 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       enumerations (statuses, kinds, channels) are plain strings, not
       enumerated; a mutating route added with no schema must be listed as
       bodyless to pass, which is a prompt, not a proof.
+- [x] CRM-T54 **RFC 9457 errors and a deprecation policy.** The API review
+      found error bodies were Loco's `{error, description}`, produced in
+      several places with different shapes (plain text from the auth and
+      rate-limit layers, JSON from controllers, empty bodies from the router),
+      and no written rule for changing or retiring the API.
+      **Resolution:** `src/problem.rs` is one outermost middleware that turns
+      every `4xx` and `5xx` into `application/problem+json` with `type`,
+      `title`, `status`, `detail` and `instance`. `error` and `description`
+      stay as members so existing clients (including the bundled UI) keep
+      working; only the media type changed. Extension members such as
+      `supported` pass through. A `401` now carries `WWW-Authenticate:
+      Bearer`. The OpenAPI `Error` schema and the error content type match.
+      `spec/compliance/api-lifecycle.md` records the policy: what is breaking,
+      the deprecation steps (changelog, OpenAPI `deprecated`, `Deprecation`
+      and `Sunset` headers, a 180-day notice period, version overlap).
+      Tests: five unit tests on the conversion; a DB-gated test that checks a
+      422, an unknown record, a refused API version, an unknown route and a
+      wrong method against the `Error` schema and the media type; and the
+      enforcement test's token-less `401`.
+      **Limits:** errors from layers outside the application router (the
+      payload-size limit, the request timeout, the panic handler) are not
+      converted. Nothing is deprecated, so the `Deprecation` and `Sunset`
+      headers are specified but not built. The 180-day notice period is the
+      maintainer's choice, not a standard's. Not checked by a reviewer against
+      the RFCs' published text.

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — RFC 9457 error bodies (CRM-T54, 2026-10-11)
+
+Every `4xx`/`5xx` is now `application/problem+json` with `type`, `title`,
+`status`, `detail` and `instance`. The earlier `error` and `description`
+members are kept, so only the media type changes. A `401` carries
+`WWW-Authenticate: Bearer`. The API versioning and deprecation policy is in
+`spec/compliance/api-lifecycle.md`.
+
+### Added — response schemas (CRM-T53, 2026-10-11)
+
+The OpenAPI document types the detail reads, forecast, dashboards, insight
+views, audit, retention, privacy and break-glass responses; tests validate
+real (including masked) responses against them.
+
 ### Added — field-level encryption (CRM-T41, 2026-10-10)
 
 AES-256-GCM on `contacts.preferred_channel` and `activities.summary` through
