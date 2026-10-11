@@ -23,7 +23,8 @@ as "built and self-tested", not "verified".
 | Abuse resistance | Rate limit (600 a minute) and lockout (10 failures in 5 minutes), shared via Redis; probes exempt | T43 |
 | Browser and transport | Strict CSP with hashes, frame denial, `nosniff`, referrer policy, closed CORS, secure headers; no token in browser JavaScript (BFF) | UI `hooks.server.ts` |
 | Data protection | AES-256-GCM on two columns with rotation; local keys, no KMS | T41 |
-| Supply chain | `cargo audit`, `cargo deny`, `pnpm audit`, SBOMs, hardened non-root images pinned by digest | [control-mapping](../../../../spec/compliance/control-mapping.md) |
+| Supply chain | `cargo audit`, `cargo deny`, `pnpm audit`, SBOMs, hardened non-root images pinned by digest, weekly Dependabot updates, a release workflow that signs images and SBOMs keylessly | [control-mapping](../../../../spec/compliance/control-mapping.md), [operations-runbook](../../../../spec/compliance/operations-runbook.md) |
+| Errors | Every error is one RFC 9457 problem document; a `401` names the accepted scheme | [api-lifecycle](../../../../spec/compliance/api-lifecycle.md) |
 | Memory safety | `forbid(unsafe_code)`, clippy pedantic | `src/lib.rs` |
 
 ## Known weaknesses (stated, not hidden)
@@ -31,7 +32,9 @@ as "built and self-tested", not "verified".
 - **No independent penetration test or threat-modelling exercise** (T42). The
   threat model in [dtac-supporting](../../../../spec/compliance/dtac-supporting.md)
   is a summary, not a structured one.
-- **Builds are unsigned**; pinned digests go stale without a refresh schedule (T49).
+- **Release signing has not run on a real release** (T49). The workflow and the
+  verification commands exist; until a tag is pushed they are untested, and the
+  actions are pinned to version tags, not commit hashes.
 - **Field encryption** covers two columns with local keys, no KMS.
 - **Step-up re-authentication** before destructive actions is not built.
 - **Redis holds personal data** (cached insights, grant keys) and must be protected
@@ -42,8 +45,9 @@ as "built and self-tested", not "verified".
   trusted proxy, so an attacker can lock out other unauthenticated callers.
 - **Policy reloads** show in cached insights after up to 30 seconds.
 - **Idle sign-out** is client-side.
-- **Idempotency keys** are opt-in (T52): a client that does not send
+- **Idempotency keys** are opt-in at the API (T52): a client that does not send
   `Idempotency-Key` is not protected from a retried create duplicating a record.
+  The bundled UI sends one.
 
 ## What the deployer must do
 
@@ -53,7 +57,8 @@ as "built and self-tested", not "verified".
    (`GET /api/audits/verify`) on a schedule.
 4. Protect PostgreSQL and Redis (network, TLS, credentials, backups, encryption
    at rest); rotate field keys with the provided task.
-5. Run dependency and image updates; re-run the supply-chain stage.
+5. Merge the Dependabot updates; re-run the supply-chain stage; verify a signed
+   release before deploying it.
 6. Follow the runbook for incident response
    ([operations-runbook](../../../../spec/compliance/operations-runbook.md)).
 
@@ -66,8 +71,8 @@ re-test after material change.
 ## Suggested security actions, in order
 
 1. Scope and commission the independent penetration test (T42).
-2. Decide key custody, then sign release builds and set a digest-refresh
-   schedule (T49).
+2. Push a first release tag to prove signing and verification, and pin the
+   actions by commit hash (T49).
 3. Wire alerting for break-glass and for audit-chain verification failures.
 4. Put Redis behind TLS and credentials in every environment.
 5. KMS-backed field keys and wider field coverage (T41 remainder).

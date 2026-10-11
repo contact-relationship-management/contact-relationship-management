@@ -20,14 +20,14 @@ that only the adopting organization or outside parties can supply.
 | 5 | Unlawful marketing | Consent errors | Send path enforces consent, not the UI; immutable consent history | Medium until a real sender, bounce and complaint handling exist (T39) |
 | 6 | Availability / abuse | Public API | Rate limit and lockout, shared via Redis | Medium: limits fall back per replica if Redis fails |
 | 7 | Accessibility non-compliance | Public-sector duty | Automated axe scans; honest accessibility statement | **Unquantified** until manual audit (T48) |
-| 8 | Supply chain | Dependencies and images | `cargo deny/audit`, `pnpm audit`, SBOM, digest pins | Medium: digests go stale without a refresh process; builds unsigned (T49) |
-| 9 | Duplicate records from retries | Idempotency keys are opt-in (T52) | Replay for clients that send the key | Low |
+| 8 | Supply chain | Dependencies and images | `cargo deny/audit`, `pnpm audit`, SBOM, digest pins refreshed by Dependabot, a keyless-signed release workflow | Medium: signing has not run on a real release (T49) |
+| 9 | Duplicate records from retries | Idempotency keys are opt-in at the API (T52) | Replay for clients that send the key; the bundled UI always does | Low |
 | 10 | Misclassification of data | Deployer decides what a "contact" is | Scope note and DPIA template | Depends on you |
 
 ## Gaps that stay open by nature
 
 T39 (real email provider), T42 (independent assurance), T48 (manual
-accessibility audit), T49 (signing, API review). See [tasks.md](../../../../spec/tasks.md)
+accessibility audit), T49 (a first signed release, a reviewer's check of the API draft). See [tasks.md](../../../../spec/tasks.md)
 and [plan.md](../../../../spec/plan.md).
 
 ## Suggested risk actions

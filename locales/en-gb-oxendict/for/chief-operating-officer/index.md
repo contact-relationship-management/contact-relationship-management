@@ -25,6 +25,8 @@ with base images pinned by digest. The operations runbook is
   read elevation for up to 60 minutes. Someone else must review every grant.
   **Process you must run:** alert on `break_glass_granted` audit rows and
   review the unreviewed count (admin page `/break-glass/review`).
+- **Errors** are one shape (RFC 9457 `application/problem+json`, with `error` and
+  `description` kept), so log parsing and alert rules can rely on `status` and `type`.
 - **Audit growth.** Reads are audited, so the audit table grows with traffic.
   Size retention for it. A client that polls will grow it fast.
 
@@ -34,7 +36,8 @@ with base images pinned by digest. The operations runbook is
 |---|---|
 | Backup/restore drills, key rotation rehearsal | Written in the runbook; **you** must run and evidence them |
 | Anchoring the audit chain head outside the database | Your duty; the API reports the head hash |
-| Refreshing pinned image digests | Needs a schedule (Renovate or Dependabot) or they go stale |
+| Refreshing pinned image digests | Dependabot opens weekly pull requests; **you** must review and merge them or the pins go stale |
+| Verifying a signed release before deploying it | Commands are in the runbook; deploy by digest, and refuse an image that fails verification. Untested until a first tagged release |
 | Real email provider (T39) | Open; changes the incident and supplier picture |
 | Redis holds insight data | Protect it like the database: TLS, password, no public exposure |
 
