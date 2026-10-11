@@ -35,7 +35,7 @@ fund the remaining external work, not to switch it on.
 1. **Which market first.** The NHS Digital Technology Assessment Criteria
    assessment ([docs](../../../../docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/index.md))
    concludes the product probably falls outside DTAC scope and would fail the
-   sections that apply for lack of organisational evidence (named clinical
+   sections that apply for lack of organizational evidence (named clinical
    safety officer, certifications). Pick the route before spending on it.
 2. **Whether to fund independent assurance** (T42, T48). Without it the honest
    claim is "built to a high standard, untested by outsiders".

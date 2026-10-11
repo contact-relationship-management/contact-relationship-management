@@ -7,7 +7,7 @@
 
 **Overall: not ready for regulated data.** The software is well controlled for
 its stage, but the main residual risks are unmitigated by testing and process
-that only the adopting organisation or outside parties can supply.
+that only the adopting organization or outside parties can supply.
 
 ## Top risks
 

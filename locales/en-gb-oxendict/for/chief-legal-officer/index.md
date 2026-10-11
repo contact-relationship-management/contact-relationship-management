@@ -13,7 +13,7 @@ several, and lists what a deployer must add ([regulatory](../../../../spec/regul
 
 | Regime | What the software supports | What you must supply |
 |---|---|---|
-| UK/EU GDPR | Consent history, subject access export, erasure (refused while open obligations exist), retention sweep, data minimisation, audit of reads | Lawful basis per purpose, DPIA ([template](../../../../spec/compliance/dpia-template.md)), records of processing, retention schedule, controller/processor roles |
+| UK/EU GDPR | Consent history, subject access export, erasure (refused while open obligations exist), retention sweep, data minimization, audit of reads | Lawful basis per purpose, DPIA ([template](../../../../spec/compliance/dpia-template.md)), records of processing, retention schedule, controller/processor roles |
 | PECR / e-privacy | Consent-gated sends, immediate unsubscribe | Sender identification and soft-opt-in decisions for a real sender |
 | HIPAA (if US health data) | Audit controls, access control, integrity, transmission security features | A business associate agreement, risk analysis, policies, workforce training. The software does not make you compliant |
 | NHS DTAC / DCB0129/0160 | Evidence drafts ([dtac-supporting](../../../../spec/compliance/dtac-supporting.md)) | Named clinical safety officer, hazard log, certifications. Assessment says DTAC probably does not apply |
@@ -30,7 +30,7 @@ several, and lists what a deployer must add ([regulatory](../../../../spec/regul
 
 ## Specific legal watch-points
 
-- **Erasure** anonymises the contact and is refused while an open deal, ticket
+- **Erasure** anonymizes the contact and is refused while an open deal, ticket
   or active nurture enrolment exists; the audit chain keeps records of actions,
   so settle how that interacts with erasure requests in your DPIA.
 - **Break-glass** reads of masked data are lawful only on your documented basis;

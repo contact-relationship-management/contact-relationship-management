@@ -8,7 +8,7 @@
 This CRM holds **relationship data**: contacts and accounts as wrappers around
 identifiers held in other systems, activities, deals, tickets, consent history
 and an audit log. Demographics deliberately stay in the identity registries
-([domain-model](../../../../spec/domain-model.md)). If your organisation records patients or
+([domain-model](../../../../spec/domain-model.md)). If your organization records patients or
 citizens as contacts, the classification of that data is **yours** to decide;
 the plan is written to the stricter reading ([plan](../../../../spec/plan.md)).
 

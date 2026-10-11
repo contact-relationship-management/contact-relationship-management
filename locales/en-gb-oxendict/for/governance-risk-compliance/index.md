@@ -8,7 +8,7 @@
 The evidence pack is [spec/compliance](../../../../spec/compliance/index.md). Its
 ground rule is the one to hold the team to: a control is **Implemented** only
 when code or configuration enforces it and a test or check pins it; **Deployer**
-when your organisation must supply it; **Gap** when neither is true today.
+when your organization must supply it; **Gap** when neither is true today.
 
 | Document | Use it for |
 |---|---|
@@ -17,7 +17,7 @@ when your organisation must supply it; **Gap** when neither is true today.
 | [operations-runbook](../../../../spec/compliance/operations-runbook.md) | Hardening, backup and restore, keys, logging, incident response |
 | [dtac-supporting](../../../../spec/compliance/dtac-supporting.md) | Draft NHS DTAC statements for the manufacturer to adopt |
 | [gds-api-review](../../../../spec/compliance/gds-api-review.md) | Self-review against UK government API standards (a draft, not checked against the published text) |
-| [NHS DTAC v2.0 assessment](../../../../docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/index.md) | Question-by-question result: probably out of DTAC scope, and it would fail the applicable sections for lack of organisational evidence |
+| [NHS DTAC v2.0 assessment](../../../../docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/index.md) | Question-by-question result: probably out of DTAC scope, and it would fail the applicable sections for lack of organizational evidence |
 | [plan](../../../../spec/plan.md) | Readiness verdict (not ready) and the gap register |
 | [tasks](../../../../spec/tasks.md) | Each gap's task, resolution and stated limits |
 
@@ -50,7 +50,7 @@ accessibility (T48), and data classification, which is the adopter's call.
 | Independent assurance | **Gap:** none (T42) |
 | Email and marketing law | Consent-first send path implemented; real sending, processor agreement, bounce and complaint handling are absent (T39) |
 
-## Controls that need an owner in your organisation
+## Controls that need an owner in your organization
 
 1. Review and alerting for break-glass grants (alert on `break_glass_granted`).
 2. Anchoring the audit chain head and verifying it on a schedule
