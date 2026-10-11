@@ -7,10 +7,10 @@ Source text: `en-gb-oxendict`, 2026-10-11.
 
 | Locale | Briefs | Method | Reviewed by a native speaker |
 |---|---|---|---|
-| en-gb-oxendict | 8 | Source (Oxford -ize spelling, British otherwise) | n/a |
-| en-001 | 8 | Same text as en-gb-oxendict (Oxford spelling is the international convention used here) | n/a |
-| en-gb | 8 | Spelling rules applied to the source (-ise family) | n/a |
-| en-us | 8 | Spelling rules applied to the source (license, program, behavior, enrollment) | n/a |
+| en-gb-oxendict | 10 | Source (Oxford -ize spelling, British otherwise) | n/a |
+| en-001 | 10 | Same text as en-gb-oxendict (Oxford spelling is the international convention used here) | n/a |
+| en-gb | 10 | Spelling rules applied to the source (-ise family) | n/a |
+| en-us | 10 | Spelling rules applied to the source (license, program, behavior, enrollment) | n/a |
 | zh-cn | 8 | Translated by Claude (Simplified Chinese), native-script slugs | **No** |
 | zh-001 | 8 | Byte copy of zh-cn | **No** |
 | hi-in | 8 | Translated by Claude (Hindi), native-script slugs | **No** |
@@ -18,7 +18,9 @@ Source text: `en-gb-oxendict`, 2026-10-11.
 | cy-gb | 8 | Translated by Claude (Welsh), Welsh slugs | **No** |
 | cy-001 | 8 | Byte copy of cy-gb | **No** |
 
-Not done: `ar-001` (listed in the locale priority order; not requested).
+Not done: the chief strategy officer and chief security officer briefs exist only
+in the four English locales (10 briefs); zh-cn, zh-001, hi-in, hi-001, cy-gb and cy-001
+still have 8 and need those two translated. Also not done: `ar-001` (listed in the locale priority order; not requested).
 
 ## Rules applied
 
