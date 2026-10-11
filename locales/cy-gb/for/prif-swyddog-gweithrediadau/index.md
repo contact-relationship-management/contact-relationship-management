@@ -12,6 +12,7 @@ Un broses Rust fesul replica yw'r gwasanaeth, ynghyd â PostgreSQL 18 a Redis; p
 - **Iechyd a metrigau.** Ni chyfyngir cyfradd `/_health`, `/_ping`, `/_readiness` byth, felly ni all cloi allan ailgychwyn pod iach. Mae metrigau yn `/metrics.prom`.
 - **Terfynau camddefnydd** ar waith mewn cynhyrchiad: 600 cais y funud fesul cleient a chloi allan ar ôl 10 mewngofnodiad aflwyddiannus mewn 5 munud. Cânt eu rhannu ar draws replicas drwy Redis; os bydd Redis yn methu, maent yn dychwelyd i gyfrif fesul replica.
 - **Mynediad brys** (torri'r gwydr): gall unrhyw ddefnyddiwr sydd wedi mewngofnodi gymryd dyrchafiad darllen â rheswm am hyd at 60 munud. Rhaid i rywun arall adolygu pob caniatâd. **Proses y mae'n rhaid i chi ei rhedeg:** gosodwch rybudd ar resi archwilio `break_glass_granted` ac adolygwch nifer y rhai heb eu hadolygu (tudalen weinyddol `/break-glass/review`).
+- **Gwallau** yn un ffurf (RFC 9457 `application/problem+json`, gyda `error` a `description` wedi'u cadw), felly gall dosrannu logiau a rheolau rhybuddio ddibynnu ar `status` a `type`.
 - **Twf archwilio.** Archwilir darlleniadau, felly mae'r tabl archwilio yn tyfu gyda'r traffig. Cynlluniwch y cyfnod cadw ar ei gyfer. Bydd cleient sy'n holi'n gyson yn ei dyfu'n gyflym.
 
 ## Gwaith gweithredol agored
@@ -20,7 +21,8 @@ Un broses Rust fesul replica yw'r gwasanaeth, ynghyd â PostgreSQL 18 a Redis; p
 |---|---|
 | Ymarferion wrth gefn/adfer, ymarfer cylchdroi allweddi | Wedi'u hysgrifennu yn y llawlyfr; **chi** sy'n gorfod eu rhedeg a chadw tystiolaeth |
 | Angori pen y gadwyn archwilio y tu allan i'r gronfa ddata | Eich dyletswydd chi; mae'r API yn adrodd hash y pen |
-| Adnewyddu crynodebau delweddau sydd wedi'u pinio | Angen amserlen (Renovate neu Dependabot) neu byddant yn dyddio |
+| Adnewyddu crynodebau delweddau sydd wedi'u pinio | Mae Dependabot yn agor ceisiadau tynnu wythnosol; **chi** sy'n gorfod eu hadolygu a'u cyfuno neu bydd y pinnau'n dyddio |
+| Gwirio rhyddhad wedi'i lofnodi cyn ei ddefnyddio | Mae'r gorchmynion yn y llawlyfr gweithredu; defnyddiwch yn ôl crynodeb a gwrthodwch ddelwedd sy'n methu'r gwiriad. Heb ei brofi nes tagio'r rhyddhad cyntaf |
 | Darparwr e-bost go iawn (T39) | Agored; yn newid darlun digwyddiadau a chyflenwyr |
 | Mae Redis yn dal data mewnwelediadau | Diogelwch ef fel y gronfa ddata: TLS, cyfrinair, dim amlygiad cyhoeddus |
 

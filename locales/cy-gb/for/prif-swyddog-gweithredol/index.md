@@ -10,7 +10,7 @@ System CRM lefel arddangos yw hon, gyda sylfaen diogelwch a phreifatrwydd anarfe
 
 - CRM gweithredol ar draws gwerthiant, marchnata, cymorth a dadansoddeg, gyda API Rust a pharth blaen gwe, wedi'i adeiladu yn ôl manyleb ysgrifenedig.
 - Marchnata sy'n rhoi cydsyniad yn gyntaf; rheolaeth mynediad sy'n cuddio gwerthoedd sensitif rhag rolau na ddylent eu gweld; llwybr archwilio sy'n dangos ymyrraeth; mynediad at ddata personol a dileu ar gyfer ceisiadau preifatrwydd; a mynediad brys (“torri'r gwydr”) sydd â rheswm, cyfyngiad amser ac adolygiad.
-- Mae 48 o'r 53 eitem waith a olrheinir wedi'u cwblhau ([tasks.md](../../../../spec/tasks.md)).
+- Mae 51 o'r 55 eitem waith a olrheinir wedi'u cwblhau ([tasks.md](../../../../spec/tasks.md)).
 
 ## Beth sy'n sefyll rhwng hyn a defnydd go iawn
 
@@ -19,7 +19,7 @@ System CRM lefel arddangos yw hon, gyda sylfaen diogelwch a phreifatrwydd anarfe
 | Dim danfon e-bost go iawn (T39) | Efelychiad yw'r marchnata; mae darparwr go iawn angen contractau a chytundeb prosesu data | Chi sy'n dewis y gwerthwr; y tîm cyfreithiol sy'n llofnodi |
 | Dim prawf diogelwch annibynnol (T42) | Mae ysbytai a phrynwyr y llywodraeth fel arfer yn gofyn amdano; nid yw ein profion ein hunain yn annibynnol | Cwmni allanol |
 | Dim archwiliad hygyrchedd â llaw (T48) | Rhaid i gyrff cyhoeddus gyhoeddi datganiad hygyrchedd y gallant sefyll y tu ôl iddo | Pobl â thechnoleg gynorthwyol |
-| Adolygiad llofnodi adeiladau a safonau API heb ei orffen (T49) | Mae rhestrau gwirio caffael yn gofyn am y ddau | Peirianneg, gyda phenderfyniad ar ddalfa allweddi |
+| Mae llofnodi rhyddhau wedi'i adeiladu ond heb redeg ar ryddhad go iawn, ac nid oes adolygydd wedi gwirio drafft safonau'r API (T49) | Mae rhestrau gwirio caffael yn gofyn am y ddau | Peirianneg (tagio rhyddhad cyntaf); adolygydd allanol |
 
 ## Penderfyniadau sy'n eiddo i chi
 

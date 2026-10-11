@@ -29,4 +29,5 @@ Meddalwedd arddangos â data synthetig yw'r ystorfa. Nid yw'n honni cydymffurfio
 - Mae **dileu** yn anonymeiddio'r cyswllt a chaiff ei wrthod tra bo bargen agored, tocyn agored neu gofrestriad meithrin gweithredol; mae'r gadwyn archwilio yn cadw cofnodion o weithredoedd, felly penderfynwch yn eich DPIA sut mae hynny'n rhyngweithio â cheisiadau dileu.
 - Mae darlleniadau **torri'r gwydr** o ddata wedi'i guddio yn gyfreithlon yn unig ar eich sail ddogfenedig; tystiolaeth yw'r maes rheswm, nid awdurdod.
 - **Sgorio** arweinwyr: os bydd byth yn dylanwadu ar benderfyniadau arwyddocaol am bobl, mae rheolau gwneud penderfyniadau awtomataidd yn berthnasol ([regulatory](../../../../spec/regulatory.md)).
+- **Ymrwymiadau API:** mae [api-lifecycle](../../../../spec/compliance/api-lifecycle.md) yn pennu cyfnod rhybudd o 180 diwrnod cyn dileu newid i'r API. Dewis y cynhaliwr yw hwn; os bydd cwsmeriaid yn dibynnu arno, penderfynwch a ddylai fod mewn contract.
 - **Hawliadau cyhoeddus:** peidiwch â datgan cydymffurfiaeth, ardystiad na chymeradwyaeth.
