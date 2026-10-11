@@ -11,16 +11,14 @@ Source text: `en-gb-oxendict`, 2026-10-11.
 | en-001 | 10 | Same text as en-gb-oxendict (Oxford spelling is the international convention used here) | n/a |
 | en-gb | 10 | Spelling rules applied to the source (-ise family) | n/a |
 | en-us | 10 | Spelling rules applied to the source (license, program, behavior, enrollment) | n/a |
-| zh-cn | 8 | Translated by Claude (Simplified Chinese), native-script slugs | **No** |
-| zh-001 | 8 | Byte copy of zh-cn | **No** |
-| hi-in | 8 | Translated by Claude (Hindi), native-script slugs | **No** |
-| hi-001 | 8 | Byte copy of hi-in | **No** |
-| cy-gb | 8 | Translated by Claude (Welsh), Welsh slugs | **No** |
-| cy-001 | 8 | Byte copy of cy-gb | **No** |
+| zh-cn | 10 | Translated by Claude (Simplified Chinese), native-script slugs | **No** |
+| zh-001 | 10 | Byte copy of zh-cn | **No** |
+| hi-in | 10 | Translated by Claude (Hindi), native-script slugs | **No** |
+| hi-001 | 10 | Byte copy of hi-in | **No** |
+| cy-gb | 10 | Translated by Claude (Welsh), Welsh slugs | **No** |
+| cy-001 | 10 | Byte copy of cy-gb | **No** |
 
-Not done: the chief strategy officer and chief security officer briefs exist only
-in the four English locales (10 briefs); zh-cn, zh-001, hi-in, hi-001, cy-gb and cy-001
-still have 8 and need those two translated. Also not done: `ar-001` (listed in the locale priority order; not requested).
+Not done: `ar-001` (listed in the locale priority order; not requested).
 
 ## Rules applied
 
