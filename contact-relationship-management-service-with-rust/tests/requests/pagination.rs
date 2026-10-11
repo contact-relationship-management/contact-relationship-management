@@ -4,6 +4,7 @@
 
 use contact_relationship_management_service::app::App;
 use loco_rs::testing::prelude::*;
+use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
 use std::collections::HashSet;
@@ -105,6 +106,31 @@ async fn article_search_is_not_cut_by_the_page() {
         // A wildcard in the query is literal, not a pattern.
         let none: Value = request.get("/api/articles?q=%25").await.json();
         assert!(none.as_array().unwrap().is_empty(), "{none}");
+    })
+    .await;
+}
+
+/// The activity dashboard counts every activity, not a capped sample.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn activity_dashboard_counts_past_the_old_cap() {
+    request::<App, _, _>(|request, ctx| async move {
+        ctx.db
+            .execute_unprepared(
+                "INSERT INTO activities (created_at, updated_at, pid, subject_kind, subject_pid, \
+                 kind, occurred_at, summary, done) \
+                 SELECT now(), now(), gen_random_uuid(), 'contact', gen_random_uuid(), \
+                 CASE WHEN g % 2 = 0 THEN 'call' ELSE 'note' END, now(), 'bulk', false \
+                 FROM generate_series(1, 5003) AS g",
+            )
+            .await
+            .unwrap();
+        let dashboard: Value = request.get("/api/dashboards/activity?days=1").await.json();
+        assert_eq!(dashboard["total"], 5003, "{dashboard}");
+        assert_eq!(dashboard["by_kind"]["call"], 2501);
+        assert_eq!(dashboard["by_kind"]["note"], 2502);
+        assert!(dashboard.get("truncated").is_none());
     })
     .await;
 }

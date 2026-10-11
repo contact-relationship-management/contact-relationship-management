@@ -7,7 +7,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::IntoResponse;
 use loco_rs::prelude::*;
-use sea_orm::{QueryOrder, QuerySelect};
+use sea_orm::QuerySelect;
 use serde::Deserialize;
 
 use super::sales;
@@ -172,34 +172,29 @@ const fn default_days() -> i64 {
     30
 }
 
-/// Most recent activities the activity dashboard counts.
-const ACTIVITY_SAMPLE: u64 = 5000;
-const ACTIVITY_SAMPLE_ROWS: usize = 5000;
-
+/// `GET /api/dashboards/activity?days=` — counts by kind, computed in SQL
+/// over **every** matching activity (no row cap), so the totals are exact.
 #[debug_handler]
 async fn activity_dashboard(
     State(ctx): State<AppContext>,
     Query(params): Query<ActivityParams>,
 ) -> Result<Response> {
     let since = chrono::Utc::now() - chrono::Duration::days(params.days.clamp(1, 365));
-    let rows = activities::Entity::find()
+    let counts: Vec<(String, i64)> = activities::Entity::find()
+        .select_only()
+        .column(activities::Column::Kind)
+        .column_as(activities::Column::Id.count(), "n")
         .filter(activities::Column::DeletedAt.is_null())
         .filter(activities::Column::OccurredAt.gte(since))
-        .order_by_desc(activities::Column::OccurredAt)
-        .limit(ACTIVITY_SAMPLE + 1)
+        .group_by(activities::Column::Kind)
+        .into_tuple()
         .all(&ctx.db)
         .await?;
-    // Counts cover at most ACTIVITY_SAMPLE rows; say so rather than undercount quietly.
-    let truncated = rows.len() > ACTIVITY_SAMPLE_ROWS;
-    let rows = &rows[..rows.len().min(ACTIVITY_SAMPLE_ROWS)];
-    let mut by_kind: std::collections::BTreeMap<String, i64> = std::collections::BTreeMap::new();
-    for activity in rows {
-        *by_kind.entry(activity.kind.clone()).or_insert(0) += 1;
-    }
+    let total: i64 = counts.iter().map(|(_, n)| n).sum();
+    let by_kind: std::collections::BTreeMap<String, i64> = counts.into_iter().collect();
     format::json(serde_json::json!({
         "window_days": params.days,
-        "total": rows.len(),
-        "truncated": truncated,
+        "total": total,
         "by_kind": by_kind,
         "as_of": chrono::Utc::now(),
     }))

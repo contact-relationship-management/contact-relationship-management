@@ -608,8 +608,8 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       pass the cap, and then they are told. Orders now end in `id`, so pages are
       stable; bad `limit` or `cursor` is 422. Article search moved into SQL: it
       used to filter after the 500-row cut, which hid matches past the cut.
-      The activity dashboard now reports `truncated` when it counted only its
-      latest 5000 rows. OpenAPI documents the parameters and header. UI:
+      The activity dashboard now counts in SQL (`GROUP BY kind`) over every
+      activity, so its totals are exact (test seeds 5003 rows). OpenAPI documents the parameters and header. UI:
       `apiAll` follows the links (50-page safety stop that throws rather than
       return a partial list), the six list calls use it, and the BFF proxy
       forwards and re-points `Link`. Tests: 4 paging unit pins, 3 DB tests
