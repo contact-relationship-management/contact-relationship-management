@@ -13,7 +13,7 @@ process** that this repository cannot do for you.
 
 - **Role-based visibility:** some roles see masked values for contact channels,
   deal amounts and money views; managers, admin and service tiers see more
-  ([auth](../../../spec/auth.md)).
+  ([auth](../../../../spec/auth.md)).
 - **Audited reads:** reading personal data leaves a trail naming the person.
   Staff should be told this before go-live.
 - **Emergency access:** a person can take a reasoned read elevation of up to 60
@@ -39,4 +39,4 @@ process** that this repository cannot do for you.
 
 Manual accessibility audit with assistive-technology users (T48), native-speaker
 translation review, and ownership of the review and alerting duties above.
-See [tasks.md](../../../spec/tasks.md).
+See [tasks.md](../../../../spec/tasks.md).

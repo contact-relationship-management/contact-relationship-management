@@ -8,9 +8,9 @@
 This CRM holds **relationship data**: contacts and accounts as wrappers around
 identifiers held in other systems, activities, deals, tickets, consent history
 and an audit log. Demographics deliberately stay in the identity registries
-([domain-model](../../../spec/domain-model.md)). If your organisation records patients or
+([domain-model](../../../../spec/domain-model.md)). If your organisation records patients or
 citizens as contacts, the classification of that data is **yours** to decide;
-the plan is written to the stricter reading ([plan](../../../spec/plan.md)).
+the plan is written to the stricter reading ([plan](../../../../spec/plan.md)).
 
 ## Where data goes
 
@@ -26,7 +26,7 @@ the plan is written to the stricter reading ([plan](../../../spec/plan.md)).
 - Sign-in comes from an identity service issuing PASETO tokens, or Keycloak.
   Joiner/mover/leaver, MFA and session policy are therefore **your identity
   provider's**; the CRM enforces what the token says and refuses expired ones.
-- The API is documented in OpenAPI ([gds-api-review](../../../spec/compliance/gds-api-review.md)),
+- The API is documented in OpenAPI ([gds-api-review](../../../../spec/compliance/gds-api-review.md)),
   versioned by header, and now paginated with `Link` headers.
 - SBOMs (CycloneDX) are produced for service and UI in CI.
 
@@ -35,6 +35,6 @@ the plan is written to the stricter reading ([plan](../../../spec/plan.md)).
 Backup and restore evidence, retention schedules per table, anchoring the audit
 chain head outside the database, KMS custody of field keys, data-processing
 agreements for any supplier, and the data-protection impact assessment
-([dpia-template](../../../spec/compliance/dpia-template.md)). The control mapping
-([control-mapping](../../../spec/compliance/control-mapping.md)) marks each control as
+([dpia-template](../../../../spec/compliance/dpia-template.md)). The control mapping
+([control-mapping](../../../../spec/compliance/control-mapping.md)) marks each control as
 Implemented, Deployer, or Gap.

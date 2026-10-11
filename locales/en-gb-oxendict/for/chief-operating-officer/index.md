@@ -8,7 +8,7 @@
 The service is one Rust process per replica plus PostgreSQL 18 and Redis; the
 front end is a Node process. Both ship as hardened, non-root container images
 with base images pinned by digest. The operations runbook is
-[operations-runbook.md](../../../spec/compliance/operations-runbook.md).
+[operations-runbook.md](../../../../spec/compliance/operations-runbook.md).
 
 ## Operational facts to plan around
 

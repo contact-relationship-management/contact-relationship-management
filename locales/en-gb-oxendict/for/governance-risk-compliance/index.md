@@ -5,35 +5,35 @@
 
 ## Where to start
 
-The evidence pack is [spec/compliance](../../../spec/compliance/index.md). Its
+The evidence pack is [spec/compliance](../../../../spec/compliance/index.md). Its
 ground rule is the one to hold the team to: a control is **Implemented** only
 when code or configuration enforces it and a test or check pins it; **Deployer**
 when your organisation must supply it; **Gap** when neither is true today.
 
 | Document | Use it for |
 |---|---|
-| [control-mapping](../../../spec/compliance/control-mapping.md) | NIST SP 800-53, HIPAA Security Rule, ISO 27001 Annex A, GDPR Art. 32, each marked Implemented, Deployer or Gap |
-| [dpia-template](../../../spec/compliance/dpia-template.md) | Data protection impact assessment, pre-filled with this system's data flows |
-| [operations-runbook](../../../spec/compliance/operations-runbook.md) | Hardening, backup and restore, keys, logging, incident response |
-| [dtac-supporting](../../../spec/compliance/dtac-supporting.md) | Draft NHS DTAC statements for the manufacturer to adopt |
-| [gds-api-review](../../../spec/compliance/gds-api-review.md) | Self-review against UK government API standards (a draft, not checked against the published text) |
-| [NHS DTAC v2.0 assessment](../../united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/index.md) | Question-by-question result: probably out of DTAC scope, and it would fail the applicable sections for lack of organisational evidence |
-| [plan](../../../spec/plan.md) | Readiness verdict (not ready) and the gap register |
-| [tasks](../../../spec/tasks.md) | Each gap's task, resolution and stated limits |
+| [control-mapping](../../../../spec/compliance/control-mapping.md) | NIST SP 800-53, HIPAA Security Rule, ISO 27001 Annex A, GDPR Art. 32, each marked Implemented, Deployer or Gap |
+| [dpia-template](../../../../spec/compliance/dpia-template.md) | Data protection impact assessment, pre-filled with this system's data flows |
+| [operations-runbook](../../../../spec/compliance/operations-runbook.md) | Hardening, backup and restore, keys, logging, incident response |
+| [dtac-supporting](../../../../spec/compliance/dtac-supporting.md) | Draft NHS DTAC statements for the manufacturer to adopt |
+| [gds-api-review](../../../../spec/compliance/gds-api-review.md) | Self-review against UK government API standards (a draft, not checked against the published text) |
+| [NHS DTAC v2.0 assessment](../../../../docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/index.md) | Question-by-question result: probably out of DTAC scope, and it would fail the applicable sections for lack of organisational evidence |
+| [plan](../../../../spec/plan.md) | Readiness verdict (not ready) and the gap register |
+| [tasks](../../../../spec/tasks.md) | Each gap's task, resolution and stated limits |
 
 ## Governance
 
-- **Decision rights:** [GOVERNANCE.md](../../../GOVERNANCE.md), [MAINTAINERS.md](../../../MAINTAINERS.md),
-  [CODEOWNERS](../../../CODEOWNERS). Contribution and AI-assistance rules are in
-  [CONTRIBUTING.md](../../../CONTRIBUTING.md) and [AI_STATEMENT.md](../../../AI_STATEMENT.md).
+- **Decision rights:** [GOVERNANCE.md](../../../../GOVERNANCE.md), [MAINTAINERS.md](../../../../MAINTAINERS.md),
+  [CODEOWNERS](../../../../CODEOWNERS). Contribution and AI-assistance rules are in
+  [CONTRIBUTING.md](../../../../CONTRIBUTING.md) and [AI_STATEMENT.md](../../../../AI_STATEMENT.md).
 - **Change control:** the specification is the source of truth; code and tests
   cite it. CI runs on two providers, and `scripts/ci-check.sh` reproduces it.
   Rule in the repo: do not weaken a test or gate to make something pass.
-- **Disclosure:** [SECURITY.md](../../../SECURITY.md) is the reporting route.
+- **Disclosure:** [SECURITY.md](../../../../SECURITY.md) is the reporting route.
 
 ## Risk
 
-The risk view is in the [CRO brief](../cro/index.md). In short: the highest
+The risk view is in the [CRO brief](../chief-risk-officer/index.md). In short: the highest
 residual risks are untested-by-outsiders security (T42), unquantified
 accessibility (T48), and data classification, which is the adopter's call.
 

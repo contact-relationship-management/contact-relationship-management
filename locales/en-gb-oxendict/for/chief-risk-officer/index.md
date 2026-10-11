@@ -27,8 +27,8 @@ that only the adopting organisation or outside parties can supply.
 ## Gaps that stay open by nature
 
 T39 (real email provider), T42 (independent assurance), T48 (manual
-accessibility audit), T49 (signing, API review), T52. See [tasks.md](../../../spec/tasks.md)
-and [plan.md](../../../spec/plan.md).
+accessibility audit), T49 (signing, API review), T52. See [tasks.md](../../../../spec/tasks.md)
+and [plan.md](../../../../spec/plan.md).
 
 ## Suggested risk actions
 
