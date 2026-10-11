@@ -25,7 +25,7 @@ Mae'r gwasanaeth yn **methu'n ddiogel**, yn rheoli mynediad yn ôl rôl ac yn ô
 ## Gwendidau hysbys (wedi'u nodi, nid eu cuddio)
 
 - **Dim prawf treiddio annibynnol na dadansoddiad bygythiadau** (T42). Crynodeb yw'r model bygythiadau yn [dtac-supporting](../../../../spec/compliance/dtac-supporting.md), nid un strwythuredig.
-- **Nid yw llofnodi rhyddhau wedi rhedeg ar ryddhad go iawn** (T49). Mae'r llif gwaith a'r gorchmynion gwirio yn bodoli; nes tagio, nid ydynt wedi'u profi, ac mae'r gweithredoedd wedi'u pinio i dagiau fersiwn, nid i hashes ymrwymiad.
+- **Nid yw llofnodi rhyddhau wedi rhedeg ar ryddhad go iawn** (T49). Mae'r llif gwaith a'r gorchmynion gwirio yn bodoli; nes tagio, nid ydynt wedi'u profi. Mae'r gweithredoedd wedi'u pinio yn ôl hash ymrwymiad.
 - Mae **amgryptio meysydd** yn cwmpasu dwy golofn gydag allweddi lleol, dim KMS.
 - Nid yw **ailddilysu cam-i-fyny** cyn gweithredoedd dinistriol wedi'i adeiladu.
 - Mae **Redis yn dal data personol** (mewnwelediadau a storiwyd dros dro, allweddi caniatâd) a rhaid ei ddiogelu fel y gronfa ddata: TLS, cyfrinair, dim amlygiad cyhoeddus.
@@ -51,7 +51,7 @@ Mae adroddiadau'n mynd drwy [SECURITY.md](../../../../SECURITY.md). Comisiynwch 
 ## Camau diogelwch a awgrymir, yn eu trefn
 
 1. Cwmpasu a chomisiynu'r prawf treiddio annibynnol (T42).
-2. Gwthio tag rhyddhau cyntaf i brofi llofnodi a gwirio, a phinio'r gweithredoedd yn ôl hash ymrwymiad (T49).
+2. Gwthio tag rhyddhau cyntaf i brofi llofnodi a gwirio (T49).
 3. Cysylltu rhybuddio ar gyfer torri'r gwydr ac ar gyfer methiannau gwirio'r gadwyn archwilio.
 4. Rhoi Redis y tu ôl i TLS a manylion mewngofnodi ym mhob amgylchedd.
 5. Allweddi meysydd a gefnogir gan KMS a chwmpas meysydd ehangach (gweddill T41).

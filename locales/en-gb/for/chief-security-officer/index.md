@@ -33,8 +33,8 @@ as "built and self-tested", not "verified".
   threat model in [dtac-supporting](../../../../spec/compliance/dtac-supporting.md)
   is a summary, not a structured one.
 - **Release signing has not run on a real release** (T49). The workflow and the
-  verification commands exist; until a tag is pushed they are untested, and the
-  actions are pinned to version tags, not commit hashes.
+  verification commands exist; until a tag is pushed they are untested. The actions
+  are pinned by commit hash.
 - **Field encryption** covers two columns with local keys, no KMS.
 - **Step-up re-authentication** before destructive actions is not built.
 - **Redis holds personal data** (cached insights, grant keys) and must be protected
@@ -71,8 +71,7 @@ re-test after material change.
 ## Suggested security actions, in order
 
 1. Scope and commission the independent penetration test (T42).
-2. Push a first release tag to prove signing and verification, and pin the
-   actions by commit hash (T49).
+2. Push a first release tag to prove signing and verification (T49).
 3. Wire alerting for break-glass and for audit-chain verification failures.
 4. Put Redis behind TLS and credentials in every environment.
 5. KMS-backed field keys and wider field coverage (T41 remainder).
