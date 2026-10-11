@@ -691,9 +691,22 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       Also fixed a bug from the idempotency work: the document-building
       helpers indexed missing keys on `serde_json` values, which inserts `null`
       operations on every path; the test now fails on a null operation.
+      **Response schemas for the rest (follow-up):** the detail reads (contact,
+      account, lead, ticket, group, account CLV), forecast and snapshot, the
+      three dashboards, the 15 insight views, audit entries and chain verdict,
+      events, the subject-access export, retention report and sweep, the
+      sweeps, break-glass grants, and the campaign funnel and segment preview
+      now have schemas. Fields a role can mask (amounts, cost, ROI, totals)
+      are nullable, since a masked value is absent, never zero. Two tests
+      check them: `read_responses_match_the_documented_schemas` seeds one of
+      everything and validates 30 reads and the typed writes; the enforcement
+      test validates the masked and unmasked forecast, sales dashboard,
+      executive pack and account detail, and the break-glass bodies, with real
+      tokens. The first run caught a campaign `cost_minor` that is null when
+      masked.
       **Limits:** hand-written, so they can still drift on fields no test
-      posts or lists; the insight views, dashboards, forecast, audit, retention
-      reports and the bundled detail reads (contact, account, lead, ticket,
-      group) are untyped objects; enumerations (statuses, kinds, channels) are
-      plain strings, not enumerated; a mutating route added with no schema must
-      be listed as bodyless to pass, which is a prompt, not a proof.
+      reaches (for example an empty section of a view); operations whose
+      response is the updated record (transitions, `PUT` upserts) are untyped;
+      enumerations (statuses, kinds, channels) are plain strings, not
+      enumerated; a mutating route added with no schema must be listed as
+      bodyless to pass, which is a prompt, not a proof.

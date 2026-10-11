@@ -21,6 +21,9 @@ use serde_json::{Value, json};
 use serial_test::serial;
 use sha2::{Digest, Sha256};
 
+#[path = "support/schema_check.rs"]
+mod schema_check;
+
 const ISSUER: &str = "authentication-service";
 const AUDIENCE: &str = "main-x-service";
 /// Throwaway Ed25519 seed — mints test tokens only, never a secret.
@@ -101,6 +104,8 @@ async fn enforcement_gates_the_real_stack() {
 
     request::<App, _, _>(|request, _ctx| async move {
         let bearer = |token: &str| format!("Bearer {token}");
+        let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
+        schema_check::to_json_schema(&mut doc);
 
         // Public allow-list stays open without a token.
         assert_eq!(request.get("/_health").await.status_code(), 200);
@@ -295,6 +300,7 @@ async fn enforcement_gates_the_real_stack() {
             .await
             .json();
         assert_eq!(masked_account["deals"].as_array().unwrap().len(), 1);
+        schema_check::check(&doc, "AccountDetail", &masked_account, "masked account");
         assert!(
             masked_account["deals"][0]["amount_minor"].is_null(),
             "{masked_account}"
@@ -355,6 +361,7 @@ async fn enforcement_gates_the_real_stack() {
             .await
             .json();
         assert!(forecast_full["totals_minor"].is_object(), "{forecast_full}");
+        schema_check::check(&doc, "Forecast", &forecast_full, "service forecast");
         let dash_masked: Value = request
             .get("/api/dashboards/sales")
             .add_header("authorization", bearer(&reader))
@@ -368,6 +375,7 @@ async fn enforcement_gates_the_real_stack() {
             assert!(stage["totals_minor"].is_null(), "{stage}");
             assert!(stage["count"].is_number());
         }
+        schema_check::check(&doc, "SalesDashboard", &dash_masked, "masked sales dashboard");
 
         // CRM-T32: the insights views follow the same masking.
         let exec_masked: Value = request
@@ -380,6 +388,7 @@ async fn enforcement_gates_the_real_stack() {
             "{exec_masked}"
         );
         assert!(exec_masked["deals_won"].is_number());
+        schema_check::check(&doc, "ExecutivePack", &exec_masked, "masked executive pack");
         let exec_full: Value = request
             .get("/api/insights/executive")
             .add_header("authorization", bearer(&service))
@@ -418,6 +427,8 @@ async fn enforcement_gates_the_real_stack() {
             .await
             .json();
         assert!(before["totals_minor"].is_null(), "masked before the grant");
+        // A masked response still satisfies the documented schema.
+        schema_check::check(&doc, "Forecast", &before, "masked /api/forecast");
         let granted = request
             .post("/api/break-glass")
             .add_header("authorization", bearer(&reader))
@@ -425,12 +436,14 @@ async fn enforcement_gates_the_real_stack() {
             .await;
         assert_eq!(granted.status_code(), 200, "a plain reader may take break-glass");
         let grant: Value = granted.json();
+        schema_check::check(&doc, "Grant", &grant, "POST /api/break-glass");
         let unmasked: Value = request
             .get("/api/forecast")
             .add_header("authorization", bearer(&reader))
             .await
             .json();
         assert!(unmasked["totals_minor"].is_object(), "elevated read is unmasked: {unmasked}");
+        schema_check::check(&doc, "Forecast", &unmasked, "unmasked /api/forecast");
         // Elevation is read-only: a reader still cannot write.
         assert_eq!(
             request
@@ -456,6 +469,7 @@ async fn enforcement_gates_the_real_stack() {
             .await
             .json();
         assert!(listing["unreviewed"].as_u64().unwrap() >= 1, "{listing}");
+        schema_check::check(&doc, "Grants", &listing, "GET /api/break-glass");
         let pid = grant["pid"].as_str().unwrap();
         // The grantee cannot review their own grant.
         let own = request
@@ -475,15 +489,13 @@ async fn enforcement_gates_the_real_stack() {
         );
         // Someone else reviews it, once.
         let review_path = format!("/api/break-glass/{pid}/review");
-        assert_eq!(
-            request
-                .post(&review_path)
-                .add_header("authorization", bearer(&service))
-                .json(&json!({ "note": "Confirmed against the incident log" }))
-                .await
-                .status_code(),
-            200
-        );
+        let reviewed = request
+            .post(&review_path)
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "note": "Confirmed against the incident log" }))
+            .await;
+        assert_eq!(reviewed.status_code(), 200);
+        schema_check::check(&doc, "Reviewed", &reviewed.json::<Value>(), "review");
         assert_eq!(
             request
                 .post(&review_path)

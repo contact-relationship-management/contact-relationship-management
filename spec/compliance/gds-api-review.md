@@ -11,7 +11,7 @@ Scope: the REST API in `contact-relationship-management-service-with-rust`
 
 | Area | Position | Evidence | Gap |
 |---|---|---|---|
-| Machine-readable description | Met for the main resources | OpenAPI 3.0.3 at `/api-docs/openapi.json`, Swagger UI; request schemas for every operation that takes a body; resource schemas for the 11 lists; a shared `Error` schema | Hand-written. The insight views, dashboards, reports and bundled detail reads (contact, account, lead, ticket, group) have no response schema |
+| Machine-readable description | Met for the main resources | OpenAPI 3.0.3 at `/api-docs/openapi.json`, Swagger UI; request schemas for every operation that takes a body; resource schemas for the 11 lists; response schemas for the detail reads, dashboards, forecast, insight views, audit, retention, privacy and break-glass; a shared `Error` schema | Hand-written, checked against real responses (including masked ones). Operations whose response is the updated record (state transitions) are still untyped |
 | Documentation completeness | Met, and enforced | Before this review, 22 mounted paths were missing; later two more (the `stakeholder` routes) were found by the new test. `every_mounted_route_is_documented_and_the_reverse` compares Loco's real route table with the document in both directions | Only the probes and the documentation endpoints are exempt, by an explicit list in the test |
 | Authentication stated | Met after this review | `bearerAuth` scheme and global `security` added; probes, metrics and docs stay public | none |
 | Error responses stated | Met after this review | 401, 403, 406 and 429 added to every `/api/*` operation | Bodies are Loco's `{error, description}` shape, not RFC 9457 `application/problem+json` |
@@ -33,8 +33,7 @@ Scope: the REST API in `contact-relationship-management-service-with-rust`
 
 ## Recommended next steps
 
-Idempotency keys (CRM-T52), request and resource schemas, and the route-coverage
-test were built after this review. What remains:
+Idempotency keys (CRM-T52), request, resource and response schemas, and the
+route-coverage test (CRM-T53) were built after this review. What remains:
 
-1. Response schemas for the insight views, dashboards, reports and detail reads.
-2. Decide on RFC 9457 error bodies and a written deprecation policy.
+1. Decide on RFC 9457 error bodies and a written deprecation policy.
