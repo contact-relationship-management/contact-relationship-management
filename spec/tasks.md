@@ -524,8 +524,16 @@ parties outside the repository.
       one mutation was checked to fail), config unit tests, a live test against
       Stalwart (`scripts/email-dev.sh live`), and a manual end-to-end run of the
       real service sending two messages that arrived with our `Message-ID`s.
-      **Still open:** the unsubscribe link and `List-Unsubscribe` headers, the
-      suppression list, authenticated bounce/complaint/delivery webhooks (so
+      **Unsubscribe (built 2026-10-11):** every real message ends with a signed
+      link (HMAC-SHA256 over contact and campaign, no expiry) and carries
+      `List-Unsubscribe` and `List-Unsubscribe-Post` (RFC 8058). `GET
+      /unsubscribe/{token}` changes nothing; `POST` withdraws consent through
+      the ordinary audited consent change and is idempotent; forged links get
+      404. `CRM_UNSUBSCRIBE_SECRET` and `CRM_PUBLIC_URL` are required for `smtp`
+      mode. Request test covers scanner GET, one-click POST, repeat, forged
+      token, and no further mail to the contact.
+      **Still open:** the address-level suppression list (bounces, complaints),
+      authenticated bounce/complaint/delivery webhooks (so
       `delivered`, `opened`, `clicked` stay 0 on a real send), the nurture
       sequences (still simulated), a background job instead of batched requests,
       the address contract with the person service (the `email` field is

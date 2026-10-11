@@ -508,6 +508,7 @@ impl Hooks for App {
             .add_route(controllers::relationships::routes())
             .add_route(controllers::sales::routes())
             .add_route(controllers::marketing::routes())
+            .add_route(controllers::marketing::public_routes())
             .add_route(controllers::support::routes())
             .add_route(controllers::dashboards::routes())
             .add_route(controllers::insights::routes())
@@ -529,6 +530,12 @@ impl Hooks for App {
         // a bad or unsafe setting stops the start rather than failing at send time.
         crate::mail::init(matches!(ctx.environment, Environment::Production))
             .map_err(|e| loco_rs::Error::string(&e))?;
+        // Real mail must carry signed unsubscribe links.
+        crate::unsubscribe::init(
+            !crate::mail::current().is_simulated(),
+            matches!(ctx.environment, Environment::Production),
+        )
+        .map_err(|e| loco_rs::Error::string(&e))?;
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();

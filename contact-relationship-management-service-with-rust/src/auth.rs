@@ -346,7 +346,10 @@ pub fn parse_bool(value: &str) -> bool {
 /// scraper needs no bearer token). Everything else requires a valid bearer
 /// token.
 fn is_public_path(path: &str) -> bool {
-    path == "/_health" || path == "/_ping" || (!protect_operational() && is_operational_path(path))
+    path == "/_health"
+        || path == "/_ping"
+        || path.starts_with("/unsubscribe/")
+        || (!protect_operational() && is_operational_path(path))
 }
 
 /// The operational endpoints that are public by default: the `OpenAPI` doc,
@@ -1184,6 +1187,7 @@ mod tests {
             "/swagger-ui",
             "/swagger-ui/index.html",
             "/metrics.prom",
+            "/unsubscribe/sometoken",
         ] {
             assert!(
                 enforce(

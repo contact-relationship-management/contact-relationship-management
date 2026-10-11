@@ -47,6 +47,8 @@ uuid = { version = "1.26", features = ["v4", "serde"] }
 mimalloc = { version = "0.1.52" }
 # Tamper-evident audit hash chain (CRM-T31).
 sha2 = { version = "0.11" }
+# Signed unsubscribe links (CRM-T39).
+hmac = "0.13"
 base64 = { version = "0.22" }
 prometheus = { version = "0.14" }
 # Upstream display-name lookups (`http` client mode only; stub is the

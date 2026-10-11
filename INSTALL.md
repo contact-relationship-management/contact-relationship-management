@@ -34,7 +34,9 @@ service refuses to start with a bad combination.
 | `CRM_MAIL_FROM` | The `From` mailbox, for example `CRM <crm@example.org>` |
 | `CRM_MAIL_BATCH` | Contacts sent per `run` call (default 200) |
 | `CRM_SMTP_ACCEPT_INVALID_CERTS` | Development only; refused in production |
-| `CRM_MAIL_ALLOW_PRODUCTION` | Required to use `smtp` in production, because the unsubscribe link, suppression list and bounce handling are not built (CRM-T39) |
+| `CRM_UNSUBSCRIBE_SECRET` | 32+ characters; signs the unsubscribe link in every message. Required with `smtp` |
+| `CRM_PUBLIC_URL` | The address recipients reach this service at, for the link (`https` in production). Required with `smtp` |
+| `CRM_MAIL_ALLOW_PRODUCTION` | Required to use `smtp` in production, because bounce and complaint handling is not built (CRM-T39) |
 | `CRM_MAIL_DEV_DOMAIN` | Development only: in `stub` upstream mode, mail goes to `<person id>@<domain>` |
 
 The CRM holds no email addresses. In `CRM_UPSTREAM_MODE=http` it asks the
@@ -59,7 +61,9 @@ To send a campaign through it from the service:
 CRM_MAIL_MODE=smtp CRM_SMTP_HOST=127.0.0.1 CRM_SMTP_PORT=2587 \
 CRM_SMTP_USERNAME=crm@crm.test CRM_SMTP_PASSWORD=crm-dev-password \
 CRM_MAIL_FROM='CRM <crm@crm.test>' CRM_SMTP_ACCEPT_INVALID_CERTS=1 \
-CRM_MAIL_DEV_DOMAIN=crm.test cargo run -- start
+CRM_MAIL_DEV_DOMAIN=crm.test \
+CRM_UNSUBSCRIBE_SECRET=dev-only-unsubscribe-secret-0123456789 \
+CRM_PUBLIC_URL=http://localhost:5150 cargo run -- start
 ```
 
 Mail lands in the `crm@crm.test` mailbox; read it over JMAP at

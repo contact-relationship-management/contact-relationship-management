@@ -144,13 +144,35 @@ async fn record_consent(
     problems.require_text("source", &payload.source);
     ensure_valid(&problems.into_vec())?;
     let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    apply_consent(
+        &ctx.db,
+        contact,
+        &payload.action,
+        &payload.source,
+        caller.actor(),
+    )
+    .await?;
+    format::empty_json()
+}
+
+/// Record one consent change in a single transaction: append the
+/// `ConsentEvent`, flip the contact, exit every active enrolment on a
+/// withdrawal, audit, and emit. Shared by the authenticated endpoint and the
+/// public unsubscribe link, so both leave the same evidence.
+async fn apply_consent(
+    db: &sea_orm::DatabaseConnection,
+    contact: contacts::Model,
+    action: &str,
+    source: &str,
+    actor: Option<&str>,
+) -> Result<()> {
     let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
-    let txn = ctx.db.begin().await?;
+    let txn = db.begin().await?;
     consent_events::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         contact_pid: ActiveValue::set(contact.pid),
-        action: ActiveValue::set(payload.action.clone()),
-        source: ActiveValue::set(payload.source.clone()),
+        action: ActiveValue::set(action.to_string()),
+        source: ActiveValue::set(source.to_string()),
         occurred_at: ActiveValue::set(now),
         ..Default::default()
     }
@@ -158,10 +180,10 @@ async fn record_consent(
     .await?;
     let contact_pid = contact.pid;
     let mut active: contacts::ActiveModel = contact.into();
-    active.marketing_consent = ActiveValue::set(payload.action.clone());
+    active.marketing_consent = ActiveValue::set(action.to_string());
     active.consent_changed_at = ActiveValue::set(Some(now));
     active.update(&txn).await?;
-    if payload.action == "withdrawn" {
+    if action == "withdrawn" {
         // Exit every active enrolment immediately.
         let enrollments = nurture_enrollments::Entity::find()
             .filter(nurture_enrollments::Column::ContactPid.eq(contact_pid))
@@ -176,14 +198,14 @@ async fn record_consent(
             active.update(&txn).await?;
         }
     }
-    let kind = format!("consent_{}", payload.action);
+    let kind = format!("consent_{action}");
     Audit::record(
         &txn,
         "contact",
         contact_pid,
         &kind,
-        caller.actor(),
-        Some(serde_json::json!({ "source": payload.source })),
+        actor,
+        Some(serde_json::json!({ "source": source })),
     )
     .await?;
     streaming::emit_on(
@@ -192,12 +214,12 @@ async fn record_consent(
         &kind,
         &contact_pid.to_string(),
         "",
-        caller.actor(),
+        actor,
         None,
     )
     .await?;
     txn.commit().await?;
-    format::empty_json()
+    Ok(())
 }
 
 /// `GET /api/contacts/{pid}/consent` — the append-only history
@@ -464,6 +486,14 @@ struct RunOutcome {
     suppressed: u64,
 }
 
+/// The body with the unsubscribe line every message ends with.
+fn with_unsubscribe(body: String, url: Option<&str>) -> String {
+    match url {
+        Some(url) => format!("{body}\n\n--\nTo stop receiving these emails: {url}\n"),
+        None => body,
+    }
+}
+
 /// Settle one claimed delivery: re-check consent against the live row,
 /// resolve the address, hand the message to the sender, and record the result.
 async fn deliver_one(
@@ -518,6 +548,8 @@ async fn deliver_one(
             outcome.no_address += 1;
             return Ok(());
         };
+        let unsubscribe_url =
+            crate::unsubscribe::current().map(|u| u.url(contact.pid, campaign.pid));
         let message = mail::Message {
             to: address,
             to_name: contact.display_name.clone(),
@@ -525,7 +557,11 @@ async fn deliver_one(
                 .subject
                 .clone()
                 .unwrap_or_else(|| campaign.name.clone()),
-            text: campaign.body.clone().unwrap_or_default(),
+            text: with_unsubscribe(
+                campaign.body.clone().unwrap_or_default(),
+                unsubscribe_url.as_deref(),
+            ),
+            unsubscribe_url,
             message_id: sender.new_message_id(),
         };
         if let Err(error) = sender.send(&message).await {
@@ -1001,6 +1037,114 @@ async fn list_sequences(State(ctx): State<AppContext>) -> Result<Response> {
         }));
     }
     format::json(out)
+}
+
+/// The page headers for the public unsubscribe pages: nothing cached, no
+/// referrer, no script, and the form may post only to this origin.
+fn unsubscribe_page(status: axum::http::StatusCode, heading: &str, form: Option<&str>) -> Response {
+    use axum::http::{HeaderValue, header};
+    use axum::response::IntoResponse;
+    let form = form.map_or_else(String::new, |action| {
+        format!(
+            "<form method=\"post\" action=\"{action}\"><button type=\"submit\">\
+             Unsubscribe</button></form>"
+        )
+    });
+    let html = format!(
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
+         <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\
+         <meta name=\"robots\" content=\"noindex\"><title>Unsubscribe</title></head>\
+         <body><main><h1>{heading}</h1>{form}</main></body></html>"
+    );
+    let mut response = (status, html).into_response();
+    let headers = response.headers_mut();
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    headers.insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("no-referrer"),
+    );
+    headers.insert(
+        header::CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; style-src 'none'; form-action 'self'"),
+    );
+    response
+}
+
+/// Check a link's token. The same answer for a forged, malformed or
+/// unconfigured link, so nothing is learned from the difference.
+fn link_contact(token: &str) -> Option<Uuid> {
+    crate::unsubscribe::current()?
+        .verify(token)
+        .map(|(contact, _campaign)| contact)
+}
+
+/// `GET /unsubscribe/{token}` — the page a recipient reaches from the link.
+/// It changes nothing, because mail scanners follow links; the button posts.
+#[debug_handler]
+async fn unsubscribe_page_get(Path(token): Path<String>) -> Response {
+    match link_contact(&token) {
+        Some(_) => unsubscribe_page(
+            axum::http::StatusCode::OK,
+            "Stop receiving marketing email?",
+            Some(&format!("/unsubscribe/{token}")),
+        ),
+        None => unsubscribe_page(
+            axum::http::StatusCode::NOT_FOUND,
+            "This link is not valid.",
+            None,
+        ),
+    }
+}
+
+/// `POST /unsubscribe/{token}` — withdraw marketing consent. This is also the
+/// RFC 8058 one-click endpoint (`List-Unsubscribe-Post`), so the body is not
+/// read. Idempotent: a repeat records nothing more. Public by design: the
+/// signed token is the credential.
+#[debug_handler]
+async fn unsubscribe_post(State(ctx): State<AppContext>, Path(token): Path<String>) -> Response {
+    let Some(contact_pid) = link_contact(&token) else {
+        return unsubscribe_page(
+            axum::http::StatusCode::NOT_FOUND,
+            "This link is not valid.",
+            None,
+        );
+    };
+    let outcome: Result<()> = async {
+        let contact = contacts::Entity::find()
+            .filter(contacts::Column::Pid.eq(contact_pid))
+            .filter(contacts::Column::DeletedAt.is_null())
+            .one(&ctx.db)
+            .await?;
+        // A contact already erased or already withdrawn needs nothing more;
+        // either way the person gets the same confirmation.
+        if let Some(contact) = contact.filter(|c| c.marketing_consent != "withdrawn") {
+            apply_consent(&ctx.db, contact, "withdrawn", "unsubscribe-link", None).await?;
+        }
+        Ok(())
+    }
+    .await;
+    match outcome {
+        Ok(()) => unsubscribe_page(axum::http::StatusCode::OK, "You are unsubscribed.", None),
+        Err(error) => {
+            tracing::error!(%error, "unsubscribe failed");
+            unsubscribe_page(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Something went wrong. Please try again.",
+                None,
+            )
+        }
+    }
+}
+
+/// The public unsubscribe routes (outside `/api`; see `auth::is_public_path`).
+pub fn public_routes() -> Routes {
+    Routes::new()
+        .add("/unsubscribe/{token}", get(unsubscribe_page_get))
+        .add("/unsubscribe/{token}", post(unsubscribe_post))
 }
 
 /// The marketing routes.

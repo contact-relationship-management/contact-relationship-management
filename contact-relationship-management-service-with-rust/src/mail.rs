@@ -13,8 +13,7 @@
 //! [`Sender::Recording`] without boxing, and so every variant is visible here.
 //!
 //! **Not built yet** (see `spec/compliance/email-provider-brief.md`): the
-//! unsubscribe link and headers, the suppression list, and bounce and complaint
-//! webhooks. Until they are, `smtp` mode refuses to start in production unless
+//! address-level suppression list and bounce and complaint webhooks. Until they are, `smtp` mode refuses to start in production unless
 //! `CRM_MAIL_ALLOW_PRODUCTION=1` acknowledges that.
 
 use std::collections::HashSet;
@@ -22,13 +21,45 @@ use std::sync::{Arc, Mutex, OnceLock, RwLock};
 use std::time::Duration;
 
 use lettre::message::Mailbox;
-use lettre::message::header::ContentType;
+use lettre::message::header::{ContentType, Header, HeaderName, HeaderValue};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::client::{Tls, TlsParameters};
 use lettre::{
     Address, AsyncSmtpTransport, AsyncTransport, Message as LettreMessage, Tokio1Executor,
 };
 use uuid::Uuid;
+
+/// `List-Unsubscribe` (RFC 2369).
+#[derive(Debug, Clone)]
+struct ListUnsubscribe(String);
+
+impl Header for ListUnsubscribe {
+    fn name() -> HeaderName {
+        HeaderName::new_from_ascii_str("List-Unsubscribe")
+    }
+    fn parse(s: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Self(s.to_string()))
+    }
+    fn display(&self) -> HeaderValue {
+        HeaderValue::new(Self::name(), self.0.clone())
+    }
+}
+
+/// `List-Unsubscribe-Post` (RFC 8058): one-click unsubscribe by `POST`.
+#[derive(Debug, Clone)]
+struct ListUnsubscribePost(String);
+
+impl Header for ListUnsubscribePost {
+    fn name() -> HeaderName {
+        HeaderName::new_from_ascii_str("List-Unsubscribe-Post")
+    }
+    fn parse(s: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Self(s.to_string()))
+    }
+    fn display(&self) -> HeaderValue {
+        HeaderValue::new(Self::name(), self.0.clone())
+    }
+}
 
 /// One message to one recipient.
 #[derive(Debug, Clone)]
@@ -44,6 +75,9 @@ pub struct Message {
     /// The `Message-ID` we assign (with angle brackets), recorded on the
     /// delivery row so a complaint can be traced to a send.
     pub message_id: String,
+    /// The signed unsubscribe link. When set, the wire message carries
+    /// `List-Unsubscribe` and `List-Unsubscribe-Post` (RFC 8058) headers.
+    pub unsubscribe_url: Option<String>,
 }
 
 /// Why a send failed.
@@ -234,11 +268,20 @@ impl SmtpSender {
             .parse()
             .map_err(|_| SendError::Permanent("recipient is not a valid address".to_string()))?;
         let to = Mailbox::new(Some(message.to_name.clone()), address);
-        LettreMessage::builder()
+        let mut builder = LettreMessage::builder()
             .from(self.from.clone())
             .to(to)
             .subject(message.subject.clone())
-            .message_id(Some(message.message_id.clone()))
+            .message_id(Some(message.message_id.clone()));
+        if let Some(url) = &message.unsubscribe_url {
+            builder =
+                builder
+                    .header(ListUnsubscribe(format!("<{url}>")))
+                    .header(ListUnsubscribePost(
+                        "List-Unsubscribe=One-Click".to_string(),
+                    ));
+        }
+        builder
             .header(ContentType::TEXT_PLAIN)
             .body(message.text.clone())
             .map_err(|e| SendError::Permanent(format!("message could not be built: {e}")))
@@ -307,8 +350,7 @@ pub fn from_settings(
                 if !flag("CRM_MAIL_ALLOW_PRODUCTION") {
                     return Err(
                         "CRM_MAIL_MODE=smtp in production needs CRM_MAIL_ALLOW_PRODUCTION=1: \
-                         the unsubscribe link, suppression list and bounce handling are not \
-                         built yet (CRM-T39)"
+                         bounce and complaint handling is not built yet (CRM-T39)"
                             .to_string(),
                     );
                 }
@@ -498,12 +540,43 @@ mod tests {
             subject: "Hello".into(),
             text: "Body".into(),
             message_id: id.clone(),
+            unsubscribe_url: None,
         };
         let wire = String::from_utf8(sender.build(&message).unwrap().formatted()).unwrap();
         assert!(wire.contains(&format!("Message-ID: {id}")), "{wire}");
         assert!(wire.contains("Subject: Hello"), "{wire}");
         assert!(wire.contains("ada@example.test"), "{wire}");
         assert!(wire.contains("text/plain"), "{wire}");
+    }
+
+    #[test]
+    fn the_wire_message_carries_rfc_8058_unsubscribe_headers() {
+        let sender = SmtpSender::new(
+            "localhost",
+            2587,
+            Security::None,
+            None,
+            "CRM <crm@example.test>",
+            false,
+        )
+        .unwrap();
+        let message = Message {
+            to: "ada@example.test".into(),
+            to_name: "Ada".into(),
+            subject: "Hello".into(),
+            text: "Body".into(),
+            message_id: new_message_id("example.test"),
+            unsubscribe_url: Some("https://crm.example.org/unsubscribe/abc".into()),
+        };
+        let wire = String::from_utf8(sender.build(&message).unwrap().formatted()).unwrap();
+        assert!(
+            wire.contains("List-Unsubscribe: <https://crm.example.org/unsubscribe/abc>"),
+            "{wire}"
+        );
+        assert!(
+            wire.contains("List-Unsubscribe-Post: List-Unsubscribe=One-Click"),
+            "{wire}"
+        );
     }
 
     #[test]
@@ -523,6 +596,7 @@ mod tests {
             subject: "s".into(),
             text: "t".into(),
             message_id: new_message_id("example.test"),
+            unsubscribe_url: None,
         };
         assert!(matches!(
             sender.build(&message),
@@ -553,6 +627,7 @@ mod tests {
             subject: "s".into(),
             text: "t".into(),
             message_id: new_message_id("example.test"),
+            unsubscribe_url: None,
         };
         sender.send(&message).await.unwrap();
         recorder.fail_for("a@example.test");

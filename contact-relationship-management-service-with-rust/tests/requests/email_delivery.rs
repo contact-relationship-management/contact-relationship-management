@@ -7,6 +7,7 @@
 use contact_relationship_management_service::app::App;
 use contact_relationship_management_service::mail::{self, Recorder, Sender};
 use contact_relationship_management_service::models::deliveries;
+use contact_relationship_management_service::unsubscribe::{self, Unsubscriber};
 use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -14,18 +15,24 @@ use uuid::Uuid;
 
 use super::seed_contact;
 
+const SECRET: &str = "0123456789abcdef0123456789abcdef";
+
 /// Puts the simulated sender back when a test ends, even by panic.
 struct RestoreSender;
 
 impl Drop for RestoreSender {
     fn drop(&mut self) {
         mail::set(Sender::Simulated);
+        unsubscribe::install(None);
     }
 }
 
 fn recording() -> (Recorder, RestoreSender) {
     let recorder = Recorder::default();
     mail::set(Sender::Recording(recorder.clone()));
+    unsubscribe::install(Some(
+        Unsubscriber::new(SECRET, "https://crm.example.org", true).unwrap(),
+    ));
     (recorder, RestoreSender)
 }
 
@@ -107,7 +114,10 @@ async fn a_real_send_mails_each_consented_contact_once_and_records_it() {
         assert_eq!(recipients, ["ada@example.test", "grace@example.test"]);
         let message = &recorder.sent()[0];
         assert_eq!(message.subject, "Autumn news for you");
-        assert_eq!(message.text, "Hello from the CRM.");
+        assert!(message.text.starts_with("Hello from the CRM."));
+        let link = message.unsubscribe_url.as_deref().expect("a link");
+        assert!(link.starts_with("https://crm.example.org/unsubscribe/"));
+        assert!(message.text.contains(link), "the footer shows the link");
         assert!(message.message_id.starts_with('<') && message.message_id.ends_with('>'));
 
         let progress: Value = request
@@ -319,6 +329,98 @@ async fn two_runs_claim_different_rows() {
                 .is_empty()
         );
         let _ = request;
+    })
+    .await;
+}
+
+/// The path of a link under the public URL.
+fn link_path(url: &str) -> String {
+    url.strip_prefix("https://crm.example.org")
+        .expect("under the public url")
+        .to_string()
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn the_unsubscribe_link_withdraws_consent_and_stops_the_next_send() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let (recorder, _restore) = recording();
+        let ada = seed_contact!(&request, "Ada Lovelace").await;
+        let grace = seed_contact!(&request, "Grace Hopper").await;
+        give_address!(&request, ada, "ada@example.test");
+        give_address!(&request, grace, "grace@example.test");
+        // Grace's first send fails, so a second run is still to come.
+        recorder.fail_for("grace@example.test");
+        let campaign = scheduled_campaign!(&request, Some("Hello"));
+        request
+            .post(&format!("/api/campaigns/{campaign}/run"))
+            .await
+            .assert_status_ok();
+
+        // Grace follows no link; Ada's message has one.
+        let ada_mail = recorder
+            .sent()
+            .into_iter()
+            .find(|m| m.to == "ada@example.test")
+            .unwrap();
+        let path = link_path(ada_mail.unsubscribe_url.as_deref().unwrap());
+
+        // Opening the link (a mail scanner would) changes nothing.
+        let page = request.get(&path).await;
+        page.assert_status_ok();
+        assert!(page.text().contains("<form method=\"post\""));
+        let before: Value = request.get(&format!("/api/contacts/{ada}")).await.json();
+        assert_eq!(before["contact"]["marketing_consent"], "granted");
+
+        // The one-click POST withdraws, with no credentials.
+        request.post(&path).await.assert_status_ok();
+        let after: Value = request.get(&format!("/api/contacts/{ada}")).await.json();
+        assert_eq!(
+            after["contact"]["marketing_consent"], "withdrawn",
+            "{after}"
+        );
+        let history: Value = request
+            .get(&format!("/api/contacts/{ada}/consent"))
+            .await
+            .json();
+        let last = history.as_array().unwrap().last().unwrap().clone();
+        assert_eq!(last["action"], "withdrawn");
+        assert_eq!(last["source"], "unsubscribe-link");
+
+        // A repeat is harmless and records nothing more.
+        request.post(&path).await.assert_status_ok();
+        let again: Value = request
+            .get(&format!("/api/contacts/{ada}/consent"))
+            .await
+            .json();
+        assert_eq!(
+            again.as_array().unwrap().len(),
+            history.as_array().unwrap().len()
+        );
+
+        // A forged or damaged link is refused, and nothing else changes.
+        let bad = format!("{}x", &path);
+        request.post(&bad).await.assert_status_not_found();
+        request
+            .get("/unsubscribe/garbage")
+            .await
+            .assert_status_not_found();
+        let grace_now: Value = request.get(&format!("/api/contacts/{grace}")).await.json();
+        assert_eq!(grace_now["contact"]["marketing_consent"], "granted");
+
+        // Ada is not mailed again.
+        recorder.heal("grace@example.test");
+        request
+            .post(&format!("/api/campaigns/{campaign}/run"))
+            .await
+            .assert_status_ok();
+        let to_ada = recorder
+            .sent()
+            .iter()
+            .filter(|m| m.to == "ada@example.test")
+            .count();
+        assert_eq!(to_ada, 1, "Ada was mailed after unsubscribing");
     })
     .await;
 }

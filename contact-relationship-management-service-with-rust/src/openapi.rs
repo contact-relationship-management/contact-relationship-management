@@ -146,6 +146,10 @@ pub fn spec() -> Value {
             "/api/insights/stakeholders": { "get": { "tags": ["insights"], "summary": "Stakeholder register", "responses": ok("Stakeholders") } },
             "/api/insights/partnerships": { "get": { "tags": ["insights"], "summary": "Partnerships register", "responses": ok("Partnerships register") } },
             "/api/insights/memberships": { "get": { "tags": ["insights"], "summary": "Memberships view", "responses": ok("Memberships") } },
+            "/unsubscribe/{token}": {
+                "get": { "tags": ["marketing"], "summary": "Public: the page an email's unsubscribe link opens; changes nothing", "security": [], "responses": ok("HTML page") },
+                "post": { "tags": ["marketing"], "summary": "Public: withdraw marketing consent through a signed link (RFC 8058 one-click); idempotent, body ignored", "security": [], "responses": ok("HTML page") }
+            },
             "/metrics.prom": { "get": { "tags": ["ops"], "summary": "Prometheus metrics (public)", "responses": ok("Exposition text") } }
         },
         "components": { "securitySchemes": { "bearerAuth": {
@@ -293,7 +297,8 @@ mod tests {
     ];
 
     /// `POST`/`PUT` operations that deliberately take no body.
-    const BODYLESS: [&str; 7] = [
+    const BODYLESS: [&str; 8] = [
+        "post /unsubscribe/{}",
         "post /api/contacts/{}/erase",
         "post /api/campaigns/{}/run",
         "post /api/nurture/advance",

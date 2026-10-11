@@ -13,8 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `email_deliveries` table with one row per campaign and contact (atomic claim,
 retry, consent re-read before each send), campaign `subject` and `body`, and
 `GET /api/campaigns/{pid}/deliveries`. Production refuses `smtp` mode without
-`CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: unsubscribe link, suppression list,
-bounce and complaint webhooks, nurture sends. A local Stalwart server for
+`CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: address-level suppression list,
+bounce and complaint webhooks, nurture sends.
+
+### Added — unsubscribe link and headers (CRM-T39, 2026-10-11)
+
+Every real message ends with a signed unsubscribe link and carries
+`List-Unsubscribe` and `List-Unsubscribe-Post` (RFC 8058). `GET
+/unsubscribe/{token}` changes nothing; `POST` withdraws marketing consent
+through the ordinary audited consent change and is idempotent. Public (no
+bearer token), HMAC-SHA256 signed, no expiry. `smtp` mode needs
+`CRM_UNSUBSCRIBE_SECRET` and `CRM_PUBLIC_URL`. A local Stalwart server for
 development is in `compose.email.yaml` and `scripts/email-dev.sh`.
 
 ### Changed — RFC 9457 error bodies (CRM-T54, 2026-10-11)

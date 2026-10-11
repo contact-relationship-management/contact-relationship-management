@@ -28,6 +28,7 @@ async fn the_smtp_sender_delivers_to_a_real_server() {
         subject: subject.clone(),
         text: "Sent by tests/smtp_live.rs".into(),
         message_id: sender.new_message_id(),
+        unsubscribe_url: None,
     };
     sender
         .send(&message)

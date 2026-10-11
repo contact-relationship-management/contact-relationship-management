@@ -29,8 +29,18 @@ brief, not legal advice, and it picks no vendor.
   Subject access lists a contact's deliveries (state, time, message id).
 - **Production guard.** `smtp` mode refuses to start in production unless
   `CRM_MAIL_ALLOW_PRODUCTION=1`, because what follows is not built.
-- **Not built:** the unsubscribe link and `List-Unsubscribe` headers, the
-  suppression list, bounce, complaint and delivery webhooks (so `delivered`,
+- **Unsubscribe.** Every real message ends with a signed link and carries
+  `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058).
+  `GET /unsubscribe/{token}` shows a page and changes nothing (mail scanners
+  follow links); `POST` withdraws marketing consent through the ordinary
+  consent change (append-only history, enrolments exited, audited, source
+  `unsubscribe-link`) and is idempotent. The token is the contact and campaign
+  identifiers plus an HMAC-SHA256 tag, with no expiry. It needs
+  `CRM_UNSUBSCRIBE_SECRET` (32+ characters) and `CRM_PUBLIC_URL` (https in
+  production); `smtp` mode will not start without them. A withdrawn contact is
+  suppressed at the next send, because consent is re-read before each message.
+- **Not built:** an address-level suppression list (hard bounces and
+  complaints), bounce, complaint and delivery webhooks (so `delivered`,
   `opened` and `clicked` stay at zero on a real send), a background job (sends
   are batched inside the request), and nurture sends.
 
@@ -52,9 +62,9 @@ traffic from real mailbox providers.
 | A per-recipient delivery record (campaign, contact, provider message id, state, time) | Subject access, complaint handling, idempotent retries, honest funnel numbers | Done (`email_deliveries`); no address or body stored |
 | Idempotent send per (campaign, contact) | A retry must never email twice | Done for campaigns (atomic claim per row); nurture steps are idempotent per (enrolment, step) but simulated |
 | Asynchronous send with retry and back-off | A real send takes minutes and the provider will throttle or fail | Retry without back-off, batched inside the request; no background job |
-| One-click unsubscribe: a link in the body and the `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058) | Bulk-sender rules at the large mailbox providers, and PECR | None |
-| An unsubscribe endpoint that writes a `withdrawn` consent event immediately | The consent log is the source of truth | The event can be written by API; no public link |
-| A suppression list the send path checks, filled by bounces, complaints and unsubscribes | Never mail an address that bounced hard or complained | None |
+| One-click unsubscribe: a link in the body and the `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058) | Bulk-sender rules at the large mailbox providers, and PECR | Built; not yet tried against a large mailbox provider |
+| An unsubscribe endpoint that writes a `withdrawn` consent event immediately | The consent log is the source of truth | Built: signed link, public endpoint, tested |
+| A suppression list the send path checks, filled by bounces, complaints and unsubscribes | Never mail an address that bounced hard or complained | Needs the webhooks first; unsubscribes already suppress through consent |
 | Signed, authenticated webhooks for delivered, bounced, complained, opened and clicked | The provider reports outcomes asynchronously | None |
 | Sender identification and a postal or contact address in each message | PECR and equivalent rules | None |
 | SPF, DKIM and DMARC aligned for the sending domain | Delivery and anti-spoofing | A deployer task |
@@ -93,8 +103,8 @@ idempotent claiming, retry, consent re-check and the progress endpoint.
 Remaining, after the vendor is chosen (the webhook format and the suppression
 model are the vendor's):
 
-1. The unsubscribe link and headers, a public unsubscribe endpoint that writes
-   the consent event, and the suppression list the send checks.
+1. The address-level suppression list the send checks, filled from bounces and
+   complaints (the unsubscribe link and headers are built).
 2. Authenticated webhook endpoints for outcomes, updating the delivery table
    and the campaign counters from real events.
 3. Move the send into a background job, and send nurture steps the same way.
