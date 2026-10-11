@@ -27,8 +27,11 @@ the plan is written to the stricter reading ([plan](../../../../spec/plan.md)).
   Joiner/mover/leaver, MFA and session policy are therefore **your identity
   provider's**; the CRM enforces what the token says and refuses expired ones.
 - The API is documented in OpenAPI ([gds-api-review](../../../../spec/compliance/gds-api-review.md)),
-  versioned by header, and now paginated with `Link` headers.
-- SBOMs (CycloneDX) are produced for service and UI in CI.
+  versioned by header, paginated with `Link` headers, and returns errors as
+  RFC 9457 problem documents. The change and deprecation rules are in
+  [api-lifecycle](../../../../spec/compliance/api-lifecycle.md).
+- SBOMs (CycloneDX) are produced for service and UI in CI; the release workflow
+  signs them and the images.
 
 ## Information-governance duties that remain with you
 

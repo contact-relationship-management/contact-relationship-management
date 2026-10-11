@@ -18,7 +18,7 @@ fund the remaining external work, not to switch it on.
   roles that should not see them, an audit trail that shows tampering, subject
   access and erasure for privacy requests, and emergency ("break-glass")
   access that is reasoned, time-limited and reviewed.
-- 48 of 53 tracked work items are done ([tasks.md](../../../../spec/tasks.md)).
+- 51 of 55 tracked work items are done ([tasks.md](../../../../spec/tasks.md)).
 
 ## What stands between this and real use
 
@@ -27,7 +27,7 @@ fund the remaining external work, not to switch it on.
 | No real email delivery (T39) | Marketing is simulated; a real provider needs contracts and a data-processing agreement | You choose the vendor; legal signs |
 | No independent security test (T42) | Hospitals and government buyers usually require one; our own tests are not independent | An outside firm |
 | No manual accessibility audit (T48) | Public bodies must publish an accessibility statement they can stand behind | People with assistive technology |
-| Build signing and API standards review unfinished (T49) | Procurement checklists ask for both | Engineering, with a decision on key custody |
+| Release signing is built but has not run on a real release, and no reviewer has checked the API standards draft (T49) | Procurement checklists ask for both | Engineering (tag a first release); an outside reviewer |
 
 ## Decisions that are yours
 

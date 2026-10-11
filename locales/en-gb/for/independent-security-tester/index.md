@@ -68,7 +68,7 @@ at volume.
    review.
 5. The **known weaknesses**, so testers spend their time on what is not already
    written down:
-   - builds are unsigned (T49);
+   - release signing is built but has not run on a real release (T49);
    - field encryption covers two columns with local keys, no KMS;
    - step-up re-authentication is not built;
    - break-glass cannot be revoked, only expire, and no alert is wired;
@@ -109,7 +109,7 @@ at volume.
 ## Order of work
 
 1. Close what is cheap and known first, so the testers do not spend the budget
-   rediscovering it: key custody and build signing (T49), alerting on break-glass
+   rediscovering it: a first signed release (T49), alerting on break-glass
    and on audit verification failures, Redis behind TLS and credentials.
 2. Prepare the staging build, accounts and seed data.
 3. Agree scope, contract and rules of engagement.
