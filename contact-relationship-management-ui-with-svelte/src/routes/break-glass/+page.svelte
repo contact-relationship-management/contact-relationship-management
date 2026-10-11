@@ -1,6 +1,7 @@
 <script lang="ts">
   import { requestBreakGlass } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { createIntent } from "#lib/intent.js";
 
   const MIN_REASON = 20;
 
@@ -9,6 +10,8 @@
   let busy = $state(false);
   let error = $state<string | null>(null);
   let until = $state<string | null>(null);
+  // One key across retries of the same request (CRM-T52).
+  const intent = createIntent();
 
   const reasonLongEnough = $derived(reason.trim().length >= MIN_REASON);
 
@@ -17,7 +20,13 @@
     error = null;
     busy = true;
     try {
-      const grant = await requestBreakGlass(reason.trim(), minutes);
+      const content = { reason: reason.trim(), minutes };
+      const grant = await requestBreakGlass(
+        content.reason,
+        content.minutes,
+        intent.keyFor(content),
+      );
+      intent.done();
       until = new Date(grant.expires_at).toLocaleString(i18n.locale);
       reason = "";
     } catch (cause) {

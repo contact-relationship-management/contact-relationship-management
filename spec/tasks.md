@@ -653,8 +653,16 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       `idempotencyKey` so a caller can keep one key across retries of one
       action. Two identical `POST`s issued while the first is in flight share
       one request, so a double click sends one. Tests: 5 vitest and a
-      Playwright assertion on the break-glass request. **Limits:** the key is
-      fresh per call unless a caller passes one, so a user re-submitting after
-      a failure gets a new key (safe, because a failed attempt is forgotten
-      server-side); no page passes a stable per-form key yet; `apiAll` is
-      GET-only and unaffected.
+      Playwright assertion on the break-glass request. **Stable keys per form (later):**
+      `src/lib/intent.ts` holds one key per user action. The break-glass
+      request form and each row of the review list keep the same key across
+      retries while what they submit is unchanged, start a new key when the
+      content changes (the service refuses a key reused for a different
+      request), and start a new key after a success. Tests: 4 vitest and 3
+      Playwright (failed attempt then retry sends the same key; editing the
+      reason starts a new one; a review retry reuses its key; a new request
+      after success gets a new key). The retry test fails without the page
+      change. **Limits:** only these two forms exist in the UI that submit
+      `POST`s, so they are the only ones covered; the other `POST` helpers in
+      `crm.ts` have no page yet and fall back to a fresh key per call plus
+      in-flight coalescing; `apiAll` is GET-only and unaffected.

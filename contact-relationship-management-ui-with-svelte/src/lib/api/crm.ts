@@ -640,8 +640,13 @@ export function membershipsView(
 export function requestBreakGlass(
   reason: string,
   minutes: number,
+  idempotencyKey?: string,
 ): Promise<{ pid: string; expires_at: string; minutes: number }> {
-  return api("/break-glass", { method: "POST", body: { reason, minutes } });
+  return api("/break-glass", {
+    method: "POST",
+    body: { reason, minutes },
+    idempotencyKey,
+  });
 }
 
 /** One break-glass grant as the review list shows it. */
@@ -667,6 +672,11 @@ export function listBreakGlass(
 export function reviewBreakGlass(
   pid: string,
   note: string,
+  idempotencyKey?: string,
 ): Promise<{ pid: string; reviewed_by: string }> {
-  return api(`/break-glass/${pid}/review`, { method: "POST", body: { note } });
+  return api(`/break-glass/${pid}/review`, {
+    method: "POST",
+    body: { note },
+    idempotencyKey,
+  });
 }

@@ -2,6 +2,7 @@
   import { listBreakGlass, reviewBreakGlass } from "#lib/api/crm.js";
   import type { BreakGlassGrant } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { createIntents } from "#lib/intent.js";
 
   const MIN_NOTE = 10;
 
@@ -10,6 +11,8 @@
   let error = $state<string | null>(null);
   let actionError = $state<string | null>(null);
   let notes = $state<Record<string, string>>({});
+  // One key per grant across retries of its review (CRM-T52).
+  const intentFor = createIntents();
 
   async function load() {
     try {
@@ -28,7 +31,10 @@
   async function review(grant: BreakGlassGrant) {
     actionError = null;
     try {
-      await reviewBreakGlass(grant.pid, (notes[grant.pid] ?? "").trim());
+      const note = (notes[grant.pid] ?? "").trim();
+      const intent = intentFor(grant.pid);
+      await reviewBreakGlass(grant.pid, note, intent.keyFor({ note }));
+      intent.done();
       await load();
     } catch (cause) {
       actionError = cause instanceof Error ? cause.message : String(cause);

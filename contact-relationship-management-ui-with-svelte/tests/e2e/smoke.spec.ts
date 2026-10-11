@@ -906,6 +906,95 @@ test.describe("break-glass page (CRM-T44)", () => {
     expect(idempotencyKey).toMatch(/^[\x21-\x7e]{1,255}$/);
   });
 
+  test("a retry after a failure reuses the same Idempotency-Key; an edit or a success starts a new one (CRM-T52)", async ({ page }) => {
+    const keys: string[] = [];
+    let fail = true;
+    await page.route("**/api/proxy/break-glass", (route) => {
+      keys.push(route.request().headers()["idempotency-key"] ?? "");
+      if (fail) {
+        fail = false;
+        return route.fulfill({ status: 500, json: { description: "boom" } });
+      }
+      return route.fulfill({
+        json: { pid: "g1", expires_at: new Date(Date.now() + 30 * 60_000).toISOString(), minutes: 30 },
+      });
+    });
+    await page.goto("/break-glass");
+    const reason = page.getByLabel("Reason");
+    await reason.fill("Patient collapsed, covering colleague absent");
+    await page.getByTestId("bg-request").click();
+    await expect(page.getByTestId("bg-error")).toBeVisible();
+    // Same content, second attempt: same key.
+    await page.getByTestId("bg-request").click();
+    await expect(page.getByTestId("bg-granted")).toBeVisible();
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe("");
+    expect(keys[1]).toBe(keys[0]);
+    // The next request is a new action: a new key.
+    await reason.fill("Second emergency, different patient on ward");
+    await page.getByTestId("bg-request").click();
+    await expect.poll(() => keys.length).toBe(3);
+    expect(keys[2]).not.toBe(keys[0]);
+  });
+
+  test("editing the reason after a failure starts a new key", async ({ page }) => {
+    const keys: string[] = [];
+    let fail = true;
+    await page.route("**/api/proxy/break-glass", (route) => {
+      keys.push(route.request().headers()["idempotency-key"] ?? "");
+      if (fail) {
+        fail = false;
+        return route.fulfill({ status: 500, json: { description: "boom" } });
+      }
+      return route.fulfill({
+        json: { pid: "g1", expires_at: new Date(Date.now() + 30 * 60_000).toISOString(), minutes: 30 },
+      });
+    });
+    await page.goto("/break-glass");
+    await page.getByLabel("Reason").fill("Patient collapsed, covering colleague absent");
+    await page.getByTestId("bg-request").click();
+    await expect(page.getByTestId("bg-error")).toBeVisible();
+    await page.getByLabel("Reason").fill("Patient collapsed, covering colleague absent today");
+    await page.getByTestId("bg-request").click();
+    await expect(page.getByTestId("bg-granted")).toBeVisible();
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).not.toBe(keys[0]);
+  });
+
+  test("a review retry reuses its key", async ({ page }) => {
+    const grant = {
+      pid: "g1",
+      subject: "dr-reader",
+      reason: "Patient collapsed, covering colleague absent",
+      granted_at: "2026-10-10T09:00:00Z",
+      expires_at: "2026-10-10T09:30:00Z",
+      reviewed_at: null,
+      reviewed_by: null,
+      review_note: null,
+    };
+    await page.route("**/api/proxy/break-glass", (route) =>
+      route.fulfill({ json: { unreviewed: 1, grants: [grant] } }),
+    );
+    const keys: string[] = [];
+    await page.route("**/api/proxy/break-glass/g1/review", (route) => {
+      keys.push(route.request().headers()["idempotency-key"] ?? "");
+      return route.fulfill(
+        keys.length === 1
+          ? { status: 500, json: { description: "boom" } }
+          : { json: { pid: "g1", reviewed_by: "dpo" } },
+      );
+    });
+    await page.goto("/break-glass/review");
+    await page.getByLabel("Review note").fill("Confirmed against the incident log");
+    const record = page.getByRole("button", { name: "Record review" });
+    await record.click();
+    await expect(page.getByTestId("error").or(page.getByRole("alert"))).toBeVisible();
+    await record.click();
+    await expect.poll(() => keys.length).toBe(2);
+    expect(keys[1]).toBe(keys[0]);
+    expect(keys[0]).not.toBe("");
+  });
+
   test("the review page lists grants and records a review", async ({ page }) => {
     const grant = {
       pid: "g1",
