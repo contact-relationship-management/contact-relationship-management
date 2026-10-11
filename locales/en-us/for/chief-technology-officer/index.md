@@ -33,8 +33,11 @@ on GitHub Actions and Woodpecker. One command reproduces it: `scripts/ci-check.s
   mid-walk); no total count by design.
 - Idempotency keys are opt-in (T52): a client must send `Idempotency-Key` on a
   create to be protected from a retry duplicating a record.
-- OpenAPI is hand-written and has no request/response schemas; nothing fails the
-  build when a route is undocumented ([gds-api-review](../../../../spec/compliance/gds-api-review.md)).
+- OpenAPI request and resource schemas are hand-written and cover the main create
+  and list endpoints; the insight views, dashboards, reports and bundled detail
+  reads are untyped. A test fails when a route and the document disagree, and
+  another checks real responses against the schemas
+  ([gds-api-review](../../../../spec/compliance/gds-api-review.md)).
 - Errors are Loco's `{error, description}`, not RFC 9457.
 - Field encryption covers two columns; no KMS integration.
 - Rate-limit and cache state need Redis for multi-replica correctness.
@@ -43,7 +46,7 @@ on GitHub Actions and Woodpecker. One command reproduces it: `scripts/ci-check.s
 
 ## Recommended technical sequence
 
-1. OpenAPI schemas plus a route-coverage test.
+1. Schemas for the insight views, dashboards and detail reads.
 2. KMS-backed field keys and broader field coverage (T41 remainder).
 3. Release-build signing (T49) once key custody is decided.
 4. Commission the independent test (T42) against a staging build.

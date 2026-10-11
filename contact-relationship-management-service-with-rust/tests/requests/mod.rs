@@ -8,6 +8,7 @@ mod field_encryption;
 mod idempotency;
 mod insights;
 mod marketing;
+mod openapi_schemas;
 mod pagination;
 mod privacy;
 mod sales;

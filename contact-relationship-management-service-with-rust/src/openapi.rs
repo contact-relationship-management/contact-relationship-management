@@ -115,6 +115,8 @@ pub fn spec() -> Value {
             "/api/audits": { "get": { "tags": ["audit"], "summary": "Owner-scoped trail (?owner=&since=)", "responses": ok("Audit entries") } },
             "/api/audits/{entity_pid}": { "get": { "tags": ["audit"], "summary": "One record's audit trail", "responses": ok("Audit entries") } },
             "/api/events/recent": { "get": { "tags": ["events"], "summary": "Recent events (memory ring or outbox)", "responses": ok("Events") } },
+            "/api/contacts/{pid}/stakeholder": { "put": { "tags": ["engagement"], "summary": "Declare a contact's stakeholder role, influence and interest", "responses": ok("Contact") } },
+            "/api/accounts/{pid}/stakeholder": { "put": { "tags": ["engagement"], "summary": "Declare an account's stakeholder role", "responses": ok("Account") } },
             "/api/accounts/{pid}/partnerships": {
                 "post": { "tags": ["engagement"], "summary": "Open a partnership with an account", "responses": created },
                 "get": { "tags": ["engagement"], "summary": "An account's partnerships", "responses": ok("Partnerships") }
@@ -154,6 +156,7 @@ pub fn spec() -> Value {
     add_shared_errors(&mut doc);
     add_paging(&mut doc);
     add_idempotency(&mut doc);
+    crate::openapi_schemas::attach(&mut doc);
     doc
 }
 
@@ -178,10 +181,10 @@ fn add_idempotency(doc: &mut Value) {
         if !path.starts_with("/api/") {
             continue;
         }
-        let operation = &mut item["post"];
-        if !operation.is_object() {
+        // `get_mut`, not indexing: indexing a missing key would insert a null.
+        let Some(operation) = item.get_mut("post").filter(|o| o.is_object()) else {
             continue;
-        }
+        };
         let mut parameters = operation["parameters"]
             .as_array()
             .cloned()
@@ -198,10 +201,14 @@ fn add_idempotency(doc: &mut Value) {
 /// paginated list.
 fn add_paging(doc: &mut Value) {
     for (path, cap) in PAGED {
-        let operation = &mut doc["paths"][path]["get"];
-        if !operation.is_object() {
+        // `get_mut`, not indexing: indexing a missing key would insert a null.
+        let Some(operation) = doc["paths"]
+            .get_mut(path)
+            .and_then(|item| item.get_mut("get"))
+            .filter(|o| o.is_object())
+        else {
             continue;
-        }
+        };
         let mut parameters = operation["parameters"]
             .as_array()
             .cloned()
@@ -252,6 +259,166 @@ fn add_shared_errors(doc: &mut Value) {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+
+    use loco_rs::app::Hooks;
+
+    /// `{pid}` and `{entity_pid}` are the same route shape.
+    fn shape(path: &str) -> String {
+        let mut out = String::new();
+        let mut inside = false;
+        for c in path.chars() {
+            match c {
+                '{' => {
+                    inside = true;
+                    out.push_str("{}");
+                }
+                '}' => inside = false,
+                _ if !inside => out.push(c),
+                _ => {}
+            }
+        }
+        out
+    }
+
+    /// Routes that exist but are not part of the documented API surface:
+    /// Loco's probes and the documentation endpoints themselves.
+    const UNDOCUMENTED: [&str; 5] = [
+        "/_ping",
+        "/_health",
+        "/_readiness",
+        "/api-docs/openapi.json",
+        "/swagger-ui",
+    ];
+
+    /// `POST`/`PUT` operations that deliberately take no body.
+    const BODYLESS: [&str; 7] = [
+        "post /api/contacts/{}/erase",
+        "post /api/campaigns/{}/run",
+        "post /api/nurture/advance",
+        "post /api/retention/sweep",
+        "post /api/forecast/snapshot",
+        "post /api/sla/sweep",
+        "put /api/activities/{}/done",
+    ];
+
+    async fn mounted() -> BTreeMap<String, BTreeSet<String>> {
+        let ctx = loco_rs::tests_cfg::app::get_app_context().await;
+        let mut routes: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        for route in crate::app::App::routes(&ctx).collect() {
+            let entry = routes.entry(shape(&route.uri)).or_default();
+            for method in route.actions {
+                entry.insert(method.as_str().to_lowercase());
+            }
+        }
+        routes
+    }
+
+    /// The route-coverage test: every mounted route and verb is in the
+    /// document, and every documented operation is mounted, so neither side
+    /// can drift without this failing.
+    #[tokio::test]
+    async fn every_mounted_route_is_documented_and_the_reverse() {
+        let doc = super::spec();
+        let mut documented: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        for (path, item) in doc["paths"].as_object().unwrap() {
+            let entry = documented.entry(shape(path)).or_default();
+            for method in item.as_object().unwrap().keys() {
+                entry.insert(method.clone());
+            }
+        }
+        let mounted = mounted().await;
+        let mut problems = Vec::new();
+        for (path, methods) in &mounted {
+            if UNDOCUMENTED.contains(&path.as_str()) {
+                continue;
+            }
+            for method in methods {
+                if !documented.get(path).is_some_and(|m| m.contains(method)) {
+                    problems.push(format!("mounted but undocumented: {method} {path}"));
+                }
+            }
+        }
+        for (path, methods) in &documented {
+            for method in methods {
+                if !mounted.get(path).is_some_and(|m| m.contains(method)) {
+                    problems.push(format!("documented but not mounted: {method} {path}"));
+                }
+            }
+        }
+        assert!(problems.is_empty(), "{}", problems.join("\n"));
+    }
+
+    /// Every mutating operation under `/api/` has a request schema, or is on
+    /// the explicit list of bodyless ones, so a new endpoint forces a decision.
+    #[test]
+    fn mutating_operations_have_a_request_schema_or_are_bodyless() {
+        let doc = super::spec();
+        let mut problems = Vec::new();
+        for (path, item) in doc["paths"].as_object().unwrap() {
+            if !path.starts_with("/api/") {
+                continue;
+            }
+            for (method, operation) in item.as_object().unwrap() {
+                if method != "post" && method != "put" {
+                    continue;
+                }
+                let key = format!("{method} {}", shape(path));
+                let has_body = operation["requestBody"].is_object();
+                let bodyless = BODYLESS.contains(&key.as_str());
+                if has_body == bodyless {
+                    problems.push(format!(
+                        "{key}: {}",
+                        if has_body {
+                            "has a request body but is listed as bodyless"
+                        } else {
+                            "no request schema and not listed as bodyless"
+                        }
+                    ));
+                }
+            }
+        }
+        assert!(problems.is_empty(), "{}", problems.join("\n"));
+    }
+
+    /// Every `$ref` points at a schema that exists.
+    #[test]
+    fn every_schema_reference_resolves() {
+        fn walk(value: &serde_json::Value, names: &BTreeSet<String>, bad: &mut Vec<String>) {
+            match value {
+                serde_json::Value::Object(map) => {
+                    for (key, child) in map {
+                        if key == "$ref"
+                            && let Some(target) = child.as_str()
+                        {
+                            let name = target.rsplit('/').next().unwrap_or("");
+                            if !names.contains(name) {
+                                bad.push(target.to_string());
+                            }
+                        }
+                        walk(child, names, bad);
+                    }
+                }
+                serde_json::Value::Array(items) => {
+                    for child in items {
+                        walk(child, names, bad);
+                    }
+                }
+                _ => {}
+            }
+        }
+        let doc = super::spec();
+        let names: BTreeSet<String> = doc["components"]["schemas"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect();
+        let mut bad = Vec::new();
+        walk(&doc, &names, &mut bad);
+        assert!(bad.is_empty(), "dangling references: {bad:?}");
+    }
+
     use serde_json::json;
 
     /// The document parses, declares `OpenAPI` 3, and covers the mounted
@@ -281,6 +448,12 @@ mod tests {
             "/api/audits/verify",
         ] {
             assert!(paths.contains_key(p), "missing {p}");
+        }
+        // No operation may be null (indexing a missing key inserts one).
+        for (path, item) in paths {
+            for (method, operation) in item.as_object().unwrap() {
+                assert!(operation.is_object(), "{method} {path} is not an object");
+            }
         }
         assert_eq!(doc["security"][0]["bearerAuth"], json!([]));
         let contacts = &doc["paths"]["/api/contacts"]["get"];

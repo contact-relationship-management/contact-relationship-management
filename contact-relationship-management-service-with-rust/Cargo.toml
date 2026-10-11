@@ -98,3 +98,4 @@ serial_test = { version = "3.5.0" }
 # the auth path is verified without the auth service or a network.
 ed25519-dalek = { version = "3.0.0" }
 rusty_paseto = { version = "0.10", default-features = false, features = ["v4_public", "serde_json"] }
+jsonschema = { version = "0.30", default-features = false }

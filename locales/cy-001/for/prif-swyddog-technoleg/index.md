@@ -18,7 +18,7 @@ Profion uned (116), profion cronfa ddata (22, gan gynnwys gorfodi, cuddio, archw
 
 - Mae tudaleniad yn defnyddio cyrchwr gwrthbwyso (gall rhesi gael eu hepgor neu eu hailadrodd os bydd data'n newid yn ystod y daith); dim cyfanswm yn ôl y bwriad.
 - Mae allweddi idempotency yn ddewisol (T52): rhaid i gleient anfon `Idempotency-Key` ar gais creu i gael ei ddiogelu rhag i ailgais ddyblygu cofnod.
-- Mae OpenAPI wedi'i ysgrifennu â llaw heb sgemâu cais/ymateb; nid yw'r adeiladu yn methu pan nad yw llwybr wedi'i ddogfennu ([gds-api-review](../../../../spec/compliance/gds-api-review.md)).
+- Mae sgemâu cais ac adnoddau OpenAPI wedi'u hysgrifennu â llaw ac yn cwmpasu'r prif bwyntiau terfyn creu a rhestru; nid oes teipiau i'r golygfeydd mewnwelediadau, y dangosfyrddau, yr adroddiadau na'r darlleniadau manylion cyfun. Mae prawf yn methu pan fydd llwybr a'r ddogfen yn anghytuno, ac mae un arall yn gwirio ymatebion go iawn yn erbyn y sgemâu ([gds-api-review](../../../../spec/compliance/gds-api-review.md)).
 - Gwallau yw `{error, description}` Loco, nid RFC 9457.
 - Mae amgryptio meysydd yn cwmpasu dwy golofn; dim integreiddio KMS.
 - Mae angen Redis ar gyflwr cyfyngu cyfradd a storfa dros dro er mwyn cywirdeb aml-replica.
@@ -27,7 +27,7 @@ Profion uned (116), profion cronfa ddata (22, gan gynnwys gorfodi, cuddio, archw
 
 ## Dilyniant technegol a argymhellir
 
-1. Sgemâu OpenAPI ynghyd â phrawf cwmpas llwybrau.
+1. Sgemâu ar gyfer y golygfeydd mewnwelediadau, y dangosfyrddau a'r darlleniadau manylion.
 2. Allweddi meysydd a gefnogir gan KMS a chwmpas meysydd ehangach (gweddill T41).
 3. Llofnodi adeiladau rhyddhau (T49) unwaith y penderfynir ar ddalfa allweddi.
 4. Comisiynu'r prawf annibynnol (T42) yn erbyn adeiladwaith llwyfannu.

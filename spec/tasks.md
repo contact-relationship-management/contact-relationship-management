@@ -666,3 +666,34 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       `POST`s, so they are the only ones covered; the other `POST` helpers in
       `crm.ts` have no page yet and fall back to a fresh key per call plus
       in-flight coalescing; `apiAll` is GET-only and unaffected.
+
+- [x] CRM-T53 **OpenAPI schemas and route coverage.** The API review found the
+      document had no request or response schemas and nothing checked that it
+      matched the routes.
+      **Resolution:** `src/openapi_schemas.rs` adds `components.schemas`: a
+      request schema for every operation that takes a body (required fields
+      follow the controllers' payload structs, including serde defaults), a
+      resource schema for each of the 11 lists, `Created`, and a shared `Error`
+      body attached to every error status. Tests: (1)
+      `every_mounted_route_is_documented_and_the_reverse` builds Loco's real
+      route table and fails on a mounted route or verb missing from the
+      document, or a documented one that is not mounted (probes and the docs
+      endpoints are the only exemptions, listed in the test; it found two
+      undocumented `stakeholder` routes on its first run, and fails when a
+      path is removed); (2) a mutating operation must have a request schema or
+      be on an explicit bodyless list; (3) every `$ref` resolves; (4) the
+      DB-gated `responses_match_the_documented_schemas` validates 10 real
+      request bodies and the rows of all 11 lists against the schemas with a
+      JSON Schema validator. That test caught a wrong schema on its first run
+      (`/api/pipelines` returns `{pipeline, stages}`), and my first draft had
+      marked four defaulted fields as required (`kind`, `currency`, `tier`,
+      `preferred_channel`, `channel`), which the existing tests exposed.
+      Also fixed a bug from the idempotency work: the document-building
+      helpers indexed missing keys on `serde_json` values, which inserts `null`
+      operations on every path; the test now fails on a null operation.
+      **Limits:** hand-written, so they can still drift on fields no test
+      posts or lists; the insight views, dashboards, forecast, audit, retention
+      reports and the bundled detail reads (contact, account, lead, ticket,
+      group) are untyped objects; enumerations (statuses, kinds, channels) are
+      plain strings, not enumerated; a mutating route added with no schema must
+      be listed as bodyless to pass, which is a prompt, not a proof.
