@@ -27,7 +27,10 @@ service refuses to start with a bad combination.
 
 | Variable | Meaning |
 |---|---|
-| `CRM_MAIL_MODE` | `simulated` (default) or `smtp` |
+| `CRM_MAIL_MODE` | `simulated` (default), `smtp`, `brevo` or `mailjet` |
+| `CRM_BREVO_API_KEY` | `brevo` mode: the API key (sent as `api-key`) |
+| `CRM_MAILJET_API_KEY`, `CRM_MAILJET_API_SECRET` | `mailjet` mode: the API key pair (basic auth) |
+| `CRM_MAIL_API_URL` | Override the vendor endpoint (a test double); `https` in production |
 | `CRM_SMTP_HOST`, `CRM_SMTP_PORT` | The server; port defaults to 587 (465 with `implicit`) |
 | `CRM_SMTP_TLS` | `starttls` (default), `implicit` or `none` |
 | `CRM_SMTP_USERNAME`, `CRM_SMTP_PASSWORD` | Set together, or neither |
@@ -37,7 +40,7 @@ service refuses to start with a bad combination.
 | `CRM_UNSUBSCRIBE_SECRET` | 32+ characters; signs the unsubscribe link in every message. Required with `smtp` |
 | `CRM_PUBLIC_URL` | The address recipients reach this service at, for the link (`https` in production). Required with `smtp` |
 | `CRM_WEBHOOK_SECRET` | 32+ characters; enables `POST /webhooks/email` for provider outcomes (delivered, hard or soft bounce, complaint). Requests carry `X-CRM-Timestamp` and `X-CRM-Signature: sha256=` (HMAC-SHA256 of `timestamp.body`); five-minute window |
-| `CRM_MAIL_ALLOW_PRODUCTION` | Required to use `smtp` in production, because no provider is integrated yet and the vendor, agreement and legal review is open (CRM-T39) |
+| `CRM_MAIL_ALLOW_PRODUCTION` | Required to use any real mode in production, because the vendor, agreement and legal review is open (CRM-T39) |
 | `CRM_MAIL_DEV_DOMAIN` | Development only: in `stub` upstream mode, mail goes to `<person id>@<domain>` |
 
 With a real sender, `POST /api/campaigns/{pid}/run` checks the campaign and
@@ -50,6 +53,13 @@ Simulated mode, and the test configuration, still finish inside the request.
 
 `POST /api/nurture/advance` mails due nurture steps through the same sender;
 each step then needs a `body`.
+
+`brevo` and `mailjet` send through the vendor's HTTP API with `CRM_MAIL_FROM`
+and the same unsubscribe and webhook settings. Point the vendor's callback at
+`POST {CRM_PUBLIC_URL}/webhooks/email/brevo` (bearer token, or a custom header
+`X-CRM-Webhook-Token`) or `/webhooks/email/mailjet` (`https://crm:SECRET@host/…`
+basic auth), with `CRM_WEBHOOK_SECRET` as the secret. These adapters follow the
+vendors' documentation and have not been run against live accounts.
 
 The CRM holds no email addresses. In `CRM_UPSTREAM_MODE=http` it asks the
 person service for an `email` field at send time and stores nothing.

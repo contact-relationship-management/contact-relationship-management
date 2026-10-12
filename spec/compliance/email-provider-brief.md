@@ -28,7 +28,8 @@ brief, not legal advice, and it picks no vendor.
 - **Progress.** `GET /api/campaigns/{pid}/deliveries` gives counts per state.
   Subject access lists a contact's deliveries (state, time, message id).
 - **Production guard.** `smtp` mode refuses to start in production unless
-  `CRM_MAIL_ALLOW_PRODUCTION=1`, because what follows is not built.
+  `CRM_MAIL_ALLOW_PRODUCTION=1` (the same for `brevo` and `mailjet`), because the
+  vendor, agreement and legal review is open.
 - **Unsubscribe.** Every real message ends with a signed link and carries
   `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058).
   `GET /unsubscribe/{token}` shows a page and changes nothing (mail scanners
@@ -53,9 +54,24 @@ brief, not legal advice, and it picks no vendor.
   `Message-ID`, applied once per message and event. A hard bounce or complaint
   suppresses the contact (the send skips them); a complaint also withdraws
   consent. Suppression is per contact because the CRM holds no addresses.
-- **Not built:** an adapter from a chosen provider's payload and signature
-  scheme to this shape, `opened` and `clicked` events, and a timer for the
-  nurture sweep.
+- **Brevo and Mailjet adapters.** `CRM_MAIL_MODE=brevo` or `mailjet` sends
+  through the vendor's HTTP API (not its SMTP relay, because the vendor's events
+  name the message by its own id, not ours; the API lets us attach ours as a
+  Brevo tag or a Mailjet `CustomID`, which comes back on every event).
+  `POST /webhooks/email/brevo` and `/mailjet` read the vendor's callbacks:
+  Brevo `delivered`, `soft_bounce`, `hard_bounce`, `invalid_email`, `blocked`
+  and `spam`; Mailjet `sent` (counted as delivered), `bounce` (split on
+  `hard_bounce`), `blocked` (a soft bounce, so no suppression) and `spam`.
+  Other events are ignored. The vendors do not sign with our scheme, so the
+  request must carry `CRM_WEBHOOK_SECRET` as a bearer token (Brevo), a
+  basic-auth password in the callback URL (Mailjet) or `X-CRM-Webhook-Token`;
+  there is no timestamp, so a replay is possible but changes nothing.
+  **Unverified:** the formats follow the vendors' documentation and are
+  pinned by unit and database tests, but nothing has run against a live Brevo
+  or Mailjet account; whether either keeps our `List-Unsubscribe` custom
+  headers is also unconfirmed (the body footer link is always present).
+- **Not built:** `opened` and `clicked` events, vendor-side unsubscribe events,
+  and a timer for the nurture sweep.
 
 ## A local server to build against
 
@@ -116,9 +132,9 @@ idempotent claiming, retry, consent re-check and the progress endpoint.
 Remaining, after the vendor is chosen (the webhook format and the suppression
 model are the vendor's):
 
-1. An adapter from the provider's payload and signature scheme to the generic
-   outcome webhook (the unsubscribe link, headers, suppression list, clearing
-   path and generic webhook are built).
+1. Run one real message and one real event of each kind through a Brevo and a
+   Mailjet account (the adapters are built from documentation only), and
+   choose between them or another vendor.
 2. Move the nurture sweep into a background job too (it is a request-time
    sweep of up to 500 enrolments, with the sender called under each
    enrolment's row lock).

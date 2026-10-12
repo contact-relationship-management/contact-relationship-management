@@ -541,8 +541,8 @@ parties outside the repository.
       path skips them; audited) and a complaint also withdraws consent. The CRM
       stores no addresses, so suppression is per contact, not per address; a
       changed address in the person service stays suppressed until cleared in
-      the database (no clearing endpoint yet). A real provider's payload needs a
-      small adapter to this shape, which waits on the vendor choice.
+      the database (no clearing endpoint yet). Vendor payloads are read by the
+      adapters below.
       `GET` and `DELETE /api/contacts/{pid}/email-suppression` read and lift a
       suppression (both audited; lifting does not restore consent).
       **Background job (built 2026-10-12):** with a real sender `run` enqueues
@@ -562,11 +562,20 @@ parties outside the repository.
       job, and nothing triggers it on a timer.
       **Person-service address:** the accepted shapes are in
       `spec/integrations.md`; still unconfirmed against the real service.
-      **Still open:** a provider adapter,
-      `opened` and `clicked` events, authenticated bounce/complaint/delivery webhooks (so
-      `delivered`, `opened`, `clicked` stay 0 on a real send), the nurture
-      sequences (still simulated), the address contract with the person service (the `email` field is
-      assumed and unverified), and the vendor, agreement and legal review.
+      **Brevo and Mailjet (built 2026-10-12):** `CRM_MAIL_MODE=brevo|mailjet`
+      sends over the vendor's HTTP API with our id attached (Brevo tag, Mailjet
+      `CustomID`) so events match; `POST /webhooks/email/{brevo,mailjet}` reads
+      their callbacks (bearer, basic-auth or `X-CRM-Webhook-Token` carrying
+      `CRM_WEBHOOK_SECRET`; no timestamp, replays harmless). Built from the
+      vendors' documentation; request bodies, answer classification and event
+      mapping are unit-tested and the callbacks have a database test, but
+      **nothing has run against a live account**, and whether the vendors keep
+      our `List-Unsubscribe` custom headers is unconfirmed.
+      **Still open:** `opened` and `clicked` events (so those counters stay 0 on
+      a real send), a timer for stalled campaigns and the nurture sweep, a live
+      trial with each vendor, the address contract with the person service (the
+      `email` field is assumed and unverified), and the vendor, agreement and
+      legal review.
       The brief for a vendor and legal is `spec/compliance/email-provider-brief.md`;
       the local server is `scripts/email-dev.sh` (`INSTALL.md`).
 - [x] CRM-T40 *(resolved 2026-10-10.)* **Audit personal-data reads.** Contact, lead, ticket and

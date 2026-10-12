@@ -73,6 +73,51 @@ pub fn verify(secret: &str, timestamp: &str, signature: &str, body: &[u8], now: 
         .is_ok()
 }
 
+/// Every credential a request presents: a bearer token, a basic-auth
+/// password, or `X-CRM-Webhook-Token`. Providers differ (Brevo can send a
+/// bearer token or custom headers; Mailjet puts basic auth in the callback
+/// URL), so the secret is accepted in any of them.
+#[must_use]
+pub fn presented(authorization: Option<&str>, token_header: Option<&str>) -> Vec<String> {
+    use base64::Engine as _;
+    let mut out = Vec::new();
+    if let Some(value) = authorization {
+        if let Some(token) = value.strip_prefix("Bearer ") {
+            out.push(token.trim().to_string());
+        } else if let Some(encoded) = value.strip_prefix("Basic ")
+            && let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(encoded.trim())
+            && let Ok(pair) = String::from_utf8(bytes)
+            && let Some((_, password)) = pair.split_once(':')
+        {
+            out.push(password.to_string());
+        }
+    }
+    if let Some(value) = token_header {
+        out.push(value.trim().to_string());
+    }
+    out
+}
+
+/// HMAC of a credential under the secret, so a comparison is over fixed-size
+/// digests whatever the credential's length.
+fn credential_mac(secret: &str, credential: &str) -> Hmac<Sha256> {
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("any key length");
+    mac.update(b"token.");
+    mac.update(credential.as_bytes());
+    mac
+}
+
+/// Whether any presented credential is the secret (compared in constant time).
+#[must_use]
+pub fn token_ok(secret: &str, presented: &[String]) -> bool {
+    let expected = credential_mac(secret, secret).finalize().into_bytes();
+    presented.iter().fold(false, |ok, candidate| {
+        ok | credential_mac(secret, candidate)
+            .verify_slice(&expected)
+            .is_ok()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -99,6 +144,21 @@ mod tests {
         assert!(!verify(S, "1000", &sig, b"{}", 1000 + TOLERANCE_SECS + 1));
         assert!(!verify(S, "1000", &sig, b"{}", 1000 - TOLERANCE_SECS - 1));
         assert!(verify(S, "1000", &sig, b"{}", 1000 + TOLERANCE_SECS));
+    }
+
+    #[test]
+    fn a_token_is_read_from_bearer_basic_or_the_header() {
+        use base64::Engine as _;
+        let basic = format!(
+            "Basic {}",
+            base64::engine::general_purpose::STANDARD.encode(format!("mailjet:{S}"))
+        );
+        assert!(token_ok(S, &presented(Some(&format!("Bearer {S}")), None)));
+        assert!(token_ok(S, &presented(Some(&basic), None)));
+        assert!(token_ok(S, &presented(None, Some(S))));
+        assert!(!token_ok(S, &presented(Some("Bearer nope"), Some("x"))));
+        assert!(!token_ok(S, &presented(Some("Basic !!!"), None)));
+        assert!(!token_ok(S, &presented(None, None)));
     }
 
     #[test]

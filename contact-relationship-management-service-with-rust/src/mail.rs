@@ -12,9 +12,10 @@
 //! It is an enum rather than a trait object so a test can swap in
 //! [`Sender::Recording`] without boxing, and so every variant is visible here.
 //!
-//! **Not built yet** (see `spec/compliance/email-provider-brief.md`): an
-//! adapter for a chosen provider's webhook payload, and a background job.
-//! Until a provider is chosen and reviewed, `smtp` mode refuses to start in
+//! - `brevo` / `mailjet`: the provider's HTTP API and webhook (see
+//!   [`crate::provider`]), which can match events to messages.
+//!
+//! Until a provider is chosen and reviewed, every real mode refuses to start in
 //! production unless `CRM_MAIL_ALLOW_PRODUCTION=1` acknowledges that.
 
 use std::collections::HashSet;
@@ -175,6 +176,8 @@ pub enum Sender {
     Simulated,
     /// Real SMTP submission.
     Smtp(Box<SmtpSender>),
+    /// A provider's HTTP API (Brevo, Mailjet); see [`crate::provider`].
+    Api(Box<crate::provider::ApiSender>),
     /// Records messages; for tests.
     Recording(Recorder),
 }
@@ -197,6 +200,7 @@ impl Sender {
     pub fn new_message_id(&self) -> String {
         match self {
             Self::Smtp(smtp) => new_message_id(&domain_of(smtp.from.email.as_ref())),
+            Self::Api(api) => new_message_id(&api.from_domain()),
             _ => new_message_id("crm.invalid"),
         }
     }
@@ -218,6 +222,7 @@ impl Sender {
                 Ok(())
             }
             Self::Smtp(smtp) => smtp.send(message).await,
+            Self::Api(api) => api.send(message).await,
         }
     }
 }
@@ -345,6 +350,13 @@ pub fn from_settings(
         .as_deref()
     {
         None | Some("simulated") => Ok(Sender::Simulated),
+        Some(name) if crate::provider::Kind::from_name(name).is_some() => {
+            let kind =
+                crate::provider::Kind::from_name(name).unwrap_or(crate::provider::Kind::Brevo);
+            Ok(Sender::Api(Box::new(crate::provider::configure(
+                kind, var, production,
+            )?)))
+        }
         Some("smtp") => {
             let accept_invalid = flag("CRM_SMTP_ACCEPT_INVALID_CERTS");
             if production {
@@ -356,7 +368,7 @@ pub fn from_settings(
                 if !flag("CRM_MAIL_ALLOW_PRODUCTION") {
                     return Err(
                         "CRM_MAIL_MODE=smtp in production needs CRM_MAIL_ALLOW_PRODUCTION=1: \
-                         no provider is integrated and the vendor, agreement and legal review is open (CRM-T39)"
+                         the vendor, agreement and legal review is open (CRM-T39)"
                             .to_string(),
                     );
                 }
@@ -407,7 +419,7 @@ pub fn from_settings(
             )?)))
         }
         Some(other) => Err(format!(
-            "CRM_MAIL_MODE must be simulated or smtp, not {other:?}"
+            "CRM_MAIL_MODE must be simulated, smtp, brevo or mailjet, not {other:?}"
         )),
     }
 }

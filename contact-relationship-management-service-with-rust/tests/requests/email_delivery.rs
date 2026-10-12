@@ -523,6 +523,97 @@ async fn provider_events_count_deliveries_and_suppress_bounces_and_complaints() 
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn brevo_and_mailjet_callbacks_are_authenticated_and_applied() {
+    use base64::Engine as _;
+    unsafe { std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET) };
+    request::<App, _, _>(|request, _ctx| async move {
+        let (recorder, _restore) = recording();
+        let ada = seed_contact!(&request, "Ada Lovelace").await;
+        let grace = seed_contact!(&request, "Grace Hopper").await;
+        give_address!(&request, ada, "ada@example.test");
+        give_address!(&request, grace, "grace@example.test");
+        let first = scheduled_campaign!(&request, Some("Hello"));
+        request
+            .post(&format!("/api/campaigns/{first}/run"))
+            .await
+            .assert_status_ok();
+        let bare = |to: &str| {
+            recorder
+                .sent()
+                .into_iter()
+                .find(|m| m.to == to)
+                .unwrap()
+                .message_id
+                .trim_matches(|c| c == '<' || c == '>')
+                .to_string()
+        };
+
+        // No credential, or a wrong one, is refused; an unknown vendor is 404.
+        let brevo = json!({ "event": "hard_bounce", "tags": [bare("ada@example.test")] });
+        request
+            .post("/webhooks/email/brevo")
+            .json(&brevo)
+            .await
+            .assert_status_unauthorized();
+        request
+            .post("/webhooks/email/brevo")
+            .add_header("authorization", "Bearer wrong")
+            .json(&brevo)
+            .await
+            .assert_status_unauthorized();
+        request
+            .post("/webhooks/email/acme")
+            .add_header("authorization", format!("Bearer {WEBHOOK_SECRET}"))
+            .json(&brevo)
+            .await
+            .assert_status_not_found();
+
+        // Brevo, bearer token: a hard bounce suppresses; a repeat changes nothing.
+        let ok: Value = request
+            .post("/webhooks/email/brevo")
+            .add_header("authorization", format!("Bearer {WEBHOOK_SECRET}"))
+            .json(&brevo)
+            .await
+            .json();
+        assert_eq!(ok["recorded"], 1, "{ok}");
+        let again: Value = request
+            .post("/webhooks/email/brevo")
+            .add_header("x-crm-webhook-token", WEBHOOK_SECRET)
+            .json(&brevo)
+            .await
+            .json();
+        assert_eq!(again["recorded"], 0);
+        let state: Value = request
+            .get(&format!("/api/contacts/{ada}/email-suppression"))
+            .await
+            .json();
+        assert_eq!(state["suppressed"], true, "{state}");
+
+        // Mailjet, basic auth, an array: a complaint withdraws consent; open is ignored.
+        let basic =
+            base64::engine::general_purpose::STANDARD.encode(format!("crm:{WEBHOOK_SECRET}"));
+        let batch = json!([
+            { "event": "spam", "CustomID": bare("grace@example.test") },
+            { "event": "open", "CustomID": bare("grace@example.test") }
+        ]);
+        let done: Value = request
+            .post("/webhooks/email/mailjet")
+            .add_header("authorization", format!("Basic {basic}"))
+            .json(&batch)
+            .await
+            .json();
+        assert_eq!(done["received"], 1, "{done}");
+        assert_eq!(done["recorded"], 1);
+        let grace_now: Value = request.get(&format!("/api/contacts/{grace}")).await.json();
+        assert_eq!(grace_now["contact"]["marketing_consent"], "withdrawn");
+    })
+    .await;
+    unsafe { std::env::remove_var("CRM_WEBHOOK_SECRET") };
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_suppression_can_be_read_and_lifted_and_the_contact_is_mailed_again() {
     unsafe { std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET) };
     request::<App, _, _>(|request, _ctx| async move {

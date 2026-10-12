@@ -46,6 +46,7 @@ pub mod models;
 pub mod openapi;
 pub mod openapi_schemas;
 pub mod problem;
+pub mod provider;
 pub mod rate_limit;
 pub mod redis_store;
 pub mod rules;

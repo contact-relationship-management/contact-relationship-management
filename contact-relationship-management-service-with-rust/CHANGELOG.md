@@ -16,6 +16,16 @@ retry, consent re-read before each send), campaign `subject` and `body`, and
 `CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: address-level suppression list,
 bounce and complaint webhooks, nurture sends.
 
+### Added — Brevo and Mailjet adapters (CRM-T39, 2026-10-12)
+
+`CRM_MAIL_MODE=brevo` or `mailjet` sends through the vendor's HTTP API
+(`src/provider.rs`), tagging each message with our id (Brevo `tags`, Mailjet
+`CustomID`) so the vendor's events can be matched. `POST
+/webhooks/email/{brevo,mailjet}` reads their callbacks (delivered, bounces,
+spam) into the generic outcomes, authenticated by `CRM_WEBHOOK_SECRET` as a
+bearer token, basic-auth password or `X-CRM-Webhook-Token`. Checked against the
+vendors' documentation only; not run against a live account.
+
 ### Added — real nurture sends (CRM-T39, 2026-10-12)
 
 Nurture steps carry an optional `subject` and a plain-text `body`

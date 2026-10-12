@@ -1486,45 +1486,93 @@ async fn email_webhook(
         return Ok(StatusCode::BAD_REQUEST.into_response());
     }
     let txn = ctx.db.begin().await?;
-    let effect = deliveries::record_event(&txn, &event.message_id, &event.event).await?;
-    let result = match effect {
+    let result = apply_event(&txn, &event.message_id, &event.event).await?;
+    txn.commit().await?;
+    format::json(serde_json::json!({ "result": result }))
+}
+
+/// Apply one provider outcome inside `txn`; returns what happened.
+async fn apply_event(
+    txn: &sea_orm::DatabaseTransaction,
+    message_id: &str,
+    event_name: &str,
+) -> Result<&'static str> {
+    let effect = deliveries::record_event(txn, message_id, event_name).await?;
+    Ok(match effect {
         deliveries::EventEffect::UnknownMessage => "unknown_message",
         deliveries::EventEffect::Duplicate => "duplicate",
         deliveries::EventEffect::Recorded {
             contact_pid,
             campaign_pid,
         } => {
-            match event.event.as_str() {
-                "delivered" => deliveries::count_delivered(&txn, campaign_pid).await?,
+            match event_name {
+                "delivered" => deliveries::count_delivered(txn, campaign_pid).await?,
                 "bounce_hard" | "complaint" => {
-                    deliveries::suppress(&txn, contact_pid, &event.event).await?;
+                    deliveries::suppress(txn, contact_pid, event_name).await?;
                     Audit::record(
-                        &txn,
+                        txn,
                         "contact",
                         contact_pid,
                         "email_suppressed",
                         None,
-                        Some(serde_json::json!({ "reason": event.event })),
+                        Some(serde_json::json!({ "reason": event_name })),
                     )
                     .await?;
                 }
                 _ => {}
             }
-            if event.event == "complaint" {
+            if event_name == "complaint" {
                 let contact = contacts::Entity::find()
                     .filter(contacts::Column::Pid.eq(contact_pid))
                     .filter(contacts::Column::DeletedAt.is_null())
-                    .one(&txn)
+                    .one(txn)
                     .await?;
                 if let Some(contact) = contact.filter(|c| c.marketing_consent != "withdrawn") {
-                    apply_consent_in(&txn, contact, "withdrawn", "complaint", None).await?;
+                    apply_consent_in(txn, contact, "withdrawn", "complaint", None).await?;
                 }
             }
             "recorded"
         }
+    })
+}
+
+/// `POST /webhooks/email/{provider}` — a Brevo or Mailjet callback in the
+/// vendor's own format (see [`crate::provider`]). The vendors cannot sign with
+/// our scheme, so the request carries `CRM_WEBHOOK_SECRET` as a bearer token,
+/// a basic-auth password or `X-CRM-Webhook-Token`; there is no timestamp, so a
+/// replay is possible but harmless (each message and event applies once).
+/// Answers `200` for events it ignores, so the vendor does not retry them.
+#[debug_handler]
+async fn provider_webhook(
+    State(ctx): State<AppContext>,
+    axum::extract::Path(provider): axum::extract::Path<String>,
+    headers: axum::http::HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<Response> {
+    use axum::http::StatusCode;
+    let (Some(kind), Some(secret)) = (
+        crate::provider::Kind::from_name(&provider),
+        crate::webhook::secret(),
+    ) else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
     };
+    let header = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
+    let given = crate::webhook::presented(header("authorization"), header("x-crm-webhook-token"));
+    if !crate::webhook::token_ok(&secret, &given) {
+        return Ok(StatusCode::UNAUTHORIZED.into_response());
+    }
+    let Some(outcomes) = crate::provider::outcomes(kind, &body) else {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    };
+    let txn = ctx.db.begin().await?;
+    let mut recorded = 0_u32;
+    for outcome in &outcomes {
+        if apply_event(&txn, &outcome.message_id, outcome.event).await? == "recorded" {
+            recorded += 1;
+        }
+    }
     txn.commit().await?;
-    format::json(serde_json::json!({ "result": result }))
+    format::json(serde_json::json!({ "received": outcomes.len(), "recorded": recorded }))
 }
 
 /// The public unsubscribe routes (outside `/api`; see `auth::is_public_path`).
@@ -1533,6 +1581,7 @@ pub fn public_routes() -> Routes {
         .add("/unsubscribe/{token}", get(unsubscribe_page_get))
         .add("/unsubscribe/{token}", post(unsubscribe_post))
         .add("/webhooks/email", post(email_webhook))
+        .add("/webhooks/email/{provider}", post(provider_webhook))
 }
 
 /// The marketing routes.
