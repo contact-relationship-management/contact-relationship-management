@@ -617,34 +617,17 @@ async fn deliver_one(
     Ok(())
 }
 
-/// `POST /api/campaigns/{pid}/run` — send the campaign (CRM-R8, CRM-T39).
-///
-/// Lists the segment (consent is structural in the evaluator, CRM-D6), records
-/// one delivery row per contact, claims a batch atomically, and for each
-/// contact re-checks consent, resolves the address, and sends through the
-/// configured [`mail::Sender`] (`CRM_MAIL_MODE`). The default sender is
-/// **simulated**: nothing leaves the process and the engagement counters are
-/// the deterministic demo values. A re-run sends only what is not yet sent, so
-/// a contact is never mailed twice. The campaign completes when nothing is left
-/// to retry; until then it stays `running` and the same call resumes it.
-#[debug_handler]
-async fn run_campaign(
-    State(ctx): State<AppContext>,
-    caller: MaybeAuthUser,
-    Path(pid): Path<String>,
-) -> Result<Response> {
-    let campaign = records::find_campaign(&ctx.db, records::parse_pid(&pid)?).await?;
+/// Why a campaign cannot be run now, if so.
+fn check_runnable(campaign: &campaigns::Model, sender: &mail::Sender) -> Result<()> {
     if campaign.status != "scheduled" && campaign.status != "running" {
         return Err(unprocessable(&format!(
             "campaign is {} — schedule it first",
             campaign.status
         )));
     }
-    let segment_pid = campaign
-        .segment_pid
-        .ok_or_else(|| unprocessable("campaign has no segment"))?;
-    let segment = records::find_segment(&ctx.db, segment_pid).await?;
-    let sender = mail::current();
+    if campaign.segment_pid.is_none() {
+        return Err(unprocessable("campaign has no segment"));
+    }
     if sender.needs_address()
         && campaign
             .body
@@ -653,6 +636,100 @@ async fn run_campaign(
     {
         return Err(unprocessable("campaign has no body to send"));
     }
+    Ok(())
+}
+
+/// `POST /api/campaigns/{pid}/run` — send the campaign (CRM-R8, CRM-T39).
+///
+/// The default sender is **simulated**: the whole audience is handled inside
+/// the request and the engagement counters are the deterministic demo values.
+/// With a real sender (`CRM_MAIL_MODE=smtp`) the call checks the campaign,
+/// marks it `running`, and hands the sending to [`CampaignSendWorker`] (a
+/// background job when `workers.mode` is `BackgroundQueue`, inline otherwise),
+/// answering `202` while it is still running. A re-run sends only what is not
+/// yet sent, so a contact is never mailed twice, and resumes a campaign that
+/// stalled on transient failures.
+#[debug_handler]
+async fn run_campaign(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Path(pid): Path<String>,
+) -> Result<Response> {
+    let campaign = records::find_campaign(&ctx.db, records::parse_pid(&pid)?).await?;
+    let sender = mail::current();
+    check_runnable(&campaign, &sender)?;
+    if !sender.needs_address() {
+        let (row, _) = run_batch(&ctx, campaign.pid, caller.actor()).await?;
+        return format::json(row);
+    }
+    CampaignSendWorker::perform_later(
+        &ctx,
+        CampaignSendArgs {
+            campaign_pid: campaign.pid,
+            actor: caller.actor().map(ToString::to_string),
+        },
+    )
+    .await?;
+    let row = records::find_campaign(&ctx.db, campaign.pid).await?;
+    // Queued (still `scheduled`) or running: the work is not finished.
+    let status = if row.status == "completed" {
+        axum::http::StatusCode::OK
+    } else {
+        axum::http::StatusCode::ACCEPTED
+    };
+    format::render().status(status).json(row)
+}
+
+/// The job that sends a campaign.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CampaignSendArgs {
+    /// The campaign to send.
+    pub campaign_pid: Uuid,
+    /// Who asked, for the audit trail.
+    pub actor: Option<String>,
+}
+
+/// Sends a campaign batch by batch until nothing more can be sent. A pass that
+/// sends nothing (every remaining contact is failing) stops the job, leaving
+/// the campaign `running`; a later `run` resumes it.
+pub struct CampaignSendWorker {
+    ctx: AppContext,
+}
+
+#[async_trait]
+impl BackgroundWorker<CampaignSendArgs> for CampaignSendWorker {
+    fn build(ctx: &AppContext) -> Self {
+        Self { ctx: ctx.clone() }
+    }
+
+    async fn perform(&self, args: CampaignSendArgs) -> Result<()> {
+        loop {
+            let (row, progressed) =
+                run_batch(&self.ctx, args.campaign_pid, args.actor.as_deref()).await?;
+            if row.status != "running" || progressed == 0 {
+                return Ok(());
+            }
+        }
+    }
+}
+
+/// One batch of a campaign: list the segment (consent is structural in the
+/// evaluator, CRM-D6), record a delivery row per contact, claim a batch
+/// atomically, and for each contact re-check consent, resolve the address and
+/// send through the configured [`mail::Sender`]. Returns the campaign row and
+/// how many messages this batch sent.
+async fn run_batch(
+    ctx: &AppContext,
+    campaign_pid: Uuid,
+    actor: Option<&str>,
+) -> Result<(campaigns::Model, u64)> {
+    let campaign = records::find_campaign(&ctx.db, campaign_pid).await?;
+    let sender = mail::current();
+    check_runnable(&campaign, &sender)?;
+    let segment_pid = campaign
+        .segment_pid
+        .ok_or_else(|| unprocessable("campaign has no segment"))?;
+    let segment = records::find_segment(&ctx.db, segment_pid).await?;
     let audience = evaluate_segment(&ctx.db, &segment).await?;
     let audience_pids: std::collections::HashSet<Uuid> = audience.iter().map(|c| c.pid).collect();
     let pids: Vec<Uuid> = audience.iter().map(|c| c.pid).collect();
@@ -676,7 +753,7 @@ async fn run_campaign(
     let claimed = deliveries::claim(&ctx.db, campaign_pid, limit).await?;
     let mut outcome = RunOutcome::default();
     for item in claimed {
-        deliver_one(&ctx, &campaign, &sender, item, &audience_pids, &mut outcome).await?;
+        deliver_one(ctx, &campaign, &sender, item, &audience_pids, &mut outcome).await?;
     }
 
     let remaining = deliveries::retriable(&ctx.db, campaign_pid).await?;
@@ -689,7 +766,7 @@ async fn run_campaign(
             "campaign",
             campaign_pid,
             "campaign_run",
-            caller.actor(),
+            actor,
             Some(serde_json::json!({
                 "sent": outcome.sent, "failed": outcome.failed,
                 "no_address": outcome.no_address, "suppressed": outcome.suppressed,
@@ -720,7 +797,7 @@ async fn run_campaign(
             "campaign",
             campaign_pid,
             "campaign_completed",
-            caller.actor(),
+            actor,
             Some(serde_json::json!({ "recipients": recipients })),
         )
         .await?;
@@ -730,13 +807,13 @@ async fn run_campaign(
             "campaign_completed",
             &campaign_pid.to_string(),
             &name,
-            caller.actor(),
+            actor,
             None,
         )
         .await?;
     }
     txn.commit().await?;
-    format::json(row)
+    Ok((row, outcome.sent))
 }
 
 /// `GET /api/campaigns/{pid}/deliveries` — how a send is going: rows per state

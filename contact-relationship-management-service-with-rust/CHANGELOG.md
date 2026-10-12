@@ -16,6 +16,14 @@ retry, consent re-read before each send), campaign `subject` and `body`, and
 `CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: address-level suppression list,
 bounce and complaint webhooks, nurture sends.
 
+### Changed — campaign sends run as a background job (CRM-T39, 2026-10-12)
+
+With a real sender, `run` validates the campaign and enqueues
+`CampaignSendWorker`, which sends batch after batch until nothing more can be
+sent. It answers `202` until the campaign completes. A pass that sends nothing
+stops the job; a later `run` resumes. Simulated mode is unchanged. The worker
+is registered in `connect_workers`.
+
 ### Added — lifting a suppression (CRM-T39, 2026-10-12)
 
 `GET` and `DELETE /api/contacts/{pid}/email-suppression` read and lift a

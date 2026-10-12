@@ -45,9 +45,8 @@ brief, not legal advice, and it picks no vendor.
   suppresses the contact (the send skips them); a complaint also withdraws
   consent. Suppression is per contact because the CRM holds no addresses.
 - **Not built:** an adapter from a chosen provider's payload and signature
-  scheme to this shape, `opened` and `clicked` events, a way to clear a
-  suppression, a background job (sends are batched inside the request), and
-  nurture sends.
+  scheme to this shape, `opened` and `clicked` events, and nurture sends
+  (still simulated).
 
 ## A local server to build against
 
@@ -66,7 +65,7 @@ traffic from real mailbox providers.
 | Re-check consent per recipient immediately before handing to the provider | Consent can be withdrawn at any time | Done: the live contact is re-read before each message |
 | A per-recipient delivery record (campaign, contact, provider message id, state, time) | Subject access, complaint handling, idempotent retries, honest funnel numbers | Done (`email_deliveries`); no address or body stored |
 | Idempotent send per (campaign, contact) | A retry must never email twice | Done for campaigns (atomic claim per row); nurture steps are idempotent per (enrolment, step) but simulated |
-| Asynchronous send with retry and back-off | A real send takes minutes and the provider will throttle or fail | Retry without back-off, batched inside the request; no background job |
+| Asynchronous send with retry and back-off | A real send takes minutes and the provider will throttle or fail | A background job sends batch after batch; no back-off, and a stalled campaign waits for the next `run` |
 | One-click unsubscribe: a link in the body and the `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058) | Bulk-sender rules at the large mailbox providers, and PECR | Built; not yet tried against a large mailbox provider |
 | An unsubscribe endpoint that writes a `withdrawn` consent event immediately | The consent log is the source of truth | Built: signed link, public endpoint, tested |
 | A suppression list the send path checks, filled by bounces, complaints and unsubscribes | Never mail an address that bounced hard or complained | Built per contact; unsubscribes also suppress through consent |
@@ -111,7 +110,8 @@ model are the vendor's):
 1. An adapter from the provider's payload and signature scheme to the generic
    outcome webhook (the unsubscribe link, headers, suppression list, clearing
    path and generic webhook are built).
-2. Move the send into a background job, and send nurture steps the same way.
+2. Send nurture steps the same way (the campaign send is already a
+   background job).
 3. Agree the address contract with the person service and test it.
 5. Run the funnel and scoring tests against both senders.
 

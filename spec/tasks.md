@@ -510,8 +510,8 @@ parties outside the repository.
       concurrent run never mails a contact twice, consent is re-read from the
       live contact immediately before each send, a transient failure is retried
       (5 attempts) and a permanent one is not, and a campaign completes only
-      when nothing is left to retry. Sends are batched (`CRM_MAIL_BATCH`, 200) so
-      a long audience takes several `run` calls. Campaigns gain `subject` and
+      when nothing is left to retry. Sends are batched (`CRM_MAIL_BATCH`, 200); a
+      background job walks the batches (below). Campaigns gain `subject` and
       `body`. `GET /api/campaigns/{pid}/deliveries` reports progress; subject
       access lists a contact's deliveries (state, time, message id; no address or
       body). Addresses are not stored: they come from the person service
@@ -545,11 +545,17 @@ parties outside the repository.
       small adapter to this shape, which waits on the vendor choice.
       `GET` and `DELETE /api/contacts/{pid}/email-suppression` read and lift a
       suppression (both audited; lifting does not restore consent).
+      **Background job (built 2026-10-12):** with a real sender `run` enqueues
+      `CampaignSendWorker` (PostgreSQL queue; loops batches until nothing more
+      can be sent; stops when a pass sends nothing, so a stalled campaign stays
+      `running` and a later `run` resumes it) and answers `202` until complete.
+      Tested in foreground mode, and by hand with a real `start
+      --server-and-worker` process sending three messages through Stalwart.
+      There is no timer that retries a stalled campaign on its own.
       **Still open:** a provider adapter,
       `opened` and `clicked` events, authenticated bounce/complaint/delivery webhooks (so
       `delivered`, `opened`, `clicked` stay 0 on a real send), the nurture
-      sequences (still simulated), a background job instead of batched requests,
-      the address contract with the person service (the `email` field is
+      sequences (still simulated), the address contract with the person service (the `email` field is
       assumed and unverified), and the vendor, agreement and legal review.
       The brief for a vendor and legal is `spec/compliance/email-provider-brief.md`;
       the local server is `scripts/email-dev.sh` (`INSTALL.md`).

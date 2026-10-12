@@ -626,7 +626,12 @@ impl Hooks for App {
             .layer(axum::middleware::from_fn(crate::problem::problem_mw)))
     }
 
-    async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
+    async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
+        queue
+            .register(
+                <controllers::marketing::CampaignSendWorker as loco_rs::prelude::BackgroundWorker<_>>::build(ctx),
+            )
+            .await?;
         Ok(())
     }
 

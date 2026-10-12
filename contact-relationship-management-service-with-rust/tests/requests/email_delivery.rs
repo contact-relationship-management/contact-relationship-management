@@ -216,7 +216,7 @@ async fn consent_withdrawn_between_runs_is_honoured() {
         request
             .post(&format!("/api/campaigns/{campaign}/run"))
             .await
-            .assert_status_ok();
+            .assert_status_success();
 
         // Ada's send failed; before the retry she withdraws consent.
         request
@@ -357,7 +357,7 @@ async fn the_unsubscribe_link_withdraws_consent_and_stops_the_next_send() {
         request
             .post(&format!("/api/campaigns/{campaign}/run"))
             .await
-            .assert_status_ok();
+            .assert_status_success();
 
         // Grace follows no link; Ada's message has one.
         let ada_mail = recorder
@@ -567,4 +567,42 @@ async fn a_suppression_can_be_read_and_lifted_and_the_contact_is_mailed_again() 
     })
     .await;
     unsafe { std::env::remove_var("CRM_WEBHOOK_SECRET") };
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn one_run_call_walks_a_long_audience_in_batches_and_a_stall_answers_202() {
+    unsafe { std::env::set_var("CRM_MAIL_BATCH", "1") };
+    request::<App, _, _>(|request, _ctx| async move {
+        let (recorder, _restore) = recording();
+        for (i, name) in ["Ada", "Grace", "Alan"].iter().enumerate() {
+            let pid = seed_contact!(&request, *name).await;
+            give_address!(&request, pid, &format!("c{i}@example.test"));
+        }
+        // Batches of one, yet a single call finishes the whole audience.
+        let campaign = scheduled_campaign!(&request, Some("Hello"));
+        let run = request
+            .post(&format!("/api/campaigns/{campaign}/run"))
+            .await;
+        run.assert_status_ok();
+        let row: Value = run.json();
+        assert_eq!(row["status"], "completed", "{row}");
+        assert_eq!(recorder.sent().len(), 3);
+
+        // When every remaining send fails the job stops instead of spinning:
+        // the call answers 202 and the campaign stays running for a later run.
+        recorder.clear();
+        recorder.fail_for("c0@example.test");
+        recorder.fail_for("c1@example.test");
+        recorder.fail_for("c2@example.test");
+        let stalled = scheduled_campaign!(&request, Some("Again"));
+        let run = request.post(&format!("/api/campaigns/{stalled}/run")).await;
+        assert_eq!(run.status_code().as_u16(), 202);
+        let row: Value = run.json();
+        assert_eq!(row["status"], "running", "{row}");
+        assert!(recorder.sent().is_empty());
+    })
+    .await;
+    unsafe { std::env::remove_var("CRM_MAIL_BATCH") };
 }

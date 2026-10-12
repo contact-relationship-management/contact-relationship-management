@@ -32,13 +32,21 @@ service refuses to start with a bad combination.
 | `CRM_SMTP_TLS` | `starttls` (default), `implicit` or `none` |
 | `CRM_SMTP_USERNAME`, `CRM_SMTP_PASSWORD` | Set together, or neither |
 | `CRM_MAIL_FROM` | The `From` mailbox, for example `CRM <crm@example.org>` |
-| `CRM_MAIL_BATCH` | Contacts sent per `run` call (default 200) |
+| `CRM_MAIL_BATCH` | Contacts sent per batch (default 200); the job runs batches until done |
 | `CRM_SMTP_ACCEPT_INVALID_CERTS` | Development only; refused in production |
 | `CRM_UNSUBSCRIBE_SECRET` | 32+ characters; signs the unsubscribe link in every message. Required with `smtp` |
 | `CRM_PUBLIC_URL` | The address recipients reach this service at, for the link (`https` in production). Required with `smtp` |
 | `CRM_WEBHOOK_SECRET` | 32+ characters; enables `POST /webhooks/email` for provider outcomes (delivered, hard or soft bounce, complaint). Requests carry `X-CRM-Timestamp` and `X-CRM-Signature: sha256=` (HMAC-SHA256 of `timestamp.body`); five-minute window |
 | `CRM_MAIL_ALLOW_PRODUCTION` | Required to use `smtp` in production, because no provider is integrated yet and the vendor, agreement and legal review is open (CRM-T39) |
 | `CRM_MAIL_DEV_DOMAIN` | Development only: in `stub` upstream mode, mail goes to `<person id>@<domain>` |
+
+With a real sender, `POST /api/campaigns/{pid}/run` checks the campaign and
+hands the sending to a background job, answering `202` while it runs (`200`
+once complete). In production, `workers.mode` is `BackgroundQueue` (jobs are
+kept in PostgreSQL), so run a worker: `cargo run -- start --server-and-worker`
+in development, or a separate `start --worker` process. A campaign whose
+remaining sends all fail stops (stays `running`); call `run` again to resume.
+Simulated mode, and the test configuration, still finish inside the request.
 
 The CRM holds no email addresses. In `CRM_UPSTREAM_MODE=http` it asks the
 person service for an `email` field at send time and stores nothing.
