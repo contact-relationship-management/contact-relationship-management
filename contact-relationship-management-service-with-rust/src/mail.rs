@@ -13,7 +13,7 @@
 //! [`Sender::Recording`] without boxing, and so every variant is visible here.
 //!
 //! **Not built yet** (see `spec/compliance/email-provider-brief.md`): the
-//! a provider-specific webhook adapter, a way to clear a suppression, and a
+//! a provider-specific webhook adapter and a
 //! background job. Until they are, `smtp` mode refuses to start in production unless
 //! `CRM_MAIL_ALLOW_PRODUCTION=1` acknowledges that.
 

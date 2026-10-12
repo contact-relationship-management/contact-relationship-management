@@ -519,3 +519,52 @@ async fn provider_events_count_deliveries_and_suppress_bounces_and_complaints() 
     .await;
     unsafe { std::env::remove_var("CRM_WEBHOOK_SECRET") };
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_suppression_can_be_read_and_lifted_and_the_contact_is_mailed_again() {
+    unsafe { std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET) };
+    request::<App, _, _>(|request, _ctx| async move {
+        let (recorder, _restore) = recording();
+        let ada = seed_contact!(&request, "Ada Lovelace").await;
+        give_address!(&request, ada, "ada@example.test");
+        let first = scheduled_campaign!(&request, Some("Hello"));
+        request
+            .post(&format!("/api/campaigns/{first}/run"))
+            .await
+            .assert_status_ok();
+        let id = recorder.sent()[0].message_id.clone();
+        provider_event!(&request, &id, "bounce_hard").assert_status_ok();
+
+        let path = format!("/api/contacts/{ada}/email-suppression");
+        let state: Value = request.get(&path).await.json();
+        assert_eq!(state["suppressed"], true, "{state}");
+        assert_eq!(state["reason"], "bounce_hard");
+
+        request.delete(&path).await.assert_status_ok();
+        let after: Value = request.get(&path).await.json();
+        assert_eq!(after["suppressed"], false);
+        request.delete(&path).await.assert_status_not_found();
+
+        recorder.clear();
+        let second = scheduled_campaign!(&request, Some("Again"));
+        request
+            .post(&format!("/api/campaigns/{second}/run"))
+            .await
+            .assert_status_ok();
+        assert_eq!(
+            recorder.sent().len(),
+            1,
+            "a lifted suppression still blocked"
+        );
+
+        let trail: Value = request.get(&format!("/api/audits/{ada}")).await.json();
+        assert!(
+            trail.to_string().contains("email_suppression_cleared"),
+            "{trail}"
+        );
+    })
+    .await;
+    unsafe { std::env::remove_var("CRM_WEBHOOK_SECRET") };
+}

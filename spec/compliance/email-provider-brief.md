@@ -108,12 +108,11 @@ idempotent claiming, retry, consent re-check and the progress endpoint.
 Remaining, after the vendor is chosen (the webhook format and the suppression
 model are the vendor's):
 
-1. A clearing path for suppressions (the unsubscribe link, headers, suppression
-   list and generic webhook are built).
-2. Authenticated webhook endpoints for outcomes, updating the delivery table
-   and the campaign counters from real events.
-3. Move the send into a background job, and send nurture steps the same way.
-4. Agree the address contract with the person service and test it.
+1. An adapter from the provider's payload and signature scheme to the generic
+   outcome webhook (the unsubscribe link, headers, suppression list, clearing
+   path and generic webhook are built).
+2. Move the send into a background job, and send nurture steps the same way.
+3. Agree the address contract with the person service and test it.
 5. Run the funnel and scoring tests against both senders.
 
 ## Decisions for the business

@@ -62,6 +62,10 @@ pub fn spec() -> Value {
             "/api/deals/{pid}/reopen": { "post": { "tags": ["sales"], "summary": "Reasoned reopen of a closed deal", "responses": transition } },
             "/api/forecast": { "get": { "tags": ["sales"], "summary": "Live stage-weighted forecast per currency (derived, never typed)", "responses": ok("Forecast") } },
             "/api/forecast/snapshot": { "post": { "tags": ["sales"], "summary": "Freeze the current roll-up", "responses": ok("Snapshot") } },
+            "/api/contacts/{pid}/email-suppression": {
+                "get": { "tags": ["marketing"], "summary": "Whether the contact's mailbox is suppressed after a hard bounce or complaint, and why; audited read", "responses": ok("Suppression") },
+                "delete": { "tags": ["marketing"], "summary": "Lift a mailbox suppression; does not restore marketing consent; audited; 404 when not suppressed", "responses": ok("Cleared") }
+            },
             "/api/contacts/{pid}/consent": {
                 "post": { "tags": ["marketing"], "summary": "Record consent (withdrawal exits nurture + blocks sends)", "responses": ok("Recorded") },
                 "get": { "tags": ["marketing"], "summary": "The append-only history (audited read)", "responses": ok("ConsentEvents") }

@@ -193,6 +193,42 @@ pub async fn is_suppressed<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Res
     Ok(row.is_some())
 }
 
+/// The suppression on a contact, as `(reason, created_at)`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn suppression<C: ConnectionTrait>(
+    db: &C,
+    contact_pid: Uuid,
+) -> Result<Option<(String, chrono::DateTime<chrono::FixedOffset>)>> {
+    let row = db
+        .query_one_raw(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            "SELECT reason, created_at FROM email_suppressions WHERE contact_pid = $1",
+            [contact_pid.into()],
+        ))
+        .await?;
+    row.map(|row| Ok((row.try_get("", "reason")?, row.try_get("", "created_at")?)))
+        .transpose()
+}
+
+/// Take a contact off the suppression list. Returns whether one was removed.
+///
+/// # Errors
+///
+/// When the statement fails.
+pub async fn unsuppress<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Result<bool> {
+    let done = db
+        .execute_raw(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            "DELETE FROM email_suppressions WHERE contact_pid = $1",
+            [contact_pid.into()],
+        ))
+        .await?;
+    Ok(done.rows_affected() > 0)
+}
+
 /// What a provider event did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventEffect {

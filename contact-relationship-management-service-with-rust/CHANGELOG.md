@@ -16,6 +16,11 @@ retry, consent re-read before each send), campaign `subject` and `body`, and
 `CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: address-level suppression list,
 bounce and complaint webhooks, nurture sends.
 
+### Added — lifting a suppression (CRM-T39, 2026-10-12)
+
+`GET` and `DELETE /api/contacts/{pid}/email-suppression` read and lift a
+mailbox suppression. Both are audited; lifting does not restore consent.
+
 ### Added — outcome webhook and suppression list (CRM-T39, 2026-10-11)
 
 `POST /webhooks/email` (HMAC-signed, `CRM_WEBHOOK_SECRET`) records provider

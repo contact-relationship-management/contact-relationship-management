@@ -543,7 +543,9 @@ parties outside the repository.
       changed address in the person service stays suppressed until cleared in
       the database (no clearing endpoint yet). A real provider's payload needs a
       small adapter to this shape, which waits on the vendor choice.
-      **Still open:** a clearing path for suppressions, a provider adapter,
+      `GET` and `DELETE /api/contacts/{pid}/email-suppression` read and lift a
+      suppression (both audited; lifting does not restore consent).
+      **Still open:** a provider adapter,
       `opened` and `clicked` events, authenticated bounce/complaint/delivery webhooks (so
       `delivered`, `opened`, `clicked` stay 0 on a real send), the nurture
       sequences (still simulated), a background job instead of batched requests,

@@ -758,6 +758,61 @@ async fn campaign_deliveries(
     }))
 }
 
+/// `GET /api/contacts/{pid}/email-suppression` — whether the contact's mailbox
+/// is suppressed after a hard bounce or complaint, and why. Audited read.
+#[debug_handler]
+async fn email_suppression(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Path(pid): Path<String>,
+) -> Result<Response> {
+    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let found = deliveries::suppression(&ctx.db, contact.pid).await?;
+    Audit::record(
+        &ctx.db,
+        "contact",
+        contact.pid,
+        "email_suppression_read",
+        caller.actor(),
+        None,
+    )
+    .await?;
+    format::json(serde_json::json!({
+        "suppressed": found.is_some(),
+        "reason": found.as_ref().map(|f| f.0.clone()),
+        "since": found.map(|f| f.1),
+    }))
+}
+
+/// `DELETE /api/contacts/{pid}/email-suppression` — lift a suppression, for
+/// example after the person confirms a corrected address. It does not restore
+/// marketing consent: a contact who complained stays withdrawn until they
+/// grant it again. Audited; `404` when the contact is not suppressed.
+#[debug_handler]
+async fn clear_email_suppression(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Path(pid): Path<String>,
+) -> Result<Response> {
+    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let txn = ctx.db.begin().await?;
+    let removed = deliveries::unsuppress(&txn, contact.pid).await?;
+    if !removed {
+        return Err(Error::NotFound);
+    }
+    Audit::record(
+        &txn,
+        "contact",
+        contact.pid,
+        "email_suppression_cleared",
+        caller.actor(),
+        None,
+    )
+    .await?;
+    txn.commit().await?;
+    format::empty_json()
+}
+
 /// `GET /api/campaigns/{pid}/funnel` — the funnel + ROI (CRM-R8):
 /// recipients → delivered → opened → clicked → leads → won revenue;
 /// ROI reports `null` on a zero cost, with absolutes alongside.
@@ -1264,6 +1319,11 @@ pub fn routes() -> Routes {
         .prefix("/api")
         .add("/contacts/{pid}/consent", post(record_consent))
         .add("/contacts/{pid}/consent", get(consent_history))
+        .add("/contacts/{pid}/email-suppression", get(email_suppression))
+        .add(
+            "/contacts/{pid}/email-suppression",
+            delete(clear_email_suppression),
+        )
         .add("/segments", post(create_segment))
         .add("/segments", get(list_segments))
         .add("/segments/{pid}/preview", get(preview_segment))
