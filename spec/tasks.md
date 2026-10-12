@@ -779,9 +779,10 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       422, an unknown record, a refused API version, an unknown route and a
       wrong method against the `Error` schema and the media type; and the
       enforcement test's token-less `401`.
-      **Limits:** errors from layers outside the application router (the
-      payload-size limit, the request timeout, the panic handler) are not
-      converted. Nothing is deprecated, so the `Deprecation` and `Sunset`
+      **Update 2026-10-12:** the payload-size limit's `413` is converted too
+      (tested; its reason-phrase label is no longer taken for a machine code).
+      **Limits:** the request timeout and the panic handler are not tested for
+      conversion. Nothing is deprecated, so the `Deprecation` and `Sunset`
       headers are specified but not built. The 180-day notice period is the
       maintainer's choice, not a standard's. Not checked by a reviewer against
       the RFCs' published text.

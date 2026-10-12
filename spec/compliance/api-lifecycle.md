@@ -33,9 +33,9 @@ as `supported` on a refused API version, are kept as extension members.
 A `401` carries `WWW-Authenticate: Bearer`. A `429` carries `Retry-After`. A
 `409` for an idempotency key still in flight carries `Retry-After`.
 
-**Limit:** a response produced by a layer outside the application's own
-router (the server's body-size limit or request timeout, a panic handler) is
-not converted. The tests cover the application and router errors listed above.
+**Limit:** the tests cover the application and router errors listed above and
+the body-size limit's `413`. The request timeout and the panic handler are not
+tested, so whether they produce a problem document is unverified.
 
 ## Versioning
 

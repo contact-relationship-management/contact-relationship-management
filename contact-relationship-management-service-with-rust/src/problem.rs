@@ -34,6 +34,14 @@ fn code_for(status: StatusCode) -> String {
         .replace(' ', "_")
 }
 
+/// Whether `text` is a `snake_case` machine code.
+fn is_code(text: &str) -> bool {
+    !text.is_empty()
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+}
+
 /// A problem-type URI: `about:blank` when the status says it all, otherwise a
 /// stable URN for the machine code.
 fn type_for(code: &str, default_code: &str) -> String {
@@ -54,7 +62,13 @@ pub fn document(status: StatusCode, instance: &str, body: &[u8]) -> Value {
     if let Ok(Value::Object(source)) = serde_json::from_slice::<Value>(body) {
         for (key, value) in source {
             match (key.as_str(), &value) {
-                ("error", Value::String(text)) => code.clone_from(text),
+                // Loco labels some statuses with a reason phrase ("Bad Request"
+                // for a 413); only a snake_case code is a stable machine code.
+                ("error", Value::String(text)) => {
+                    if is_code(text) {
+                        code.clone_from(text);
+                    }
+                }
                 ("description", Value::String(text)) => detail = Some(text.clone()),
                 // The standard members are ours to set.
                 ("type" | "title" | "status" | "detail" | "instance", _) => {}
@@ -113,6 +127,18 @@ pub async fn problem_mw(req: Request, next: Next) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_reason_phrase_is_not_taken_for_a_machine_code() {
+        let doc = document(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "/api/x",
+            br#"{"error":"Bad Request","description":"Payload Too Large"}"#,
+        );
+        assert_eq!(doc["error"], "payload_too_large");
+        assert_eq!(doc["type"], "about:blank");
+        assert_eq!(doc["detail"], "Payload Too Large");
+    }
 
     #[test]
     fn a_loco_error_keeps_its_code_and_message() {

@@ -389,6 +389,16 @@ async fn errors_are_problem_documents() {
                 "about:blank",
             ),
             (
+                "body over the limit (413, loco layer)",
+                request
+                    .post("/api/contacts")
+                    .add_header("content-type", "application/json")
+                    .bytes(vec![b' '; 3 * 1024 * 1024].into())
+                    .await,
+                413,
+                "about:blank",
+            ),
+            (
                 "wrong method (405, router)",
                 request.delete("/api/contacts").await,
                 405,
