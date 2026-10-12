@@ -10,6 +10,16 @@ URNs** and never duplicates upstream records.
 | [worker-service](../../worker/worker-service-with-loco/) | reps & agents | `owner_ref` / `assignee_ref` / `actor_ref` URNs |
 | [authentication-service](../../authentication/authentication-service-with-loco/) | SSO + ABAC attrs | offline PASETO via `authentication-verifier`; persona attributes |
 
+## Contract the person service must meet for email
+
+Sending needs a mailbox, and the CRM stores none. At send time it reads the
+person record at `GET {CRM_PERSON_SERVICE_URL}/api/persons/{id}` and accepts
+`{"email": "a@b"}` or `{"emails": [...]}` (strings, or objects with `address`,
+`email` or `value`; an entry marked `primary` or `is_primary` is preferred). A
+record with no usable address is recorded as `no_address`. **This contract is
+assumed**: the person service was not available to check against, so confirm
+the field names, or change `clients::extract_email`, before a real send.
+
 Client modules follow the stub-first pattern (patient-flow
 `clients.rs`): read-only, cached, best-effort display-name lookups
 that never block writes.

@@ -12,7 +12,7 @@
 
 ## 质量证据
 
-单元测试（147 个）、数据库测试（36 个，包括强制执行、脱敏、审计、分页、缓存、幂等、模式校验）、前端单元测试（44 个）以及 Playwright（42 个），其中包含 axe 无障碍扫描。CI 运行 fmt、clippy、测试、前端构建/lint，以及供应链阶段（`cargo audit`、`cargo deny`、`pnpm audit`、CycloneDX SBOM），运行于 GitHub Actions 和 Woodpecker。一条命令即可复现：`scripts/ci-check.sh`。
+单元测试（147 个）、数据库测试（37 个，包括强制执行、脱敏、审计、分页、缓存、幂等、模式校验）、前端单元测试（44 个）以及 Playwright（42 个），其中包含 axe 无障碍扫描。CI 运行 fmt、clippy、测试、前端构建/lint，以及供应链阶段（`cargo audit`、`cargo deny`、`pnpm audit`、CycloneDX SBOM），运行于 GitHub Actions 和 Woodpecker。一条命令即可复现：`scripts/ci-check.sh`。
 
 ## 技术债务与如实说明的限制
 

@@ -16,6 +16,15 @@ retry, consent re-read before each send), campaign `subject` and `body`, and
 `CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: address-level suppression list,
 bounce and complaint webhooks, nurture sends.
 
+### Added — real nurture sends (CRM-T39, 2026-10-12)
+
+Nurture steps carry an optional `subject` and a plain-text `body`
+(migration `m20261012_000013_nurture_step_content`). With a real sender,
+`POST /api/nurture/advance` mails each due step after the consent and
+suppression checks, once per (step, contact), with the unsubscribe link, and
+reports `held` for enrolments it will retry. The person record's mailbox is read
+from `email` or `emails` (`clients::extract_email`).
+
 ### Changed — campaign sends run as a background job (CRM-T39, 2026-10-12)
 
 With a real sender, `run` validates the campaign and enqueues

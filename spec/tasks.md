@@ -552,6 +552,16 @@ parties outside the repository.
       Tested in foreground mode, and by hand with a real `start
       --server-and-worker` process sending three messages through Stalwart.
       There is no timer that retries a stalled campaign on its own.
+      **Nurture (built 2026-10-12):** steps gain `subject` and `body`; with a
+      real sender `POST /api/nurture/advance` mails each step (consent and
+      suppression first, one delivery row per step and contact, same unsubscribe
+      link), holds an enrolment on a transient failure or missing address
+      (`held`), and exits it on a permanent refusal. The sender is called
+      inside the enrolment's transaction because the pool can be one
+      connection. Tested with the recorder. The sweep is still a request, not a
+      job, and nothing triggers it on a timer.
+      **Person-service address:** the accepted shapes are in
+      `spec/integrations.md`; still unconfirmed against the real service.
       **Still open:** a provider adapter,
       `opened` and `clicked` events, authenticated bounce/complaint/delivery webhooks (so
       `delivered`, `opened`, `clicked` stay 0 on a real send), the nurture

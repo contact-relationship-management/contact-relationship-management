@@ -128,15 +128,47 @@ pub async fn email_address(person_ref: &str) -> Option<String> {
             entity_ref.id
         );
         let body = reqwest_get_json(&url).await?;
-        return body
-            .get("email")
-            .and_then(serde_json::Value::as_str)
-            .filter(|address| address.contains('@'))
-            .map(ToString::to_string);
+        return extract_email(&body);
     }
     let domain = std::env::var("CRM_MAIL_DEV_DOMAIN").ok()?;
     let domain = domain.trim();
     (!domain.is_empty()).then(|| format!("{}@{domain}", entity_ref.id))
+}
+
+/// The mailbox in a person record. The accepted shapes are `{"email": "a@b"}`
+/// and `{"emails": [...]}` where each entry is a string or an object with an
+/// `address`, `email` or `value` member; an entry marked `primary` (or
+/// `is_primary`) wins, otherwise the first usable one. The person service's
+/// real contract is not confirmed (see `spec/integrations.md`), so this is
+/// deliberately a little tolerant and nothing else is guessed.
+#[must_use]
+pub fn extract_email(record: &serde_json::Value) -> Option<String> {
+    use serde_json::Value;
+    let usable = |text: &str| {
+        let text = text.trim();
+        (text.contains('@') && !text.contains(char::is_whitespace)).then(|| text.to_string())
+    };
+    if let Some(found) = record.get("email").and_then(Value::as_str).and_then(usable) {
+        return Some(found);
+    }
+    let entries = record.get("emails")?.as_array()?;
+    let address_of = |entry: &Value| match entry {
+        Value::String(text) => usable(text),
+        Value::Object(map) => ["address", "email", "value"]
+            .iter()
+            .find_map(|key| map.get(*key).and_then(Value::as_str).and_then(usable)),
+        _ => None,
+    };
+    let primary = |entry: &Value| {
+        ["primary", "is_primary"]
+            .iter()
+            .any(|key| entry.get(*key).and_then(Value::as_bool) == Some(true))
+    };
+    entries
+        .iter()
+        .filter(|entry| primary(entry))
+        .find_map(address_of)
+        .or_else(|| entries.iter().find_map(address_of))
 }
 
 /// The env var naming the base URL for an entity type's service.

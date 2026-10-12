@@ -18,6 +18,8 @@ pub struct Model {
     pub position: i32,
     pub delay_hours: i32,
     pub template_ref: String,
+    pub subject: Option<String>,
+    pub body: Option<String>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

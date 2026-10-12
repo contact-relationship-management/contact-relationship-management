@@ -606,3 +606,94 @@ async fn one_run_call_walks_a_long_audience_in_batches_and_a_stall_answers_202()
     .await;
     unsafe { std::env::remove_var("CRM_MAIL_BATCH") };
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn nurture_steps_are_really_mailed_once_and_a_failure_is_held_for_the_next_sweep() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let (recorder, _restore) = recording();
+        let ada = seed_contact!(&request, "Ada Lovelace").await;
+        let grace = seed_contact!(&request, "Grace Hopper").await;
+        give_address!(&request, ada, "ada@example.test");
+        give_address!(&request, grace, "grace@example.test");
+
+        // With real mail on, a step with no body is refused at creation.
+        request
+            .post("/api/nurture-sequences")
+            .json(&json!({ "name": "Bad", "steps": [{ "delay_hours": 0, "template_ref": "t" }] }))
+            .await
+            .assert_status_unprocessable_entity();
+
+        let sequence: Value = request
+            .post("/api/nurture-sequences")
+            .json(&json!({ "name": "Welcome", "steps": [
+                { "delay_hours": 0, "template_ref": "welcome-1",
+                  "subject": "Welcome", "body": "Glad you are here." },
+                { "delay_hours": 0, "template_ref": "welcome-2", "body": "Second note." },
+            ] }))
+            .await
+            .json();
+        let sequence_pid = sequence["pid"].as_str().unwrap().to_string();
+        for contact in [&ada, &grace] {
+            request
+                .post(&format!(
+                    "/api/nurture-sequences/{sequence_pid}/enrollments"
+                ))
+                .json(&json!({ "contact_pid": contact }))
+                .await
+                .assert_status_ok();
+        }
+
+        // Grace's mailbox is down: Ada is mailed, Grace is held, not skipped.
+        recorder.fail_for("grace@example.test");
+        let first: Value = request.post("/api/nurture/advance").await.json();
+        assert_eq!(first["sent"], 1, "{first}");
+        assert_eq!(first["held"], 1, "{first}");
+        let sent = recorder.sent();
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0].to, "ada@example.test");
+        assert_eq!(sent[0].subject, "Welcome");
+        assert!(sent[0].text.starts_with("Glad you are here."));
+        assert!(sent[0].unsubscribe_url.is_some());
+
+        // Healed: the next sweep sends Grace step 1 and Ada step 2, each once.
+        recorder.heal("grace@example.test");
+        let second: Value = request.post("/api/nurture/advance").await.json();
+        assert_eq!(second["sent"], 2, "{second}");
+        let mut got: Vec<(String, String)> = recorder
+            .sent()
+            .iter()
+            .map(|m| (m.to.clone(), m.subject.clone()))
+            .collect();
+        got.sort();
+        assert_eq!(
+            got,
+            [
+                ("ada@example.test".to_string(), "Welcome".to_string()),
+                ("ada@example.test".to_string(), "welcome-2".to_string()),
+                ("grace@example.test".to_string(), "Welcome".to_string()),
+            ]
+        );
+
+        // Nothing is mailed twice by a further sweep that has nothing new due
+        // beyond Grace's second step.
+        let third: Value = request.post("/api/nurture/advance").await.json();
+        assert_eq!(third["sent"], 1, "{third}");
+        assert_eq!(recorder.sent().len(), 4);
+        let fourth: Value = request.post("/api/nurture/advance").await.json();
+        assert_eq!(fourth["sent"], 0, "{fourth}");
+
+        // Subject access lists the nurture messages with the campaign ones.
+        let export: Value = request
+            .get(&format!("/api/contacts/{ada}/subject-access"))
+            .await
+            .json();
+        assert_eq!(
+            export["email_deliveries"].as_array().unwrap().len(),
+            2,
+            "{export}"
+        );
+    })
+    .await;
+}

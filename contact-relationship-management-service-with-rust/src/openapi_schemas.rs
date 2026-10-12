@@ -122,7 +122,10 @@ fn base_schemas() -> Value {
                 "description": "Plain text. Required before a campaign can send through a real sender" } })),
         "StatusPayload": object(&["to"], &json!({ "to": string() })),
         "SequenceStep": object(&["delay_hours", "template_ref"], &json!({
-            "delay_hours": integer(), "template_ref": string() })),
+            "delay_hours": integer(), "template_ref": string(),
+            "subject": { "type": "string", "description": "Defaults to the template reference" },
+            "body": { "type": "string", "maxLength": 20000,
+                "description": "Plain text. Required for every step before a real sender sends it" } })),
         "SequencePayload": object(&["name", "steps"], &json!({
             "name": string(), "steps": { "type": "array", "items": reference("SequenceStep") } })),
         "EnrollPayload": object(&["contact_pid"], &json!({ "contact_pid": uuid() })),

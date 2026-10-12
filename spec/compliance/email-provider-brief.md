@@ -12,7 +12,7 @@ brief, not legal advice, and it picks no vendor.
   **simulated**: nothing leaves the process, a touch activity is written per
   contact, and the engagement counters are fixed demo fractions. With
   `CRM_MAIL_MODE=smtp` it submits each message to the SMTP server named by
-  `CRM_SMTP_*`. `POST /api/nurture/advance` is still simulated.
+  `CRM_SMTP_*`. `POST /api/nurture/advance` sends nurture steps through the same sender (see below).
 - **One delivery row per (campaign, contact).** It is claimed atomically, so a
   re-run or a concurrent run never mails a contact twice. States: pending,
   sending, sent, failed, no_address, suppressed. A transient failure is retried
@@ -39,14 +39,23 @@ brief, not legal advice, and it picks no vendor.
   `CRM_UNSUBSCRIBE_SECRET` (32+ characters) and `CRM_PUBLIC_URL` (https in
   production); `smtp` mode will not start without them. A withdrawn contact is
   suppressed at the next send, because consent is re-read before each message.
+- **Nurture.** With a real sender each nurture step is mailed by
+  `POST /api/nurture/advance`. A step has an optional `subject` and a
+  plain-text `body`; a sequence is refused at creation if any step lacks a body.
+  Consent and the suppression list are checked first, the delivery is recorded
+  in `email_deliveries` keyed by (step, contact) so a step is not mailed twice,
+  and the message carries the same unsubscribe link and headers (the token
+  names the step where a campaign would be named). A transient failure or a
+  missing address holds the enrolment for the next sweep (`held` in the reply);
+  a permanent refusal or a suppressed mailbox exits it.
 - **Outcome webhook.** `POST /webhooks/email` takes a generic, HMAC-signed
   event (`delivered`, `bounce_hard`, `bounce_soft`, `complaint`) keyed by our
   `Message-ID`, applied once per message and event. A hard bounce or complaint
   suppresses the contact (the send skips them); a complaint also withdraws
   consent. Suppression is per contact because the CRM holds no addresses.
 - **Not built:** an adapter from a chosen provider's payload and signature
-  scheme to this shape, `opened` and `clicked` events, and nurture sends
-  (still simulated).
+  scheme to this shape, `opened` and `clicked` events, and a timer for the
+  nurture sweep.
 
 ## A local server to build against
 
@@ -110,8 +119,9 @@ model are the vendor's):
 1. An adapter from the provider's payload and signature scheme to the generic
    outcome webhook (the unsubscribe link, headers, suppression list, clearing
    path and generic webhook are built).
-2. Send nurture steps the same way (the campaign send is already a
-   background job).
+2. Move the nurture sweep into a background job too (it is a request-time
+   sweep of up to 500 enrolments, with the sender called under each
+   enrolment's row lock).
 3. Agree the address contract with the person service and test it.
 5. Run the funnel and scoring tests against both senders.
 

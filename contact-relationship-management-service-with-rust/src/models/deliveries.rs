@@ -313,3 +313,31 @@ pub async fn count_delivered<C: ConnectionTrait>(db: &C, campaign_pid: Uuid) -> 
     .await?;
     Ok(())
 }
+
+/// The row for one `(campaign or nurture step, contact)` pair, created if
+/// missing: `(id, state, message_id)`.
+///
+/// # Errors
+///
+/// When a statement fails.
+pub async fn row_for<C: ConnectionTrait>(
+    db: &C,
+    owner_pid: Uuid,
+    contact_pid: Uuid,
+) -> Result<(i32, String, Option<String>)> {
+    ensure_rows(db, owner_pid, &[contact_pid]).await?;
+    let row = db
+        .query_one_raw(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            "SELECT id, state, message_id FROM email_deliveries \
+             WHERE campaign_pid = $1 AND contact_pid = $2",
+            [owner_pid.into(), contact_pid.into()],
+        ))
+        .await?
+        .ok_or_else(|| Error::string("delivery row vanished"))?;
+    Ok((
+        row.try_get("", "id")?,
+        row.try_get("", "state")?,
+        row.try_get("", "message_id")?,
+    ))
+}

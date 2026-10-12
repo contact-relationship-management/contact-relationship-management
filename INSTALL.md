@@ -48,6 +48,9 @@ in development, or a separate `start --worker` process. A campaign whose
 remaining sends all fail stops (stays `running`); call `run` again to resume.
 Simulated mode, and the test configuration, still finish inside the request.
 
+`POST /api/nurture/advance` mails due nurture steps through the same sender;
+each step then needs a `body`.
+
 The CRM holds no email addresses. In `CRM_UPSTREAM_MODE=http` it asks the
 person service for an `email` field at send time and stores nothing.
 
