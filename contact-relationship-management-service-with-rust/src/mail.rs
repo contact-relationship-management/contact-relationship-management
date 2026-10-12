@@ -12,10 +12,10 @@
 //! It is an enum rather than a trait object so a test can swap in
 //! [`Sender::Recording`] without boxing, and so every variant is visible here.
 //!
-//! **Not built yet** (see `spec/compliance/email-provider-brief.md`): the
-//! a provider-specific webhook adapter and a
-//! background job. Until they are, `smtp` mode refuses to start in production unless
-//! `CRM_MAIL_ALLOW_PRODUCTION=1` acknowledges that.
+//! **Not built yet** (see `spec/compliance/email-provider-brief.md`): an
+//! adapter for a chosen provider's webhook payload, and a background job.
+//! Until a provider is chosen and reviewed, `smtp` mode refuses to start in
+//! production unless `CRM_MAIL_ALLOW_PRODUCTION=1` acknowledges that.
 
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
