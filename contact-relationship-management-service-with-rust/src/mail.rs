@@ -211,17 +211,17 @@ impl Sender {
     ///
     /// [`SendError::Permanent`] for an address or server refusal that retrying
     /// cannot fix, [`SendError::Transient`] otherwise.
-    pub async fn send(&self, message: &Message) -> Result<(), SendError> {
+    pub async fn send(&self, message: &Message) -> Result<Option<String>, SendError> {
         match self {
-            Self::Simulated => Ok(()),
+            Self::Simulated => Ok(None),
             Self::Recording(recorder) => {
                 if lock(&recorder.fail).contains(&message.to) {
                     return Err(SendError::Transient("simulated outage".to_string()));
                 }
                 lock(&recorder.sent).push(message.clone());
-                Ok(())
+                Ok(None)
             }
-            Self::Smtp(smtp) => smtp.send(message).await,
+            Self::Smtp(smtp) => smtp.send(message).await.map(|()| None),
             Self::Api(api) => api.send(message).await,
         }
     }

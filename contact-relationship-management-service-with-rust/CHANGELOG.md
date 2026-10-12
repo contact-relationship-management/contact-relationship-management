@@ -16,6 +16,15 @@ retry, consent re-read before each send), campaign `subject` and `body`, and
 `CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: address-level suppression list,
 bounce and complaint webhooks, nurture sends.
 
+### Added — SES, Azure, Mailgun and SendGrid adapters (CRM-T39, 2026-10-13)
+
+`CRM_MAIL_MODE=ses|azure|mailgun|sendgrid` (`src/provider_cloud.rs`,
+`src/provider_api.rs`) and `POST /webhooks/email/{ses,azure,mailgun,sendgrid}`.
+Migration `m20261013_000014` adds `email_deliveries.provider_id` for Azure,
+whose events name the message by the id returned at send. Mailgun callbacks are
+verified with `CRM_MAILGUN_SIGNING_KEY`. SNS and SendGrid signatures are not
+verified. Not run against live accounts.
+
 ### Added — Brevo and Mailjet adapters (CRM-T39, 2026-10-12)
 
 `CRM_MAIL_MODE=brevo` or `mailjet` sends through the vendor's HTTP API

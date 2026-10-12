@@ -571,6 +571,14 @@ parties outside the repository.
       mapping are unit-tested and the callbacks have a database test, but
       **nothing has run against a live account**, and whether the vendors keep
       our `List-Unsubscribe` custom headers is unconfirmed.
+      **SES, Azure, Mailgun, SendGrid (built 2026-10-13):** same pattern
+      (`CRM_MAIL_MODE=ses|azure|mailgun|sendgrid`). SES: Signature V4 signer
+      matched to AWS's test vector, tag-carried id, events via SNS (subscription
+      auto-confirmed for AWS hosts; SNS signature not verified). Azure:
+      access-key HMAC, operation id kept in `email_deliveries.provider_id` and
+      used to match Event Grid reports. Mailgun: webhook HMAC verified.
+      SendGrid: ECDSA event signature not verified. Database test covers all
+      four callbacks. **No live account was used.**
       **Still open:** `opened` and `clicked` events (so those counters stay 0 on
       a real send), a timer for stalled campaigns and the nurture sweep, a live
       trial with each vendor, the address contract with the person service (the

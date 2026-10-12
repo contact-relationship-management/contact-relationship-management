@@ -70,6 +70,19 @@ brief, not legal advice, and it picks no vendor.
   pinned by unit and database tests, but nothing has run against a live Brevo
   or Mailjet account; whether either keeps our `List-Unsubscribe` custom
   headers is also unconfirmed (the body footer link is always present).
+- **Cloud and relay adapters (built 2026-10-13).** `ses`, `azure`, `mailgun`
+  and `sendgrid` work the same way. SES signs its own requests (Signature V4,
+  checked against AWS's published test vector) and tags our id; its events
+  arrive through SNS, whose message signature is **not verified** (the shared
+  secret is). Azure Communication Services returns its own operation id at
+  send, which we keep on the delivery row (`provider_id`) because its Event
+  Grid delivery reports carry only that id. Mailgun carries our id as a custom
+  variable and its callbacks are verified with Mailgun's own HMAC signature.
+  SendGrid carries it as a custom argument; its ECDSA event signature is **not
+  verified**. Link and open tracking are turned off where the vendor lets us,
+  so the signed unsubscribe link is not rewritten. Azure reports no spam
+  complaints. Google Cloud sells no sending service; its Gmail SMTP relay works
+  through `smtp` mode but reports no outcomes.
 - **Not built:** `opened` and `clicked` events, vendor-side unsubscribe events,
   and a timer for the nurture sweep.
 

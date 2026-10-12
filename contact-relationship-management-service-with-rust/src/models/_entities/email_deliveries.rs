@@ -19,6 +19,7 @@ pub struct Model {
     pub state: String,
     pub attempts: i32,
     pub message_id: Option<String>,
+    pub provider_id: Option<String>,
     pub error: Option<String>,
     pub sent_at: Option<DateTimeWithTimeZone>,
 }

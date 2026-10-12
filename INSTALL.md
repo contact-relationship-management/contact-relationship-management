@@ -27,9 +27,14 @@ service refuses to start with a bad combination.
 
 | Variable | Meaning |
 |---|---|
-| `CRM_MAIL_MODE` | `simulated` (default), `smtp`, `brevo` or `mailjet` |
+| `CRM_MAIL_MODE` | `simulated` (default), `smtp`, `brevo`, `mailjet`, `ses`, `azure`, `mailgun` or `sendgrid` |
 | `CRM_BREVO_API_KEY` | `brevo` mode: the API key (sent as `api-key`) |
 | `CRM_MAILJET_API_KEY`, `CRM_MAILJET_API_SECRET` | `mailjet` mode: the API key pair (basic auth) |
+| `CRM_SES_REGION`, `CRM_SES_ACCESS_KEY_ID`, `CRM_SES_SECRET_ACCESS_KEY` | `ses` mode (optional `CRM_SES_SESSION_TOKEN`, and `CRM_SES_CONFIGURATION_SET`, which SES events need). Static keys only; no instance-role lookup |
+| `CRM_AZURE_ENDPOINT`, `CRM_AZURE_ACCESS_KEY` | `azure` mode: the Communication Services endpoint and its base64 access key; `CRM_MAIL_FROM` must be a verified sender address |
+| `CRM_MAILGUN_API_KEY`, `CRM_MAILGUN_DOMAIN` | `mailgun` mode (`CRM_MAILGUN_API_BASE=https://api.eu.mailgun.net` for the EU region) |
+| `CRM_MAILGUN_SIGNING_KEY` | Mailgun's webhook signing key; Mailgun callbacks are verified with it (not with `CRM_WEBHOOK_SECRET`) |
+| `CRM_SENDGRID_API_KEY` | `sendgrid` mode |
 | `CRM_MAIL_API_URL` | Override the vendor endpoint (a test double); `https` in production |
 | `CRM_SMTP_HOST`, `CRM_SMTP_PORT` | The server; port defaults to 587 (465 with `implicit`) |
 | `CRM_SMTP_TLS` | `starttls` (default), `implicit` or `none` |
@@ -58,8 +63,18 @@ each step then needs a `body`.
 and the same unsubscribe and webhook settings. Point the vendor's callback at
 `POST {CRM_PUBLIC_URL}/webhooks/email/brevo` (bearer token, or a custom header
 `X-CRM-Webhook-Token`) or `/webhooks/email/mailjet` (`https://crm:SECRET@host/…`
-basic auth), with `CRM_WEBHOOK_SECRET` as the secret. These adapters follow the
-vendors' documentation and have not been run against live accounts.
+basic auth), with `CRM_WEBHOOK_SECRET` as the secret. For the clouds:
+SES publishes events to an SNS topic (add an HTTPS subscription to
+`/webhooks/email/ses` with `https://crm:SECRET@host/…`; the service confirms the
+subscription itself, for AWS hosts only; SNS message signatures are not
+verified); Azure sends delivery reports through Event Grid (a webhook
+subscription to `/webhooks/email/azure` with `X-CRM-Webhook-Token` as a
+delivery property). Mailgun callbacks go to `/webhooks/email/mailgun` and
+SendGrid's Event Webhook to `/webhooks/email/sendgrid` (basic auth in the URL;
+SendGrid's ECDSA signature is not verified). Google Cloud has no email-sending
+service of its own: use SendGrid or Mailgun, or its SMTP relay with
+`CRM_MAIL_MODE=smtp` (no outcome callbacks). These adapters follow the vendors'
+documentation and have not been run against live accounts.
 
 The CRM holds no email addresses. In `CRM_UPSTREAM_MODE=http` it asks the
 person service for an `email` field at send time and stores nothing.

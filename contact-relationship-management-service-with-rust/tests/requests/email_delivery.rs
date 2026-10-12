@@ -614,6 +614,158 @@ async fn brevo_and_mailjet_callbacks_are_authenticated_and_applied() {
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn cloud_and_relay_callbacks_are_authenticated_and_matched() {
+    use hmac::{Hmac, KeyInit, Mac};
+    use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+    const SIGNING: &str = "mailgun-signing-key";
+    unsafe {
+        std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET);
+        std::env::set_var("CRM_MAILGUN_SIGNING_KEY", SIGNING);
+    };
+    request::<App, _, _>(|request, ctx| async move {
+        let (recorder, _restore) = recording();
+        let mut contacts = Vec::new();
+        for (name, address) in [
+            ("Ada Lovelace", "ada@example.test"),
+            ("Grace Hopper", "grace@example.test"),
+            ("Alan Turing", "alan@example.test"),
+            ("Edsger Dijkstra", "edsger@example.test"),
+        ] {
+            let pid = seed_contact!(&request, name).await;
+            give_address!(&request, pid, address);
+            contacts.push(pid);
+        }
+        let first = scheduled_campaign!(&request, Some("Hello"));
+        request
+            .post(&format!("/api/campaigns/{first}/run"))
+            .await
+            .assert_status_ok();
+        let id_of = |to: &str| {
+            recorder
+                .sent()
+                .into_iter()
+                .find(|m| m.to == to)
+                .unwrap()
+                .message_id
+        };
+        let bare = |to: &str| id_of(to).trim_matches(|c| c == '<' || c == '>').to_string();
+        let bearer = format!("Bearer {WEBHOOK_SECRET}");
+        let suppressed = |pid: &str| {
+            let pid = pid.to_string();
+            let request = &request;
+            async move {
+                let state: Value = request
+                    .get(&format!("/api/contacts/{pid}/email-suppression"))
+                    .await
+                    .json();
+                state["suppressed"] == true
+            }
+        };
+
+        // SES through SNS: an unconfirmed subscription to a non-AWS host is
+        // not fetched; a permanent bounce suppresses.
+        let subscribe = json!({ "Type": "SubscriptionConfirmation", "SubscribeURL": "https://evil.example/" });
+        let answer: Value = request
+            .post("/webhooks/email/ses")
+            .add_header("authorization", bearer.clone())
+            .json(&subscribe)
+            .await
+            .json();
+        assert_eq!(answer["confirmed"], false);
+        let event = json!({ "eventType": "Bounce", "bounce": { "bounceType": "Permanent" },
+            "mail": { "tags": { "crm_message_id": [bare("ada@example.test").replacen('@', "_at_", 1)] } } });
+        let wrapped = json!({ "Type": "Notification", "Message": event.to_string() });
+        request
+            .post("/webhooks/email/ses")
+            .json(&wrapped)
+            .await
+            .assert_status_unauthorized();
+        let done: Value = request
+            .post("/webhooks/email/ses")
+            .add_header("authorization", bearer.clone())
+            .json(&wrapped)
+            .await
+            .json();
+        assert_eq!(done["recorded"], 1, "{done}");
+        assert!(suppressed(&contacts[0]).await);
+
+        // Azure: the handshake needs no credential; reports match the id
+        // Azure returned at send, which we note on the row.
+        let handshake = json!([{ "eventType": "Microsoft.EventGrid.SubscriptionValidationEvent",
+            "data": { "validationCode": "code-1" } }]);
+        let echoed: Value = request.post("/webhooks/email/azure").json(&handshake).await.json();
+        assert_eq!(echoed["validationResponse"], "code-1");
+        ctx.db
+            .execute_raw(Statement::from_sql_and_values(
+                DatabaseBackend::Postgres,
+                "UPDATE email_deliveries SET provider_id = 'op-grace' WHERE message_id = $1",
+                [id_of("grace@example.test").into()],
+            ))
+            .await
+            .unwrap();
+        let report = json!([{ "eventType": "Microsoft.Communication.EmailDeliveryReportReceived",
+            "data": { "messageId": "op-grace", "status": "Bounced" } }]);
+        let done: Value = request
+            .post("/webhooks/email/azure")
+            .add_header("x-crm-webhook-token", WEBHOOK_SECRET)
+            .json(&report)
+            .await
+            .json();
+        assert_eq!(done["recorded"], 1, "{done}");
+        assert!(suppressed(&contacts[1]).await);
+
+        // Mailgun: authenticated by its own body signature, not our secret.
+        let timestamp = chrono::Utc::now().timestamp().to_string();
+        let mut mac = Hmac::<sha2::Sha256>::new_from_slice(SIGNING.as_bytes()).unwrap();
+        mac.update(timestamp.as_bytes());
+        mac.update(b"token-1");
+        let signature: String = mac
+            .finalize()
+            .into_bytes()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        let signed = |signature: &str| {
+            json!({ "signature": { "timestamp": timestamp, "token": "token-1", "signature": signature },
+                "event-data": { "event": "failed", "severity": "permanent",
+                    "user-variables": { "crm_message_id": bare("alan@example.test") } } })
+        };
+        request
+            .post("/webhooks/email/mailgun")
+            .add_header("authorization", bearer.clone())
+            .json(&signed("00"))
+            .await
+            .assert_status_unauthorized();
+        let done: Value = request
+            .post("/webhooks/email/mailgun")
+            .json(&signed(&signature))
+            .await
+            .json();
+        assert_eq!(done["recorded"], 1, "{done}");
+        assert!(suppressed(&contacts[2]).await);
+
+        // SendGrid: our secret, a batch, custom arg at the top level.
+        let batch = json!([{ "event": "spamreport", "crm_message_id": bare("edsger@example.test") }]);
+        let done: Value = request
+            .post("/webhooks/email/sendgrid")
+            .add_header("authorization", bearer.clone())
+            .json(&batch)
+            .await
+            .json();
+        assert_eq!(done["recorded"], 1, "{done}");
+        let edsger: Value = request.get(&format!("/api/contacts/{}", contacts[3])).await.json();
+        assert_eq!(edsger["contact"]["marketing_consent"], "withdrawn");
+    })
+    .await;
+    unsafe {
+        std::env::remove_var("CRM_WEBHOOK_SECRET");
+        std::env::remove_var("CRM_MAILGUN_SIGNING_KEY");
+    };
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_suppression_can_be_read_and_lifted_and_the_contact_is_mailed_again() {
     unsafe { std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET) };
     request::<App, _, _>(|request, _ctx| async move {

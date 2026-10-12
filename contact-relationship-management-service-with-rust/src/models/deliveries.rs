@@ -259,13 +259,17 @@ pub async fn record_event<C: ConnectionTrait>(
     let found = db
         .query_one_raw(Statement::from_sql_and_values(
             DatabaseBackend::Postgres,
-            "SELECT contact_pid, campaign_pid FROM email_deliveries WHERE message_id = $1",
+            "SELECT contact_pid, campaign_pid, message_id FROM email_deliveries \
+             WHERE message_id = $1 OR provider_id = $1 LIMIT 1",
             [message_id.into()],
         ))
         .await?;
     let Some(found) = found else {
         return Ok(EventEffect::UnknownMessage);
     };
+    // An event may name the message by the provider's id; record it under ours.
+    let message_id: String = found.try_get("", "message_id")?;
+    let message_id = message_id.as_str();
     let inserted = db
         .execute_raw(Statement::from_sql_and_values(
             DatabaseBackend::Postgres,
@@ -281,6 +285,26 @@ pub async fn record_event<C: ConnectionTrait>(
         contact_pid: found.try_get("", "contact_pid")?,
         campaign_pid: found.try_get("", "campaign_pid")?,
     })
+}
+
+/// Remember the provider's own id for a sent row, so an event that names the
+/// message by that id can find it.
+///
+/// # Errors
+///
+/// When the statement fails.
+pub async fn note_provider_id<C: ConnectionTrait>(
+    db: &C,
+    id: i32,
+    provider_id: &str,
+) -> Result<()> {
+    db.execute_raw(Statement::from_sql_and_values(
+        DatabaseBackend::Postgres,
+        "UPDATE email_deliveries SET provider_id = $2 WHERE id = $1",
+        [id.into(), provider_id.into()],
+    ))
+    .await?;
+    Ok(())
 }
 
 /// Put a contact on the suppression list (idempotent).

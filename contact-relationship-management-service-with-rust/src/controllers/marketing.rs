@@ -557,7 +557,7 @@ async fn deliver_one(
         outcome.suppressed += 1;
         return Ok(());
     }
-    let message_id = if sender.needs_address() {
+    let (message_id, provider_id) = if sender.needs_address() {
         let Some(address) = clients::email_address(&contact.person_ref).await else {
             deliveries::settle(
                 &ctx.db,
@@ -586,19 +586,25 @@ async fn deliver_one(
             unsubscribe_url,
             message_id: sender.new_message_id(),
         };
-        if let Err(error) = sender.send(&message).await {
-            deliveries::settle(&ctx.db, item.id, "failed", None, Some(&error.describe())).await?;
-            outcome.failed += 1;
-            return Ok(());
+        match sender.send(&message).await {
+            Ok(provider_id) => (message.message_id, provider_id),
+            Err(error) => {
+                deliveries::settle(&ctx.db, item.id, "failed", None, Some(&error.describe()))
+                    .await?;
+                outcome.failed += 1;
+                return Ok(());
+            }
         }
-        message.message_id
     } else {
-        sender.new_message_id()
+        (sender.new_message_id(), None)
     };
     // The delivery row and the touch activity commit together.
     let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
     let txn = ctx.db.begin().await?;
     deliveries::settle(&txn, item.id, "sent", Some(&message_id), None).await?;
+    if let Some(provider_id) = &provider_id {
+        deliveries::note_provider_id(&txn, item.id, provider_id).await?;
+    }
     activities::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         subject_kind: ActiveValue::set("contact".to_string()),
@@ -1130,8 +1136,11 @@ async fn send_step(
         message_id: sender.new_message_id(),
     };
     match sender.send(&message).await {
-        Ok(()) => {
+        Ok(provider_id) => {
             deliveries::settle(txn, row_id, "sent", Some(&message.message_id), None).await?;
+            if let Some(provider_id) = provider_id {
+                deliveries::note_provider_id(txn, row_id, &provider_id).await?;
+            }
             Ok(StepSend::Sent(message.message_id))
         }
         Err(error) => {
@@ -1536,11 +1545,34 @@ async fn apply_event(
     })
 }
 
-/// `POST /webhooks/email/{provider}` — a Brevo or Mailjet callback in the
-/// vendor's own format (see [`crate::provider`]). The vendors cannot sign with
-/// our scheme, so the request carries `CRM_WEBHOOK_SECRET` as a bearer token,
-/// a basic-auth password or `X-CRM-Webhook-Token`; there is no timestamp, so a
-/// replay is possible but harmless (each message and event applies once).
+/// Whether a provider callback is authentic. Mailgun signs the body with its
+/// own scheme; every other provider carries `CRM_WEBHOOK_SECRET` as a bearer
+/// token, a basic-auth password or `X-CRM-Webhook-Token`. `None` when the
+/// credential for this provider is not configured (the route then does not
+/// exist).
+fn callback_authentic(
+    kind: crate::provider::Kind,
+    headers: &axum::http::HeaderMap,
+    body: &[u8],
+) -> Option<bool> {
+    if kind == crate::provider::Kind::Mailgun {
+        let key = crate::provider_api::mailgun_signing_key()?;
+        return Some(crate::provider_api::mailgun_verified(
+            &key,
+            body,
+            chrono::Utc::now().timestamp(),
+        ));
+    }
+    let secret = crate::webhook::secret()?;
+    let header = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
+    let given = crate::webhook::presented(header("authorization"), header("x-crm-webhook-token"));
+    Some(crate::webhook::token_ok(&secret, &given))
+}
+
+/// `POST /webhooks/email/{provider}` — a callback in a vendor's own format
+/// (see [`crate::provider`]): Brevo, Mailjet, SES (through SNS), Azure (through
+/// Event Grid), Mailgun or `SendGrid`. Replays are possible where the vendor
+/// sends no timestamp, but harmless (each message and event applies once).
 /// Answers `200` for events it ignores, so the vendor does not retry them.
 #[debug_handler]
 async fn provider_webhook(
@@ -1549,20 +1581,36 @@ async fn provider_webhook(
     headers: axum::http::HeaderMap,
     body: axum::body::Bytes,
 ) -> Result<Response> {
+    use crate::provider::Inbound;
     use axum::http::StatusCode;
-    let (Some(kind), Some(secret)) = (
-        crate::provider::Kind::from_name(&provider),
-        crate::webhook::secret(),
-    ) else {
+    let Some(kind) = crate::provider::Kind::from_name(&provider) else {
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
-    let header = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
-    let given = crate::webhook::presented(header("authorization"), header("x-crm-webhook-token"));
-    if !crate::webhook::token_ok(&secret, &given) {
+    let Some(authentic) = callback_authentic(kind, &headers, &body) else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+    let parsed = crate::provider::inbound(kind, &body);
+    // Event Grid's handshake only echoes a code it was given, and may arrive
+    // without our credential, so it is answered before the check.
+    if let Some(Inbound::Respond(answer)) = &parsed
+        && kind == crate::provider::Kind::Azure
+    {
+        return format::json(answer.clone());
+    }
+    if !authentic {
         return Ok(StatusCode::UNAUTHORIZED.into_response());
     }
-    let Some(outcomes) = crate::provider::outcomes(kind, &body) else {
-        return Ok(StatusCode::BAD_REQUEST.into_response());
+    let outcomes = match parsed {
+        None => return Ok(StatusCode::BAD_REQUEST.into_response()),
+        Some(Inbound::Respond(_)) => Vec::new(),
+        Some(Inbound::Subscribe(url)) => {
+            let confirmed = crate::provider_cloud::subscribe_url_ok(&url)
+                && reqwest::get(&url)
+                    .await
+                    .is_ok_and(|r| r.status().is_success());
+            return format::json(serde_json::json!({ "confirmed": confirmed }));
+        }
+        Some(Inbound::Outcomes(outcomes)) => outcomes,
     };
     let txn = ctx.db.begin().await?;
     let mut recorded = 0_u32;

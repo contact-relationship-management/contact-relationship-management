@@ -30,6 +30,14 @@ pub enum Kind {
     Brevo,
     /// Mailjet.
     Mailjet,
+    /// Amazon SES (API v2; events through SNS).
+    Ses,
+    /// Azure Communication Services Email (events through Event Grid).
+    Azure,
+    /// Mailgun.
+    Mailgun,
+    /// Twilio `SendGrid`.
+    SendGrid,
 }
 
 impl Kind {
@@ -39,6 +47,10 @@ impl Kind {
         match self {
             Self::Brevo => "brevo",
             Self::Mailjet => "mailjet",
+            Self::Ses => "ses",
+            Self::Azure => "azure",
+            Self::Mailgun => "mailgun",
+            Self::SendGrid => "sendgrid",
         }
     }
 
@@ -48,14 +60,11 @@ impl Kind {
         match name {
             "brevo" => Some(Self::Brevo),
             "mailjet" => Some(Self::Mailjet),
+            "ses" => Some(Self::Ses),
+            "azure" => Some(Self::Azure),
+            "mailgun" => Some(Self::Mailgun),
+            "sendgrid" => Some(Self::SendGrid),
             _ => None,
-        }
-    }
-
-    fn default_url(self) -> &'static str {
-        match self {
-            Self::Brevo => "https://api.brevo.com/v3/smtp/email",
-            Self::Mailjet => "https://api.mailjet.com/v3.1/send",
         }
     }
 }
@@ -67,6 +76,12 @@ pub struct ApiSender {
     url: String,
     key: String,
     secret: String,
+    /// SES region, or empty.
+    region: String,
+    /// SES session token, if any.
+    session_token: Option<String>,
+    /// SES configuration set (needed for events), if any.
+    config_set: Option<String>,
     from: Mailbox,
     client: reqwest::Client,
 }
@@ -78,7 +93,8 @@ impl ApiSender {
         crate::mail::domain_of(self.from.email.as_ref())
     }
 
-    /// Post one message.
+    /// Post one message. Returns the provider's own id for it when the
+    /// provider gives one and its events use that id (Azure).
     ///
     /// # Errors
     ///
@@ -86,30 +102,198 @@ impl ApiSender {
     /// [`SendError::Transient`] for an outage, a limit, or an account problem
     /// (a bad key or credit would fail every message, so those are retried
     /// rather than counted against the contact).
-    pub async fn send(&self, message: &Message) -> Result<(), SendError> {
-        let body = match self.kind {
-            Kind::Brevo => brevo_body(&self.from, message),
-            Kind::Mailjet => mailjet_body(&self.from, message),
-        };
-        let request = self.client.post(&self.url).json(&body);
-        let request = match self.kind {
-            Kind::Brevo => request.header("api-key", &self.key),
-            Kind::Mailjet => request.basic_auth(&self.key, Some(&self.secret)),
-        };
-        let response = request
-            .send()
-            .await
-            .map_err(|e| SendError::Transient(e.without_url().to_string()))?;
+    pub async fn send(&self, message: &Message) -> Result<Option<String>, SendError> {
+        let transient = |e: reqwest::Error| SendError::Transient(e.without_url().to_string());
+        let request = self.request(message)?;
+        let response = request.send().await.map_err(transient)?;
         let status = response.status().as_u16();
-        let text = response
-            .text()
-            .await
-            .map_err(|e| SendError::Transient(e.without_url().to_string()))?;
+        let error_type = response
+            .headers()
+            .get("x-amzn-errortype")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        let text = response.text().await.map_err(transient)?;
         match self.kind {
-            Kind::Brevo => interpret_brevo(status, &text),
-            Kind::Mailjet => interpret_mailjet(status, &text),
+            Kind::Brevo => interpret_brevo(status, &text).map(|()| None),
+            Kind::Mailjet => interpret_mailjet(status, &text).map(|()| None),
+            Kind::Ses => {
+                crate::provider_cloud::interpret_ses(status, &error_type, &text).map(|_| None)
+            }
+            Kind::Azure => crate::provider_cloud::interpret_azure(status, &text),
+            Kind::Mailgun => crate::provider_api::interpret_mailgun(status, &text).map(|_| None),
+            Kind::SendGrid => crate::provider_api::interpret_sendgrid(status, &text),
         }
     }
+
+    /// Build the signed request for one message.
+    fn request(&self, message: &Message) -> Result<reqwest::RequestBuilder, SendError> {
+        let post = self.client.post(&self.url);
+        let signed_json = |body: &Value| serde_json::to_vec(body).expect("a JSON value serializes");
+        Ok(match self.kind {
+            Kind::Brevo => post
+                .header("api-key", &self.key)
+                .json(&brevo_body(&self.from, message)),
+            Kind::Mailjet => post
+                .basic_auth(&self.key, Some(&self.secret))
+                .json(&mailjet_body(&self.from, message)),
+            Kind::SendGrid => post
+                .bearer_auth(&self.key)
+                .json(&crate::provider_api::sendgrid_body(&self.from, message)),
+            Kind::Mailgun => post
+                .basic_auth("api", Some(&self.key))
+                .form(&crate::provider_api::mailgun_form(&self.from, message)),
+            Kind::Ses => {
+                let body = signed_json(&crate::provider_cloud::ses_body(
+                    &self.from,
+                    message,
+                    self.config_set.as_deref(),
+                ));
+                let url = self.parsed_url()?;
+                let creds = crate::provider_cloud::SesCredentials {
+                    access_key: self.key.clone(),
+                    secret_key: self.secret.clone(),
+                    session_token: self.session_token.clone(),
+                    region: self.region.clone(),
+                };
+                let headers = crate::provider_cloud::ses_headers(
+                    &creds,
+                    &host_header(&url),
+                    url.path(),
+                    &body,
+                    chrono::Utc::now(),
+                );
+                with_headers(post.header("content-type", "application/json"), headers).body(body)
+            }
+            Kind::Azure => {
+                let body = signed_json(&crate::provider_cloud::azure_body(&self.from, message));
+                let url = self.parsed_url()?;
+                let path = match url.query() {
+                    Some(q) => format!("{}?{q}", url.path()),
+                    None => url.path().to_string(),
+                };
+                let headers = crate::provider_cloud::azure_headers(
+                    &self.secret,
+                    &host_header(&url),
+                    &path,
+                    &body,
+                    chrono::Utc::now(),
+                )
+                .map_err(SendError::Permanent)?;
+                with_headers(post.header("content-type", "application/json"), headers).body(body)
+            }
+        })
+    }
+
+    fn parsed_url(&self) -> Result<reqwest::Url, SendError> {
+        reqwest::Url::parse(&self.url)
+            .map_err(|e| SendError::Permanent(format!("bad API URL: {e}")))
+    }
+}
+
+/// The `Host` header value for a URL (the port only when it is not the default).
+fn host_header(url: &reqwest::Url) -> String {
+    let host = url.host_str().unwrap_or_default();
+    match url.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host.to_string(),
+    }
+}
+
+fn with_headers(
+    mut request: reqwest::RequestBuilder,
+    headers: Vec<(String, String)>,
+) -> reqwest::RequestBuilder {
+    for (name, value) in headers {
+        request = request.header(name, value);
+    }
+    request
+}
+
+/// What a provider's settings add up to.
+struct Credentials {
+    key: String,
+    secret: String,
+    default_url: String,
+    region: String,
+    session_token: Option<String>,
+    config_set: Option<String>,
+}
+
+/// Read one provider's keys and work out its endpoint.
+fn credentials(kind: Kind, get: &dyn Fn(&str) -> Option<String>) -> Result<Credentials, String> {
+    let need = |name: &str| get(name).ok_or_else(|| format!("{name} is required"));
+    let mut region = String::new();
+    let mut session_token = None;
+    let mut config_set = None;
+    let (key, secret, default_url) = match kind {
+        Kind::Brevo => (
+            need("CRM_BREVO_API_KEY")?,
+            String::new(),
+            "https://api.brevo.com/v3/smtp/email".to_string(),
+        ),
+        Kind::Mailjet => (
+            need("CRM_MAILJET_API_KEY")?,
+            need("CRM_MAILJET_API_SECRET")?,
+            "https://api.mailjet.com/v3.1/send".to_string(),
+        ),
+        Kind::SendGrid => (
+            need("CRM_SENDGRID_API_KEY")?,
+            String::new(),
+            "https://api.sendgrid.com/v3/mail/send".to_string(),
+        ),
+        Kind::Mailgun => {
+            let domain = need("CRM_MAILGUN_DOMAIN")?;
+            if !domain
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+            {
+                return Err("CRM_MAILGUN_DOMAIN is not a domain name".to_string());
+            }
+            let base = get("CRM_MAILGUN_API_BASE")
+                .unwrap_or_else(|| "https://api.mailgun.net".to_string());
+            (
+                need("CRM_MAILGUN_API_KEY")?,
+                String::new(),
+                format!("{}/v3/{domain}/messages", base.trim_end_matches('/')),
+            )
+        }
+        Kind::Ses => {
+            region = need("CRM_SES_REGION")?;
+            if !region
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+            {
+                return Err("CRM_SES_REGION is not a region name".to_string());
+            }
+            session_token = get("CRM_SES_SESSION_TOKEN");
+            config_set = get("CRM_SES_CONFIGURATION_SET");
+            (
+                need("CRM_SES_ACCESS_KEY_ID")?,
+                need("CRM_SES_SECRET_ACCESS_KEY")?,
+                format!("https://email.{region}.amazonaws.com/v2/email/outbound-emails"),
+            )
+        }
+        Kind::Azure => {
+            let endpoint = need("CRM_AZURE_ENDPOINT")?;
+            (
+                String::new(),
+                need("CRM_AZURE_ACCESS_KEY")?,
+                format!(
+                    "{}/emails:send?api-version=2023-03-31",
+                    endpoint.trim_end_matches('/')
+                ),
+            )
+        }
+    };
+    Ok(Credentials {
+        key,
+        secret,
+        default_url,
+        region,
+        session_token,
+        config_set,
+    })
 }
 
 /// Build the sender from settings. `get` reads one setting (already trimmed
@@ -147,19 +331,17 @@ pub fn configure(
         .ok_or("CRM_MAIL_FROM is required")?
         .parse()
         .map_err(|e| format!("CRM_MAIL_FROM is not a valid mailbox: {e}"))?;
-    let (key, secret) = match kind {
-        Kind::Brevo => (
-            get("CRM_BREVO_API_KEY").ok_or("CRM_BREVO_API_KEY is required")?,
-            String::new(),
-        ),
-        Kind::Mailjet => (
-            get("CRM_MAILJET_API_KEY").ok_or("CRM_MAILJET_API_KEY is required")?,
-            get("CRM_MAILJET_API_SECRET").ok_or("CRM_MAILJET_API_SECRET is required")?,
-        ),
-    };
-    let url = get("CRM_MAIL_API_URL").unwrap_or_else(|| kind.default_url().to_string());
+    let Credentials {
+        key,
+        secret,
+        default_url,
+        region,
+        session_token,
+        config_set,
+    } = credentials(kind, &get)?;
+    let url = get("CRM_MAIL_API_URL").unwrap_or(default_url);
     if production && !url.starts_with("https://") {
-        return Err("CRM_MAIL_API_URL must be https in production".to_string());
+        return Err("the mail API URL must be https in production".to_string());
     }
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(30))
@@ -170,13 +352,16 @@ pub fn configure(
         url,
         key,
         secret,
+        region,
+        session_token,
+        config_set,
         from,
         client,
     })
 }
 
 /// Our `Message-ID` without the angle brackets: the tag/`CustomID` we send.
-fn tag_of(message_id: &str) -> String {
+pub(crate) fn tag_of(message_id: &str) -> String {
     message_id
         .trim_start_matches('<')
         .trim_end_matches('>')
@@ -192,6 +377,37 @@ fn escape_html(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
+}
+
+/// The `List-Unsubscribe` header pair, empty when the message has no link.
+pub(crate) fn unsubscribe_pairs(message: &Message) -> Vec<(String, String)> {
+    message
+        .unsubscribe_url
+        .as_ref()
+        .map(|url| {
+            vec![
+                ("List-Unsubscribe".to_string(), format!("<{url}>")),
+                (
+                    "List-Unsubscribe-Post".to_string(),
+                    "List-Unsubscribe=One-Click".to_string(),
+                ),
+            ]
+        })
+        .unwrap_or_default()
+}
+
+/// `Name <address>` when the name is plain ASCII, else just the address
+/// (non-ASCII names would need RFC 2047 encoding, which is not done here).
+pub(crate) fn person_text(name: &str, email: &str) -> String {
+    let plain = !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || " .-_'".contains(c));
+    if plain {
+        format!("{name} <{email}>")
+    } else {
+        email.to_string()
+    }
 }
 
 /// The `List-Unsubscribe` pair, when the message has a link.
@@ -251,7 +467,7 @@ pub fn mailjet_body(from: &Mailbox, message: &Message) -> Value {
 }
 
 /// Which status codes say "this message is bad" rather than "try later".
-fn classify(status: u16, detail: &str) -> SendError {
+pub(crate) fn classify(status: u16, detail: &str) -> SendError {
     match status {
         // 401/402/403: the account, not the message. 429: slow down.
         401 | 402 | 403 | 429 | 500..=599 => {
@@ -408,12 +624,29 @@ pub fn mailjet_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
     Some(out)
 }
 
-/// Read the outcomes for a provider.
+/// What a webhook request asks of us.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Inbound {
+    /// Outcomes to apply (possibly none).
+    Outcomes(Vec<Outcome>),
+    /// An SNS subscription to confirm by fetching this URL once.
+    Subscribe(String),
+    /// A handshake to answer with this JSON (Event Grid validation).
+    Respond(Value),
+}
+
+/// Read a webhook body for a provider; `None` when it is not that provider's
+/// format.
 #[must_use]
-pub fn outcomes(kind: Kind, body: &[u8]) -> Option<Vec<Outcome>> {
+pub fn inbound(kind: Kind, body: &[u8]) -> Option<Inbound> {
+    use crate::{provider_api, provider_cloud};
     match kind {
-        Kind::Brevo => brevo_outcomes(body),
-        Kind::Mailjet => mailjet_outcomes(body),
+        Kind::Brevo => brevo_outcomes(body).map(Inbound::Outcomes),
+        Kind::Mailjet => mailjet_outcomes(body).map(Inbound::Outcomes),
+        Kind::Mailgun => provider_api::mailgun_outcomes(body).map(Inbound::Outcomes),
+        Kind::SendGrid => provider_api::sendgrid_outcomes(body).map(Inbound::Outcomes),
+        Kind::Ses => provider_cloud::ses_inbound(body),
+        Kind::Azure => provider_cloud::azure_inbound(body),
     }
 }
 
@@ -613,5 +846,64 @@ mod tests {
         };
         assert!(configure(Kind::Brevo, &http, true).is_err());
         assert!(configure(Kind::Brevo, &http, false).is_ok());
+    }
+
+    #[test]
+    fn every_provider_is_configured_from_its_own_settings() {
+        let vars = |pairs: Vec<(&'static str, &'static str)>| {
+            move |name: &str| {
+                pairs
+                    .iter()
+                    .find(|(k, _)| *k == name)
+                    .map(|(_, v)| (*v).to_string())
+            }
+        };
+        let from = ("CRM_MAIL_FROM", "CRM <crm@example.test>");
+        let ses = vars(vec![
+            from,
+            ("CRM_SES_REGION", "eu-west-1"),
+            ("CRM_SES_ACCESS_KEY_ID", "AKID"),
+            ("CRM_SES_SECRET_ACCESS_KEY", "s"),
+        ]);
+        let sender = configure(Kind::Ses, &ses, false).unwrap();
+        assert_eq!(
+            sender.url,
+            "https://email.eu-west-1.amazonaws.com/v2/email/outbound-emails"
+        );
+        let bad_region = vars(vec![
+            from,
+            ("CRM_SES_REGION", "eu west"),
+            ("CRM_SES_ACCESS_KEY_ID", "AKID"),
+            ("CRM_SES_SECRET_ACCESS_KEY", "s"),
+        ]);
+        assert!(configure(Kind::Ses, &bad_region, false).is_err());
+        let azure = vars(vec![
+            from,
+            ("CRM_AZURE_ENDPOINT", "https://x.communication.azure.com/"),
+            ("CRM_AZURE_ACCESS_KEY", "a2V5"),
+        ]);
+        assert_eq!(
+            configure(Kind::Azure, &azure, false).unwrap().url,
+            "https://x.communication.azure.com/emails:send?api-version=2023-03-31"
+        );
+        let mailgun = vars(vec![
+            from,
+            ("CRM_MAILGUN_DOMAIN", "mg.example.test"),
+            ("CRM_MAILGUN_API_KEY", "k"),
+            ("CRM_MAILGUN_API_BASE", "https://api.eu.mailgun.net/"),
+        ]);
+        assert_eq!(
+            configure(Kind::Mailgun, &mailgun, false).unwrap().url,
+            "https://api.eu.mailgun.net/v3/mg.example.test/messages"
+        );
+        let bad_domain = vars(vec![
+            from,
+            ("CRM_MAILGUN_DOMAIN", "a/b"),
+            ("CRM_MAILGUN_API_KEY", "k"),
+        ]);
+        assert!(configure(Kind::Mailgun, &bad_domain, false).is_err());
+        let sendgrid = vars(vec![from, ("CRM_SENDGRID_API_KEY", "k")]);
+        assert!(configure(Kind::SendGrid, &sendgrid, false).is_ok());
+        assert!(configure(Kind::SendGrid, &vars(vec![from]), false).is_err());
     }
 }
