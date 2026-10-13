@@ -13,6 +13,8 @@ export default defineConfig({
             preprocess: vitePreprocess(),
             adapter: adapter(),
             alias: { $lib: "src/lib" },
+            // Route matchers (`[locale=locale]`).
+            files: { params: "src/params.ts" },
             // CRM-T33: CSP with hashes for the framework's inline bootstrap.
             // Component libraries set inline styles, so style-src keeps
             // 'unsafe-inline'; scripts do not.

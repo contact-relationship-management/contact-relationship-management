@@ -14,6 +14,9 @@ importers:
       '@lilydesignsystem/svelte-headless':
         specifier: ^0.4.0
         version: 0.4.0(svelte@5.57.1)
+      '@lilydesignsystem/svelte-kanban-board':
+        specifier: ^0.1.0
+        version: 0.1.0(svelte@5.57.1)
       '@lilydesignsystem/svelte-link-picker':
         specifier: ^0.1.1
         version: 0.1.1(svelte@5.57.1)
@@ -209,6 +212,12 @@ packages:
 
   '@lilydesignsystem/svelte-headless@0.4.0':
     resolution: {integrity: sha512-zrHBMmliIK6ic+eKH4ZE0AJ+kWnAf5su1SRv7AlU2YcEx4Q3hm0MruApaIjgOAc2UxjJjT2UBIldw2y40CVURQ==}
+    engines: {node: '=26'}
+    peerDependencies:
+      svelte: ^5.0.0
+
+  '@lilydesignsystem/svelte-kanban-board@0.1.0':
+    resolution: {integrity: sha512-ZKQFJ17rnHCsDIsM1r3iNKrOBQAhRCwnTr8clldZGfk2sllnd7m4zVOiZ72BtXJPURhUFoNLoajBMu6Qmu1wRw==}
     engines: {node: '=26'}
     peerDependencies:
       svelte: ^5.0.0
@@ -1260,6 +1269,11 @@ snapshots:
   '@lilydesignsystem/svelte-headless@0.4.0(svelte@5.57.1)':
     dependencies:
       aria-query: 5.3.2
+      svelte: 5.57.1
+
+  '@lilydesignsystem/svelte-kanban-board@0.1.0(svelte@5.57.1)':
+    dependencies:
+      '@lilydesignsystem/svelte-headless': 0.2.0(svelte@5.57.1)
       svelte: 5.57.1
 
   '@lilydesignsystem/svelte-link-picker@0.1.1(svelte@5.57.1)':

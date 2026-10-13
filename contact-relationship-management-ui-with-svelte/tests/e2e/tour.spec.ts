@@ -23,6 +23,7 @@ const SCREENS = [
   "/break-glass/review",
   "/engagement",
   "/partners",
+  "/en-001/kanban",
 ];
 
 async function startTour(page: Page) {
@@ -71,6 +72,43 @@ test("signing in as example@example.com shows fictitious data on every screen", 
   await expect(page.getByText("Imogen Hartley")).toBeVisible();
   await page.goto("/deals");
   await expect(page.getByText("Smart-meter analytics rollout")).toBeVisible();
+});
+
+test("/<locale>/kanban shows the deal board and moves a card", async ({ page }) => {
+  await startTour(page);
+  await page.goto("/en-001/kanban");
+  await expect(page.getByRole("heading", { level: 1, name: "My Kanban board" })).toBeVisible();
+  const board = page.getByTestId("kanban-board");
+  await expect(board).toContainText("Qualification 10%");
+  await expect(board).toContainText("Smart-meter analytics rollout");
+  await expect(board).toContainText("£184,000.00");
+
+  // Move a card with the keyboard-reachable menu; the move is saved.
+  await page
+    .getByRole("button", { name: /^Move Case-management upgrade/ })
+    .click();
+  await page.getByRole("option", { name: "Discovery 25%" }).click();
+  await expect(page.getByTestId("move-error")).toHaveCount(0);
+  await page.reload();
+  const discovery = page.getByRole("gridcell", { name: /Case-management upgrade/ });
+  await expect(discovery).toHaveCount(1);
+  // The saved stage is Discovery: that column's header is the cell's column.
+  const col = await discovery.getAttribute("data-col");
+  expect(col).toBe("1");
+});
+
+test("the address names the language, and unknown languages are 404", async ({ page }) => {
+  await startTour(page);
+  await page.goto("/de-de/kanban");
+  await expect(page.getByRole("heading", { level: 1, name: "Mein Kanban-Board" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "de-de");
+  const missing = await page.goto("/xx/kanban");
+  expect(missing?.status()).toBe(404);
+});
+
+test("the kanban board needs a session", async ({ page }) => {
+  await page.goto("/en-001/kanban");
+  await expect(page).toHaveURL(/\/signin$/);
 });
 
 test("another address is not the tour", async ({ page }) => {

@@ -196,6 +196,75 @@ th {
   white-space: nowrap;
 }
 
+/* Kanban board (Lily, headless): columns are table columns, cards are cells. */
+.kanban-board {
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  /* Room for a card's move menu, which the scroll container would clip. */
+  min-height: 22rem;
+}
+.kanban-board table {
+  table-layout: fixed;
+  min-width: 52rem;
+}
+.kanban-board th {
+  vertical-align: bottom;
+}
+.kanban-board-count {
+  display: block;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.kanban-board td {
+  vertical-align: top;
+  height: 1px;
+}
+.kanban-board td[aria-label],
+.kanban-board td:has(.kanban-board-card-title) {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.kanban-board-card-title {
+  display: block;
+  cursor: grab;
+  margin-bottom: 0.4rem;
+}
+.kanban-board td {
+  position: relative;
+}
+.kanban-board-move-list {
+  position: absolute;
+  z-index: 20;
+  inset-inline-start: 0.5rem;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.15);
+}
+.kanban-board-move-option {
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kanban-board-move-option[data-active],
+.kanban-board-move-option[aria-selected="true"] {
+  background: color-mix(in srgb, var(--accent, #4527d6) 12%, transparent);
+}
+.kanban-board-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Stat tiles */
 .tiles {
   display: grid;

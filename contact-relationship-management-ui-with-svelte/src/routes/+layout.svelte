@@ -105,11 +105,17 @@
     { href: "/tour", key: "nav.tour" },
   ] as const;
 
+  // The kanban board lives under the language in the address.
+  const navLinks = $derived([
+    ...navItems,
+    { href: `/${i18n.locale}/kanban`, key: "nav.kanban" as const },
+  ]);
+
   // Link picker (the home icon): the primary navigation when signed in,
   // else the public pages. `current` marks the page being viewed.
   const pageLinks: LinkItem[] = $derived(
     (signedIn
-      ? navItems.map((item) => ({ href: item.href, label: t(item.key) }))
+      ? navLinks.map((item) => ({ href: item.href, label: t(item.key) }))
       : [
           { href: "/", label: t("nav.dashboard") },
           { href: "/accessibility", label: t("footer.accessibility") },
@@ -151,7 +157,7 @@
     {#if signedIn}
       <nav id="primary-nav" class="primary-nav" class:open={menuOpen}>
         <ul>
-          {#each navItems as item (item.href)}
+          {#each navLinks as item (item.href)}
             <li>
               <a
                 href={item.href}

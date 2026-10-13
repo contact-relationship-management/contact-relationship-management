@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `/<locale>/kanban` (2026-10-13)
+
+`/en-001/kanban` (or any of the eight UI languages) shows the signed-in user's
+deal board as a Lily kanban board (`@lilydesignsystem/svelte-kanban-board`): a
+column per pipeline stage, a card per deal. A card moves by pointer drag or the
+keyboard-reachable "Move to column" menu; the new stage is saved with the same
+call the deal board uses, and a refused move is undone and explained. The
+language in the address wins (`/de-de/kanban` is German and is remembered);
+`/xx/kanban` is a 404; no session redirects to sign-in. It is in the main
+navigation and the pages menu. Needed SvelteKit 3's route-matcher module
+(`src/params.ts`, `files.params` in `vite.config.ts`). Only the kanban route is
+locale-prefixed; the other routes are unchanged. The older SVAR boards (deals,
+leads, tickets) are untouched.
+
 ### Changed — every data table is the Lily data grid (2026-10-13)
 
 All 28 data tables now use `@lilydesignsystem/svelte-data-grid` through one
