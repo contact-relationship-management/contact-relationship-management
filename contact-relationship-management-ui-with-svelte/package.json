@@ -45,7 +45,7 @@
     "esbuild@0.25.12": true
   },
   "dependencies": {
-    "@lilydesignsystem/svelte-data-grid": "^0.1.0",
+    "@lilydesignsystem/svelte-data-grid": "0.4.0",
     "@lilydesignsystem/svelte-headless": "^0.4.0",
     "@lilydesignsystem/svelte-kanban-board": "^0.1.0",
     "@lilydesignsystem/svelte-link-picker": "^0.1.1",
