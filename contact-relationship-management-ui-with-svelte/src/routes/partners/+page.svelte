@@ -5,6 +5,7 @@
   lifecycle), and membership renewals + the lapsed list.
 -->
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import {
     membershipsView,
     partnershipsRegister,
@@ -35,6 +36,35 @@
 
   const SCALE = [1, 2, 3, 4, 5] as const;
   const cell = (p: number, i: number) => stakeholders?.grid[`p${p}i${i}`] ?? 0;
+
+  const partnershipColumns = [
+    { id: "account", header: "Account" },
+    { id: "kind", header: "Kind" },
+    { id: "stage", header: "Stage" },
+    { id: "summary", header: "Summary" },
+  ];
+  const partnershipRows = $derived(
+    (partnerships?.register ?? []).map((row) => ({
+      id: row.pid,
+      account: row.account ?? row.account_pid,
+      kind: row.kind,
+      stage: row.stage,
+      summary: row.summary,
+    })),
+  );
+  const renewalColumns = [
+    { id: "account", header: "Account" },
+    { id: "status", header: "Status" },
+    { id: "renewal", header: "Renewal" },
+  ];
+  const renewalRows = $derived(
+    (memberships?.renewals_due ?? []).map((row) => ({
+      id: row.pid,
+      account: row.account ?? "",
+      status: row.status,
+      renewal: row.renewal_on ?? "",
+    })),
+  );
 </script>
 
 <svelte:head><title>{t("nav.partners")} — CRM</title></svelte:head>
@@ -97,37 +127,26 @@
       {stage}: {count}&nbsp;
     {/each}
   </p>
-  <table data-testid="partnership-register">
-    <thead><tr><th>Account</th><th>Kind</th><th>Stage</th><th>Summary</th></tr></thead>
-    <tbody>
-      {#each partnerships.register as row (row.pid)}
-        <tr>
-          <td>{row.account ?? row.account_pid}</td>
-          <td>{row.kind}</td>
-          <td>{row.stage}</td>
-          <td>{row.summary}</td>
-        </tr>
-      {:else}
-        <tr><td colspan="4" class="muted">No partnership records.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Innovation partnerships"
+    columns={partnershipColumns}
+    rows={partnershipRows}
+    testid="partnership-register"
+    empty="No partnership records."
+  />
 {/if}
 
 {#if memberships}
   <h2>Memberships</h2>
   <p class="muted">{memberships.memberships} recorded · window {memberships.window_days}d</p>
   <h3>Renewals due</h3>
-  <table data-testid="membership-renewals">
-    <thead><tr><th>Account</th><th>Status</th><th>Renewal</th></tr></thead>
-    <tbody>
-      {#each memberships.renewals_due as row (row.pid)}
-        <tr><td>{row.account}</td><td>{row.status}</td><td>{row.renewal_on}</td></tr>
-      {:else}
-        <tr><td colspan="3" class="muted">No renewals due in the window.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Renewals due"
+    columns={renewalColumns}
+    rows={renewalRows}
+    testid="membership-renewals"
+    empty="No renewals due in the window."
+  />
   {#if memberships.lapsed.length > 0}
     <h3>Lapsed</h3>
     <ul data-testid="membership-lapsed">

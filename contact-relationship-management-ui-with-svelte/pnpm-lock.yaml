@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@lilydesignsystem/svelte-data-grid':
+        specifier: ^0.1.0
+        version: 0.1.0(svelte@5.57.1)
       '@lilydesignsystem/svelte-headless':
         specifier: ^0.4.0
         version: 0.4.0(svelte@5.57.1)
@@ -41,13 +44,7 @@ importers:
       '@svar-ui/svelte-filemanager':
         specifier: ^2.6.0
         version: 2.6.0
-      '@svar-ui/svelte-filter':
-        specifier: ^2.6.1
-        version: 2.6.1
       '@svar-ui/svelte-gantt':
-        specifier: ^2.7.3
-        version: 2.7.3
-      '@svar-ui/svelte-grid':
         specifier: ^2.7.3
         version: 2.7.3
       '@svar-ui/svelte-kanban':
@@ -191,6 +188,18 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@lilydesignsystem/svelte-data-grid@0.1.0':
+    resolution: {integrity: sha512-gWVEDT9RxI7gqXbYjfrQAPMlfWipxcM6GXKx5Hg70NArh6kitZAEZXLzM6irVl47fXf3ZR/nKgN87QXN/HnJiA==}
+    engines: {node: '=26'}
+    peerDependencies:
+      svelte: ^5.0.0
+
+  '@lilydesignsystem/svelte-headless@0.1.0':
+    resolution: {integrity: sha512-cB4/baunQqs/rrW7xY1jt3Nw3dJEbPD+JjQNsZY9kBlLALOSUoCnkfdo229RUj5Vamc099FvPsYXx4RKi0Siuw==}
+    engines: {node: '=26'}
+    peerDependencies:
+      svelte: ^5.0.0
 
   '@lilydesignsystem/svelte-headless@0.2.0':
     resolution: {integrity: sha512-xaCVY+qX2Aznb2wGtJhEIMCSeP04N/EZMZbjuOEllpMb3vow5yb/hH1pUybZwic/2HMCEp6zjuI9dSY7gKnRig==}
@@ -405,12 +414,6 @@ packages:
   '@svar-ui/filemanager-store@2.6.0':
     resolution: {integrity: sha512-59fbDTpHDr7DzgXCTw+2aLLkVXR8Yg8Y5nMUImkuNf0ekD5eb0vfthwH8I2FqqhW3bupGfgGEFscRWTupBNq4w==}
 
-  '@svar-ui/filter-locales@2.6.1':
-    resolution: {integrity: sha512-m963r4TnZxiZ6XzfJYvSmiYcmgSgKhkzpOVcUP25AviWle1oPulyv4Qe28Rak3JaAOFAHQAf0EucoaSMJzvK6A==}
-
-  '@svar-ui/filter-store@2.6.1':
-    resolution: {integrity: sha512-2UHeXuNYN56MokBhB48EJ7KvKDVAJbRP2nIbE6t7lbsnWhRsBGxPc4jjUQn/9K+MTGkxrzPrOfeoH8L4p3Hy5g==}
-
   '@svar-ui/gantt-data-provider@2.7.3':
     resolution: {integrity: sha512-vyYXsDrKI9zU+NJtG8kxu/5aJPIhHUuEu+xBpaScJE6RrhyzTINdYx3I2dksDvLJq7awlccxXRKXDKnQ99uxsA==}
 
@@ -504,9 +507,6 @@ packages:
 
   '@svar-ui/svelte-filemanager@2.6.0':
     resolution: {integrity: sha512-//RMVYKCdxug3iN3wAlJQcODrbgBZ4/kPd808lRFIj0XQqeen5H/gtBWTrjc1i6kAW+NSO32mb7ncdPcoSkYyA==}
-
-  '@svar-ui/svelte-filter@2.6.1':
-    resolution: {integrity: sha512-EyQwGRglTLzDItzYcwUBFlixr0mCjl02e6237RLDvdhfbwl0RTtkD15RXNLXOq6NGTryHyVZA961Tf2b3rJVMQ==}
 
   '@svar-ui/svelte-gantt@2.7.3':
     resolution: {integrity: sha512-i/mg9SAU4yQoiIgeyPB5HcmZQ7krtE33B9AcZyMgi3WKRQCV/+qi50VeIMSW385iPCqnjzHNPyMhM0kgAKc4DA==}
@@ -1242,6 +1242,16 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
+  '@lilydesignsystem/svelte-data-grid@0.1.0(svelte@5.57.1)':
+    dependencies:
+      '@lilydesignsystem/svelte-headless': 0.1.0(svelte@5.57.1)
+      svelte: 5.57.1
+
+  '@lilydesignsystem/svelte-headless@0.1.0(svelte@5.57.1)':
+    dependencies:
+      aria-query: 5.3.2
+      svelte: 5.57.1
+
   '@lilydesignsystem/svelte-headless@0.2.0(svelte@5.57.1)':
     dependencies:
       aria-query: 5.3.2
@@ -1385,12 +1395,6 @@ snapshots:
   '@svar-ui/filemanager-store@2.6.0':
     dependencies:
       '@svar-ui/lib-state': 1.9.7
-
-  '@svar-ui/filter-locales@2.6.1': {}
-
-  '@svar-ui/filter-store@2.6.1':
-    dependencies:
-      '@svar-ui/lib-state': 1.9.6
 
   '@svar-ui/gantt-data-provider@2.7.3':
     dependencies:
@@ -1557,15 +1561,6 @@ snapshots:
       '@svar-ui/svelte-grid': 2.7.0
       '@svar-ui/svelte-menu': 2.6.0
       '@svar-ui/svelte-uploader': 2.6.0
-
-  '@svar-ui/svelte-filter@2.6.1':
-    dependencies:
-      '@svar-ui/filter-locales': 2.6.1
-      '@svar-ui/filter-store': 2.6.1
-      '@svar-ui/lib-dom': 0.14.0
-      '@svar-ui/lib-state': 1.9.7
-      '@svar-ui/svelte-core': 2.6.1
-      '@svar-ui/svelte-menu': 2.6.1
 
   '@svar-ui/svelte-gantt@2.7.3':
     dependencies:

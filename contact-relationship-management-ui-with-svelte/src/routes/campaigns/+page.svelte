@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import { campaignFunnel, campaignStatus, listCampaigns, money, runCampaign } from "#lib/api/crm.js";
   import { ratioPercent } from "#lib/format.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
@@ -52,6 +53,25 @@
   function roiLabel(roi: Ratio | null): string {
     return ratioPercent(roi);
   }
+
+  let selectedPid = $state<string | null>(null);
+  const selected = $derived(
+    (campaigns ?? []).find((c) => c.pid === selectedPid) ?? null,
+  );
+
+  const columns = $derived([
+    { id: "name", header: t("common.name") },
+    { id: "status", header: t("common.status") },
+    { id: "recipients", header: t("campaign.recipients") },
+  ]);
+  const rows = $derived(
+    (campaigns ?? []).map((c) => ({
+      id: c.pid,
+      name: c.name,
+      status: c.status,
+      recipients: `${c.recipients} → ${c.delivered} → ${c.opened} → ${c.clicked}`,
+    })),
+  );
 </script>
 
 <h1>{t("nav.campaigns")}</h1>
@@ -64,45 +84,35 @@
   {#if actionError}
     <p class="error" data-testid="action-error">{actionError}</p>
   {/if}
-  <table data-testid="campaigns">
-    <thead>
-      <tr>
-        <th>{t("common.name")}</th>
-        <th>{t("common.status")}</th>
-        <th>{t("campaign.recipients")}</th>
-        <th>{t("common.actions")}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each campaigns as campaign (campaign.pid)}
-        <tr>
-          <td>{campaign.name}</td>
-          <td><span class="chip">{campaign.status}</span></td>
-          <td>
-            {campaign.recipients} → {campaign.delivered} → {campaign.opened} → {campaign.clicked}
-          </td>
-          <td>
-            {#if campaign.status === "draft" || campaign.status === "scheduled"}
-              <button onclick={() => void run(campaign)}>{t("campaign.run")}</button>
-            {/if}
-            <button onclick={() => void showFunnel(campaign)}>{t("campaign.funnel")}</button>
-          </td>
-        </tr>
-        {#if funnel?.pid === campaign.pid}
-          <tr data-testid="funnel">
-            <td colspan="4">
-              {t("nav.leads")}: {funnel.leads} ·
-              {money(funnel.won_revenue_minor, campaign.currency, i18n.locale)} ·
-              {t("campaign.roi")}: <strong>{roiLabel(funnel.roi)}</strong>
-              {#if funnel.roi}
-                <span class="muted">
-                  ({funnel.roi.numerator} / {funnel.roi.denominator})
-                </span>
-              {/if}
-            </td>
-          </tr>
-        {/if}
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label={t("nav.campaigns")}
+    {columns}
+    {rows}
+    onselect={(pid) => {
+      selectedPid = pid;
+      funnel = null;
+    }}
+    testid="campaigns"
+  />
+  {#if selected}
+    <div class="panel" data-testid="campaign-actions">
+      <strong>{selected.name}</strong>
+      {#if selected.status === "draft" || selected.status === "scheduled"}
+        <button onclick={() => void run(selected)}>{t("campaign.run")}</button>
+      {/if}
+      <button onclick={() => void showFunnel(selected)}>{t("campaign.funnel")}</button>
+      {#if funnel?.pid === selected.pid}
+        <p data-testid="funnel">
+          {t("nav.leads")}: {funnel.leads} ·
+          {money(funnel.won_revenue_minor, selected.currency, i18n.locale)} ·
+          {t("campaign.roi")}: <strong>{roiLabel(funnel.roi)}</strong>
+          {#if funnel.roi}
+            <span class="muted">
+              ({funnel.roi.numerator} / {funnel.roi.denominator})
+            </span>
+          {/if}
+        </p>
+      {/if}
+    </div>
+  {/if}
 {/if}

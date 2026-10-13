@@ -4,6 +4,7 @@
   verbatim (actor_ref is the recorder, not necessarily an assignee).
 -->
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import { Calendar, Willow } from "@svar-ui/svelte-calendar";
   import { followups, type Followup } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
@@ -53,6 +54,24 @@
       };
     }),
   );
+
+  const overdueColumns = [
+    { id: "due", header: "Due" },
+    { id: "days", header: "Overdue (days)" },
+    { id: "kind", header: "Kind" },
+    { id: "summary", header: "Summary" },
+    { id: "recorder", header: "Recorder" },
+  ];
+  const overdueRows = $derived(
+    (overdue ?? []).map((i) => ({
+      id: i.pid,
+      due: i.due_on,
+      days: i.overdue_days ?? "",
+      kind: i.kind,
+      summary: i.summary,
+      recorder: i.actor_ref ?? "—",
+    })),
+  );
 </script>
 
 <svelte:head><title>{t("nav.followups")} — CRM</title></svelte:head>
@@ -81,24 +100,13 @@
 
 {#if overdue !== null}
   <h2>Overdue</h2>
-  <table data-testid="followups-overdue">
-    <thead>
-      <tr><th>Due</th><th>Overdue (days)</th><th>Kind</th><th>Summary</th><th>Recorder</th></tr>
-    </thead>
-    <tbody>
-      {#each overdue as item (item.pid)}
-        <tr>
-          <td>{item.due_on}</td>
-          <td>{item.overdue_days}</td>
-          <td>{item.kind}</td>
-          <td>{item.summary}</td>
-          <td>{item.actor_ref ?? "—"}</td>
-        </tr>
-      {:else}
-        <tr><td colspan="5" class="muted">Nothing overdue.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Overdue follow-ups"
+    columns={overdueColumns}
+    rows={overdueRows}
+    testid="followups-overdue"
+    empty="Nothing overdue."
+  />
 
   <h2>Next 30 days</h2>
   <div class="calendar-wrap" data-testid="followups-calendar">

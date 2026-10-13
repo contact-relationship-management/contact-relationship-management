@@ -1,13 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Grid, Willow as GridTheme } from "@svar-ui/svelte-grid";
-  import {
-    FilterBar,
-    Willow as FilterTheme,
-    createArrayFilter,
-  } from "@svar-ui/svelte-filter";
   import { listContacts } from "#lib/api/crm.js";
+  import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { Contact } from "#lib/api/crm.js";
 
@@ -25,10 +20,10 @@
   });
 
   const columns = $derived([
-    { id: "display_name", header: t("common.name"), flexgrow: 1 },
-    { id: "job_title", header: t("contact.jobTitle"), width: 150 },
-    { id: "status", header: t("common.status"), width: 110 },
-    { id: "marketing_consent", header: t("contact.consent"), width: 150 },
+    { id: "display_name", header: t("common.name") },
+    { id: "job_title", header: t("contact.jobTitle") },
+    { id: "status", header: t("common.status") },
+    { id: "marketing_consent", header: t("contact.consent") },
   ]);
 
   const rows = $derived(
@@ -56,27 +51,6 @@
           ),
         ),
   );
-
-  const filterFields = $derived([
-    { id: "display_name", label: t("common.name"), type: "text" },
-    { id: "status", label: t("common.status"), type: "text" },
-    { id: "marketing_consent", label: t("contact.consent"), type: "text" },
-  ]);
-  let filterRules = $state<unknown>(null);
-  const filtered = $derived(
-    filterRules
-      ? createArrayFilter(filterRules as Parameters<typeof createArrayFilter>[0])(searched)
-      : searched,
-  );
-
-  // Row selection opens the contact timeline.
-  function initGrid(api: {
-    on(action: string, cb: (ev: { id: string | number }) => void): void;
-  }) {
-    api.on("select-row", (ev) => {
-      void goto(`/contacts/${ev.id}`);
-    });
-  }
 </script>
 
 <h1>{t("nav.contacts")}</h1>
@@ -86,29 +60,12 @@
 {:else if contacts === null}
   <p>{t("common.loading")}</p>
 {:else}
-  <div data-testid="contact-table">
-    <GridTheme>
-      <FilterTheme>
-        <div class="filter-wrap">
-          <FilterBar
-            fields={filterFields}
-            onchange={({ value }: { value: unknown }) => (filterRules = value)}
-          />
-        </div>
-        <div class="grid-wrap">
-          <Grid data={filtered} {columns} select init={initGrid} />
-        </div>
-      </FilterTheme>
-    </GridTheme>
-  </div>
+  <DataTable
+    label={t("nav.contacts")}
+    {columns}
+    rows={searched}
+    onselect={(pid) => void goto(`/contacts/${pid}`)}
+    testid="contact-table"
+  />
 {/if}
 
-<style>
-  .filter-wrap {
-    margin-bottom: 0.5rem;
-  }
-  .grid-wrap {
-    height: 480px;
-    overflow: hidden;
-  }
-</style>

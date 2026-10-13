@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — every data table is the Lily data grid (2026-10-13)
+
+All 28 data tables now use `@lilydesignsystem/svelte-data-grid` through one
+wrapper, `src/lib/components/DataTable.svelte` (sortable columns, a filter box
+on lists of 8 or more rows, paging when asked, APG grid keyboard support, and
+translated labels in all eight languages). The four SVAR grids (contacts,
+accounts, leads, tickets) and their filter bars are gone, and so are the
+`@svar-ui/svelte-grid` and `@svar-ui/svelte-filter` dependencies. The Lily grid
+shows text only, so tables that had buttons or inputs in their rows (articles,
+campaigns, break-glass review) now select a row and act in a panel below it,
+as tickets and leads already did. The power–interest matrix on Partners stays a
+plain table: it is a two-dimensional heat map, not a data table. The SVAR
+Kanban boards and Calendar are unchanged. The contact page's timeline, deals and
+tickets tables gained column headers.
+
 ### Changed — signed-in headline (2026-10-13)
 
 The signed-in dashboard's headline is now "My Home Page" (translated in all

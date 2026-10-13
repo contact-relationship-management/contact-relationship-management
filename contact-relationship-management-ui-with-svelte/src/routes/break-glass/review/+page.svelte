@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import { listBreakGlass, reviewBreakGlass } from "#lib/api/crm.js";
   import type { BreakGlassGrant } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
@@ -44,6 +45,29 @@
   function when(value: string): string {
     return new Date(value).toLocaleString(i18n.locale);
   }
+
+  let selectedPid = $state<string | null>(null);
+  const selected = $derived(
+    (grants ?? []).find((g) => g.pid === selectedPid) ?? null,
+  );
+
+  const columns = $derived([
+    { id: "subject", header: t("breakGlass.subject") },
+    { id: "when", header: t("breakGlass.requestedAt") },
+    { id: "reason", header: t("breakGlass.reason") },
+    { id: "review", header: t("common.actions") },
+  ]);
+  const rows = $derived(
+    (grants ?? []).map((g) => ({
+      id: g.pid,
+      subject: g.subject,
+      when: when(g.granted_at),
+      reason: g.reason,
+      review: g.reviewed_at
+        ? `${t("breakGlass.reviewedBy")} ${g.reviewed_by}: ${g.review_note}`
+        : "",
+    })),
+  );
 </script>
 
 <svelte:head><title>{t("breakGlass.reviewTitle")}</title></svelte:head>
@@ -59,44 +83,31 @@
   {#if actionError}
     <p class="error" role="alert" data-testid="action-error">{actionError}</p>
   {/if}
-  <table data-testid="grants">
-    <thead>
-      <tr>
-        <th>{t("breakGlass.subject")}</th>
-        <th>{t("breakGlass.requestedAt")}</th>
-        <th>{t("breakGlass.reason")}</th>
-        <th>{t("common.actions")}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each grants as grant (grant.pid)}
-        <tr>
-          <td>{grant.subject}</td>
-          <td>{when(grant.granted_at)}</td>
-          <td>{grant.reason}</td>
-          <td>
-            {#if grant.reviewed_at}
-              {t("breakGlass.reviewedBy")} {grant.reviewed_by}: {grant.review_note}
-            {:else}
-              <label class="visually-hidden" for={`note-${grant.pid}`}>{t("breakGlass.note")}</label>
-              <input
-                id={`note-${grant.pid}`}
-                placeholder={t("breakGlass.note")}
-                bind:value={notes[grant.pid]}
-              />
-              <button
-                type="button"
-                disabled={(notes[grant.pid] ?? "").trim().length < MIN_NOTE}
-                onclick={() => void review(grant)}
-              >
-                {t("breakGlass.recordReview")}
-              </button>
-            {/if}
-          </td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label={t("breakGlass.reviewTitle")}
+    {columns}
+    {rows}
+    onselect={(pid) => (selectedPid = pid)}
+    testid="grants"
+  />
+  {#if selected && !selected.reviewed_at}
+    <div class="panel" data-testid="grant-review">
+      <strong>{selected.subject}</strong>
+      <label class="visually-hidden" for={`note-${selected.pid}`}>{t("breakGlass.note")}</label>
+      <input
+        id={`note-${selected.pid}`}
+        placeholder={t("breakGlass.note")}
+        bind:value={notes[selected.pid]}
+      />
+      <button
+        type="button"
+        disabled={(notes[selected.pid] ?? "").trim().length < MIN_NOTE}
+        onclick={() => void review(selected)}
+      >
+        {t("breakGlass.recordReview")}
+      </button>
+    </div>
+  {/if}
 {/if}
 
 <style>

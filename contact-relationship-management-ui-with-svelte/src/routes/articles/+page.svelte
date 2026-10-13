@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import { articleStatus, listArticles } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
   import type { Article } from "#lib/api/crm.js";
@@ -23,6 +24,29 @@
     await articleStatus(article.pid, "published");
     await load();
   }
+
+  let selectedPid = $state<string | null>(null);
+  const selected = $derived(
+    (articles ?? []).find((a) => a.pid === selectedPid) ?? null,
+  );
+
+  const columns = $derived([
+    { id: "title", header: t("common.name") },
+    { id: "status", header: t("common.status") },
+    {
+      id: "version",
+      header: t("article.version"),
+      format: (v: unknown) => `v${v}`,
+    },
+  ]);
+  const rows = $derived(
+    (articles ?? []).map((a) => ({
+      id: a.pid,
+      title: a.title,
+      status: a.status,
+      version: a.version,
+    })),
+  );
 </script>
 
 <h1>{t("nav.articles")}</h1>
@@ -39,28 +63,20 @@
 {:else if articles === null}
   <p>{t("common.loading")}</p>
 {:else}
-  <table data-testid="articles">
-    <thead>
-      <tr>
-        <th>{t("common.name")}</th>
-        <th>{t("common.status")}</th>
-        <th>{t("article.version")}</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each articles as article (article.pid)}
-        <tr>
-          <td>{article.title}</td>
-          <td><span class="chip">{article.status}</span></td>
-          <td>v{article.version}</td>
-          <td>
-            {#if article.status === "draft"}
-              <button onclick={() => void publish(article)}>{t("article.publish")}</button>
-            {/if}
-          </td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label={t("nav.articles")}
+    {columns}
+    {rows}
+    onselect={(pid) => (selectedPid = pid)}
+    testid="articles"
+  />
+  {#if selected}
+    <div class="panel" data-testid="article-actions">
+      <strong>{selected.title}</strong>
+      <span class="chip">{selected.status}</span>
+      {#if selected.status === "draft"}
+        <button onclick={() => void publish(selected)}>{t("article.publish")}</button>
+      {/if}
+    </div>
+  {/if}
 {/if}

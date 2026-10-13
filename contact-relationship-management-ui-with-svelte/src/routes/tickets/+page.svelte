@@ -1,12 +1,7 @@
 <script lang="ts">
-  import { Grid, Willow as GridTheme } from "@svar-ui/svelte-grid";
-  import {
-    FilterBar,
-    Willow as FilterTheme,
-    createArrayFilter,
-  } from "@svar-ui/svelte-filter";
   import { listTickets, ticketStatus } from "#lib/api/crm.js";
   import { breachedCount, slaBreached } from "#lib/format.js";
+  import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { Ticket } from "#lib/api/crm.js";
 
@@ -39,11 +34,11 @@
   const selected = $derived((tickets ?? []).find((x) => x.pid === selectedPid) ?? null);
 
   const columns = $derived([
-    { id: "title", header: t("common.name"), flexgrow: 1 },
-    { id: "priority", header: t("ticket.priority"), width: 100 },
-    { id: "status", header: t("common.status"), width: 100 },
-    { id: "due", header: t("ticket.due"), width: 180 },
-    { id: "breach", header: t("ticket.breached"), width: 110 },
+    { id: "title", header: t("common.name") },
+    { id: "priority", header: t("ticket.priority") },
+    { id: "status", header: t("common.status") },
+    { id: "due", header: t("ticket.due") },
+    { id: "breach", header: t("ticket.breached") },
   ]);
 
   const rows = $derived(
@@ -59,25 +54,6 @@
     })),
   );
 
-  const filterFields = $derived([
-    { id: "title", label: t("common.name"), type: "text" },
-    { id: "priority", label: t("ticket.priority"), type: "text" },
-    { id: "status", label: t("common.status"), type: "text" },
-  ]);
-  let filterRules = $state<unknown>(null);
-  const filtered = $derived(
-    filterRules
-      ? createArrayFilter(filterRules as Parameters<typeof createArrayFilter>[0])(rows)
-      : rows,
-  );
-
-  function initGrid(api: {
-    on(action: string, cb: (ev: { id: string | number }) => void): void;
-  }) {
-    api.on("select-row", (ev) => {
-      selectedPid = String(ev.id);
-    });
-  }
 
   async function move(pid: string, to: string) {
     actionError = null;
@@ -101,21 +77,13 @@
   {#if breachedTotal > 0}
     <p><strong class="breach" data-testid="breached">{t("ticket.breached")}: {breachedTotal}</strong></p>
   {/if}
-  <div data-testid="ticket-queue">
-    <GridTheme>
-      <FilterTheme>
-        <div class="filter-wrap">
-          <FilterBar
-            fields={filterFields}
-            onchange={({ value }: { value: unknown }) => (filterRules = value)}
-          />
-        </div>
-        <div class="grid-wrap">
-          <Grid data={filtered} {columns} select init={initGrid} />
-        </div>
-      </FilterTheme>
-    </GridTheme>
-  </div>
+  <DataTable
+    label={t("nav.tickets")}
+    {columns}
+    {rows}
+    onselect={(pid) => (selectedPid = pid)}
+    testid="ticket-queue"
+  />
   {#if selected}
     <div class="panel">
       <strong>{selected.title}</strong>
@@ -129,14 +97,8 @@
   {/if}
 {/if}
 
+
 <style>
-  .filter-wrap {
-    margin-bottom: 0.5rem;
-  }
-  .grid-wrap {
-    height: 420px;
-    overflow: hidden;
-  }
   .breach {
     color: var(--state-closed, #8a1d2d);
   }

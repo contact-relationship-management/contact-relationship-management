@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import { Kanban, Willow, getCardShape } from "@svar-ui/svelte-kanban";
   import type { KanbanInstanceApi } from "@svar-ui/svelte-kanban";
   import { forecast, funnel, listDeals, listPipelines, money, moveDeal } from "#lib/api/crm.js";
@@ -76,6 +77,22 @@
         .finally(load);
     });
   }
+
+  const funnelColumns = [
+    { id: "stage", header: "Stage" },
+    { id: "entered", header: "Entered" },
+    { id: "conversion", header: "Conversion" },
+  ];
+  const funnelRows = $derived(
+    (stageFunnel?.stages ?? []).map((row) => ({
+      id: row.stage,
+      stage: `${row.stage}${row.is_won ? " ✓" : row.is_lost ? " ✗" : ""}`,
+      entered: row.entered,
+      conversion: row.conversion_from_previous
+        ? `${ratioPercent(row.conversion_from_previous)} (${ratioFraction(row.conversion_from_previous)})`
+        : "—",
+    })),
+  );
 </script>
 
 <h1>{t("deal.board")}</h1>
@@ -130,25 +147,12 @@
 {#if stageFunnel}
   <h2>Funnel — {stageFunnel.pipeline.name}</h2>
   <p class="muted">{stageFunnel.derivation}</p>
-  <table data-testid="deal-funnel">
-    <thead><tr><th>Stage</th><th>Entered</th><th>Conversion</th></tr></thead>
-    <tbody>
-      {#each stageFunnel.stages as row (row.stage)}
-        <tr>
-          <td>{row.stage}{row.is_won ? " ✓" : row.is_lost ? " ✗" : ""}</td>
-          <td>{row.entered}</td>
-          <td>
-            {#if row.conversion_from_previous}
-              {ratioPercent(row.conversion_from_previous)}
-              ({ratioFraction(row.conversion_from_previous)})
-            {:else}
-              —
-            {/if}
-          </td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Stage funnel"
+    columns={funnelColumns}
+    rows={funnelRows}
+    testid="deal-funnel"
+  />
 {/if}
 
 <style>

@@ -6,6 +6,7 @@
   server-derived; derivations shown verbatim.
 -->
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import { cadence, engagementWorkload, membersHealth } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
 
@@ -29,6 +30,80 @@
       }
     })();
   });
+
+  const contactColumns = [
+    { id: "contact", header: "Contact" },
+    { id: "role", header: "Role" },
+    { id: "days", header: "Days since touch" },
+    { id: "next", header: "Next touch?" },
+  ];
+  const contactRows = $derived(
+    (aging?.untouched_contacts ?? []).map((row) => ({
+      id: row.pid,
+      contact: row.display_name,
+      role: row.stakeholder_role ?? "—",
+      days: row.days_since_touch,
+      next: row.has_next_touch ? "yes" : "no",
+    })),
+  );
+  const accountColumns = [
+    { id: "account", header: "Account" },
+    { id: "role", header: "Role" },
+    { id: "days", header: "Days since touch" },
+  ];
+  const accountRows = $derived(
+    (aging?.untouched_accounts ?? []).map((row) => ({
+      id: row.pid,
+      account: row.display_name,
+      role: row.stakeholder_role ?? "—",
+      days: row.days_since_touch,
+    })),
+  );
+  const kindColumns = [
+    { id: "kind", header: "Kind" },
+    { id: "touches", header: "Touches" },
+  ];
+  const kindRows = $derived(
+    Object.entries(workload?.per_kind ?? {}).map(([kind, count]) => ({
+      id: kind,
+      kind,
+      touches: count,
+    })),
+  );
+  const sentimentColumns = [
+    { id: "sentiment", header: "Sentiment" },
+    { id: "touches", header: "Touches" },
+  ];
+  const sentimentRows = $derived(
+    Object.entries(workload?.sentiment ?? {}).map(([key, count]) => ({
+      id: key,
+      sentiment: key,
+      touches: count,
+    })),
+  );
+  const memberColumns = [
+    { id: "account", header: "Account" },
+    { id: "membership", header: "Membership" },
+    { id: "contacts", header: "Contacts" },
+    { id: "days", header: "Days since touch" },
+    { id: "followups", header: "Open follow-ups" },
+    { id: "tickets", header: "Open tickets" },
+    { id: "silent", header: "Silent?" },
+  ];
+  const memberRows = $derived(
+    (members?.accounts ?? []).map((row) => ({
+      id: row.pid,
+      account: row.display_name,
+      membership: row.membership
+        ? `${row.membership.status} since ${row.membership.joined_on}`
+        : "—",
+      contacts: row.contacts,
+      days: row.days_since_touch,
+      followups: row.open_followups,
+      tickets: row.open_tickets,
+      silent: row.silent ? "yes" : "no",
+    })),
+  );
 </script>
 
 <svelte:head><title>{t("nav.engagement")} — CRM</title></svelte:head>
@@ -43,36 +118,21 @@
     <strong>{aging.contacts_without_next_touch}</strong> contacts with no planned next touch
   </p>
   <h3>Untouched contacts</h3>
-  <table data-testid="cadence-contacts">
-    <thead><tr><th>Contact</th><th>Role</th><th>Days since touch</th><th>Next touch?</th></tr></thead>
-    <tbody>
-      {#each aging.untouched_contacts as row (row.pid)}
-        <tr>
-          <td>{row.display_name}</td>
-          <td>{row.stakeholder_role ?? "—"}</td>
-          <td>{row.days_since_touch}</td>
-          <td>{row.has_next_touch ? "yes" : "no"}</td>
-        </tr>
-      {:else}
-        <tr><td colspan="4" class="muted">Everyone touched within the threshold.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Untouched contacts"
+    columns={contactColumns}
+    rows={contactRows}
+    testid="cadence-contacts"
+    empty="Everyone touched within the threshold."
+  />
   <h3>Untouched accounts</h3>
-  <table data-testid="cadence-accounts">
-    <thead><tr><th>Account</th><th>Role</th><th>Days since touch</th></tr></thead>
-    <tbody>
-      {#each aging.untouched_accounts as row (row.pid)}
-        <tr>
-          <td>{row.display_name}</td>
-          <td>{row.stakeholder_role ?? "—"}</td>
-          <td>{row.days_since_touch}</td>
-        </tr>
-      {:else}
-        <tr><td colspan="3" class="muted">Every account touched within the threshold.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Untouched accounts"
+    columns={accountColumns}
+    rows={accountRows}
+    testid="cadence-accounts"
+    empty="Every account touched within the threshold."
+  />
 {/if}
 
 {#if workload}
@@ -80,22 +140,13 @@
   <p class="muted">{workload.note}</p>
   <p data-testid="workload-touches"><strong>{workload.touches}</strong> touches</p>
   <div class="cols">
-    <table data-testid="workload-kinds">
-      <thead><tr><th>Kind</th><th>Touches</th></tr></thead>
-      <tbody>
-        {#each Object.entries(workload.per_kind) as [kind, count] (kind)}
-          <tr><td>{kind}</td><td>{count}</td></tr>
-        {/each}
-      </tbody>
-    </table>
-    <table data-testid="workload-sentiment">
-      <thead><tr><th>Sentiment</th><th>Touches</th></tr></thead>
-      <tbody>
-        {#each Object.entries(workload.sentiment) as [key, count] (key)}
-          <tr><td>{key}</td><td>{count}</td></tr>
-        {/each}
-      </tbody>
-    </table>
+    <DataTable label="Touches by kind" columns={kindColumns} rows={kindRows} testid="workload-kinds" />
+    <DataTable
+      label="Touches by sentiment"
+      columns={sentimentColumns}
+      rows={sentimentRows}
+      testid="workload-sentiment"
+    />
   </div>
 {/if}
 
@@ -104,31 +155,15 @@
   <p class="muted">
     {members.derivation} · {members.silent_accounts} silent (over {members.threshold_days}d)
   </p>
-  <table data-testid="member-health">
-    <thead>
-      <tr>
-        <th>Account</th><th>Membership</th><th>Contacts</th>
-        <th>Days since touch</th><th>Open follow-ups</th><th>Open tickets</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each members.accounts as row (row.pid)}
-        <tr class:silent={row.silent}>
-          <td>{row.display_name}</td>
-          <td>{row.membership ? `${row.membership.status} since ${row.membership.joined_on}` : "—"}</td>
-          <td>{row.contacts}</td>
-          <td>{row.days_since_touch}</td>
-          <td>{row.open_followups}</td>
-          <td>{row.open_tickets}</td>
-        </tr>
-      {:else}
-        <tr><td colspan="6" class="muted">No accounts yet.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Member health"
+    columns={memberColumns}
+    rows={memberRows}
+    testid="member-health"
+    empty="No accounts yet."
+  />
 {/if}
 
 <style>
   .cols { display: flex; gap: 2rem; flex-wrap: wrap; }
-  tr.silent td { color: #b45309; }
 </style>

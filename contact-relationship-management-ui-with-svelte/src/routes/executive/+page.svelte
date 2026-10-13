@@ -6,6 +6,7 @@
   All numbers server-derived; currencies never merged.
 -->
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import {
     executivePack,
     forecastTrends,
@@ -41,6 +42,43 @@
       }
     })();
   });
+
+  const staleColumns = [
+    { id: "deal", header: "Deal" },
+    { id: "stage", header: "Stage" },
+    { id: "days", header: "Days in stage" },
+    { id: "amount", header: "Amount", accessor: (r: Record<string, unknown>) => r.amount_minor, format: (_v: unknown, r: Record<string, unknown>) => String(r.amount) },
+  ];
+  const staleRows = $derived(
+    stale.map((d) => ({
+      id: d.pid,
+      deal: d.name,
+      stage: d.stage ?? "—",
+      days: d.days_in_stage,
+      amount_minor: d.amount_minor,
+      amount: money(d.amount_minor, d.currency, i18n.locale),
+    })),
+  );
+  const hygieneColumns = [
+    { id: "rule", header: "Rule" },
+    { id: "detail", header: "Detail" },
+  ];
+  const hygieneRows = $derived(
+    findings.map((f, index) => ({ id: String(index), rule: f.rule, detail: f.detail })),
+  );
+  const trendColumns = [
+    { id: "taken", header: "Taken" },
+    { id: "totals", header: "Totals" },
+  ];
+  const trendRows = $derived(
+    (trends?.series ?? []).map((snap) => ({
+      id: snap.taken_on,
+      taken: snap.taken_on,
+      totals: Object.entries(snap.totals)
+        .map(([currency, minor]) => money(minor, currency, i18n.locale))
+        .join(" "),
+    })),
+  );
 </script>
 
 <svelte:head><title>{t("nav.executive")} — CRM</title></svelte:head>
@@ -79,53 +117,26 @@
 {#if stale.length > 0}
   <h2>Stale deals</h2>
   <p class="muted">{staleDerivation}</p>
-  <table data-testid="exec-stale">
-    <thead>
-      <tr><th>Deal</th><th>Stage</th><th>Days in stage</th><th>Amount</th></tr>
-    </thead>
-    <tbody>
-      {#each stale as deal (deal.pid)}
-        <tr>
-          <td>{deal.name}</td>
-          <td>{deal.stage ?? "—"}</td>
-          <td>{deal.days_in_stage}</td>
-          <td>{money(deal.amount_minor, deal.currency, i18n.locale)}</td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable label="Stale deals" columns={staleColumns} rows={staleRows} testid="exec-stale" />
 {/if}
 
 <h2>Pipeline hygiene</h2>
-<table data-testid="exec-hygiene">
-  <thead><tr><th>Rule</th><th>Detail</th></tr></thead>
-  <tbody>
-    {#each findings as finding, index (index)}
-      <tr><td><code>{finding.rule}</code></td><td>{finding.detail}</td></tr>
-    {:else}
-      <tr><td colspan="2" class="muted">No findings.</td></tr>
-    {/each}
-  </tbody>
-</table>
+<DataTable
+  label="Pipeline hygiene"
+  columns={hygieneColumns}
+  rows={hygieneRows}
+  testid="exec-hygiene"
+  empty="No findings."
+/>
 
 {#if trends}
   <h2>Forecast trend</h2>
   <p class="muted">{trends.note}</p>
-  <table data-testid="exec-trends">
-    <thead><tr><th>Taken</th><th>Totals</th></tr></thead>
-    <tbody>
-      {#each trends.series as snapshot (snapshot.taken_on)}
-        <tr>
-          <td>{snapshot.taken_on}</td>
-          <td>
-            {#each Object.entries(snapshot.totals) as [currency, minor] (currency)}
-              {money(minor, currency, i18n.locale)}&nbsp;
-            {/each}
-          </td>
-        </tr>
-      {:else}
-        <tr><td colspan="2" class="muted">No snapshots captured yet.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Forecast trend"
+    columns={trendColumns}
+    rows={trendRows}
+    testid="exec-trends"
+    empty="No snapshots captured yet."
+  />
 {/if}

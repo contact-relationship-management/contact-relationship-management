@@ -1,11 +1,6 @@
 <script lang="ts">
-  import { Grid, Willow as GridTheme } from "@svar-ui/svelte-grid";
-  import {
-    FilterBar,
-    Willow as FilterTheme,
-    createArrayFilter,
-  } from "@svar-ui/svelte-filter";
   import { getLead, listLeads } from "#lib/api/crm.js";
+  import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { Lead, ScoreBreakdown } from "#lib/api/crm.js";
 
@@ -25,10 +20,10 @@
   });
 
   const columns = $derived([
-    { id: "score", header: t("lead.score"), width: 90 },
-    { id: "display_name", header: t("common.name"), flexgrow: 1 },
-    { id: "source", header: t("lead.source"), width: 120 },
-    { id: "status", header: t("common.status"), width: 130 },
+    { id: "score", header: t("lead.score") },
+    { id: "display_name", header: t("common.name") },
+    { id: "source", header: t("lead.source") },
+    { id: "status", header: t("common.status") },
   ]);
 
   const rows = $derived(
@@ -41,26 +36,6 @@
     })),
   );
 
-  const filterFields = $derived([
-    { id: "display_name", label: t("common.name"), type: "text" },
-    { id: "source", label: t("lead.source"), type: "text" },
-    { id: "status", label: t("common.status"), type: "text" },
-  ]);
-  let filterRules = $state<unknown>(null);
-  const filtered = $derived(
-    filterRules
-      ? createArrayFilter(filterRules as Parameters<typeof createArrayFilter>[0])(rows)
-      : rows,
-  );
-
-  // Track the selected row so the breakdown button explains it.
-  function initGrid(api: {
-    on(action: string, cb: (ev: { id: string | number }) => void): void;
-  }) {
-    api.on("select-row", (ev) => {
-      selectedPid = String(ev.id);
-    });
-  }
 
   // Explain the selected lead (defaults to the top-scored lead so the
   // button always has a subject).
@@ -80,21 +55,13 @@
 {:else if leads === null}
   <p>{t("common.loading")}</p>
 {:else}
-  <div data-testid="lead-queue">
-    <GridTheme>
-      <FilterTheme>
-        <div class="filter-wrap">
-          <FilterBar
-            fields={filterFields}
-            onchange={({ value }: { value: unknown }) => (filterRules = value)}
-          />
-        </div>
-        <div class="grid-wrap">
-          <Grid data={filtered} {columns} select init={initGrid} />
-        </div>
-      </FilterTheme>
-    </GridTheme>
-  </div>
+  <DataTable
+    label={t("nav.leads")}
+    {columns}
+    {rows}
+    onselect={(pid) => (selectedPid = pid)}
+    testid="lead-queue"
+  />
   <p><button onclick={() => void explain()}>{t("lead.breakdown")}</button></p>
   {#if breakdown}
     <div class="panel" data-testid="breakdown">
@@ -106,12 +73,3 @@
   {/if}
 {/if}
 
-<style>
-  .filter-wrap {
-    margin-bottom: 0.5rem;
-  }
-  .grid-wrap {
-    height: 420px;
-    overflow: hidden;
-  }
-</style>

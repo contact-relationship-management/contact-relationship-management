@@ -918,6 +918,7 @@ test.describe("masked amounts (CRM-T32)", () => {
       }),
     );
     await page.goto("/campaigns");
+    await page.getByRole("radio", { name: "Select Spring push" }).check();
     await page.getByRole("button", { name: "Funnel" }).click();
     const funnel = page.getByTestId("funnel");
     await expect(funnel).toContainText("—");
@@ -1048,6 +1049,7 @@ test.describe("break-glass page (CRM-T44)", () => {
       );
     });
     await page.goto("/break-glass/review");
+    await page.getByRole("radio", { name: "Select dr-reader" }).check();
     await page.getByLabel("Review note").fill("Confirmed against the incident log");
     const record = page.getByRole("button", { name: "Record review" });
     await record.click();
@@ -1079,6 +1081,7 @@ test.describe("break-glass page (CRM-T44)", () => {
     });
     await page.goto("/break-glass/review");
     await expect(page.getByTestId("unreviewed")).toContainText("1");
+    await page.getByRole("radio", { name: "Select dr-reader" }).check();
     const record = page.getByRole("button", { name: "Record review" });
     await expect(record).toBeDisabled();
     await page.getByLabel("Review note").fill("Confirmed against the incident log");

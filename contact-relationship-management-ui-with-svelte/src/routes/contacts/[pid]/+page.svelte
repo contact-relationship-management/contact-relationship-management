@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { eraseContact, getContact, money, recordConsent } from "#lib/api/crm.js";
@@ -55,6 +56,44 @@
       erasing = false;
     }
   }
+
+  // Tables have headers now (the lists were headerless); English literals, as on
+  // the other detail pages.
+  const timelineColumns = [
+    { id: "when", header: "When", accessor: (r: Record<string, unknown>) => r.at, format: (_v: unknown, r: Record<string, unknown>) => String(r.when) },
+    { id: "kind", header: "Kind" },
+    { id: "summary", header: "Summary" },
+  ];
+  const timelineRows = $derived(
+    (detail?.activities ?? []).map((a) => ({
+      id: a.pid,
+      at: a.occurred_at,
+      when: new Date(a.occurred_at).toLocaleString(),
+      kind: a.kind,
+      summary: a.summary,
+    })),
+  );
+  const dealColumns = [
+    { id: "deal", header: "Deal" },
+    { id: "amount", header: "Amount", accessor: (r: Record<string, unknown>) => r.minor, format: (_v: unknown, r: Record<string, unknown>) => String(r.amount) },
+    { id: "outcome", header: "Outcome" },
+  ];
+  const dealRows = $derived(
+    (detail?.deals ?? []).map((d) => ({
+      id: d.pid,
+      deal: d.name,
+      minor: d.amount_minor,
+      amount: money(d.amount_minor, d.currency, i18n.locale),
+      outcome: d.closed_at ? (d.won ? t("deal.won") : t("deal.lost")) : "",
+    })),
+  );
+  const ticketColumns = [
+    { id: "ticket", header: "Ticket" },
+    { id: "status", header: "Status" },
+  ];
+  const ticketRows = $derived(
+    (detail?.tickets ?? []).map((x) => ({ id: x.pid, ticket: x.title, status: x.status })),
+  );
 </script>
 
 {#if error}
@@ -97,44 +136,26 @@
   </div>
 
   <h2>{t("contact.timeline")}</h2>
-  <table data-testid="timeline">
-    <tbody>
-      {#each detail.activities as activity (activity.pid)}
-        <tr>
-          <td>{new Date(activity.occurred_at).toLocaleString()}</td>
-          <td><span class="chip">{activity.kind}</span></td>
-          <td>{activity.summary}</td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label={t("contact.timeline")}
+    columns={timelineColumns}
+    rows={timelineRows}
+    testid="timeline"
+  />
 
   <h2>{t("nav.deals")}</h2>
-  <table>
-    <tbody>
-      {#each detail.deals as deal (deal.pid)}
-        <tr>
-          <td>{deal.name}</td>
-          <td>{money(deal.amount_minor, deal.currency, i18n.locale)}</td>
-          <td>
-            {#if deal.closed_at}
-              <span class="chip">{deal.won ? t("deal.won") : t("deal.lost")}</span>
-            {/if}
-          </td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label={t("nav.deals")}
+    columns={dealColumns}
+    rows={dealRows}
+    testid="contact-deals"
+  />
 
   <h2>{t("nav.tickets")}</h2>
-  <table>
-    <tbody>
-      {#each detail.tickets as ticket (ticket.pid)}
-        <tr>
-          <td>{ticket.title}</td>
-          <td><span class="chip">{ticket.status}</span></td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label={t("nav.tickets")}
+    columns={ticketColumns}
+    rows={ticketRows}
+    testid="contact-tickets"
+  />
 {/if}

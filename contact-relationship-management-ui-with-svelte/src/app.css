@@ -134,6 +134,68 @@ th {
   letter-spacing: 0.03em;
 }
 
+/* Data tables: the Lily data grid is headless, so its parts are styled here. */
+.app-grid {
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+.app-grid .data-grid-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.app-grid .data-grid-search {
+  min-width: 14rem;
+}
+.app-grid .data-grid-sort-button {
+  all: unset;
+  cursor: pointer;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  border-radius: 4px;
+}
+.app-grid .data-grid-sort-button:focus-visible,
+.app-grid [tabindex]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.app-grid th[aria-sort="ascending"] .data-grid-sort-button::after {
+  content: " \25B2";
+  font-size: 0.7em;
+}
+.app-grid th[aria-sort="descending"] .data-grid-sort-button::after {
+  content: " \25BC";
+  font-size: 0.7em;
+}
+.app-grid tr[aria-selected="true"] td {
+  background: color-mix(in srgb, var(--accent, #4527d6) 12%, transparent);
+}
+.app-grid th:has(.data-grid-selection-header-label) {
+  white-space: nowrap;
+}
+.app-grid td:has(> input[type="radio"]),
+.app-grid th:has(> input[type="checkbox"]) {
+  width: 2.5rem;
+}
+.app-grid .data-grid-pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.app-grid .data-grid-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Stat tiles */
 .tiles {
   display: grid;

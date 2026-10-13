@@ -6,6 +6,7 @@
   upstream). Also the SLA register lives with support, not here.
 -->
 <script lang="ts">
+  import DataTable from "#lib/components/DataTable.svelte";
   import { consentByAccount, dpo } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
 
@@ -25,6 +26,48 @@
       }
     })();
   });
+
+  const sourceColumns = [
+    { id: "source", header: "Source" },
+    { id: "events", header: "Events" },
+  ];
+  const sourceRows = $derived(
+    Object.entries(view?.consent_events_by_source ?? {}).map(([source, count]) => ({
+      id: source,
+      source,
+      events: count,
+    })),
+  );
+  const accountColumns = $derived([
+    { id: "account", header: "Account" },
+    { id: "coverage", header: "Coverage" },
+    {
+      id: "withdrawals",
+      header: `Withdrawals (${byAccount?.window_days ?? ""}d)`,
+    },
+  ]);
+  const accountRows = $derived(
+    (byAccount?.accounts ?? []).map((row) => ({
+      id: row.pid,
+      account: row.display_name,
+      coverage:
+        Object.entries(row.consent_coverage)
+          .map(([state, count]) => `${state}: ${count}`)
+          .join("  ") || "no contacts",
+      withdrawals: row.withdrawals_in_window,
+    })),
+  );
+  const duplicateColumns = [
+    { id: "person", header: "Person URN" },
+    { id: "contacts", header: "Contacts" },
+  ];
+  const duplicateRows = $derived(
+    (view?.duplicate_person_refs ?? []).map((group) => ({
+      id: group.person_ref,
+      person: group.person_ref,
+      contacts: group.contacts.map((c) => c.display_name).join("  "),
+    })),
+  );
 </script>
 
 <svelte:head><title>{t("nav.dpo")} — CRM</title></svelte:head>
@@ -46,57 +89,31 @@
   </section>
 
   <h2>Consent events by source</h2>
-  <table data-testid="dpo-sources">
-    <thead><tr><th>Source</th><th>Events</th></tr></thead>
-    <tbody>
-      {#each Object.entries(view.consent_events_by_source) as [source, count] (source)}
-        <tr><td>{source}</td><td>{count}</td></tr>
-      {:else}
-        <tr><td colspan="2" class="muted">No consent events recorded.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Consent events by source"
+    columns={sourceColumns}
+    rows={sourceRows}
+    testid="dpo-sources"
+    empty="No consent events recorded."
+  />
 
   <h2>Consent by account</h2>
   {#if byAccount}
-    <table data-testid="dpo-by-account">
-      <thead><tr><th>Account</th><th>Coverage</th><th>Withdrawals ({byAccount.window_days}d)</th></tr></thead>
-      <tbody>
-        {#each byAccount.accounts as row (row.pid)}
-          <tr>
-            <td>{row.display_name}</td>
-            <td>
-              {#each Object.entries(row.consent_coverage) as [state, count] (state)}
-                {state}: {count}&nbsp;
-              {:else}
-                <span class="muted">no contacts</span>
-              {/each}
-            </td>
-            <td>{row.withdrawals_in_window}</td>
-          </tr>
-        {:else}
-          <tr><td colspan="3" class="muted">No accounts.</td></tr>
-        {/each}
-      </tbody>
-    </table>
+    <DataTable
+      label="Consent by account"
+      columns={accountColumns}
+      rows={accountRows}
+      testid="dpo-by-account"
+      empty="No accounts."
+    />
   {/if}
 
   <h2>Duplicate contact rows</h2>
-  <table data-testid="dpo-duplicates">
-    <thead><tr><th>Person URN</th><th>Contacts</th></tr></thead>
-    <tbody>
-      {#each view.duplicate_person_refs as group (group.person_ref)}
-        <tr>
-          <td><code>{group.person_ref}</code></td>
-          <td>
-            {#each group.contacts as contact (contact.pid)}
-              {contact.display_name}&nbsp;
-            {/each}
-          </td>
-        </tr>
-      {:else}
-        <tr><td colspan="2" class="muted">No duplicates — one row per person.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <DataTable
+    label="Duplicate contact rows"
+    columns={duplicateColumns}
+    rows={duplicateRows}
+    testid="dpo-duplicates"
+    empty="No duplicates — one row per person."
+  />
 {/if}

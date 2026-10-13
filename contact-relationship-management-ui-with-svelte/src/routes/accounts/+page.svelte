@@ -1,11 +1,6 @@
 <script lang="ts">
-  import { Grid, Willow as GridTheme } from "@svar-ui/svelte-grid";
-  import {
-    FilterBar,
-    Willow as FilterTheme,
-    createArrayFilter,
-  } from "@svar-ui/svelte-filter";
   import { listAccounts } from "#lib/api/crm.js";
+  import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { Account } from "#lib/api/crm.js";
 
@@ -23,10 +18,10 @@
   });
 
   const columns = $derived([
-    { id: "display_name", header: t("common.name"), flexgrow: 1 },
-    { id: "tier", header: t("account.tier"), width: 130 },
-    { id: "industry", header: t("account.industry"), width: 170 },
-    { id: "pid", header: "pid", width: 300 },
+    { id: "display_name", header: t("common.name") },
+    { id: "tier", header: t("account.tier") },
+    { id: "industry", header: t("account.industry") },
+    { id: "pid", header: "pid" },
   ]);
 
   const rows = $derived(
@@ -39,17 +34,6 @@
     })),
   );
 
-  const filterFields = $derived([
-    { id: "display_name", label: t("common.name"), type: "text" },
-    { id: "tier", label: t("account.tier"), type: "text" },
-    { id: "industry", label: t("account.industry"), type: "text" },
-  ]);
-  let filterRules = $state<unknown>(null);
-  const filtered = $derived(
-    filterRules
-      ? createArrayFilter(filterRules as Parameters<typeof createArrayFilter>[0])(rows)
-      : rows,
-  );
 </script>
 
 <h1>{t("nav.accounts")}</h1>
@@ -59,29 +43,6 @@
 {:else if accounts === null}
   <p>{t("common.loading")}</p>
 {:else}
-  <div data-testid="account-table">
-    <GridTheme>
-      <FilterTheme>
-        <div class="filter-wrap">
-          <FilterBar
-            fields={filterFields}
-            onchange={({ value }: { value: unknown }) => (filterRules = value)}
-          />
-        </div>
-        <div class="grid-wrap">
-          <Grid data={filtered} {columns} />
-        </div>
-      </FilterTheme>
-    </GridTheme>
-  </div>
+  <DataTable label={t("nav.accounts")} {columns} {rows} testid="account-table" />
 {/if}
 
-<style>
-  .filter-wrap {
-    margin-bottom: 0.5rem;
-  }
-  .grid-wrap {
-    height: 480px;
-    overflow: hidden;
-  }
-</style>
