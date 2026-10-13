@@ -7,7 +7,11 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
-  "Referrer-Policy": "no-referrer",
+  // `same-origin`, not `no-referrer`: with `no-referrer` Chrome sends
+  // `Origin: null` on a plain same-origin form POST (the Sign out button), and
+  // SvelteKit's CSRF check then refuses it with 403. Nothing is sent to other
+  // sites either way.
+  "Referrer-Policy": "same-origin",
   "Permissions-Policy":
     "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
   "Cross-Origin-Opener-Policy": "same-origin",

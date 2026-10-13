@@ -10,6 +10,8 @@
 import type { RequestHandler } from "./$types";
 import { CRM_API_URL } from "#lib/server/config.js";
 import { exchangeToken } from "#lib/server/auth.js";
+import { DEMO_TOUR_ENABLED } from "#lib/server/config.js";
+import { demoHandle, isDemoSession } from "#lib/server/demo.js";
 
 const proxy: RequestHandler = async ({
   request,
@@ -18,6 +20,29 @@ const proxy: RequestHandler = async ({
   locals,
   fetch,
 }) => {
+  // Guided tour: a demo session is answered from fictitious data and is never
+  // forwarded to the service.
+  if (DEMO_TOUR_ENABLED && isDemoSession(locals.sessionId)) {
+    let body: unknown = null;
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      try {
+        body = await request.json();
+      } catch {
+        body = null;
+      }
+    }
+    const reply = demoHandle(
+      request.method,
+      params.path ?? "",
+      url.searchParams,
+      body,
+    );
+    return new Response(JSON.stringify(reply.body), {
+      status: reply.status,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   const target = `${CRM_API_URL}/${params.path}${url.search}`;
 
   // Copy request headers, but drop hop-by-hop / origin-specific ones and

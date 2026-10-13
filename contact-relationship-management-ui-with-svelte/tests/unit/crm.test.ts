@@ -185,7 +185,7 @@ describe("tour", () => {
         locals: { sessionId: null },
         url: new URL(`http://localhost${path}`),
       } as unknown as Parameters<typeof load>[0]);
-    expect(run("/tour")).toEqual({ signedIn: false });
+    expect(run("/tour")).toEqual({ signedIn: false, demo: false });
     expect(() => run("/contacts")).toThrow();
   });
 });

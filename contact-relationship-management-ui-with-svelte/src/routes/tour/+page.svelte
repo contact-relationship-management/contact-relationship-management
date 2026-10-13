@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import Tour from "#lib/components/Tour.svelte";
+  import { t } from "#lib/i18n.svelte.js";
 
   const sections = [
     { href: "/contacts" },
@@ -16,4 +17,15 @@
   ];
 </script>
 
+<p class="panel" data-testid="tour-signin">
+  {t("signin.demo")} <code>example@example.com</code> —
+  <a href="/signin">{t("auth.signin")}</a>
+</p>
+
 <Tour {sections} />
+
+<style>
+  [data-testid="tour-signin"] a {
+    text-decoration: underline;
+  }
+</style>

@@ -128,6 +128,11 @@
 -->
 
 <div class="layout">
+  {#if data?.demo}
+    <div class="demo-banner" role="status" data-testid="demo-banner">
+      <strong>{t("demo.title")}</strong> {t("demo.body")}
+    </div>
+  {/if}
   <header class="topbar">
     {#if signedIn}
       <button
@@ -232,6 +237,12 @@
   .site-footer {
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--mxi-color-border, currentColor);
+  }
+  .demo-banner {
+    padding: 0.5rem 1.5rem;
+    background: var(--mxi-color-primary);
+    color: var(--mxi-color-primary-fg);
+    font-size: 0.875rem;
   }
   .layout {
     display: flex;

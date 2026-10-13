@@ -8,7 +8,7 @@ describe("SECURITY_HEADERS", () => {
   it("denies sniffing, framing, and referrer leakage", () => {
     expect(SECURITY_HEADERS["X-Content-Type-Options"]).toBe("nosniff");
     expect(SECURITY_HEADERS["X-Frame-Options"]).toBe("DENY");
-    expect(SECURITY_HEADERS["Referrer-Policy"]).toBe("no-referrer");
+    expect(SECURITY_HEADERS["Referrer-Policy"]).toBe("same-origin");
   });
 
   it("pins HTTPS for at least a year, with subdomains", () => {

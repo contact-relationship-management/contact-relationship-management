@@ -18,6 +18,8 @@
 
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
+import { DEMO_TOUR_ENABLED } from "#lib/server/config.js";
+import { isDemoSession } from "#lib/server/demo.js";
 
 /** Routes reachable with no session (prefix match). */
 const PUBLIC_PATHS = ["/signin", "/verify", "/tour", "/accessibility"];
@@ -36,5 +38,8 @@ export const load: LayoutServerLoad = ({ locals, url }) => {
   if (!isPublic && locals.sessionId === null) {
     redirect(303, "/signin");
   }
-  return { signedIn: locals.sessionId !== null };
+  return {
+    signedIn: locals.sessionId !== null,
+    demo: DEMO_TOUR_ENABLED && isDemoSession(locals.sessionId),
+  };
 };

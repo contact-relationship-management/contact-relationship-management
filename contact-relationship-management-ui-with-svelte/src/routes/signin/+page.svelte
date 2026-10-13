@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { ActionData } from "./$types";
+  import type { ActionData, PageData } from "./$types";
   import { enhance } from "$app/forms";
   import { PUBLIC_OIDC_SIGNIN_ENABLED } from '$app/env/public';
   import { t } from "#lib/i18n.svelte.js";
 
-  let { form }: { form: ActionData } = $props();
+  let { form, data }: { form: ActionData; data: PageData } = $props();
   // Opt-in SSO (EV-2): a browser navigation, not a form action.
   const ssoEnabled = PUBLIC_OIDC_SIGNIN_ENABLED === "true";
 </script>
@@ -34,6 +34,11 @@
     </form>
     {#if ssoEnabled}
       <p><a class="btn" href="/signin/sso">{t("signin.sso")}</a></p>
+    {/if}
+    {#if data.demoTour}
+      <p class="muted" data-testid="demo-hint">
+        {t("signin.demo")} <code>{data.demoTour}</code>
+      </p>
     {/if}
     {#if form?.error}
       <p class="error" role="alert">

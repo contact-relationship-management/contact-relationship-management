@@ -1088,7 +1088,7 @@ test("responses carry the security headers and a CSP (CRM-T33)", async ({ page }
   const headers = response?.headers() ?? {};
   expect(headers["x-content-type-options"]).toBe("nosniff");
   expect(headers["x-frame-options"]).toBe("DENY");
-  expect(headers["referrer-policy"]).toBe("no-referrer");
+  expect(headers["referrer-policy"]).toBe("same-origin");
   expect(headers["strict-transport-security"]).toContain("max-age=");
   expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
 });

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — guided tour with fictitious data (2026-10-13)
+
+Sign in as `example@example.com` (no email is sent) to explore every screen on
+invented data: 12 contacts in 6 organisations, 12 deals, 7 leads, 4 campaigns,
+8 tickets, 5 articles, the insight views, and break-glass. The BFF proxy
+answers a demo session from `src/lib/server/demo.ts` and never forwards it to
+the service. Writes (moving a deal, resolving a ticket, recording consent,
+erasing a contact with the same refusals as the service) change an in-memory
+copy that every demo visitor shares and that signing in to the tour again
+resets. A banner marks the session. `CRM_DEMO_TOUR=off` disables it. Tests: a
+unit test that every read in `crm.ts` has sample data, and end-to-end tests that
+walk all 18 screens.
+
+### Fixed — Sign out returned 403 (2026-10-13)
+
+`Referrer-Policy: no-referrer` made Chrome send `Origin: null` on the plain
+Sign out form, which SvelteKit's CSRF check refuses. The policy is now
+`same-origin` (nothing is sent to other sites either way).
+
+### Known — accessibility findings on data-filled screens
+
+The tour screens, scanned with data for the first time, report WCAG A/AA
+findings (colour contrast on boards and the follow-up list, an unnamed select
+and buttons, ARIA attribute values in the grids). The scan in
+`tests/e2e/tour.spec.ts` lists them as annotations without failing the build;
+they belong to the manual audit (CRM-T48).
+
 ### Changed — Lily design system upgrade; pages and search pickers (2026-10-13)
 
 `@lilydesignsystem` packages moved to their latest (picker-bar 0.3.0, themes

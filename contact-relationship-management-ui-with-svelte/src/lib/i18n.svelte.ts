@@ -69,6 +69,9 @@ export const LOCALE_KEY = "mxi.crm.locale";
 // Every translatable UI string, keyed by a stable dotted key.
 const STRINGS = {
   "ar-001": {
+    "demo.title": "الجولة التجريبية:",
+    "demo.body": "كل ما تراه بيانات وهمية. التغييرات تُحفظ في الذاكرة فقط وتُعاد عند تسجيل الدخول إلى الجولة من جديد.",
+    "signin.demo": "هل تريد الجولة؟ سجّل الدخول بالعنوان",
     "nav.pages": "الصفحات",
     "search.label": "بحث في جهات الاتصال",
     "search.input": "عبارات البحث",
@@ -311,6 +314,9 @@ const STRINGS = {
     "signin.sso": "تسجيل الدخول عبر SSO",
   },
   "cy-001": {
+    "demo.title": "Taith dywys:",
+    "demo.body": "Data ffug yw popeth a welwch. Cedwir newidiadau yn y cof yn unig, a'u hailosod pan fyddwch yn mewngofnodi i'r daith eto.",
+    "signin.demo": "Eisiau'r daith? Mewngofnodwch gyda",
     "nav.pages": "Tudalennau",
     "search.label": "Chwilio cysylltiadau",
     "search.input": "Termau chwilio",
@@ -556,6 +562,9 @@ const STRINGS = {
     "signin.sso": "Mewngofnodi gydag SSO",
   },
   "de-de": {
+    "demo.title": "Geführte Tour:",
+    "demo.body": "Alles, was Sie sehen, ist erfunden. Änderungen bleiben nur im Speicher und werden beim erneuten Anmelden zur Tour zurückgesetzt.",
+    "signin.demo": "Möchten Sie die Tour? Melden Sie sich an mit",
     "nav.pages": "Seiten",
     "search.label": "Kontakte durchsuchen",
     "search.input": "Suchbegriffe",
@@ -803,6 +812,9 @@ const STRINGS = {
       "Öffnen Sie „DPO“, um die Einwilligung nach Quelle und nach Konto sowie Kontaktzeilen zu sehen, die dieselbe Person teilen.",
   },
   "en-001": {
+    "demo.title": "Guided tour:",
+    "demo.body": "everything you see is fictitious. Changes are kept in memory only and reset when you sign in to the tour again.",
+    "signin.demo": "Want the tour? Sign in as",
     "nav.pages": "Pages",
     "search.label": "Search contacts",
     "search.input": "Search terms",
@@ -1047,6 +1059,9 @@ const STRINGS = {
     "signin.sso": "Sign in with SSO",
   },
   "es-001": {
+    "demo.title": "Visita guiada:",
+    "demo.body": "todo lo que ve es ficticio. Los cambios solo se guardan en memoria y se restablecen al iniciar de nuevo la visita.",
+    "signin.demo": "¿Quiere la visita? Inicie sesión como",
     "nav.pages": "Páginas",
     "search.label": "Buscar contactos",
     "search.input": "Términos de búsqueda",
@@ -1293,6 +1308,9 @@ const STRINGS = {
     "signin.sso": "Iniciar sesión con SSO",
   },
   "fr-001": {
+    "demo.title": "Visite guidée :",
+    "demo.body": "tout ce que vous voyez est fictif. Les modifications restent en mémoire et sont réinitialisées à la prochaine connexion à la visite.",
+    "signin.demo": "Envie de la visite ? Connectez-vous avec",
     "nav.pages": "Pages",
     "search.label": "Rechercher des contacts",
     "search.input": "Termes de recherche",
@@ -1540,6 +1558,9 @@ const STRINGS = {
     "signin.sso": "Se connecter avec SSO",
   },
   "hi-001": {
+    "demo.title": "निर्देशित भ्रमण:",
+    "demo.body": "आप जो कुछ देखते हैं वह काल्पनिक है। बदलाव केवल मेमोरी में रहते हैं और भ्रमण में दोबारा साइन इन करने पर रीसेट हो जाते हैं।",
+    "signin.demo": "भ्रमण देखना चाहते हैं? इस पते से साइन इन करें",
     "nav.pages": "पृष्ठ",
     "search.label": "संपर्क खोजें",
     "search.input": "खोज शब्द",
@@ -1786,6 +1807,9 @@ const STRINGS = {
     "signin.sso": "SSO से साइन इन करें",
   },
   "zh-cn": {
+    "demo.title": "导览模式：",
+    "demo.body": "您看到的一切都是虚构的。更改仅保存在内存中，重新登录导览时会重置。",
+    "signin.demo": "想体验导览？请使用此地址登录",
     "nav.pages": "页面",
     "search.label": "搜索联系人",
     "search.input": "搜索词",
