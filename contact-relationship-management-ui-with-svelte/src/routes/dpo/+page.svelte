@@ -42,7 +42,7 @@
     { id: "account", header: "Account" },
     { id: "coverage", header: "Coverage" },
     {
-      id: "withdrawals",
+      id: "withdrawals", kind: "number",
       header: `Withdrawals (${byAccount?.window_days ?? ""}d)`,
     },
   ]);

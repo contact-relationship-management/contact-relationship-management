@@ -46,8 +46,8 @@
   const staleColumns = [
     { id: "deal", header: "Deal" },
     { id: "stage", header: "Stage" },
-    { id: "days", header: "Days in stage" },
-    { id: "amount", header: "Amount", accessor: (r: Record<string, unknown>) => r.amount_minor, format: (_v: unknown, r: Record<string, unknown>) => String(r.amount) },
+    { id: "days", kind: "number", header: "Days in stage" },
+    { id: "amount", kind: "money", header: "Amount", accessor: (r: Record<string, unknown>) => r.amount_minor, format: (_v: unknown, r: Record<string, unknown>) => String(r.amount) },
   ];
   const staleRows = $derived(
     stale.map((d) => ({

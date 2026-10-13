@@ -137,7 +137,43 @@ th {
 /* Data tables: the Lily data grid is headless, so its parts are styled here. */
 .app-grid {
   margin-bottom: 1rem;
+}
+.app-grid .data-grid-scroll {
   overflow-x: auto;
+}
+.app-grid tbody th {
+  /* The first column is the row header; keep it looking like a cell. */
+  color: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.app-grid [data-align="end"] {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.app-grid tr[data-activatable] {
+  cursor: pointer;
+}
+.app-grid tr[data-activatable]:hover td,
+.app-grid tr[data-activatable]:hover th {
+  background: color-mix(in srgb, var(--accent, #4527d6) 6%, transparent);
+}
+.app-grid tr.is-selected td,
+.app-grid tr.is-selected th {
+  background: color-mix(in srgb, var(--accent, #4527d6) 12%, transparent);
+}
+.app-grid .flag::before,
+.breach::before {
+  /* Colour alone is not enough for contrast in every theme, so the flag is
+     ink-coloured bold text with a decorative red marker. */
+  content: "\26A0\FE0E ";
+  color: #c0392b;
+}
+.app-grid .data-grid-empty {
+  color: var(--muted);
+  text-align: center;
 }
 .app-grid .data-grid-toolbar {
   display: flex;
@@ -169,16 +205,6 @@ th {
 .app-grid th[aria-sort="descending"] .data-grid-sort-button::after {
   content: " \25BC";
   font-size: 0.7em;
-}
-.app-grid tr[aria-selected="true"] td {
-  background: color-mix(in srgb, var(--accent, #4527d6) 12%, transparent);
-}
-.app-grid th:has(.data-grid-selection-header-label) {
-  white-space: nowrap;
-}
-.app-grid td:has(> input[type="radio"]),
-.app-grid th:has(> input[type="checkbox"]) {
-  width: 2.5rem;
 }
 .app-grid .data-grid-pagination {
   display: flex;
@@ -413,7 +439,8 @@ th {
 
 /* Forms & buttons */
 button,
-.btn {
+.btn,
+a.button {
   font: inherit;
   font-size: 0.85rem;
   border: 1px solid var(--line);
@@ -423,9 +450,20 @@ button,
   cursor: pointer;
   color: var(--ink);
 }
-button:hover {
+button:hover,
+a.button:hover,
+a.btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+/* Links styled as buttons: the Lily theme also styles a bare `.button`, and its
+   colours must not leak into the app's link colour (the label vanished). */
+a.button,
+a.btn {
+  display: inline-block;
+  min-height: 0;
+  text-decoration: none;
+  font-weight: 400;
 }
 button.primary {
   background: var(--accent);

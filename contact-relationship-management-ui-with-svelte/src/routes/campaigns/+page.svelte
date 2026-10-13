@@ -61,7 +61,7 @@
 
   const columns = $derived([
     { id: "name", header: t("common.name") },
-    { id: "status", header: t("common.status") },
+    { id: "status", kind: "chip", header: t("common.status") },
     { id: "recipients", header: t("campaign.recipients") },
   ]);
   const rows = $derived(

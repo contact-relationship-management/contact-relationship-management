@@ -69,6 +69,7 @@ export const LOCALE_KEY = "mxi.crm.locale";
 // Every translatable UI string, keyed by a stable dotted key.
 const STRINGS = {
   "ar-001": {
+    "grid.pageOf": "الصفحة {page} من {pages}",
     "nav.kanban": "كانبان",
     "kanban.title": "لوحة كانبان الخاصة بي",
     "kanban.cards": "{count} بطاقات",
@@ -336,6 +337,7 @@ const STRINGS = {
     "signin.sso": "تسجيل الدخول عبر SSO",
   },
   "cy-001": {
+    "grid.pageOf": "Tudalen {page} o {pages}",
     "nav.kanban": "Kanban",
     "kanban.title": "Fy mwrdd Kanban",
     "kanban.cards": "{count} cerdyn",
@@ -606,6 +608,7 @@ const STRINGS = {
     "signin.sso": "Mewngofnodi gydag SSO",
   },
   "de-de": {
+    "grid.pageOf": "Seite {page} von {pages}",
     "nav.kanban": "Kanban",
     "kanban.title": "Mein Kanban-Board",
     "kanban.cards": "{count} Karten",
@@ -878,6 +881,7 @@ const STRINGS = {
       "Öffnen Sie „DPO“, um die Einwilligung nach Quelle und nach Konto sowie Kontaktzeilen zu sehen, die dieselbe Person teilen.",
   },
   "en-001": {
+    "grid.pageOf": "Page {page} of {pages}",
     "nav.kanban": "Kanban",
     "kanban.title": "My Kanban board",
     "kanban.cards": "{count} cards",
@@ -1147,6 +1151,7 @@ const STRINGS = {
     "signin.sso": "Sign in with SSO",
   },
   "es-001": {
+    "grid.pageOf": "Página {page} de {pages}",
     "nav.kanban": "Kanban",
     "kanban.title": "Mi tablero Kanban",
     "kanban.cards": "{count} tarjetas",
@@ -1418,6 +1423,7 @@ const STRINGS = {
     "signin.sso": "Iniciar sesión con SSO",
   },
   "fr-001": {
+    "grid.pageOf": "Page {page} sur {pages}",
     "nav.kanban": "Kanban",
     "kanban.title": "Mon tableau Kanban",
     "kanban.cards": "{count} cartes",
@@ -1690,6 +1696,7 @@ const STRINGS = {
     "signin.sso": "Se connecter avec SSO",
   },
   "hi-001": {
+    "grid.pageOf": "पृष्ठ {page} / {pages}",
     "nav.kanban": "कानबन",
     "kanban.title": "मेरा कानबन बोर्ड",
     "kanban.cards": "{count} कार्ड",
@@ -1961,6 +1968,7 @@ const STRINGS = {
     "signin.sso": "SSO से साइन इन करें",
   },
   "zh-cn": {
+    "grid.pageOf": "第 {page} 页，共 {pages} 页",
     "nav.kanban": "看板",
     "kanban.title": "我的看板",
     "kanban.cards": "{count} 张卡片",

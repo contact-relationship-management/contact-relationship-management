@@ -19,7 +19,7 @@
 
   const columns = $derived([
     { id: "display_name", header: t("common.name") },
-    { id: "tier", header: t("account.tier") },
+    { id: "tier", kind: "chip", header: t("account.tier") },
     { id: "industry", header: t("account.industry") },
     { id: "pid", header: "pid" },
   ]);

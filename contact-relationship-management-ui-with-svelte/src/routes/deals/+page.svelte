@@ -80,7 +80,7 @@
 
   const funnelColumns = [
     { id: "stage", header: "Stage" },
-    { id: "entered", header: "Entered" },
+    { id: "entered", kind: "number", header: "Entered" },
     { id: "conversion", header: "Conversion" },
   ];
   const funnelRows = $derived(

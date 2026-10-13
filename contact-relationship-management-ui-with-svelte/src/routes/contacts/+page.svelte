@@ -20,10 +20,14 @@
   });
 
   const columns = $derived([
-    { id: "display_name", header: t("common.name") },
+    {
+      id: "display_name",
+      header: t("common.name"),
+      href: (row: Record<string, unknown>) => `/contacts/${row.id}`,
+    },
     { id: "job_title", header: t("contact.jobTitle") },
-    { id: "status", header: t("common.status") },
-    { id: "marketing_consent", header: t("contact.consent") },
+    { id: "status", kind: "chip", header: t("common.status") },
+    { id: "marketing_consent", kind: "chip", header: t("contact.consent") },
   ]);
 
   const rows = $derived(

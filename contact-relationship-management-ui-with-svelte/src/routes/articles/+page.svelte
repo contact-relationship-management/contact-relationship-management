@@ -32,9 +32,10 @@
 
   const columns = $derived([
     { id: "title", header: t("common.name") },
-    { id: "status", header: t("common.status") },
+    { id: "status", kind: "chip", header: t("common.status") },
     {
       id: "version",
+      kind: "number",
       header: t("article.version"),
       format: (v: unknown) => `v${v}`,
     },

@@ -57,8 +57,8 @@
 
   const overdueColumns = [
     { id: "due", header: "Due" },
-    { id: "days", header: "Overdue (days)" },
-    { id: "kind", header: "Kind" },
+    { id: "days", kind: "number", header: "Overdue (days)" },
+    { id: "kind", kind: "chip", header: "Kind" },
     { id: "summary", header: "Summary" },
     { id: "recorder", header: "Recorder" },
   ];

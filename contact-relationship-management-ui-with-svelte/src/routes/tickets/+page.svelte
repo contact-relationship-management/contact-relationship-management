@@ -35,10 +35,10 @@
 
   const columns = $derived([
     { id: "title", header: t("common.name") },
-    { id: "priority", header: t("ticket.priority") },
-    { id: "status", header: t("common.status") },
+    { id: "priority", kind: "chip", header: t("ticket.priority") },
+    { id: "status", kind: "chip", header: t("common.status") },
     { id: "due", header: t("ticket.due") },
-    { id: "breach", header: t("ticket.breached") },
+    { id: "breach", kind: "flag", header: t("ticket.breached") },
   ]);
 
   const rows = $derived(
@@ -100,6 +100,6 @@
 
 <style>
   .breach {
-    color: var(--state-closed, #8a1d2d);
+    color: inherit;
   }
 </style>

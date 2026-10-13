@@ -111,6 +111,79 @@ test("the kanban board needs a session", async ({ page }) => {
   await expect(page).toHaveURL(/\/signin$/);
 });
 
+test.describe("data tables", () => {
+  test("a row opens its record, by click or Enter, and the name is a link", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/contacts");
+    // The name is a real link …
+    await expect(page.getByRole("link", { name: "Imogen Hartley" })).toHaveAttribute(
+      "href",
+      "/contacts/con-1",
+    );
+    // … and the rest of the row opens the same record.
+    await page.getByRole("gridcell", { name: "Head of Procurement" }).click();
+    await expect(page).toHaveURL(/\/contacts\/con-1$/);
+    await page.goBack();
+    await page.getByRole("gridcell", { name: "Head of Procurement" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/contacts\/con-1$/);
+  });
+
+  test("columns sort (numbers numerically) and say so", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/leads");
+    const header = page.getByRole("columnheader", { name: "Score" });
+    await header.getByRole("button").click();
+    await expect(header).toHaveAttribute("aria-sort", "ascending");
+    const scores = async () =>
+      (await page.getByTestId("lead-queue").locator("tbody tr").allInnerTexts()).map(
+        (t) => Number(t.trim().split(/\s+/)[0]),
+      );
+    const ascending = await scores();
+    expect(ascending).toEqual([...ascending].sort((a, b) => a - b));
+    await header.getByRole("button").click();
+    await expect(header).toHaveAttribute("aria-sort", "descending");
+    const descending = await scores();
+    expect(descending).toEqual([...descending].sort((a, b) => b - a));
+  });
+
+  test("status is a chip, a breach is flagged, and numbers sit at the end", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/tickets");
+    const queue = page.getByTestId("ticket-queue");
+    await expect(queue.locator(".chip").first()).toBeVisible();
+    await expect(queue.locator("strong.flag").first()).toContainText("Breached");
+    await page.goto("/followups");
+    await expect(
+      page.getByTestId("followups-overdue").locator('td[data-align="end"]').first(),
+    ).toBeVisible();
+  });
+
+  test("the Board links are readable (label colour differs from the background)", async ({ page }) => {
+    await startTour(page);
+    for (const path of ["/tickets", "/leads"]) {
+      await page.goto(path);
+      const link = page.getByRole("link", { name: "Board" });
+      await expect(link).toBeVisible();
+      const [color, background] = await link.evaluate((e) => {
+        const style = getComputedStyle(e);
+        return [style.color, style.backgroundColor];
+      });
+      expect(color, path).not.toBe(background);
+    }
+  });
+
+  test("an empty table keeps its headers and says why", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/followups");
+    await page.getByTestId("kind-filter").selectOption("note");
+    await expect(page.getByTestId("followups-overdue")).toContainText("Nothing overdue.");
+    await expect(
+      page.getByTestId("followups-overdue").getByRole("columnheader", { name: "Due", exact: true }),
+    ).toBeVisible();
+  });
+});
+
 test("another address is not the tour", async ({ page }) => {
   await page.goto("/signin");
   await page.getByLabel("Email").fill("someone@example.org");

@@ -34,7 +34,7 @@
   const contactColumns = [
     { id: "contact", header: "Contact" },
     { id: "role", header: "Role" },
-    { id: "days", header: "Days since touch" },
+    { id: "days", kind: "number", header: "Days since touch" },
     { id: "next", header: "Next touch?" },
   ];
   const contactRows = $derived(
@@ -49,7 +49,7 @@
   const accountColumns = [
     { id: "account", header: "Account" },
     { id: "role", header: "Role" },
-    { id: "days", header: "Days since touch" },
+    { id: "days", kind: "number", header: "Days since touch" },
   ];
   const accountRows = $derived(
     (aging?.untouched_accounts ?? []).map((row) => ({
@@ -61,7 +61,7 @@
   );
   const kindColumns = [
     { id: "kind", header: "Kind" },
-    { id: "touches", header: "Touches" },
+    { id: "touches", kind: "number", header: "Touches" },
   ];
   const kindRows = $derived(
     Object.entries(workload?.per_kind ?? {}).map(([kind, count]) => ({
@@ -72,7 +72,7 @@
   );
   const sentimentColumns = [
     { id: "sentiment", header: "Sentiment" },
-    { id: "touches", header: "Touches" },
+    { id: "touches", kind: "number", header: "Touches" },
   ];
   const sentimentRows = $derived(
     Object.entries(workload?.sentiment ?? {}).map(([key, count]) => ({
@@ -84,11 +84,11 @@
   const memberColumns = [
     { id: "account", header: "Account" },
     { id: "membership", header: "Membership" },
-    { id: "contacts", header: "Contacts" },
-    { id: "days", header: "Days since touch" },
-    { id: "followups", header: "Open follow-ups" },
-    { id: "tickets", header: "Open tickets" },
-    { id: "silent", header: "Silent?" },
+    { id: "contacts", kind: "number", header: "Contacts" },
+    { id: "days", kind: "number", header: "Days since touch" },
+    { id: "followups", kind: "number", header: "Open follow-ups" },
+    { id: "tickets", kind: "number", header: "Open tickets" },
+    { id: "silent", kind: "chip", header: "Silent?" },
   ];
   const memberRows = $derived(
     (members?.accounts ?? []).map((row) => ({

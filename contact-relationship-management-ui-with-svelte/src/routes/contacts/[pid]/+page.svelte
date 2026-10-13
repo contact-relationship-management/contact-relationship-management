@@ -61,7 +61,7 @@
   // the other detail pages.
   const timelineColumns = [
     { id: "when", header: "When", accessor: (r: Record<string, unknown>) => r.at, format: (_v: unknown, r: Record<string, unknown>) => String(r.when) },
-    { id: "kind", header: "Kind" },
+    { id: "kind", kind: "chip", header: "Kind" },
     { id: "summary", header: "Summary" },
   ];
   const timelineRows = $derived(
@@ -75,8 +75,8 @@
   );
   const dealColumns = [
     { id: "deal", header: "Deal" },
-    { id: "amount", header: "Amount", accessor: (r: Record<string, unknown>) => r.minor, format: (_v: unknown, r: Record<string, unknown>) => String(r.amount) },
-    { id: "outcome", header: "Outcome" },
+    { id: "amount", kind: "money", header: "Amount", accessor: (r: Record<string, unknown>) => r.minor, format: (_v: unknown, r: Record<string, unknown>) => String(r.amount) },
+    { id: "outcome", kind: "chip", header: "Outcome" },
   ];
   const dealRows = $derived(
     (detail?.deals ?? []).map((d) => ({
@@ -89,7 +89,7 @@
   );
   const ticketColumns = [
     { id: "ticket", header: "Ticket" },
-    { id: "status", header: "Status" },
+    { id: "status", kind: "chip", header: "Status" },
   ];
   const ticketRows = $derived(
     (detail?.tickets ?? []).map((x) => ({ id: x.pid, ticket: x.title, status: x.status })),

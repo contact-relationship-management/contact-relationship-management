@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — better data tables, on data-grid 0.4.0 (2026-10-13)
+
+`@lilydesignsystem/svelte-data-grid` is now 0.4.0. The shared `DataTable`
+wrapper uses what it added:
+
+- **Rows open their record.** Click a row, or press Enter on it, instead of
+  ticking a radio button; the selection column is gone and the selected row is
+  highlighted. Contact names are real links too.
+- **Rich cells.** Status, priority and consent show as chips, a breach is a
+  flagged label, numbers and amounts are right-aligned with tabular figures.
+- **Better sorting.** Text sorts with the UI language's collation, and digit
+  runs compare as numbers ("10" after "9"). Sort and column widths are
+  remembered per table.
+- **Row headers.** The first column is the row header for assistive technology.
+- **Empty tables keep their headers** and say why, inside the grid.
+- **Long lists page** at 25 rows, with the page announced to screen readers.
+- The grid scrolls sideways on its own region on narrow screens.
+
+Also fixed: the "Board" links on Tickets and Leads had invisible text (the Lily
+theme's `.button` colours matched the background), and the breach marker no
+longer relies on a pink that failed contrast. Every page that has a data table
+now scans clean for WCAG A/AA; what remains in the tour scan is the SVAR
+kanban boards, the follow-ups calendar and the deal board's pipeline selector.
+
 ### Added — `/<locale>/kanban` (2026-10-13)
 
 `/en-001/kanban` (or any of the eight UI languages) shows the signed-in user's
