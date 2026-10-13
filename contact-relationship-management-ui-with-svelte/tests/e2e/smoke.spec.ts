@@ -831,6 +831,45 @@ test.describe("contact subject rights", () => {
   });
 });
 
+test.describe("header pickers: pages and search", () => {
+  test.beforeEach(async ({ page }) => {
+    await signIn(page);
+  });
+
+  test("the search picker filters the contact list; the link picker navigates", async ({
+    page,
+  }) => {
+    const person = (pid: string, name: string, title: string) => ({
+      pid,
+      display_name: name,
+      job_title: title,
+      status: "active",
+      marketing_consent: "granted",
+    });
+    await page.route("**/api/proxy/contacts", (route) =>
+      route.fulfill({
+        json: [
+          person("c1", "Ada Lovelace", "Engineer"),
+          person("c2", "Grace Hopper", "Admiral"),
+        ],
+      }),
+    );
+    await page.goto("/contacts");
+    await expect(page.getByText("Grace Hopper")).toBeVisible();
+
+    await page.locator("header.topbar .search-picker-button").click();
+    await page.getByRole("searchbox", { name: "Search terms" }).fill("ada");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await expect(page).toHaveURL(/\/contacts\?ada$/);
+    await expect(page.getByText("Ada Lovelace")).toBeVisible();
+    await expect(page.getByText("Grace Hopper")).toHaveCount(0);
+
+    await page.locator("header.topbar .link-picker-button").click();
+    await page.getByRole("link", { name: "Dashboard" }).click();
+    await expect(page).toHaveURL(/\/$/);
+  });
+});
+
 test.describe("masked amounts (CRM-T32)", () => {
   test.beforeEach(async ({ page }) => {
     await signIn(page);

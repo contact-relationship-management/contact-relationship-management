@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Lily design system upgrade; pages and search pickers (2026-10-13)
+
+`@lilydesignsystem` packages moved to their latest (picker-bar 0.3.0, themes
+0.4.0, the theme, locale, text-size and share pickers 0.2.0, headless 0.4.0).
+The header picker bar gains a **link picker** (home icon: the primary
+navigation, or Dashboard and Accessibility when signed out) and a **search
+picker** (a search for `ada` goes to `/contacts?ada`, which filters the contact
+list by name, job title or status; `?q=ada` works too). New strings in all
+eight languages (`nav.pages`, `search.*`). The upgraded theme CSS places popups
+itself with anchor positioning, so the layout's own popup placement rules were
+removed. New end-to-end test for both pickers.
+
 ### Added — accessibility statement (CRM-T45, 2026-10-10)
 
 Public `/accessibility` page linked from the footer; it does not claim WCAG

@@ -1,6 +1,7 @@
 <script lang="ts">
   import "../app.css";
   import { page } from "$app/state";
+  import { goto } from "$app/navigation";
   import { browser } from '$app/env';
   import type { Snippet } from "svelte";
   import type { LayoutData } from "./$types";
@@ -9,6 +10,7 @@
   import { i18n, isRtl, t, LOCALES, LOCALE_LABELS } from "#lib/i18n.svelte.js";
   import PickerBar from "@lilydesignsystem/svelte-picker-bar";
   import type { ShareTarget } from "@lilydesignsystem/svelte-share-picker";
+  import type { LinkItem } from "@lilydesignsystem/svelte-link-picker";
 
   let { children, data }: { children: Snippet; data?: LayoutData } = $props();
 
@@ -102,6 +104,18 @@
     { href: "/partners", key: "nav.partners" },
     { href: "/tour", key: "nav.tour" },
   ] as const;
+
+  // Link picker (the home icon): the primary navigation when signed in,
+  // else the public pages. `current` marks the page being viewed.
+  const pageLinks: LinkItem[] = $derived(
+    (signedIn
+      ? navItems.map((item) => ({ href: item.href, label: t(item.key) }))
+      : [
+          { href: "/", label: t("nav.dashboard") },
+          { href: "/accessibility", label: t("footer.accessibility") },
+        ]
+    ).map((link) => ({ ...link, current: page.url.pathname === link.href })),
+  );
 </script>
 
 <!--
@@ -109,7 +123,7 @@
 
   Renders the top bar (hamburger-collapsed primary nav, brand, and an
   always-visible end group holding Sign in / Sign out and the Lily
-  PickerBar: theme / locale / text size / share) and a <main> slot for the
+  PickerBar: pages / search / theme / locale / text size / share) and a <main> slot for the
   active page. Pure shell: no data fetching here.
 -->
 
@@ -159,10 +173,22 @@
       {/if}
       <PickerBar
         labels={{
+          link: t("nav.pages"),
+          search: t("search.label"),
+          searchInput: t("search.input"),
+          searchSubmit: t("search.submit"),
           theme: t("nav.theme"),
           locale: t("chrome.language"),
           textSize: t("nav.text_size"),
           share: t("nav.share"),
+        }}
+        links={pageLinks}
+        linkProps={{ navigate: (href: string) => void goto(href) }}
+        searchProps={{
+          // A search for `foo` goes to `/contacts?foo`, which filters the list.
+          action: "/contacts",
+          placeholder: t("search.placeholder"),
+          navigate: (href: string) => void goto(href),
         }}
         themesUrl="/assets/themes/"
         themeProps={{
@@ -345,22 +371,20 @@
   }
 
   /* Lily PickerBar. The Lily theme stylesheet (loaded by ThemePicker, see
-   `defaultValue` below) styles the picker buttons and listboxes; this
-   only places them. Each listbox is anchored to the header (`.topbar`
-   is `position: relative`) rather than to its own button, so it drops
-   down under the header's end edge, is as wide as its longest label
-   (the theme names are long), never pushes the page down, and cannot
-   run off either side of a narrow screen. */
+   `defaultValue` below) styles the picker buttons and places each popup
+   under its own button with CSS anchor positioning, flipping it at the
+   viewport edges; this only lays the buttons out in the header. */
   .header-end :global(.picker-bar) {
     display: flex;
     align-items: center;
     gap: 0.375rem;
   }
+  .header-end :global(.link-picker),
+  .header-end :global(.search-picker),
   .header-end :global(.theme-picker),
   .header-end :global(.locale-picker),
   .header-end :global(.text-size-picker),
   .header-end :global(.share-picker) {
-    position: static;
     display: inline-flex;
     align-items: center;
   }
@@ -383,6 +407,8 @@
   .header-end :global(.share-picker-status:empty) {
     display: none;
   }
+  .header-end :global(.link-picker-button),
+  .header-end :global(.search-picker-button),
   .header-end :global(.theme-picker-button),
   .header-end :global(.locale-picker-button),
   .header-end :global(.text-size-picker-button),
@@ -392,19 +418,6 @@
     height: 2.5rem;
     margin: 0;
     vertical-align: middle;
-  }
-  .header-end :global(.theme-picker-list),
-  .header-end :global(.locale-picker-list),
-  .header-end :global(.text-size-picker-list),
-  .header-end :global(.share-picker-list) {
-    top: 100%;
-    inset-inline-start: auto;
-    inset-inline-end: 1.5rem;
-    z-index: 40;
-    box-sizing: border-box;
-    min-width: 0;
-    width: max-content;
-    max-width: calc(100vw - 2rem);
   }
   .header-end :global(.theme-picker-option),
   .header-end :global(.locale-picker-option),
@@ -428,12 +441,6 @@
       white-space: normal;
     }
     .header-end :global(.share-picker-status) {
-      inset-inline-end: 0.75rem;
-    }
-    .header-end :global(.theme-picker-list),
-    .header-end :global(.locale-picker-list),
-    .header-end :global(.text-size-picker-list),
-    .header-end :global(.share-picker-list) {
       inset-inline-end: 0.75rem;
     }
   }

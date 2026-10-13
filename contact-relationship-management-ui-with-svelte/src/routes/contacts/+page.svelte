@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import { Grid, Willow as GridTheme } from "@svar-ui/svelte-grid";
   import {
     FilterBar,
@@ -40,6 +41,22 @@
     })),
   );
 
+  // The header search sends a bare query (`/contacts?ada`), or `?q=ada`.
+  const query = $derived(
+    (page.url.searchParams.get("q") ?? decodeURIComponent(page.url.search.slice(1)))
+      .trim()
+      .toLowerCase(),
+  );
+  const searched = $derived(
+    query === ""
+      ? rows
+      : rows.filter((r) =>
+          [r.display_name, r.job_title, r.status].some((v) =>
+            v.toLowerCase().includes(query),
+          ),
+        ),
+  );
+
   const filterFields = $derived([
     { id: "display_name", label: t("common.name"), type: "text" },
     { id: "status", label: t("common.status"), type: "text" },
@@ -48,8 +65,8 @@
   let filterRules = $state<unknown>(null);
   const filtered = $derived(
     filterRules
-      ? createArrayFilter(filterRules as Parameters<typeof createArrayFilter>[0])(rows)
-      : rows,
+      ? createArrayFilter(filterRules as Parameters<typeof createArrayFilter>[0])(searched)
+      : searched,
   );
 
   // Row selection opens the contact timeline.
