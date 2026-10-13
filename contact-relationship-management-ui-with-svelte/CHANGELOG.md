@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — six dashboard tiles (2026-10-13)
+
+The dashboard now shows six tiles: win rate, open deals, open tickets, breached
+tickets (links to Tickets), overdue follow-ups (links to Follow-ups) and the
+forecast. The two new ones come from data the dashboard's calls already carry,
+plus one read of `/insights/followups`. Also fixed: `main` shrank to its content
+width on every page (auto margins in the layout's flex column); it now fills the
+page up to 1280 px, which is what lets the tiles sit in one row.
+
 ### Added — guided tour with fictitious data (2026-10-13)
 
 Sign in as `example@example.com` (no email is sent) to explore every screen on

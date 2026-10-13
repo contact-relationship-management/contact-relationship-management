@@ -160,6 +160,20 @@ test.describe("signed-in smoke coverage", () => {
         },
       }),
     );
+    await page.route("**/api/proxy/insights/followups", (route) =>
+      route.fulfill({
+        json: {
+          as_of: "2026-07-18T12:00:00Z",
+          note: "",
+          overdue: [
+            { pid: "f1", kind: "task", summary: "a", subject_kind: "contact", subject_pid: "c1", actor_ref: null, due_on: "2026-07-10", overdue_days: 8 },
+            { pid: "f2", kind: "task", summary: "b", subject_kind: "contact", subject_pid: "c1", actor_ref: null, due_on: "2026-07-12", overdue_days: 6 },
+          ],
+          upcoming_30d: [],
+          open_by_recorder: {},
+        },
+      }),
+    );
   });
 
   test("dashboard renders honest KPIs from the stubbed API", async ({
@@ -170,6 +184,9 @@ test.describe("signed-in smoke coverage", () => {
     await expect(page.getByTestId("tile-deals")).toContainText("8");
     await expect(page.getByTestId("tile-tickets")).toContainText("3");
     await expect(page.getByTestId("tile-forecast")).toContainText("£48,875.00");
+    await expect(page.getByTestId("tile-breached")).toContainText("1");
+    await expect(page.getByTestId("tile-overdue")).toContainText("2");
+    await expect(page.locator(".tiles .tile")).toHaveCount(6);
   });
 
   test("deal board renders stage columns and the forecast strip", async ({

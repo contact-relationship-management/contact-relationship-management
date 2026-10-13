@@ -69,6 +69,8 @@ export const LOCALE_KEY = "mxi.crm.locale";
 // Every translatable UI string, keyed by a stable dotted key.
 const STRINGS = {
   "ar-001": {
+    "dash.breached": "تذاكر متجاوزة للمهلة",
+    "dash.overdue": "متابعات متأخرة",
     "demo.title": "الجولة التجريبية:",
     "demo.body": "كل ما تراه بيانات وهمية. التغييرات تُحفظ في الذاكرة فقط وتُعاد عند تسجيل الدخول إلى الجولة من جديد.",
     "signin.demo": "هل تريد الجولة؟ سجّل الدخول بالعنوان",
@@ -314,6 +316,8 @@ const STRINGS = {
     "signin.sso": "تسجيل الدخول عبر SSO",
   },
   "cy-001": {
+    "dash.breached": "Tocynnau y torrwyd eu hamserlen",
+    "dash.overdue": "Dilyniannau hwyr",
     "demo.title": "Taith dywys:",
     "demo.body": "Data ffug yw popeth a welwch. Cedwir newidiadau yn y cof yn unig, a'u hailosod pan fyddwch yn mewngofnodi i'r daith eto.",
     "signin.demo": "Eisiau'r daith? Mewngofnodwch gyda",
@@ -562,6 +566,8 @@ const STRINGS = {
     "signin.sso": "Mewngofnodi gydag SSO",
   },
   "de-de": {
+    "dash.breached": "Überfällige Tickets (SLA verletzt)",
+    "dash.overdue": "Überfällige Nachfassaktionen",
     "demo.title": "Geführte Tour:",
     "demo.body": "Alles, was Sie sehen, ist erfunden. Änderungen bleiben nur im Speicher und werden beim erneuten Anmelden zur Tour zurückgesetzt.",
     "signin.demo": "Möchten Sie die Tour? Melden Sie sich an mit",
@@ -812,6 +818,8 @@ const STRINGS = {
       "Öffnen Sie „DPO“, um die Einwilligung nach Quelle und nach Konto sowie Kontaktzeilen zu sehen, die dieselbe Person teilen.",
   },
   "en-001": {
+    "dash.breached": "Breached tickets",
+    "dash.overdue": "Overdue follow-ups",
     "demo.title": "Guided tour:",
     "demo.body": "everything you see is fictitious. Changes are kept in memory only and reset when you sign in to the tour again.",
     "signin.demo": "Want the tour? Sign in as",
@@ -1059,6 +1067,8 @@ const STRINGS = {
     "signin.sso": "Sign in with SSO",
   },
   "es-001": {
+    "dash.breached": "Tickets incumplidos",
+    "dash.overdue": "Seguimientos vencidos",
     "demo.title": "Visita guiada:",
     "demo.body": "todo lo que ve es ficticio. Los cambios solo se guardan en memoria y se restablecen al iniciar de nuevo la visita.",
     "signin.demo": "¿Quiere la visita? Inicie sesión como",
@@ -1308,6 +1318,8 @@ const STRINGS = {
     "signin.sso": "Iniciar sesión con SSO",
   },
   "fr-001": {
+    "dash.breached": "Tickets hors délai",
+    "dash.overdue": "Relances en retard",
     "demo.title": "Visite guidée :",
     "demo.body": "tout ce que vous voyez est fictif. Les modifications restent en mémoire et sont réinitialisées à la prochaine connexion à la visite.",
     "signin.demo": "Envie de la visite ? Connectez-vous avec",
@@ -1558,6 +1570,8 @@ const STRINGS = {
     "signin.sso": "Se connecter avec SSO",
   },
   "hi-001": {
+    "dash.breached": "समय-सीमा चूके टिकट",
+    "dash.overdue": "विलंबित फ़ॉलो-अप",
     "demo.title": "निर्देशित भ्रमण:",
     "demo.body": "आप जो कुछ देखते हैं वह काल्पनिक है। बदलाव केवल मेमोरी में रहते हैं और भ्रमण में दोबारा साइन इन करने पर रीसेट हो जाते हैं।",
     "signin.demo": "भ्रमण देखना चाहते हैं? इस पते से साइन इन करें",
@@ -1807,6 +1821,8 @@ const STRINGS = {
     "signin.sso": "SSO से साइन इन करें",
   },
   "zh-cn": {
+    "dash.breached": "已违约工单",
+    "dash.overdue": "逾期跟进",
     "demo.title": "导览模式：",
     "demo.body": "您看到的一切都是虚构的。更改仅保存在内存中，重新登录导览时会重置。",
     "signin.demo": "想体验导览？请使用此地址登录",
