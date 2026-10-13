@@ -31,6 +31,12 @@ async function startTour(page: Page) {
   await page.getByLabel("Email").fill("example@example.com");
   await page.getByRole("button", { name: "Send magic link" }).click();
   await expect(page.getByTestId("demo-banner")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "My Home Page" }),
+  ).toBeVisible();
+  const header = page.getByRole("banner");
+  await expect(header.getByText("Sign out", { exact: true })).toBeVisible();
+  await expect(header.getByText("Sign in", { exact: true })).toHaveCount(0);
 }
 
 test("a visitor can take the tour from the tour page", async ({ page }) => {

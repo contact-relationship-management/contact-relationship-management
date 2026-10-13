@@ -180,6 +180,13 @@ test.describe("signed-in smoke coverage", () => {
     page,
   }) => {
     await page.goto("/");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "My Home Page" }),
+    ).toBeVisible();
+    // Signed in: the header offers Sign out and no Sign in.
+    const header = page.getByRole("banner");
+    await expect(header.getByRole("button", { name: "Sign out" })).toBeVisible();
+    await expect(header.getByText("Sign in", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("tile-winrate")).toContainText("50% (2/4)");
     await expect(page.getByTestId("tile-deals")).toContainText("8");
     await expect(page.getByTestId("tile-tickets")).toContainText("3");

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — signed-in headline (2026-10-13)
+
+The signed-in dashboard's headline is now "My Home Page" (translated in all
+eight languages). Tests check that a signed-in header offers Sign out and no
+Sign in.
+
 ### Changed — six dashboard tiles (2026-10-13)
 
 The dashboard now shows six tiles: win rate, open deals, open tickets, breached
