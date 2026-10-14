@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Lily upgrade (2026-10-14)
+
+`svelte-calendar` 0.3.0, `svelte-data-grid` 0.5.0, `svelte-headless` 0.5.0 and
+`svelte-kanban-board` 0.3.0; all unit and end-to-end tests pass unchanged. The
+kanban board now has subtitles, badges, flags, links, locked cards, async moves,
+`canMove`, WIP limits, search and add-card, which covers what the SVAR boards
+are used for; moving the three SVAR boards over is not done yet.
+
 ### Changed — follow-ups calendar on `@lilydesignsystem/svelte-calendar` 0.2.0 (2026-10-14)
 
 `/followups` now uses the Lily `CalendarView` (week, four-week and month views,

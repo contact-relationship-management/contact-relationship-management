@@ -3,5 +3,7 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@sveltejs/adapter-auto@8.0.0'
   - '@sveltejs/kit@3.0.0'
-  - '@lilydesignsystem/svelte-data-grid@0.4.0'
-  - '@lilydesignsystem/svelte-calendar@0.2.0'
+  - '@lilydesignsystem/svelte-data-grid@0.4.0 || 0.5.0'
+  - '@lilydesignsystem/svelte-calendar@0.2.0 || 0.3.0'
+  - '@lilydesignsystem/svelte-headless@0.5.0'
+  - '@lilydesignsystem/svelte-kanban-board@0.3.0'
