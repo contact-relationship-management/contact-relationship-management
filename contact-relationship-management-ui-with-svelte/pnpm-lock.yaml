@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@lilydesignsystem/svelte-calendar':
+        specifier: 0.2.0
+        version: 0.2.0(svelte@5.57.1)
       '@lilydesignsystem/svelte-data-grid':
         specifier: 0.4.0
         version: 0.4.0(svelte@5.57.1)
@@ -41,9 +44,6 @@ importers:
       '@lilydesignsystem/themes':
         specifier: 0.4.0
         version: 0.4.0
-      '@svar-ui/svelte-calendar':
-        specifier: ^2.7.1
-        version: 2.7.1(picomatch@4.0.7)(svelte@5.57.1)(typescript@6.0.3)
       '@svar-ui/svelte-filemanager':
         specifier: ^2.6.0
         version: 2.6.0
@@ -192,8 +192,20 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
+  '@lilydesignsystem/svelte-calendar@0.2.0':
+    resolution: {integrity: sha512-IeUu75raEZSffse6jRhdReWIzbDeaeWOx1HCpSOnBIkJf1vYpWOV/Kc9J1+QKqmF9aFgHDJlAj9m/9mH2R6wwQ==}
+    engines: {node: '=26'}
+    peerDependencies:
+      svelte: ^5.0.0
+
   '@lilydesignsystem/svelte-data-grid@0.4.0':
     resolution: {integrity: sha512-7o/uK+ZX8fLrMgT5254YpRxZLClz3scFogFjatmgOnbCaVkMSHJsWFTVVsaIlm1+NnBt6v2Q+Yzy+sRcG5C5cg==}
+    engines: {node: '=26'}
+    peerDependencies:
+      svelte: ^5.0.0
+
+  '@lilydesignsystem/svelte-date-time-picker@0.2.0':
+    resolution: {integrity: sha512-CPIw0DmSX2Rl6RiPD3rGUx40KzvMhklzAlYktc7tlmzoGL/455oB7ooGeocYjOvdSc9lHjSX27jQWNz+UYxr0Q==}
     engines: {node: '=26'}
     peerDependencies:
       svelte: ^5.0.0
@@ -375,18 +387,6 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@svar-ui/calendar-ical@2.7.0':
-    resolution: {integrity: sha512-hkHMhuKPOAT/qS90wGv933vUupuofIQhUbq2BR9OjUVaPRuH1wczaoDOotZ2TBS8N14a9cAugdwq2TqB2BQ6rA==}
-
-  '@svar-ui/calendar-locales@2.7.0':
-    resolution: {integrity: sha512-nzJKH3SLqm8ISiHizmyMQdBnXW5MHwbs1BVrDofHM1YbvdTkVR4oTwVqYhOmyvuSSioKc9971ptDoKHX/9sY1Q==}
-
-  '@svar-ui/calendar-provider@2.7.0':
-    resolution: {integrity: sha512-ZcZAuc1D8UecqjxyYHbNXrpqbRTeYgj6y300JB/hUfvHvTH6ALq5gTDMsM3B8cr9yzZTExDCqnlj9a03sBkxNA==}
-
-  '@svar-ui/calendar-store@2.7.0':
-    resolution: {integrity: sha512-G5kkwwnXsr+mUCQlBRY46HmLYGr1fbFHQloriOv44GrGsdw4CH2kb2ALh6PC9zvNlIcwg+w/hJ4dKvhTgrzw0g==}
-
   '@svar-ui/comments-locales@2.6.0':
     resolution: {integrity: sha512-ctpmaE0BN2sXRc9MuCMzIut/2Piudnsxno7RoadJ8uIe3bZGRRSZfDW+kJ5pWgYmgdofLlWawTr3PCNjxt7R3w==}
 
@@ -404,9 +404,6 @@ packages:
 
   '@svar-ui/editor-locales@2.6.1':
     resolution: {integrity: sha512-HFEB43W+AEUjoBh3ZsrlLFFTVh8WYPVpZeOiCfptS5hS0qC8pEnqaXtreM6TM1g3W5VHHOR+sXsWkIxAoeKVvg==}
-
-  '@svar-ui/editor-locales@2.7.0':
-    resolution: {integrity: sha512-Bp3yK6zoUC21ejfbzPclWJylICHrXVhvy/ebXrOJ3rvhEvX1C1lmqe/1rEXqZi4ETUY7/q5AoLRjLgDiTTrw7Q==}
 
   '@svar-ui/filemanager-data-provider@2.6.0':
     resolution: {integrity: sha512-H0cVpLblqPItF4zLmk1ZetTT7TDvE+sl2TVlQC3Wm3PzZrq32aSYfMDEoqliUWHaBRP2Lt1klSX9rPQGV2k8Sw==}
@@ -480,11 +477,6 @@ packages:
   '@svar-ui/lib-svelte@0.5.2':
     resolution: {integrity: sha512-i+hHMT3zctaGbRpyMDREt9im7YfLpvGwFYvH1ntEp/kYAwUrR/sxMJlEEKIid+Yg2EeMUstGxmYQbkWoMpPG7A==}
 
-  '@svar-ui/svelte-calendar@2.7.1':
-    resolution: {integrity: sha512-NU8KdD+KKNgJeV9FKSTZNwAcaYfsr5S5j/v/ErPMiF6i2MEYNGe5jQeAVIqtjZhhkNk2fkVneWPwqQDDL0Dteg==}
-    peerDependencies:
-      svelte: ^5.54.0
-
   '@svar-ui/svelte-comments@2.6.0':
     resolution: {integrity: sha512-73C+SlRU9TTBPh1vJ6WV/zHF6rYf4H6SWm+uSSsjrpkgKyx02JdIt0xFWr2xBkpjWSQ0U4ZH78hsY0PiSLANrw==}
 
@@ -502,11 +494,6 @@ packages:
 
   '@svar-ui/svelte-editor@2.6.1':
     resolution: {integrity: sha512-EmOrddNEJhEtyMjxfbqtdRDYtVm0+akcxoqVkTFuy9PXLRFG4EDYwuUVLi7JZBbaKYrDsbn0x9khvTRnsAqcVA==}
-
-  '@svar-ui/svelte-editor@2.7.0':
-    resolution: {integrity: sha512-kURFph8cL3bJZ4/wrjakyDQcsnM67NemF2eyg0OrR4pl8XIan/4Dkozz03wRS4++KC7oT/2ViHnxLbnNY3sqyQ==}
-    peerDependencies:
-      svelte: ^5.54.0
 
   '@svar-ui/svelte-filemanager@2.6.0':
     resolution: {integrity: sha512-//RMVYKCdxug3iN3wAlJQcODrbgBZ4/kPd808lRFIj0XQqeen5H/gtBWTrjc1i6kAW+NSO32mb7ncdPcoSkYyA==}
@@ -1245,9 +1232,20 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
+  '@lilydesignsystem/svelte-calendar@0.2.0(svelte@5.57.1)':
+    dependencies:
+      '@lilydesignsystem/svelte-date-time-picker': 0.2.0(svelte@5.57.1)
+      '@lilydesignsystem/svelte-headless': 0.4.0(svelte@5.57.1)
+      svelte: 5.57.1
+
   '@lilydesignsystem/svelte-data-grid@0.4.0(svelte@5.57.1)':
     dependencies:
       '@lilydesignsystem/svelte-headless': 0.4.0(svelte@5.57.1)
+      svelte: 5.57.1
+
+  '@lilydesignsystem/svelte-date-time-picker@0.2.0(svelte@5.57.1)':
+    dependencies:
+      '@lilydesignsystem/svelte-headless': 0.2.0(svelte@5.57.1)
       svelte: 5.57.1
 
   '@lilydesignsystem/svelte-headless@0.2.0(svelte@5.57.1)':
@@ -1364,17 +1362,6 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@svar-ui/calendar-ical@2.7.0': {}
-
-  '@svar-ui/calendar-locales@2.7.0': {}
-
-  '@svar-ui/calendar-provider@2.7.0': {}
-
-  '@svar-ui/calendar-store@2.7.0':
-    dependencies:
-      '@svar-ui/lib-dom': 0.14.0
-      '@svar-ui/lib-state': 1.9.7
-
   '@svar-ui/comments-locales@2.6.0': {}
 
   '@svar-ui/comments-locales@2.6.1': {}
@@ -1386,8 +1373,6 @@ snapshots:
   '@svar-ui/editor-locales@2.6.0': {}
 
   '@svar-ui/editor-locales@2.6.1': {}
-
-  '@svar-ui/editor-locales@2.7.0': {}
 
   '@svar-ui/filemanager-data-provider@2.6.0':
     dependencies:
@@ -1467,25 +1452,6 @@ snapshots:
     dependencies:
       '@svar-ui/lib-state': 1.9.7
 
-  '@svar-ui/svelte-calendar@2.7.1(picomatch@4.0.7)(svelte@5.57.1)(typescript@6.0.3)':
-    dependencies:
-      '@svar-ui/calendar-ical': 2.7.0
-      '@svar-ui/calendar-locales': 2.7.0
-      '@svar-ui/calendar-provider': 2.7.0
-      '@svar-ui/calendar-store': 2.7.0
-      '@svar-ui/core-locales': 2.6.1
-      '@svar-ui/lib-dom': 0.14.0
-      '@svar-ui/lib-state': 1.9.7
-      '@svar-ui/svelte-core': 2.6.1
-      '@svar-ui/svelte-editor': 2.7.0(picomatch@4.0.7)(svelte@5.57.1)(typescript@6.0.3)
-      '@svar-ui/svelte-menu': 2.6.1
-      '@svar-ui/svelte-toolbar': 2.6.1
-      svelte: 5.57.1
-      svelte-check: 4.7.6(picomatch@4.0.7)(svelte@5.57.1)(typescript@6.0.3)
-    transitivePeerDependencies:
-      - picomatch
-      - typescript
-
   '@svar-ui/svelte-comments@2.6.0':
     dependencies:
       '@svar-ui/comments-locales': 2.6.0
@@ -1537,20 +1503,6 @@ snapshots:
       '@svar-ui/svelte-core': 2.6.1
       '@svar-ui/svelte-tasklist': 2.6.1
       '@svar-ui/svelte-toolbar': 2.6.1
-
-  '@svar-ui/svelte-editor@2.7.0(picomatch@4.0.7)(svelte@5.57.1)(typescript@6.0.3)':
-    dependencies:
-      '@svar-ui/core-locales': 2.6.1
-      '@svar-ui/editor-locales': 2.7.0
-      '@svar-ui/lib-dom': 0.14.0
-      '@svar-ui/lib-state': 1.9.7
-      '@svar-ui/svelte-core': 2.6.1
-      '@svar-ui/svelte-toolbar': 2.6.1
-      svelte: 5.57.1
-      svelte-check: 4.7.6(picomatch@4.0.7)(svelte@5.57.1)(typescript@6.0.3)
-    transitivePeerDependencies:
-      - picomatch
-      - typescript
 
   '@svar-ui/svelte-filemanager@2.6.0':
     dependencies:

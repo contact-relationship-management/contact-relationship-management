@@ -422,10 +422,7 @@ test.describe("signed-in smoke coverage", () => {
     ).toBeVisible();
     const calendar = page.getByTestId("followups-calendar");
     await expect(calendar).toBeVisible();
-    // Pins the widget actually rendering the event, not just its
-    // wrapper — `@svar-ui/calendar-store` silently drops an all-day
-    // event whose `end` is not strictly after `start` (see the fix in
-    // +page.svelte), and the wrapper alone renders regardless.
+    // Pins the widget actually rendering the event, not just its wrapper.
     await expect(
       calendar.getByText("meeting: QBR", { exact: false }),
     ).toBeVisible();

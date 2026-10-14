@@ -45,6 +45,7 @@
     "esbuild@0.25.12": true
   },
   "dependencies": {
+    "@lilydesignsystem/svelte-calendar": "0.2.0",
     "@lilydesignsystem/svelte-data-grid": "0.4.0",
     "@lilydesignsystem/svelte-headless": "^0.4.0",
     "@lilydesignsystem/svelte-kanban-board": "^0.1.0",
@@ -56,7 +57,6 @@
     "@lilydesignsystem/svelte-text-size-picker": "^0.2.0",
     "@lilydesignsystem/svelte-theme-picker": "^0.2.0",
     "@lilydesignsystem/themes": "0.4.0",
-    "@svar-ui/svelte-calendar": "^2.7.1",
     "@svar-ui/svelte-filemanager": "^2.6.0",
     "@svar-ui/svelte-gantt": "^2.7.3",
     "@svar-ui/svelte-kanban": "^2.6.0"

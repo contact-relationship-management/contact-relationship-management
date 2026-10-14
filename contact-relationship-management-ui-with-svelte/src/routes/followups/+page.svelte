@@ -1,13 +1,15 @@
 <!--
   Follow-ups (`/followups`): the overdue list (server-derived aging)
-  and the next 30 days on a SVAR Calendar. The server's note is shown
+  and the next 30 days on the Lily CalendarView. The server's note is shown
   verbatim (actor_ref is the recorder, not necessarily an assignee).
 -->
 <script lang="ts">
   import DataTable from "#lib/components/DataTable.svelte";
-  import { Calendar, Willow } from "@svar-ui/svelte-calendar";
+  import CalendarView, {
+    type CalendarViewMode,
+  } from "@lilydesignsystem/svelte-calendar";
   import { followups, type Followup } from "#lib/api/crm.js";
-  import { t } from "#lib/i18n.svelte.js";
+  import { i18n, t } from "#lib/i18n.svelte.js";
 
   let overdue = $state<Followup[] | null>(null);
   let upcoming = $state<Followup[]>([]);
@@ -28,32 +30,41 @@
     })();
   });
 
-  // `@svar-ui/calendar-store` requires an all-day event's `end` to be
-  // strictly *after* `start` (`!(e.end > start)` silently drops the
-  // event — confirmed against the compiled library source). `end: day`
-  // — the same Date as `start` — therefore filtered out every
-  // upcoming follow-up this calendar was ever asked to show (the same
-  // bug and fix as worker-front-end's/person-front-end's `/expiry`
-  // and ppm-front-end's `/calendar`). Fixed with the following
-  // calendar day, the minimum exclusive span a one-day all-day event
-  // needs.
+  // Lily's CalendarView takes ISO dates; `date` places a one-day event.
   const events = $derived(
-    upcoming.map((item) => {
-      const day = new Date(`${item.due_on}T00:00:00`);
-      const nextDay = new Date(
-        day.getFullYear(),
-        day.getMonth(),
-        day.getDate() + 1,
-      );
-      return {
-        id: item.pid,
-        start: day,
-        end: nextDay,
-        allDay: true,
-        text: `${item.kind}: ${item.summary}`,
-      };
-    }),
+    upcoming.map((item) => ({
+      id: item.pid,
+      date: item.due_on,
+      title: `${item.kind}: ${item.summary}`,
+    })),
   );
+
+  const today = new Date().toISOString().slice(0, 10);
+  let view = $state<CalendarViewMode>("month");
+  let anchorDate = $state(today);
+
+  // Weekday and day names come from Intl in the UI language (UTC, so
+  // the ISO date never shifts).
+  const fmt = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(i18n.locale, { timeZone: "UTC", ...options });
+  // 2024-01-07 is a Sunday, so weekday 0 = Sunday.
+  const weekdayDate = (wd: number) => new Date(Date.UTC(2024, 0, 7 + wd));
+  const calendarLabels = $derived({
+    weekView: t("cal.week"),
+    fourWeekView: t("cal.fourWeeks"),
+    monthView: t("cal.month"),
+    previous: () => t("cal.previous"),
+    next: () => t("cal.next"),
+    today: t("cal.today"),
+    periodAnnouncement: (_v: CalendarViewMode, start: string, end: string) =>
+      t("cal.showing").replace("{start}", start).replace("{end}", end),
+    weekday: (wd: number) => fmt({ weekday: "long" }).format(weekdayDate(wd)),
+    weekdayAbbr: (wd: number) =>
+      fmt({ weekday: "short" }).format(weekdayDate(wd)),
+    day: (iso: string, _wd: number, outside: boolean) =>
+      fmt({ dateStyle: "full" }).format(new Date(`${iso}T00:00:00Z`)) +
+      (outside ? " ·" : ""),
+  });
 
   const overdueColumns = [
     { id: "due", header: "Due" },
@@ -110,15 +121,26 @@
 
   <h2>Next 30 days</h2>
   <div class="calendar-wrap" data-testid="followups-calendar">
-    <Willow>
-      <Calendar {events} view="month" readonly />
-    </Willow>
+    <CalendarView
+      label={t("cal.label")}
+      bind:view
+      bind:anchorDate
+      {events}
+      {today}
+      locale={i18n.locale}
+      labels={calendarLabels}
+    >
+      {#snippet day({ events: dayEvents })}
+        {#each dayEvents as event (event.id)}
+          <span class="calendar-event">{event.title}</span>
+        {/each}
+      {/snippet}
+    </CalendarView>
   </div>
 {/if}
 
 <style>
   .calendar-wrap {
-    height: 560px;
     overflow-x: auto;
   }
 </style>

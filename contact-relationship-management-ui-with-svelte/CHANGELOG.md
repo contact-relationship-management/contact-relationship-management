@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — follow-ups calendar on `@lilydesignsystem/svelte-calendar` 0.2.0 (2026-10-14)
+
+`/followups` now uses the Lily `CalendarView` (week, four-week and month views,
+keyboard navigation, a live announcement of each new period) in place of the
+SVAR Calendar, which is removed from the dependencies. Weekday and day names
+come from `Intl` in the UI language; the toolbar labels are new `cal.*` keys in
+all eight languages (unreviewed by native speakers). The package ships no CSS,
+so the layout is in `app.css`. The SVAR kanban boards and the deal board's
+pipeline selector remain the open accessibility findings.
+
 ### Changed — better data tables, on data-grid 0.4.0 (2026-10-13)
 
 `@lilydesignsystem/svelte-data-grid` is now 0.4.0. The shared `DataTable`
