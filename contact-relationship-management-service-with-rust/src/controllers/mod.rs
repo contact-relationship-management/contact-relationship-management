@@ -6,6 +6,7 @@ use loco_rs::controller::ErrorDetail;
 use loco_rs::prelude::*;
 
 pub mod audits;
+pub mod board;
 pub mod break_glass;
 pub mod dashboards;
 pub mod docs;

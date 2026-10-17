@@ -207,6 +207,7 @@ async fn list_leads(
         .apply(
             leads::Entity::find()
                 .filter(leads::Column::DeletedAt.is_null())
+                .order_by_asc(leads::Column::BoardPosition)
                 .order_by_desc(leads::Column::Score)
                 .order_by_asc(leads::Column::Id),
         )

@@ -819,3 +819,19 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       headers are specified but not built. The 180-day notice period is the
       maintainer's choice, not a standard's. Not checked by a reviewer against
       the RFCs' published text.
+
+- [x] CRM-T55 **Board edits and reschedule.** The boards and the follow-up
+      calendar can change records, not only read them.
+      **Resolution:** `PUT /api/deals/{pid}` (name, amount, expected close; open
+      deals only), `PUT /api/leads/{pid}` (display name), `PUT /api/tickets/{pid}`
+      (title), `PUT /api/activities/{pid}` (due day and summary; a due-day change
+      is audited as `rescheduled` with both days, and a finished activity or one
+      with no due day is refused), and `PUT /api/{deals,leads,tickets}/{pid}/position`
+      (the 0-based place within the column; the column is renumbered). Deals
+      reuse `kanban_position`; leads and tickets get `board_position`
+      (migration `m20261017_000015`, default 0, so the old order holds until a
+      column is reordered). Audit entries name the fields changed, not their
+      values. Tests: 4 unit, 3 database. **Limits:** deal edits go through the
+      record-level policy; the lead, ticket and activity edits rely on the route
+      guard only, as their other writes do. An edit overwrites without a version
+      check, so two people editing the same card last-write-wins.

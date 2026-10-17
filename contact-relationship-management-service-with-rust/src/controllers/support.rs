@@ -234,7 +234,11 @@ async fn list_tickets(
         query = query.filter(tickets::Column::Status.eq(status));
     }
     let rows = page
-        .apply(query.order_by_asc(tickets::Column::Id))
+        .apply(
+            query
+                .order_by_asc(tickets::Column::BoardPosition)
+                .order_by_asc(tickets::Column::Id),
+        )
         .all(&ctx.db)
         .await?;
     let (rows, more) = page.split(rows);

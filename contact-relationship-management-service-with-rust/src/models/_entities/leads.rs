@@ -24,6 +24,7 @@ pub struct Model {
     pub campaign_click: bool,
     pub unsubscribed: bool,
     pub status: String,
+    pub board_position: i32,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

@@ -507,6 +507,7 @@ impl Hooks for App {
         AppRoutes::with_default_routes()
             .add_route(controllers::relationships::routes())
             .add_route(controllers::sales::routes())
+            .add_route(controllers::board::routes())
             .add_route(controllers::marketing::routes())
             .add_route(controllers::marketing::public_routes())
             .add_route(controllers::support::routes())

@@ -111,6 +111,15 @@ fn base_schemas() -> Value {
             "expected_close_on": date(), "source_campaign_pid": uuid() })),
         "DealStagePayload": object(&["stage_pid"], &json!({
             "stage_pid": uuid(), "kanban_position": integer(), "lost_reason": string() })),
+        "DealEditPayload": object(&[], &json!({
+            "name": string(), "amount_minor": { "type": "integer", "format": "int64" },
+            "expected_close_on": date() })),
+        "LeadEditPayload": object(&[], &json!({ "display_name": string() })),
+        "TicketEditPayload": object(&[], &json!({ "title": string() })),
+        "PositionPayload": object(&["position"], &json!({
+            "position": { "type": "integer", "minimum": 0,
+                "description": "0-based place among the cards in the same column" } })),
+        "ActivityEditPayload": object(&[], &json!({ "due_on": date(), "summary": string() })),
         "ReopenPayload": object(&["reason"], &json!({ "reason": string() })),
         "SegmentPayload": object(&["name"], &json!({
             "name": string(), "filter": { "type": "object" } })),
@@ -167,7 +176,8 @@ fn base_schemas() -> Value {
         "Lead": resource(&["pid", "display_name", "source", "score", "status"], &json!({
             "pid": uuid(), "display_name": string(), "source": string(),
             "email": nullable(string()), "score": integer(), "status": string(),
-            "campaign_pid": nullable(uuid()), "contact_pid": nullable(uuid()) })),
+            "campaign_pid": nullable(uuid()), "contact_pid": nullable(uuid()),
+            "board_position": integer() })),
         "PipelineRecord": resource(&["pid", "name"], &json!({ "pid": uuid(), "name": string() })),
         "StageRecord": resource(&["pid", "pipeline_pid", "name", "position", "probability_percent",
             "is_won", "is_lost"], &json!({
@@ -184,7 +194,7 @@ fn base_schemas() -> Value {
             "kanban_position": integer() })),
         "Ticket": resource(&["pid", "title", "priority", "channel", "status"], &json!({
             "pid": uuid(), "title": string(), "priority": string(), "channel": string(),
-            "status": string(), "contact_pid": nullable(uuid()),
+            "status": string(), "contact_pid": nullable(uuid()), "board_position": integer(),
             "assignee_ref": nullable(string()), "opened_at": date_time(),
             "live_first_response_breached": boolean(),
             "live_resolution_breached": boolean() })),
@@ -520,6 +530,16 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("post", "/api/sla-policies") => "PolicyPayload",
         ("post", "/api/tickets") => "TicketPayload",
         ("put", "/api/tickets/{pid}/priority") => "PriorityPayload",
+        ("put", "/api/deals/{pid}") => "DealEditPayload",
+        ("put", "/api/leads/{pid}") => "LeadEditPayload",
+        ("put", "/api/tickets/{pid}") => "TicketEditPayload",
+        (
+            "put",
+            "/api/deals/{pid}/position"
+            | "/api/leads/{pid}/position"
+            | "/api/tickets/{pid}/position",
+        ) => "PositionPayload",
+        ("put", "/api/activities/{pid}") => "ActivityEditPayload",
         ("post", "/api/articles") | ("put", "/api/articles/{pid}") => "ArticlePayload",
         ("post", "/api/break-glass") => "GrantPayload",
         ("post", "/api/break-glass/{pid}/review") => "ReviewPayload",

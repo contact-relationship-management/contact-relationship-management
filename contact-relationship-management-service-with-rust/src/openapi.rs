@@ -43,12 +43,17 @@ pub fn spec() -> Value {
                 "post": { "tags": ["relationships"], "summary": "Log an interaction (stamps ticket first-response for the assignee)", "responses": created },
                 "get": { "tags": ["relationships"], "summary": "Activity feed (?subject_kind=&subject_pid=)", "responses": ok("Activities") }
             },
+            "/api/activities/{pid}": { "put": { "tags": ["relationships"], "summary": "Change a follow-up's due day or summary (a due-day change is audited as rescheduled)", "responses": ok("Activity") } },
             "/api/activities/{pid}/done": { "put": { "tags": ["relationships"], "summary": "Tick a task activity", "responses": ok("Activity") } },
             "/api/leads": {
                 "post": { "tags": ["sales"], "summary": "Capture a lead (scored immediately, breakdown returned)", "responses": created },
                 "get": { "tags": ["sales"], "summary": "The queue, score-sorted", "responses": ok("Leads") }
             },
-            "/api/leads/{pid}": { "get": { "tags": ["sales"], "summary": "Lead + live score breakdown", "responses": ok("LeadDetail") } },
+            "/api/leads/{pid}": {
+                "get": { "tags": ["sales"], "summary": "Lead + live score breakdown", "responses": ok("LeadDetail") },
+                "put": { "tags": ["sales"], "summary": "Edit a lead in place (display name)", "responses": ok("Lead") }
+            },
+            "/api/leads/{pid}/position": { "put": { "tags": ["sales"], "summary": "Reorder a lead within its status column", "responses": ok("Lead") } },
             "/api/leads/{pid}/status": { "post": { "tags": ["sales"], "summary": "Lead transition; converted creates/links the contact (+ optional deal) in one transaction", "responses": transition } },
             "/api/pipelines": {
                 "post": { "tags": ["sales"], "summary": "Create a pipeline with ordered stages (probabilities + terminal flags)", "responses": created },
@@ -58,6 +63,8 @@ pub fn spec() -> Value {
                 "post": { "tags": ["sales"], "summary": "Open a deal in the pipeline's first stage (minor units)", "responses": created },
                 "get": { "tags": ["sales"], "summary": "Deals (?pipeline=)", "responses": ok("Deals") }
             },
+            "/api/deals/{pid}": { "put": { "tags": ["sales"], "summary": "Edit an open deal in place (name, amount, expected close)", "responses": ok("Deal") } },
+            "/api/deals/{pid}/position": { "put": { "tags": ["sales"], "summary": "Reorder an open deal within its stage", "responses": ok("Deal") } },
             "/api/deals/{pid}/stage": { "post": { "tags": ["sales"], "summary": "Kanban stage move (pipeline-membership checked; terminal closes; lost needs a reason; row-locked)", "responses": transition } },
             "/api/deals/{pid}/reopen": { "post": { "tags": ["sales"], "summary": "Reasoned reopen of a closed deal", "responses": transition } },
             "/api/forecast": { "get": { "tags": ["sales"], "summary": "Live stage-weighted forecast per currency (derived, never typed)", "responses": ok("Forecast") } },
@@ -97,7 +104,11 @@ pub fn spec() -> Value {
                 "post": { "tags": ["support"], "summary": "Open a ticket (deadlines derive from the priority's policy)", "responses": created },
                 "get": { "tags": ["support"], "summary": "The queue with live breach flags (?status=)", "responses": ok("Tickets") }
             },
-            "/api/tickets/{pid}": { "get": { "tags": ["support"], "summary": "Ticket + activities", "responses": ok("TicketDetail") } },
+            "/api/tickets/{pid}": {
+                "get": { "tags": ["support"], "summary": "Ticket + activities", "responses": ok("TicketDetail") },
+                "put": { "tags": ["support"], "summary": "Edit a ticket in place (title)", "responses": ok("Ticket") }
+            },
+            "/api/tickets/{pid}/position": { "put": { "tags": ["support"], "summary": "Reorder a ticket within its status column", "responses": ok("Ticket") } },
             "/api/tickets/{pid}/status": { "post": { "tags": ["support"], "summary": "Ticket transition (resolved stamps resolved_at; reopen clears it)", "responses": transition } },
             "/api/tickets/{pid}/priority": { "put": { "tags": ["support"], "summary": "Audited priority change (re-derives the deadlines)", "responses": ok("Ticket") } },
             "/api/sla/sweep": { "post": { "tags": ["support"], "summary": "Persist breach facts + emit sla_breached once per breach", "responses": ok("Sweep result") } },
@@ -447,6 +458,8 @@ mod tests {
             "/api/campaigns/{pid}/run",
             "/api/nurture/advance",
             "/api/tickets/{pid}/priority",
+            "/api/deals/{pid}/position",
+            "/api/activities/{pid}",
             "/api/dashboards/sales",
             "/api/accounts/{pid}/clv",
             "/api/contacts/{pid}/subject-access",

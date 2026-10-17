@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — board edits and follow-up reschedule (CRM-T55, 2026-10-17)
+
+`PUT /api/deals/{pid}`, `/leads/{pid}`, `/tickets/{pid}` edit a card in place;
+`PUT /api/activities/{pid}` changes a follow-up's due day (audited as
+`rescheduled`) or summary; `PUT /api/{deals,leads,tickets}/{pid}/position` stores
+the card's place in its column (migration `m20261017_000015` adds
+`board_position` to leads and tickets; deals already had `kanban_position`).
+Last write wins; there is no version check.
+
 ### Added — real email send path (CRM-T39, 2026-10-11)
 
 `mail::Sender` (simulated by default, SMTP with `CRM_MAIL_MODE=smtp`), an

@@ -21,6 +21,7 @@ pub struct Model {
     pub priority: String,
     pub channel: String,
     pub status: String,
+    pub board_position: i32,
     pub opened_at: DateTimeWithTimeZone,
     pub first_response_due_at: Option<DateTimeWithTimeZone>,
     pub resolution_due_at: Option<DateTimeWithTimeZone>,
