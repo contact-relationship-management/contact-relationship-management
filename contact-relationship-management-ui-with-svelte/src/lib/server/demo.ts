@@ -235,6 +235,9 @@ function build(): State {
     lead("lead-7", "referral", "Cormac Idowu", "cormac@example.org", 88, "qualified"),
   ];
 
+  // Dates are relative to today so the timeline always looks current.
+  const ago = (days: number) =>
+    new Date(Date.now() - days * 86_400_000).toISOString();
   const campaign = (
     pid: string,
     name: string,
@@ -244,6 +247,7 @@ function build(): State {
     delivered: number,
     opened: number,
     clicked: number,
+    span: { created_at: string; updated_at: string },
   ): Campaign => ({
     pid,
     name,
@@ -254,12 +258,13 @@ function build(): State {
     delivered,
     opened,
     clicked,
+    ...span,
   });
   const campaigns: Campaign[] = [
-    campaign("camp-1", "Spring product update", "completed", 2400, 1200, 1168, 612, 148),
-    campaign("camp-2", "Customer webinar series", "running", 5200, 860, 842, 405, 96),
-    campaign("camp-3", "Renewal reminders", "scheduled", 800, 340, 0, 0, 0),
-    campaign("camp-4", "Autumn roadmap preview", "draft", 1500, 0, 0, 0, 0),
+    campaign("camp-1", "Spring product update", "completed", 2400, 1200, 1168, 612, 148, { created_at: ago(75), updated_at: ago(40) }),
+    campaign("camp-2", "Customer webinar series", "running", 5200, 860, 842, 405, 96, { created_at: ago(30), updated_at: ago(2) }),
+    campaign("camp-3", "Renewal reminders", "scheduled", 800, 340, 0, 0, 0, { created_at: ago(10), updated_at: ago(6) }),
+    campaign("camp-4", "Autumn roadmap preview", "draft", 1500, 0, 0, 0, 0, { created_at: ago(3), updated_at: ago(3) }),
   ];
 
   const ticket = (

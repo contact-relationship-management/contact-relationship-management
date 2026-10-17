@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CampaignTimeline from "#lib/components/CampaignTimeline.svelte";
   import DataTable from "#lib/components/DataTable.svelte";
   import { campaignFunnel, campaignStatus, listCampaigns, money, runCampaign } from "#lib/api/crm.js";
   import { ratioPercent } from "#lib/format.js";
@@ -115,4 +116,5 @@
       {/if}
     </div>
   {/if}
+  <CampaignTimeline campaigns={campaigns ?? []} />
 {/if}

@@ -88,7 +88,7 @@ test("/<locale>/kanban shows the deal board and moves a card", async ({ page }) 
     .getByRole("button", { name: /^Move Case-management upgrade/ })
     .click();
   await page.getByRole("option", { name: "Discovery 25%" }).click();
-  await expect(page.getByTestId("move-error")).toHaveCount(0);
+  await expect(page.getByTestId("action-error")).toHaveCount(0);
   await page.reload();
   const discovery = page.getByRole("gridcell", { name: /Case-management upgrade/ });
   await expect(discovery).toHaveCount(1);
@@ -227,4 +227,45 @@ test.describe("tour screens: WCAG A/AA findings with data (informational)", () =
       }
     });
   }
+});
+
+test.describe("boards and timeline", () => {
+  test("the ticket board offers only legal moves, and a move is saved", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/tickets/board");
+    await page
+      .getByRole("button", { name: /^Move Sensor firmware update fails on site/ })
+      .click();
+    // An open ticket can go to Pending or Resolved, not straight to Closed.
+    const menu = page.getByRole("listbox");
+    await expect(menu.getByRole("option", { name: "Pending" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await expect(menu.getByRole("option", { name: "Closed" })).toHaveCount(0);
+    await menu.getByRole("option", { name: "Resolved" }).click();
+    await expect(page.getByTestId("action-error")).toHaveCount(0);
+    await page.reload();
+    const board = page.getByTestId("ticket-board");
+    await expect(board).toContainText("Sensor firmware update fails on site");
+  });
+
+  test("the lead board shows scored cards in lifecycle columns", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/leads/board");
+    const board = page.getByTestId("lead-board");
+    await expect(board).toContainText("Qualified");
+    await expect(board).toContainText("score");
+  });
+
+  test("campaigns show a read-only timeline with one row per campaign", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/campaigns");
+    const timeline = page.getByTestId("campaign-timeline");
+    await expect(timeline).toBeVisible();
+    await expect(timeline.getByRole("rowheader", { name: /Spring product update/ })).toBeVisible();
+    await expect(timeline.getByRole("rowheader", { name: /Customer webinar series \(running\)/ })).toBeVisible();
+    // Read-only: no edit regions or save buttons.
+    await expect(timeline.getByRole("button", { name: /save/i })).toHaveCount(0);
+  });
 });

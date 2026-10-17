@@ -95,6 +95,9 @@ export interface Campaign {
   delivered: number;
   opened: number;
   clicked: number;
+  /** When the campaign was created and last changed (ISO timestamps). */
+  created_at?: string;
+  updated_at?: string;
 }
 
 /** One ticket with live breach flags. */

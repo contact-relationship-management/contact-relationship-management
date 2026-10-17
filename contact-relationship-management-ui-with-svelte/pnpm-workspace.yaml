@@ -15,3 +15,4 @@ minimumReleaseAgeExclude:
   - '@lilydesignsystem/svelte-text-size-picker@0.3.0'
   - '@lilydesignsystem/svelte-theme-picker@0.3.0'
   - '@lilydesignsystem/themes@0.5.0'
+  - '@lilydesignsystem/svelte-gantt-chart@0.5.0'

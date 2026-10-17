@@ -5,14 +5,13 @@
   restores the stored truth). Cards carry the rule-derived score.
 -->
 <script lang="ts">
-  import { Kanban, Willow, getCardShape } from "@svar-ui/svelte-kanban";
-  import type { KanbanInstanceApi } from "@svar-ui/svelte-kanban";
+  import Board from "#lib/components/Board.svelte";
+  import type { KanbanCard } from "@lilydesignsystem/svelte-kanban-board";
   import { leadStatus, listLeads, type Lead } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
 
   let leads = $state<Lead[] | null>(null);
   let error = $state<string | null>(null);
-  let actionError = $state<string | null>(null);
 
   async function load() {
     try {
@@ -26,33 +25,37 @@
   });
 
   const columns = [
-    { id: "new", label: "New", addCard: false },
-    { id: "contacted", label: "Contacted", addCard: false },
-    { id: "qualified", label: "Qualified", addCard: false },
-    { id: "converted", label: "Converted", addCard: false },
-    { id: "disqualified", label: "Disqualified", addCard: false },
+    { id: "new", title: "New" },
+    { id: "contacted", title: "Contacted" },
+    { id: "qualified", title: "Qualified" },
+    { id: "converted", title: "Converted" },
+    { id: "disqualified", title: "Disqualified" },
   ];
 
-  const cards = $derived(
+  // The service's lead lifecycle (CRM-R3): the board offers only legal moves.
+  const NEXT: Record<string, string[]> = {
+    new: ["contacted", "disqualified"],
+    contacted: ["qualified", "disqualified"],
+    qualified: ["converted", "disqualified"],
+    converted: [],
+    disqualified: [],
+  };
+
+  const cards = $derived<KanbanCard[]>(
     (leads ?? []).map((lead) => ({
       id: lead.pid,
-      label: lead.display_name,
-      description: `${lead.source} · score ${lead.score}`,
-      status: lead.status,
+      columnId: lead.status,
+      title: lead.display_name,
+      subtitle: `${lead.source} · score ${lead.score}`,
+      locked: (NEXT[lead.status] ?? []).length === 0,
     })),
   );
+  const allowedColumns = (card: KanbanCard) => NEXT[card.columnId] ?? [];
 
-  function init(api: KanbanInstanceApi) {
-    api.on("move-card", (raw) => {
-      const ev = raw as { id: string | number; column?: string | number };
-      if (!ev.column) return;
-      actionError = null;
-      void leadStatus(String(ev.id), String(ev.column))
-        .catch((cause) => {
-          actionError = cause instanceof Error ? cause.message : String(cause);
-        })
-        .finally(load);
-    });
+  // Show the move at once; the board undoes it if the service refuses.
+  async function onMove(id: string, status: string) {
+    await leadStatus(id, status);
+    await load();
   }
 </script>
 
@@ -65,25 +68,12 @@
 {:else if leads === null}
   <p>{t("common.loading")}</p>
 {:else}
-  {#if actionError}
-    <p class="error" data-testid="action-error">{actionError}</p>
-  {/if}
-  <div class="board-wrap" data-testid="lead-board">
-    <Willow>
-      <Kanban
-        {cards}
-        {columns}
-        columnAccessor="status"
-        card={{ ...getCardShape(), menu: false }}
-        {init}
-      />
-    </Willow>
-  </div>
+  <Board
+    label={`${t("nav.leads")} ${t("common.board")}`}
+    {columns}
+    {cards}
+    {allowedColumns}
+    {onMove}
+    testid="lead-board"
+  />
 {/if}
-
-<style>
-  .board-wrap {
-    height: 560px;
-    overflow-x: auto;
-  }
-</style>

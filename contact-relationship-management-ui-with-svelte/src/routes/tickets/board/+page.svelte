@@ -5,15 +5,14 @@
   Cards badge priority and live SLA-breach flags.
 -->
 <script lang="ts">
-  import { Kanban, Willow, getCardShape } from "@svar-ui/svelte-kanban";
-  import type { KanbanInstanceApi } from "@svar-ui/svelte-kanban";
+  import Board from "#lib/components/Board.svelte";
+  import type { KanbanCard } from "@lilydesignsystem/svelte-kanban-board";
   import { listTickets, ticketStatus, type Ticket } from "#lib/api/crm.js";
   import { slaBreached } from "#lib/format.js";
   import { t } from "#lib/i18n.svelte.js";
 
   let tickets = $state<Ticket[] | null>(null);
   let error = $state<string | null>(null);
-  let actionError = $state<string | null>(null);
 
   async function load() {
     try {
@@ -27,36 +26,35 @@
   });
 
   const columns = [
-    { id: "open", label: "Open", addCard: false },
-    { id: "pending", label: "Pending", addCard: false },
-    { id: "resolved", label: "Resolved", addCard: false },
-    { id: "closed", label: "Closed", addCard: false },
+    { id: "open", title: "Open" },
+    { id: "pending", title: "Pending" },
+    { id: "resolved", title: "Resolved" },
+    { id: "closed", title: "Closed" },
   ];
 
-  const cards = $derived(
+  // The service's ticket lifecycle (CRM-R10): only legal moves are offered.
+  const NEXT: Record<string, string[]> = {
+    open: ["pending", "resolved"],
+    pending: ["open", "resolved"],
+    resolved: ["closed", "open"],
+    closed: [],
+  };
+
+  const cards = $derived<KanbanCard[]>(
     (tickets ?? []).map((ticket) => ({
       id: ticket.pid,
-      label: ticket.title,
-      description:
-        ticket.priority +
-        (slaBreached(ticket)
-          ? " · SLA breached"
-          : ""),
-      status: ticket.status,
+      columnId: ticket.status,
+      title: ticket.title,
+      subtitle: ticket.priority + (slaBreached(ticket) ? " · SLA breached" : ""),
+      flag: slaBreached(ticket) ? "SLA breached" : undefined,
+      locked: (NEXT[ticket.status] ?? []).length === 0,
     })),
   );
+  const allowedColumns = (card: KanbanCard) => NEXT[card.columnId] ?? [];
 
-  function init(api: KanbanInstanceApi) {
-    api.on("move-card", (raw) => {
-      const ev = raw as { id: string | number; column?: string | number };
-      if (!ev.column) return;
-      actionError = null;
-      void ticketStatus(String(ev.id), String(ev.column))
-        .catch((cause) => {
-          actionError = cause instanceof Error ? cause.message : String(cause);
-        })
-        .finally(load);
-    });
+  async function onMove(id: string, status: string) {
+    await ticketStatus(id, status);
+    await load();
   }
 </script>
 
@@ -69,25 +67,12 @@
 {:else if tickets === null}
   <p>{t("common.loading")}</p>
 {:else}
-  {#if actionError}
-    <p class="error" data-testid="action-error">{actionError}</p>
-  {/if}
-  <div class="board-wrap" data-testid="ticket-board">
-    <Willow>
-      <Kanban
-        {cards}
-        {columns}
-        columnAccessor="status"
-        card={{ ...getCardShape(), menu: false }}
-        {init}
-      />
-    </Willow>
-  </div>
+  <Board
+    label={`${t("nav.tickets")} ${t("common.board")}`}
+    {columns}
+    {cards}
+    {allowedColumns}
+    {onMove}
+    testid="ticket-board"
+  />
 {/if}
-
-<style>
-  .board-wrap {
-    height: 560px;
-    overflow-x: auto;
-  }
-</style>

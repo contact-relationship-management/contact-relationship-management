@@ -1,7 +1,7 @@
 <script lang="ts">
   import DataTable from "#lib/components/DataTable.svelte";
-  import { Kanban, Willow, getCardShape } from "@svar-ui/svelte-kanban";
-  import type { KanbanInstanceApi } from "@svar-ui/svelte-kanban";
+  import Board from "#lib/components/Board.svelte";
+  import type { KanbanCard } from "@lilydesignsystem/svelte-kanban-board";
   import { forecast, funnel, listDeals, listPipelines, money, moveDeal } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
   import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
@@ -14,7 +14,6 @@
   let selectedPipeline = $state("");
   let stageFunnel = $state<Awaited<ReturnType<typeof funnel>> | null>(null);
   let error = $state<string | null>(null);
-  let actionError = $state<string | null>(null);
 
   async function load() {
     try {
@@ -38,44 +37,31 @@
   // Columns are the pipeline's stage rows — data, not a token table
   // (CRM-D3); terminal stages are drop targets that close the deal.
   const columns = $derived(
-    stages.map((stage) => ({
-      id: stage.pid,
-      label: stageLabel(stage),
-      addCard: false,
-    })),
+    stages.map((stage) => ({ id: stage.pid, title: stageLabel(stage) })),
   );
 
-  const cards = $derived(
-    (deals ?? [])
-      .filter((deal) => deal.closed_at === null)
-      .map((deal) => ({
-        id: deal.pid,
-        label: deal.name,
-        description: money(deal.amount_minor, deal.currency, i18n.locale),
-        stage_pid: deal.stage_pid,
-      })),
+  const openDeals = $derived((deals ?? []).filter((deal) => deal.closed_at === null));
+  const cards = $derived<KanbanCard[]>(
+    openDeals.map((deal) => ({
+      id: deal.pid,
+      columnId: deal.stage_pid,
+      title: deal.name,
+      subtitle: money(deal.amount_minor, deal.currency, i18n.locale),
+    })),
   );
 
   // Drag between stage columns = the stage-move API (a lost target
   // carries a reason; the service enforces pipeline membership and
   // terminal immutability). The forecast strip re-reads the derived
-  // number after every move — never client math.
-  function init(api: KanbanInstanceApi) {
-    api.on("move-card", (raw) => {
-      const ev = raw as { id: string | number; column?: string | number };
-      if (!ev.column) return;
-      const target = stages.find((stage) => stage.pid === String(ev.column));
-      actionError = null;
-      void moveDeal(
-        String(ev.id),
-        String(ev.column),
-        target?.is_lost ? "moved to lost on the board" : undefined,
-      )
-        .catch((cause) => {
-          actionError = cause instanceof Error ? cause.message : String(cause);
-        })
-        .finally(load);
-    });
+  // number after every move — never client math. A refusal puts the card back.
+  async function onMove(id: string, stagePid: string) {
+    const target = stages.find((stage) => stage.pid === stagePid);
+    await moveDeal(
+      id,
+      stagePid,
+      target?.is_lost ? "moved to lost on the board" : undefined,
+    );
+    await load();
   }
 
   const funnelColumns = [
@@ -128,20 +114,13 @@
 {:else if deals === null}
   <p>{t("common.loading")}</p>
 {:else}
-  {#if actionError}
-    <p class="error" data-testid="action-error">{actionError}</p>
-  {/if}
-  <div class="board-wrap" data-testid="deal-board">
-    <Willow>
-      <Kanban
-        {cards}
-        {columns}
-        columnAccessor="stage_pid"
-        card={{ ...getCardShape(), menu: false }}
-        {init}
-      />
-    </Willow>
-  </div>
+  <Board
+    label={t("deal.board")}
+    {columns}
+    {cards}
+    {onMove}
+    testid="deal-board"
+  />
 {/if}
 
 {#if stageFunnel}
@@ -154,10 +133,3 @@
     testid="deal-funnel"
   />
 {/if}
-
-<style>
-  .board-wrap {
-    height: 620px;
-    overflow-x: auto;
-  }
-</style>

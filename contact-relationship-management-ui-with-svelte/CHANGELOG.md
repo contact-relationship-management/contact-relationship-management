@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — every board on the Lily kanban; a campaign timeline (2026-10-17)
+
+The deal board, the lead board, the ticket board and `/<locale>/kanban` now share
+one `Board` component on `@lilydesignsystem/svelte-kanban-board` 0.6.0, and the
+SVAR Kanban and Gantt packages are removed. Cards move by drag or by the
+keyboard-reachable menu; the move is saved, shown at once, and put back with the
+reason if the service refuses it. The lead and ticket boards offer only the moves
+the service's lifecycle allows, and a finished lead or ticket is locked. New:
+search, collapsible columns, an empty-column message, and CSV and Excel export.
+`/campaigns` gains a read-only timeline on `@lilydesignsystem/svelte-gantt-chart`:
+a bar runs from creation to the last status change (to today while the campaign is
+open). The service stores no planned send dates, so it shows what happened, not a
+plan. New keys `kanban.*` and `timeline.*` in all eight languages (unreviewed by
+native speakers).
+
 ### Changed — Lily upgrade (2026-10-14)
 
 `svelte-calendar` 0.3.0, `svelte-data-grid` 0.5.0, `svelte-headless` 0.5.0 and

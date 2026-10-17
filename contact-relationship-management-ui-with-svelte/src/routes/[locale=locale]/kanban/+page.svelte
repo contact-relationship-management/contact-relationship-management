@@ -9,7 +9,7 @@
   board in German (and remembers it as the UI language).
 -->
 <script lang="ts">
-  import KanbanBoard from "@lilydesignsystem/svelte-kanban-board";
+  import Board from "#lib/components/Board.svelte";
   import type {
     KanbanCard,
     KanbanColumn,
@@ -23,7 +23,6 @@
   let stages = $state<Stage[]>([]);
   let deals = $state<Deal[] | null>(null);
   let error = $state<string | null>(null);
-  let moveError = $state<string | null>(null);
 
   // The address names the language.
   $effect(() => {
@@ -58,39 +57,14 @@
     (deals ?? []).map((d) => ({
       id: d.pid,
       columnId: d.stage_pid,
-      title: `${d.name} · ${money(d.amount_minor, d.currency, i18n.locale)}`,
+      title: d.name,
+      subtitle: money(d.amount_minor, d.currency, i18n.locale),
     })),
   );
 
-  const fill = (text: string, values: Record<string, string | number>) =>
-    Object.entries(values).reduce(
-      (out, [name, value]) => out.replaceAll(`{${name}}`, String(value)),
-      text,
-    );
-
-  const labels = $derived({
-    cardCount: (count: number) =>
-      count === 1 ? t("kanban.cardsOne") : fill(t("kanban.cards"), { count }),
-    moveButton: (card: KanbanCard) => fill(t("kanban.move"), { title: card.title }),
-    moveMenuLabel: t("kanban.menu"),
-    moveAnnouncement: (title: string, column: string) =>
-      fill(t("kanban.moved"), { title, column }),
-  });
-
   async function onMove(pid: string, stagePid: string) {
-    moveError = null;
-    const before = deals;
-    // Show the move at once; undo it if the service refuses.
-    deals = (deals ?? []).map((d) =>
-      d.pid === pid ? { ...d, stage_pid: stagePid } : d,
-    );
-    try {
-      await moveDeal(pid, stagePid);
-    } catch {
-      deals = before;
-      moveError = t("kanban.failed");
-      await load();
-    }
+    await moveDeal(pid, stagePid);
+    await load();
   }
 </script>
 
@@ -106,15 +80,11 @@
   <p class="muted" data-testid="kanban-empty">{t("kanban.empty")}</p>
 {:else}
   {#if pipeline}<p class="muted">{pipeline.name}</p>{/if}
-  {#if moveError}
-    <p class="error" role="alert" data-testid="move-error">{moveError}</p>
-  {/if}
-  <KanbanBoard
+  <Board
     label={t("kanban.title")}
     {columns}
     {cards}
-    {labels}
     {onMove}
-    data-testid="kanban-board"
+    testid="kanban-board"
   />
 {/if}
