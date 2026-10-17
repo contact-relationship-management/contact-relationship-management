@@ -20,7 +20,7 @@
   });
 
   const columns = $derived([
-    { id: "score", kind: "number", header: t("lead.score") },
+    { id: "score", kind: "number", total: "avg", header: t("lead.score") },
     { id: "display_name", header: t("common.name") },
     { id: "source", header: t("lead.source") },
     { id: "status", kind: "chip", header: t("common.status") },

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — edit in place, stored order, swimlanes, reschedule, critical path (2026-10-17)
+
+Needs the service's new endpoints (CRM-T55). On the deal board an amount and an
+expected-close date edit in place (click, or F2); on the lead and ticket boards a
+card can be renamed the same way. Cards keep the place they are dropped in, also
+after a reload (Alt+Up/Down moves one from the keyboard). Each board has swimlanes
+(deals by owner, leads by source, tickets by priority; lanes only group, so
+dropping a card into another lane is refused), and Ctrl/Cmd+click or `x` selects
+several cards to move together. On `/followups`, dragging an event to another day
+(or Alt+arrow on it) reschedules the follow-up. Data tables have typed number and
+date cells, optional "shown" totals, a pinned first column, and columns you can
+drag or move from the keyboard (remembered per table). The campaign timeline now
+works out the critical path (`src/lib/critical-path.ts`, 8 unit tests): the
+campaign that ends last, with every other campaign's slack in days; the code also
+handles dependencies of all four kinds with lags, though campaigns have none.
+The tour's end-to-end tests now run one after another, because they share one
+in-memory copy of the data. Also fixed: two demo leads had a status ("working")
+that no board column showed.
+
 ### Changed — every board on the Lily kanban; a campaign timeline (2026-10-17)
 
 The deal board, the lead board, the ticket board and `/<locale>/kanban` now share

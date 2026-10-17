@@ -6,8 +6,13 @@
 -->
 <script lang="ts">
   import Board from "#lib/components/Board.svelte";
-  import type { KanbanCard } from "@lilydesignsystem/svelte-kanban-board";
-  import { leadStatus, listLeads, type Lead } from "#lib/api/crm.js";
+  import type {
+    KanbanCard,
+    KanbanField,
+    KanbanFieldEdit,
+    KanbanLane,
+  } from "@lilydesignsystem/svelte-kanban-board";
+  import { editLead, leadStatus, listLeads, placeCard, type Lead } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
 
   let leads = $state<Lead[] | null>(null);
@@ -46,10 +51,39 @@
       id: lead.pid,
       columnId: lead.status,
       title: lead.display_name,
+      laneId: lead.source,
       subtitle: `${lead.source} · score ${lead.score}`,
+      values: { name: lead.display_name },
       locked: (NEXT[lead.status] ?? []).length === 0,
     })),
   );
+  // Swimlanes: one per lead source.
+  const lanes = $derived<KanbanLane[]>(
+    [...new Set((leads ?? []).map((l) => l.source))]
+      .sort()
+      .map((id) => ({ id, title: id })),
+  );
+  const fields = $derived<KanbanField[]>([
+    {
+      id: "name",
+      header: t("common.name"),
+      type: "text",
+      editable: true,
+      // The card already shows the name as its title; the field is the way to change it.
+      format: () => t("kanban.edit"),
+      editLabel: t("kanban.rename"),
+    },
+  ]);
+  async function onEdit(edit: KanbanFieldEdit) {
+    if (edit.fieldId === "name" && typeof edit.value === "string") {
+      await editLead(edit.cardId, { display_name: edit.value });
+    }
+    await load();
+  }
+  const onPosition = async (id: string, position: number) => {
+    await placeCard("leads", id, position);
+    await load();
+  };
   const allowedColumns = (card: KanbanCard) => NEXT[card.columnId] ?? [];
 
   // Show the move at once; the board undoes it if the service refuses.
@@ -73,7 +107,11 @@
     {columns}
     {cards}
     {allowedColumns}
+    {lanes}
+    {fields}
     {onMove}
+    {onPosition}
+    {onEdit}
     testid="lead-board"
   />
 {/if}

@@ -61,7 +61,7 @@
   );
   const kindColumns = [
     { id: "kind", header: "Kind" },
-    { id: "touches", kind: "number", header: "Touches" },
+    { id: "touches", kind: "number", total: "sum", header: "Touches" },
   ];
   const kindRows = $derived(
     Object.entries(workload?.per_kind ?? {}).map(([kind, count]) => ({
@@ -72,7 +72,7 @@
   );
   const sentimentColumns = [
     { id: "sentiment", header: "Sentiment" },
-    { id: "touches", kind: "number", header: "Touches" },
+    { id: "touches", kind: "number", total: "sum", header: "Touches" },
   ];
   const sentimentRows = $derived(
     Object.entries(workload?.sentiment ?? {}).map(([key, count]) => ({
@@ -84,10 +84,10 @@
   const memberColumns = [
     { id: "account", header: "Account" },
     { id: "membership", header: "Membership" },
-    { id: "contacts", kind: "number", header: "Contacts" },
+    { id: "contacts", kind: "number", total: "sum", header: "Contacts" },
     { id: "days", kind: "number", header: "Days since touch" },
-    { id: "followups", kind: "number", header: "Open follow-ups" },
-    { id: "tickets", kind: "number", header: "Open tickets" },
+    { id: "followups", kind: "number", total: "sum", header: "Open follow-ups" },
+    { id: "tickets", kind: "number", total: "sum", header: "Open tickets" },
     { id: "silent", kind: "chip", header: "Silent?" },
   ];
   const memberRows = $derived(

@@ -6,8 +6,13 @@
 -->
 <script lang="ts">
   import Board from "#lib/components/Board.svelte";
-  import type { KanbanCard } from "@lilydesignsystem/svelte-kanban-board";
-  import { listTickets, ticketStatus, type Ticket } from "#lib/api/crm.js";
+  import type {
+    KanbanCard,
+    KanbanField,
+    KanbanFieldEdit,
+    KanbanLane,
+  } from "@lilydesignsystem/svelte-kanban-board";
+  import { editTicket, listTickets, placeCard, ticketStatus, type Ticket } from "#lib/api/crm.js";
   import { slaBreached } from "#lib/format.js";
   import { t } from "#lib/i18n.svelte.js";
 
@@ -44,12 +49,42 @@
     (tickets ?? []).map((ticket) => ({
       id: ticket.pid,
       columnId: ticket.status,
+      laneId: ticket.priority,
       title: ticket.title,
+      values: { title: ticket.title },
       subtitle: ticket.priority + (slaBreached(ticket) ? " · SLA breached" : ""),
       flag: slaBreached(ticket) ? "SLA breached" : undefined,
       locked: (NEXT[ticket.status] ?? []).length === 0,
     })),
   );
+  // Swimlanes: one per priority, most urgent first.
+  const PRIORITIES = ["urgent", "high", "normal", "low"];
+  const lanes = $derived<KanbanLane[]>(
+    [...new Set((tickets ?? []).map((x) => x.priority))]
+      .sort((a, b) => PRIORITIES.indexOf(a) - PRIORITIES.indexOf(b))
+      .map((id) => ({ id, title: id })),
+  );
+  const fields = $derived<KanbanField[]>([
+    {
+      id: "title",
+      header: t("common.name"),
+      type: "text",
+      editable: true,
+      // The card already shows the name as its title; the field is the way to change it.
+      format: () => t("kanban.edit"),
+      editLabel: t("kanban.rename"),
+    },
+  ]);
+  async function onEdit(edit: KanbanFieldEdit) {
+    if (edit.fieldId === "title" && typeof edit.value === "string") {
+      await editTicket(edit.cardId, { title: edit.value });
+    }
+    await load();
+  }
+  const onPosition = async (id: string, position: number) => {
+    await placeCard("tickets", id, position);
+    await load();
+  };
   const allowedColumns = (card: KanbanCard) => NEXT[card.columnId] ?? [];
 
   async function onMove(id: string, status: string) {
@@ -72,7 +107,11 @@
     {columns}
     {cards}
     {allowedColumns}
+    {lanes}
+    {fields}
     {onMove}
+    {onPosition}
+    {onEdit}
     testid="ticket-board"
   />
 {/if}

@@ -15,7 +15,7 @@
     KanbanColumn,
   } from "@lilydesignsystem/svelte-kanban-board";
   import { page } from "$app/state";
-  import { listDeals, listPipelines, moveDeal, money } from "#lib/api/crm.js";
+  import { listDeals, listPipelines, moveDeal, money, placeCard } from "#lib/api/crm.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
@@ -62,6 +62,11 @@
     })),
   );
 
+  async function onPosition(pid: string, position: number) {
+    await placeCard("deals", pid, position);
+    await load();
+  }
+
   async function onMove(pid: string, stagePid: string) {
     await moveDeal(pid, stagePid);
     await load();
@@ -85,6 +90,7 @@
     {columns}
     {cards}
     {onMove}
+    {onPosition}
     testid="kanban-board"
   />
 {/if}

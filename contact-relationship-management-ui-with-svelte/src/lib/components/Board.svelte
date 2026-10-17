@@ -11,6 +11,12 @@
     - columns          { id, title, flag?, accent? }[]
     - cards            { id, columnId, title, subtitle?, badges?, flag?, href? }[]
     - onMove           (cardId, toColumnId) => Promise — saves the move
+    - onPosition       (cardId, position) => Promise — stores the card's place
+    - fields           typed values shown under a card; an editable one edits
+                       in place (click it, or F2) and calls `onEdit`
+    - lanes            swimlanes; a card's `laneId` names its lane. Lanes only
+                       group: dropping a card into another lane is refused
+    - several cards    Ctrl/Cmd+click (or `x`) selects; moving one moves all
     - allowedColumns   (card) => column ids the card may move to (a workflow)
     - columnFooter     snippet under each column (for example a total)
     - testid           `data-testid` on the board
@@ -21,6 +27,9 @@
     KanbanCard,
     KanbanColumn,
     KanbanColumnContext,
+    KanbanField,
+    KanbanFieldEdit,
+    KanbanLane,
   } from "@lilydesignsystem/svelte-kanban-board";
   import type { Snippet } from "svelte";
   import { t, type StringKey } from "#lib/i18n.svelte.js";
@@ -30,6 +39,10 @@
     columns,
     cards,
     onMove,
+    onPosition,
+    onEdit,
+    fields,
+    lanes,
     allowedColumns,
     columnFooter,
     testid,
@@ -38,12 +51,18 @@
     columns: KanbanColumn[];
     cards: KanbanCard[];
     onMove?: (cardId: string, toColumnId: string) => Promise<unknown>;
+    onPosition?: (cardId: string, position: number) => Promise<unknown>;
+    onEdit?: (edit: KanbanFieldEdit) => Promise<unknown>;
+    fields?: KanbanField[];
+    lanes?: KanbanLane[];
     allowedColumns?: (card: KanbanCard) => string[];
     columnFooter?: Snippet<[KanbanColumnContext]>;
     testid?: string;
   } = $props();
 
   let search = $state("");
+  let selected = $state<string[]>([]);
+  let collapsedLanes = $state<string[]>([]);
   let collapsedColumns = $state<string[]>([]);
   let moveError = $state<string | null>(null);
 
@@ -72,6 +91,16 @@
       fill(collapsed ? "kanban.expand" : "kanban.collapse", {
         column: column.title,
       }),
+    laneCount: (_lane: KanbanLane, count: number) =>
+      count === 1 ? t("kanban.cardsOne") : fill("kanban.cards", { count }),
+    collapseLane: (lane: KanbanLane, collapsed: boolean) =>
+      fill(collapsed ? "kanban.expand" : "kanban.collapse", { column: lane.title }),
+    moveManyAnnouncement: (count: number, column: string) =>
+      fill("kanban.movedMany", { count, column }),
+    editAnnouncement: (title: string, field: string, text: string) =>
+      fill("kanban.edited", { title, field, text }),
+    editInvalid: (title: string, field: string) =>
+      fill("kanban.editInvalid", { title, field }),
     export: t("kanban.export"),
     exportCsv: "CSV",
     exportExcel: "Excel",
@@ -83,9 +112,40 @@
     },
   });
 
-  function handleMove(cardId: string, toColumnId: string) {
+  // A drop is a move (a different column), a place (where in the column),
+  // or both. A drop into another lane is refused: lanes only group.
+  async function handleMove(
+    cardId: string,
+    toColumnId: string,
+    toIndex?: number,
+    toLaneId?: string,
+  ) {
     moveError = null;
-    return onMove?.(cardId, toColumnId);
+    const card = cards.find((c) => c.id === cardId);
+    const lane = card?.laneId ?? lanes?.[0]?.id;
+    if (toLaneId !== undefined && lane !== undefined && toLaneId !== lane) {
+      throw new Error(t("kanban.laneLocked"));
+    }
+    if (card && card.columnId !== toColumnId) await onMove?.(cardId, toColumnId);
+    if (toIndex !== undefined) await onPosition?.(cardId, toIndex);
+  }
+
+  async function handleReorder(cardId: string, toIndex: number) {
+    moveError = null;
+    try {
+      await onPosition?.(cardId, toIndex);
+    } catch (cause) {
+      handleError(cardId, "", cause);
+    }
+  }
+
+  async function handleFieldEdit(edit: KanbanFieldEdit) {
+    moveError = null;
+    try {
+      await onEdit?.(edit);
+    } catch (cause) {
+      moveError = cause instanceof Error ? cause.message : t("kanban.editFailed");
+    }
   }
 
   function handleError(_id: string, _to: string, cause: unknown) {
@@ -104,7 +164,16 @@
   {allowedColumns}
   bind:search
   bind:collapsedColumns
+  bind:collapsedLanes
+  bind:selected
+  {fields}
+  {lanes}
+  selectable
   onMove={handleMove}
+  onReorder={onPosition ? handleReorder : undefined}
+  onFieldEdit={onEdit ? handleFieldEdit : undefined}
+  dragPreviewText={(dragged) =>
+    dragged.length === 1 ? dragged[0]!.title : fill("kanban.cards", { count: dragged.length })}
   onMoveError={handleError}
   {columnFooter}
   data-testid={testid}

@@ -4,6 +4,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+// The tour's data is one shared in-memory copy that every tour sign-in resets,
+// so these tests run one after another in one worker, not in parallel.
+test.describe.configure({ mode: "serial" });
+
 const SCREENS = [
   "/",
   "/contacts",
@@ -265,7 +269,74 @@ test.describe("boards and timeline", () => {
     await expect(timeline).toBeVisible();
     await expect(timeline.getByRole("rowheader", { name: /Spring product update/ })).toBeVisible();
     await expect(timeline.getByRole("rowheader", { name: /Customer webinar series \(running\)/ })).toBeVisible();
+    // The critical path is named in text, not only by style; a finished
+    // campaign that ended earlier has slack.
+    await expect(timeline.getByRole("rowheader", { name: /Customer webinar series.*critical path/ })).toBeVisible();
+    await expect(timeline.getByRole("rowheader", { name: /Spring product update.*days slack/ })).toBeVisible();
     // Read-only: no edit regions or save buttons.
     await expect(timeline.getByRole("button", { name: /save/i })).toHaveCount(0);
+  });
+});
+
+test.describe("editing, order and rescheduling", () => {
+  test("a deal's amount is edited in place and the new value shows", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/deals");
+    const board = page.getByTestId("deal-board");
+    await expect(board).toContainText("£74,000.00");
+    await board.getByRole("button", { name: /£74,000\.00/ }).click();
+    const editor = board.getByRole("spinbutton");
+    await editor.fill("80000");
+    await editor.press("Enter");
+    await expect(board).toContainText("£80,000.00");
+    await expect(board).not.toContainText("£74,000.00");
+    // It was saved, not only shown.
+    await page.reload();
+    await expect(page.getByTestId("deal-board")).toContainText("£80,000.00");
+  });
+
+  test("deals are grouped in a swimlane per owner", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/deals");
+    const board = page.getByTestId("deal-board");
+    await expect(board).toContainText("owner-ayo");
+    await expect(board).toContainText("owner-bea");
+  });
+
+  test("a card can be selected with several others and moved together", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/tickets/board");
+    const board = page.getByTestId("ticket-board");
+    const first = board.getByRole("gridcell", { name: /Route export missing depot codes/ });
+    const second = board.getByRole("gridcell", { name: /Licence seats not showing in console/ });
+    await first.click({ modifiers: ["ControlOrMeta"] });
+    await second.click({ modifiers: ["ControlOrMeta"] });
+    await expect(first).toHaveAttribute("aria-selected", "true");
+    await expect(second).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("a follow-up moves to another day with Alt+arrow, and stays there", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/followups");
+    const calendar = page.getByTestId("followups-calendar");
+    const event = calendar.getByText("task: Renewal paperwork for Harbourlight");
+    await expect(event).toBeVisible();
+    const cellDate = async () =>
+      event.locator("xpath=ancestor::*[@data-date][1]").getAttribute("data-date");
+    const before = await cellDate();
+    await event.focus();
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(page.getByTestId("move-error")).toHaveCount(0);
+    await expect
+      .poll(async () => cellDate())
+      .not.toBe(before);
+    // Saved: it is still on the new day after a reload.
+    const after = await cellDate();
+    await page.reload();
+    const again = page
+      .getByTestId("followups-calendar")
+      .getByText("task: Renewal paperwork for Harbourlight");
+    await expect(again).toBeVisible();
+    expect(await again.locator("xpath=ancestor::*[@data-date][1]").getAttribute("data-date")).toBe(after);
   });
 });

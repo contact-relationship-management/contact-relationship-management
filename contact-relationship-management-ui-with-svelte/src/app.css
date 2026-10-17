@@ -545,3 +545,14 @@ body.kiosk button {
 .calendar-day-number[data-today] { text-decoration: underline; text-decoration-thickness: 2px; }
 /* Today: an outline, not the theme's solid fill, so the events inside stay readable. */
 .calendar-view-table .calendar-table-td[aria-current="date"] { background: var(--panel); color: var(--ink); outline: 3px solid var(--accent); outline-offset: -3px; }
+
+/* An event in a day cell is a button (so Alt+arrow can move it); it looks like text. */
+button.calendar-event { all: unset; display: block; box-sizing: border-box; inline-size: 100%; cursor: grab; font-size: 0.8rem; padding-block: 0.1rem; overflow-wrap: anywhere; text-align: start; }
+button.calendar-event:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* The pinned first column stays put when a wide table scrolls sideways. */
+.app-grid [data-pinned="start"] { position: sticky; inset-inline-start: 0; background: var(--panel); z-index: 1; }
+.app-grid th[draggable="true"] { cursor: grab; }
+.app-grid tfoot th, .app-grid tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
+.gantt-chart tr[data-critical] td[data-in-range] { box-shadow: inset 0 0 0 3px var(--ink); }
+.gantt-chart tr[data-critical] th[scope="row"] { font-weight: 700; }

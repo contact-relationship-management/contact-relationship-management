@@ -46,7 +46,7 @@
   const staleColumns = [
     { id: "deal", header: "Deal" },
     { id: "stage", header: "Stage" },
-    { id: "days", kind: "number", header: "Days in stage" },
+    { id: "days", kind: "number", total: "avg", header: "Days in stage" },
     { id: "amount", kind: "money", header: "Amount", accessor: (r: Record<string, unknown>) => r.amount_minor, format: (_v: unknown, r: Record<string, unknown>) => String(r.amount) },
   ];
   const staleRows = $derived(

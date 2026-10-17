@@ -1,8 +1,22 @@
 <script lang="ts">
   import DataTable from "#lib/components/DataTable.svelte";
   import Board from "#lib/components/Board.svelte";
-  import type { KanbanCard } from "@lilydesignsystem/svelte-kanban-board";
-  import { forecast, funnel, listDeals, listPipelines, money, moveDeal } from "#lib/api/crm.js";
+  import type {
+    KanbanCard,
+    KanbanField,
+    KanbanFieldEdit,
+    KanbanLane,
+  } from "@lilydesignsystem/svelte-kanban-board";
+  import {
+    editDeal,
+    forecast,
+    funnel,
+    listDeals,
+    listPipelines,
+    money,
+    moveDeal,
+    placeCard,
+  } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
   import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
@@ -41,14 +55,55 @@
   );
 
   const openDeals = $derived((deals ?? []).filter((deal) => deal.closed_at === null));
+  const UNASSIGNED = "__unassigned";
   const cards = $derived<KanbanCard[]>(
     openDeals.map((deal) => ({
       id: deal.pid,
       columnId: deal.stage_pid,
+      laneId: deal.owner_ref ?? UNASSIGNED,
       title: deal.name,
-      subtitle: money(deal.amount_minor, deal.currency, i18n.locale),
+      values: {
+        amount: deal.amount_minor === null ? null : deal.amount_minor / 100,
+        close: deal.expected_close_on ?? null,
+        currency: deal.currency,
+      },
     })),
   );
+
+  // Swimlanes: one per owner (a deal's `owner_ref`).
+  const lanes = $derived<KanbanLane[]>(
+    [...new Set(openDeals.map((d) => d.owner_ref ?? UNASSIGNED))]
+      .sort()
+      .map((id) => ({ id, title: id === UNASSIGNED ? t("kanban.unassigned") : id })),
+  );
+
+  // The amount shows with its own currency and edits in major units.
+  const fields = $derived<KanbanField[]>([
+    {
+      id: "amount",
+      header: t("kanban.amount"),
+      type: "number",
+      editable: true,
+      format: (value: unknown, row: Record<string, unknown>) =>
+        value === null || value === undefined
+          ? "—"
+          : money(Math.round(Number(value) * 100), String(row.currency ?? "GBP"), i18n.locale),
+    },
+    { id: "close", header: t("kanban.closeOn"), type: "date", editable: true },
+  ]);
+
+  async function onEdit(edit: KanbanFieldEdit) {
+    if (edit.fieldId === "amount" && typeof edit.value === "number") {
+      await editDeal(edit.cardId, { amount_minor: Math.round(edit.value * 100) });
+    } else if (edit.fieldId === "close" && typeof edit.value === "string") {
+      await editDeal(edit.cardId, { expected_close_on: edit.value });
+    }
+    await load();
+  }
+  const onPosition = async (id: string, position: number) => {
+    await placeCard("deals", id, position);
+    await load();
+  };
 
   // Drag between stage columns = the stage-move API (a lost target
   // carries a reason; the service enforces pipeline membership and
@@ -118,7 +173,11 @@
     label={t("deal.board")}
     {columns}
     {cards}
+    {lanes}
+    {fields}
     {onMove}
+    {onPosition}
+    {onEdit}
     testid="deal-board"
   />
 {/if}

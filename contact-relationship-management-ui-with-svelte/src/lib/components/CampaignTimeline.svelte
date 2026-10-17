@@ -3,12 +3,15 @@
   `@lilydesignsystem/svelte-gantt-chart`. A bar runs from the day a campaign was
   created to its last status change, or to today while it is still open
   (draft, scheduled, running). The service stores no planned send dates, so the
-  chart shows what happened, not a plan. Strings come from the `timeline.*` keys.
+  chart shows what happened, not a plan. The critical path (the campaign that
+  ends last, so fixes when everything is done) and each other campaign's slack
+  are worked out in `critical-path.ts`. Strings come from the `timeline.*` keys.
 -->
 <script lang="ts">
   import GanttChart from "@lilydesignsystem/svelte-gantt-chart";
   import type { GanttTask } from "@lilydesignsystem/svelte-gantt-chart";
   import type { Campaign } from "#lib/api/crm.js";
+  import { criticalPath } from "#lib/critical-path.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
   let { campaigns }: { campaigns: Campaign[] } = $props();
@@ -23,16 +26,30 @@
   const OPEN = ["draft", "scheduled", "running"];
 
   const dated = $derived(campaigns.filter((c) => c.created_at));
-  const tasks = $derived<GanttTask[]>(
+  const spans = $derived(
     dated.map((c) => {
       const start = day(c.created_at as string);
       const stop = OPEN.includes(c.status) ? today : day(c.updated_at ?? today);
+      return { campaign: c, id: c.pid, start, end: stop < start ? start : stop };
+    }),
+  );
+  // Campaigns do not depend on one another, so the critical path is whatever
+  // ends last: it fixes when everything is done. The rest have slack.
+  const path = $derived(criticalPath(spans));
+  const tasks = $derived<GanttTask[]>(
+    spans.map(({ campaign: c, id, start, end }) => {
+      const result = path.tasks.get(id);
+      const note = result?.critical
+        ? t("timeline.critical")
+        : t("timeline.slack").replace("{count}", String(result?.slack ?? 0));
       return {
-        id: c.pid,
-        label: `${c.name} (${c.status})`,
+        id,
+        label: `${c.name} (${c.status}) · ${note}`,
         start,
-        end: stop < start ? start : stop,
+        end,
         type: c.status,
+        critical: result?.critical ?? false,
+        slack: result?.slack ?? 0,
       };
     }),
   );

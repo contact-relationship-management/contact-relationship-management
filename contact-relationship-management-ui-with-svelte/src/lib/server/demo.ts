@@ -52,6 +52,9 @@ const iso = (offsetDays: number, hour = 9): string => {
   return d.toISOString();
 };
 const day = (offsetDays: number): string => iso(offsetDays).slice(0, 10);
+/** Whole days from today to an ISO day (negative when it has passed). */
+const daysFromToday = (isoDay: string): number =>
+  Math.round((Date.parse(`${isoDay}T00:00:00Z`) - Date.parse(`${day(0)}T00:00:00Z`)) / 86_400_000);
 
 interface Link {
   deals: string[];
@@ -69,7 +72,17 @@ interface Grant {
   review_note: string | null;
 }
 
+interface FollowupSeed {
+  pid: string;
+  kind: string;
+  summary: string;
+  who: string;
+  recorder: string;
+  due_on: string;
+}
+
 interface State {
+  followups: FollowupSeed[];
   accounts: Account[];
   contacts: Contact[];
   links: Record<string, Link>;
@@ -161,6 +174,8 @@ function build(): State {
       currency: "GBP",
       won: s.is_won,
       closed_at: closedDays === null ? null : iso(closedDays),
+      owner_ref: pid.endsWith("1") || pid.endsWith("3") ? "owner-ayo" : "owner-bea",
+      expected_close_on: day(20 + (pid.charCodeAt(pid.length - 1) % 7) * 9),
     };
   };
   const deals: Deal[] = [
@@ -227,13 +242,13 @@ function build(): State {
   ): Lead => ({ pid, source, display_name: name, email, score, status });
   const leads: Lead[] = [
     lead("lead-1", "referral", "Hollis Greenway", "hollis@example.org", 78, "new"),
-    lead("lead-2", "web form", "Mireille Davenport", "mireille@example.org", 64, "working"),
+    lead("lead-2", "web form", "Mireille Davenport", "mireille@example.org", 64, "contacted"),
     lead("lead-3", "event", "Anselm Kowalczyk", "anselm@example.org", 52, "new"),
-    lead("lead-4", "web form", "Tamsin Reyes", null, 41, "working"),
+    lead("lead-4", "web form", "Tamsin Reyes", null, 41, "contacted"),
     lead("lead-5", "webinar", "Jericho Abara", "jericho@example.org", 33, "new"),
     lead("lead-6", "cold outreach", "Philippa Strand", "philippa@example.org", 19, "disqualified"),
     lead("lead-7", "referral", "Cormac Idowu", "cormac@example.org", 88, "qualified"),
-  ];
+  ].sort((a, b) => b.score - a.score);
 
   // Dates are relative to today so the timeline always looks current.
   const ago = (days: number) =>
@@ -363,7 +378,22 @@ function build(): State {
     },
   ];
 
-  return { accounts, contacts, links, activities, leads, stages, deals, campaigns, tickets, articles, grants };
+  const fu = (
+    pid: string,
+    kind: string,
+    summary: string,
+    who: string,
+    recorder: string,
+    dueDays: number,
+  ): FollowupSeed => ({ pid, kind, summary, who, recorder, due_on: day(dueDays) });
+  const followups: FollowupSeed[] = [
+    fu("fu-1", "task", "Send revised proposal to Foxglove", "con-5", "owner-ayo", -4),
+    fu("fu-2", "call", "Check in after the council budget meeting", "con-11", "owner-bea", -1),
+    fu("fu-3", "task", "Renewal paperwork for Harbourlight", "con-3", "owner-bea", 3),
+    fu("fu-4", "meeting", "Quarterly review with Brightwater", "con-1", "owner-ayo", 8),
+    fu("fu-5", "task", "Book onboarding for Kestrel licences", "con-7", "owner-ayo", 14),
+  ];
+  return { followups, accounts, contacts, links, activities, leads, stages, deals, campaigns, tickets, articles, grants };
 }
 
 let state: State = build();
@@ -463,13 +493,9 @@ function followupRow(
 }
 
 function followups(kind: string | null) {
-  const rows = [
-    followupRow("fu-1", "task", "Send revised proposal to Foxglove", "con-5", "owner-ayo", -4),
-    followupRow("fu-2", "call", "Check in after the council budget meeting", "con-11", "owner-bea", -1),
-    followupRow("fu-3", "task", "Renewal paperwork for Harbourlight", "con-3", "owner-bea", 3),
-    followupRow("fu-4", "meeting", "Quarterly review with Brightwater", "con-1", "owner-ayo", 8),
-    followupRow("fu-5", "task", "Book onboarding for Kestrel licences", "con-7", "owner-ayo", 14),
-  ].filter((r) => !kind || r.kind === kind);
+  const rows = state.followups
+    .map((f) => followupRow(f.pid, f.kind, f.summary, f.who, f.recorder, daysFromToday(f.due_on)))
+    .filter((r) => !kind || r.kind === kind);
   return {
     as_of: new Date().toISOString(),
     note: "Open activities with a due date. Overdue ones are listed first.",
@@ -827,6 +853,80 @@ function moveDeal(pid: string, body: unknown): DemoReply {
   return ok(deal);
 }
 
+/** Put `pid` at `position` among the rows that share its column, keeping every other row's slot. */
+function placeInColumn<T extends { pid: string }>(
+  rows: T[],
+  pid: string,
+  position: number,
+  column: (row: T) => string,
+): DemoReply {
+  const row = rows.find((r) => r.pid === pid);
+  if (!row) return problem(404, "not found");
+  const slots = rows.flatMap((r, i) => (column(r) === column(row) ? [i] : []));
+  const order = slots.map((i) => rows[i]!).filter((r) => r.pid !== pid);
+  order.splice(Math.max(0, Math.min(position, order.length)), 0, row);
+  slots.forEach((slot, i) => {
+    rows[slot] = order[i]!;
+  });
+  return ok(row);
+}
+
+function bodyOf(body: unknown): Record<string, unknown> {
+  return (body ?? {}) as Record<string, unknown>;
+}
+
+function editDeal(pid: string, body: unknown): DemoReply {
+  const deal = state.deals.find((d) => d.pid === pid);
+  if (!deal) return problem(404, "deal not found");
+  if (deal.closed_at) return problem(422, "deal is closed — reopen it first");
+  const { name, amount_minor, expected_close_on } = bodyOf(body);
+  if (name === undefined && amount_minor === undefined && expected_close_on === undefined) {
+    return problem(422, "nothing to change");
+  }
+  if (name !== undefined) {
+    if (typeof name !== "string" || !name.trim()) return problem(422, "name is required");
+    deal.name = name.trim();
+  }
+  if (amount_minor !== undefined) {
+    if (typeof amount_minor !== "number" || amount_minor < 0) {
+      return problem(422, "amount_minor must not be negative");
+    }
+    deal.amount_minor = Math.round(amount_minor);
+  }
+  if (typeof expected_close_on === "string") deal.expected_close_on = expected_close_on;
+  return ok(deal);
+}
+
+function editText<T extends { pid: string }>(
+  rows: T[],
+  pid: string,
+  body: unknown,
+  field: keyof T & string,
+): DemoReply {
+  const row = rows.find((r) => r.pid === pid);
+  if (!row) return problem(404, "not found");
+  const value = bodyOf(body)[field];
+  if (value === undefined) return problem(422, "nothing to change");
+  if (typeof value !== "string" || !value.trim()) return problem(422, `${field} is required`);
+  (row as Record<string, unknown>)[field] = value.trim();
+  return ok(row);
+}
+
+function editFollowup(pid: string, body: unknown): DemoReply {
+  const f = state.followups.find((x) => x.pid === pid);
+  if (!f) return problem(404, "activity not found");
+  const { due_on, summary } = bodyOf(body);
+  if (due_on === undefined && summary === undefined) return problem(422, "nothing to change");
+  if (due_on !== undefined) {
+    if (typeof due_on !== "string" || Number.isNaN(Date.parse(due_on))) {
+      return problem(422, "due_on must be a date");
+    }
+    f.due_on = due_on;
+  }
+  if (typeof summary === "string" && summary.trim()) f.summary = summary.trim();
+  return ok(f);
+}
+
 function runCampaign(pid: string): DemoReply {
   const c = state.campaigns.find((x) => x.pid === pid);
   if (!c) return problem(404, "campaign not found");
@@ -925,9 +1025,13 @@ export function demoHandle(
   }
   if (head === "accounts" && seg.length === 1 && get) return ok(state.accounts);
   if (head === "leads") {
-    if (seg.length === 1 && get) return ok([...state.leads].sort((a, b) => b.score - a.score));
+    if (seg.length === 1 && get) return ok(state.leads);
     if (seg.length === 2 && get) return leadDetail(id!);
     if (tail === "status" && post) return transition(state.leads, id!, body, "lead");
+    if (method === "PUT" && seg.length === 2) return editText(state.leads, id!, body, "display_name");
+    if (method === "PUT" && tail === "position") {
+      return placeInColumn(state.leads, id!, Number(bodyOf(body).position), (l) => l.status);
+    }
   }
   if (head === "pipelines" && get) {
     return ok([{ pipeline: PIPELINE, stages: state.stages }]);
@@ -938,7 +1042,12 @@ export function demoHandle(
       return ok(pipeline && pipeline !== PIPELINE.pid ? [] : state.deals);
     }
     if (tail === "stage" && post) return moveDeal(id!, body);
+    if (method === "PUT" && seg.length === 2) return editDeal(id!, body);
+    if (method === "PUT" && tail === "position") {
+      return placeInColumn(state.deals, id!, Number(bodyOf(body).position), (d) => d.stage_pid);
+    }
   }
+  if (head === "activities" && method === "PUT" && seg.length === 2) return editFollowup(id!, body);
   if (head === "forecast" && get) return ok(forecastNow());
   if (head === "campaigns") {
     if (seg.length === 1 && get) return ok(state.campaigns);
@@ -948,6 +1057,10 @@ export function demoHandle(
   }
   if (head === "tickets") {
     if (seg.length === 1 && get) return ok(state.tickets);
+    if (method === "PUT" && seg.length === 2) return editText(state.tickets, id!, body, "title");
+    if (method === "PUT" && tail === "position") {
+      return placeInColumn(state.tickets, id!, Number(bodyOf(body).position), (t) => t.status);
+    }
     if (tail === "status" && post) {
       const reply = transition(state.tickets, id!, body, "ticket");
       const t = state.tickets.find((x) => x.pid === id);

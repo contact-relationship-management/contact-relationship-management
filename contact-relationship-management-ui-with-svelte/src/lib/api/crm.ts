@@ -81,6 +81,8 @@ export interface Deal {
   currency: string;
   won: boolean;
   closed_at: string | null;
+  owner_ref?: string | null;
+  expected_close_on?: string | null;
 }
 
 /** One campaign with counters. */
@@ -201,6 +203,11 @@ export function getLead(
   return api(`/leads/${pid}`, init);
 }
 
+/** Edit a lead in place (its display name). */
+export function editLead(pid: string, fields: { display_name: string }): Promise<Lead> {
+  return api(`/leads/${pid}`, { method: "PUT", body: fields });
+}
+
 /** Lead status transition. */
 export function leadStatus(pid: string, to: string): Promise<Lead> {
   return api(`/leads/${pid}/status`, { method: "POST", body: { to } });
@@ -234,6 +241,31 @@ export function moveDeal(
       ...(lostReason ? { lost_reason: lostReason } : {}),
     },
   });
+}
+
+/** Edit an open deal in place (name, amount, expected close). */
+export function editDeal(
+  pid: string,
+  fields: { name?: string; amount_minor?: number; expected_close_on?: string },
+): Promise<Deal> {
+  return api(`/deals/${pid}`, { method: "PUT", body: fields });
+}
+
+/** Store a card's place (0-based) among the cards in its column. */
+export function placeCard(
+  kind: "deals" | "leads" | "tickets",
+  pid: string,
+  position: number,
+): Promise<unknown> {
+  return api(`/${kind}/${pid}/position`, { method: "PUT", body: { position } });
+}
+
+/** Change a follow-up's due day or summary (a due-day change is audited as a reschedule). */
+export function editFollowup(
+  pid: string,
+  fields: { due_on?: string; summary?: string },
+): Promise<unknown> {
+  return api(`/activities/${pid}`, { method: "PUT", body: fields });
 }
 
 /** The live forecast. */
@@ -279,6 +311,11 @@ export function campaignStatus(pid: string, to: string): Promise<Campaign> {
 /** Tickets with live breach flags. */
 export function listTickets(init?: FetchLike): Promise<Ticket[]> {
   return apiAll("/tickets", init);
+}
+
+/** Edit a ticket in place (its title). */
+export function editTicket(pid: string, fields: { title: string }): Promise<Ticket> {
+  return api(`/tickets/${pid}`, { method: "PUT", body: fields });
 }
 
 /** Ticket status transition. */

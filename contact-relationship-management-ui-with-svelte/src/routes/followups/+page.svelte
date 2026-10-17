@@ -6,9 +6,10 @@
 <script lang="ts">
   import DataTable from "#lib/components/DataTable.svelte";
   import CalendarView, {
+    type CalendarEvent,
     type CalendarViewMode,
   } from "@lilydesignsystem/svelte-calendar";
-  import { followups, type Followup } from "#lib/api/crm.js";
+  import { editFollowup, followups, type Followup } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
   let overdue = $state<Followup[] | null>(null);
@@ -17,20 +18,35 @@
   let kindFilter = $state("");
   let error = $state<string | null>(null);
 
+  async function reload() {
+    try {
+      const view = await followups(kindFilter || undefined);
+      overdue = view.overdue;
+      upcoming = view.upcoming_30d;
+      note = view.note;
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+
   $effect(() => {
-    void (async () => {
-      try {
-        const view = await followups(kindFilter || undefined);
-        overdue = view.overdue;
-        upcoming = view.upcoming_30d;
-        note = view.note;
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
+    void reload();
   });
 
   // Lily's CalendarView takes ISO dates; `date` places a one-day event.
+  // Dragging an event to another day (or Alt+arrow on it) reschedules the
+  // follow-up; the service audits it. A refusal puts the page back as stored.
+  let moveError = $state<string | null>(null);
+  async function onEventMove(calendarEvent: { id: string }, toDate: string) {
+    moveError = null;
+    try {
+      await editFollowup(calendarEvent.id, { due_on: toDate });
+    } catch (cause) {
+      moveError = cause instanceof Error ? cause.message : String(cause);
+    }
+    await reload();
+  }
+
   const events = $derived(
     upcoming.map((item) => ({
       id: item.pid,
@@ -62,6 +78,8 @@
       start: t("cal.exportStart"),
       end: t("cal.exportEnd"),
     },
+    eventMoveAnnouncement: (e: CalendarEvent, toDate: string) =>
+      t("cal.moved").replace("{title}", String(e.title ?? "")).replace("{date}", toDate),
     weekView: t("cal.week"),
     fourWeekView: t("cal.fourWeeks"),
     monthView: t("cal.month"),
@@ -79,7 +97,7 @@
   });
 
   const overdueColumns = [
-    { id: "due", header: "Due" },
+    { id: "due", kind: "date", header: "Due" },
     { id: "days", kind: "number", header: "Overdue (days)" },
     { id: "kind", kind: "chip", header: "Kind" },
     { id: "summary", header: "Summary" },
@@ -101,6 +119,7 @@
 
 <h1>{t("nav.followups")}</h1>
 {#if error}<p class="error" data-testid="error">{error}</p>{/if}
+{#if moveError}<p class="error" role="alert" data-testid="move-error">{moveError}</p>{/if}
 {#if note}<p class="muted">{note}</p>{/if}
 
 <p>
@@ -138,6 +157,7 @@
       bind:view
       bind:anchorDate
       {events}
+      {onEventMove}
       {today}
       locale={i18n.locale}
       labels={calendarLabels}
@@ -145,12 +165,14 @@
       maxEvents={3}
       exportFilename="follow-ups"
     >
-      {#snippet day({ date, visibleEvents, isToday, hiddenCount })}
+      {#snippet day({ date, visibleEvents, isToday, hiddenCount, eventProps })}
         <span class="calendar-day-number" data-today={isToday ? "" : undefined}
           >{Number(date.slice(8))}</span
         >
         {#each visibleEvents as event (event.id)}
-          <span class="calendar-event">{event.title}</span>
+          <button type="button" class="calendar-event" {...eventProps(event)}>
+            {event.title}
+          </button>
         {/each}
         {#if hiddenCount > 0}
           <span class="calendar-event muted"
