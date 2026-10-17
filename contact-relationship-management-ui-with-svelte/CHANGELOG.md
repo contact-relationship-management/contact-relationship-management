@@ -19,7 +19,10 @@ search, collapsible columns, an empty-column message, and CSV and Excel export.
 `/campaigns` gains a read-only timeline on `@lilydesignsystem/svelte-gantt-chart`:
 a bar runs from creation to the last status change (to today while the campaign is
 open). The service stores no planned send dates, so it shows what happened, not a
-plan. New keys `kanban.*` and `timeline.*` in all eight languages (unreviewed by
+plan. The follow-ups calendar gains day and agenda views, week numbers, "+n more"
+on crowded days, day numbers in the cells, a today outline that keeps events
+readable, and CSV and Excel export; every data table gets CSV and Excel export.
+The unused SVAR file-manager package is removed. New keys `kanban.*`, `timeline.*`, `cal.*` and `grid.export*` in all eight languages (unreviewed by
 native speakers).
 
 ### Changed — Lily upgrade (2026-10-14)

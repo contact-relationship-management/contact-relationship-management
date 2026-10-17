@@ -24,6 +24,7 @@
     - pageSize  rows per page (default: all rows, or 25 when there are more)
     - testid    `data-testid` on the grid root; also keys the remembered
                 sort and column widths
+    - (export)  CSV and Excel buttons, named after `testid`
     - empty     text shown in the grid when there are no rows
 -->
 <script lang="ts">
@@ -81,6 +82,11 @@
 
   const labels = $derived({
     search: showFilter ? t("grid.search") : undefined,
+    export: t("grid.export"),
+    exportCsv: "CSV",
+    exportExcel: "Excel",
+    exportAnnouncement: (_format: unknown, count: number, filename: string) =>
+      fill("grid.exported", { count, filename }),
     previousPage: t("grid.previous"),
     nextPage: t("grid.next"),
     pageStatus: (page: number, pages: number, count: number) =>
@@ -151,6 +157,7 @@
   {rowId}
   pageSize={size}
   {labels}
+  exportFilename={testid}
   storageKey={testid ? `crm-grid-${testid}` : undefined}
   empty={empty ? emptyRow : undefined}
   onRowActivate={onselect ? activate : undefined}

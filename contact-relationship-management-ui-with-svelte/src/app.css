@@ -541,3 +541,7 @@ body.kiosk button {
 .gantt-chart tr[data-task-type="draft"] td[data-in-range] { background: var(--panel); border-block: 3px solid var(--accent); }
 .gantt-chart [data-today] { border-inline: 2px solid var(--ink); }
 .gantt-chart-zoom { display: flex; gap: 0.25rem; margin-block-end: 0.5rem; }
+.calendar-day-number { display: block; font-weight: 600; font-size: 0.8rem; }
+.calendar-day-number[data-today] { text-decoration: underline; text-decoration-thickness: 2px; }
+/* Today: an outline, not the theme's solid fill, so the events inside stay readable. */
+.calendar-view-table .calendar-table-td[aria-current="date"] { background: var(--panel); color: var(--ink); outline: 3px solid var(--accent); outline-offset: -3px; }

@@ -50,6 +50,18 @@
   // 2024-01-07 is a Sunday, so weekday 0 = Sunday.
   const weekdayDate = (wd: number) => new Date(Date.UTC(2024, 0, 7 + wd));
   const calendarLabels = $derived({
+    dayView: t("cal.day"),
+    agendaView: t("cal.agenda"),
+    agendaEmpty: t("cal.agendaEmpty"),
+    weekNumberHeader: t("cal.weekNumberHeader"),
+    export: t("cal.export"),
+    exportCsv: "CSV",
+    exportExcel: "Excel",
+    exportHeaders: {
+      title: t("cal.exportTitle"),
+      start: t("cal.exportStart"),
+      end: t("cal.exportEnd"),
+    },
     weekView: t("cal.week"),
     fourWeekView: t("cal.fourWeeks"),
     monthView: t("cal.month"),
@@ -129,11 +141,22 @@
       {today}
       locale={i18n.locale}
       labels={calendarLabels}
+      showWeekNumbers
+      maxEvents={3}
+      exportFilename="follow-ups"
     >
-      {#snippet day({ events: dayEvents })}
-        {#each dayEvents as event (event.id)}
+      {#snippet day({ date, visibleEvents, isToday, hiddenCount })}
+        <span class="calendar-day-number" data-today={isToday ? "" : undefined}
+          >{Number(date.slice(8))}</span
+        >
+        {#each visibleEvents as event (event.id)}
           <span class="calendar-event">{event.title}</span>
         {/each}
+        {#if hiddenCount > 0}
+          <span class="calendar-event muted"
+            >{t("cal.more").replace("{count}", String(hiddenCount))}</span
+          >
+        {/if}
       {/snippet}
     </CalendarView>
   </div>
