@@ -241,3 +241,21 @@ data, and show that data past its retention horizon does not linger.*
   before the horizon (informational — never auto-scrubbed, since a
   contact always carries the erasure gate above). Destructive-classified;
   audited even when it deletes nothing.
+
+## CRM-R21 — Export from tables
+
+*As a user I can take the rows I am looking at out of any table, to use in a
+spreadsheet or another tool.*
+
+- Every data table offers export to **CSV**, **TSV** and **Excel** (`.xlsx`),
+  through the export support in `@lilydesignsystem/svelte-data-grid`. The
+  app does not write its own file builders.
+- An export holds the rows as filtered and sorted on screen, across all pages,
+  and the visible columns in their current order. Cells are written as typed
+  values (numbers and dates stay numbers and dates), not display strings.
+- The file is named after the table, and the export is announced to assistive
+  technology (count and file name).
+- Export is done in the browser from data the user already holds. It adds no
+  service endpoint and no extra read, so masking and record-level access apply
+  exactly as they do to the screen.
+- The labels of the export controls come from the app's i18n in every locale.
