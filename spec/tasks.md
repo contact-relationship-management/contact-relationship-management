@@ -596,7 +596,7 @@ parties outside the repository.
       adapter. (plan gap 12) *Open.*
 - [ ] CRM-T42 **Independent assurance.** Penetration test, formal risk
       analysis, accreditation evidence (ATO / DSPT / HIPAA / ISO 27001).
-      (plan gap 13) *Open: external.*
+      (plan gap 13) *Open: external.* **Brief written 2026-10-18:** `compliance/penetration-test-scope.md` is what to hand a tester. No test has been done.
 - [x] CRM-T43 *(resolved 2026-10-10, in part.)* **Abuse resistance.** Rate limiting and lockout on the
       service; UI idle-session timeout and re-authentication before
       destructive actions. (plan gap 14) *Open.*
@@ -641,7 +641,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       and list reads are audited. The enforcement test fails without the fix.
 - [ ] CRM-T48 **Manual accessibility audit** (keyboard, NVDA/JAWS/VoiceOver,
       400% zoom) of data-bearing pages and the boards, fixes, and an updated
-      statement. *Open: needs people and assistive technology.*
+      statement. *Open: needs people and assistive technology.* **Brief written 2026-10-18:** `compliance/accessibility-audit-brief.md` is the test plan. No audit has been done.
 - [ ] CRM-T49 **GDS API checklist review and build signing.** Review the API
       against the GDS standards, and sign release builds and pin image digests
       (Software Security Code of Practice). *Open.*

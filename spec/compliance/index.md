@@ -23,3 +23,5 @@ configuration in this repository enforces it and a test or check pins it;
 - [api-lifecycle.md](api-lifecycle.md) — error format (RFC 9457), versioning, and the deprecation policy.
 - [email-provider-brief.md](email-provider-brief.md) — what to hand an email provider and its legal reviewers (CRM-T39).
 - [first-release-checklist.md](first-release-checklist.md) — the dry run that proves release signing and verification (CRM-T49).
+- [accessibility-audit-brief.md](accessibility-audit-brief.md) — the manual test plan for CRM-T48 (no audit has been done).
+- [penetration-test-scope.md](penetration-test-scope.md) — scope and rules for an independent tester, CRM-T42 (no test has been done).
