@@ -11,8 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The dependency (and its dev-dependency with `test-idp`) is now the published
 0.9.1 instead of a pinned git commit, which crates.io would reject. Tests,
-clippy (with `--features keycloak`) and `cargo deny` pass. Publishing still
-needs the `migration` path dependency published under its own name.
+clippy (with `--features keycloak`) and `cargo deny` pass. The migrations crate
+is now `contact-relationship-management-migration` (still imported as
+`migration`, via `[lib] name` and a renamed dependency) and is publishable; the
+service refers to it by version `0.1.0` plus its path. `cargo publish
+--workspace --dry-run` passes for both crates. Nothing has been published.
+The package ships only `src/` and the README (`include` in `Cargo.toml`), so it
+carries no `config/*.yaml`, tests or Containerfile.
 
 ### Changed — crate renamed (2026-10-18)
 

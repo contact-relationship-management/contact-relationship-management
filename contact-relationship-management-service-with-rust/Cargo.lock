@@ -1236,13 +1236,13 @@ dependencies = [
  "axum-test 21.1.0",
  "base64 0.23.1",
  "chrono",
+ "contact-relationship-management-migration",
  "ed25519-dalek 3.0.0",
  "entity-ref",
  "hmac",
  "jsonschema",
  "lettre",
  "loco-rs",
- "migration",
  "mimalloc",
  "prometheus",
  "redis",
@@ -1257,6 +1257,14 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "contact-relationship-management-migration"
+version = "0.1.0"
+dependencies = [
+ "loco-rs",
+ "sea-orm-migration",
 ]
 
 [[package]]
@@ -3501,14 +3509,6 @@ name = "micromap"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a86d3146ed3995b5913c414f6664344b9617457320782e64f0bb44afd49d74"
-
-[[package]]
-name = "migration"
-version = "0.1.0"
-dependencies = [
- "loco-rs",
- "sea-orm-migration",
-]
 
 [[package]]
 name = "mimalloc"
