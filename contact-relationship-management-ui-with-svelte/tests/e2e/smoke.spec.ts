@@ -857,7 +857,7 @@ test.describe("header pickers: pages and search", () => {
     await signIn(page);
   });
 
-  test("the search picker filters the contact list; the link picker navigates", async ({
+  test("the search picker looks in every list; the link picker navigates", async ({
     page,
   }) => {
     const person = (pid: string, name: string, title: string) => ({
@@ -867,6 +867,8 @@ test.describe("header pickers: pages and search", () => {
       status: "active",
       marketing_consent: "granted",
     });
+    // Every list is empty unless stubbed below (later routes win).
+    await page.route("**/api/proxy/*", (route) => route.fulfill({ json: [] }));
     await page.route("**/api/proxy/contacts", (route) =>
       route.fulfill({
         json: [
@@ -875,14 +877,21 @@ test.describe("header pickers: pages and search", () => {
         ],
       }),
     );
+    await page.route("**/api/proxy/tickets", (route) =>
+      route.fulfill({
+        json: [{ pid: "t1", title: "Ada's laptop will not boot", priority: "high", status: "open" }],
+      }),
+    );
     await page.goto("/contacts");
     await expect(page.getByText("Grace Hopper")).toBeVisible();
 
     await page.locator("header.topbar .search-picker-button").click();
     await page.getByRole("searchbox", { name: "Search terms" }).fill("ada");
     await page.getByRole("button", { name: "Search", exact: true }).click();
-    await expect(page).toHaveURL(/\/contacts\?ada$/);
-    await expect(page.getByText("Ada Lovelace")).toBeVisible();
+    await expect(page).toHaveURL(/\/search\?ada$/);
+    await expect(page.getByTestId("search-status")).toContainText("2 results");
+    await expect(page.getByTestId("search-nav.contacts").getByText("Ada Lovelace")).toBeVisible();
+    await expect(page.getByTestId("search-nav.tickets").getByText("Ada's laptop will not boot")).toBeVisible();
     await expect(page.getByText("Grace Hopper")).toHaveCount(0);
 
     await page.locator("header.topbar .link-picker-button").click();

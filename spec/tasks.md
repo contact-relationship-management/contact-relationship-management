@@ -867,3 +867,19 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       existing rows keep their old `updated_at` until next edited; the Rust 1.99
       clippy lints (`assert_is_empty`, one redundant borrow) were fixed
       separately.
+
+- [x] CRM-T58 **Search every list, and a language in any address.** The header
+      search found only contacts; the language-in-address routes existed only
+      for the kanban page.
+      **Resolution:** `/search` (seven lists, filtered in the browser; 5 unit
+      tests on the matcher and an e2e test across contacts and tickets) and a
+      `reroute` hook that lets every page open under `/<locale>/…` (2 unit
+      tests on the splitter, 2 e2e tests, including the sign-in gate).
+      **Limits:** search reads each whole list, so it is slow on large data and
+      sees only what the caller may read; the service has no search endpoint;
+      account, lead, ticket and campaign hits link to their list, not a record
+      page (only contacts have one); search does not look inside notes,
+      activities or custom fields; the language picker's address rewrite is not
+      tested; server-rendered HTML for a prefixed address is in the default
+      language until the page loads.
+

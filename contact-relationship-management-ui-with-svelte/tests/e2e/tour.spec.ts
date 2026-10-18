@@ -28,6 +28,8 @@ const SCREENS = [
   "/engagement",
   "/partners",
   "/en-001/kanban",
+  "/search?q=a",
+  "/de-de/contacts",
 ];
 
 async function startTour(page: Page) {
@@ -388,5 +390,24 @@ test.describe("export, undo and search", () => {
       const file = await download;
       expect(file.suggestedFilename()).toBe(`campaign-timeline.${ext}`);
     }
+  });
+
+  test("any page opens under a language in the address, and keeps it", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/de-de/contacts");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kontakte");
+    await expect(page).toHaveURL(/\/de-de\/contacts$/);
+    // Links keep the language; the language picker rewrites the address.
+    await page.locator("header.topbar .link-picker-button").click();
+    await page.getByRole("link", { name: "Konten" }).click();
+    await expect(page).toHaveURL(/\/de-de\/accounts$/);
+    await page.goto("/fr-001");
+    await expect(page).toHaveURL(/\/fr-001$/);
+    await expect(page.getByTestId("demo-banner")).toBeVisible();
+  });
+
+  test("an unauthenticated visit to a prefixed private page goes to sign-in", async ({ page }) => {
+    await page.goto("/de-de/contacts");
+    await expect(page).toHaveURL(/\/signin$/);
   });
 });

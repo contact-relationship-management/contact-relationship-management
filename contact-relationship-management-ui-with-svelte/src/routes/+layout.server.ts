@@ -20,6 +20,7 @@ import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 import { DEMO_TOUR_ENABLED } from "#lib/server/config.js";
 import { isDemoSession } from "#lib/server/demo.js";
+import { splitLocale } from "../params";
 
 /** Routes reachable with no session (prefix match). */
 const PUBLIC_PATHS = ["/signin", "/verify", "/tour", "/accessibility"];
@@ -32,9 +33,12 @@ const PUBLIC_PATHS = ["/signin", "/verify", "/tour", "/accessibility"];
 const PUBLIC_EXACT = ["/"];
 
 export const load: LayoutServerLoad = ({ locals, url }) => {
+  // `/de-de/contacts` is the contacts page: the language prefix does not
+  // change whether a page is public.
+  const { path: pathname } = splitLocale(url.pathname);
   const isPublic =
-    PUBLIC_EXACT.includes(url.pathname) ||
-    PUBLIC_PATHS.some((path) => url.pathname.startsWith(path));
+    PUBLIC_EXACT.includes(pathname) ||
+    PUBLIC_PATHS.some((path) => pathname.startsWith(path));
   if (!isPublic && locals.sessionId === null) {
     redirect(303, "/signin");
   }

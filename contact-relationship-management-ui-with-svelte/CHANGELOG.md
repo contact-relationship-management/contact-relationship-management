@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — site-wide search, a language in any address (2026-10-18)
+
+The header search now goes to `/search`, which looks in contacts, accounts,
+leads, deals, tickets, campaigns and the knowledge base (every word must
+appear, any order, ignoring case and accents) and lists hits by group. It
+filters in the browser from the same reads the screens use, so masking and
+access rules apply; a list that fails to load is reported and the rest still
+show. Any page now opens under a language in the address: `/de-de/contacts`
+shows the contacts in German, the page links keep the prefix, and choosing
+another language rewrites the address (`src/hooks.ts` removes the prefix before
+routing; `/<locale>/kanban` stays its own route). The prefix does not change
+which pages need sign-in. The search box text and placeholder changed in all
+eight locales (unreviewed by native speakers).
+
 ### Added — campaign timeline export, live tests (2026-10-18)
 
 The campaign timeline exports CSV, TSV and Excel and has a Copy button. `pnpm

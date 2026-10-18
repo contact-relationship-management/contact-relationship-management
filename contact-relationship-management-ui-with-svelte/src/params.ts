@@ -23,4 +23,16 @@ export function localeOf(segment: string): string | undefined {
   return ROUTE_LOCALES.includes(segment) ? segment : undefined;
 }
 
+/**
+ * Split a path into its language prefix and the rest: `/de-de/contacts` is
+ * `{ locale: "de-de", path: "/contacts" }`, `/de-de` is `{ …, path: "/" }`, and
+ * a path with no prefix keeps `locale` undefined.
+ */
+export function splitLocale(pathname: string): { locale?: string; path: string } {
+  const [, first = "", ...rest] = pathname.split("/");
+  const locale = localeOf(first);
+  if (locale === undefined) return { path: pathname };
+  return { locale, path: `/${rest.join("/")}` };
+}
+
 export const params = defineParams({ locale: localeOf });

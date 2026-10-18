@@ -8,6 +8,7 @@
   import { IDLE_TIMEOUT_MS } from "#lib/config.js";
   import { watchIdle } from "#lib/idle.js";
   import { i18n, isRtl, t, LOCALES, LOCALE_LABELS } from "#lib/i18n.svelte.js";
+  import { splitLocale } from "../params";
   import PickerBar from "@lilydesignsystem/svelte-picker-bar";
   import type { ShareTarget } from "@lilydesignsystem/svelte-share-picker";
   import type { LinkItem } from "@lilydesignsystem/svelte-link-picker";
@@ -105,6 +106,21 @@
     { href: "/tour", key: "nav.tour" },
   ] as const;
 
+  // A language in the address (`/de-de/contacts`) is authoritative: it sets the
+  // UI language, and the links keep it so navigating does not drop it.
+  const addressed = $derived(splitLocale(page.url.pathname));
+  // Set at once, before the pickers mount (they report a language they were
+  // given as a change); the effect covers later navigations. Never on the
+  // server, where the store is shared between requests.
+  if (browser && addressed.locale && addressed.locale !== i18n.locale) {
+    i18n.set(addressed.locale);
+  }
+  $effect(() => {
+    if (addressed.locale && addressed.locale !== i18n.locale) i18n.set(addressed.locale);
+  });
+  const withLocale = (href: string) =>
+    addressed.locale ? `/${addressed.locale}${href === "/" ? "" : href}` : href;
+
   // The kanban board lives under the language in the address.
   const navLinks = $derived([
     ...navItems,
@@ -115,7 +131,10 @@
   // else the public pages. `current` marks the page being viewed.
   const pageLinks: LinkItem[] = $derived(
     (signedIn
-      ? navLinks.map((item) => ({ href: item.href, label: t(item.key) }))
+      ? navLinks.map((item) => ({
+          href: item.key === "nav.kanban" ? item.href : withLocale(item.href),
+          label: t(item.key),
+        }))
       : [
           { href: "/", label: t("nav.dashboard") },
           { href: "/accessibility", label: t("footer.accessibility") },
@@ -196,8 +215,8 @@
         links={pageLinks}
         linkProps={{ navigate: (href: string) => void goto(href) }}
         searchProps={{
-          // A search for `foo` goes to `/contacts?foo`, which filters the list.
-          action: "/contacts",
+          // A search for `foo` goes to `/search?foo`, which looks in every list.
+          action: "/search",
           placeholder: t("search.placeholder"),
           navigate: (href: string) => void goto(href),
         }}
@@ -216,7 +235,14 @@
           value: i18n.locale,
           localeLabels: LOCALE_LABELS,
           applyDir: false,
-          onChange: (code: string) => i18n.set(code),
+          onChange: (code: string) => {
+            i18n.set(code);
+            // On an addressed page, the address follows the language.
+            if (addressed.locale && code !== addressed.locale) {
+              const rest = addressed.path === "/" ? "" : addressed.path;
+              void goto(`/${code}${rest}${page.url.search}`, { replaceState: true });
+            }
+          },
         }}
         textSizeProps={{
           storageKey: "lily-text-size",
