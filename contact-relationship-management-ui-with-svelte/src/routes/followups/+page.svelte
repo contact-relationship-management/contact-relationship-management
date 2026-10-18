@@ -73,6 +73,10 @@
     export: t("cal.export"),
     exportCsv: "CSV",
     exportExcel: "Excel",
+    exportTsv: "TSV",
+    copy: t("grid.copy"),
+    copyAnnouncement: (count: number) => t("grid.copied").replace("{count}", String(count)),
+    copyFailed: t("grid.copyFailed"),
     exportHeaders: {
       title: t("cal.exportTitle"),
       start: t("cal.exportStart"),

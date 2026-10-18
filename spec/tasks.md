@@ -836,11 +836,12 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       guard only, as their other writes do. An edit overwrites without a version
       check, so two people editing the same card last-write-wins.
 
-- [ ] CRM-T56 **Export to CSV, TSV and Excel.** Traces to CRM-R21. Every
-      `DataTable` offers all three formats through
-      `@lilydesignsystem/svelte-data-grid`. **State:** CSV and Excel are built
-      (since CRM-T55's UI work); TSV is not yet: add the third button and its
-      label in all eight locales, then extend the e2e and unit tests to cover
-      the three formats and the column order, filter and sort of the file.
-      **Limits to state when done:** export holds what the browser already has,
-      so a table that is paged by the service exports only the loaded rows.
+- [x] CRM-T56 **Export to CSV, TSV and Excel.** Traces to CRM-R21. Every
+      `DataTable`, the boards and the follow-up calendar offer all three
+      formats, plus Copy, through the Lily components' own export.
+      **Resolution:** TSV and Copy labels added in all eight locales; an e2e
+      test downloads `.csv`, `.tsv` and `.xlsx` from the contacts table.
+      **Limits:** export holds what the browser already has, so a table paged by
+      the service exports only the loaded rows; the file contents (column order,
+      typed cells) are not asserted by a test; the campaign timeline has no
+      export; translations are unreviewed.

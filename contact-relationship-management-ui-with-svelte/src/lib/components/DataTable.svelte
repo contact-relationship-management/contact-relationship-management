@@ -115,6 +115,10 @@
     export: t("grid.export"),
     exportCsv: "CSV",
     exportExcel: "Excel",
+    exportTsv: "TSV",
+    copy: t("grid.copy"),
+    copyAnnouncement: (count: number) => fill("grid.copied", { count }),
+    copyFailed: t("grid.copyFailed"),
     exportAnnouncement: (_format: unknown, count: number, filename: string) =>
       fill("grid.exported", { count, filename }),
     previousPage: t("grid.previous"),

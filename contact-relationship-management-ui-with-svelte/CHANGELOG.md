@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Lily upgrade, TSV and copy (2026-10-18)
+
+Calendar 0.6.0, data grid 0.10.0, gantt chart 0.7.0 and kanban board 0.7.0.
+Tables, the boards and the follow-up calendar now export TSV as well as CSV and
+Excel (CRM-R21, CRM-T56), and have a Copy button that puts the same rows on the
+clipboard for pasting into a spreadsheet. New labels in all eight locales
+(unreviewed by native speakers). The new Lily search, undo and redo, and
+type-ahead are not switched on yet.
+
 ### Added — edit in place, stored order, swimlanes, reschedule, critical path (2026-10-17)
 
 Needs the service's new endpoints (CRM-T55). On the deal board an amount and an

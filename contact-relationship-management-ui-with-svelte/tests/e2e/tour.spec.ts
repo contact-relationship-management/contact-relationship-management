@@ -340,3 +340,16 @@ test.describe("editing, order and rescheduling", () => {
     expect(await again.locator("xpath=ancestor::*[@data-date][1]").getAttribute("data-date")).toBe(after);
   });
 });
+
+test.describe("export", () => {
+  test("a table downloads as CSV, TSV and Excel", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/contacts");
+    for (const [name, ext] of [["CSV", "csv"], ["TSV", "tsv"], ["Excel", "xlsx"]] as const) {
+      const download = page.waitForEvent("download");
+      await page.getByRole("button", { name, exact: true }).first().click();
+      expect((await download).suggestedFilename()).toMatch(new RegExp(`\\.${ext}$`));
+    }
+    await expect(page.getByRole("button", { name: "Copy", exact: true }).first()).toBeVisible();
+  });
+});

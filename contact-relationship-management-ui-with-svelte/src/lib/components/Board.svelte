@@ -104,6 +104,10 @@
     export: t("kanban.export"),
     exportCsv: "CSV",
     exportExcel: "Excel",
+    exportTsv: "TSV",
+    copy: t("grid.copy"),
+    copyAnnouncement: (count: number) => fill("grid.copied", { count }),
+    copyFailed: t("grid.copyFailed"),
     exportAnnouncement: (_format: unknown, count: number, filename: string) =>
       fill("kanban.exported", { count, filename }),
     exportHeaders: {
