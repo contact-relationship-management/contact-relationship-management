@@ -515,50 +515,181 @@ body.kiosk button {
 }
 
 /* Lily CalendarView ships no CSS: layout and states are ours. */
-.calendar-view-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; margin-block-end: 0.5rem; }
-.calendar-view-switcher, .calendar-view-nav { display: flex; gap: 0.25rem; }
-.calendar-view-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-.calendar-view-table th { padding: 0.25rem; text-align: center; font-weight: 600; }
-.calendar-view-table td { vertical-align: top; height: 5.5rem; padding: 0.25rem; border: 1px solid currentColor; overflow: hidden; }
-.calendar-view-table td[data-outside-period] { opacity: 0.6; }
-.calendar-view-table td[aria-selected="true"], .calendar-view-table td[data-selected] { outline: 2px solid currentColor; outline-offset: -2px; }
-.calendar-view-table td:focus-visible { outline: 3px solid currentColor; outline-offset: -3px; }
-.calendar-view-switcher-button[aria-pressed="true"] { font-weight: 700; text-decoration: underline; }
-.calendar-event { display: block; font-size: 0.8rem; padding-block: 0.1rem; overflow-wrap: anywhere; }
-.calendar-view-status { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+.calendar-view-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  margin-block-end: 0.5rem;
+}
+.calendar-view-switcher,
+.calendar-view-nav {
+  display: flex;
+  gap: 0.25rem;
+}
+.calendar-view-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.calendar-view-table th {
+  padding: 0.25rem;
+  text-align: center;
+  font-weight: 600;
+}
+.calendar-view-table td {
+  vertical-align: top;
+  height: 5.5rem;
+  padding: 0.25rem;
+  border: 1px solid currentColor;
+  overflow: hidden;
+}
+.calendar-view-table td[data-outside-period] {
+  opacity: 0.6;
+}
+.calendar-view-table td[aria-selected="true"],
+.calendar-view-table td[data-selected] {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+.calendar-view-table td:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: -3px;
+}
+.calendar-view-switcher-button[aria-pressed="true"] {
+  font-weight: 700;
+  text-decoration: underline;
+}
+.calendar-event {
+  display: block;
+  font-size: 0.8rem;
+  padding-block: 0.1rem;
+  overflow-wrap: anywhere;
+}
+.calendar-view-status {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
 
 /* Lily GanttChart ships no CSS: the bars are cells marked data-in-range. The
    bar is the accent colour; a running campaign is hatched, so state never
    rests on colour alone (the row label also carries the status). */
-.campaign-timeline { overflow-x: auto; }
-.gantt-chart table { border-collapse: collapse; }
-.gantt-chart th, .gantt-chart td { padding: 0.25rem 0.3rem; border: 1px solid var(--line); font-weight: 400; text-align: start; white-space: nowrap; }
-.gantt-chart thead th { font-size: 0.7rem; text-align: center; }
-.gantt-chart tbody th { font-size: 0.85rem; text-transform: none; }
-.gantt-chart td { min-width: 2.2rem; }
-.gantt-chart td[data-in-range] { background: var(--accent); border-color: var(--accent); }
-.gantt-chart tr[data-task-type="running"] td[data-in-range] { background: repeating-linear-gradient(45deg, var(--accent) 0 5px, var(--panel) 5px 8px); }
-.gantt-chart tr[data-task-type="draft"] td[data-in-range] { background: var(--panel); border-block: 3px solid var(--accent); }
-.gantt-chart [data-today] { border-inline: 2px solid var(--ink); }
-.gantt-chart-zoom { display: flex; gap: 0.25rem; margin-block-end: 0.5rem; }
-.calendar-day-number { display: block; font-weight: 600; font-size: 0.8rem; }
-.calendar-day-number[data-today] { text-decoration: underline; text-decoration-thickness: 2px; }
+.campaign-timeline {
+  overflow-x: auto;
+}
+.gantt-chart table {
+  border-collapse: collapse;
+}
+.gantt-chart th,
+.gantt-chart td {
+  padding: 0.25rem 0.3rem;
+  border: 1px solid var(--line);
+  font-weight: 400;
+  text-align: start;
+  white-space: nowrap;
+}
+.gantt-chart thead th {
+  font-size: 0.7rem;
+  text-align: center;
+}
+.gantt-chart tbody th {
+  font-size: 0.85rem;
+  text-transform: none;
+}
+.gantt-chart td {
+  min-width: 2.2rem;
+}
+.gantt-chart td[data-in-range] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.gantt-chart tr[data-task-type="running"] td[data-in-range] {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--accent) 0 5px,
+    var(--panel) 5px 8px
+  );
+}
+.gantt-chart tr[data-task-type="draft"] td[data-in-range] {
+  background: var(--panel);
+  border-block: 3px solid var(--accent);
+}
+.gantt-chart [data-today] {
+  border-inline: 2px solid var(--ink);
+}
+.gantt-chart-zoom {
+  display: flex;
+  gap: 0.25rem;
+  margin-block-end: 0.5rem;
+}
+.calendar-day-number {
+  display: block;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.calendar-day-number[data-today] {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
 /* Today: an outline, not the theme's solid fill, so the events inside stay readable. */
-.calendar-view-table .calendar-table-td[aria-current="date"] { background: var(--panel); color: var(--ink); outline: 3px solid var(--accent); outline-offset: -3px; }
+.calendar-view-table .calendar-table-td[aria-current="date"] {
+  background: var(--panel);
+  color: var(--ink);
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
 
 /* An event in a day cell is a button (so Alt+arrow can move it); it looks like text. */
-button.calendar-event { all: unset; display: block; box-sizing: border-box; inline-size: 100%; cursor: grab; font-size: 0.8rem; padding-block: 0.1rem; overflow-wrap: anywhere; text-align: start; }
-button.calendar-event:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.calendar-event {
+  all: unset;
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  cursor: grab;
+  font-size: 0.8rem;
+  padding-block: 0.1rem;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+button.calendar-event:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 
 /* The pinned first column stays put when a wide table scrolls sideways. */
-.app-grid [data-pinned="start"] { position: sticky; inset-inline-start: 0; background: var(--panel); z-index: 1; }
-.app-grid th[draggable="true"] { cursor: grab; }
-.app-grid tfoot th, .app-grid tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
-.gantt-chart tr[data-critical] td[data-in-range] { box-shadow: inset 0 0 0 3px var(--ink); }
-.gantt-chart tr[data-critical] th[scope="row"] { font-weight: 700; }
+.app-grid [data-pinned="start"] {
+  position: sticky;
+  inset-inline-start: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+.app-grid th[draggable="true"] {
+  cursor: grab;
+}
+.app-grid tfoot th,
+.app-grid tfoot td {
+  font-weight: 600;
+  border-top: 2px solid var(--line);
+}
+.gantt-chart tr[data-critical] td[data-in-range] {
+  box-shadow: inset 0 0 0 3px var(--ink);
+}
+.gantt-chart tr[data-critical] th[scope="row"] {
+  font-weight: 700;
+}
 
 /* Weekends in the calendar, and search matches (Lily marks them; the app styles them). */
-.calendar-view-table .calendar-table-td[data-weekend] { background: color-mix(in srgb, var(--ink) 6%, var(--panel)); }
-.calendar-view-table .calendar-table-th[data-weekend] { font-style: italic; }
+.calendar-view-table .calendar-table-td[data-weekend] {
+  background: color-mix(in srgb, var(--ink) 6%, var(--panel));
+}
+.calendar-view-table .calendar-table-th[data-weekend] {
+  font-style: italic;
+}
 mark.calendar-view-match,
-mark.kanban-board-match { background: color-mix(in srgb, var(--accent) 25%, transparent); color: inherit; }
+mark.kanban-board-match {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: inherit;
+}

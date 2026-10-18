@@ -40,8 +40,10 @@ export interface PathResult {
 }
 
 const DAY = 86_400_000;
-const toDay = (iso: string): number => Math.round(Date.parse(`${iso}T00:00:00Z`) / DAY);
-const toIso = (day: number): string => new Date(day * DAY).toISOString().slice(0, 10);
+const toDay = (iso: string): number =>
+  Math.round(Date.parse(`${iso}T00:00:00Z`) / DAY);
+const toIso = (day: number): string =>
+  new Date(day * DAY).toISOString().slice(0, 10);
 
 const normal = (d: string | Dependency): Required<Dependency> =>
   typeof d === "string"
@@ -55,7 +57,10 @@ export function criticalPath(tasks: ScheduledTask[]): PathResult {
   if (tasks.length === 0) return result;
 
   // successors[p] = the tasks that wait for p, with how.
-  const successors = new Map<string, { id: string; type: DependencyKind; lag: number }[]>();
+  const successors = new Map<
+    string,
+    { id: string; type: DependencyKind; lag: number }[]
+  >();
   for (const task of tasks) {
     for (const raw of task.dependsOn ?? []) {
       const dep = normal(raw);
@@ -73,7 +78,8 @@ export function criticalPath(tasks: ScheduledTask[]): PathResult {
     if (state.get(id) === 2) return true;
     if (state.get(id) === 1) return false; // a loop
     state.set(id, 1);
-    for (const next of successors.get(id) ?? []) if (!visit(next.id)) return false;
+    for (const next of successors.get(id) ?? [])
+      if (!visit(next.id)) return false;
     state.set(id, 2);
     order.push(id); // successors are already in `order`
     return true;

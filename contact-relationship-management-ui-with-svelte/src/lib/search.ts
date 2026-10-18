@@ -20,6 +20,8 @@ export function matches(
 ): boolean {
   const wanted = words(query);
   if (wanted.length === 0) return false;
-  const haystack = fold(fields.filter((f) => f !== null && f !== undefined).join(" "));
+  const haystack = fold(
+    fields.filter((f) => f !== null && f !== undefined).join(" "),
+  );
   return wanted.every((word) => haystack.includes(word));
 }

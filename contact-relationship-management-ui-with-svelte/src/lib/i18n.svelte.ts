@@ -92,7 +92,8 @@ const STRINGS = {
     "grid.copied": "تم نسخ {count} صفوف",
     "grid.copyFailed": "تعذّر النسخ",
     "search.title": "بحث",
-    "search.prompt": "اكتب في مربع البحث أعلاه للبحث في جهات الاتصال والحسابات والعملاء المحتملين والصفقات والتذاكر والحملات وقاعدة المعرفة.",
+    "search.prompt":
+      "اكتب في مربع البحث أعلاه للبحث في جهات الاتصال والحسابات والعملاء المحتملين والصفقات والتذاكر والحملات وقاعدة المعرفة.",
     "search.summary": "{count} نتيجة لـ «{query}»",
     "search.failed": "تعذّر البحث في بعض القوائم.",
     "kanban.undo": "تراجع",
@@ -113,7 +114,8 @@ const STRINGS = {
     "cal.exportStart": "البداية",
     "cal.exportEnd": "النهاية",
     "timeline.title": "الجدول الزمني للحملات",
-    "timeline.note": "تمتد الأشرطة من إنشاء الحملة إلى آخر تغيير في حالتها (وحتى اليوم ما دامت مفتوحة). لا تخزّن الخدمة تواريخ إرسال مخططة. المسار الحرج هو الحملة التي تنتهي أخيرًا: فهي تحدد موعد اكتمال كل شيء، وتُظهر الحملات الأخرى عدد أيام الفسحة المتاحة لها.",
+    "timeline.note":
+      "تمتد الأشرطة من إنشاء الحملة إلى آخر تغيير في حالتها (وحتى اليوم ما دامت مفتوحة). لا تخزّن الخدمة تواريخ إرسال مخططة. المسار الحرج هو الحملة التي تنتهي أخيرًا: فهي تحدد موعد اكتمال كل شيء، وتُظهر الحملات الأخرى عدد أيام الفسحة المتاحة لها.",
     "timeline.task": "الحملة",
     "timeline.zoomIn": "تكبير",
     "timeline.zoomOut": "تصغير",
@@ -160,7 +162,8 @@ const STRINGS = {
     "dash.breached": "تذاكر متجاوزة للمهلة",
     "dash.overdue": "متابعات متأخرة",
     "demo.title": "الجولة التجريبية:",
-    "demo.body": "كل ما تراه بيانات وهمية. التغييرات تُحفظ في الذاكرة فقط وتُعاد عند تسجيل الدخول إلى الجولة من جديد.",
+    "demo.body":
+      "كل ما تراه بيانات وهمية. التغييرات تُحفظ في الذاكرة فقط وتُعاد عند تسجيل الدخول إلى الجولة من جديد.",
     "signin.demo": "هل تريد الجولة؟ سجّل الدخول بالعنوان",
     "nav.pages": "الصفحات",
     "search.label": "ابحث في نظام إدارة العلاقات",
@@ -427,7 +430,8 @@ const STRINGS = {
     "grid.copied": "Copïwyd {count} rhes",
     "grid.copyFailed": "Methwyd copïo",
     "search.title": "Chwilio",
-    "search.prompt": "Teipiwch yn y blwch chwilio ar y brig i chwilio ar draws cysylltiadau, cyfrifon, arweinwyr, bargeinion, tocynnau, ymgyrchoedd a’r sylfaen wybodaeth.",
+    "search.prompt":
+      "Teipiwch yn y blwch chwilio ar y brig i chwilio ar draws cysylltiadau, cyfrifon, arweinwyr, bargeinion, tocynnau, ymgyrchoedd a’r sylfaen wybodaeth.",
     "search.summary": "{count} canlyniad ar gyfer “{query}”",
     "search.failed": "Ni ellid chwilio rhai rhestrau.",
     "kanban.undo": "Dadwneud",
@@ -448,7 +452,8 @@ const STRINGS = {
     "cal.exportStart": "Dechrau",
     "cal.exportEnd": "Diwedd",
     "timeline.title": "Amserlen ymgyrchoedd",
-    "timeline.note": "Mae’r bariau’n rhedeg o greu’r ymgyrch hyd at y newid statws diwethaf (hyd heddiw tra bo’n agored). Nid yw’r gwasanaeth yn storio dyddiadau anfon wedi’u cynllunio. Y llwybr critigol yw’r ymgyrch sy’n gorffen olaf: mae’n pennu pryd mae popeth wedi’i orffen, ac mae’r lleill yn dangos faint o ddiwrnodau o ryddid sydd ganddynt.",
+    "timeline.note":
+      "Mae’r bariau’n rhedeg o greu’r ymgyrch hyd at y newid statws diwethaf (hyd heddiw tra bo’n agored). Nid yw’r gwasanaeth yn storio dyddiadau anfon wedi’u cynllunio. Y llwybr critigol yw’r ymgyrch sy’n gorffen olaf: mae’n pennu pryd mae popeth wedi’i orffen, ac mae’r lleill yn dangos faint o ddiwrnodau o ryddid sydd ganddynt.",
     "timeline.task": "Ymgyrch",
     "timeline.zoomIn": "Closio",
     "timeline.zoomOut": "Pellhau",
@@ -495,7 +500,8 @@ const STRINGS = {
     "dash.breached": "Tocynnau y torrwyd eu hamserlen",
     "dash.overdue": "Dilyniannau hwyr",
     "demo.title": "Taith dywys:",
-    "demo.body": "Data ffug yw popeth a welwch. Cedwir newidiadau yn y cof yn unig, a'u hailosod pan fyddwch yn mewngofnodi i'r daith eto.",
+    "demo.body":
+      "Data ffug yw popeth a welwch. Cedwir newidiadau yn y cof yn unig, a'u hailosod pan fyddwch yn mewngofnodi i'r daith eto.",
     "signin.demo": "Eisiau'r daith? Mewngofnodwch gyda",
     "nav.pages": "Tudalennau",
     "search.label": "Chwilio’r CRM",
@@ -752,9 +758,12 @@ const STRINGS = {
     "cal.moved": "{title} auf {date} verschoben",
     "kanban.movedMany": "{count} Karten nach {column} verschoben",
     "kanban.edited": "{field} von {title} auf {text} geändert",
-    "kanban.editInvalid": "{text} ist kein gültiger Wert für {field} bei {title}",
-    "kanban.editFailed": "Die Änderung konnte nicht gespeichert werden. Das Board wurde aktualisiert.",
-    "kanban.laneLocked": "Karten lassen sich hier nicht zwischen Bahnen verschieben.",
+    "kanban.editInvalid":
+      "{text} ist kein gültiger Wert für {field} bei {title}",
+    "kanban.editFailed":
+      "Die Änderung konnte nicht gespeichert werden. Das Board wurde aktualisiert.",
+    "kanban.laneLocked":
+      "Karten lassen sich hier nicht zwischen Bahnen verschieben.",
     "kanban.unassigned": "Nicht zugewiesen",
     "kanban.amount": "Betrag",
     "kanban.closeOn": "Erwarteter Abschluss",
@@ -765,7 +774,8 @@ const STRINGS = {
     "grid.copied": "{count} Zeilen kopiert",
     "grid.copyFailed": "Kopieren fehlgeschlagen",
     "search.title": "Suche",
-    "search.prompt": "Geben Sie oben im Suchfeld einen Begriff ein, um Kontakte, Konten, Leads, Deals, Tickets, Kampagnen und die Wissensdatenbank zu durchsuchen.",
+    "search.prompt":
+      "Geben Sie oben im Suchfeld einen Begriff ein, um Kontakte, Konten, Leads, Deals, Tickets, Kampagnen und die Wissensdatenbank zu durchsuchen.",
     "search.summary": "{count} Ergebnisse für „{query}“",
     "search.failed": "Einige Listen konnten nicht durchsucht werden.",
     "kanban.undo": "Rückgängig",
@@ -786,13 +796,15 @@ const STRINGS = {
     "cal.exportStart": "Beginn",
     "cal.exportEnd": "Ende",
     "timeline.title": "Kampagnen-Zeitplan",
-    "timeline.note": "Die Balken laufen von der Erstellung einer Kampagne bis zur letzten Statusänderung (bis heute, solange sie offen ist). Der Dienst speichert keine geplanten Versanddaten. Der kritische Pfad ist die Kampagne, die zuletzt endet: Sie bestimmt, wann alles fertig ist; die anderen zeigen, wie viele Tage Puffer sie haben.",
+    "timeline.note":
+      "Die Balken laufen von der Erstellung einer Kampagne bis zur letzten Statusänderung (bis heute, solange sie offen ist). Der Dienst speichert keine geplanten Versanddaten. Der kritische Pfad ist die Kampagne, die zuletzt endet: Sie bestimmt, wann alles fertig ist; die anderen zeigen, wie viele Tage Puffer sie haben.",
     "timeline.task": "Kampagne",
     "timeline.zoomIn": "Vergrößern",
     "timeline.zoomOut": "Verkleinern",
     "kanban.pending": "{title} wird nach {column} verschoben …",
     "kanban.blocked": "{title} kann nicht nach {column} verschoben werden",
-    "kanban.undone": "{title} wurde nicht nach {column} verschoben und ist zurückgekehrt",
+    "kanban.undone":
+      "{title} wurde nicht nach {column} verschoben und ist zurückgekehrt",
     "kanban.emptyColumn": "Keine Karten",
     "kanban.search": "Karten durchsuchen",
     "kanban.collapse": "{column} einklappen",
@@ -818,7 +830,8 @@ const STRINGS = {
     "kanban.menu": "In Spalte verschieben",
     "kanban.moved": "{title} nach {column} verschoben",
     "kanban.empty": "Noch keine Deals vorhanden.",
-    "kanban.failed": "Der Deal konnte nicht verschoben werden. Das Board wurde aktualisiert.",
+    "kanban.failed":
+      "Der Deal konnte nicht verschoben werden. Das Board wurde aktualisiert.",
     "grid.search": "Zeilen filtern",
     "grid.previous": "Vorherige Seite",
     "grid.next": "Nächste Seite",
@@ -833,7 +846,8 @@ const STRINGS = {
     "dash.breached": "Überfällige Tickets (SLA verletzt)",
     "dash.overdue": "Überfällige Nachfassaktionen",
     "demo.title": "Geführte Tour:",
-    "demo.body": "Alles, was Sie sehen, ist erfunden. Änderungen bleiben nur im Speicher und werden beim erneuten Anmelden zur Tour zurückgesetzt.",
+    "demo.body":
+      "Alles, was Sie sehen, ist erfunden. Änderungen bleiben nur im Speicher und werden beim erneuten Anmelden zur Tour zurückgesetzt.",
     "signin.demo": "Möchten Sie die Tour? Melden Sie sich an mit",
     "nav.pages": "Seiten",
     "search.label": "Im CRM suchen",
@@ -1093,7 +1107,8 @@ const STRINGS = {
     "kanban.movedMany": "Moved {count} cards to {column}",
     "kanban.edited": "{field} of {title} changed to {text}",
     "kanban.editInvalid": "{text} is not a valid {field} for {title}",
-    "kanban.editFailed": "Could not save the change. The board has been refreshed.",
+    "kanban.editFailed":
+      "Could not save the change. The board has been refreshed.",
     "kanban.laneLocked": "Cards cannot be moved between lanes here.",
     "kanban.unassigned": "Unassigned",
     "kanban.amount": "Amount",
@@ -1105,7 +1120,8 @@ const STRINGS = {
     "grid.copied": "Copied {count} rows",
     "grid.copyFailed": "Copy failed",
     "search.title": "Search",
-    "search.prompt": "Type in the search box at the top to look across contacts, accounts, leads, deals, tickets, campaigns and the knowledge base.",
+    "search.prompt":
+      "Type in the search box at the top to look across contacts, accounts, leads, deals, tickets, campaigns and the knowledge base.",
     "search.summary": "{count} results for “{query}”",
     "search.failed": "Some lists could not be searched.",
     "kanban.undo": "Undo",
@@ -1126,7 +1142,8 @@ const STRINGS = {
     "cal.exportStart": "Start",
     "cal.exportEnd": "End",
     "timeline.title": "Campaign timeline",
-    "timeline.note": "Bars run from when a campaign was created to its last status change (to today while it is still open). The service stores no planned send dates. The critical path is the campaign that ends last: it fixes when everything is done, and the others show how many days of slack they have.",
+    "timeline.note":
+      "Bars run from when a campaign was created to its last status change (to today while it is still open). The service stores no planned send dates. The critical path is the campaign that ends last: it fixes when everything is done, and the others show how many days of slack they have.",
     "timeline.task": "Campaign",
     "timeline.zoomIn": "Zoom in",
     "timeline.zoomOut": "Zoom out",
@@ -1173,7 +1190,8 @@ const STRINGS = {
     "dash.breached": "Breached tickets",
     "dash.overdue": "Overdue follow-ups",
     "demo.title": "Guided tour:",
-    "demo.body": "everything you see is fictitious. Changes are kept in memory only and reset when you sign in to the tour again.",
+    "demo.body":
+      "everything you see is fictitious. Changes are kept in memory only and reset when you sign in to the tour again.",
     "signin.demo": "Want the tour? Sign in as",
     "nav.pages": "Pages",
     "search.label": "Search the CRM",
@@ -1429,8 +1447,10 @@ const STRINGS = {
     "cal.moved": "{title} movido al {date}",
     "kanban.movedMany": "{count} tarjetas movidas a {column}",
     "kanban.edited": "{field} de {title} cambiado a {text}",
-    "kanban.editInvalid": "{text} no es un valor válido de {field} para {title}",
-    "kanban.editFailed": "No se pudo guardar el cambio. El tablero se actualizó.",
+    "kanban.editInvalid":
+      "{text} no es un valor válido de {field} para {title}",
+    "kanban.editFailed":
+      "No se pudo guardar el cambio. El tablero se actualizó.",
     "kanban.laneLocked": "Aquí no se pueden mover tarjetas entre carriles.",
     "kanban.unassigned": "Sin asignar",
     "kanban.amount": "Importe",
@@ -1442,7 +1462,8 @@ const STRINGS = {
     "grid.copied": "Se copiaron {count} filas",
     "grid.copyFailed": "No se pudo copiar",
     "search.title": "Búsqueda",
-    "search.prompt": "Escriba en el cuadro de búsqueda de arriba para buscar en contactos, cuentas, clientes potenciales, negocios, tickets, campañas y la base de conocimiento.",
+    "search.prompt":
+      "Escriba en el cuadro de búsqueda de arriba para buscar en contactos, cuentas, clientes potenciales, negocios, tickets, campañas y la base de conocimiento.",
     "search.summary": "{count} resultados para «{query}»",
     "search.failed": "No se pudo buscar en algunas listas.",
     "kanban.undo": "Deshacer",
@@ -1463,7 +1484,8 @@ const STRINGS = {
     "cal.exportStart": "Inicio",
     "cal.exportEnd": "Fin",
     "timeline.title": "Cronograma de campañas",
-    "timeline.note": "Las barras van desde la creación de la campaña hasta su último cambio de estado (hasta hoy mientras siga abierta). El servicio no guarda fechas de envío planificadas. La ruta crítica es la campaña que termina última: fija cuándo está todo hecho, y las demás muestran cuántos días de holgura tienen.",
+    "timeline.note":
+      "Las barras van desde la creación de la campaña hasta su último cambio de estado (hasta hoy mientras siga abierta). El servicio no guarda fechas de envío planificadas. La ruta crítica es la campaña que termina última: fija cuándo está todo hecho, y las demás muestran cuántos días de holgura tienen.",
     "timeline.task": "Campaña",
     "timeline.zoomIn": "Acercar",
     "timeline.zoomOut": "Alejar",
@@ -1495,7 +1517,8 @@ const STRINGS = {
     "kanban.menu": "Mover a la columna",
     "kanban.moved": "{title} movida a {column}",
     "kanban.empty": "Aún no hay oportunidades que mostrar.",
-    "kanban.failed": "No se pudo mover la oportunidad. Se actualizó el tablero.",
+    "kanban.failed":
+      "No se pudo mover la oportunidad. Se actualizó el tablero.",
     "grid.search": "Filtrar filas",
     "grid.previous": "Página anterior",
     "grid.next": "Página siguiente",
@@ -1510,7 +1533,8 @@ const STRINGS = {
     "dash.breached": "Tickets incumplidos",
     "dash.overdue": "Seguimientos vencidos",
     "demo.title": "Visita guiada:",
-    "demo.body": "todo lo que ve es ficticio. Los cambios solo se guardan en memoria y se restablecen al iniciar de nuevo la visita.",
+    "demo.body":
+      "todo lo que ve es ficticio. Los cambios solo se guardan en memoria y se restablecen al iniciar de nuevo la visita.",
     "signin.demo": "¿Quiere la visita? Inicie sesión como",
     "nav.pages": "Páginas",
     "search.label": "Buscar en el CRM",
@@ -1760,7 +1784,8 @@ const STRINGS = {
   "fr-001": {
     "timeline.critical": "chemin critique",
     "timeline.slack": "{count} jours de marge",
-    "grid.columnMoved": "{header} est maintenant la colonne {position} sur {count}",
+    "grid.columnMoved":
+      "{header} est maintenant la colonne {position} sur {count}",
     "grid.shown": "Affiché",
     "grid.total": "Total",
     "grid.average": "Moyenne",
@@ -1768,8 +1793,10 @@ const STRINGS = {
     "cal.moved": "{title} déplacé au {date}",
     "kanban.movedMany": "{count} cartes déplacées vers {column}",
     "kanban.edited": "{field} de {title} changé en {text}",
-    "kanban.editInvalid": "{text} n’est pas une valeur valide pour {field} de {title}",
-    "kanban.editFailed": "Impossible d’enregistrer la modification. Le tableau a été actualisé.",
+    "kanban.editInvalid":
+      "{text} n’est pas une valeur valide pour {field} de {title}",
+    "kanban.editFailed":
+      "Impossible d’enregistrer la modification. Le tableau a été actualisé.",
     "kanban.laneLocked": "Les cartes ne peuvent pas changer de couloir ici.",
     "kanban.unassigned": "Non attribué",
     "kanban.amount": "Montant",
@@ -1781,7 +1808,8 @@ const STRINGS = {
     "grid.copied": "{count} lignes copiées",
     "grid.copyFailed": "Échec de la copie",
     "search.title": "Recherche",
-    "search.prompt": "Saisissez un terme dans le champ de recherche en haut pour chercher dans les contacts, comptes, prospects, affaires, tickets, campagnes et la base de connaissances.",
+    "search.prompt":
+      "Saisissez un terme dans le champ de recherche en haut pour chercher dans les contacts, comptes, prospects, affaires, tickets, campagnes et la base de connaissances.",
     "search.summary": "{count} résultats pour « {query} »",
     "search.failed": "Certaines listes n’ont pas pu être consultées.",
     "kanban.undo": "Annuler",
@@ -1802,13 +1830,15 @@ const STRINGS = {
     "cal.exportStart": "Début",
     "cal.exportEnd": "Fin",
     "timeline.title": "Calendrier des campagnes",
-    "timeline.note": "Les barres vont de la création de la campagne à son dernier changement d’état (jusqu’à aujourd’hui tant qu’elle est ouverte). Le service ne stocke aucune date d’envoi prévue. Le chemin critique est la campagne qui se termine en dernier : il fixe la date de fin de l’ensemble, et les autres indiquent leur marge en jours.",
+    "timeline.note":
+      "Les barres vont de la création de la campagne à son dernier changement d’état (jusqu’à aujourd’hui tant qu’elle est ouverte). Le service ne stocke aucune date d’envoi prévue. Le chemin critique est la campagne qui se termine en dernier : il fixe la date de fin de l’ensemble, et les autres indiquent leur marge en jours.",
     "timeline.task": "Campagne",
     "timeline.zoomIn": "Zoom avant",
     "timeline.zoomOut": "Zoom arrière",
     "kanban.pending": "Déplacement de {title} vers {column}…",
     "kanban.blocked": "{title} ne peut pas aller dans {column}",
-    "kanban.undone": "{title} n’a pas été déplacée vers {column} ; elle est revenue",
+    "kanban.undone":
+      "{title} n’a pas été déplacée vers {column} ; elle est revenue",
     "kanban.emptyColumn": "Aucune carte",
     "kanban.search": "Rechercher des cartes",
     "kanban.collapse": "Réduire {column}",
@@ -1834,7 +1864,8 @@ const STRINGS = {
     "kanban.menu": "Déplacer vers la colonne",
     "kanban.moved": "{title} déplacée vers {column}",
     "kanban.empty": "Aucune affaire à afficher pour l'instant.",
-    "kanban.failed": "Impossible de déplacer l'affaire. Le tableau a été actualisé.",
+    "kanban.failed":
+      "Impossible de déplacer l'affaire. Le tableau a été actualisé.",
     "grid.search": "Filtrer les lignes",
     "grid.previous": "Page précédente",
     "grid.next": "Page suivante",
@@ -1849,7 +1880,8 @@ const STRINGS = {
     "dash.breached": "Tickets hors délai",
     "dash.overdue": "Relances en retard",
     "demo.title": "Visite guidée :",
-    "demo.body": "tout ce que vous voyez est fictif. Les modifications restent en mémoire et sont réinitialisées à la prochaine connexion à la visite.",
+    "demo.body":
+      "tout ce que vous voyez est fictif. Les modifications restent en mémoire et sont réinitialisées à la prochaine connexion à la visite.",
     "signin.demo": "Envie de la visite ? Connectez-vous avec",
     "nav.pages": "Pages",
     "search.label": "Rechercher dans le CRM",
@@ -2121,7 +2153,8 @@ const STRINGS = {
     "grid.copied": "{count} पंक्तियाँ कॉपी की गईं",
     "grid.copyFailed": "कॉपी विफल रहा",
     "search.title": "खोज",
-    "search.prompt": "संपर्कों, खातों, लीड, सौदों, टिकटों, अभियानों और ज्ञान आधार में खोजने के लिए ऊपर खोज बॉक्स में लिखें।",
+    "search.prompt":
+      "संपर्कों, खातों, लीड, सौदों, टिकटों, अभियानों और ज्ञान आधार में खोजने के लिए ऊपर खोज बॉक्स में लिखें।",
     "search.summary": "“{query}” के लिए {count} परिणाम",
     "search.failed": "कुछ सूचियों में खोज नहीं हो सकी।",
     "kanban.undo": "पूर्ववत करें",
@@ -2142,7 +2175,8 @@ const STRINGS = {
     "cal.exportStart": "आरंभ",
     "cal.exportEnd": "समाप्ति",
     "timeline.title": "अभियान समयरेखा",
-    "timeline.note": "पट्टियाँ अभियान बनने से उसके अंतिम स्थिति-परिवर्तन तक चलती हैं (खुले रहने तक आज तक)। सेवा नियोजित भेजने की तिथियाँ संग्रहीत नहीं करती। क्रिटिकल पाथ वह अभियान है जो सबसे अंत में समाप्त होता है: वही तय करता है कि सब कब पूरा होगा, और बाकी दिखाते हैं कि उनके पास कितने दिन की गुंजाइश है।",
+    "timeline.note":
+      "पट्टियाँ अभियान बनने से उसके अंतिम स्थिति-परिवर्तन तक चलती हैं (खुले रहने तक आज तक)। सेवा नियोजित भेजने की तिथियाँ संग्रहीत नहीं करती। क्रिटिकल पाथ वह अभियान है जो सबसे अंत में समाप्त होता है: वही तय करता है कि सब कब पूरा होगा, और बाकी दिखाते हैं कि उनके पास कितने दिन की गुंजाइश है।",
     "timeline.task": "अभियान",
     "timeline.zoomIn": "ज़ूम इन",
     "timeline.zoomOut": "ज़ूम आउट",
@@ -2189,7 +2223,8 @@ const STRINGS = {
     "dash.breached": "समय-सीमा चूके टिकट",
     "dash.overdue": "विलंबित फ़ॉलो-अप",
     "demo.title": "निर्देशित भ्रमण:",
-    "demo.body": "आप जो कुछ देखते हैं वह काल्पनिक है। बदलाव केवल मेमोरी में रहते हैं और भ्रमण में दोबारा साइन इन करने पर रीसेट हो जाते हैं।",
+    "demo.body":
+      "आप जो कुछ देखते हैं वह काल्पनिक है। बदलाव केवल मेमोरी में रहते हैं और भ्रमण में दोबारा साइन इन करने पर रीसेट हो जाते हैं।",
     "signin.demo": "भ्रमण देखना चाहते हैं? इस पते से साइन इन करें",
     "nav.pages": "पृष्ठ",
     "search.label": "CRM में खोजें",
@@ -2460,7 +2495,8 @@ const STRINGS = {
     "grid.copied": "已复制 {count} 行",
     "grid.copyFailed": "复制失败",
     "search.title": "搜索",
-    "search.prompt": "在顶部搜索框中输入内容，可搜索联系人、客户、线索、商机、工单、营销活动和知识库。",
+    "search.prompt":
+      "在顶部搜索框中输入内容，可搜索联系人、客户、线索、商机、工单、营销活动和知识库。",
     "search.summary": "“{query}”共有 {count} 条结果",
     "search.failed": "部分列表无法搜索。",
     "kanban.undo": "撤销",
@@ -2481,7 +2517,8 @@ const STRINGS = {
     "cal.exportStart": "开始",
     "cal.exportEnd": "结束",
     "timeline.title": "活动时间线",
-    "timeline.note": "条形从活动创建开始，到最近一次状态变更结束（未结束时延伸到今天）。服务不保存计划发送日期。关键路径是最后结束的那个活动：它决定全部何时完成，其余活动显示各自的浮动天数。",
+    "timeline.note":
+      "条形从活动创建开始，到最近一次状态变更结束（未结束时延伸到今天）。服务不保存计划发送日期。关键路径是最后结束的那个活动：它决定全部何时完成，其余活动显示各自的浮动天数。",
     "timeline.task": "活动",
     "timeline.zoomIn": "放大",
     "timeline.zoomOut": "缩小",
@@ -2528,7 +2565,8 @@ const STRINGS = {
     "dash.breached": "已违约工单",
     "dash.overdue": "逾期跟进",
     "demo.title": "导览模式：",
-    "demo.body": "您看到的一切都是虚构的。更改仅保存在内存中，重新登录导览时会重置。",
+    "demo.body":
+      "您看到的一切都是虚构的。更改仅保存在内存中，重新登录导览时会重置。",
     "signin.demo": "想体验导览？请使用此地址登录",
     "nav.pages": "页面",
     "search.label": "搜索 CRM",

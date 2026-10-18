@@ -204,7 +204,10 @@ export function getLead(
 }
 
 /** Edit a lead in place (its display name). */
-export function editLead(pid: string, fields: { display_name: string }): Promise<Lead> {
+export function editLead(
+  pid: string,
+  fields: { display_name: string },
+): Promise<Lead> {
   return api(`/leads/${pid}`, { method: "PUT", body: fields });
 }
 
@@ -314,7 +317,10 @@ export function listTickets(init?: FetchLike): Promise<Ticket[]> {
 }
 
 /** Edit a ticket in place (its title). */
-export function editTicket(pid: string, fields: { title: string }): Promise<Ticket> {
+export function editTicket(
+  pid: string,
+  fields: { title: string },
+): Promise<Ticket> {
   return api(`/tickets/${pid}`, { method: "PUT", body: fields });
 }
 

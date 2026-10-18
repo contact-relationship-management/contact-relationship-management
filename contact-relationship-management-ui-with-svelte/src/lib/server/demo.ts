@@ -54,7 +54,10 @@ const iso = (offsetDays: number, hour = 9): string => {
 const day = (offsetDays: number): string => iso(offsetDays).slice(0, 10);
 /** Whole days from today to an ISO day (negative when it has passed). */
 const daysFromToday = (isoDay: string): number =>
-  Math.round((Date.parse(`${isoDay}T00:00:00Z`) - Date.parse(`${day(0)}T00:00:00Z`)) / 86_400_000);
+  Math.round(
+    (Date.parse(`${isoDay}T00:00:00Z`) - Date.parse(`${day(0)}T00:00:00Z`)) /
+      86_400_000,
+  );
 
 interface Link {
   deals: string[];
@@ -120,26 +123,52 @@ function build(): State {
     ["con-2", "Rafael Okonkwo", "acc-1", "Operations Director", "granted"],
     ["con-3", "Saoirse Lindqvist", "acc-2", "Fleet Manager", "granted"],
     ["con-4", "Tobias Marchetti", "acc-2", "Finance Lead", "withdrawn"],
-    ["con-5", "Priya Venkataraman", "acc-3", "Digital Programme Lead", "granted"],
-    ["con-6", "Elias Bergstrom", "acc-3", "Chief Clinical Information Officer", "granted"],
+    [
+      "con-5",
+      "Priya Venkataraman",
+      "acc-3",
+      "Digital Programme Lead",
+      "granted",
+    ],
+    [
+      "con-6",
+      "Elias Bergstrom",
+      "acc-3",
+      "Chief Clinical Information Officer",
+      "granted",
+    ],
     ["con-7", "Wren Callaghan", "acc-4", "Product Director", "granted"],
     ["con-8", "Dara Whitlock", "acc-4", "Engineering Manager", "granted"],
     ["con-9", "Lucien Ashdown", "acc-5", "Managing Partner", "unknown"],
     ["con-10", "Noor Haddad", "acc-5", "Practice Manager", "granted"],
-    ["con-11", "Gethin Prosser", "acc-6", "Head of Customer Services", "granted"],
-    ["con-12", "Odette Fairweather", "acc-6", "Transformation Lead", "withdrawn"],
+    [
+      "con-11",
+      "Gethin Prosser",
+      "acc-6",
+      "Head of Customer Services",
+      "granted",
+    ],
+    [
+      "con-12",
+      "Odette Fairweather",
+      "acc-6",
+      "Transformation Lead",
+      "withdrawn",
+    ],
   ];
-  const contacts: Contact[] = people.map(([pid, name, account, title, consent], i) => ({
-    pid,
-    person_ref: `person-demo-${i + 1}`,
-    account_pid: account,
-    owner_ref: i % 2 === 0 ? "owner-ayo" : "owner-bea",
-    display_name: name,
-    status: "active",
-    job_title: title,
-    preferred_channel: i % 3 === 0 ? "phone" : "email",
-    marketing_consent: consent,
-  }));
+  const contacts: Contact[] = people.map(
+    ([pid, name, account, title, consent], i) => ({
+      pid,
+      person_ref: `person-demo-${i + 1}`,
+      account_pid: account,
+      owner_ref: i % 2 === 0 ? "owner-ayo" : "owner-bea",
+      display_name: name,
+      status: "active",
+      job_title: title,
+      preferred_channel: i % 3 === 0 ? "phone" : "email",
+      marketing_consent: consent,
+    }),
+  );
 
   const stages: Stage[] = [
     ["stg-1", "Qualification", 10, false, false],
@@ -174,7 +203,8 @@ function build(): State {
       currency: "GBP",
       won: s.is_won,
       closed_at: closedDays === null ? null : iso(closedDays),
-      owner_ref: pid.endsWith("1") || pid.endsWith("3") ? "owner-ayo" : "owner-bea",
+      owner_ref:
+        pid.endsWith("1") || pid.endsWith("3") ? "owner-ayo" : "owner-bea",
       expected_close_on: day(20 + (pid.charCodeAt(pid.length - 1) % 7) * 9),
     };
   };
@@ -220,15 +250,51 @@ function build(): State {
     summary,
   });
   const activities: Activity[] = [
-    act("act-1", "con-1", "call", 3, "Walked through the analytics pilot results"),
+    act(
+      "act-1",
+      "con-1",
+      "call",
+      3,
+      "Walked through the analytics pilot results",
+    ),
     act("act-2", "con-1", "email", 9, "Sent the revised commercial terms"),
-    act("act-3", "con-1", "meeting", 21, "On-site workshop with the operations team"),
+    act(
+      "act-3",
+      "con-1",
+      "meeting",
+      21,
+      "On-site workshop with the operations team",
+    ),
     act("act-4", "con-3", "email", 6, "Shared routing demo recording"),
     act("act-5", "con-3", "call", 18, "Discovery call: depot constraints"),
-    act("act-6", "con-5", "meeting", 4, "Steering group: integration scope agreed"),
-    act("act-7", "con-5", "note", 15, "Prefers a phased go-live across three clinics"),
-    act("act-8", "con-7", "email", 11, "Trial licences issued to the platform team"),
-    act("act-9", "con-11", "call", 2, "Council budget cycle: decision due next quarter"),
+    act(
+      "act-6",
+      "con-5",
+      "meeting",
+      4,
+      "Steering group: integration scope agreed",
+    ),
+    act(
+      "act-7",
+      "con-5",
+      "note",
+      15,
+      "Prefers a phased go-live across three clinics",
+    ),
+    act(
+      "act-8",
+      "con-7",
+      "email",
+      11,
+      "Trial licences issued to the platform team",
+    ),
+    act(
+      "act-9",
+      "con-11",
+      "call",
+      2,
+      "Council budget cycle: decision due next quarter",
+    ),
     act("act-10", "con-2", "call", 5, "Escalated sensor firmware question"),
   ];
 
@@ -241,13 +307,55 @@ function build(): State {
     status: string,
   ): Lead => ({ pid, source, display_name: name, email, score, status });
   const leads: Lead[] = [
-    lead("lead-1", "referral", "Hollis Greenway", "hollis@example.org", 78, "new"),
-    lead("lead-2", "web form", "Mireille Davenport", "mireille@example.org", 64, "contacted"),
-    lead("lead-3", "event", "Anselm Kowalczyk", "anselm@example.org", 52, "new"),
+    lead(
+      "lead-1",
+      "referral",
+      "Hollis Greenway",
+      "hollis@example.org",
+      78,
+      "new",
+    ),
+    lead(
+      "lead-2",
+      "web form",
+      "Mireille Davenport",
+      "mireille@example.org",
+      64,
+      "contacted",
+    ),
+    lead(
+      "lead-3",
+      "event",
+      "Anselm Kowalczyk",
+      "anselm@example.org",
+      52,
+      "new",
+    ),
     lead("lead-4", "web form", "Tamsin Reyes", null, 41, "contacted"),
-    lead("lead-5", "webinar", "Jericho Abara", "jericho@example.org", 33, "new"),
-    lead("lead-6", "cold outreach", "Philippa Strand", "philippa@example.org", 19, "disqualified"),
-    lead("lead-7", "referral", "Cormac Idowu", "cormac@example.org", 88, "qualified"),
+    lead(
+      "lead-5",
+      "webinar",
+      "Jericho Abara",
+      "jericho@example.org",
+      33,
+      "new",
+    ),
+    lead(
+      "lead-6",
+      "cold outreach",
+      "Philippa Strand",
+      "philippa@example.org",
+      19,
+      "disqualified",
+    ),
+    lead(
+      "lead-7",
+      "referral",
+      "Cormac Idowu",
+      "cormac@example.org",
+      88,
+      "qualified",
+    ),
   ].sort((a, b) => b.score - a.score);
 
   // Dates are relative to today so the timeline always looks current.
@@ -276,10 +384,36 @@ function build(): State {
     ...span,
   });
   const campaigns: Campaign[] = [
-    campaign("camp-1", "Spring product update", "completed", 2400, 1200, 1168, 612, 148, { created_at: ago(75), updated_at: ago(40) }),
-    campaign("camp-2", "Customer webinar series", "running", 5200, 860, 842, 405, 96, { created_at: ago(30), updated_at: ago(2) }),
-    campaign("camp-3", "Renewal reminders", "scheduled", 800, 340, 0, 0, 0, { created_at: ago(10), updated_at: ago(6) }),
-    campaign("camp-4", "Autumn roadmap preview", "draft", 1500, 0, 0, 0, 0, { created_at: ago(3), updated_at: ago(3) }),
+    campaign(
+      "camp-1",
+      "Spring product update",
+      "completed",
+      2400,
+      1200,
+      1168,
+      612,
+      148,
+      { created_at: ago(75), updated_at: ago(40) },
+    ),
+    campaign(
+      "camp-2",
+      "Customer webinar series",
+      "running",
+      5200,
+      860,
+      842,
+      405,
+      96,
+      { created_at: ago(30), updated_at: ago(2) },
+    ),
+    campaign("camp-3", "Renewal reminders", "scheduled", 800, 340, 0, 0, 0, {
+      created_at: ago(10),
+      updated_at: ago(6),
+    }),
+    campaign("camp-4", "Autumn roadmap preview", "draft", 1500, 0, 0, 0, 0, {
+      created_at: ago(3),
+      updated_at: ago(3),
+    }),
   ];
 
   const ticket = (
@@ -300,14 +434,78 @@ function build(): State {
     live_resolution_breached: resolution,
   });
   const tickets: Ticket[] = [
-    ticket("tkt-1", "Sensor firmware update fails on site", "urgent", "open", -1, true, false),
-    ticket("tkt-2", "Route export missing depot codes", "high", "open", 0, false, false),
-    ticket("tkt-3", "Clinical feed delayed overnight", "urgent", "pending", -2, true, true),
-    ticket("tkt-4", "Licence seats not showing in console", "normal", "open", 1, false, false),
-    ticket("tkt-5", "Template merge drops line breaks", "low", "open", 2, false, false),
-    ticket("tkt-6", "Cannot reset portal password", "high", "open", 0, false, false),
-    ticket("tkt-7", "Dashboard totals differ from export", "normal", "resolved", -6, false, false),
-    ticket("tkt-8", "Request: add SSO for council staff", "low", "resolved", -9, false, false),
+    ticket(
+      "tkt-1",
+      "Sensor firmware update fails on site",
+      "urgent",
+      "open",
+      -1,
+      true,
+      false,
+    ),
+    ticket(
+      "tkt-2",
+      "Route export missing depot codes",
+      "high",
+      "open",
+      0,
+      false,
+      false,
+    ),
+    ticket(
+      "tkt-3",
+      "Clinical feed delayed overnight",
+      "urgent",
+      "pending",
+      -2,
+      true,
+      true,
+    ),
+    ticket(
+      "tkt-4",
+      "Licence seats not showing in console",
+      "normal",
+      "open",
+      1,
+      false,
+      false,
+    ),
+    ticket(
+      "tkt-5",
+      "Template merge drops line breaks",
+      "low",
+      "open",
+      2,
+      false,
+      false,
+    ),
+    ticket(
+      "tkt-6",
+      "Cannot reset portal password",
+      "high",
+      "open",
+      0,
+      false,
+      false,
+    ),
+    ticket(
+      "tkt-7",
+      "Dashboard totals differ from export",
+      "normal",
+      "resolved",
+      -6,
+      false,
+      false,
+    ),
+    ticket(
+      "tkt-8",
+      "Request: add SSO for council staff",
+      "low",
+      "resolved",
+      -9,
+      false,
+      false,
+    ),
   ];
 
   const article = (
@@ -359,7 +557,8 @@ function build(): State {
     {
       pid: "bg-1",
       subject: "owner-bea",
-      reason: "Customer on the phone disputing an invoice; needed to see unmasked deal values to answer.",
+      reason:
+        "Customer on the phone disputing an invoice; needed to see unmasked deal values to answer.",
       granted_at: iso(-3, 10),
       expires_at: iso(-3, 10).replace("T10:00", "T10:15"),
       reviewed_at: iso(-2, 9),
@@ -369,7 +568,8 @@ function build(): State {
     {
       pid: "bg-2",
       subject: "owner-ayo",
-      reason: "Urgent security question from a strategic account about which contacts hold marketing consent.",
+      reason:
+        "Urgent security question from a strategic account about which contacts hold marketing consent.",
       granted_at: iso(-1, 15),
       expires_at: iso(-1, 15).replace("T15:00", "T15:30"),
       reviewed_at: null,
@@ -385,15 +585,70 @@ function build(): State {
     who: string,
     recorder: string,
     dueDays: number,
-  ): FollowupSeed => ({ pid, kind, summary, who, recorder, due_on: day(dueDays) });
+  ): FollowupSeed => ({
+    pid,
+    kind,
+    summary,
+    who,
+    recorder,
+    due_on: day(dueDays),
+  });
   const followups: FollowupSeed[] = [
-    fu("fu-1", "task", "Send revised proposal to Foxglove", "con-5", "owner-ayo", -4),
-    fu("fu-2", "call", "Check in after the council budget meeting", "con-11", "owner-bea", -1),
-    fu("fu-3", "task", "Renewal paperwork for Harbourlight", "con-3", "owner-bea", 3),
-    fu("fu-4", "meeting", "Quarterly review with Brightwater", "con-1", "owner-ayo", 8),
-    fu("fu-5", "task", "Book onboarding for Kestrel licences", "con-7", "owner-ayo", 14),
+    fu(
+      "fu-1",
+      "task",
+      "Send revised proposal to Foxglove",
+      "con-5",
+      "owner-ayo",
+      -4,
+    ),
+    fu(
+      "fu-2",
+      "call",
+      "Check in after the council budget meeting",
+      "con-11",
+      "owner-bea",
+      -1,
+    ),
+    fu(
+      "fu-3",
+      "task",
+      "Renewal paperwork for Harbourlight",
+      "con-3",
+      "owner-bea",
+      3,
+    ),
+    fu(
+      "fu-4",
+      "meeting",
+      "Quarterly review with Brightwater",
+      "con-1",
+      "owner-ayo",
+      8,
+    ),
+    fu(
+      "fu-5",
+      "task",
+      "Book onboarding for Kestrel licences",
+      "con-7",
+      "owner-ayo",
+      14,
+    ),
   ];
-  return { followups, accounts, contacts, links, activities, leads, stages, deals, campaigns, tickets, articles, grants };
+  return {
+    followups,
+    accounts,
+    contacts,
+    links,
+    activities,
+    leads,
+    stages,
+    deals,
+    campaigns,
+    tickets,
+    articles,
+    grants,
+  };
 }
 
 let state: State = build();
@@ -424,7 +679,9 @@ function nameOf(pid: string): string | null {
 }
 
 function openDeals(): Deal[] {
-  const final = new Set(state.stages.filter((s) => s.is_won || s.is_lost).map((s) => s.pid));
+  const final = new Set(
+    state.stages.filter((s) => s.is_won || s.is_lost).map((s) => s.pid),
+  );
   return state.deals.filter((d) => !final.has(d.stage_pid));
 }
 
@@ -432,7 +689,9 @@ function forecastNow() {
   const prob = new Map(state.stages.map((s) => [s.pid, s.probability_percent]));
   const open_ = openDeals();
   const total = open_.reduce(
-    (sum, d) => sum + Math.round(((d.amount_minor ?? 0) * (prob.get(d.stage_pid) ?? 0)) / 100),
+    (sum, d) =>
+      sum +
+      Math.round(((d.amount_minor ?? 0) * (prob.get(d.stage_pid) ?? 0)) / 100),
     0,
   );
   return {
@@ -444,7 +703,9 @@ function forecastNow() {
 
 function salesDashboard() {
   const won = state.deals.filter((d) => d.won).length;
-  const lost = state.deals.filter((d) => state.stages.find((s) => s.pid === d.stage_pid)?.is_lost).length;
+  const lost = state.deals.filter(
+    (d) => state.stages.find((s) => s.pid === d.stage_pid)?.is_lost,
+  ).length;
   const byStage: Record<string, { deals: number; value_minor: number }> = {};
   for (const stage of state.stages) {
     const inStage = state.deals.filter((d) => d.stage_pid === stage.pid);
@@ -453,7 +714,11 @@ function salesDashboard() {
       value_minor: inStage.reduce((s, d) => s + (d.amount_minor ?? 0), 0),
     };
   }
-  return { win_rate: ratio(won, won + lost), open_deals: openDeals().length, pipeline_by_stage: byStage };
+  return {
+    win_rate: ratio(won, won + lost),
+    open_deals: openDeals().length,
+    pipeline_by_stage: byStage,
+  };
 }
 
 function slaDashboard() {
@@ -466,7 +731,9 @@ function slaDashboard() {
       return {
         priority,
         open: mine.length,
-        breached: mine.filter((t) => t.live_first_response_breached || t.live_resolution_breached).length,
+        breached: mine.filter(
+          (t) => t.live_first_response_breached || t.live_resolution_breached,
+        ).length,
       };
     }),
   };
@@ -494,7 +761,16 @@ function followupRow(
 
 function followups(kind: string | null) {
   const rows = state.followups
-    .map((f) => followupRow(f.pid, f.kind, f.summary, f.who, f.recorder, daysFromToday(f.due_on)))
+    .map((f) =>
+      followupRow(
+        f.pid,
+        f.kind,
+        f.summary,
+        f.who,
+        f.recorder,
+        daysFromToday(f.due_on),
+      ),
+    )
     .filter((r) => !kind || r.kind === kind);
   return {
     as_of: new Date().toISOString(),
@@ -507,14 +783,21 @@ function followups(kind: string | null) {
 
 function staleDeals(days: number) {
   const ages = new Map<string, number>([
-    ["deal-1", 9], ["deal-2", 34], ["deal-3", 12], ["deal-4", 41], ["deal-5", 6],
-    ["deal-6", 52], ["deal-7", 3], ["deal-8", 27],
+    ["deal-1", 9],
+    ["deal-2", 34],
+    ["deal-3", 12],
+    ["deal-4", 41],
+    ["deal-5", 6],
+    ["deal-6", 52],
+    ["deal-7", 3],
+    ["deal-8", 27],
   ]);
   const deals = openDeals().map((d) => ({
     pid: d.pid,
     name: d.name,
     stage: state.stages.find((s) => s.pid === d.stage_pid)?.name ?? null,
-    owner_ref: d.pid.endsWith("1") || d.pid.endsWith("3") ? "owner-ayo" : "owner-bea",
+    owner_ref:
+      d.pid.endsWith("1") || d.pid.endsWith("3") ? "owner-ayo" : "owner-bea",
     amount_minor: d.amount_minor ?? 0,
     currency: d.currency,
     days_in_stage: ages.get(d.pid) ?? 5,
@@ -545,9 +828,22 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         as_of,
         threshold_days: days(30),
         findings: [
-          { rule: "no_next_step", detail: "Case-management upgrade has no scheduled next step.", deal: "deal-6" },
-          { rule: "stale_in_stage", detail: "Customer portal refresh has been in Discovery for 41 days.", deal: "deal-4" },
-          { rule: "no_amount_confidence", detail: "Field-service mobile app has no decision date recorded.", deal: "deal-7" },
+          {
+            rule: "no_next_step",
+            detail: "Case-management upgrade has no scheduled next step.",
+            deal: "deal-6",
+          },
+          {
+            rule: "stale_in_stage",
+            detail:
+              "Customer portal refresh has been in Discovery for 41 days.",
+            deal: "deal-4",
+          },
+          {
+            rule: "no_amount_confidence",
+            detail: "Field-service mobile app has no decision date recorded.",
+            deal: "deal-7",
+          },
         ],
       });
     case "executive":
@@ -579,18 +875,23 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
     }
     case "sla": {
       const breached = state.tickets.filter(
-        (t) => open(t.status) && (t.live_first_response_breached || t.live_resolution_breached),
+        (t) =>
+          open(t.status) &&
+          (t.live_first_response_breached || t.live_resolution_breached),
       );
       return ok({
         as_of,
-        derivation: "A ticket is breached when its first-response or resolution deadline has passed.",
+        derivation:
+          "A ticket is breached when its first-response or resolution deadline has passed.",
         breaches: breached.map((t, i) => ({
           pid: t.pid,
           title: t.title,
           priority: t.priority,
           status: t.status,
           assignee_ref: i % 2 === 0 ? "owner-ayo" : "owner-bea",
-          breached: t.live_resolution_breached ? "resolution" : "first_response",
+          breached: t.live_resolution_breached
+            ? "resolution"
+            : "first_response",
           overdue_hours: 6 + i * 11,
         })),
         workload: [
@@ -601,7 +902,9 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
     }
     case "dpo": {
       const coverage: Record<string, number> = {};
-      for (const c of state.contacts) coverage[c.marketing_consent] = (coverage[c.marketing_consent] ?? 0) + 1;
+      for (const c of state.contacts)
+        coverage[c.marketing_consent] =
+          (coverage[c.marketing_consent] ?? 0) + 1;
       return ok({
         as_of,
         note: NOTE,
@@ -609,7 +912,11 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         consent_coverage: coverage,
         window_days: days(30),
         withdrawals_in_window: 2,
-        consent_events_by_source: { "operator ui": 3, "unsubscribe-link": 2, import: 1 },
+        consent_events_by_source: {
+          "operator ui": 3,
+          "unsubscribe-link": 2,
+          import: 1,
+        },
         duplicate_person_refs: [
           {
             person_ref: "person-demo-dup",
@@ -627,12 +934,35 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         derivation: `Contacts and accounts with no activity for ${days(30)} days.`,
         threshold_days: days(30),
         untouched_contacts: [
-          { pid: "con-9", display_name: "Lucien Ashdown", stakeholder_role: "decision maker", days_since_touch: 64, has_next_touch: false },
-          { pid: "con-4", display_name: "Tobias Marchetti", stakeholder_role: "influencer", days_since_touch: 47, has_next_touch: false },
-          { pid: "con-8", display_name: "Dara Whitlock", stakeholder_role: null, days_since_touch: 38, has_next_touch: true },
+          {
+            pid: "con-9",
+            display_name: "Lucien Ashdown",
+            stakeholder_role: "decision maker",
+            days_since_touch: 64,
+            has_next_touch: false,
+          },
+          {
+            pid: "con-4",
+            display_name: "Tobias Marchetti",
+            stakeholder_role: "influencer",
+            days_since_touch: 47,
+            has_next_touch: false,
+          },
+          {
+            pid: "con-8",
+            display_name: "Dara Whitlock",
+            stakeholder_role: null,
+            days_since_touch: 38,
+            has_next_touch: true,
+          },
         ],
         untouched_accounts: [
-          { pid: "acc-5", display_name: "Marlow & Finch Legal", stakeholder_role: "customer", days_since_touch: 58 },
+          {
+            pid: "acc-5",
+            display_name: "Marlow & Finch Legal",
+            stakeholder_role: "customer",
+            days_since_touch: 58,
+          },
         ],
         contacts_without_next_touch: 5,
       });
@@ -651,7 +981,8 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
       return ok({
         as_of,
         pipeline: PIPELINE,
-        derivation: "Counts the deals that ever entered each stage, from the audit trail.",
+        derivation:
+          "Counts the deals that ever entered each stage, from the audit trail.",
         stages: state.stages.map((s, i) => ({
           stage: s.name,
           position: s.position,
@@ -679,7 +1010,8 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
             joined_on: day(-400 + i * 30),
             renewal_on: i === 4 ? null : day(20 + i * 25),
           },
-          contacts: state.contacts.filter((c) => c.account_pid === a.pid).length,
+          contacts: state.contacts.filter((c) => c.account_pid === a.pid)
+            .length,
           days_since_touch: i === 4 ? 58 : 4 + i * 5,
           silent: i === 4,
           open_followups: i % 3,
@@ -693,19 +1025,27 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         note: NOTE,
         accounts: state.accounts.map((a) => {
           const cov: Record<string, number> = {};
-          for (const c of state.contacts.filter((x) => x.account_pid === a.pid)) {
+          for (const c of state.contacts.filter(
+            (x) => x.account_pid === a.pid,
+          )) {
             cov[c.marketing_consent] = (cov[c.marketing_consent] ?? 0) + 1;
           }
           return {
             pid: a.pid,
             display_name: a.display_name,
             consent_coverage: cov,
-            withdrawals_in_window: a.pid === "acc-2" || a.pid === "acc-6" ? 1 : 0,
+            withdrawals_in_window:
+              a.pid === "acc-2" || a.pid === "acc-6" ? 1 : 0,
           };
         }),
       });
     case "stakeholders": {
-      const row = (pid: string, influence: number, interest: number, since: number) => {
+      const row = (
+        pid: string,
+        influence: number,
+        interest: number,
+        since: number,
+      ) => {
         const c = state.contacts.find((x) => x.pid === pid)!;
         return {
           pid,
@@ -721,24 +1061,62 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         note: NOTE,
         by_role: {
           "decision maker": [row("con-1", 9, 8, 3), row("con-9", 8, 3, 64)],
-          influencer: [row("con-5", 7, 9, 4), row("con-3", 6, 7, 6), row("con-4", 5, 4, 47)],
+          influencer: [
+            row("con-5", 7, 9, 4),
+            row("con-3", 6, 7, 6),
+            row("con-4", 5, 4, 47),
+          ],
           user: [row("con-7", 4, 8, 11), row("con-10", 3, 6, 15)],
         },
-        grid: { "manage closely": 3, "keep satisfied": 1, "keep informed": 3, monitor: 1 },
+        grid: {
+          "manage closely": 3,
+          "keep satisfied": 1,
+          "keep informed": 3,
+          monitor: 1,
+        },
         stakeholders_without_grid_scores: 2,
         undeclared_contacts: 4,
         account_roles: [
-          { pid: "acc-1", display_name: "Brightwater Energy", role: "customer" },
-          { pid: "acc-3", display_name: "Foxglove Health Trust", role: "customer" },
+          {
+            pid: "acc-1",
+            display_name: "Brightwater Energy",
+            role: "customer",
+          },
+          {
+            pid: "acc-3",
+            display_name: "Foxglove Health Trust",
+            role: "customer",
+          },
           { pid: "acc-4", display_name: "Kestrel Software", role: "partner" },
         ],
       });
     }
     case "partnerships": {
       const register = [
-        ["pt-1", "acc-4", "technology", "pilot", "Joint integration pilot with Kestrel's platform team", -90],
-        ["pt-2", "acc-3", "research", "discovery", "Co-designing a clinical-data dashboard", -45],
-        ["pt-3", "acc-1", "innovation", "scaling", "Grid-edge sensors rolled out to a second region", -200],
+        [
+          "pt-1",
+          "acc-4",
+          "technology",
+          "pilot",
+          "Joint integration pilot with Kestrel's platform team",
+          -90,
+        ],
+        [
+          "pt-2",
+          "acc-3",
+          "research",
+          "discovery",
+          "Co-designing a clinical-data dashboard",
+          -45,
+        ],
+        [
+          "pt-3",
+          "acc-1",
+          "innovation",
+          "scaling",
+          "Grid-edge sensors rolled out to a second region",
+          -200,
+        ],
       ].map(([pid, account, kind, stage, summary, start]) => ({
         pid: pid as string,
         account_pid: account as string,
@@ -761,10 +1139,24 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         window_days: days(60),
         memberships: 6,
         renewals_due: [
-          { pid: "mem-1", account: "Harbourlight Logistics", status: "active", joined_on: day(-340), renewal_on: day(25) },
-          { pid: "mem-2", account: "Kestrel Software", status: "active", joined_on: day(-310), renewal_on: day(41) },
+          {
+            pid: "mem-1",
+            account: "Harbourlight Logistics",
+            status: "active",
+            joined_on: day(-340),
+            renewal_on: day(25),
+          },
+          {
+            pid: "mem-2",
+            account: "Kestrel Software",
+            status: "active",
+            joined_on: day(-310),
+            renewal_on: day(41),
+          },
         ],
-        lapsed: [{ pid: "mem-3", account: "Marlow & Finch Legal", status: "lapsed" }],
+        lapsed: [
+          { pid: "mem-3", account: "Marlow & Finch Legal", status: "lapsed" },
+        ],
       });
     default:
       return null;
@@ -789,18 +1181,35 @@ function eraseContact(pid: string): DemoReply {
   const contact = state.contacts.find((c) => c.pid === pid);
   if (!contact) return problem(404, "contact not found");
   const link = state.links[pid] ?? { deals: [], tickets: [] };
-  const finalStages = new Set(state.stages.filter((s) => s.is_won || s.is_lost).map((s) => s.pid));
-  if (state.deals.some((d) => link.deals.includes(d.pid) && !finalStages.has(d.stage_pid))) {
-    return problem(422, "This contact has an open deal. Close or reassign it before erasing.");
+  const finalStages = new Set(
+    state.stages.filter((s) => s.is_won || s.is_lost).map((s) => s.pid),
+  );
+  if (
+    state.deals.some(
+      (d) => link.deals.includes(d.pid) && !finalStages.has(d.stage_pid),
+    )
+  ) {
+    return problem(
+      422,
+      "This contact has an open deal. Close or reassign it before erasing.",
+    );
   }
-  if (state.tickets.some((t) => link.tickets.includes(t.pid) && open(t.status))) {
-    return problem(422, "This contact has an open ticket. Resolve it before erasing.");
+  if (
+    state.tickets.some((t) => link.tickets.includes(t.pid) && open(t.status))
+  ) {
+    return problem(
+      422,
+      "This contact has an open ticket. Resolve it before erasing.",
+    );
   }
   contact.display_name = "Erased contact";
   contact.job_title = null;
   contact.status = "erased";
   contact.marketing_consent = "withdrawn";
-  return ok({ erased: pid, note: "Personal details were anonymised (demo data)." });
+  return ok({
+    erased: pid,
+    note: "Personal details were anonymised (demo data).",
+  });
 }
 
 function leadDetail(pid: string): DemoReply {
@@ -822,7 +1231,8 @@ function leadDetail(pid: string): DemoReply {
       remaining -= points;
     }
   }
-  if (remaining > 0) rules.push({ rule: "engagement_history", points: remaining });
+  if (remaining > 0)
+    rules.push({ rule: "engagement_history", points: remaining });
   const label = lead.score >= 70 ? "hot" : lead.score >= 40 ? "warm" : "cold";
   return ok({ lead, score: { score: lead.score, label, rules } });
 }
@@ -849,7 +1259,8 @@ function moveDeal(pid: string, body: unknown): DemoReply {
   if (!stage) return problem(422, "unknown stage");
   deal.stage_pid = stage.pid;
   deal.won = stage.is_won;
-  deal.closed_at = stage.is_won || stage.is_lost ? new Date().toISOString() : null;
+  deal.closed_at =
+    stage.is_won || stage.is_lost ? new Date().toISOString() : null;
   return ok(deal);
 }
 
@@ -880,11 +1291,16 @@ function editDeal(pid: string, body: unknown): DemoReply {
   if (!deal) return problem(404, "deal not found");
   if (deal.closed_at) return problem(422, "deal is closed — reopen it first");
   const { name, amount_minor, expected_close_on } = bodyOf(body);
-  if (name === undefined && amount_minor === undefined && expected_close_on === undefined) {
+  if (
+    name === undefined &&
+    amount_minor === undefined &&
+    expected_close_on === undefined
+  ) {
     return problem(422, "nothing to change");
   }
   if (name !== undefined) {
-    if (typeof name !== "string" || !name.trim()) return problem(422, "name is required");
+    if (typeof name !== "string" || !name.trim())
+      return problem(422, "name is required");
     deal.name = name.trim();
   }
   if (amount_minor !== undefined) {
@@ -893,7 +1309,8 @@ function editDeal(pid: string, body: unknown): DemoReply {
     }
     deal.amount_minor = Math.round(amount_minor);
   }
-  if (typeof expected_close_on === "string") deal.expected_close_on = expected_close_on;
+  if (typeof expected_close_on === "string")
+    deal.expected_close_on = expected_close_on;
   return ok(deal);
 }
 
@@ -907,7 +1324,8 @@ function editText<T extends { pid: string }>(
   if (!row) return problem(404, "not found");
   const value = bodyOf(body)[field];
   if (value === undefined) return problem(422, "nothing to change");
-  if (typeof value !== "string" || !value.trim()) return problem(422, `${field} is required`);
+  if (typeof value !== "string" || !value.trim())
+    return problem(422, `${field} is required`);
   (row as Record<string, unknown>)[field] = value.trim();
   return ok(row);
 }
@@ -916,7 +1334,8 @@ function editFollowup(pid: string, body: unknown): DemoReply {
   const f = state.followups.find((x) => x.pid === pid);
   if (!f) return problem(404, "activity not found");
   const { due_on, summary } = bodyOf(body);
-  if (due_on === undefined && summary === undefined) return problem(422, "nothing to change");
+  if (due_on === undefined && summary === undefined)
+    return problem(422, "nothing to change");
   if (due_on !== undefined) {
     if (typeof due_on !== "string" || Number.isNaN(Date.parse(due_on))) {
       return problem(422, "due_on must be a date");
@@ -953,17 +1372,31 @@ function campaignFunnel(pid: string): DemoReply {
     leads,
     won_deals: won,
     won_revenue_minor: revenue,
-    roi: campaign.cost_minor ? ratio(revenue - campaign.cost_minor, campaign.cost_minor) : null,
+    roi: campaign.cost_minor
+      ? ratio(revenue - campaign.cost_minor, campaign.cost_minor)
+      : null,
   });
 }
 
-function breakGlass(method: string, path: string[], body: unknown): DemoReply | null {
+function breakGlass(
+  method: string,
+  path: string[],
+  body: unknown,
+): DemoReply | null {
   if (path.length === 1 && method === "GET") {
-    const grants = [...state.grants].sort((a, b) => b.granted_at.localeCompare(a.granted_at));
-    return ok({ unreviewed: grants.filter((g) => !g.reviewed_at).length, grants });
+    const grants = [...state.grants].sort((a, b) =>
+      b.granted_at.localeCompare(a.granted_at),
+    );
+    return ok({
+      unreviewed: grants.filter((g) => !g.reviewed_at).length,
+      grants,
+    });
   }
   if (path.length === 1 && method === "POST") {
-    const { reason, minutes } = (body ?? {}) as { reason?: string; minutes?: number };
+    const { reason, minutes } = (body ?? {}) as {
+      reason?: string;
+      minutes?: number;
+    };
     if (!reason || reason.trim().length < 20) {
       return problem(422, "Give a reason of at least 20 characters.");
     }
@@ -988,7 +1421,8 @@ function breakGlass(method: string, path: string[], body: unknown): DemoReply | 
     if (grant.subject === "example@example.com") {
       return problem(422, "You cannot review your own emergency access.");
     }
-    if (grant.reviewed_at) return problem(422, "This grant has already been reviewed.");
+    if (grant.reviewed_at)
+      return problem(422, "This grant has already been reviewed.");
     grant.reviewed_at = new Date().toISOString();
     grant.reviewed_by = "example@example.com";
     grant.review_note = String((body as { note?: string } | null)?.note ?? "");
@@ -1018,7 +1452,9 @@ export function demoHandle(
     if (tail === "consent" && post) {
       const contact = state.contacts.find((c) => c.pid === id);
       if (!contact) return problem(404, "contact not found");
-      contact.marketing_consent = (body as { action?: string } | null)?.action ?? contact.marketing_consent;
+      contact.marketing_consent =
+        (body as { action?: string } | null)?.action ??
+        contact.marketing_consent;
       return ok(contact);
     }
     if (tail === "erase" && post) return eraseContact(id!);
@@ -1027,10 +1463,17 @@ export function demoHandle(
   if (head === "leads") {
     if (seg.length === 1 && get) return ok(state.leads);
     if (seg.length === 2 && get) return leadDetail(id!);
-    if (tail === "status" && post) return transition(state.leads, id!, body, "lead");
-    if (method === "PUT" && seg.length === 2) return editText(state.leads, id!, body, "display_name");
+    if (tail === "status" && post)
+      return transition(state.leads, id!, body, "lead");
+    if (method === "PUT" && seg.length === 2)
+      return editText(state.leads, id!, body, "display_name");
     if (method === "PUT" && tail === "position") {
-      return placeInColumn(state.leads, id!, Number(bodyOf(body).position), (l) => l.status);
+      return placeInColumn(
+        state.leads,
+        id!,
+        Number(bodyOf(body).position),
+        (l) => l.status,
+      );
     }
   }
   if (head === "pipelines" && get) {
@@ -1044,22 +1487,35 @@ export function demoHandle(
     if (tail === "stage" && post) return moveDeal(id!, body);
     if (method === "PUT" && seg.length === 2) return editDeal(id!, body);
     if (method === "PUT" && tail === "position") {
-      return placeInColumn(state.deals, id!, Number(bodyOf(body).position), (d) => d.stage_pid);
+      return placeInColumn(
+        state.deals,
+        id!,
+        Number(bodyOf(body).position),
+        (d) => d.stage_pid,
+      );
     }
   }
-  if (head === "activities" && method === "PUT" && seg.length === 2) return editFollowup(id!, body);
+  if (head === "activities" && method === "PUT" && seg.length === 2)
+    return editFollowup(id!, body);
   if (head === "forecast" && get) return ok(forecastNow());
   if (head === "campaigns") {
     if (seg.length === 1 && get) return ok(state.campaigns);
     if (tail === "funnel" && get) return campaignFunnel(id!);
     if (tail === "run" && post) return runCampaign(id!);
-    if (tail === "status" && post) return transition(state.campaigns, id!, body, "campaign");
+    if (tail === "status" && post)
+      return transition(state.campaigns, id!, body, "campaign");
   }
   if (head === "tickets") {
     if (seg.length === 1 && get) return ok(state.tickets);
-    if (method === "PUT" && seg.length === 2) return editText(state.tickets, id!, body, "title");
+    if (method === "PUT" && seg.length === 2)
+      return editText(state.tickets, id!, body, "title");
     if (method === "PUT" && tail === "position") {
-      return placeInColumn(state.tickets, id!, Number(bodyOf(body).position), (t) => t.status);
+      return placeInColumn(
+        state.tickets,
+        id!,
+        Number(bodyOf(body).position),
+        (t) => t.status,
+      );
     }
     if (tail === "status" && post) {
       const reply = transition(state.tickets, id!, body, "ticket");
@@ -1076,7 +1532,9 @@ export function demoHandle(
       const q = (query.get("q") ?? "").trim().toLowerCase();
       return ok(
         q
-          ? state.articles.filter((a) => `${a.title} ${a.body}`.toLowerCase().includes(q))
+          ? state.articles.filter((a) =>
+              `${a.title} ${a.body}`.toLowerCase().includes(q),
+            )
           : state.articles,
       );
     }
@@ -1099,5 +1557,8 @@ export function demoHandle(
     const reply = breakGlass(method, seg, body);
     if (reply) return reply;
   }
-  return problem(404, "This endpoint is not part of the guided tour's sample data.");
+  return problem(
+    404,
+    "This endpoint is not part of the guided tour's sample data.",
+  );
 }
