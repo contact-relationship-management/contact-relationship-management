@@ -75,7 +75,7 @@ lettre = { version = "0.11", default-features = false, features = [
 entity-ref = "0.2.0"
 
 # Offline PASETO v4.public verification + the shared ABAC engine.
-authentication-verifier = { git = "https://github.com/SixArm/main-x-service.git", rev = "eeb10523a89c3aa1e4ac922d615fc34a456bdcd9", default-features = false }
+authentication-verifier = { version = "0.9.1", default-features = false }
 aes-gcm = "0.11"
 redis = { version = "1.7.1", default-features = false, features = ["tokio-comp", "connection-manager", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
 
@@ -97,7 +97,7 @@ required-features = []
 [dev-dependencies]
 # A local OIDC provider so tests/keycloak_guard.rs can push a Keycloak access
 # token through the real guard without a Keycloak container. Tests only.
-authentication-verifier = { git = "https://github.com/SixArm/main-x-service.git", rev = "eeb10523a89c3aa1e4ac922d615fc34a456bdcd9", default-features = false, features = ["test-idp"] }
+authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
 loco-rs = { workspace = true, features = ["testing"] }
 # Name the `TestServer` type in shared request-test helpers (same
 # version loco's testing feature uses internally).

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `authentication-verifier` from crates.io (2026-10-18)
+
+The dependency (and its dev-dependency with `test-idp`) is now the published
+0.9.1 instead of a pinned git commit, which crates.io would reject. Tests,
+clippy (with `--features keycloak`) and `cargo deny` pass. Publishing still
+needs the `migration` path dependency published under its own name.
+
 ### Changed — crate renamed (2026-10-18)
 
 The package is now `contact-relationship-management` (was
