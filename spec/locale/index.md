@@ -39,5 +39,6 @@ Source text: `en-gb-oxendict`, refreshed 2026-10-11.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
 - The briefs were refreshed on 2026-10-11 for T49 (Dependabot and the signed-release workflow), T53 (response schemas), T54 (RFC 9457 errors) and the current counts (51 of 55 work items; 147 unit, 37 database-backed, 44 front-end unit and 42 Playwright tests), and for the T39 send path (an SMTP sender, delivery rows, a signed unsubscribe link, a suppression list and a signed outcome webhook exist; no provider is integrated). Counts and states are a snapshot; refresh the English source, then every locale, when they change.
+- On 2026-10-18 only the counts in the CEO and CTO briefs were refreshed, in every locale (54 of 58 work items; 176 unit, 41 database-backed, 96 front-end unit and 85 Playwright tests). Nothing else in the briefs was reread, and the translations are still unreviewed by native speakers.
 - The English facts in the source (counts such as "48 of 53" tasks, test totals)
   are a snapshot and are copied as is; refresh all locales when they change.

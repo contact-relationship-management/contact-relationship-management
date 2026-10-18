@@ -10,7 +10,7 @@ System CRM lefel arddangos yw hon, gyda sylfaen diogelwch a phreifatrwydd anarfe
 
 - CRM gweithredol ar draws gwerthiant, marchnata, cymorth a dadansoddeg, gyda API Rust a pharth blaen gwe, wedi'i adeiladu yn ôl manyleb ysgrifenedig.
 - Marchnata sy'n rhoi cydsyniad yn gyntaf; rheolaeth mynediad sy'n cuddio gwerthoedd sensitif rhag rolau na ddylent eu gweld; llwybr archwilio sy'n dangos ymyrraeth; mynediad at ddata personol a dileu ar gyfer ceisiadau preifatrwydd; a mynediad brys (“torri'r gwydr”) sydd â rheswm, cyfyngiad amser ac adolygiad.
-- Mae 51 o'r 55 eitem waith a olrheinir wedi'u cwblhau ([tasks.md](../../../../spec/tasks.md)).
+- Mae 54 o'r 58 eitem waith a olrheinir wedi'u cwblhau ([tasks.md](../../../../spec/tasks.md)).
 
 ## Beth sy'n sefyll rhwng hyn a defnydd go iawn
 

@@ -18,7 +18,7 @@ fund the remaining external work, not to switch it on.
   roles that should not see them, an audit trail that shows tampering, subject
   access and erasure for privacy requests, and emergency ("break-glass")
   access that is reasoned, time-limited and reviewed.
-- 51 of 55 tracked work items are done ([tasks.md](../../../../spec/tasks.md)).
+- 54 of 58 tracked work items are done ([tasks.md](../../../../spec/tasks.md)).
 
 ## What stands between this and real use
 

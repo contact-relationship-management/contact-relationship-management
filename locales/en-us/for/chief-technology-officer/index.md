@@ -21,9 +21,9 @@
 
 ## Quality evidence
 
-Unit tests (147), database tests (37 including enforcement, masking, audit,
-pagination, caching, idempotency, schema checks), front-end unit (44) and
-Playwright (42) including axe
+Unit tests (176), database tests (41 including enforcement, masking, audit,
+pagination, caching, idempotency, schema checks), front-end unit (96) and
+Playwright (85) including axe
 accessibility scans. CI runs fmt, clippy, tests, front-end build/lint and a
 supply-chain stage (`cargo audit`, `cargo deny`, `pnpm audit`, CycloneDX SBOMs)
 on GitHub Actions and Woodpecker. One command reproduces it: `scripts/ci-check.sh`.
