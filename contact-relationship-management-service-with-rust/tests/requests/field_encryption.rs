@@ -4,9 +4,9 @@
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use contact_relationship_management_service::app::App;
-use contact_relationship_management_service::crypto::{self, Keyring};
-use contact_relationship_management_service::tasks::rotate_field_keys::rotate;
+use contact_relationship_management::app::App;
+use contact_relationship_management::crypto::{self, Keyring};
+use contact_relationship_management::tasks::rotate_field_keys::rotate;
 use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

@@ -13,7 +13,7 @@
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use contact_relationship_management_service::app::App;
+use contact_relationship_management::app::App;
 use ed25519_dalek::SigningKey;
 use loco_rs::testing::prelude::*;
 use rusty_paseto::core::{Footer, Key, Paseto, PasetoAsymmetricPrivateKey, Payload, Public, V4};
@@ -244,7 +244,7 @@ async fn enforcement_gates_the_real_stack() {
         assert_eq!(as_stranger.status_code(), 200);
         assert_eq!(
             as_stranger.json::<Value>()["contact"]["preferred_channel"],
-            contact_relationship_management_service::auth::MASKED
+            contact_relationship_management::auth::MASKED
         );
 
         // A deal owned by `owner_sub`: the owner's list view sees the

@@ -10,7 +10,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use contact_relationship_management_service::app::App;
+use contact_relationship_management::app::App;
 use loco_rs::cli;
 use migration::Migrator;
 

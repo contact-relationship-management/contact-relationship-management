@@ -3,7 +3,7 @@
 //! record; a reused key with different content, a bad key, and a failed first
 //! attempt each behave as documented.
 
-use contact_relationship_management_service::app::App;
+use contact_relationship_management::app::App;
 use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;

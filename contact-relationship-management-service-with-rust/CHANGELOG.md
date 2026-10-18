@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — crate renamed (2026-10-18)
+
+The package is now `contact-relationship-management` (was
+`contact-relationship-management-service`), so the library is
+`contact_relationship_management`; `default-run` and the binary keep the name
+`contact-relationship-management-service`, so the Containerfile, scripts and
+process names are unchanged. The package description was also reworded.
+
 ### Fixed — `updated_at` now moves on every edit (CRM-T57, 2026-10-18)
 
 SeaORM updates write only the columns given, so `updated_at` kept its insert

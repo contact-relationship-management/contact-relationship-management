@@ -2,7 +2,7 @@
 //! assignee first-response stamp, priority re-derivation, the
 //! once-per-breach sweep, and the versioned knowledge base.
 
-use contact_relationship_management_service::app::App;
+use contact_relationship_management::app::App;
 use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;

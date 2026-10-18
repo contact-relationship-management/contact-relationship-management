@@ -4,7 +4,7 @@
 //! `scripts/email-dev.sh live`, which starts the local Stalwart server and sets
 //! the `CRM_SMTP_*` variables. Without `CRM_MAIL_MODE=smtp` it does nothing.
 
-use contact_relationship_management_service::mail::{self, Message, Sender};
+use contact_relationship_management::mail::{self, Message, Sender};
 
 #[tokio::test]
 #[ignore = "needs a mail server; run with scripts/email-dev.sh live"]

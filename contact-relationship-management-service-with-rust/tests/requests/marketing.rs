@@ -2,7 +2,7 @@
 //! segment preview → simulated campaign → nurture advance →
 //! unsubscribe exits everything and blocks the next send.
 
-use contact_relationship_management_service::app::App;
+use contact_relationship_management::app::App;
 use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;

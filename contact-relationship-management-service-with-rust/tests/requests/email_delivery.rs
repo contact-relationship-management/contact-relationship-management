@@ -4,11 +4,11 @@
 //! The sender is swapped for a recorder, so no network is used. A separate
 //! ignored test in `tests/smtp_live.rs` talks to a real server.
 
-use contact_relationship_management_service::app::App;
-use contact_relationship_management_service::mail::{self, Recorder, Sender};
-use contact_relationship_management_service::models::deliveries;
-use contact_relationship_management_service::unsubscribe::{self, Unsubscriber};
-use contact_relationship_management_service::webhook;
+use contact_relationship_management::app::App;
+use contact_relationship_management::mail::{self, Recorder, Sender};
+use contact_relationship_management::models::deliveries;
+use contact_relationship_management::unsubscribe::{self, Unsubscriber};
+use contact_relationship_management::webhook;
 use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -48,7 +48,7 @@ macro_rules! give_address {
             .as_str()
             .unwrap()
             .to_string();
-        contact_relationship_management_service::clients::prime_email(&person_ref, $address);
+        contact_relationship_management::clients::prime_email(&person_ref, $address);
         person_ref
     }};
 }

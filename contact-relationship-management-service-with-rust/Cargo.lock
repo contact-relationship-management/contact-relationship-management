@@ -1224,7 +1224,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "contact-relationship-management-service"
+name = "contact-relationship-management"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",

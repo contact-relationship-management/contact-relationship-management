@@ -2,7 +2,7 @@
 //! pipeline hygiene, the executive pack, forecast trends, the SLA
 //! register, and the DPO view — over a seeded estate.
 
-use contact_relationship_management_service::app::App;
+use contact_relationship_management::app::App;
 use loco_rs::testing::prelude::*;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};

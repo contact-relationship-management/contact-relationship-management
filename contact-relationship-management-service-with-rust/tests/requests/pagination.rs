@@ -2,7 +2,7 @@
 //! truncation, following it visits every row once, bad input is refused, and
 //! article search runs before the page is cut.
 
-use contact_relationship_management_service::app::App;
+use contact_relationship_management::app::App;
 use loco_rs::testing::prelude::*;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};

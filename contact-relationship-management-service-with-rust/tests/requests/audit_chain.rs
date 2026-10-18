@@ -2,7 +2,7 @@
 //! chain; the append-only trigger refuses edits and deletes; and a chain
 //! altered behind the trigger's back is reported at the altered row.
 
-use contact_relationship_management_service::app::App;
+use contact_relationship_management::app::App;
 use loco_rs::testing::prelude::*;
 use sea_orm::ConnectionTrait;
 use serde_json::Value;
