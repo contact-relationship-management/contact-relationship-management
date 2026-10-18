@@ -30,6 +30,9 @@ jobs:
             context: contact-relationship-management-ui-with-svelte
     env:
       IMAGE: ghcr.io/${{ github.repository }}/${{ matrix.name }}
+      # One credentials file for podman, cosign and the attestation action
+      # (cosign and the action read the Docker-style path, not podman's own).
+      REGISTRY_AUTH_FILE: /home/runner/.docker/config.json
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
@@ -40,6 +43,7 @@ jobs:
         env:
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          mkdir -p "$(dirname "${REGISTRY_AUTH_FILE}")"
           printf '%s' "${REGISTRY_TOKEN}" \
             | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
       - name: Build
