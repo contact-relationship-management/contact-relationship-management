@@ -3,6 +3,13 @@
 
 [advisories]
 version = 2
+ignore = [
+  # `unsafe-libyaml` is unmaintained (no known vulnerability). It arrives only
+  # through Loco's code generator (`loco-gen` -> `rrgen` -> `serde_yaml` 0.9),
+  # which this service cannot drop while it uses Loco. Revisit on a Loco upgrade
+  # (Loco's own config loader already uses `serde_yaml_ng`).
+  { id = "RUSTSEC-2024-0449", reason = "unmaintained, no vulnerability; only via loco-gen; revisit on a Loco upgrade" },
+]
 
 [licenses]
 version = 2
