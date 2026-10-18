@@ -32,23 +32,27 @@ jobs:
       IMAGE: ghcr.io/${{ github.repository }}/${{ matrix.name }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+      # Podman, not Docker: it is on the runner image and builds the same
+      # Containerfiles that developers build. The base images are pinned by
+      # digest in the Containerfiles.
+      - name: Log in to GitHub Container Registry
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "${REGISTRY_TOKEN}" \
+            | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - name: Build
+        run: |
+          podman build \
+            --file "${{ matrix.context }}/Containerfile" \
+            --tag "${IMAGE}:${{ github.ref_name }}" \
+            "${{ matrix.context }}"
       - id: build
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.context }}/Containerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE }}:${{ github.ref_name }}
-          # The base images are pinned by digest in the Containerfiles.
-          provenance: false
+        name: Push, and read the pushed digest
+        run: |
+          podman push --digestfile "${RUNNER_TEMP}/digest" "${IMAGE}:${{ github.ref_name }}"
+          echo "digest=$(cat "${RUNNER_TEMP}/digest")" >> "${GITHUB_OUTPUT}"
       - name: Sign the image by digest
         run: cosign sign --yes "${IMAGE}@${{ steps.build.outputs.digest }}"
       - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2

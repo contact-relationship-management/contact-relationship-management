@@ -72,7 +72,7 @@ cosign verify-blob sbom/service.cdx.json \
 - [ ] Negative test: change one byte of an SBOM and confirm verification
       **fails**. A verifier that cannot fail proves nothing.
 - [ ] Pull the image **by digest** and run it once:
-      `docker run --rm ghcr.io/<owner>/<repo>/service@sha256:<digest>` should
+      `podman run --rm ghcr.io/<owner>/<repo>/service@sha256:<digest>` should
       exit with a clear error about `DATABASE_URL`, as non-root.
 
 If the verify commands in the runbook need a different flag, change the

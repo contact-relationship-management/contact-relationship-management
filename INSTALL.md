@@ -3,14 +3,14 @@
 ## Prerequisites
 
 - Rust 1.96 (see `rust-toolchain.toml`)
-- PostgreSQL 18 (or `docker compose`)
+- PostgreSQL 18 (or `podman compose`)
 - Node.js and pnpm, for the front end
 
 ## Rust service
 
 ```bash
 cd contact-relationship-management-service-with-rust
-docker compose -f compose.test.yaml up -d   # test PostgreSQL
+podman compose -f compose.test.yaml up -d   # test PostgreSQL
 cargo build
 cargo test                                   # DB-free unit and request tests
 cargo test -- --ignored                      # database-backed tests
