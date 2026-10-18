@@ -23,6 +23,7 @@
     - testid           `data-testid` on the board
 -->
 <script lang="ts">
+  import { packLabels } from "#lib/lily-labels.js";
   import KanbanBoard from "@lilydesignsystem/svelte-kanban-board";
   import type {
     KanbanCard,
@@ -33,7 +34,7 @@
     KanbanLane,
   } from "@lilydesignsystem/svelte-kanban-board";
   import type { Snippet } from "svelte";
-  import { t, type StringKey } from "#lib/i18n.svelte.js";
+  import { i18n, t, type StringKey } from "#lib/i18n.svelte.js";
 
   let {
     label,
@@ -73,7 +74,9 @@
       t(key),
     );
 
+  // The pack supplies the generic wording; what follows is the app's own and wins.
   const labels = $derived({
+    ...packLabels("kanban-board", i18n.locale),
     cardCount: (count: number) =>
       count === 1 ? t("kanban.cardsOne") : fill("kanban.cards", { count }),
     moveButton: (card: KanbanCard) => fill("kanban.move", { title: card.title }),
@@ -88,16 +91,6 @@
       fill("kanban.blocked", { title, column }),
     emptyColumn: () => t("kanban.emptyColumn"),
     search: t("kanban.search"),
-    searchAnnouncement: (matches: number, total: number) =>
-      fill("kanban.searchResult", { matches, total }),
-    undo: t("kanban.undo"),
-    undoAnnouncement: (title: string, column: string) =>
-      fill("kanban.undoMove", { title, column }),
-    undoManyAnnouncement: (count: number) => fill("kanban.undoMany", { count }),
-    fieldUndoAnnouncement: (title: string, field: string, text: string) =>
-      fill("kanban.fieldUndo", { title, field, text }),
-    fieldRedoAnnouncement: (title: string, field: string, text: string) =>
-      fill("kanban.fieldRedo", { title, field, text }),
     collapseColumn: (column: KanbanColumn, collapsed: boolean) =>
       fill(collapsed ? "kanban.expand" : "kanban.collapse", {
         column: column.title,
@@ -115,10 +108,6 @@
     export: t("kanban.export"),
     exportCsv: "CSV",
     exportExcel: "Excel",
-    exportTsv: "TSV",
-    copy: t("grid.copy"),
-    copyAnnouncement: (count: number) => fill("grid.copied", { count }),
-    copyFailed: t("grid.copyFailed"),
     exportAnnouncement: (_format: unknown, count: number, filename: string) =>
       fill("kanban.exported", { count, filename }),
     exportHeaders: {

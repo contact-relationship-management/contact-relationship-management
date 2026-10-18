@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@lilydesignsystem/locale-translations':
+        specifier: 0.1.0
+        version: 0.1.0
       '@lilydesignsystem/svelte-calendar':
         specifier: 0.6.0
         version: 0.6.0(svelte@5.57.1)
@@ -185,6 +188,10 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@lilydesignsystem/locale-translations@0.1.0':
+    resolution: {integrity: sha512-VtfbSpX0gqkhlUiudGpC4rNULmq+f8jBxC7XQuSSH8ec1NFao0j786dhieDhv7a5jMIse9wl1lspCc3PYrJEiA==}
+    engines: {node: '>=26'}
 
   '@lilydesignsystem/svelte-calendar@0.6.0':
     resolution: {integrity: sha512-9VMLqCGcB7y3w/azFjmHnUuUitaGwD2VKu8Y/Ka1tONOoAmiZ9gy0fz8texbzUHg23QaQnTNEw+ykPDAaLJppw==}
@@ -1115,6 +1122,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
+
+  '@lilydesignsystem/locale-translations@0.1.0': {}
 
   '@lilydesignsystem/svelte-calendar@0.6.0(svelte@5.57.1)':
     dependencies:

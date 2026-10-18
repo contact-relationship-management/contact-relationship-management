@@ -4,6 +4,7 @@
   verbatim (actor_ref is the recorder, not necessarily an assignee).
 -->
 <script lang="ts">
+  import { packLabels } from "#lib/lily-labels.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import CalendarView, {
     type CalendarEvent,
@@ -66,20 +67,14 @@
   // 2024-01-07 is a Sunday, so weekday 0 = Sunday.
   const weekdayDate = (wd: number) => new Date(Date.UTC(2024, 0, 7 + wd));
   const calendarLabels = $derived({
+    ...packLabels("calendar", i18n.locale),
     dayView: t("cal.day"),
     agendaView: t("cal.agenda"),
     agendaEmpty: t("cal.agendaEmpty"),
     weekNumberHeader: t("cal.weekNumberHeader"),
-    search: t("cal.search"),
-    searchAnnouncement: (matches: number, total: number) =>
-      t("cal.searchResult").replace("{matches}", String(matches)).replace("{total}", String(total)),
     export: t("cal.export"),
     exportCsv: "CSV",
     exportExcel: "Excel",
-    exportTsv: "TSV",
-    copy: t("grid.copy"),
-    copyAnnouncement: (count: number) => t("grid.copied").replace("{count}", String(count)),
-    copyFailed: t("grid.copyFailed"),
     exportHeaders: {
       title: t("cal.exportTitle"),
       start: t("cal.exportStart"),

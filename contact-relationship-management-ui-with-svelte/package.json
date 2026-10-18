@@ -58,6 +58,7 @@
     "@lilydesignsystem/svelte-share-picker": "0.3.0",
     "@lilydesignsystem/svelte-text-size-picker": "0.3.0",
     "@lilydesignsystem/svelte-theme-picker": "0.3.0",
+    "@lilydesignsystem/locale-translations": "0.1.0",
     "@lilydesignsystem/themes": "0.5.0"
   },
   "imports": {

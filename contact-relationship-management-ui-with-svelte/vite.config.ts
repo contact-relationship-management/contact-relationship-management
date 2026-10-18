@@ -41,5 +41,8 @@ export default defineConfig({
         include: ["tests/unit/**/*.{test,spec}.{ts,js}"],
         environment: "jsdom",
         globals: true,
+        // The package's `dist` imports without file extensions, which Node's ESM
+        // loader refuses; Vite resolves them, so Vitest must bundle it too.
+        server: { deps: { inline: [/@lilydesignsystem\/locale-translations/] } },
     },
 });

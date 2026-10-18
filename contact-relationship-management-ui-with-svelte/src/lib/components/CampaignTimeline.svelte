@@ -8,6 +8,7 @@
   are worked out in `critical-path.ts`. Strings come from the `timeline.*` keys.
 -->
 <script lang="ts">
+  import { packLabels } from "#lib/lily-labels.js";
   import GanttChart from "@lilydesignsystem/svelte-gantt-chart";
   import type { GanttTask } from "@lilydesignsystem/svelte-gantt-chart";
   import type { Campaign } from "#lib/api/crm.js";
@@ -66,20 +67,12 @@
     }),
   );
   const labels = $derived({
+    ...packLabels("gantt-chart", i18n.locale),
     taskColumnHeader: t("timeline.task"),
     // Short heading text; the column's full name says "week of …".
     columnLabel: (start: string) => fmt.format(new Date(`${start}T00:00:00Z`)),
     zoomIn: t("timeline.zoomIn"),
     zoomOut: t("timeline.zoomOut"),
-    export: t("grid.export"),
-    exportCsv: "CSV",
-    exportTsv: "TSV",
-    exportExcel: "Excel",
-    exportAnnouncement: (_format: unknown, count: number, filename: string) =>
-      t("grid.exported").replace("{count}", String(count)).replace("{filename}", filename),
-    copy: t("grid.copy"),
-    copyAnnouncement: (count: number) => t("grid.copied").replace("{count}", String(count)),
-    copyFailed: t("grid.copyFailed"),
     exportHeaders: {
       task: t("timeline.task"),
       start: t("cal.exportStart"),

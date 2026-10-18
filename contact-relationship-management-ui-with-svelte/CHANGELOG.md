@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Lily label packs (2026-10-18)
+
+Adds `@lilydesignsystem/locale-translations` 0.1.0. Tables, boards, the
+follow-up calendar and the campaign timeline now take their generic wording
+(export, copy, search, undo and the announcements) from the pack for the
+current language, through `src/lib/lily-labels.ts`; the app's own labels still
+win where it sets one. The 11 strings I had written by hand for copy, undo and
+search were removed from `i18n.svelte.ts`. `de-de` uses the `de-001` pack and
+`zh-cn` uses `zh-001`. The packs other than English are machine drafts that no
+native speaker has read. Vitest bundles the package (`vite.config.ts`),
+because its `dist` imports without file extensions, which Node cannot load.
+
 ### Added — site-wide search, a language in any address (2026-10-18)
 
 The header search now goes to `/search`, which looks in contacts, accounts,

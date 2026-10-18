@@ -35,6 +35,7 @@
     - empty     text shown in the grid when there are no rows
 -->
 <script lang="ts">
+  import { packLabels } from "#lib/lily-labels.js";
   import DataGrid from "@lilydesignsystem/svelte-data-grid";
   import type {
     DataGridCellContext,
@@ -110,15 +111,13 @@
   const showFilter = $derived(filter ?? rows.length >= 8);
   const size = $derived(pageSize ?? (rows.length > 25 ? 25 : undefined));
 
+  // The pack supplies the generic wording; what follows is the app's own and wins.
   const labels = $derived({
+    ...packLabels("data-grid", i18n.locale),
     search: showFilter ? t("grid.search") : undefined,
     export: t("grid.export"),
     exportCsv: "CSV",
     exportExcel: "Excel",
-    exportTsv: "TSV",
-    copy: t("grid.copy"),
-    copyAnnouncement: (count: number) => fill("grid.copied", { count }),
-    copyFailed: t("grid.copyFailed"),
     exportAnnouncement: (_format: unknown, count: number, filename: string) =>
       fill("grid.exported", { count, filename }),
     previousPage: t("grid.previous"),
