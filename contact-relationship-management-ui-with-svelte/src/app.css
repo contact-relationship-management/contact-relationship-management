@@ -556,3 +556,9 @@ button.calendar-event:focus-visible { outline: 2px solid var(--accent); outline-
 .app-grid tfoot th, .app-grid tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
 .gantt-chart tr[data-critical] td[data-in-range] { box-shadow: inset 0 0 0 3px var(--ink); }
 .gantt-chart tr[data-critical] th[scope="row"] { font-weight: 700; }
+
+/* Weekends in the calendar, and search matches (Lily marks them; the app styles them). */
+.calendar-view-table .calendar-table-td[data-weekend] { background: color-mix(in srgb, var(--ink) 6%, var(--panel)); }
+.calendar-view-table .calendar-table-th[data-weekend] { font-style: italic; }
+mark.calendar-view-match,
+mark.kanban-board-match { background: color-mix(in srgb, var(--accent) 25%, transparent); color: inherit; }

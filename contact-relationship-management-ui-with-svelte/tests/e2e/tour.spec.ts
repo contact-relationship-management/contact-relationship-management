@@ -341,7 +341,7 @@ test.describe("editing, order and rescheduling", () => {
   });
 });
 
-test.describe("export", () => {
+test.describe("export, undo and search", () => {
   test("a table downloads as CSV, TSV and Excel", async ({ page }) => {
     await startTour(page);
     await page.goto("/contacts");
@@ -351,5 +351,30 @@ test.describe("export", () => {
       expect((await download).suggestedFilename()).toMatch(new RegExp(`\\.${ext}$`));
     }
     await expect(page.getByRole("button", { name: "Copy", exact: true }).first()).toBeVisible();
+  });
+
+  test("an edit on the deal board is undone with Ctrl+Z", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/deals");
+    const board = page.getByTestId("deal-board");
+    await board.getByRole("button", { name: /£74,000\.00/ }).click();
+    const editor = board.getByRole("spinbutton");
+    await editor.fill("81000");
+    await editor.press("Enter");
+    await expect(board).toContainText("£81,000.00");
+    await board.getByRole("gridcell").first().focus();
+    await page.keyboard.press("Control+z");
+    await expect(board).toContainText("£74,000.00");
+    await expect(board).not.toContainText("£81,000.00");
+  });
+
+  test("the follow-up calendar is searchable and marks weekends", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/followups");
+    const calendar = page.getByTestId("followups-calendar");
+    await expect(calendar.locator("[data-weekend]").first()).toBeVisible();
+    const search = calendar.getByRole("searchbox");
+    await search.fill("zzzz-no-such-follow-up");
+    await expect(calendar.locator(".calendar-event")).toHaveCount(0);
   });
 });

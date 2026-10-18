@@ -70,6 +70,9 @@
     agendaView: t("cal.agenda"),
     agendaEmpty: t("cal.agendaEmpty"),
     weekNumberHeader: t("cal.weekNumberHeader"),
+    search: t("cal.search"),
+    searchAnnouncement: (matches: number, total: number) =>
+      t("cal.searchResult").replace("{matches}", String(matches)).replace("{total}", String(total)),
     export: t("cal.export"),
     exportCsv: "CSV",
     exportExcel: "Excel",
@@ -166,6 +169,7 @@
       locale={i18n.locale}
       labels={calendarLabels}
       showWeekNumbers
+      weekendDays={[0, 6]}
       maxEvents={3}
       exportFilename="follow-ups"
     >

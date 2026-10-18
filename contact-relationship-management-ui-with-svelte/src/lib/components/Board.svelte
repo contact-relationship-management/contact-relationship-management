@@ -16,6 +16,7 @@
                        in place (click it, or F2) and calls `onEdit`
     - lanes            swimlanes; a card's `laneId` names its lane. Lanes only
                        group: dropping a card into another lane is refused
+    - undo             Ctrl/Cmd+Z takes back a move or an edit (Ctrl+Shift+Z redoes)
     - several cards    Ctrl/Cmd+click (or `x`) selects; moving one moves all
     - allowedColumns   (card) => column ids the card may move to (a workflow)
     - columnFooter     snippet under each column (for example a total)
@@ -87,6 +88,16 @@
       fill("kanban.blocked", { title, column }),
     emptyColumn: () => t("kanban.emptyColumn"),
     search: t("kanban.search"),
+    searchAnnouncement: (matches: number, total: number) =>
+      fill("kanban.searchResult", { matches, total }),
+    undo: t("kanban.undo"),
+    undoAnnouncement: (title: string, column: string) =>
+      fill("kanban.undoMove", { title, column }),
+    undoManyAnnouncement: (count: number) => fill("kanban.undoMany", { count }),
+    fieldUndoAnnouncement: (title: string, field: string, text: string) =>
+      fill("kanban.fieldUndo", { title, field, text }),
+    fieldRedoAnnouncement: (title: string, field: string, text: string) =>
+      fill("kanban.fieldRedo", { title, field, text }),
     collapseColumn: (column: KanbanColumn, collapsed: boolean) =>
       fill(collapsed ? "kanban.expand" : "kanban.collapse", {
         column: column.title,
@@ -173,6 +184,7 @@
   {fields}
   {lanes}
   selectable
+  undoable
   onMove={handleMove}
   onReorder={onPosition ? handleReorder : undefined}
   onFieldEdit={onEdit ? handleFieldEdit : undefined}

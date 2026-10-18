@@ -13,8 +13,12 @@ Calendar 0.6.0, data grid 0.10.0, gantt chart 0.7.0 and kanban board 0.7.0.
 Tables, the boards and the follow-up calendar now export TSV as well as CSV and
 Excel (CRM-R21, CRM-T56), and have a Copy button that puts the same rows on the
 clipboard for pasting into a spreadsheet. New labels in all eight locales
-(unreviewed by native speakers). The new Lily search, undo and redo, and
-type-ahead are not switched on yet.
+(unreviewed by native speakers). On the boards, Ctrl/Cmd+Z takes back
+a move or an in-place edit (Ctrl+Shift+Z redoes it) and an Undo button shows;
+the follow-up calendar has a search field and tints weekends; the boards and
+tables get Lily's type-ahead and result announcements. Not switched on: the
+campaign timeline's weekends (its columns are weeks), holiday ranges (the app
+holds no holiday data) and undo in the tables (they are not editable).
 
 ### Added — edit in place, stored order, swimlanes, reschedule, critical path (2026-10-17)
 
