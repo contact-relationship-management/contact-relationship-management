@@ -27,6 +27,9 @@
 //! See `../spec/index.md` for the living specification.
 
 #![warn(clippy::pedantic)]
+// New in Rust 1.99. The tests write `assert!(x.is_empty())`, which reads plainly;
+// the lint's replacement needs a typed empty array for each case.
+#![cfg_attr(test, allow(clippy::assert_is_empty))]
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 // The hand-written OpenAPI document is one large nested `json!` literal.

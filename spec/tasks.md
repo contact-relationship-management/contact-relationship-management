@@ -862,6 +862,6 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       **Resolution:** migration `m20261018_000016` (trigger on 18 tables that are
       edited in place; respects an explicit `updated_at`). One database test
       assertion. **Limits:** only the lead rename is asserted, not every table;
-      existing rows keep their old `updated_at` until next edited; the clippy
-      lints in older test files that the Rust 1.99 toolchain reports are not
-      from this change and are not fixed.
+      existing rows keep their old `updated_at` until next edited; the Rust 1.99
+      clippy lints (`assert_is_empty`, one redundant borrow) were fixed
+      separately.

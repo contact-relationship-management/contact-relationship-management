@@ -401,7 +401,7 @@ async fn the_unsubscribe_link_withdraws_consent_and_stops_the_next_send() {
         );
 
         // A forged or damaged link is refused, and nothing else changes.
-        let bad = format!("{}x", &path);
+        let bad = format!("{path}x");
         request.post(&bad).await.assert_status_not_found();
         request
             .get("/unsubscribe/garbage")
