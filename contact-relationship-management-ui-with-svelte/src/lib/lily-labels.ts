@@ -1,4 +1,4 @@
-// Lily's label packs (`@lilydesignsystem/locale-translations`): every label a
+// Lily's label packs (`@lilydesignsystem/svelte-locale-translations`): every label a
 // grid-like component needs, per language, so the app writes only what is its
 // own (its record names, its column headings) and the generic wording (export,
 // copy, search, undo, announcements) comes from the pack. The packs other than
@@ -7,15 +7,15 @@ import {
   labelsFor,
   type LabelHelper,
   type LabelPack,
-} from "@lilydesignsystem/locale-translations";
-import ar from "@lilydesignsystem/locale-translations/ar-001";
-import cy from "@lilydesignsystem/locale-translations/cy-001";
-import de from "@lilydesignsystem/locale-translations/de-001";
-import en from "@lilydesignsystem/locale-translations/en-001";
-import es from "@lilydesignsystem/locale-translations/es-001";
-import fr from "@lilydesignsystem/locale-translations/fr-001";
-import hi from "@lilydesignsystem/locale-translations/hi-001";
-import zh from "@lilydesignsystem/locale-translations/zh-001";
+} from "@lilydesignsystem/svelte-locale-translations";
+import ar from "@lilydesignsystem/svelte-locale-translations/ar-001";
+import cy from "@lilydesignsystem/svelte-locale-translations/cy-001";
+import de from "@lilydesignsystem/svelte-locale-translations/de-001";
+import en from "@lilydesignsystem/svelte-locale-translations/en-001";
+import es from "@lilydesignsystem/svelte-locale-translations/es-001";
+import fr from "@lilydesignsystem/svelte-locale-translations/fr-001";
+import hi from "@lilydesignsystem/svelte-locale-translations/hi-001";
+import zh from "@lilydesignsystem/svelte-locale-translations/zh-001";
 
 /** The app's locales mapped to the packs that cover them (`de-de` is `de-001`). */
 const PACKS: Record<string, LabelPack> = {

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed — kanban board 0.8.0 (2026-10-18)
+### Changed — kanban board 0.8.1 (2026-10-18)
 
 A card's title now edits in place on the lead, ticket and deal boards (double-click
 it, or F2; Enter saves, Escape cancels), replacing the "Edit" pseudo-field. A
@@ -17,7 +17,7 @@ label. Not adopted: the compact field layout (needs CSS).
 
 ### Changed — Lily label packs (2026-10-18)
 
-Adds `@lilydesignsystem/locale-translations` 0.1.0. Tables, boards, the
+Adds `@lilydesignsystem/svelte-locale-translations` 0.1.0 (it was first added as `locale-translations`). Tables, boards, the
 follow-up calendar and the campaign timeline now take their generic wording
 (export, copy, search, undo and the announcements) from the pack for the
 current language, through `src/lib/lily-labels.ts`; the app's own labels still
