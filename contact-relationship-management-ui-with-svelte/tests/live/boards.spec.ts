@@ -102,3 +102,21 @@ test("a follow-up is rescheduled with the keyboard and the service has the new d
     })
     .not.toBe(due);
 });
+
+test("a card dragged with the mouse above another keeps that order", async ({ page, request }) => {
+  const a = await create(request, "tickets", { title: `Drag A ${stamp}` });
+  const b = await create(request, "tickets", { title: `Drag B ${stamp}` });
+  await page.goto("/tickets/board");
+  const board = page.getByTestId("ticket-board");
+  const card = (title: string) => board.getByRole("gridcell", { name: new RegExp(title) });
+  // The card's title is the drag handle; the drop target is the other card's cell.
+  const handle = card(`Drag B ${stamp}`).locator(".kanban-board-card-title");
+  await expect(handle).toBeVisible();
+  await handle.dragTo(card(`Drag A ${stamp}`));
+  await expect
+    .poll(async () => {
+      const order = (await list(request, "tickets")).map((x) => x.pid);
+      return order.indexOf(b.pid) < order.indexOf(a.pid);
+    })
+    .toBe(true);
+});

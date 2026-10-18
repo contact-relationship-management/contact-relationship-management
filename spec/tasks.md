@@ -843,8 +843,10 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       the UI; the audit entries were not read back.
       **Update 2026-10-18:** driven through the UI (`pnpm test:live`, 4 tests):
       ticket rename, deal amount edit, within-column reorder by Alt+arrow and
-      follow-up reschedule by Alt+arrow, each read back from the service. Not
-      covered: mouse drag, lead edits, the audit entries.
+      follow-up reschedule by Alt+arrow, each read back from the service. A
+      mouse drag of a ticket card within its column is covered too (5 tests).
+      Not covered: lead edits, a drag between columns or lanes, the audit
+      entries.
 
 - [x] CRM-T56 **Export to CSV, TSV and Excel.** Traces to CRM-R21. Every
       `DataTable`, the boards and the follow-up calendar offer all three

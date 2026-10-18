@@ -15,7 +15,7 @@ the follow-up calendar through the UI against a running service on port 5160
 and reads each change back from the service: a ticket rename, a deal amount, a
 card moved within its column with Alt+arrow, and a follow-up rescheduled with
 Alt+arrow. It creates records and leaves them, so use a development database.
-Mouse drag is not covered (Playwright's drag did not reach the board).
+A mouse drag of a ticket card above another in its column is covered too (the card's title is the drag handle, so the drag must start there; a drag from elsewhere on the card does nothing). Five live tests.
 
 ### Changed — Lily upgrade, TSV and copy (2026-10-18)
 
