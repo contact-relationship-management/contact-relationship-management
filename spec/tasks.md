@@ -869,7 +869,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       clippy lints (`assert_is_empty`, one redundant borrow) were fixed
       separately.
 
-- [x] CRM-T58 **Search every list, and a language in any address.** The header
+- [x] CRM-T58 **Search every list, and a language in any address.** Traces to CRM-R22. The header
       search found only contacts; the language-in-address routes existed only
       for the kanban page.
       **Resolution:** `/search` (seven lists, filtered in the browser; 5 unit
@@ -881,6 +881,6 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       account, lead, ticket and campaign hits link to their list, not a record
       page (only contacts have one); search does not look inside notes,
       activities or custom fields; the language picker's address rewrite is not
-      tested; server-rendered HTML for a prefixed address is in the default
-      language until the page loads.
+      tested; the app is a single-page app (no server rendering), so a prefixed
+      address shows the page in the chosen language only after it loads.
 

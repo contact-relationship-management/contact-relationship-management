@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Rust 1.96 (see `rust-toolchain.toml`)
+- Rust 1.99 (see `rust-toolchain.toml`)
 - PostgreSQL 18 (or `podman compose`)
 - Node.js and pnpm, for the front end
 

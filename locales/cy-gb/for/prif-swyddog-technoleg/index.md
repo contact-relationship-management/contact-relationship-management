@@ -5,7 +5,7 @@
 ## Pensaernïaeth
 
 - **Gwasanaeth:** Rust ar Loco (Axum, SeaORM 2.0), PostgreSQL 18, Redis ar gyfer storfa dros dro (cache), cownteri a rennir a lledaenu caniatâd torri'r gwydr. `forbid(unsafe_code)`, clippy pedantic. Ffynhonnell y gwirionedd ar gyfer ymddygiad yw'r fanyleb ([index](../../../../spec/index.md), [architecture](../../../../spec/architecture.md)).
-- **Rhyngwyneb:** SvelteKit 2 / Svelte 5, dirprwy backend-for-frontend fel nad yw unrhyw docyn byth yn cyrraedd JavaScript y porwr, CSP llym gyda hashes.
+- **Rhyngwyneb:** SvelteKit 3 / Svelte 5, dirprwy backend-for-frontend fel nad yw unrhyw docyn byth yn cyrraedd JavaScript y porwr, CSP llym gyda hashes.
 - **Dilysu:** PASETO v4.public wedi'i wirio all-lein, Keycloak dewisol; rheolaeth mynediad yn seiliedig ar briodoleddau (gweithredoedd darllen/ysgrifennu/dileu/dinistriol, rhwymedigaeth `mask`, gwiriadau ar lefel cofnod) o injan a rennir.
 - **Archwilio:** cadwyn hash SHA-256 a ysgrifennir yn yr un trafodyn â'r newid, sbardun atodi-yn-unig, y gellir ei wirio yn `GET /api/audits/verify`.
 - **Diogelu data:** amgryptio meysydd AES-256-GCM gyda chylchdroi allweddi ar ddau golofn; allweddi lleol, dim KMS.

@@ -8,7 +8,7 @@ CRM-T17/T18 land.
 
 ## Stack
 
-SvelteKit 2 · Svelte 5 **runes only** · TypeScript strict · SPA
+SvelteKit 3 · Svelte 5 **runes only** · TypeScript strict · SPA
 mode + same-origin BFF proxy · vitest + Playwright. Copy-adapt from
 the sibling family front-ends (drift-accepted; the
 project-portfolio-management front-end's Kanban board, i18n, and
@@ -24,7 +24,7 @@ project-portfolio-management front-end's Kanban board, i18n, and
   API.
 - **Masked amounts** (deal values, forecasts, ROI) render as a
   first-class masked state, never zeros or errors.
-- **13-locale i18n from the start** with the parity test.
+- **Eight-locale i18n from the start** with the parity test.
 - **No client-held tokens**: mutations via server routes (session
   cookie + CSRF).
 

@@ -5,7 +5,7 @@
 ## 架构
 
 - **服务：** 基于 Loco（Axum、SeaORM 2.0）的 Rust，PostgreSQL 18，Redis 用于缓存、共享计数器和破玻璃授权的传播。`forbid(unsafe_code)`，clippy pedantic。行为的权威来源是规范（[index](../../../../spec/index.md)、[architecture](../../../../spec/architecture.md)）。
-- **UI：** SvelteKit 2 / Svelte 5，采用后端即前端（BFF）代理，因此令牌绝不会进入浏览器 JavaScript；使用带哈希的严格 CSP。
+- **UI：** SvelteKit 3 / Svelte 5，采用后端即前端（BFF）代理，因此令牌绝不会进入浏览器 JavaScript；使用带哈希的严格 CSP。
 - **认证：** 离线验证的 PASETO v4.public，可选 Keycloak；基于属性的访问控制（读/写/删除/破坏性操作、`mask` 义务、记录级检查），来自共享引擎。
 - **审计：** SHA-256 哈希链，与变更在同一事务中写入，带仅追加触发器，可通过 `GET /api/audits/verify` 验证。
 - **数据保护：** 两列使用 AES-256-GCM 字段加密并支持密钥轮换；密钥为本地密钥，没有 KMS。

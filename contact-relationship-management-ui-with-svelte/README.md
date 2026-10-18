@@ -10,11 +10,16 @@ base, and KPI dashboards.
 > ⚠️ **Demo software.** Not a production CRM; synthetic data only.
 > See [spec/regulatory](../spec/regulatory.md).
 
-**Status: implemented (CRM-T17/T18, T19, T20; 2026-07-18 through
-2026-07-20).** svelte-check clean; 5 vitest + 12 Playwright tests
-pass (`page.route`-stubbed — runs without the Rust service). Quick
-start: `pnpm install && pnpm dev` (expects the Loco sibling on
-:5150).
+**Status: implemented (2026-10-18).** svelte-check clean; 103 vitest
+and 90 Playwright tests pass (the tour layer and `page.route` stubs run
+without the Rust service). `pnpm test:live` adds 5 Playwright tests that
+drive the boards and the calendar against a running service on :5160.
+Quick start: `pnpm install && pnpm dev` (expects the Loco sibling on
+:5150, or sign in as `example@example.com` for the guided tour). The
+boards, calendar, timeline and tables are the Lily Design System
+components (`@lilydesignsystem/svelte-*`), with labels from
+`@lilydesignsystem/svelte-locale-translations`; the header search is
+`/search`; any page opens under `/<locale>/…`.
 
 ## Environment variables
 
@@ -29,9 +34,9 @@ bundle) — see [`.env.example`](.env.example).
 
 ## Stack
 
-SvelteKit 2 · Svelte 5 runes · TypeScript strict · SPA mode with a
+SvelteKit 3 · Svelte 5 runes · TypeScript strict · SPA mode with a
 same-origin BFF proxy (session cookie → short-lived PASETO; no
-token in browser JS) · 13-locale i18n · Lily Design System (headless + ThemePicker + LocalePicker) · vitest + Playwright
+token in browser JS) · eight-locale i18n · Lily Design System (headless + ThemePicker + LocalePicker) · vitest + Playwright
 (`page.route`-stubbed).
 
 ## Views

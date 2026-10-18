@@ -1,5 +1,5 @@
 <!--
-  Lead triage board (`/leads/board`): the lead lifecycle as SVAR
+  Lead triage board (`/leads/board`): the lead lifecycle as Lily
   Kanban columns; drag = the status transition (the service's
   lifecycle machine refuses illegal moves with 422 and the reload
   restores the stored truth). Cards carry the rule-derived score.

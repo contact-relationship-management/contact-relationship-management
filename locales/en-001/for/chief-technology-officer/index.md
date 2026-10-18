@@ -9,7 +9,7 @@
   shared counters and break-glass propagation. `forbid(unsafe_code)`, clippy
   pedantic. Source of truth for behaviour is the specification
   ([index](../../../../spec/index.md), [architecture](../../../../spec/architecture.md)).
-- **UI:** SvelteKit 2 / Svelte 5, a backend-for-frontend proxy so no token ever
+- **UI:** SvelteKit 3 / Svelte 5, a backend-for-frontend proxy so no token ever
   reaches browser JavaScript, strict CSP with hashes.
 - **Auth:** PASETO v4.public verified offline, optional Keycloak; attribute-based
   access control (read/write/delete/destructive actions, a `mask` obligation,

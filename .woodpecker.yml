@@ -4,7 +4,7 @@ when:
 
 variables:
   # rust-toolchain.toml carries the exact pin; rustup honours it.
-  - &rust_image 'rust:1.96-bookworm'
+  - &rust_image 'rust:1.99-bookworm'
 
 services:
   - name: postgres
@@ -41,7 +41,7 @@ steps:
       - scripts/ci-check.sh test-db
 
   - name: front-end
-    image: 'node:24-bookworm'
+    image: 'node:26-bookworm'
     commands:
       - corepack enable && corepack prepare pnpm@11.0.8 --activate
       - scripts/ci-check.sh front-end

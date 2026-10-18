@@ -1,6 +1,6 @@
 <!--
   Ticket board (`/tickets/board`): open / pending / resolved / closed
-  as SVAR Kanban columns; drag = the status transition (the lifecycle
+  as Lily kanban columns; drag = the status transition (the lifecycle
   machine owns legality; a refused move reloads to the stored truth).
   Cards badge priority and live SLA-breach flags.
 -->

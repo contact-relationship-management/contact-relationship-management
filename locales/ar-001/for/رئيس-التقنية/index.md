@@ -8,7 +8,7 @@
 - **الخدمة:** Rust على Loco (Axum وSeaORM 2.0)، وPostgreSQL 18، وRedis للتخزين المؤقت
   والعدّادات المشتركة ونشر منح كسر الزجاج. `forbid(unsafe_code)` وclippy في وضع pedantic.
   مرجع السلوك هو المواصفة ([index](../../../../spec/index.md)، [architecture](../../../../spec/architecture.md)).
-- **الواجهة:** SvelteKit 2 / Svelte 5، ووسيط backend-for-frontend (proxy) حتى لا يصل أي رمز
+- **الواجهة:** SvelteKit 3 / Svelte 5، ووسيط backend-for-frontend (proxy) حتى لا يصل أي رمز
   إلى JavaScript في المتصفح، مع سياسة CSP صارمة بالتجزئات (hashes).
 - **المصادقة:** PASETO v4.public يُتحقَّق منه دون اتصال، وKeycloak اختياري؛ وضبط وصول قائم
   على السمات (إجراءات القراءة والكتابة والحذف والإجراءات الهدّامة، والتزام `mask`، وفحوص على

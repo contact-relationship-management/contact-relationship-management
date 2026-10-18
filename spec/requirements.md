@@ -259,3 +259,18 @@ spreadsheet or another tool.*
   service endpoint and no extra read, so masking and record-level access apply
   exactly as they do to the screen.
 - The labels of the export controls come from the app's i18n in every locale.
+
+## CRM-R22 — Search and a language in any address
+
+*As a user I can find a record from anywhere, and I can share a link that opens
+in a chosen language.*
+
+- The header search finds records in every list the app shows (contacts,
+  accounts, leads, deals, tickets, campaigns, the knowledge base): every word
+  must appear, in any order, ignoring case and accents. It reads the same lists
+  the screens read, so masking and record-level access apply exactly as they do
+  there. A list that cannot be read is reported and the others still show.
+- Any page opens under a language prefix (`/de-de/contacts`). The prefix sets
+  the interface language, is kept by the page links, follows the language
+  picker, and does not change which pages need sign-in.
+
