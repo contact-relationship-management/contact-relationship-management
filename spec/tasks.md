@@ -884,3 +884,17 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       tested; the app is a single-page app (no server rendering), so a prefixed
       address shows the page in the chosen language only after it loads.
 
+- [x] CRM-T59 **Publish to crates.io.** The service and its migrations crate
+      were not publishable: a git dependency and a path dependency whose name
+      belongs to someone else.
+      **Resolution:** `authentication-verifier` 0.9.1 from crates.io; the
+      migrations crate renamed `contact-relationship-management-migration`
+      (imported as `migration`). `contact-relationship-management` 0.1.0 and
+      `contact-relationship-management-migration` 0.1.0 were published on
+      2026-10-18 after a clean dry run, tests, clippy and `cargo deny`.
+      **Limits:** the package ships only `src/` and the README, so it has no
+      `config/*.yaml`, tests or Containerfile and a user must supply a Loco
+      config; the container image remains the supported way to run it; a
+      published version is permanent (yank only); no `v*` git tag was pushed
+      for this (that would start the image release workflow).
+
