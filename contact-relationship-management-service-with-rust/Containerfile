@@ -3,7 +3,7 @@
 # Runtime: distroless, non-root, no shell, read-only-rootfs compatible.
 # Pin the base images by digest in your registry mirror before release.
 
-FROM docker.io/library/rust:1.96-bookworm@sha256:a339861ae23e9abb272cea45dfafde21760d2ce6577a70f8a926153677902663 AS build
+FROM docker.io/library/rust:1.99-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29 AS build
 WORKDIR /src
 COPY . .
 RUN cargo build --release --locked --features keycloak \
