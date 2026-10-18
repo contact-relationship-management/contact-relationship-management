@@ -1,0 +1,79 @@
+# Contact Relationship Management
+
+> A demo contact relationship management (CRM) system: sales automation, marketing automation, customer support and analytics. A Rust JSON API (Loco: Axum, SeaORM, PostgreSQL) and a Svelte 5 / SvelteKit 3 browser client built on the Lily Design System, specified in spec/. Demo software: synthetic data only, no real email is sent by default, no accreditation or certification is claimed.
+
+- The specification in spec/ is the single source of truth; code and docs follow it.
+- Requirements are CRM-R<n> (spec/requirements.md); tasks are CRM-T<n> (spec/tasks.md). Every task traces to a requirement.
+- Be honest about limits: tasks.md records what was verified and what was not. Do not claim more than it does.
+- Translations (eight UI locales, role briefs in locales/) are machine drafts that no native speaker has reviewed.
+- Never put real personal data in examples, tests or fixtures; use synthetic data.
+
+## Start here
+
+- [README](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/README.md): What the project is and how the folders fit together.
+- [Install and use](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/INSTALL.md): Prerequisites, running the service and the UI, sending email, the guided tour, the whole-repo check.
+- [Specification index](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/index.md): Entry point to the specification.
+- [Purpose](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/purpose.md): The problem and what the CRM provides.
+- [Scope](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/scope.md): What is in and out.
+- [Regulatory position](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/regulatory.md): Why this is demo software and what that means.
+
+## Specification
+
+- [Requirements](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/requirements.md): Numbered requirements (CRM-R1 to CRM-R22) with acceptance criteria.
+- [Tasks](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/tasks.md): The delivery checklist (CRM-T1 onward) with resolutions, verification and stated limits.
+- [Architecture](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/architecture.md): Components and data flow.
+- [Domain model](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/domain-model.md): Entities and relationships, held as relationship wrappers over upstream URNs.
+- [Design decisions](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/design.md): Numbered design decisions (CRM-D).
+- [Authentication and authorisation](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/auth.md): Personas, masking and record-level access.
+- [Audit](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/audit.md): The audit trail and events.
+- [Sales automation](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/sales-automation.md): Leads, scoring, pipelines, deals, forecasting.
+- [Marketing automation](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/marketing-automation.md): Consent, segments, campaigns, nurture.
+- [Service and support](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/service-support.md): Tickets, SLAs, knowledge base.
+- [Analytics and reporting](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/analytics-reporting.md): Dashboards and the honesty rules for derived numbers.
+- [Integrations](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/integrations.md): The upstream services CRM consumes (it holds EntityRef URNs and never duplicates upstream records) and how.
+- [Testing](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/testing.md): Test strategy.
+- [Roadmap](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/roadmap.md): What comes beyond the v1 task queue.
+- [Glossary](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/glossary.md): Terms.
+
+## Rust service
+
+- [Service README](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/README.md): Quick start, configuration, endpoints.
+- [Service agent guide](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/AGENTS.md): Working agreements for the service.
+- [Service changelog](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/CHANGELOG.md): Changes to the service.
+
+## Svelte client
+
+- [UI README](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/README.md): Status, environment variables, stack, tests.
+- [UI agent guide](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/AGENTS.md): Working agreements for the client (Svelte 5 runes, Lily components, BFF auth, i18n).
+- [UI changelog](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/CHANGELOG.md): Changes to the client.
+
+## Security and compliance
+
+- [Security policy](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/SECURITY.md): Reporting vulnerabilities.
+- [Compliance evidence pack](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/index.md): Control mapping, DPIA template, runbook; not a certification.
+- [Operations runbook](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/operations-runbook.md): Hardening, backup, keys, logging, release verification.
+- [Penetration test scope](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/penetration-test-scope.md): Brief for an independent tester (no test has been done).
+- [Accessibility audit brief](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/accessibility-audit-brief.md): Test plan for a manual audit (none has been done).
+- [First release checklist](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/first-release-checklist.md): The dry run that proves release signing.
+- [AI statement](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/AI_STATEMENT.md): How AI was used in this project.
+
+## Contributing
+
+- [Contributing](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/CONTRIBUTING.md): How to build, test and propose changes.
+- [Governance](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/GOVERNANCE.md): A single maintainer; how decisions are made.
+- [Changelog](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/CHANGELOG.md): Repository-level changes.
+- [Licence](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/LICENSE.md): Licence terms.
+
+## Optional
+
+- [Role briefs and translations](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/locale/index.md): Briefs for executives, security, legal and testers, in many locales (unreviewed).
+- [Comparisons](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/COMPARISONS.md): How this project relates to other CRM software (a demonstration, not a competitor).
+- [Benchmarks](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/BENCHMARKS.md): No formal benchmarks have been published yet.
+
+## Commands
+
+- full check: `scripts/ci-check.sh`
+- service tests: `cd contact-relationship-management-service-with-rust && cargo test && cargo test -- --ignored`
+- ui tests: `cd contact-relationship-management-ui-with-svelte && pnpm install && pnpm test && pnpm exec playwright test`
+- ui live tests (need a running service on :5160): `pnpm test:live`
+- guided tour (no service needed): `cd contact-relationship-management-ui-with-svelte && pnpm dev, then sign in as example@example.com`

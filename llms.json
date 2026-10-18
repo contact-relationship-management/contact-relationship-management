@@ -1,0 +1,304 @@
+{
+  "name": "Contact Relationship Management",
+  "summary": "A demo contact relationship management (CRM) system: sales automation, marketing automation, customer support and analytics. A Rust JSON API (Loco: Axum, SeaORM, PostgreSQL) and a Svelte 5 / SvelteKit 3 browser client built on the Lily Design System, specified in spec/. Demo software: synthetic data only, no real email is sent by default, no accreditation or certification is claimed.",
+  "repository": "https://github.com/contact-relationship-management/contact-relationship-management",
+  "status": "demo software; synthetic data only",
+  "stack": {
+    "service": "Rust, Loco (Axum, SeaORM), PostgreSQL",
+    "client": "Svelte 5 runes, SvelteKit 3 (SPA mode), Lily Design System"
+  },
+  "notes": [
+    "The specification in spec/ is the single source of truth; code and docs follow it.",
+    "Requirements are CRM-R<n> (spec/requirements.md); tasks are CRM-T<n> (spec/tasks.md). Every task traces to a requirement.",
+    "Be honest about limits: tasks.md records what was verified and what was not. Do not claim more than it does.",
+    "Translations (eight UI locales, role briefs in locales/) are machine drafts that no native speaker has reviewed.",
+    "Never put real personal data in examples, tests or fixtures; use synthetic data."
+  ],
+  "sections": [
+    {
+      "name": "Start here",
+      "links": [
+        {
+          "title": "README",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/README.md",
+          "path": "README.md",
+          "description": "What the project is and how the folders fit together."
+        },
+        {
+          "title": "Install and use",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/INSTALL.md",
+          "path": "INSTALL.md",
+          "description": "Prerequisites, running the service and the UI, sending email, the guided tour, the whole-repo check."
+        },
+        {
+          "title": "Specification index",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/index.md",
+          "path": "spec/index.md",
+          "description": "Entry point to the specification."
+        },
+        {
+          "title": "Purpose",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/purpose.md",
+          "path": "spec/purpose.md",
+          "description": "The problem and what the CRM provides."
+        },
+        {
+          "title": "Scope",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/scope.md",
+          "path": "spec/scope.md",
+          "description": "What is in and out."
+        },
+        {
+          "title": "Regulatory position",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/regulatory.md",
+          "path": "spec/regulatory.md",
+          "description": "Why this is demo software and what that means."
+        }
+      ]
+    },
+    {
+      "name": "Specification",
+      "links": [
+        {
+          "title": "Requirements",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/requirements.md",
+          "path": "spec/requirements.md",
+          "description": "Numbered requirements (CRM-R1 to CRM-R22) with acceptance criteria."
+        },
+        {
+          "title": "Tasks",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/tasks.md",
+          "path": "spec/tasks.md",
+          "description": "The delivery checklist (CRM-T1 onward) with resolutions, verification and stated limits."
+        },
+        {
+          "title": "Architecture",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/architecture.md",
+          "path": "spec/architecture.md",
+          "description": "Components and data flow."
+        },
+        {
+          "title": "Domain model",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/domain-model.md",
+          "path": "spec/domain-model.md",
+          "description": "Entities and relationships, held as relationship wrappers over upstream URNs."
+        },
+        {
+          "title": "Design decisions",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/design.md",
+          "path": "spec/design.md",
+          "description": "Numbered design decisions (CRM-D)."
+        },
+        {
+          "title": "Authentication and authorisation",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/auth.md",
+          "path": "spec/auth.md",
+          "description": "Personas, masking and record-level access."
+        },
+        {
+          "title": "Audit",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/audit.md",
+          "path": "spec/audit.md",
+          "description": "The audit trail and events."
+        },
+        {
+          "title": "Sales automation",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/sales-automation.md",
+          "path": "spec/sales-automation.md",
+          "description": "Leads, scoring, pipelines, deals, forecasting."
+        },
+        {
+          "title": "Marketing automation",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/marketing-automation.md",
+          "path": "spec/marketing-automation.md",
+          "description": "Consent, segments, campaigns, nurture."
+        },
+        {
+          "title": "Service and support",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/service-support.md",
+          "path": "spec/service-support.md",
+          "description": "Tickets, SLAs, knowledge base."
+        },
+        {
+          "title": "Analytics and reporting",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/analytics-reporting.md",
+          "path": "spec/analytics-reporting.md",
+          "description": "Dashboards and the honesty rules for derived numbers."
+        },
+        {
+          "title": "Integrations",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/integrations.md",
+          "path": "spec/integrations.md",
+          "description": "The upstream services CRM consumes (it holds EntityRef URNs and never duplicates upstream records) and how."
+        },
+        {
+          "title": "Testing",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/testing.md",
+          "path": "spec/testing.md",
+          "description": "Test strategy."
+        },
+        {
+          "title": "Roadmap",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/roadmap.md",
+          "path": "spec/roadmap.md",
+          "description": "What comes beyond the v1 task queue."
+        },
+        {
+          "title": "Glossary",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/glossary.md",
+          "path": "spec/glossary.md",
+          "description": "Terms."
+        }
+      ]
+    },
+    {
+      "name": "Rust service",
+      "links": [
+        {
+          "title": "Service README",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/README.md",
+          "path": "contact-relationship-management-service-with-rust/README.md",
+          "description": "Quick start, configuration, endpoints."
+        },
+        {
+          "title": "Service agent guide",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/AGENTS.md",
+          "path": "contact-relationship-management-service-with-rust/AGENTS.md",
+          "description": "Working agreements for the service."
+        },
+        {
+          "title": "Service changelog",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/CHANGELOG.md",
+          "path": "contact-relationship-management-service-with-rust/CHANGELOG.md",
+          "description": "Changes to the service."
+        }
+      ]
+    },
+    {
+      "name": "Svelte client",
+      "links": [
+        {
+          "title": "UI README",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/README.md",
+          "path": "contact-relationship-management-ui-with-svelte/README.md",
+          "description": "Status, environment variables, stack, tests."
+        },
+        {
+          "title": "UI agent guide",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/AGENTS.md",
+          "path": "contact-relationship-management-ui-with-svelte/AGENTS.md",
+          "description": "Working agreements for the client (Svelte 5 runes, Lily components, BFF auth, i18n)."
+        },
+        {
+          "title": "UI changelog",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/CHANGELOG.md",
+          "path": "contact-relationship-management-ui-with-svelte/CHANGELOG.md",
+          "description": "Changes to the client."
+        }
+      ]
+    },
+    {
+      "name": "Security and compliance",
+      "links": [
+        {
+          "title": "Security policy",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/SECURITY.md",
+          "path": "SECURITY.md",
+          "description": "Reporting vulnerabilities."
+        },
+        {
+          "title": "Compliance evidence pack",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/index.md",
+          "path": "spec/compliance/index.md",
+          "description": "Control mapping, DPIA template, runbook; not a certification."
+        },
+        {
+          "title": "Operations runbook",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/operations-runbook.md",
+          "path": "spec/compliance/operations-runbook.md",
+          "description": "Hardening, backup, keys, logging, release verification."
+        },
+        {
+          "title": "Penetration test scope",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/penetration-test-scope.md",
+          "path": "spec/compliance/penetration-test-scope.md",
+          "description": "Brief for an independent tester (no test has been done)."
+        },
+        {
+          "title": "Accessibility audit brief",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/accessibility-audit-brief.md",
+          "path": "spec/compliance/accessibility-audit-brief.md",
+          "description": "Test plan for a manual audit (none has been done)."
+        },
+        {
+          "title": "First release checklist",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/first-release-checklist.md",
+          "path": "spec/compliance/first-release-checklist.md",
+          "description": "The dry run that proves release signing."
+        },
+        {
+          "title": "AI statement",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/AI_STATEMENT.md",
+          "path": "AI_STATEMENT.md",
+          "description": "How AI was used in this project."
+        }
+      ]
+    },
+    {
+      "name": "Contributing",
+      "links": [
+        {
+          "title": "Contributing",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/CONTRIBUTING.md",
+          "path": "CONTRIBUTING.md",
+          "description": "How to build, test and propose changes."
+        },
+        {
+          "title": "Governance",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/GOVERNANCE.md",
+          "path": "GOVERNANCE.md",
+          "description": "A single maintainer; how decisions are made."
+        },
+        {
+          "title": "Changelog",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/CHANGELOG.md",
+          "path": "CHANGELOG.md",
+          "description": "Repository-level changes."
+        },
+        {
+          "title": "Licence",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/LICENSE.md",
+          "path": "LICENSE.md",
+          "description": "Licence terms."
+        }
+      ]
+    }
+  ],
+  "optional": [
+    {
+      "title": "Role briefs and translations",
+      "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/locale/index.md",
+      "path": "spec/locale/index.md",
+      "description": "Briefs for executives, security, legal and testers, in many locales (unreviewed)."
+    },
+    {
+      "title": "Comparisons",
+      "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/COMPARISONS.md",
+      "path": "COMPARISONS.md",
+      "description": "How this project relates to other CRM software (a demonstration, not a competitor)."
+    },
+    {
+      "title": "Benchmarks",
+      "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/BENCHMARKS.md",
+      "path": "BENCHMARKS.md",
+      "description": "No formal benchmarks have been published yet."
+    }
+  ],
+  "commands": {
+    "full check": "scripts/ci-check.sh",
+    "service tests": "cd contact-relationship-management-service-with-rust && cargo test && cargo test -- --ignored",
+    "ui tests": "cd contact-relationship-management-ui-with-svelte && pnpm install && pnpm test && pnpm exec playwright test",
+    "ui live tests (need a running service on :5160)": "pnpm test:live",
+    "guided tour (no service needed)": "cd contact-relationship-management-ui-with-svelte && pnpm dev, then sign in as example@example.com"
+  }
+}
