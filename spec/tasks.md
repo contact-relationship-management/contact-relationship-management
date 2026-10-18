@@ -835,6 +835,12 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       record-level policy; the lead, ticket and activity edits rely on the route
       guard only, as their other writes do. An edit overwrites without a version
       check, so two people editing the same card last-write-wins.
+      **Update 2026-10-18:** run by hand with `curl` against the rebuilt dev
+      service on a migrated database: all seven endpoints answered as specified
+      (200 for edits and positions, 404 for an unknown record, 422 for an empty
+      title and a malformed date), and a rescheduled follow-up showed on its new
+      day in `/api/insights/followups`. Not yet driven from the browser through
+      the UI; the audit entries were not read back.
 
 - [x] CRM-T56 **Export to CSV, TSV and Excel.** Traces to CRM-R21. Every
       `DataTable`, the boards and the follow-up calendar offer all three
