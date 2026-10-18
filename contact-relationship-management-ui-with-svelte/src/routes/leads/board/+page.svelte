@@ -8,8 +8,6 @@
   import Board from "#lib/components/Board.svelte";
   import type {
     KanbanCard,
-    KanbanField,
-    KanbanFieldEdit,
     KanbanLane,
   } from "@lilydesignsystem/svelte-kanban-board";
   import { editLead, leadStatus, listLeads, placeCard, type Lead } from "#lib/api/crm.js";
@@ -63,21 +61,8 @@
       .sort()
       .map((id) => ({ id, title: id })),
   );
-  const fields = $derived<KanbanField[]>([
-    {
-      id: "name",
-      header: t("common.name"),
-      type: "text",
-      editable: true,
-      // The card already shows the name as its title; the field is the way to change it.
-      format: () => t("kanban.edit"),
-      editLabel: t("kanban.rename"),
-    },
-  ]);
-  async function onEdit(edit: KanbanFieldEdit) {
-    if (edit.fieldId === "name" && typeof edit.value === "string") {
-      await editLead(edit.cardId, { display_name: edit.value });
-    }
+  async function onRename(id: string, title: string) {
+    await editLead(id, { display_name: title });
     await load();
   }
   const onPosition = async (id: string, position: number) => {
@@ -108,10 +93,9 @@
     {cards}
     {allowedColumns}
     {lanes}
-    {fields}
     {onMove}
     {onPosition}
-    {onEdit}
+    {onRename}
     testid="lead-board"
   />
 {/if}

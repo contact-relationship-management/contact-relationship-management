@@ -410,4 +410,20 @@ test.describe("export, undo and search", () => {
     await page.goto("/de-de/contacts");
     await expect(page).toHaveURL(/\/signin$/);
   });
+
+  test("a ticket's title is edited in place on the board and saved", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/tickets/board");
+    const board = page.getByTestId("ticket-board");
+    const first = board.locator(".kanban-board-card-title").first();
+    const before = (await first.innerText()).split("\n")[0]!.trim();
+    await first.dblclick();
+    const box = board.getByRole("textbox").first();
+    await box.fill("Renamed in place");
+    await box.press("Enter");
+    await expect(board).toContainText("Renamed in place");
+    await page.reload();
+    await expect(page.getByTestId("ticket-board")).toContainText("Renamed in place");
+    await expect(page.getByTestId("ticket-board")).not.toContainText(before);
+  });
 });

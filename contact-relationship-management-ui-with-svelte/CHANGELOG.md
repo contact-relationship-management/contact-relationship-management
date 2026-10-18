@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — kanban board 0.8.0 (2026-10-18)
+
+A card's title now edits in place on the lead, ticket and deal boards (double-click
+it, or F2; Enter saves, Escape cancels), replacing the "Edit" pseudo-field. A
+drop into another swimlane is refused outright with the board's own "can't drop
+here" cue (`allowLaneChange={false}`), and the search field has a visible
+label. Not adopted: the compact field layout (needs CSS).
+
 ### Changed — Lily label packs (2026-10-18)
 
 Adds `@lilydesignsystem/locale-translations` 0.1.0. Tables, boards, the

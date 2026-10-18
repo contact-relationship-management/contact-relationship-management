@@ -100,6 +100,10 @@
     }
     await load();
   }
+  async function onRename(id: string, name: string) {
+    await editDeal(id, { name });
+    await load();
+  }
   const onPosition = async (id: string, position: number) => {
     await placeCard("deals", id, position);
     await load();
@@ -178,6 +182,7 @@
     {onMove}
     {onPosition}
     {onEdit}
+    {onRename}
     testid="deal-board"
   />
 {/if}

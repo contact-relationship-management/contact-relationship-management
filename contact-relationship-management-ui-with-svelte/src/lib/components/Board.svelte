@@ -12,6 +12,8 @@
     - cards            { id, columnId, title, subtitle?, badges?, flag?, href? }[]
     - onMove           (cardId, toColumnId) => Promise — saves the move
     - onPosition       (cardId, position) => Promise — stores the card's place
+    - onRename         (cardId, title) => Promise — a card's title edits in place
+                       (double-click it, or F2)
     - fields           typed values shown under a card; an editable one edits
                        in place (click it, or F2) and calls `onEdit`
     - lanes            swimlanes; a card's `laneId` names its lane. Lanes only
@@ -43,6 +45,7 @@
     onMove,
     onPosition,
     onEdit,
+    onRename,
     fields,
     lanes,
     allowedColumns,
@@ -55,6 +58,7 @@
     onMove?: (cardId: string, toColumnId: string) => Promise<unknown>;
     onPosition?: (cardId: string, position: number) => Promise<unknown>;
     onEdit?: (edit: KanbanFieldEdit) => Promise<unknown>;
+    onRename?: (cardId: string, title: string) => Promise<unknown>;
     fields?: KanbanField[];
     lanes?: KanbanLane[];
     allowedColumns?: (card: KanbanCard) => string[];
@@ -143,6 +147,15 @@
     }
   }
 
+  async function handleTitleEdit(edit: { cardId: string; title: string }) {
+    moveError = null;
+    try {
+      await onRename?.(edit.cardId, edit.title);
+    } catch (cause) {
+      moveError = cause instanceof Error ? cause.message : t("kanban.editFailed");
+    }
+  }
+
   async function handleFieldEdit(edit: KanbanFieldEdit) {
     moveError = null;
     try {
@@ -177,6 +190,9 @@
   onMove={handleMove}
   onReorder={onPosition ? handleReorder : undefined}
   onFieldEdit={onEdit ? handleFieldEdit : undefined}
+  onTitleEdit={onRename ? handleTitleEdit : undefined}
+  allowLaneChange={false}
+  showSearchLabel
   dragPreviewText={(dragged) =>
     dragged.length === 1 ? dragged[0]!.title : fill("kanban.cards", { count: dragged.length })}
   onMoveError={handleError}

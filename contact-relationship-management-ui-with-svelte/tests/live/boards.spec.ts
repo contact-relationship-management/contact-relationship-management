@@ -28,8 +28,9 @@ test("a ticket is renamed on the board and the service has the new title", async
   const board = page.getByTestId("ticket-board");
   await expect(board).toContainText(`Live rename ${stamp}`);
   const card = board.getByRole("gridcell").filter({ hasText: `Live rename ${stamp}` });
-  await card.getByRole("button", { name: "Edit" }).click();
-  const box = card.getByRole("textbox");
+  // The title edits in place: double-click it (or F2), Enter commits.
+  await card.locator(".kanban-board-card-title").dblclick();
+  const box = board.getByRole("textbox", { name: new RegExp(`Live rename ${stamp}`) });
   await box.fill(`Live renamed ${stamp}`);
   await box.press("Enter");
   await expect(board).toContainText(`Live renamed ${stamp}`);
