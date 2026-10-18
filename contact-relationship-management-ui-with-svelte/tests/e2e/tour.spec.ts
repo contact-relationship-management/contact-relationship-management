@@ -377,4 +377,16 @@ test.describe("export, undo and search", () => {
     await search.fill("zzzz-no-such-follow-up");
     await expect(calendar.locator(".calendar-event")).toHaveCount(0);
   });
+
+  test("the campaign timeline downloads as CSV, TSV and Excel", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/campaigns");
+    const timeline = page.getByTestId("campaign-timeline");
+    for (const [name, ext] of [["CSV", "csv"], ["TSV", "tsv"], ["Excel", "xlsx"]] as const) {
+      const download = page.waitForEvent("download");
+      await timeline.getByRole("button", { name, exact: true }).click();
+      const file = await download;
+      expect(file.suggestedFilename()).toBe(`campaign-timeline.${ext}`);
+    }
+  });
 });

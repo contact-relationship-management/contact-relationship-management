@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — campaign timeline export, live tests (2026-10-18)
+
+The campaign timeline exports CSV, TSV and Excel and has a Copy button. `pnpm
+test:live` (`playwright.live.config.ts`, `tests/live/`) drives the boards and
+the follow-up calendar through the UI against a running service on port 5160
+and reads each change back from the service: a ticket rename, a deal amount, a
+card moved within its column with Alt+arrow, and a follow-up rescheduled with
+Alt+arrow. It creates records and leaves them, so use a development database.
+Mouse drag is not covered (Playwright's drag did not reach the board).
+
 ### Changed — Lily upgrade, TSV and copy (2026-10-18)
 
 Calendar 0.6.0, data grid 0.10.0, gantt chart 0.7.0 and kanban board 0.7.0.

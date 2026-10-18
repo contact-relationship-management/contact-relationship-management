@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "format": "prettier --write src",
-    "lint": "prettier --check src"
+    "lint": "prettier --check src",
+    "test:live": "playwright test -c playwright.live.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

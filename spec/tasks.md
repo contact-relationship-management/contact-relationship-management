@@ -841,6 +841,10 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       title and a malformed date), and a rescheduled follow-up showed on its new
       day in `/api/insights/followups`. Not yet driven from the browser through
       the UI; the audit entries were not read back.
+      **Update 2026-10-18:** driven through the UI (`pnpm test:live`, 4 tests):
+      ticket rename, deal amount edit, within-column reorder by Alt+arrow and
+      follow-up reschedule by Alt+arrow, each read back from the service. Not
+      covered: mouse drag, lead edits, the audit entries.
 
 - [x] CRM-T56 **Export to CSV, TSV and Excel.** Traces to CRM-R21. Every
       `DataTable`, the boards and the follow-up calendar offer all three
@@ -849,8 +853,8 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       test downloads `.csv`, `.tsv` and `.xlsx` from the contacts table.
       **Limits:** export holds what the browser already has, so a table paged by
       the service exports only the loaded rows; the file contents (column order,
-      typed cells) are not asserted by a test; the campaign timeline has no
-      export; translations are unreviewed.
+      typed cells) are not asserted by a test; translations are unreviewed.
+      **Update 2026-10-18:** the campaign timeline exports too (e2e test).
 
 - [x] CRM-T57 **`updated_at` moves on every edit.** Found while checking CRM-T55
       by hand: an edited deal's `updated_at` equalled its `created_at`, and the
@@ -861,4 +865,3 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       existing rows keep their old `updated_at` until next edited; the clippy
       lints in older test files that the Rust 1.99 toolchain reports are not
       from this change and are not fixed.
-

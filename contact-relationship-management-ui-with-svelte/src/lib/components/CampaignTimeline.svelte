@@ -71,6 +71,20 @@
     columnLabel: (start: string) => fmt.format(new Date(`${start}T00:00:00Z`)),
     zoomIn: t("timeline.zoomIn"),
     zoomOut: t("timeline.zoomOut"),
+    export: t("grid.export"),
+    exportCsv: "CSV",
+    exportTsv: "TSV",
+    exportExcel: "Excel",
+    exportAnnouncement: (_format: unknown, count: number, filename: string) =>
+      t("grid.exported").replace("{count}", String(count)).replace("{filename}", filename),
+    copy: t("grid.copy"),
+    copyAnnouncement: (count: number) => t("grid.copied").replace("{count}", String(count)),
+    copyFailed: t("grid.copyFailed"),
+    exportHeaders: {
+      task: t("timeline.task"),
+      start: t("cal.exportStart"),
+      end: t("cal.exportEnd"),
+    },
   });
 </script>
 
@@ -85,6 +99,7 @@
       {today}
       timeUnit="week"
       readonly
+      exportFilename="campaign-timeline"
       {labels}
       locale={i18n.locale}
     />
