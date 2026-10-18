@@ -34,7 +34,7 @@ jobs:
       # (cosign and the action read the Docker-style path, not podman's own).
       REGISTRY_AUTH_FILE: /home/runner/.docker/config.json
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
       # Podman, not Docker: it is on the runner image and builds the same
       # Containerfiles that developers build. The base images are pinned by
@@ -72,7 +72,7 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: contact-relationship-management-service-with-rust
