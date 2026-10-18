@@ -34,7 +34,7 @@ pub fn check(doc: &Value, schema: &str, instance: &Value, what: &str) {
     let validator = jsonschema::validator_for(&root).expect("schema compiles");
     let errors: Vec<String> = validator
         .iter_errors(instance)
-        .map(|e| format!("{} at {}", e, e.instance_path))
+        .map(|e| format!("{} at {}", e, e.instance_path()))
         .collect();
     assert!(
         errors.is_empty(),

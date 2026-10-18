@@ -19,8 +19,8 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
-use aes_gcm::aead::{Aead, KeyInit, OsRng, Payload};
-use aes_gcm::{AeadCore, Aes256Gcm, Key, Nonce};
+use aes_gcm::aead::{Aead, Generate, KeyInit, Payload};
+use aes_gcm::{Aes256Gcm, Key, Nonce};
 use base64::Engine;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 
@@ -92,7 +92,11 @@ impl Keyring {
                 return Err(format!("field key `{id}` must be 32 bytes (AES-256)"));
             }
             if keys
-                .insert(id.to_string(), *Key::<Aes256Gcm>::from_slice(&bytes))
+                .insert(
+                    id.to_string(),
+                    Key::<Aes256Gcm>::try_from(bytes.as_slice())
+                        .map_err(|_| format!("field key `{id}` must be 32 bytes (AES-256)"))?,
+                )
                 .is_some()
             {
                 return Err(format!("field key id `{id}` is duplicated"));
@@ -123,7 +127,7 @@ impl Keyring {
     #[must_use]
     pub fn seal(&self, plain: &str) -> String {
         let cipher = Aes256Gcm::new(&self.keys[&self.active]);
-        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+        let nonce = Nonce::generate();
         let sealed = cipher
             .encrypt(
                 &nonce,
@@ -162,7 +166,7 @@ impl Keyring {
         let (nonce, ciphertext) = blob.split_at(NONCE_LEN);
         let plain = Aes256Gcm::new(key)
             .decrypt(
-                Nonce::from_slice(nonce),
+                &Nonce::try_from(nonce).map_err(|_| CryptoError::Malformed)?,
                 Payload {
                     msg: ciphertext,
                     aad: &Self::aad(kid),

@@ -49,7 +49,7 @@ mimalloc = { version = "0.1.52" }
 sha2 = { version = "0.11" }
 # Signed unsubscribe links (CRM-T39).
 hmac = "0.13"
-base64 = { version = "0.22" }
+base64 = { version = "0.23" }
 prometheus = { version = "0.14" }
 # Upstream display-name lookups (`http` client mode only; stub is the
 # default). Same minimal reqwest configuration as the verifier's fetch.
@@ -76,7 +76,7 @@ entity-ref = "0.2.0"
 
 # Offline PASETO v4.public verification + the shared ABAC engine.
 authentication-verifier = { git = "https://github.com/SixArm/main-x-service.git", rev = "eeb10523a89c3aa1e4ac922d615fc34a456bdcd9", default-features = false }
-aes-gcm = "0.10"
+aes-gcm = "0.11"
 redis = { version = "1.7.1", default-features = false, features = ["tokio-comp", "connection-manager", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
 
 [features]
@@ -107,9 +107,9 @@ tokio = { version = "1.53", default-features = false, features = [
   "macros",
   "net",
 ] }
-serial_test = { version = "3.5.0" }
+serial_test = { version = "4.0.1" }
 # Mint PASETO v4.public tokens + a matching Ed25519 key set in-process so
 # the auth path is verified without the auth service or a network.
 ed25519-dalek = { version = "3.0.0" }
 rusty_paseto = { version = "0.10", default-features = false, features = ["v4_public", "serde_json"] }
-jsonschema = { version = "0.30", default-features = false }
+jsonschema = { version = "0.58", default-features = false }
