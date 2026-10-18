@@ -7,10 +7,10 @@ FROM docker.io/library/rust:1.99-bookworm@sha256:e12566d5abc17a0da741628782cdb50
 WORKDIR /src
 COPY . .
 RUN cargo build --release --locked --features keycloak \
- && strip target/release/contact-relationship-management-service
+ && strip target/release/contact-relationship-management
 
 FROM gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f
-COPY --from=build /src/target/release/contact-relationship-management-service /app/crm-service
+COPY --from=build /src/target/release/contact-relationship-management /app/crm-service
 COPY --from=build /src/config /app/config
 WORKDIR /app
 ENV LOCO_ENV=production \

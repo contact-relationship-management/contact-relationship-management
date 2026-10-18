@@ -24,7 +24,7 @@ services:
       # Matches config/test.yaml, so a bare `cargo test -- --ignored`
       # finds its database. `scripts/ci-check.sh test-db` ignores this and
       # creates its own `ci_*` database per crate instead.
-      POSTGRES_DB: contact_relationship_management_service_test
+      POSTGRES_DB: contact_relationship_management_test
     ports:
       # Override to run two services' databases side by side:
       #   TEST_DB_PORT=5433 scripts/test-db.sh up <crate>
@@ -44,7 +44,7 @@ services:
     healthcheck:
       # `scripts/test-db.sh up` waits on this, so a test run cannot start
       # against a database that is still initialising.
-      test: ["CMD-SHELL", "pg_isready -U loco -d contact_relationship_management_service_test"]
+      test: ["CMD-SHELL", "pg_isready -U loco -d contact_relationship_management_test"]
       interval: 2s
       timeout: 3s
       retries: 30

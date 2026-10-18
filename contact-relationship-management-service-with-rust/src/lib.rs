@@ -1,4 +1,4 @@
-//! `contact-relationship-management-service` — a loco.rs consumer
+//! `contact-relationship-management` — a loco.rs consumer
 //! application for **contact relationship management** across four
 //! modules: sales automation (contacts / accounts / leads with
 //! deterministic scoring / deal pipelines / forecasting), marketing

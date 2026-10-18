@@ -28,7 +28,7 @@ exposure — not a code gap.
 ## Quick start
 
 ```bash
-export DATABASE_URL=postgres://loco:loco@localhost:5432/contact_relationship_management_service_development
+export DATABASE_URL=postgres://loco:loco@localhost:5432/contact_relationship_management_development
 cargo run -- db migrate && cargo run -- task seed && cargo run -- start
 curl localhost:5150/api/forecast | jq .
 ```

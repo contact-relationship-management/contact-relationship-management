@@ -30,7 +30,7 @@ case "${stage}" in
     # Needs a Postgres reachable with the PG_* settings (defaults match
     # compose.test.yaml: scripts/test-db.sh up).
     : "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=loco}" "${PG_PASSWORD:=loco}"
-    db=ci_contact_relationship_management_service
+    db=ci_contact_relationship_management
     export PGPASSWORD="${PG_PASSWORD}"
     dropdb --if-exists -h "${PG_HOST}" -p "${PG_PORT}" -U "${PG_USER}" "${db}"
     createdb -h "${PG_HOST}" -p "${PG_PORT}" -U "${PG_USER}" "${db}"

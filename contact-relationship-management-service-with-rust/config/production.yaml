@@ -1,4 +1,4 @@
-# Loco configuration file — contact-relationship-management-service (production).
+# Loco configuration file — contact-relationship-management (production).
 #
 # This file previously held ONLY the `cache:` block below — no
 # `server:`, `database:`, or `logger:` at all. loco's top-level

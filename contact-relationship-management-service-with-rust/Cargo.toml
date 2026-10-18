@@ -6,7 +6,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 publish = true
-default-run = "contact-relationship-management-service"
+default-run = "contact-relationship-management"
 authors = ["Joel Parker Henderson <joel@joelparkerhenderson.com>"]
 description = "Contact Relationship Management (CRM): service for APIs, inbound contacts, outbound contacts, conversation automation, engagement analytics"
 readme = "README.md"
@@ -90,7 +90,7 @@ paseto = ["authentication-verifier/paseto", "authentication-verifier/fetch"]
 keycloak = ["authentication-verifier/keycloak"]
 
 [[bin]]
-name = "contact-relationship-management-service"
+name = "contact-relationship-management"
 path = "src/bin/main.rs"
 required-features = []
 

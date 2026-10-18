@@ -40,7 +40,7 @@ workers:
 queue:
   kind: Postgres
   # Postgres-backed background jobs; shares the app database.
-  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/contact_relationship_management_service_test") }}
+  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/contact_relationship_management_test") }}
   # Flush all queued jobs on startup — dev/test only, never production.
   dangerously_flush: false
 
@@ -71,7 +71,7 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/contact_relationship_management_service_test") }}
+  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/contact_relationship_management_test") }}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.

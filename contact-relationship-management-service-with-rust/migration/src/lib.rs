@@ -1,5 +1,5 @@
 //! `sea-orm-migration` schema migrations for
-//! `contact-relationship-management-service`.
+//! `contact-relationship-management`.
 //!
 //! The [`Migrator`] runs the ordered list below at boot: the
 //! relationship layer (contacts / accounts / activities / consent),

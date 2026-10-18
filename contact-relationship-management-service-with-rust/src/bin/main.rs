@@ -1,4 +1,4 @@
-//! `contact-relationship-management-service` binary entrypoint — boots the loco.rs CLI,
+//! `contact-relationship-management` binary entrypoint — boots the loco.rs CLI,
 //! wiring the `App` hooks and the database migrator. See the crate
 //! library docs for the service overview.
 

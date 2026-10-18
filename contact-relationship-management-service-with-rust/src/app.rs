@@ -1,7 +1,7 @@
 //! loco.rs application wiring: the [`App`] `Hooks` implementation that
 //! registers routes, the blanket auth guard, the API-version
 //! middleware, and the truncate lifecycle for
-//! `contact-relationship-management-service`.
+//! `contact-relationship-management`.
 
 use async_trait::async_trait;
 use axum::{
@@ -473,7 +473,7 @@ impl CachedResponse {
 }
 
 /// The loco.rs application hooks for
-/// `contact-relationship-management-service`.
+/// `contact-relationship-management`.
 pub struct App;
 #[async_trait]
 impl Hooks for App {
