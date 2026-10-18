@@ -851,3 +851,14 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       the service exports only the loaded rows; the file contents (column order,
       typed cells) are not asserted by a test; the campaign timeline has no
       export; translations are unreviewed.
+
+- [x] CRM-T57 **`updated_at` moves on every edit.** Found while checking CRM-T55
+      by hand: an edited deal's `updated_at` equalled its `created_at`, and the
+      campaign timeline uses `updated_at` as a bar's end.
+      **Resolution:** migration `m20261018_000016` (trigger on 18 tables that are
+      edited in place; respects an explicit `updated_at`). One database test
+      assertion. **Limits:** only the lead rename is asserted, not every table;
+      existing rows keep their old `updated_at` until next edited; the clippy
+      lints in older test files that the Rust 1.99 toolchain reports are not
+      from this change and are not fixed.
+

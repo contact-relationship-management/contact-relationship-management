@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `updated_at` now moves on every edit (CRM-T57, 2026-10-18)
+
+SeaORM updates write only the columns given, so `updated_at` kept its insert
+value: an edited deal said it was last changed when it was created. Migration
+`m20261018_000016` adds a `BEFORE UPDATE` trigger on the 18 tables that are
+edited in place; it sets `now()` unless the statement sets `updated_at` itself.
+Append-only tables (audit log, consent events, forecast snapshots, outbox, queue)
+are left alone. A lead rename in the database tests checks it.
+
 ### Added — board edits and follow-up reschedule (CRM-T55, 2026-10-17)
 
 `PUT /api/deals/{pid}`, `/leads/{pid}`, `/tickets/{pid}` edit a card in place;
