@@ -329,8 +329,8 @@ than either record was, and that the merge is recorded.*
   `person_ref` is not repointed: the person service is a separate system, and
   two person records stay two until someone merges them there.
 - **Consent never widens.** The survivor's marketing consent becomes the
-  stricter of the two (withdrawn over declined over unknown over granted-ness
-  is decided by one ordered table in the code, tested for every pair). A grant
+  stricter of the two: `withdrawn` over `pending` over `granted`, one ordered
+  rule in the code, tested for every pair. A grant
   is never inferred from the other record. Both consent histories are kept,
   each entry with its original source and date, and a consent event records
   the merge. The send path (CRM-D6) then applies to the survivor as it stands.

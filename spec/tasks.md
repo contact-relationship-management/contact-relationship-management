@@ -1023,7 +1023,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       confirmation that states what moves and that consent follows the stricter
       side; the labels in all 8 locales (unreviewed, as before).
       **Done when:** database tests cover the moves, the consent cases (granted
-      with withdrawn, withdrawn with granted, unknown with granted), refusal of an
+      with withdrawn, withdrawn with granted, pending with granted), refusal of an
       erased contact, of the same contact twice, and of a contact the caller
       cannot write; the audit chain still verifies; a failure part-way leaves both
       contacts unchanged; OpenAPI and the checked response schema are updated; an
