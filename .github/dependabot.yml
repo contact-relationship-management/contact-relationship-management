@@ -10,10 +10,8 @@ updates:
     groups:
       cargo-minor-and-patch:
         update-types: [minor, patch]
-  - package-ecosystem: cargo
-    directory: /contact-relationship-management-service-with-rust/migration
-    schedule:
-      interval: weekly
+  # The migrations crate is a path dependency of the service and has no
+  # lockfile of its own, so the service entry above covers it.
   - package-ecosystem: cargo
     directory: /contact-relationship-management-matcher-with-rust
     schedule:
