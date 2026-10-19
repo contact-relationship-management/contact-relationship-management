@@ -4,7 +4,8 @@
 
 FROM docker.io/library/node:26-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS build
 WORKDIR /src
-RUN corepack enable && corepack prepare pnpm@11.0.8 --activate
+# Node 25+ no longer ships corepack, so install the pinned pnpm with npm.
+RUN npm install --global pnpm@11.0.8
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
