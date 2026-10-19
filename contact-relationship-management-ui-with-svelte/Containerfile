@@ -12,6 +12,16 @@ COPY . .
 RUN pnpm run build && pnpm prune --prod
 
 FROM gcr.io/distroless/nodejs24-debian12:nonroot@sha256:14d42e2511532589a7c7e01a753667a74fcc96266e137e8125006b87b0c32d0a
+# Build arguments from the release workflow (scripts/release-version.sh gives
+# VERSION, checked against the manifest and the tag); the defaults mark a
+# local build.
+ARG VERSION=0.0.0-dev
+ARG REVISION=unknown
+LABEL org.opencontainers.image.title="Contact Relationship Management web UI" \
+      org.opencontainers.image.source="https://github.com/contact-relationship-management/contact-relationship-management" \
+      org.opencontainers.image.licenses="MIT OR Apache-2.0" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}"
 WORKDIR /app
 COPY --from=build /src/build ./build
 COPY --from=build /src/node_modules ./node_modules

@@ -46,12 +46,22 @@ jobs:
           mkdir -p "$(dirname "${REGISTRY_AUTH_FILE}")"
           printf '%s' "${REGISTRY_TOKEN}" \
             | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
+      - id: version
+        name: Check that the tag, the manifest and the image agree
+        run: echo "version=$(scripts/release-version.sh "${{ matrix.name }}" "${{ github.ref_name }}")" >> "${GITHUB_OUTPUT}"
       - name: Build
         run: |
           podman build \
+            --build-arg "VERSION=${{ steps.version.outputs.version }}" \
+            --build-arg "REVISION=${{ github.sha }}" \
             --file "${{ matrix.context }}/Containerfile" \
             --tag "${IMAGE}:${{ github.ref_name }}" \
             "${{ matrix.context }}"
+      - name: Check the image's own version label
+        run: |
+          label="$(podman inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE}:${{ github.ref_name }}")"
+          test "${label}" = "${{ steps.version.outputs.version }}" \
+            || { echo "image label '${label}' is not ${{ steps.version.outputs.version }}" >&2; exit 1; }
       - id: build
         name: Push, and read the pushed digest
         run: |

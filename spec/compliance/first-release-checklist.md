@@ -19,6 +19,7 @@ code):
       limited them to public repositories on some plans; if the repository is
       private and attestations are unavailable, the provenance step will fail
       and you should drop that step or change plan before tagging.
+- [ ] **Bump the version first.** The release workflow refuses a tag whose version (the part before any `-`) differs from `version` in `contact-relationship-management-service-with-rust/Cargo.toml` and in `contact-relationship-management-ui-with-svelte/package.json` (`scripts/release-version.sh`). A dry-run tag such as `v0.1.2-rc.1` therefore needs both manifests at `0.1.2`.
 - [ ] A **branch or tag protection** rule limits who can push `v*` tags.
 - [ ] `main` is green: `scripts/ci-check.sh` passes and the CI workflow ran.
 - [ ] The **CHANGELOG** has an entry for this version.
