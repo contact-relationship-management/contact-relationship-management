@@ -10,7 +10,7 @@
 
 ```bash
 cd contact-relationship-management-service-with-rust
-podman compose -f compose.test.yaml up -d   # test PostgreSQL
+podman compose -f compose.test.yaml up -d   # test PostgreSQL and Redis
 cargo build
 cargo test                                   # DB-free unit and request tests
 cargo test -- --ignored                      # database-backed tests

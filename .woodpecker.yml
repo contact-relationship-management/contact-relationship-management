@@ -13,6 +13,8 @@ services:
       POSTGRES_USER: loco
       POSTGRES_PASSWORD: loco
       POSTGRES_DB: postgres
+  - name: redis
+    image: redis:8-alpine
 
 steps:
   - name: fmt
@@ -36,6 +38,7 @@ steps:
     image: *rust_image
     environment:
       PG_HOST: postgres
+      REDIS_HOST: redis
     commands:
       - apt-get update && apt-get install -y --no-install-recommends postgresql-client
       - scripts/ci-check.sh test-db
@@ -43,7 +46,8 @@ steps:
   - name: front-end
     image: 'node:26-bookworm'
     commands:
-      - corepack enable && corepack prepare pnpm@11.0.8 --activate
+      # Node 25+ no longer ships corepack.
+      - npm install --global pnpm@11.0.8
       - scripts/ci-check.sh front-end
 
   - name: supply-chain

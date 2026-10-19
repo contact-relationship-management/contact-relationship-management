@@ -45,6 +45,13 @@ case "${stage}" in
     (cd "${SVC}" \
       && DATABASE_URL="postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}" \
          cargo test "${FEATURES[@]}" -- --ignored --test-threads=1)
+    # The Redis tests skip silently when CRM_REDIS_URL is unset, so run them
+    # on their own, against a real Redis. Not set for the run above: the rate
+    # limiter would then share counters across the whole suite.
+    : "${REDIS_HOST:=localhost}" "${REDIS_PORT:=6379}"
+    (cd "${SVC}" \
+      && CRM_REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}" \
+         cargo test "${FEATURES[@]}" redis_store -- --ignored --test-threads=1)
     ;;
   front-end)
     cd "${FE}"

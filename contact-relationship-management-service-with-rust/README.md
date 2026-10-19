@@ -28,6 +28,8 @@ exposure — not a code gap.
 ## Quick start
 
 ```bash
+# PostgreSQL and Redis in Podman (disposable; the database is in memory).
+podman compose -f compose.test.yaml up -d
 export DATABASE_URL=postgres://loco:loco@localhost:5432/contact_relationship_management_development
 cargo run -- db migrate && cargo run -- task seed && cargo run -- start
 curl localhost:5150/api/forecast | jq .
