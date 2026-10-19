@@ -6,7 +6,9 @@
     eraseContact,
     getContact,
     getContactDuplicates,
+    mergeContact,
     money,
+    type MergeResult,
     recordConsent,
     type Duplicate,
   } from "#lib/api/crm.js";
@@ -19,6 +21,15 @@
   // Likely duplicates (CRM-R23). Secondary: a failure here leaves the page as
   // it was, so it is not an error state.
   let duplicates = $state<Duplicate[] | null>(null);
+
+  // Merging a duplicate into this contact (CRM-R24): a dry run first, so the
+  // confirmation shows exactly what will move.
+  let merging = $state<Duplicate | null>(null);
+  let preview = $state<MergeResult | null>(null);
+  let mergeReason = $state("");
+  let mergeBusy = $state(false);
+  let mergeError = $state<string | null>(null);
+  let mergedName = $state<string | null>(null);
 
   const pid = $derived(page.params.pid ?? "");
   // Rough client-side gate from data already on the page — the
@@ -75,6 +86,58 @@
       .filter((f) => f.outcome === outcome && f.field in FIELD_LABELS)
       .map((f) => t(FIELD_LABELS[f.field as keyof typeof FIELD_LABELS]))
       .join(", ");
+
+  const TABLE_LABELS = {
+    activities: "contact.mergeTable.activities",
+    leads: "contact.mergeTable.leads",
+    deals: "contact.mergeTable.deals",
+    tickets: "contact.mergeTable.tickets",
+    email_deliveries: "contact.mergeTable.email_deliveries",
+    consent_events: "contact.mergeTable.consent_events",
+    nurture_enrollments: "contact.mergeTable.nurture_enrollments",
+    working_group_members: "contact.mergeTable.working_group_members",
+  } as const;
+  const counted = (counts: Record<string, number>) =>
+    Object.entries(counts)
+      .filter(([key, n]) => n > 0 && key in TABLE_LABELS)
+      .map(([key, n]) => `${t(TABLE_LABELS[key as keyof typeof TABLE_LABELS])}: ${n}`)
+      .join(", ");
+
+  async function startMerge(d: Duplicate) {
+    mergeError = null;
+    mergedName = null;
+    mergeReason = "";
+    preview = null;
+    merging = d;
+    try {
+      preview = await mergeContact(d.contact.pid, pid, "preview", true);
+    } catch (cause) {
+      mergeError = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+
+  function cancelMerge() {
+    merging = null;
+    preview = null;
+    mergeError = null;
+  }
+
+  async function confirmMerge() {
+    if (!merging || !mergeReason.trim()) return;
+    mergeBusy = true;
+    mergeError = null;
+    try {
+      await mergeContact(merging.contact.pid, pid, mergeReason.trim(), false);
+      mergedName = merging.contact.display_name;
+      cancelMerge();
+      await load();
+      await loadDuplicates();
+    } catch (cause) {
+      mergeError = cause instanceof Error ? cause.message : String(cause);
+    } finally {
+      mergeBusy = false;
+    }
+  }
 
   async function consent(action: "granted" | "withdrawn") {
     actionError = null;
@@ -205,10 +268,54 @@
                   {t("contact.dupDiffers")}: {fieldNames(d, "disagree")}.{/if}
               </span>
             {/if}
+            <br />
+            <button
+              onclick={() => void startMerge(d)}
+              disabled={merging !== null}
+              data-testid="merge"
+            >
+              {t("contact.merge")}
+            </button>
           </li>
         {/each}
       </ul>
     {/if}
+  {/if}
+  {#if mergedName}
+    <p role="status" data-testid="merge-done">{mergedName}: {t("contact.mergeDone")}</p>
+  {/if}
+  {#if merging}
+    <section data-testid="merge-panel" aria-labelledby="merge-heading">
+      <h3 id="merge-heading">{t("contact.merge")}: {merging.contact.display_name}</h3>
+      {#if preview}
+        <p data-testid="merge-moves">
+          {t("contact.mergeMoves")}:
+          {counted(preview.moved) || t("contact.mergeNothing")}.
+        </p>
+        {#if counted(preview.dropped)}
+          <p data-testid="merge-drops">
+            {t("contact.mergeDrops")}: {counted(preview.dropped)}.
+          </p>
+        {/if}
+        <p data-testid="merge-consent">
+          {t("contact.mergeConsent")}: <strong>{preview.consent.result}</strong>
+        </p>
+        <p class="muted">{t("contact.mergeWarn")}</p>
+        <label>
+          {t("contact.mergeReason")}
+          <input bind:value={mergeReason} data-testid="merge-reason" />
+        </label>
+        <button
+          onclick={() => void confirmMerge()}
+          disabled={mergeBusy || !mergeReason.trim()}
+          data-testid="merge-confirm"
+        >
+          {t("contact.mergeConfirm")}
+        </button>
+      {/if}
+      <button onclick={cancelMerge} data-testid="merge-cancel">{t("contact.mergeCancel")}</button>
+      {#if mergeError}<p role="alert" data-testid="merge-error">{mergeError}</p>{/if}
+    </section>
   {/if}
 
   <h2>{t("contact.timeline")}</h2>

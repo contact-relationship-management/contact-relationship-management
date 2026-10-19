@@ -1227,6 +1227,69 @@ function contactDuplicates(pid: string): DemoReply {
   });
 }
 
+/**
+ * Merge a contact into another (CRM-R24), in the shape the service answers.
+ * The tour moves the deals and tickets it holds; every other table is empty
+ * here. Consent follows the stricter side: withdrawn, then never, then granted.
+ */
+function mergeContact(pid: string, body: unknown): DemoReply {
+  const { into_pid, reason, dry_run } = (body ?? {}) as {
+    into_pid?: string;
+    reason?: string;
+    dry_run?: boolean;
+  };
+  if (!reason?.trim()) return problem(422, "reason is required");
+  if (pid === into_pid)
+    return problem(422, "a contact cannot be merged into itself");
+  const merged = state.contacts.find((c) => c.pid === pid);
+  const survivor = state.contacts.find((c) => c.pid === into_pid);
+  if (!merged || !survivor) return problem(404, "contact not found");
+  const rank = (s: string) => (s === "withdrawn" ? 2 : s === "granted" ? 0 : 1);
+  const result =
+    rank(merged.marketing_consent) > rank(survivor.marketing_consent)
+      ? merged.marketing_consent
+      : survivor.marketing_consent;
+  const from = state.links[pid] ?? { deals: [], tickets: [] };
+  const filled = survivor.job_title
+    ? []
+    : merged.job_title
+      ? ["job_title"]
+      : [];
+  const reply = {
+    survivor_pid: survivor.pid,
+    merged_pid: merged.pid,
+    dry_run: dry_run === true,
+    moved: {
+      activities: 0,
+      leads: 0,
+      deals: from.deals.length,
+      tickets: from.tickets.length,
+      email_deliveries: 0,
+      consent_events: 0,
+      nurture_enrollments: 0,
+      working_group_members: 0,
+    },
+    dropped: { nurture_enrollments: 0, working_group_members: 0 },
+    filled,
+    consent: {
+      survivor: survivor.marketing_consent,
+      merged: merged.marketing_consent,
+      result,
+    },
+  };
+  if (dry_run === true) return ok(reply);
+  const to = state.links[survivor.pid] ?? { deals: [], tickets: [] };
+  state.links[survivor.pid] = {
+    deals: [...to.deals, ...from.deals],
+    tickets: [...to.tickets, ...from.tickets],
+  };
+  delete state.links[pid];
+  if (filled.length) survivor.job_title = merged.job_title;
+  survivor.marketing_consent = result;
+  state.contacts = state.contacts.filter((c) => c.pid !== pid);
+  return ok(reply);
+}
+
 function eraseContact(pid: string): DemoReply {
   const contact = state.contacts.find((c) => c.pid === pid);
   if (!contact) return problem(404, "contact not found");
@@ -1509,6 +1572,7 @@ export function demoHandle(
       return ok(contact);
     }
     if (tail === "erase" && post) return eraseContact(id!);
+    if (tail === "merge" && post) return mergeContact(id!, body);
   }
   if (head === "accounts" && seg.length === 1 && get) return ok(state.accounts);
   if (head === "leads") {

@@ -992,7 +992,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       new default only after the matcher is published (0.1.1) and the service
       dependency is bumped. The CRM-T61 note stays as is until then.
 
-- [ ] CRM-T64 **Merge two duplicate contacts.** *Service slice done 2026-10-19 (endpoint, ledger migration, 4 DB tests, enforcement and schema checks); the UI action, the 8 locales, and the e2e and live tests remain.* Traces to CRM-R23 and CRM-R24
+- [x] CRM-T64 **Merge two duplicate contacts.** *Done 2026-10-19: service (endpoint, ledger migration, 4 DB tests, enforcement and schema checks) and UI (Merge on a duplicate, dry-run preview, required reason, 8 locales unreviewed by native speakers, 2 e2e tests, 1 live test). Limits: not run against a database that already holds data; no unmerge (the ledger makes one possible); the duplicates hint in all 8 languages was reworded because it said nothing is ever merged.* Traces to CRM-R23 and CRM-R24
       (agreed 2026-10-19: merge ledger, consent order `withdrawn` > `never` > `granted`, no second approver), written with it (the three-part rule: spec,
       code and tests together). This is the first feature built on the matcher
       that changes data, so it needs the most care. Today the duplicates

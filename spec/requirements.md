@@ -305,7 +305,7 @@ that two contact records are the same person, and why.*
 
 ## CRM-R24 — Merge two contacts into one
 
-*Status: service built (CRM-T64); the UI action is still to come.*
+*Status: built (CRM-T64).*
 
 *As someone who keeps the contact list clean, I can merge a duplicate contact
 into the one I keep, knowing the result is never more permissive about consent

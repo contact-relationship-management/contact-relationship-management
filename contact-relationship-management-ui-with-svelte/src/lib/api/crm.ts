@@ -200,6 +200,34 @@ export function getContactDuplicates(
   return api(`/contacts/${pid}/duplicates`, init);
 }
 
+/** What a merge moves or drops, by table, and what consent becomes (CRM-R24). */
+export interface MergeResult {
+  survivor_pid: string;
+  merged_pid: string;
+  dry_run: boolean;
+  moved: Record<string, number>;
+  dropped: Record<string, number>;
+  filled: string[];
+  consent: { survivor: string; merged: string; result: string };
+}
+
+/**
+ * Merge the contact `pid` into `intoPid`, which survives (CRM-R24).
+ * Destructive-classified. With `dryRun` nothing changes and the counts are
+ * exact. Consent never widens: the stricter of the two wins.
+ */
+export function mergeContact(
+  pid: string,
+  intoPid: string,
+  reason: string,
+  dryRun: boolean,
+): Promise<MergeResult> {
+  return api(`/contacts/${pid}/merge`, {
+    method: "POST",
+    body: { into_pid: intoPid, reason, dry_run: dryRun },
+  });
+}
+
 /** Record a consent change. */
 export function recordConsent(
   pid: string,

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — merge a duplicate into this contact (CRM-R24, 2026-10-19)
+
+Each likely duplicate on a contact page has a Merge action. It asks the service
+for a dry run, shows what will move and what marketing consent becomes (the
+stricter of the two), requires a reason, and merges only on confirmation. The
+duplicates hint now says nothing changes until you choose Merge. Labels in all 8
+locales (not reviewed by native speakers). Needs a service with `POST
+/api/contacts/{pid}/merge`.
+
 ### Changed — kanban board 0.8.1 (2026-10-18)
 
 A card's title now edits in place on the lead, ticket and deal boards (double-click

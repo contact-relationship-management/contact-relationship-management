@@ -558,4 +558,45 @@ test.describe("export, undo and search", () => {
       "Wahrscheinlich dieselbe Person",
     );
   });
+  test("a duplicate can be merged into this contact, after a preview, with a reason", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/contacts/con-1");
+    await page.getByTestId("merge").click();
+    const panel = page.getByTestId("merge-panel");
+    await expect(panel).toContainText("Imogen Hartly");
+    // The preview names what moves and what consent becomes; nothing has changed.
+    await expect(page.getByTestId("merge-moves")).toContainText("Will move");
+    await expect(page.getByTestId("merge-consent")).toContainText(
+      "Marketing consent afterwards",
+    );
+    // A reason is required.
+    await expect(page.getByTestId("merge-confirm")).toBeDisabled();
+    await page.getByTestId("merge-cancel").click();
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByTestId("duplicates")).toContainText("Imogen Hartly");
+
+    await page.getByTestId("merge").click();
+    await page.getByTestId("merge-reason").fill("Same person, two spellings");
+    await page.getByTestId("merge-confirm").click();
+    await expect(page.getByTestId("merge-done")).toContainText("Merged.");
+    await expect(page.getByTestId("duplicates-none")).toBeVisible();
+
+    // The merged contact is gone from the list.
+    await page.goto("/contacts");
+    await expect(page.getByText("Imogen Hartly")).toHaveCount(0);
+  });
+
+  test("the merge panel follows the language", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/de-de/contacts/con-1");
+    await page.getByTestId("merge").click();
+    await expect(page.getByTestId("merge-moves")).toContainText(
+      "Wird verschoben",
+    );
+    await expect(page.getByTestId("merge-confirm")).toHaveText(
+      "Zusammenführen",
+    );
+  });
 });

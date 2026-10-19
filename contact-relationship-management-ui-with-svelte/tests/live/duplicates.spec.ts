@@ -81,3 +81,47 @@ test("the contact page lists the service's likely duplicates, and a unique conta
     "No likely duplicates.",
   );
 });
+
+test("a duplicate is merged into this contact through the UI, and the service closes it", async ({
+  page,
+  request,
+}) => {
+  const name = `Merge${Date.now().toString(36)}`;
+  const survivor = await create(request, "contacts", {
+    person_ref: person(),
+    display_name: `Robert ${name}`,
+    job_title: "VP Sales",
+  });
+  const twin = await create(request, "contacts", {
+    person_ref: person(),
+    display_name: `Bob ${name}`,
+  });
+  await create(request, "activities", {
+    subject_kind: "contact",
+    subject_pid: twin.pid,
+    kind: "note",
+    summary: "Met at the conference",
+  });
+
+  await page.goto(`/contacts/${survivor.pid}`);
+  await page
+    .getByTestId("duplicate")
+    .filter({ hasText: `Bob ${name}` })
+    .getByTestId("merge")
+    .click();
+  // The preview comes from the service's dry run and names what will move.
+  await expect(page.getByTestId("merge-moves")).toContainText("Activities: 1");
+  await expect(page.getByTestId("merge-consent")).toContainText("never");
+  await page.getByTestId("merge-reason").fill("Same person, nickname");
+  await page.getByTestId("merge-confirm").click();
+  await expect(page.getByTestId("merge-done")).toContainText(`Bob ${name}`);
+
+  // The twin is closed, and its activity now belongs to the survivor.
+  expect((await request.get(`${API}/api/contacts/${twin.pid}`)).status()).toBe(
+    404,
+  );
+  const detail = (await (
+    await request.get(`${API}/api/contacts/${survivor.pid}`)
+  ).json()) as { activities: unknown[] };
+  expect(detail.activities).toHaveLength(1);
+});
