@@ -992,8 +992,8 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       new default only after the matcher is published (0.1.1) and the service
       dependency is bumped. The CRM-T61 note stays as is until then.
 
-- [ ] CRM-T64 **Merge two duplicate contacts.** Traces to CRM-R23, and needs a
-      new requirement, **CRM-R24**, written with it (the three-part rule: spec,
+- [ ] CRM-T64 **Merge two duplicate contacts.** Traces to CRM-R23 and CRM-R24
+      (proposed in `requirements.md`, awaiting review; no code until agreed), written with it (the three-part rule: spec,
       code and tests together). This is the first feature built on the matcher
       that changes data, so it needs the most care. Today the duplicates
       endpoint is advice only (CRM-T61) and the manual repoint endpoint (CRM-T2)
@@ -1016,8 +1016,9 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       survivor cover the merged-in data; that the audit chain records one entry
       naming both contacts, the reason and the counts moved, never the values; an
       event for the seam; idempotency keys (CRM-T52); and whether a merge can be
-      undone (the safe default is that it cannot be undone automatically, and the
-      audit entry is enough to repair it by hand; an unmerge is its own task).
+      undone (the safe default is that it cannot be undone automatically; counts in the
+      audit entry are not enough to repair by hand, so CRM-R24 proposes a merge
+      ledger of moved row ids; an unmerge is its own task).
       **UI:** a Merge action on a duplicate in the contact page's list, behind a
       confirmation that states what moves and that consent follows the stricter
       side; the labels in all 8 locales (unreviewed, as before).

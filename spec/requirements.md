@@ -302,3 +302,50 @@ that two contact records are the same person, and why.*
   that score, then have their addresses fetched from the person service and
   are scored again; each says whether that happened (`email_checked`).
 
+
+## CRM-R24 — Merge two contacts into one
+
+*Status: proposed, for review before any code (CRM-T64).*
+
+*As someone who keeps the contact list clean, I can merge a duplicate contact
+into the one I keep, knowing the result is never more permissive about consent
+than either record was, and that the merge is recorded.*
+
+- `POST /api/contacts/{pid}/merge` with `{ "into_pid", "reason", "dry_run" }`.
+  The contact in the path is merged **into** `into_pid`, which survives. With
+  `dry_run` it changes nothing and returns what would move. Neither contact is
+  chosen by the matcher: a match probability is advice, and a person decides.
+- It runs in one transaction. A failure part-way leaves both contacts exactly
+  as they were.
+- The survivor keeps its identity, `person_ref` and fields. A field the
+  survivor leaves empty (account, owner, job title, stakeholder role,
+  influence, interest) is filled from the merged contact; nothing the survivor
+  holds is overwritten.
+- The merged contact's activities, leads, deals (as primary contact), tickets,
+  nurture enrolments, working-group memberships and email deliveries move to
+  the survivor. Where the survivor already has the same enrolment or
+  membership, the survivor's is kept and the other is dropped.
+- The merged contact is soft-deleted with a `merged_into_pid` pointer. Its
+  `person_ref` is not repointed: the person service is a separate system, and
+  two person records stay two until someone merges them there.
+- **Consent never widens.** The survivor's marketing consent becomes the
+  stricter of the two (withdrawn over declined over unknown over granted-ness
+  is decided by one ordered table in the code, tested for every pair). A grant
+  is never inferred from the other record. Both consent histories are kept,
+  each entry with its original source and date, and a consent event records
+  the merge. The send path (CRM-D6) then applies to the survivor as it stands.
+- Refused: the same contact twice (`422`), a missing or already-merged contact
+  (`404`/`409`), an erased contact in either direction (`422`, CRM-R20), and
+  any contact the caller cannot write (`403`, record-level access, CRM-T24).
+  The response shows masked fields as the caller would see them elsewhere.
+- Destructive-classified and audited as one entry naming both contacts, the
+  reason, and per-table counts moved; never contact values. It emits an event
+  for the seam (CRM-D9) and honours idempotency keys (CRM-T52), so a retry does
+  not merge twice.
+- A subject-access export (CRM-R20) of the survivor covers the merged-in data,
+  and so does an erasure of it.
+- A merge is not undone automatically. To make a manual repair possible, the
+  merge records the opaque ids of the rows it moved in a merge ledger (ids are
+  not personal data); an unmerge is its own later task.
+- The contact page offers Merge on a duplicate, behind a confirmation that
+  lists what moves and says consent follows the stricter side.
