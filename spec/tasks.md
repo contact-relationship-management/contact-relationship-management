@@ -956,3 +956,72 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       action beyond the link, so merging stays a manual job in the person
       service; the candidate link drops a language prefix; phone is never shown.
 
+- [ ] CRM-T63 **Tune the matcher.** Traces to CRM-R23. The defaults in
+      `contact-relationship-management-matcher` (the prior, each field's agreement
+      and coincidence rates, the two thresholds) are reasoned guesses; nothing has
+      measured them. Build a labelled set of synthetic contact pairs, measure,
+      and set the defaults from the result.
+      **Scope:** a fixture of pairs, each labelled same person or different
+      people, covering the cases that decide it: nicknames and initials, typos,
+      accents and transliteration, swapped and compound names, a changed surname
+      with a shared mailbox, one mailbox shared by two people (a family, a team
+      alias), the same name at different employers, a shared employer with
+      different people, a job change, sparse records, and a shared `person_ref`.
+      Report precision and recall at several thresholds, find where the review
+      band should begin and end, and check how far the independence assumption
+      over-states the probabilities (a calibration table: stated probability
+      against the observed share that really were the same person).
+      **Done when:** the fixture and the measuring test are in the matcher crate;
+      the defaults change only where the numbers justify it, each change with its
+      reason in the README; a test pins the measured precision and recall as
+      floors, so a later change cannot quietly make it worse; the limits below are
+      in the README.
+      **Limits:** synthetic pairs show how the matcher treats the cases someone
+      thought of, not how it performs on real contacts; real tuning needs pairs a
+      person has reviewed, drawn from the deployment's own data, under the same
+      data-protection rules as that data. A fixture built by the people who wrote
+      the matcher will flatter it, so keep the hard cases (the look-alikes) at
+      least as numerous as the easy ones. Changing the defaults is a behaviour
+      change: record it in the changelog and the service's CRM-T61 note.
+
+- [ ] CRM-T64 **Merge two duplicate contacts.** Traces to CRM-R23, and needs a
+      new requirement, **CRM-R24**, written with it (the three-part rule: spec,
+      code and tests together). This is the first feature built on the matcher
+      that changes data, so it needs the most care. Today the duplicates
+      endpoint is advice only (CRM-T61) and the manual repoint endpoint (CRM-T2)
+      only changes which person record a contact wraps.
+      **Scope:** `POST /api/contacts/{pid}/merge` with `{ "into_pid", "reason" }`,
+      done in one transaction (CRM-D9). The survivor keeps its identity; the other
+      contact is soft-deleted with a pointer to the survivor. The activities,
+      deals (as primary contact), tickets, nurture enrolments and segment
+      memberships of the merged contact move to the survivor.
+      **Consent is the dangerous part.** The merged result must never be more
+      permissive than either record was: a withdrawal on either side wins; a
+      grant is never inferred from the other record; both consent histories are
+      kept, each entry with its original source and date. Send-path rules (CRM-D6)
+      then apply to the survivor as they stand.
+      **Also decide and write down:** which `person_ref` survives, and what happens
+      to the other (repoint in the person service is a separate system); that both
+      contacts need record-level write access (CRM-T24), and masking applies to
+      what the response shows; that an erased contact (CRM-R20) cannot be merged
+      in either direction; that a subject-access export and an erasure of the
+      survivor cover the merged-in data; that the audit chain records one entry
+      naming both contacts, the reason and the counts moved, never the values; an
+      event for the seam; idempotency keys (CRM-T52); and whether a merge can be
+      undone (the safe default is that it cannot be undone automatically, and the
+      audit entry is enough to repair it by hand; an unmerge is its own task).
+      **UI:** a Merge action on a duplicate in the contact page's list, behind a
+      confirmation that states what moves and that consent follows the stricter
+      side; the labels in all 8 locales (unreviewed, as before).
+      **Done when:** database tests cover the moves, the consent cases (granted
+      with withdrawn, withdrawn with granted, unknown with granted), refusal of an
+      erased contact, of the same contact twice, and of a contact the caller
+      cannot write; the audit chain still verifies; a failure part-way leaves both
+      contacts unchanged; OpenAPI and the checked response schema are updated; an
+      e2e test and a live test drive it through the UI.
+      **Limits to state in the task's resolution:** a match probability is not a
+      decision, and a person must choose the merge (it is never automatic); a
+      wrong merge of two real people is a data-protection incident, so the
+      confirmation and the audit entry matter more than speed; the person
+      service's own records are untouched.
+
