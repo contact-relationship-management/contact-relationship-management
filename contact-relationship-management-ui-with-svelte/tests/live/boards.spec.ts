@@ -65,8 +65,27 @@ test("a deal's amount is edited on the board and the service has it", async ({
   page,
   request,
 }) => {
-  const deals = (await list(request, "deals")).filter((d) => !d.closed_at);
-  const deal = deals[0]!;
+  // Its own deal, with an amount nothing else shows, so the test needs no
+  // data to be there already.
+  const pipeline = await create(request, "pipelines", {
+    name: `Live pipeline ${stamp}`,
+    stages: [
+      { name: "Qualification", probability_percent: 10 },
+      { name: "Won", probability_percent: 100, is_won: true },
+      { name: "Lost", probability_percent: 0, is_lost: true },
+    ],
+  });
+  const amount = 7_000_000_00 + Math.floor(Math.random() * 10_000) * 100;
+  const deal = {
+    ...(await create(request, "deals", {
+      name: `Live amount ${stamp}`,
+      pipeline_pid: pipeline.pid,
+      amount_minor: amount,
+      currency: "GBP",
+    })),
+    currency: "GBP",
+    amount_minor: amount,
+  };
   const target = 4_242_00 + Math.floor(Math.random() * 100) * 100;
   await page.goto("/deals");
   const board = page.getByTestId("deal-board");

@@ -950,8 +950,9 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       A live test (`tests/live/duplicates.spec.ts`) drives the page against the
       real service and passes on three runs in a row (it ignores records left by
       earlier runs, which resemble the new ones).
-      **Limits:** the live suite's older deal-amount test assumes the database
-      already holds an open deal and fails on an empty one (not changed here); a failed request shows nothing, not an error; no
+      The live deal-amount test now creates its own pipeline and deal, so
+      the live suite passes (6 tests) on an empty database.
+      **Limits:** a failed request shows nothing, not an error; no
       action beyond the link, so merging stays a manual job in the person
       service; the candidate link drops a language prefix; phone is never shown.
 
