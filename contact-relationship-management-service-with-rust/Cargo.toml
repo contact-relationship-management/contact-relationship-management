@@ -35,6 +35,7 @@ async-trait = { version = "0.1" }
 axum = { version = "0.8" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+contact-relationship-management-matcher = "0.1.0"
 migration = { package = "contact-relationship-management-migration", version = "0.1.0", path = "migration" }
 sea-orm = { version = "2.0", features = [
   "sqlx-sqlite",

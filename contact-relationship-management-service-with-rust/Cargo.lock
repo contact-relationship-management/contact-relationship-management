@@ -1236,6 +1236,7 @@ dependencies = [
  "axum-test 21.1.0",
  "base64 0.23.1",
  "chrono",
+ "contact-relationship-management-matcher",
  "contact-relationship-management-migration",
  "ed25519-dalek 3.0.0",
  "entity-ref",
@@ -1257,6 +1258,17 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "contact-relationship-management-matcher"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71f43fc1a8b4832e68d75f597113c2a531853431d5257c29b51db612c82128b8"
+dependencies = [
+ "serde",
+ "strsim",
+ "unicode-normalization",
 ]
 
 [[package]]

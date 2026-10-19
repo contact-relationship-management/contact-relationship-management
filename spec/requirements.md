@@ -292,3 +292,13 @@ that two contact records are the same person, and why.*
 - It stores nothing and does no input or output: it is handed the personal
   data it needs and keeps none. A match is advice for a person to act on;
   nothing merges or deletes a contact on its own.
+- `GET /api/contacts/{pid}/duplicates` returns the other contacts that are
+  probably the same person: best first, only match and review verdicts, each
+  with the probability and a per-field breakdown that names fields and never
+  values. It compares only contacts the caller may read (record-level access
+  applies), and the read is audited as a count, not as contact data.
+- The CRM holds no email addresses, so a first pass uses what it does hold
+  (name, job title, account name, `person_ref`). The best few candidates, by
+  that score, then have their addresses fetched from the person service and
+  are scored again; each says whether that happened (`email_checked`).
+

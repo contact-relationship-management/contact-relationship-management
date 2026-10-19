@@ -4,6 +4,7 @@
 
 mod audit_chain;
 mod board;
+mod duplicates;
 mod email_delivery;
 mod engagement;
 mod field_encryption;

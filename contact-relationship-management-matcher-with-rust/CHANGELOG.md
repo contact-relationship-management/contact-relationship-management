@@ -5,4 +5,5 @@
 - First version: Fellegi–Sunter matching of two contacts (given and family
   name, email, phone, organisation, job title), nicknames, initials, swapped
   names, a certain match on a shared `person_ref`, batch scoring and ranking,
-  and a validated configuration that loads from JSON. Not published.
+  and a validated configuration that loads from JSON. Published to crates.io
+  on 2026-10-19; used by the service's duplicates endpoint.

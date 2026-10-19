@@ -260,6 +260,20 @@ fn view_schemas() -> Value {
         "ContactDetail": object(&["contact", "activities", "deals", "tickets"], &json!({
             "contact": reference("Contact"), "activities": list_of("Activity"),
             "deals": list_of("Deal"), "tickets": list_of("Ticket") })),
+        "ContactDuplicates": object(&["contact_pid", "compared", "truncated", "duplicates"], &json!({
+            "contact_pid": uuid(), "compared": integer(), "truncated": boolean(),
+            "duplicates": { "type": "array", "items": object(
+                &["contact", "probability", "verdict", "deterministic", "email_checked", "fields"],
+                &json!({
+                    "contact": object(&["pid", "display_name", "status"], &json!({
+                        "pid": uuid(), "display_name": string(), "account_pid": nullable(uuid()),
+                        "job_title": nullable(string()), "status": string() })),
+                    "probability": number(), "verdict": string(),
+                    "deterministic": boolean(), "email_checked": boolean(),
+                    "fields": { "type": "array", "items": object(
+                        &["field", "outcome", "similarity", "weight"], &json!({
+                            "field": string(), "outcome": string(),
+                            "similarity": number(), "weight": number() })) } })) } })),
         "AccountDetail": object(&["account", "contacts", "deals"], &json!({
             "account": reference("Account"), "contacts": list_of("Contact"),
             "deals": list_of("Deal") })),
@@ -556,6 +570,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
 pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
     Some(match (method, path) {
         ("get", "/api/contacts/{pid}") => "ContactDetail",
+        ("get", "/api/contacts/{pid}/duplicates") => "ContactDuplicates",
         ("get", "/api/accounts/{pid}") => "AccountDetail",
         ("get", "/api/accounts/{pid}/clv") => "Clv",
         ("get", "/api/leads/{pid}") => "LeadDetail",

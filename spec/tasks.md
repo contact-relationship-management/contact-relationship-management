@@ -901,8 +901,8 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 - [x] CRM-T60 **Contact matcher crate.** Traces to CRM-R23. Nothing could say
       whether two contacts were the same person.
       **Resolution:** `contact-relationship-management-matcher-with-rust/`, a
-      library crate (`contact-relationship-management-matcher` 0.1.0, not
-      published) using Fellegi–Sunter record linkage: each field adds log-odds
+      library crate (`contact-relationship-management-matcher` 0.1.0,
+      published to crates.io on 2026-10-19) using Fellegi–Sunter record linkage: each field adds log-odds
       to a prior, the sum is a probability, and every field's contribution is
       returned. 8 unit and 17 behaviour tests and a doctest, including that the
       result is symmetric and that more agreement never lowers the probability;
@@ -912,7 +912,28 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       when fields are correlated; names are English-centred (nicknames, honorifics)
       and Jaro–Winkler suits Latin scripts best; phones are compared as digits
       without a country database; there is no date of birth or address field; it
-      is not called by the service, the UI or any endpoint yet; nothing merges
+      is called by the service only (CRM-T61), not by the UI; nothing merges
       contacts. Validate the thresholds against reviewed pairs before any
       automatic action.
+
+- [x] CRM-T61 **Duplicate-contact endpoint.** Traces to CRM-R23. The matcher
+      (CRM-T60) was not reachable from the service.
+      **Resolution:** `GET /api/contacts/{pid}/duplicates?limit=` (default 20,
+      at most 100), documented in OpenAPI with a checked response schema.
+      Candidates are the other active contacts the caller may read; they are
+      scored on name, job title, account name and `person_ref`, then the best
+      20 by that score have their email addresses fetched and are rescored, so a
+      shared address can bring back a changed surname. 3 database tests (order,
+      reasons, limit, the certain `person_ref` case, the email rescue, 404 and
+      the audit entry; the audit chain still verifies). The matcher was published
+      first so the service depends on it by version, which keeps the image build
+      and the service's own publish working.
+      **Limits:** at most 5,000 contacts are compared (`truncated` says when
+      more exist), and a contact whose names say "no" can only be rescued by an
+      email address if it is among the 20 best on the local fields, so a changed
+      surname is missed on a large table; the email look costs one call to the
+      person service per candidate, up to 21 a request, and does nothing when
+      the target has no address; no phone, since the CRM holds none either; the
+      defaults are untuned (see CRM-T60); advice only, with no merge or delete;
+      the UI does not show it yet.
 

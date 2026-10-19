@@ -2,6 +2,10 @@
 //! URN wrappers, the merged timeline, the manual repoint endpoint,
 //! and activities. Every mutation runs on one transaction (CRM-D9).
 
+use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
+
+use contact_relationship_management_matcher::{Contact as MatchContact, Matcher, Ranked, Verdict};
 use loco_rs::prelude::*;
 use sea_orm::{QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
@@ -310,6 +314,210 @@ async fn get_contact(
         "activities": activities_json,
         "deals": deals_json,
         "tickets": tickets_json,
+    }))
+}
+
+/// Contacts compared against the one asked about. A larger table is cut off
+/// here and the answer says so (`truncated`).
+const DUPLICATE_POOL: usize = 5000;
+/// How many of the best candidates get their email address fetched and the
+/// comparison repeated. The CRM holds no addresses (they live on the person
+/// record), so each one costs a call to the person service.
+const DUPLICATE_EMAIL_CHECKS: usize = 20;
+
+/// `GET /api/contacts/{pid}/duplicates` query.
+#[derive(Debug, Deserialize)]
+struct DuplicateParams {
+    /// Most candidates to return (default 20, at most 100).
+    limit: Option<usize>,
+}
+
+fn matcher() -> &'static Matcher {
+    static MATCHER: OnceLock<Matcher> = OnceLock::new();
+    MATCHER.get_or_init(Matcher::default)
+}
+
+/// A contact as the matcher sees it: the name, title and employer the CRM
+/// holds, and the person reference.
+fn match_contact(contact: &contacts::Model, accounts: &HashMap<Uuid, String>) -> MatchContact {
+    let mut m = MatchContact::new()
+        .person_ref(&contact.person_ref)
+        .display_name(&contact.display_name);
+    if let Some(title) = &contact.job_title {
+        m = m.job_title(title);
+    }
+    if let Some(name) = contact.account_pid.and_then(|pid| accounts.get(&pid)) {
+        m = m.organization(name);
+    }
+    m
+}
+
+/// Display names of the accounts the given contacts belong to.
+async fn account_names<'a>(
+    db: &DatabaseConnection,
+    contacts: impl Iterator<Item = &'a contacts::Model>,
+) -> Result<HashMap<Uuid, String>> {
+    let pids: HashSet<Uuid> = contacts.filter_map(|c| c.account_pid).collect();
+    if pids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    Ok(accounts::Entity::find()
+        .filter(accounts::Column::Pid.is_in(pids))
+        .all(db)
+        .await?
+        .into_iter()
+        .map(|a| (a.pid, a.display_name))
+        .collect())
+}
+
+/// Second look at the best few candidates, with email addresses fetched from
+/// the person service. Rescored entries replace their first score and the
+/// list is re-sorted. Returns the candidates whose
+/// address was used. Does nothing when the target has no address.
+async fn recheck_with_email(
+    target: &contacts::Model,
+    rows: &[contacts::Model],
+    query: &MatchContact,
+    candidates: &[MatchContact],
+    ranked: &mut [Ranked],
+) -> HashSet<usize> {
+    let mut emailed = HashSet::new();
+    let Some(target_email) = crate::clients::email_address(&target.person_ref).await else {
+        return emailed;
+    };
+    let query = query.clone().email(target_email);
+    for entry in ranked.iter_mut().take(DUPLICATE_EMAIL_CHECKS) {
+        let Some(email) = crate::clients::email_address(&rows[entry.index].person_ref).await else {
+            continue;
+        };
+        entry.result = matcher().compare(&query, &candidates[entry.index].clone().email(email));
+        emailed.insert(entry.index);
+    }
+    sort_ranked(ranked);
+    emailed
+}
+
+/// Highest probability first; ties by position, so the order is stable.
+fn sort_ranked(ranked: &mut [Ranked]) {
+    ranked.sort_by(|x, y| {
+        y.result
+            .probability
+            .total_cmp(&x.result.probability)
+            .then(x.index.cmp(&y.index))
+    });
+}
+
+/// `GET /api/contacts/{pid}/duplicates` — other contacts that are probably
+/// the same person (CRM-R23).
+///
+/// Candidates are the other active contacts the caller may read (record-level
+/// ABAC, so a denied contact is neither compared nor disclosed). They are
+/// scored on name, job title, employer and `person_ref`; the best few then
+/// have their email addresses fetched from the person service and are scored
+/// again, because a shared address is the strongest evidence there is. The
+/// best few are chosen by their name-and-employer score whatever its verdict,
+/// so a changed surname can be rescued by a shared address. Only
+/// `match` and `review` verdicts are returned, best first. Each carries the
+/// per-field breakdown (outcome, similarity, weight, never the values).
+///
+/// The answer is advice: nothing here merges, deletes or changes a contact.
+///
+/// # Errors
+///
+/// `404` for an unknown contact; `403` when the caller may not read it.
+#[debug_handler]
+async fn contact_duplicates(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Path(pid): Path<String>,
+    Query(params): Query<DuplicateParams>,
+) -> Result<Response> {
+    let target = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    auth::authorize_record(
+        &caller,
+        authentication_verifier::Action::Read,
+        &auth::contact_resource_attrs(&target),
+    )
+    .map_err(record_rejection)?;
+    let limit = params.limit.unwrap_or(20).clamp(1, 100);
+
+    let mut rows = contacts::Entity::find()
+        .filter(contacts::Column::DeletedAt.is_null())
+        .filter(contacts::Column::Pid.ne(target.pid))
+        .order_by_asc(contacts::Column::Id)
+        .limit(u64::try_from(DUPLICATE_POOL + 1).unwrap_or(u64::MAX))
+        .all(&ctx.db)
+        .await?;
+    let truncated = rows.len() > DUPLICATE_POOL;
+    rows.truncate(DUPLICATE_POOL);
+    rows.retain(|row| {
+        auth::authorize_record(
+            &caller,
+            authentication_verifier::Action::Read,
+            &auth::contact_resource_attrs(row),
+        )
+        .is_ok()
+    });
+
+    let account_names = account_names(&ctx.db, rows.iter().chain(std::iter::once(&target))).await?;
+
+    let query = match_contact(&target, &account_names);
+    let candidates: Vec<MatchContact> = rows
+        .iter()
+        .map(|r| match_contact(r, &account_names))
+        .collect();
+    // Every candidate, best first, whatever the verdict: the email look
+    // below can rescue a contact whose names alone said "no" (a married name).
+    let mut ranked: Vec<Ranked> = matcher()
+        .compare_one_to_many(&query, &candidates)
+        .into_iter()
+        .enumerate()
+        .map(|(index, result)| Ranked { index, result })
+        .collect();
+    sort_ranked(&mut ranked);
+
+    let emailed = recheck_with_email(&target, &rows, &query, &candidates, &mut ranked).await;
+
+    let duplicates: Vec<serde_json::Value> = ranked
+        .iter()
+        .filter(|entry| entry.result.verdict != Verdict::NonMatch)
+        .take(limit)
+        .map(|entry| {
+            let row = &rows[entry.index];
+            serde_json::json!({
+                "contact": {
+                    "pid": row.pid,
+                    "display_name": row.display_name,
+                    "account_pid": row.account_pid,
+                    "job_title": row.job_title,
+                    "status": row.status,
+                },
+                "probability": entry.result.probability,
+                "verdict": entry.result.verdict,
+                "deterministic": entry.result.deterministic,
+                "email_checked": emailed.contains(&entry.index),
+                "fields": entry.result.fields,
+            })
+        })
+        .collect();
+    Audit::record_read(
+        &ctx.db,
+        "contact",
+        target.pid,
+        "contact_duplicates_read",
+        caller.actor(),
+        Some(serde_json::json!({
+            "compared": candidates.len(),
+            "returned": duplicates.len(),
+            "truncated": truncated,
+        })),
+    )
+    .await?;
+    format::json(serde_json::json!({
+        "contact_pid": target.pid,
+        "compared": candidates.len(),
+        "truncated": truncated,
+        "duplicates": duplicates,
     }))
 }
 
@@ -654,6 +862,7 @@ pub fn routes() -> Routes {
         .add("/contacts", post(create_contact))
         .add("/contacts", get(list_contacts))
         .add("/contacts/{pid}", get(get_contact))
+        .add("/contacts/{pid}/duplicates", get(contact_duplicates))
         .add("/contacts/{pid}/repoint", post(repoint_contact))
         .add("/accounts", post(create_account))
         .add("/accounts", get(list_accounts))

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `GET /api/contacts/{pid}/duplicates` (2026-10-19)
+
+Other contacts that are probably the same person, best first, with the
+probability and a per-field breakdown (CRM-R23, CRM-T61). It uses the new
+`contact-relationship-management-matcher` crate, published as 0.1.0 for this.
+First pass on name, job title, account name and `person_ref`; the best 20 then
+have their email addresses fetched from the person service and are rescored.
+Record-level access applies and the read is audited as a count. At most 5,000
+contacts are compared. It is advice: nothing is merged or deleted.
+
 ### Changed — `authentication-verifier` from crates.io (2026-10-18)
 
 The dependency (and its dev-dependency with `test-idp`) is now the published

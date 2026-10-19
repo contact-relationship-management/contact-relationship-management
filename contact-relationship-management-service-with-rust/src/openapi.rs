@@ -32,6 +32,7 @@ pub fn spec() -> Value {
                 "get": { "tags": ["relationships"], "summary": "List contacts", "responses": ok("Contacts") }
             },
             "/api/contacts/{pid}": { "get": { "tags": ["relationships"], "summary": "Contact + merged timeline (activities, deals, tickets)", "responses": ok("ContactDetail") } },
+            "/api/contacts/{pid}/duplicates": { "get": { "tags": ["relationships"], "summary": "Other contacts that are probably the same person (?limit=; probability and per-field breakdown; advice only)", "responses": ok("ContactDuplicates") } },
             "/api/contacts/{pid}/repoint": { "post": { "tags": ["relationships"], "summary": "Repoint the wrapper after an upstream merge (reasoned, audited)", "responses": ok("Contact") } },
             "/api/accounts": {
                 "post": { "tags": ["relationships"], "summary": "Create an account (organization: URN wrapper)", "responses": created },

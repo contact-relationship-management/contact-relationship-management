@@ -10,7 +10,7 @@ use serial_test::serial;
 use super::{a_person, a_worker, seed_contact, seed_pipeline};
 
 #[path = "../support/schema_check.rs"]
-mod schema_check;
+pub(super) mod schema_check;
 use schema_check::{check, to_json_schema};
 
 #[tokio::test]
