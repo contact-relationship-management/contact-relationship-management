@@ -936,5 +936,19 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       person service per candidate, up to 21 a request, and does nothing when
       the target has no address; no phone, since the CRM holds none either; the
       defaults are untuned (see CRM-T60); advice only, with no merge or delete;
-      the UI does not show it yet.
+      the UI shows it since CRM-T62.
+
+- [x] CRM-T62 **Show likely duplicates on the contact page.** Traces to CRM-R23.
+      **Resolution:** a "Possible duplicates" section on `/contacts/{pid}`: each
+      candidate links to its record and shows a verdict, the probability (rounded
+      down, so only a shared person record reads 100%) and which fields agree and
+      differ, never their values. 13 new labels in all 8 locales, written by me
+      and **not reviewed by native speakers**. The tour has one fictitious pair
+      (Imogen Hartley and Imogen Hartly, a 13th contact, `con-13`); its figures
+      are illustrative, not computed. 1 e2e test (English, a contact with none,
+      the link-through, German labels); 104 unit and 91 Playwright tests pass.
+      **Limits:** not exercised against the real service (the live suite has no
+      duplicates test); a failed request shows nothing, not an error; no
+      action beyond the link, so merging stays a manual job in the person
+      service; the candidate link drops a language prefix; phone is never shown.
 

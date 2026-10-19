@@ -166,8 +166,26 @@ test.describe("signed-in smoke coverage", () => {
           as_of: "2026-07-18T12:00:00Z",
           note: "",
           overdue: [
-            { pid: "f1", kind: "task", summary: "a", subject_kind: "contact", subject_pid: "c1", actor_ref: null, due_on: "2026-07-10", overdue_days: 8 },
-            { pid: "f2", kind: "task", summary: "b", subject_kind: "contact", subject_pid: "c1", actor_ref: null, due_on: "2026-07-12", overdue_days: 6 },
+            {
+              pid: "f1",
+              kind: "task",
+              summary: "a",
+              subject_kind: "contact",
+              subject_pid: "c1",
+              actor_ref: null,
+              due_on: "2026-07-10",
+              overdue_days: 8,
+            },
+            {
+              pid: "f2",
+              kind: "task",
+              summary: "b",
+              subject_kind: "contact",
+              subject_pid: "c1",
+              actor_ref: null,
+              due_on: "2026-07-12",
+              overdue_days: 6,
+            },
           ],
           upcoming_30d: [],
           open_by_recorder: {},
@@ -185,7 +203,9 @@ test.describe("signed-in smoke coverage", () => {
     ).toBeVisible();
     // Signed in: the header offers Sign out and no Sign in.
     const header = page.getByRole("banner");
-    await expect(header.getByRole("button", { name: "Sign out" })).toBeVisible();
+    await expect(
+      header.getByRole("button", { name: "Sign out" }),
+    ).toBeVisible();
     await expect(header.getByText("Sign in", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("tile-winrate")).toContainText("50% (2/4)");
     await expect(page.getByTestId("tile-deals")).toContainText("8");
@@ -802,7 +822,9 @@ test.describe("contact subject rights", () => {
     );
   }
 
-  test("offers a subject-access download and a confirm-gated erase", async ({ page }) => {
+  test("offers a subject-access download and a confirm-gated erase", async ({
+    page,
+  }) => {
     await stubContact(page);
     let erased = false;
     await page.route("**/api/proxy/contacts/c1/erase", (route) => {
@@ -834,7 +856,9 @@ test.describe("contact subject rights", () => {
     expect(erased).toBe(false);
   });
 
-  test("surfaces the service's 422 reason when erase is blocked", async ({ page }) => {
+  test("surfaces the service's 422 reason when erase is blocked", async ({
+    page,
+  }) => {
     await stubContact(page);
     await page.route("**/api/proxy/contacts/c1/erase", (route) =>
       route.fulfill({
@@ -879,7 +903,14 @@ test.describe("header pickers: pages and search", () => {
     );
     await page.route("**/api/proxy/tickets", (route) =>
       route.fulfill({
-        json: [{ pid: "t1", title: "Ada's laptop will not boot", priority: "high", status: "open" }],
+        json: [
+          {
+            pid: "t1",
+            title: "Ada's laptop will not boot",
+            priority: "high",
+            status: "open",
+          },
+        ],
       }),
     );
     await page.goto("/contacts");
@@ -890,8 +921,14 @@ test.describe("header pickers: pages and search", () => {
     await page.getByRole("button", { name: "Search", exact: true }).click();
     await expect(page).toHaveURL(/\/search\?ada$/);
     await expect(page.getByTestId("search-status")).toContainText("2 results");
-    await expect(page.getByTestId("search-nav.contacts").getByText("Ada Lovelace")).toBeVisible();
-    await expect(page.getByTestId("search-nav.tickets").getByText("Ada's laptop will not boot")).toBeVisible();
+    await expect(
+      page.getByTestId("search-nav.contacts").getByText("Ada Lovelace"),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId("search-nav.tickets")
+        .getByText("Ada's laptop will not boot"),
+    ).toBeVisible();
     await expect(page.getByText("Grace Hopper")).toHaveCount(0);
 
     await page.locator("header.topbar .link-picker-button").click();
@@ -905,7 +942,9 @@ test.describe("masked amounts (CRM-T32)", () => {
     await signIn(page);
   });
 
-  test("campaign funnel renders masked revenue and ROI as dashes", async ({ page }) => {
+  test("campaign funnel renders masked revenue and ROI as dashes", async ({
+    page,
+  }) => {
     const campaign = {
       pid: "k1",
       name: "Spring push",
@@ -917,10 +956,18 @@ test.describe("masked amounts (CRM-T32)", () => {
       currency: "GBP",
       cost_minor: null,
     };
-    await page.route("**/api/proxy/campaigns", (route) => route.fulfill({ json: [campaign] }));
+    await page.route("**/api/proxy/campaigns", (route) =>
+      route.fulfill({ json: [campaign] }),
+    );
     await page.route("**/api/proxy/campaigns/k1/funnel", (route) =>
       route.fulfill({
-        json: { campaign, leads: 3, won_deals: 1, won_revenue_minor: null, roi: null },
+        json: {
+          campaign,
+          leads: 3,
+          won_deals: 1,
+          won_revenue_minor: null,
+          roi: null,
+        },
       }),
     );
     await page.goto("/campaigns");
@@ -953,21 +1000,29 @@ test.describe("break-glass page (CRM-T44)", () => {
     await signIn(page);
   });
 
-  test("a thin reason cannot be submitted; a good one shows the expiry", async ({ page }) => {
+  test("a thin reason cannot be submitted; a good one shows the expiry", async ({
+    page,
+  }) => {
     let body: { reason?: string; minutes?: number } = {};
     let idempotencyKey: string | undefined;
     await page.route("**/api/proxy/break-glass", (route) => {
       idempotencyKey = route.request().headers()["idempotency-key"];
       body = route.request().postDataJSON();
       return route.fulfill({
-        json: { pid: "g1", expires_at: new Date(Date.now() + 30 * 60_000).toISOString(), minutes: 30 },
+        json: {
+          pid: "g1",
+          expires_at: new Date(Date.now() + 30 * 60_000).toISOString(),
+          minutes: 30,
+        },
       });
     });
     await page.goto("/break-glass");
     await expect(page.getByTestId("bg-request")).toBeDisabled();
     await page.getByLabel("Reason").fill("too short");
     await expect(page.getByTestId("bg-request")).toBeDisabled();
-    await page.getByLabel("Reason").fill("Patient collapsed, covering colleague absent");
+    await page
+      .getByLabel("Reason")
+      .fill("Patient collapsed, covering colleague absent");
     await page.getByTestId("bg-request").click();
     await expect(page.getByTestId("bg-granted")).toBeVisible();
     expect(body.reason).toBe("Patient collapsed, covering colleague absent");
@@ -976,7 +1031,9 @@ test.describe("break-glass page (CRM-T44)", () => {
     expect(idempotencyKey).toMatch(/^[\x21-\x7e]{1,255}$/);
   });
 
-  test("a retry after a failure reuses the same Idempotency-Key; an edit or a success starts a new one (CRM-T52)", async ({ page }) => {
+  test("a retry after a failure reuses the same Idempotency-Key; an edit or a success starts a new one (CRM-T52)", async ({
+    page,
+  }) => {
     const keys: string[] = [];
     let fail = true;
     await page.route("**/api/proxy/break-glass", (route) => {
@@ -986,7 +1043,11 @@ test.describe("break-glass page (CRM-T44)", () => {
         return route.fulfill({ status: 500, json: { description: "boom" } });
       }
       return route.fulfill({
-        json: { pid: "g1", expires_at: new Date(Date.now() + 30 * 60_000).toISOString(), minutes: 30 },
+        json: {
+          pid: "g1",
+          expires_at: new Date(Date.now() + 30 * 60_000).toISOString(),
+          minutes: 30,
+        },
       });
     });
     await page.goto("/break-glass");
@@ -1007,7 +1068,9 @@ test.describe("break-glass page (CRM-T44)", () => {
     expect(keys[2]).not.toBe(keys[0]);
   });
 
-  test("editing the reason after a failure starts a new key", async ({ page }) => {
+  test("editing the reason after a failure starts a new key", async ({
+    page,
+  }) => {
     const keys: string[] = [];
     let fail = true;
     await page.route("**/api/proxy/break-glass", (route) => {
@@ -1017,14 +1080,22 @@ test.describe("break-glass page (CRM-T44)", () => {
         return route.fulfill({ status: 500, json: { description: "boom" } });
       }
       return route.fulfill({
-        json: { pid: "g1", expires_at: new Date(Date.now() + 30 * 60_000).toISOString(), minutes: 30 },
+        json: {
+          pid: "g1",
+          expires_at: new Date(Date.now() + 30 * 60_000).toISOString(),
+          minutes: 30,
+        },
       });
     });
     await page.goto("/break-glass");
-    await page.getByLabel("Reason").fill("Patient collapsed, covering colleague absent");
+    await page
+      .getByLabel("Reason")
+      .fill("Patient collapsed, covering colleague absent");
     await page.getByTestId("bg-request").click();
     await expect(page.getByTestId("bg-error")).toBeVisible();
-    await page.getByLabel("Reason").fill("Patient collapsed, covering colleague absent today");
+    await page
+      .getByLabel("Reason")
+      .fill("Patient collapsed, covering colleague absent today");
     await page.getByTestId("bg-request").click();
     await expect(page.getByTestId("bg-granted")).toBeVisible();
     expect(keys).toHaveLength(2);
@@ -1056,17 +1127,23 @@ test.describe("break-glass page (CRM-T44)", () => {
     });
     await page.goto("/break-glass/review");
     await page.getByRole("rowheader", { name: "dr-reader" }).first().click();
-    await page.getByLabel("Review note").fill("Confirmed against the incident log");
+    await page
+      .getByLabel("Review note")
+      .fill("Confirmed against the incident log");
     const record = page.getByRole("button", { name: "Record review" });
     await record.click();
-    await expect(page.getByTestId("error").or(page.getByRole("alert"))).toBeVisible();
+    await expect(
+      page.getByTestId("error").or(page.getByRole("alert")),
+    ).toBeVisible();
     await record.click();
     await expect.poll(() => keys.length).toBe(2);
     expect(keys[1]).toBe(keys[0]);
     expect(keys[0]).not.toBe("");
   });
 
-  test("the review page lists grants and records a review", async ({ page }) => {
+  test("the review page lists grants and records a review", async ({
+    page,
+  }) => {
     const grant = {
       pid: "g1",
       subject: "dr-reader",
@@ -1079,7 +1156,21 @@ test.describe("break-glass page (CRM-T44)", () => {
     };
     let reviewed: { note?: string } = {};
     await page.route("**/api/proxy/break-glass", (route) =>
-      route.fulfill({ json: { unreviewed: reviewed.note ? 0 : 1, grants: [reviewed.note ? { ...grant, reviewed_at: "2026-10-10T10:00:00Z", reviewed_by: "dpo", review_note: reviewed.note } : grant] } }),
+      route.fulfill({
+        json: {
+          unreviewed: reviewed.note ? 0 : 1,
+          grants: [
+            reviewed.note
+              ? {
+                  ...grant,
+                  reviewed_at: "2026-10-10T10:00:00Z",
+                  reviewed_by: "dpo",
+                  review_note: reviewed.note,
+                }
+              : grant,
+          ],
+        },
+      }),
     );
     await page.route("**/api/proxy/break-glass/g1/review", (route) => {
       reviewed = route.request().postDataJSON();
@@ -1090,14 +1181,20 @@ test.describe("break-glass page (CRM-T44)", () => {
     await page.getByRole("rowheader", { name: "dr-reader" }).first().click();
     const record = page.getByRole("button", { name: "Record review" });
     await expect(record).toBeDisabled();
-    await page.getByLabel("Review note").fill("Confirmed against the incident log");
+    await page
+      .getByLabel("Review note")
+      .fill("Confirmed against the incident log");
     await record.click();
     await expect(page.getByTestId("unreviewed")).toContainText("0");
-    await expect(page.getByTestId("grants")).toContainText("Confirmed against the incident log");
+    await expect(page.getByTestId("grants")).toContainText(
+      "Confirmed against the incident log",
+    );
     expect(reviewed.note).toBe("Confirmed against the incident log");
   });
 
-  test("the review page shows a refusal for a non-reviewer", async ({ page }) => {
+  test("the review page shows a refusal for a non-reviewer", async ({
+    page,
+  }) => {
     await page.route("**/api/proxy/break-glass", (route) =>
       route.fulfill({ status: 403, json: { description: "forbidden" } }),
     );
@@ -1110,27 +1207,39 @@ test.describe("break-glass page (CRM-T44)", () => {
       route.fulfill({ status: 403, json: { description: "denied by policy" } }),
     );
     await page.goto("/break-glass");
-    await page.getByLabel("Reason").fill("Patient collapsed, covering colleague absent");
+    await page
+      .getByLabel("Reason")
+      .fill("Patient collapsed, covering colleague absent");
     await page.getByTestId("bg-request").click();
-    await expect(page.getByTestId("bg-error")).toContainText("denied by policy");
+    await expect(page.getByTestId("bg-error")).toContainText(
+      "denied by policy",
+    );
   });
 });
 
-test("responses carry the security headers and a CSP (CRM-T33)", async ({ page }) => {
+test("responses carry the security headers and a CSP (CRM-T33)", async ({
+  page,
+}) => {
   const response = await page.goto("/tour");
   const headers = response?.headers() ?? {};
   expect(headers["x-content-type-options"]).toBe("nosniff");
   expect(headers["x-frame-options"]).toBe("DENY");
   expect(headers["referrer-policy"]).toBe("same-origin");
   expect(headers["strict-transport-security"]).toContain("max-age=");
-  expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(headers["content-security-policy"]).toContain(
+    "frame-ancestors 'none'",
+  );
 });
 
-test("the accessibility statement is public and linked from the footer (CRM-T45)", async ({ page }) => {
+test("the accessibility statement is public and linked from the footer (CRM-T45)", async ({
+  page,
+}) => {
   await page.goto("/tour");
   await page.getByRole("link", { name: "Accessibility" }).click();
   await expect(page).toHaveURL(/\/accessibility$/);
-  await expect(page.getByRole("heading", { name: "Accessibility statement" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Accessibility statement" }),
+  ).toBeVisible();
   await expect(page.getByText("not yet shown to comply")).toBeVisible();
 });
 

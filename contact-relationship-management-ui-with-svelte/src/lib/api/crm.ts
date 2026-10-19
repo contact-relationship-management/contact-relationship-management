@@ -163,6 +163,43 @@ export function getContact(
   return api(`/contacts/${pid}`, init);
 }
 
+/** One field's part in a duplicate verdict; names fields, never values. */
+export interface DuplicateField {
+  field: string;
+  outcome: "agree" | "partial" | "disagree" | "missing";
+  similarity: number;
+  weight: number;
+}
+
+/** A contact that is probably the same person as another (CRM-R23). */
+export interface Duplicate {
+  contact: {
+    pid: string;
+    display_name: string;
+    account_pid: string | null;
+    job_title: string | null;
+    status: string;
+  };
+  probability: number;
+  verdict: "match" | "review";
+  deterministic: boolean;
+  email_checked: boolean;
+  fields: DuplicateField[];
+}
+
+/** Likely duplicates of one contact, best first. Advice only. */
+export function getContactDuplicates(
+  pid: string,
+  init?: FetchLike,
+): Promise<{
+  contact_pid: string;
+  compared: number;
+  truncated: boolean;
+  duplicates: Duplicate[];
+}> {
+  return api(`/contacts/${pid}/duplicates`, init);
+}
+
 /** Record a consent change. */
 export function recordConsent(
   pid: string,

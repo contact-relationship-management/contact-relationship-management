@@ -14,7 +14,15 @@ describe("the /<locale>/ route matcher", () => {
   });
 
   it("refuses anything else", () => {
-    for (const other of ["xx", "en", "en-GB", "EN-001", "signin", "kanban", ""]) {
+    for (const other of [
+      "xx",
+      "en",
+      "en-GB",
+      "EN-001",
+      "signin",
+      "kanban",
+      "",
+    ]) {
       expect(match(other), other).toBe(false);
     }
   });
@@ -22,8 +30,14 @@ describe("the /<locale>/ route matcher", () => {
 
 describe("a language in the address", () => {
   it("splits the prefix from the path", () => {
-    expect(splitLocale("/de-de/contacts")).toEqual({ locale: "de-de", path: "/contacts" });
-    expect(splitLocale("/de-de/contacts/con-1")).toEqual({ locale: "de-de", path: "/contacts/con-1" });
+    expect(splitLocale("/de-de/contacts")).toEqual({
+      locale: "de-de",
+      path: "/contacts",
+    });
+    expect(splitLocale("/de-de/contacts/con-1")).toEqual({
+      locale: "de-de",
+      path: "/contacts/con-1",
+    });
     expect(splitLocale("/zh-cn")).toEqual({ locale: "zh-cn", path: "/" });
   });
 

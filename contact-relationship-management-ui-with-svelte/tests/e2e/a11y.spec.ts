@@ -51,7 +51,16 @@ test.describe("signed-in list pages", () => {
     await page.route("**/api/proxy/**", (route) => route.fulfill({ json: [] }));
   });
 
-  for (const path of ["/contacts", "/accounts", "/leads", "/tickets", "/articles", "/campaigns", "/break-glass", "/break-glass/review"]) {
+  for (const path of [
+    "/contacts",
+    "/accounts",
+    "/leads",
+    "/tickets",
+    "/articles",
+    "/campaigns",
+    "/break-glass",
+    "/break-glass/review",
+  ]) {
     test(`${path} has no WCAG A/AA violations`, async ({ page }) => {
       await page.goto(path);
       await page.waitForLoadState("networkidle");

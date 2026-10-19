@@ -34,7 +34,9 @@ const SCREENS = [
 
 async function startTour(page: Page) {
   await page.goto("/signin");
-  await expect(page.getByTestId("demo-hint")).toContainText("example@example.com");
+  await expect(page.getByTestId("demo-hint")).toContainText(
+    "example@example.com",
+  );
   await page.getByLabel("Email").fill("example@example.com");
   await page.getByRole("button", { name: "Send magic link" }).click();
   await expect(page.getByTestId("demo-banner")).toBeVisible();
@@ -48,7 +50,10 @@ async function startTour(page: Page) {
 
 test("a visitor can take the tour from the tour page", async ({ page }) => {
   await page.goto("/tour");
-  await page.getByTestId("tour-signin").getByRole("link", { name: "Sign in" }).click();
+  await page
+    .getByTestId("tour-signin")
+    .getByRole("link", { name: "Sign in" })
+    .click();
   await expect(page).toHaveURL(/\/signin$/);
 });
 
@@ -80,10 +85,14 @@ test("signing in as example@example.com shows fictitious data on every screen", 
   await expect(page.getByText("Smart-meter analytics rollout")).toBeVisible();
 });
 
-test("/<locale>/kanban shows the deal board and moves a card", async ({ page }) => {
+test("/<locale>/kanban shows the deal board and moves a card", async ({
+  page,
+}) => {
   await startTour(page);
   await page.goto("/en-001/kanban");
-  await expect(page.getByRole("heading", { level: 1, name: "My Kanban board" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "My Kanban board" }),
+  ).toBeVisible();
   const board = page.getByTestId("kanban-board");
   await expect(board).toContainText("Qualification 10%");
   await expect(board).toContainText("Smart-meter analytics rollout");
@@ -96,17 +105,23 @@ test("/<locale>/kanban shows the deal board and moves a card", async ({ page }) 
   await page.getByRole("option", { name: "Discovery 25%" }).click();
   await expect(page.getByTestId("action-error")).toHaveCount(0);
   await page.reload();
-  const discovery = page.getByRole("gridcell", { name: /Case-management upgrade/ });
+  const discovery = page.getByRole("gridcell", {
+    name: /Case-management upgrade/,
+  });
   await expect(discovery).toHaveCount(1);
   // The saved stage is Discovery: that column's header is the cell's column.
   const col = await discovery.getAttribute("data-col");
   expect(col).toBe("1");
 });
 
-test("the address names the language, and unknown languages are 404", async ({ page }) => {
+test("the address names the language, and unknown languages are 404", async ({
+  page,
+}) => {
   await startTour(page);
   await page.goto("/de-de/kanban");
-  await expect(page.getByRole("heading", { level: 1, name: "Mein Kanban-Board" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Mein Kanban-Board" }),
+  ).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "de-de");
   const missing = await page.goto("/xx/kanban");
   expect(missing?.status()).toBe(404);
@@ -118,14 +133,15 @@ test("the kanban board needs a session", async ({ page }) => {
 });
 
 test.describe("data tables", () => {
-  test("a row opens its record, by click or Enter, and the name is a link", async ({ page }) => {
+  test("a row opens its record, by click or Enter, and the name is a link", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/contacts");
     // The name is a real link …
-    await expect(page.getByRole("link", { name: "Imogen Hartley" })).toHaveAttribute(
-      "href",
-      "/contacts/con-1",
-    );
+    await expect(
+      page.getByRole("link", { name: "Imogen Hartley" }),
+    ).toHaveAttribute("href", "/contacts/con-1");
     // … and the rest of the row opens the same record.
     await page.getByRole("gridcell", { name: "Head of Procurement" }).click();
     await expect(page).toHaveURL(/\/contacts\/con-1$/);
@@ -142,9 +158,9 @@ test.describe("data tables", () => {
     await header.getByRole("button").click();
     await expect(header).toHaveAttribute("aria-sort", "ascending");
     const scores = async () =>
-      (await page.getByTestId("lead-queue").locator("tbody tr").allInnerTexts()).map(
-        (t) => Number(t.trim().split(/\s+/)[0]),
-      );
+      (
+        await page.getByTestId("lead-queue").locator("tbody tr").allInnerTexts()
+      ).map((t) => Number(t.trim().split(/\s+/)[0]));
     const ascending = await scores();
     expect(ascending).toEqual([...ascending].sort((a, b) => a - b));
     await header.getByRole("button").click();
@@ -153,19 +169,28 @@ test.describe("data tables", () => {
     expect(descending).toEqual([...descending].sort((a, b) => b - a));
   });
 
-  test("status is a chip, a breach is flagged, and numbers sit at the end", async ({ page }) => {
+  test("status is a chip, a breach is flagged, and numbers sit at the end", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/tickets");
     const queue = page.getByTestId("ticket-queue");
     await expect(queue.locator(".chip").first()).toBeVisible();
-    await expect(queue.locator("strong.flag").first()).toContainText("Breached");
+    await expect(queue.locator("strong.flag").first()).toContainText(
+      "Breached",
+    );
     await page.goto("/followups");
     await expect(
-      page.getByTestId("followups-overdue").locator('td[data-align="end"]').first(),
+      page
+        .getByTestId("followups-overdue")
+        .locator('td[data-align="end"]')
+        .first(),
     ).toBeVisible();
   });
 
-  test("the Board links are readable (label colour differs from the background)", async ({ page }) => {
+  test("the Board links are readable (label colour differs from the background)", async ({
+    page,
+  }) => {
     await startTour(page);
     for (const path of ["/tickets", "/leads"]) {
       await page.goto(path);
@@ -183,9 +208,13 @@ test.describe("data tables", () => {
     await startTour(page);
     await page.goto("/followups");
     await page.getByTestId("kind-filter").selectOption("note");
-    await expect(page.getByTestId("followups-overdue")).toContainText("Nothing overdue.");
+    await expect(page.getByTestId("followups-overdue")).toContainText(
+      "Nothing overdue.",
+    );
     await expect(
-      page.getByTestId("followups-overdue").getByRole("columnheader", { name: "Due", exact: true }),
+      page
+        .getByTestId("followups-overdue")
+        .getByRole("columnheader", { name: "Due", exact: true }),
     ).toBeVisible();
   });
 });
@@ -236,18 +265,21 @@ test.describe("tour screens: WCAG A/AA findings with data (informational)", () =
 });
 
 test.describe("boards and timeline", () => {
-  test("the ticket board offers only legal moves, and a move is saved", async ({ page }) => {
+  test("the ticket board offers only legal moves, and a move is saved", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/tickets/board");
     await page
-      .getByRole("button", { name: /^Move Sensor firmware update fails on site/ })
+      .getByRole("button", {
+        name: /^Move Sensor firmware update fails on site/,
+      })
       .click();
     // An open ticket can go to Pending or Resolved, not straight to Closed.
     const menu = page.getByRole("listbox");
-    await expect(menu.getByRole("option", { name: "Pending" })).not.toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    await expect(
+      menu.getByRole("option", { name: "Pending" }),
+    ).not.toHaveAttribute("aria-disabled", "true");
     await expect(menu.getByRole("option", { name: "Closed" })).toHaveCount(0);
     await menu.getByRole("option", { name: "Resolved" }).click();
     await expect(page.getByTestId("action-error")).toHaveCount(0);
@@ -256,7 +288,9 @@ test.describe("boards and timeline", () => {
     await expect(board).toContainText("Sensor firmware update fails on site");
   });
 
-  test("the lead board shows scored cards in lifecycle columns", async ({ page }) => {
+  test("the lead board shows scored cards in lifecycle columns", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/leads/board");
     const board = page.getByTestId("lead-board");
@@ -264,24 +298,44 @@ test.describe("boards and timeline", () => {
     await expect(board).toContainText("score");
   });
 
-  test("campaigns show a read-only timeline with one row per campaign", async ({ page }) => {
+  test("campaigns show a read-only timeline with one row per campaign", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/campaigns");
     const timeline = page.getByTestId("campaign-timeline");
     await expect(timeline).toBeVisible();
-    await expect(timeline.getByRole("rowheader", { name: /Spring product update/ })).toBeVisible();
-    await expect(timeline.getByRole("rowheader", { name: /Customer webinar series \(running\)/ })).toBeVisible();
+    await expect(
+      timeline.getByRole("rowheader", { name: /Spring product update/ }),
+    ).toBeVisible();
+    await expect(
+      timeline.getByRole("rowheader", {
+        name: /Customer webinar series \(running\)/,
+      }),
+    ).toBeVisible();
     // The critical path is named in text, not only by style; a finished
     // campaign that ended earlier has slack.
-    await expect(timeline.getByRole("rowheader", { name: /Customer webinar series.*critical path/ })).toBeVisible();
-    await expect(timeline.getByRole("rowheader", { name: /Spring product update.*days slack/ })).toBeVisible();
+    await expect(
+      timeline.getByRole("rowheader", {
+        name: /Customer webinar series.*critical path/,
+      }),
+    ).toBeVisible();
+    await expect(
+      timeline.getByRole("rowheader", {
+        name: /Spring product update.*days slack/,
+      }),
+    ).toBeVisible();
     // Read-only: no edit regions or save buttons.
-    await expect(timeline.getByRole("button", { name: /save/i })).toHaveCount(0);
+    await expect(timeline.getByRole("button", { name: /save/i })).toHaveCount(
+      0,
+    );
   });
 });
 
 test.describe("editing, order and rescheduling", () => {
-  test("a deal's amount is edited in place and the new value shows", async ({ page }) => {
+  test("a deal's amount is edited in place and the new value shows", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/deals");
     const board = page.getByTestId("deal-board");
@@ -305,33 +359,43 @@ test.describe("editing, order and rescheduling", () => {
     await expect(board).toContainText("owner-bea");
   });
 
-  test("a card can be selected with several others and moved together", async ({ page }) => {
+  test("a card can be selected with several others and moved together", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/tickets/board");
     const board = page.getByTestId("ticket-board");
-    const first = board.getByRole("gridcell", { name: /Route export missing depot codes/ });
-    const second = board.getByRole("gridcell", { name: /Licence seats not showing in console/ });
+    const first = board.getByRole("gridcell", {
+      name: /Route export missing depot codes/,
+    });
+    const second = board.getByRole("gridcell", {
+      name: /Licence seats not showing in console/,
+    });
     await first.click({ modifiers: ["ControlOrMeta"] });
     await second.click({ modifiers: ["ControlOrMeta"] });
     await expect(first).toHaveAttribute("aria-selected", "true");
     await expect(second).toHaveAttribute("aria-selected", "true");
   });
 
-  test("a follow-up moves to another day with Alt+arrow, and stays there", async ({ page }) => {
+  test("a follow-up moves to another day with Alt+arrow, and stays there", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/followups");
     const calendar = page.getByTestId("followups-calendar");
-    const event = calendar.getByText("task: Renewal paperwork for Harbourlight");
+    const event = calendar.getByText(
+      "task: Renewal paperwork for Harbourlight",
+    );
     await expect(event).toBeVisible();
     const cellDate = async () =>
-      event.locator("xpath=ancestor::*[@data-date][1]").getAttribute("data-date");
+      event
+        .locator("xpath=ancestor::*[@data-date][1]")
+        .getAttribute("data-date");
     const before = await cellDate();
     await event.focus();
     await page.keyboard.press("Alt+ArrowRight");
     await expect(page.getByTestId("move-error")).toHaveCount(0);
-    await expect
-      .poll(async () => cellDate())
-      .not.toBe(before);
+    await expect.poll(async () => cellDate()).not.toBe(before);
     // Saved: it is still on the new day after a reload.
     const after = await cellDate();
     await page.reload();
@@ -339,7 +403,11 @@ test.describe("editing, order and rescheduling", () => {
       .getByTestId("followups-calendar")
       .getByText("task: Renewal paperwork for Harbourlight");
     await expect(again).toBeVisible();
-    expect(await again.locator("xpath=ancestor::*[@data-date][1]").getAttribute("data-date")).toBe(after);
+    expect(
+      await again
+        .locator("xpath=ancestor::*[@data-date][1]")
+        .getAttribute("data-date"),
+    ).toBe(after);
   });
 });
 
@@ -347,12 +415,20 @@ test.describe("export, undo and search", () => {
   test("a table downloads as CSV, TSV and Excel", async ({ page }) => {
     await startTour(page);
     await page.goto("/contacts");
-    for (const [name, ext] of [["CSV", "csv"], ["TSV", "tsv"], ["Excel", "xlsx"]] as const) {
+    for (const [name, ext] of [
+      ["CSV", "csv"],
+      ["TSV", "tsv"],
+      ["Excel", "xlsx"],
+    ] as const) {
       const download = page.waitForEvent("download");
       await page.getByRole("button", { name, exact: true }).first().click();
-      expect((await download).suggestedFilename()).toMatch(new RegExp(`\\.${ext}$`));
+      expect((await download).suggestedFilename()).toMatch(
+        new RegExp(`\\.${ext}$`),
+      );
     }
-    await expect(page.getByRole("button", { name: "Copy", exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Copy", exact: true }).first(),
+    ).toBeVisible();
   });
 
   test("an edit on the deal board is undone with Ctrl+Z", async ({ page }) => {
@@ -370,7 +446,9 @@ test.describe("export, undo and search", () => {
     await expect(board).not.toContainText("£81,000.00");
   });
 
-  test("the follow-up calendar is searchable and marks weekends", async ({ page }) => {
+  test("the follow-up calendar is searchable and marks weekends", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/followups");
     const calendar = page.getByTestId("followups-calendar");
@@ -380,11 +458,17 @@ test.describe("export, undo and search", () => {
     await expect(calendar.locator(".calendar-event")).toHaveCount(0);
   });
 
-  test("the campaign timeline downloads as CSV, TSV and Excel", async ({ page }) => {
+  test("the campaign timeline downloads as CSV, TSV and Excel", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/campaigns");
     const timeline = page.getByTestId("campaign-timeline");
-    for (const [name, ext] of [["CSV", "csv"], ["TSV", "tsv"], ["Excel", "xlsx"]] as const) {
+    for (const [name, ext] of [
+      ["CSV", "csv"],
+      ["TSV", "tsv"],
+      ["Excel", "xlsx"],
+    ] as const) {
       const download = page.waitForEvent("download");
       await timeline.getByRole("button", { name, exact: true }).click();
       const file = await download;
@@ -392,10 +476,14 @@ test.describe("export, undo and search", () => {
     }
   });
 
-  test("any page opens under a language in the address, and keeps it", async ({ page }) => {
+  test("any page opens under a language in the address, and keeps it", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/de-de/contacts");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kontakte");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Kontakte",
+    );
     await expect(page).toHaveURL(/\/de-de\/contacts$/);
     // Links keep the language; the language picker rewrites the address.
     await page.locator("header.topbar .link-picker-button").click();
@@ -406,12 +494,16 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("demo-banner")).toBeVisible();
   });
 
-  test("an unauthenticated visit to a prefixed private page goes to sign-in", async ({ page }) => {
+  test("an unauthenticated visit to a prefixed private page goes to sign-in", async ({
+    page,
+  }) => {
     await page.goto("/de-de/contacts");
     await expect(page).toHaveURL(/\/signin$/);
   });
 
-  test("a ticket's title is edited in place on the board and saved", async ({ page }) => {
+  test("a ticket's title is edited in place on the board and saved", async ({
+    page,
+  }) => {
     await startTour(page);
     await page.goto("/tickets/board");
     const board = page.getByTestId("ticket-board");
@@ -423,7 +515,47 @@ test.describe("export, undo and search", () => {
     await box.press("Enter");
     await expect(board).toContainText("Renamed in place");
     await page.reload();
-    await expect(page.getByTestId("ticket-board")).toContainText("Renamed in place");
+    await expect(page.getByTestId("ticket-board")).toContainText(
+      "Renamed in place",
+    );
     await expect(page.getByTestId("ticket-board")).not.toContainText(before);
+  });
+
+  test("a contact page offers likely duplicates, in the chosen language, and they link through", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/contacts/con-1");
+    const list = page.getByTestId("duplicates");
+    await expect(list).toContainText("Imogen Hartly");
+    await expect(list).toContainText("Likely the same person");
+    // Rounded down: a likely match is never shown as certain.
+    await expect(page.getByTestId("duplicate-probability")).toHaveText("99%");
+    await expect(list).toContainText(
+      "Agrees: Given name, Family name, Employer.",
+    );
+
+    await list.getByRole("link", { name: "Imogen Hartly" }).click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Imogen Hartly" }),
+    ).toBeVisible();
+    await expect(page.getByTestId("duplicates")).toContainText(
+      "Imogen Hartley",
+    );
+
+    // A contact with none says so.
+    await page.goto("/contacts/con-5");
+    await expect(page.getByTestId("duplicates-none")).toHaveText(
+      "No likely duplicates.",
+    );
+
+    // The labels follow the language.
+    await page.goto("/de-de/contacts/con-1");
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Mögliche Duplikate" }),
+    ).toBeVisible();
+    await expect(page.getByTestId("duplicates")).toContainText(
+      "Wahrscheinlich dieselbe Person",
+    );
   });
 });

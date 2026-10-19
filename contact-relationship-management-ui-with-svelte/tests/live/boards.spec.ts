@@ -12,61 +12,99 @@ async function create(request: APIRequestContext, path: string, data: unknown) {
   return (await response.json()) as { pid: string };
 }
 const list = async (request: APIRequestContext, path: string) =>
-  (await (await request.get(`${API}/api/${path}`)).json()) as Record<string, unknown>[];
+  (await (await request.get(`${API}/api/${path}`)).json()) as Record<
+    string,
+    unknown
+  >[];
 
 // The service runs with authentication off, so any opaque session id gets past
 // the UI's sign-in gate; the BFF forwards without a token.
 test.beforeEach(async ({ context }) => {
   await context.addCookies([
-    { name: "__Host-mxi_session", value: "live-test", domain: "localhost", path: "/", secure: true },
+    {
+      name: "__Host-mxi_session",
+      value: "live-test",
+      domain: "localhost",
+      path: "/",
+      secure: true,
+    },
   ]);
 });
 
-test("a ticket is renamed on the board and the service has the new title", async ({ page, request }) => {
-  const ticket = await create(request, "tickets", { title: `Live rename ${stamp}` });
+test("a ticket is renamed on the board and the service has the new title", async ({
+  page,
+  request,
+}) => {
+  const ticket = await create(request, "tickets", {
+    title: `Live rename ${stamp}`,
+  });
   await page.goto("/tickets/board");
   const board = page.getByTestId("ticket-board");
   await expect(board).toContainText(`Live rename ${stamp}`);
-  const card = board.getByRole("gridcell").filter({ hasText: `Live rename ${stamp}` });
+  const card = board
+    .getByRole("gridcell")
+    .filter({ hasText: `Live rename ${stamp}` });
   // The title edits in place: double-click it (or F2), Enter commits.
   await card.locator(".kanban-board-card-title").dblclick();
-  const box = board.getByRole("textbox", { name: new RegExp(`Live rename ${stamp}`) });
+  const box = board.getByRole("textbox", {
+    name: new RegExp(`Live rename ${stamp}`),
+  });
   await box.fill(`Live renamed ${stamp}`);
   await box.press("Enter");
   await expect(board).toContainText(`Live renamed ${stamp}`);
   await expect
-    .poll(async () => (await list(request, "tickets")).find((x) => x.pid === ticket.pid)?.title)
+    .poll(
+      async () =>
+        (await list(request, "tickets")).find((x) => x.pid === ticket.pid)
+          ?.title,
+    )
     .toBe(`Live renamed ${stamp}`);
 });
 
-test("a deal's amount is edited on the board and the service has it", async ({ page, request }) => {
+test("a deal's amount is edited on the board and the service has it", async ({
+  page,
+  request,
+}) => {
   const deals = (await list(request, "deals")).filter((d) => !d.closed_at);
   const deal = deals[0]!;
   const target = 4_242_00 + Math.floor(Math.random() * 100) * 100;
   await page.goto("/deals");
   const board = page.getByTestId("deal-board");
-  const shown = new Intl.NumberFormat("en-GB", { style: "currency", currency: String(deal.currency) }).format(
-    Number(deal.amount_minor) / 100,
-  );
+  const shown = new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: String(deal.currency),
+  }).format(Number(deal.amount_minor) / 100);
   await board.getByRole("button", { name: shown }).first().click();
   const editor = board.getByRole("spinbutton");
   await editor.fill(String(target / 100));
   await editor.press("Enter");
   await expect(page.getByTestId("action-error")).toHaveCount(0);
   await expect
-    .poll(async () => (await list(request, "deals")).find((d) => d.pid === deal.pid)?.amount_minor)
+    .poll(
+      async () =>
+        (await list(request, "deals")).find((d) => d.pid === deal.pid)
+          ?.amount_minor,
+    )
     .toBe(target);
-  const stored = (await list(request, "deals")).find((d) => d.pid === deal.pid)!;
+  const stored = (await list(request, "deals")).find(
+    (d) => d.pid === deal.pid,
+  )!;
   // The trigger moved updated_at past created_at.
-  expect(Date.parse(String(stored.updated_at))).toBeGreaterThan(Date.parse(String(stored.created_at)));
+  expect(Date.parse(String(stored.updated_at))).toBeGreaterThan(
+    Date.parse(String(stored.created_at)),
+  );
 });
 
-test("a card moved above another in its column with the keyboard keeps that order", async ({ page, request }) => {
+test("a card moved above another in its column with the keyboard keeps that order", async ({
+  page,
+  request,
+}) => {
   const a = await create(request, "tickets", { title: `Order A ${stamp}` });
   const b = await create(request, "tickets", { title: `Order B ${stamp}` });
   await page.goto("/tickets/board");
   const board = page.getByTestId("ticket-board");
-  const card = (title: string) => board.getByRole("gridcell", { name: new RegExp(title) });
+  const card = (title: string) =>
+    board.getByRole("gridcell", { name: new RegExp(title) });
   await card(`Order B ${stamp}`).focus();
   await page.keyboard.press("Alt+ArrowUp");
   await expect
@@ -77,7 +115,10 @@ test("a card moved above another in its column with the keyboard keeps that orde
     .toBe(true);
 });
 
-test("a follow-up is rescheduled with the keyboard and the service has the new day", async ({ page, request }) => {
+test("a follow-up is rescheduled with the keyboard and the service has the new day", async ({
+  page,
+  request,
+}) => {
   const contact = (await list(request, "contacts"))[0]!;
   const due = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
   const summary = `Live follow-up ${stamp}`;
@@ -89,14 +130,18 @@ test("a follow-up is rescheduled with the keyboard and the service has the new d
     due_on: due,
   });
   await page.goto("/followups");
-  const event = page.getByTestId("followups-calendar").getByText(`task: ${summary}`);
+  const event = page
+    .getByTestId("followups-calendar")
+    .getByText(`task: ${summary}`);
   await expect(event).toBeVisible();
   await event.focus();
   await page.keyboard.press("Alt+ArrowRight");
   await expect(page.getByTestId("move-error")).toHaveCount(0);
   await expect
     .poll(async () => {
-      const view = (await (await request.get(`${API}/api/insights/followups`)).json()) as {
+      const view = (await (
+        await request.get(`${API}/api/insights/followups`)
+      ).json()) as {
         upcoming_30d: { pid: string; due_on: string }[];
       };
       return view.upcoming_30d.find((x) => x.pid === activity.pid)?.due_on;
@@ -104,12 +149,16 @@ test("a follow-up is rescheduled with the keyboard and the service has the new d
     .not.toBe(due);
 });
 
-test("a card dragged with the mouse above another keeps that order", async ({ page, request }) => {
+test("a card dragged with the mouse above another keeps that order", async ({
+  page,
+  request,
+}) => {
   const a = await create(request, "tickets", { title: `Drag A ${stamp}` });
   const b = await create(request, "tickets", { title: `Drag B ${stamp}` });
   await page.goto("/tickets/board");
   const board = page.getByTestId("ticket-board");
-  const card = (title: string) => board.getByRole("gridcell", { name: new RegExp(title) });
+  const card = (title: string) =>
+    board.getByRole("gridcell", { name: new RegExp(title) });
   // The card's title is the drag handle; the drop target is the other card's cell.
   const handle = card(`Drag B ${stamp}`).locator(".kanban-board-card-title");
   await expect(handle).toBeVisible();

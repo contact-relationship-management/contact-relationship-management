@@ -51,9 +51,19 @@ describe("every read the UI makes has sample data", () => {
     .filter((m) => !/method:/.test(m[2] ?? ""))
     // A `${…}` straight after a path segment starts a query string; one after
     // a slash is an id.
-    .map((m) => m[1]!.replace(/([^/])\$\{.*$/, "$1").replace(/\$\{[^}]*\}/g, "x").replace(/\?.*$/, ""))
+    .map((m) =>
+      m[1]!
+        .replace(/([^/])\$\{.*$/, "$1")
+        .replace(/\$\{[^}]*\}/g, "x")
+        .replace(/\?.*$/, ""),
+    )
     .map((p) => p.replace(/^\//, ""))
-    .map((p) => p.replace(/^(\w+)\/x/, (_, head: string) => `${head}/${SAMPLE_ID[head] ?? "x"}`));
+    .map((p) =>
+      p.replace(
+        /^(\w+)\/x/,
+        (_, head: string) => `${head}/${SAMPLE_ID[head] ?? "x"}`,
+      ),
+    );
 
   it("finds the reads it expects", () => {
     expect(reads.length).toBeGreaterThan(25);
@@ -76,11 +86,15 @@ describe("the sample data hangs together", () => {
   });
 
   it("moving a deal to Won updates the forecast and the win rate", () => {
-    const before = get("dashboards/sales").body as { win_rate: { numerator: number } };
+    const before = get("dashboards/sales").body as {
+      win_rate: { numerator: number };
+    };
     const moved = post("deals/deal-1/stage", { stage_pid: "stg-5" });
     expect(moved.status).toBe(200);
     expect((moved.body as { won: boolean }).won).toBe(true);
-    const after = get("dashboards/sales").body as { win_rate: { numerator: number } };
+    const after = get("dashboards/sales").body as {
+      win_rate: { numerator: number };
+    };
     expect(after.win_rate.numerator).toBe(before.win_rate.numerator + 1);
     expect((get("forecast").body as { open_deals: number }).open_deals).toBe(7);
   });
@@ -90,15 +104,17 @@ describe("the sample data hangs together", () => {
     expect(refused.status).toBe(422);
     const erased = post("contacts/con-4/erase");
     expect(erased.status).toBe(200);
-    const row = get("contacts/con-4").body as { contact: { display_name: string } };
+    const row = get("contacts/con-4").body as {
+      contact: { display_name: string };
+    };
     expect(row.contact.display_name).toBe("Erased contact");
   });
 
   it("records consent and resolves a ticket", () => {
     post("contacts/con-9/consent", { action: "granted" });
     expect(
-      (get("contacts/con-9").body as { contact: { marketing_consent: string } }).contact
-        .marketing_consent,
+      (get("contacts/con-9").body as { contact: { marketing_consent: string } })
+        .contact.marketing_consent,
     ).toBe("granted");
     post("tickets/tkt-1/status", { to: "resolved" });
     const sla = get("dashboards/sla").body as { open_tickets: number };
@@ -108,22 +124,33 @@ describe("the sample data hangs together", () => {
   it("searches articles and runs a scheduled campaign", () => {
     const hits = get("articles?q=forecast").body as unknown[];
     expect(hits).toHaveLength(1);
-    const run = post("campaigns/camp-3/run").body as { status: string; delivered: number };
+    const run = post("campaigns/camp-3/run").body as {
+      status: string;
+      delivered: number;
+    };
     expect(run.status).toBe("completed");
     expect(run.delivered).toBeGreaterThan(0);
     expect(post("campaigns/camp-4/run").status).toBe(422);
   });
 
   it("break-glass needs a real reason, and a grantee cannot review their own", () => {
-    expect(post("break-glass", { reason: "short", minutes: 15 }).status).toBe(422);
+    expect(post("break-glass", { reason: "short", minutes: 15 }).status).toBe(
+      422,
+    );
     const made = post("break-glass", {
       reason: "Customer is on the phone and I need to see unmasked values.",
       minutes: 15,
     });
     expect(made.status).toBe(200);
     const pid = (made.body as { pid: string }).pid;
-    expect(post(`break-glass/${pid}/review`, { note: "mine" }).status).toBe(422);
-    expect(post("break-glass/bg-2/review", { note: "Checked with the account owner." }).status).toBe(200);
+    expect(post(`break-glass/${pid}/review`, { note: "mine" }).status).toBe(
+      422,
+    );
+    expect(
+      post("break-glass/bg-2/review", {
+        note: "Checked with the account owner.",
+      }).status,
+    ).toBe(200);
     expect(post("break-glass/bg-2/review", { note: "again" }).status).toBe(422);
   });
 

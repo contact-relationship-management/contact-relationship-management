@@ -2,13 +2,23 @@
   import DataTable from "#lib/components/DataTable.svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { eraseContact, getContact, money, recordConsent } from "#lib/api/crm.js";
+  import {
+    eraseContact,
+    getContact,
+    getContactDuplicates,
+    money,
+    recordConsent,
+    type Duplicate,
+  } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
   let detail = $state<Awaited<ReturnType<typeof getContact>> | null>(null);
   let error = $state<string | null>(null);
   let actionError = $state<string | null>(null);
   let erasing = $state(false);
+  // Likely duplicates (CRM-R23). Secondary: a failure here leaves the page as
+  // it was, so it is not an error state.
+  let duplicates = $state<Duplicate[] | null>(null);
 
   const pid = $derived(page.params.pid ?? "");
   // Rough client-side gate from data already on the page — the
@@ -29,9 +39,42 @@
     }
   }
 
+  async function loadDuplicates() {
+    duplicates = null;
+    try {
+      duplicates = (await getContactDuplicates(pid)).duplicates;
+    } catch {
+      duplicates = null;
+    }
+  }
+
   $effect(() => {
-    if (pid) void load();
+    if (pid) {
+      void load();
+      void loadDuplicates();
+    }
   });
+
+  // Rounded down, so a near-certain match never reads as "100%": only a
+  // shared person record is certain.
+  const percent = (d: Duplicate) =>
+    new Intl.NumberFormat(i18n.locale, { style: "percent", maximumFractionDigits: 0 }).format(
+      d.deterministic ? 1 : Math.floor(d.probability * 100) / 100,
+    );
+  // Only fields the CRM can supply are named; the matcher also reports phone,
+  // which is always missing here.
+  const FIELD_LABELS = {
+    given_name: "contact.dupField.given_name",
+    family_name: "contact.dupField.family_name",
+    email: "contact.dupField.email",
+    organization: "contact.dupField.organization",
+    job_title: "contact.dupField.job_title",
+  } as const;
+  const fieldNames = (d: Duplicate, outcome: "agree" | "disagree") =>
+    d.fields
+      .filter((f) => f.outcome === outcome && f.field in FIELD_LABELS)
+      .map((f) => t(FIELD_LABELS[f.field as keyof typeof FIELD_LABELS]))
+      .join(", ");
 
   async function consent(action: "granted" | "withdrawn") {
     actionError = null;
@@ -134,6 +177,39 @@
       </button>
     {/if}
   </div>
+
+  <h2>{t("contact.duplicates")}</h2>
+  <p class="muted">{t("contact.duplicatesHint")}</p>
+  {#if duplicates !== null}
+    {#if duplicates.length === 0}
+      <p data-testid="duplicates-none">{t("contact.duplicatesNone")}</p>
+    {:else}
+      <ul data-testid="duplicates">
+        {#each duplicates as d (d.contact.pid)}
+          <li data-testid="duplicate">
+            <a href={`/contacts/${d.contact.pid}`}>{d.contact.display_name}</a>
+            {#if d.contact.job_title}· {d.contact.job_title}{/if}
+            · <span class="chip"
+              >{d.deterministic
+                ? t("contact.dupCertain")
+                : d.verdict === "match"
+                  ? t("contact.dupMatch")
+                  : t("contact.dupReview")}</span
+            >
+            · <span data-testid="duplicate-probability">{percent(d)}</span>
+            {#if !d.deterministic}
+              <br />
+              <span class="muted small">
+                {#if fieldNames(d, "agree")}{t("contact.dupAgrees")}: {fieldNames(d, "agree")}.{/if}
+                {#if fieldNames(d, "disagree")}
+                  {t("contact.dupDiffers")}: {fieldNames(d, "disagree")}.{/if}
+              </span>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {/if}
 
   <h2>{t("contact.timeline")}</h2>
   <DataTable

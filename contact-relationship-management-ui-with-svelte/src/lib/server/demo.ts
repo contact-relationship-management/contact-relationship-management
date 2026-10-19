@@ -155,6 +155,9 @@ function build(): State {
       "Transformation Lead",
       "withdrawn",
     ],
+    // A near-duplicate of con-1 (a misspelt surname), so the duplicates
+    // section has something to show. Fictitious like the rest.
+    ["con-13", "Imogen Hartly", "acc-1", "Procurement Head", "unknown"],
   ];
   const contacts: Contact[] = people.map(
     ([pid, name, account, title, consent], i) => ({
@@ -1177,6 +1180,53 @@ function contactDetail(pid: string): DemoReply {
   });
 }
 
+/**
+ * Likely duplicates of a contact. The tour has one pair (con-1 and con-13);
+ * the figures are illustrative, in the shape the service returns.
+ */
+function contactDuplicates(pid: string): DemoReply {
+  if (!state.contacts.some((c) => c.pid === pid))
+    return problem(404, "contact not found");
+  const other = { "con-1": "con-13", "con-13": "con-1" }[pid];
+  const found = state.contacts.find((c) => c.pid === other);
+  const field = (
+    name: string,
+    outcome: string,
+    similarity: number,
+    weight: number,
+  ) => ({ field: name, outcome, similarity, weight });
+  return ok({
+    contact_pid: pid,
+    compared: state.contacts.length - 1,
+    truncated: false,
+    duplicates: found
+      ? [
+          {
+            contact: {
+              pid: found.pid,
+              display_name: found.display_name,
+              account_pid: found.account_pid,
+              job_title: found.job_title,
+              status: found.status,
+            },
+            probability: 0.9985,
+            verdict: "match",
+            deterministic: false,
+            email_checked: false,
+            fields: [
+              field("given_name", "agree", 1, 3.46),
+              field("family_name", "agree", 0.96, 4.55),
+              field("email", "missing", 0, 0),
+              field("phone", "missing", 0, 0),
+              field("organization", "agree", 1, 3.75),
+              field("job_title", "partial", 0.8, 0.9),
+            ],
+          },
+        ]
+      : [],
+  });
+}
+
 function eraseContact(pid: string): DemoReply {
   const contact = state.contacts.find((c) => c.pid === pid);
   if (!contact) return problem(404, "contact not found");
@@ -1449,6 +1499,7 @@ export function demoHandle(
   if (head === "contacts") {
     if (seg.length === 1 && get) return ok(state.contacts);
     if (seg.length === 2 && get) return contactDetail(id!);
+    if (tail === "duplicates" && get) return contactDuplicates(id!);
     if (tail === "consent" && post) {
       const contact = state.contacts.find((c) => c.pid === id);
       if (!contact) return problem(404, "contact not found");
