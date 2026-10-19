@@ -11,6 +11,8 @@ support, and analytics.
 
 - [contact-relationship-management-service-with-rust](contact-relationship-management-service-with-rust/) —
   JSON API in Rust on Loco (Axum, SeaORM, PostgreSQL).
+- [contact-relationship-management-matcher-with-rust](contact-relationship-management-matcher-with-rust/) —
+  library: the probability that two contact records are the same person.
 - [contact-relationship-management-ui-with-svelte](contact-relationship-management-ui-with-svelte/) —
   Svelte client for sales, marketing, and support.
 - [spec](spec/index.md) — the cross-cutting specification, the single source

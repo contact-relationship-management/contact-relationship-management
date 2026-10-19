@@ -14,6 +14,10 @@ updates:
     directory: /contact-relationship-management-service-with-rust/migration
     schedule:
       interval: weekly
+  - package-ecosystem: cargo
+    directory: /contact-relationship-management-matcher-with-rust
+    schedule:
+      interval: weekly
   - package-ecosystem: npm
     directory: /contact-relationship-management-ui-with-svelte
     schedule:

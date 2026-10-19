@@ -898,3 +898,21 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       published version is permanent (yank only); no `v*` git tag was pushed
       for this (that would start the image release workflow).
 
+- [x] CRM-T60 **Contact matcher crate.** Traces to CRM-R23. Nothing could say
+      whether two contacts were the same person.
+      **Resolution:** `contact-relationship-management-matcher-with-rust/`, a
+      library crate (`contact-relationship-management-matcher` 0.1.0, not
+      published) using Fellegi–Sunter record linkage: each field adds log-odds
+      to a prior, the sum is a probability, and every field's contribution is
+      returned. 8 unit and 17 behaviour tests and a doctest, including that the
+      result is symmetric and that more agreement never lowers the probability;
+      checked by `scripts/ci-check.sh` (fmt, clippy, test), CI and Dependabot.
+      **Limits:** the default rates are reasoned guesses, not fitted to data,
+      and field independence is assumed, so probabilities are over-confident
+      when fields are correlated; names are English-centred (nicknames, honorifics)
+      and Jaro–Winkler suits Latin scripts best; phones are compared as digits
+      without a country database; there is no date of birth or address field; it
+      is not called by the service, the UI or any endpoint yet; nothing merges
+      contacts. Validate the thresholds against reviewed pairs before any
+      automatic action.
+

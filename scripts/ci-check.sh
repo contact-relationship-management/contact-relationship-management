@@ -7,6 +7,7 @@ cd "$(dirname "$0")/.."
 
 SVC=contact-relationship-management-service-with-rust
 FE=contact-relationship-management-ui-with-svelte
+MATCHER=contact-relationship-management-matcher-with-rust
 # `keycloak` gates the optional Keycloak bearer path and the `test-idp`
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
@@ -17,14 +18,17 @@ case "${stage}" in
   fmt)
     (cd "${SVC}" && cargo fmt --check)
     (cd "${SVC}/migration" && cargo fmt --check)
+    (cd "${MATCHER}" && cargo fmt --check)
     ;;
   clippy)
     (cd "${SVC}" && cargo clippy --all-targets "${FEATURES[@]}" -- -D warnings)
     (cd "${SVC}/migration" && cargo clippy --all-targets -- -D warnings)
+    (cd "${MATCHER}" && cargo clippy --all-targets -- -D warnings)
     ;;
   test)
     (cd "${SVC}" && cargo test "${FEATURES[@]}")
     (cd "${SVC}/migration" && cargo test)
+    (cd "${MATCHER}" && cargo test)
     ;;
   test-db)
     # Needs a Postgres reachable with the PG_* settings (defaults match

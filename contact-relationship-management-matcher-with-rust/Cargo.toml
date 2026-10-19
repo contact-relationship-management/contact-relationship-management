@@ -1,0 +1,28 @@
+[workspace]
+
+[package]
+name = "contact-relationship-management-matcher"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+publish = true
+authors = ["Joel Parker Henderson <joel@joelparkerhenderson.com>"]
+description = "Contact matcher for a CRM: the probability that two contact records are the same person, from names, nicknames, email, phone, organisation and job title, with a per-field explanation"
+readme = "README.md"
+repository = "https://github.com/contact-relationship-management/contact-relationship-management"
+license = "MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only"
+keywords = ["crm", "contacts", "matching", "deduplication", "record-linkage"]
+categories = ["algorithms", "data-structures"]
+include = ["src/**/*", "README.md", "CHANGELOG.md"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+strsim = "0.11"
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"

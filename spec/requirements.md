@@ -274,3 +274,21 @@ in a chosen language.*
   the interface language, is kept by the page links, follows the language
   picker, and does not change which pages need sign-in.
 
+## CRM-R23 — Find the same person twice
+
+*As someone who keeps the contact list clean, I can be told how likely it is
+that two contact records are the same person, and why.*
+
+- A library crate, `contact-relationship-management-matcher`, takes two
+  contacts and returns the probability that they are one person, a verdict
+  (match, review, non-match) and each field's contribution to it.
+- The fields are given and family name (case, accents, nicknames, initials and
+  swapped order tolerated), email, phone, organisation and job title. A field
+  empty on either side counts for nothing, so a sparse record is not punished.
+- The same `person_ref` is a certain match. A different one is no evidence.
+- It compares one contact with many and ranks the answer, in a stable order.
+- The tuning (prior, per-field agreement and coincidence rates, thresholds) is
+  a validated configuration that loads from JSON; a bad one is refused.
+- It stores nothing and does no input or output: it is handed the personal
+  data it needs and keeps none. A match is advice for a person to act on;
+  nothing merges or deletes a contact on its own.
