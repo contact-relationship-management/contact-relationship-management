@@ -947,8 +947,11 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       (Imogen Hartley and Imogen Hartly, a 13th contact, `con-13`); its figures
       are illustrative, not computed. 1 e2e test (English, a contact with none,
       the link-through, German labels); 104 unit and 91 Playwright tests pass.
-      **Limits:** not exercised against the real service (the live suite has no
-      duplicates test); a failed request shows nothing, not an error; no
+      A live test (`tests/live/duplicates.spec.ts`) drives the page against the
+      real service and passes on three runs in a row (it ignores records left by
+      earlier runs, which resemble the new ones).
+      **Limits:** the live suite's older deal-amount test assumes the database
+      already holds an open deal and fails on an empty one (not changed here); a failed request shows nothing, not an error; no
       action beyond the link, so merging stays a manual job in the person
       service; the candidate link drops a language prefix; phone is never shown.
 
