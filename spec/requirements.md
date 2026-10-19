@@ -349,3 +349,23 @@ than either record was, and that the merge is recorded.*
   not personal data); an unmerge is its own later task.
 - The contact page offers Merge on a duplicate, behind a confirmation that
   lists what moves and says consent follows the stricter side.
+
+## CRM-R25 — Survives its dependencies failing
+
+*As an operator, I know what the service does when PostgreSQL or Redis stops,
+freezes or returns, and when the service itself is killed mid-write.*
+
+- PostgreSQL stopped or frozen: a request fails fast as a `5xx` (never a
+  success it did not make, never a hang), the process keeps running, and the
+  service serves again when the database returns, without a restart.
+- Redis stopped or frozen: reads and writes still succeed. Redis holds the
+  rate-limit counters, break-glass grants and the insight cache, which are
+  optimisations; each Redis call on a request is bounded (the insight cache
+  waits at most 750 ms) and the abuse guard falls back to in-process counters.
+- A merge (CRM-R24) is all or nothing: killing the process mid-burst leaves no
+  contact half merged, no row keyed to a merged-away contact, no ledger row
+  without its closed contact, and an audit chain that still verifies. Of
+  several merges racing for one contact, exactly one wins.
+- `scripts/chaos.sh` injects each of those faults against a throwaway
+  PostgreSQL and Redis and checks them. It is run on purpose, not on every push.
+

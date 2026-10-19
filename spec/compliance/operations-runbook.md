@@ -173,3 +173,11 @@ Reporting a vulnerability in the software itself: [SECURITY.md](../../SECURITY.m
 - [ ] Penetration test done; findings closed (CRM-T42)
 - [ ] Accessibility statement published; manual assistive-technology test done
 - [ ] Incident contacts and on-call defined
+
+## Chaos test before a release
+
+Run `scripts/chaos.sh` (needs podman and a built service binary). It stops and
+freezes PostgreSQL and Redis, races merges, and kills the service mid-burst, then
+checks that it recovers and that no merge is left half done (CRM-R25, CRM-T65).
+It uses its own containers and database and removes them afterwards.
+

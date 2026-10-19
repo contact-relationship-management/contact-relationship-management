@@ -379,14 +379,24 @@ async fn insight_cache_mw(
     const GEN_KEY: &str = "crm:cache:gen";
     const TTL: std::time::Duration = std::time::Duration::from_secs(30);
     const MAX_BODY: usize = 1024 * 1024;
+    // The cache is an optimisation: a Redis that is down or frozen must cost a
+    // request this long at most, never the pool's own timeout (CRM-R25).
+    const CACHE_WAIT: std::time::Duration = std::time::Duration::from_millis(750);
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     if method != axum::http::Method::GET && path.starts_with("/api/") {
         let response = next.run(req).await;
         if response.status().is_success() {
             let stamp = chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default();
-            if let Err(error) = cache.insert_with_expiry(GEN_KEY, &stamp, TTL * 4).await {
-                tracing::warn!(%error, "cache generation bump failed");
+            match tokio::time::timeout(
+                CACHE_WAIT,
+                cache.insert_with_expiry(GEN_KEY, &stamp, TTL * 4),
+            )
+            .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => tracing::warn!(%error, "cache generation bump failed"),
+                Err(_) => tracing::warn!("cache generation bump timed out"),
             }
         }
         return response;
@@ -408,7 +418,12 @@ async fn insight_cache_mw(
     let glass = claims
         .as_ref()
         .is_some_and(|c| crate::break_glass::registry().active(&c.sub, chrono::Utc::now()));
-    let generation: i64 = cache.get(GEN_KEY).await.ok().flatten().unwrap_or_default();
+    let generation: i64 = tokio::time::timeout(CACHE_WAIT, cache.get(GEN_KEY))
+        .await
+        .ok()
+        .and_then(Result::ok)
+        .flatten()
+        .unwrap_or_default();
     let digest = Sha256::digest(
         format!(
             "{token}|{glass}|{generation}|{path}?{}",
@@ -422,7 +437,9 @@ async fn insight_cache_mw(
         acc
     });
     let key = format!("crm:insight:{hex}");
-    if let Ok(Some(hit)) = cache.get::<CachedResponse>(&key).await {
+    if let Ok(Ok(Some(hit))) =
+        tokio::time::timeout(CACHE_WAIT, cache.get::<CachedResponse>(&key)).await
+    {
         return hit.into_response();
     }
     let response = next.run(req).await;
@@ -443,8 +460,10 @@ async fn insight_cache_mw(
             .filter_map(|(name, value)| Some((name.to_string(), value.to_str().ok()?.to_string())))
             .collect();
         let entry = CachedResponse { headers, text };
-        if let Err(error) = cache.insert_with_expiry(&key, &entry, TTL).await {
-            tracing::warn!(%error, "insight cache write failed");
+        match tokio::time::timeout(CACHE_WAIT, cache.insert_with_expiry(&key, &entry, TTL)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => tracing::warn!(%error, "insight cache write failed"),
+            Err(_) => tracing::warn!("insight cache write timed out"),
         }
     }
     Response::from_parts(parts, axum::body::Body::from(bytes))

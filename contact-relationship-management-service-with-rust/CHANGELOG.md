@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a write no longer waits on a dead Redis (CRM-R25)
+With Redis stopped or frozen, a successful write waited for the Redis pool's own
+timeout (over 20 seconds) before answering, because the insight cache's
+generation bump after every write had no limit. Every insight-cache call is now
+bounded to 750 ms and its failure only skips the cache. Found by the new
+`scripts/chaos.sh`.
+
 ### Added — `POST /api/contacts/{pid}/merge` (CRM-R24, service only; the UI action is still to come)
 Merges the contact in the path into `into_pid`, which survives. One transaction;
 `dry_run` does the work and rolls it back, so its counts are exact. Activities,

@@ -1034,3 +1034,23 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       confirmation and the audit entry matter more than speed; the person
       service's own records are untouched.
 
+- [x] CRM-T65 **Chaos test.** Traces to CRM-R25. `scripts/chaos.sh` starts its own
+      PostgreSQL 18 and Redis (ports 15439 and 16379), migrates, starts the service,
+      and injects: Redis stopped and frozen, PostgreSQL stopped and frozen, eight
+      merges racing for one contact, and SIGKILL in the middle of a burst of 150
+      merges. After the merge faults it checks four invariants in SQL and the audit
+      chain. 27 checks pass.
+      **Found and fixed (2026-10-20):** with Redis down or frozen a *successful write*
+      hung for the Redis pool's own timeout (over 20 seconds), because the insight
+      cache's generation bump after every write had no time limit. Every cache call
+      is now bounded to 750 ms (`src/app.rs`); a write with Redis down answers in
+      0.76 s.
+      **Limits:** it covers the faults above, not network partitions, slow
+      (rather than stopped) dependencies, disk-full, clock jumps, or a crash
+      between the database commit and the HTTP response (a client that retries
+      then relies on `Idempotency-Key`). The kill lands at a fixed delay, so the
+      point of interruption varies run to run; the script says when it missed the
+      burst. It uses the debug binary and a single service instance, so it does not
+      test failover between replicas. It is not in `ci-check.sh` (it needs podman
+      and takes about two minutes); run it before a release.
+
