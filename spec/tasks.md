@@ -956,7 +956,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       action beyond the link, so merging stays a manual job in the person
       service; the candidate link drops a language prefix; phone is never shown.
 
-- [ ] CRM-T63 **Tune the matcher.** Traces to CRM-R23. The defaults in
+- [x] CRM-T63 **Tune the matcher.** Traces to CRM-R23. The defaults in
       `contact-relationship-management-matcher` (the prior, each field's agreement
       and coincidence rates, the two thresholds) are reasoned guesses; nothing has
       measured them. Build a labelled set of synthetic contact pairs, measure,
@@ -983,6 +983,14 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       the matcher will flatter it, so keep the hard cases (the look-alikes) at
       least as numerous as the easy ones. Changing the defaults is a behaviour
       change: record it in the changelog and the service's CRM-T61 note.
+      **Result (2026-10-19):** 105 pairs, `tests/fixtures/pairs.json`, measured
+      by `tests/tuning.rs` with floors pinned. `match_threshold` 0.9 to 0.99
+      (different pairs called `Match` 17 to 5, one true match lost); nothing
+      else justified a change. The probabilities are over-confident (0.90 to
+      0.99 was right 1 time in 13). The change is in the matcher's `[Unreleased]`
+      changelog; the service pins matcher 0.1.0 from crates.io, so it takes the
+      new default only after the matcher is published (0.1.1) and the service
+      dependency is bumped. The CRM-T61 note stays as is until then.
 
 - [ ] CRM-T64 **Merge two duplicate contacts.** Traces to CRM-R23, and needs a
       new requirement, **CRM-R24**, written with it (the three-part rule: spec,

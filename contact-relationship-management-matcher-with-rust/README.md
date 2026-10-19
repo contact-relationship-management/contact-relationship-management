@@ -55,8 +55,60 @@ JSON, every key is optional, and `Matcher::new` refuses values that make no
 sense (a probability outside `(0, 1)`, an `m` not above its `u`, thresholds out
 of order).
 
-**The defaults are reasoned guesses, not fitted to your data.** Tune them on
-pairs you have already reviewed before you act on a `Match` automatically.
+**The defaults are checked against synthetic pairs, not fitted to your data.**
+Tune them on pairs you have already reviewed before you act on a `Match`
+automatically.
+
+## Tuning
+
+`tests/fixtures/pairs.json` holds 105 labelled pairs (44 the same person, 61
+not): nicknames, initials, typos, accents, transliteration, swapped and
+compound names, a changed surname, a job change, sparse records, a shared
+mailbox or phone, the same name at different employers, look-alike names, and
+families. About half are the hard look-alikes. `tests/tuning.rs` scores them
+(`cargo test --test tuning -- --nocapture`), prints precision, recall and a
+calibration table, and pins floors so a later change cannot make it worse.
+`cargo test --test tuning -- --ignored --nocapture sweep` searches the
+parameters.
+
+Measured on full records (all fields):
+
+| Match at or above | Precision | Recall |
+|---|---|---|
+| 0.5 | 0.61 | 0.98 |
+| 0.9 | 0.70 | 0.91 |
+| 0.99 | 0.89 | 0.89 |
+| 0.999 | 0.94 | 0.66 |
+
+What this changed and what it did not:
+
+- **`match_threshold` went from 0.9 to 0.99.** Between 0.9 and 0.99, 13 pairs
+  scored and only one was the same person; at 0.9, 17 different pairs were
+  called `Match`, at 0.99, 5. That cost one true match.
+- **The other defaults stayed.** A sweep of `agree_at`, `disagree_at`, the
+  prior and the `u` of names, organisation and title found nothing better than
+  the defaults by more than a rounding error, so no change is justified.
+- **`review_threshold` stayed at 0.5.** Below it, 1 of 35 pairs was the same
+  person; lowering it to 0.3 gains no recall.
+- **The probabilities are over-confident.** The 13 pairs the matcher put
+  between 0.90 and 0.99 (stated about 0.97) were the same person 8% of the
+  time; the 44 above 0.99 (stated 0.998) 89% of the time. Treat the number as a
+  ranking, not a chance. The independence assumption is the cause: a name, an
+  employer and a title that agree together are less independent than the maths
+  assumes.
+- **Some errors cannot be fixed by tuning.** Family members who share a phone
+  and an employer, a contractor with two clients, and look-alike names at one
+  employer look the same as one person written twice. They stay `Match` and
+  need a person.
+- **Without email and phone** (what the service has before it fetches an
+  address), recall at `Review` falls from 0.98 to 0.89 and changed surnames and
+  job changes are the misses.
+
+**Limits of this evidence.** The pairs are synthetic and were written by the
+people who wrote the matcher, which flatters it even with the hard cases in. They
+show how the matcher treats the cases someone thought of, not how it performs on
+real contacts. Real tuning needs pairs a person has reviewed, drawn from your
+own data, under the same data-protection rules as that data.
 
 ## Limits
 

@@ -1,0 +1,1820 @@
+[
+ {
+  "same": true,
+  "category": "exact",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "emails": [
+    "ana.ruiz@example.com"
+   ],
+   "phones": [
+    "+34 612 345 678"
+   ],
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  },
+  "b": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "emails": [
+    "ana.ruiz@example.com"
+   ],
+   "phones": [
+    "+34 612 345 678"
+   ],
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  }
+ },
+ {
+  "same": true,
+  "category": "exact",
+  "a": {
+   "given_name": "Priya",
+   "family_name": "Natarajan",
+   "emails": [
+    "priya@northwind.example"
+   ],
+   "organization": "Northwind"
+  },
+  "b": {
+   "given_name": "Priya",
+   "family_name": "Natarajan",
+   "emails": [
+    "priya@northwind.example"
+   ],
+   "organization": "Northwind"
+  }
+ },
+ {
+  "same": true,
+  "category": "nickname",
+  "a": {
+   "given_name": "Robert",
+   "family_name": "Chen",
+   "emails": [
+    "rchen@initech.example"
+   ],
+   "organization": "Initech",
+   "job_title": "Engineer"
+  },
+  "b": {
+   "given_name": "Bob",
+   "family_name": "Chen",
+   "emails": [
+    "rchen@initech.example"
+   ],
+   "organization": "Initech",
+   "job_title": "Engineer"
+  }
+ },
+ {
+  "same": true,
+  "category": "nickname",
+  "a": {
+   "given_name": "Elizabeth",
+   "family_name": "Moore",
+   "organization": "Globex",
+   "job_title": "Director of Finance"
+  },
+  "b": {
+   "given_name": "Liz",
+   "family_name": "Moore",
+   "organization": "Globex",
+   "job_title": "Finance Director"
+  }
+ },
+ {
+  "same": true,
+  "category": "nickname",
+  "a": {
+   "given_name": "William",
+   "family_name": "Okafor",
+   "emails": [
+    "w.okafor@umbrella.example"
+   ],
+   "organization": "Umbrella"
+  },
+  "b": {
+   "given_name": "Bill",
+   "family_name": "Okafor",
+   "emails": [
+    "w.okafor@umbrella.example"
+   ],
+   "organization": "Umbrella Corp"
+  }
+ },
+ {
+  "same": true,
+  "category": "nickname",
+  "a": {
+   "given_name": "Katherine",
+   "family_name": "Doyle",
+   "phones": [
+    "020 7946 0018"
+   ],
+   "organization": "Hooli"
+  },
+  "b": {
+   "given_name": "Kate",
+   "family_name": "Doyle",
+   "phones": [
+    "+44 20 7946 0018"
+   ],
+   "organization": "Hooli"
+  }
+ },
+ {
+  "same": true,
+  "category": "nickname",
+  "a": {
+   "given_name": "Alexander",
+   "family_name": "Petrov",
+   "organization": "Soylent",
+   "job_title": "CTO"
+  },
+  "b": {
+   "given_name": "Sasha",
+   "family_name": "Petrov",
+   "organization": "Soylent",
+   "job_title": "Chief Technology Officer"
+  }
+ },
+ {
+  "same": true,
+  "category": "nickname-sparse",
+  "a": {
+   "given_name": "Margaret",
+   "family_name": "Hughes",
+   "organization": "Stark Industries"
+  },
+  "b": {
+   "given_name": "Peggy",
+   "family_name": "Hughes",
+   "organization": "Stark Industries"
+  }
+ },
+ {
+  "same": true,
+  "category": "initials",
+  "a": {
+   "given_name": "J.",
+   "family_name": "Whitfield",
+   "emails": [
+    "jw@pied.example"
+   ],
+   "organization": "Pied Piper"
+  },
+  "b": {
+   "given_name": "James",
+   "family_name": "Whitfield",
+   "emails": [
+    "jw@pied.example"
+   ],
+   "organization": "Pied Piper"
+  }
+ },
+ {
+  "same": true,
+  "category": "initials",
+  "a": {
+   "given_name": "M",
+   "family_name": "Alvarez",
+   "organization": "Wayne Enterprises",
+   "job_title": "COO"
+  },
+  "b": {
+   "given_name": "Marta",
+   "family_name": "Alvarez",
+   "organization": "Wayne Enterprises",
+   "job_title": "COO"
+  }
+ },
+ {
+  "same": true,
+  "category": "typo",
+  "a": {
+   "given_name": "Jonathon",
+   "family_name": "Fairweather",
+   "emails": [
+    "jf@acme.example"
+   ],
+   "organization": "Acme"
+  },
+  "b": {
+   "given_name": "Jonathan",
+   "family_name": "Fairweather",
+   "emails": [
+    "jf@acme.example"
+   ],
+   "organization": "Acme"
+  }
+ },
+ {
+  "same": true,
+  "category": "typo",
+  "a": {
+   "given_name": "Catherine",
+   "family_name": "Lindqvist",
+   "organization": "Vandelay Industries",
+   "job_title": "Buyer"
+  },
+  "b": {
+   "given_name": "Catherine",
+   "family_name": "Lindquist",
+   "organization": "Vandelay Industries",
+   "job_title": "Buyer"
+  }
+ },
+ {
+  "same": true,
+  "category": "typo",
+  "a": {
+   "given_name": "Sean",
+   "family_name": "O'Brien",
+   "phones": [
+    "+353 1 234 5678"
+   ],
+   "organization": "Tyrell"
+  },
+  "b": {
+   "given_name": "Shawn",
+   "family_name": "OBrien",
+   "phones": [
+    "+353 1 234 5678"
+   ],
+   "organization": "Tyrell"
+  }
+ },
+ {
+  "same": true,
+  "category": "typo",
+  "a": {
+   "given_name": "Ahmed",
+   "family_name": "Hassan",
+   "emails": [
+    "ahassan@cyberdyne.example"
+   ],
+   "organization": "Cyberdyne"
+  },
+  "b": {
+   "given_name": "Ahmad",
+   "family_name": "Hasan",
+   "emails": [
+    "ahassan@cyberdyne.example"
+   ],
+   "organization": "Cyberdyne"
+  }
+ },
+ {
+  "same": true,
+  "category": "accents",
+  "a": {
+   "given_name": "José",
+   "family_name": "García",
+   "emails": [
+    "jose.garcia@example.es"
+   ],
+   "organization": "Iberia Foods"
+  },
+  "b": {
+   "given_name": "Jose",
+   "family_name": "Garcia",
+   "emails": [
+    "jose.garcia@example.es"
+   ],
+   "organization": "Iberia Foods"
+  }
+ },
+ {
+  "same": true,
+  "category": "accents",
+  "a": {
+   "given_name": "Zoë",
+   "family_name": "Müller",
+   "organization": "Alpen Bank",
+   "job_title": "Analyst"
+  },
+  "b": {
+   "given_name": "Zoe",
+   "family_name": "Mueller",
+   "organization": "Alpen Bank",
+   "job_title": "Analyst"
+  }
+ },
+ {
+  "same": true,
+  "category": "accents",
+  "a": {
+   "given_name": "Søren",
+   "family_name": "Ødegård",
+   "emails": [
+    "so@fjord.example"
+   ],
+   "organization": "Fjord AS"
+  },
+  "b": {
+   "given_name": "Soren",
+   "family_name": "Odegard",
+   "emails": [
+    "so@fjord.example"
+   ],
+   "organization": "Fjord AS"
+  }
+ },
+ {
+  "same": true,
+  "category": "transliteration",
+  "a": {
+   "given_name": "Mohammed",
+   "family_name": "Al-Sayed",
+   "organization": "Gulf Trading",
+   "job_title": "Manager"
+  },
+  "b": {
+   "given_name": "Muhammad",
+   "family_name": "Al Sayed",
+   "organization": "Gulf Trading",
+   "job_title": "Manager"
+  }
+ },
+ {
+  "same": true,
+  "category": "transliteration",
+  "a": {
+   "given_name": "Yuri",
+   "family_name": "Gagarin",
+   "emails": [
+    "yg@cosmos.example"
+   ],
+   "organization": "Cosmos"
+  },
+  "b": {
+   "given_name": "Yury",
+   "family_name": "Gagarin",
+   "emails": [
+    "yg@cosmos.example"
+   ],
+   "organization": "Cosmos"
+  }
+ },
+ {
+  "same": true,
+  "category": "swapped",
+  "a": {
+   "given_name": "Wei",
+   "family_name": "Zhang",
+   "emails": [
+    "wei.zhang@lotus.example"
+   ],
+   "organization": "Lotus Ltd"
+  },
+  "b": {
+   "given_name": "Zhang",
+   "family_name": "Wei",
+   "emails": [
+    "wei.zhang@lotus.example"
+   ],
+   "organization": "Lotus Ltd"
+  }
+ },
+ {
+  "same": true,
+  "category": "swapped",
+  "a": {
+   "given_name": "Min-jun",
+   "family_name": "Kim",
+   "organization": "Hanbit",
+   "job_title": "Director"
+  },
+  "b": {
+   "given_name": "Kim",
+   "family_name": "Min-jun",
+   "organization": "Hanbit",
+   "job_title": "Director"
+  }
+ },
+ {
+  "same": true,
+  "category": "display-only",
+  "a": {
+   "display_name": "Dr Ana Ruiz",
+   "organization": "Acme Widgets Inc."
+  },
+  "b": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "organization": "Acme Widgets Inc."
+  }
+ },
+ {
+  "same": true,
+  "category": "display-only",
+  "a": {
+   "display_name": "Ruiz, Ana",
+   "emails": [
+    "ana.ruiz@example.com"
+   ]
+  },
+  "b": {
+   "display_name": "Ana Ruiz",
+   "emails": [
+    "ana.ruiz@example.com"
+   ]
+  }
+ },
+ {
+  "same": true,
+  "category": "display-only",
+  "a": {
+   "display_name": "Mr. Tomas van der Berg",
+   "organization": "Delft BV"
+  },
+  "b": {
+   "given_name": "Tomas",
+   "family_name": "van der Berg",
+   "organization": "Delft BV"
+  }
+ },
+ {
+  "same": true,
+  "category": "compound",
+  "a": {
+   "given_name": "Maria",
+   "family_name": "García López",
+   "emails": [
+    "mgl@sol.example"
+   ],
+   "organization": "Sol SA"
+  },
+  "b": {
+   "given_name": "Maria",
+   "family_name": "Garcia-Lopez",
+   "emails": [
+    "mgl@sol.example"
+   ],
+   "organization": "Sol S.A."
+  }
+ },
+ {
+  "same": true,
+  "category": "compound",
+  "a": {
+   "given_name": "Anne-Marie",
+   "family_name": "Dubois",
+   "organization": "Lyon Textiles"
+  },
+  "b": {
+   "given_name": "Anne Marie",
+   "family_name": "Dubois",
+   "organization": "Lyon Textiles"
+  }
+ },
+ {
+  "same": true,
+  "category": "compound",
+  "a": {
+   "given_name": "Jean",
+   "family_name": "de la Fontaine",
+   "organization": "Fables Ltd"
+  },
+  "b": {
+   "given_name": "Jean",
+   "family_name": "Delafontaine",
+   "organization": "Fables Ltd"
+  }
+ },
+ {
+  "same": true,
+  "category": "changed-surname",
+  "a": {
+   "given_name": "Sarah",
+   "family_name": "Mitchell",
+   "emails": [
+    "sarah.m@bluebird.example"
+   ],
+   "phones": [
+    "+1 415 555 0132"
+   ],
+   "organization": "Bluebird"
+  },
+  "b": {
+   "given_name": "Sarah",
+   "family_name": "Okonkwo",
+   "emails": [
+    "sarah.m@bluebird.example"
+   ],
+   "phones": [
+    "+1 415 555 0132"
+   ],
+   "organization": "Bluebird"
+  }
+ },
+ {
+  "same": true,
+  "category": "changed-surname",
+  "a": {
+   "given_name": "Emily",
+   "family_name": "Brandt",
+   "emails": [
+    "emily@harbor.example"
+   ],
+   "organization": "Harbor Co"
+  },
+  "b": {
+   "given_name": "Emily",
+   "family_name": "Brandt-Ruiz",
+   "emails": [
+    "emily@harbor.example"
+   ],
+   "organization": "Harbor Co"
+  }
+ },
+ {
+  "same": true,
+  "category": "job-change",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "emails": [
+    "ana.ruiz@example.com"
+   ],
+   "phones": [
+    "+34 612 345 678"
+   ],
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  },
+  "b": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "emails": [
+    "ana.ruiz@example.com"
+   ],
+   "phones": [
+    "+34 612 345 678"
+   ],
+   "organization": "Globex",
+   "job_title": "Chief Revenue Officer"
+  }
+ },
+ {
+  "same": true,
+  "category": "job-change",
+  "a": {
+   "given_name": "Daniel",
+   "family_name": "Kowalski",
+   "emails": [
+    "dkowalski@personal.example"
+   ],
+   "organization": "Initech",
+   "job_title": "Engineer"
+  },
+  "b": {
+   "given_name": "Daniel",
+   "family_name": "Kowalski",
+   "emails": [
+    "dkowalski@personal.example"
+   ],
+   "organization": "Hooli",
+   "job_title": "Senior Engineer"
+  }
+ },
+ {
+  "same": true,
+  "category": "job-change",
+  "a": {
+   "given_name": "Fatima",
+   "family_name": "Rahman",
+   "phones": [
+    "+44 7700 900123"
+   ],
+   "organization": "Northwind",
+   "job_title": "Analyst"
+  },
+  "b": {
+   "given_name": "Fatima",
+   "family_name": "Rahman",
+   "phones": [
+    "07700 900123"
+   ],
+   "organization": "Umbrella",
+   "job_title": "Manager"
+  }
+ },
+ {
+  "same": true,
+  "category": "job-change-no-contact",
+  "a": {
+   "given_name": "Daniel",
+   "family_name": "Kowalski",
+   "organization": "Initech",
+   "job_title": "Engineer"
+  },
+  "b": {
+   "given_name": "Daniel",
+   "family_name": "Kowalski",
+   "organization": "Hooli",
+   "job_title": "Senior Engineer"
+  }
+ },
+ {
+  "same": true,
+  "category": "sparse",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz"
+  },
+  "b": {
+   "given_name": "Ana",
+   "family_name": "Ruiz"
+  }
+ },
+ {
+  "same": true,
+  "category": "sparse",
+  "a": {
+   "given_name": "Tariq",
+   "family_name": "Aziz",
+   "emails": [
+    "tariq@aziz.example"
+   ]
+  },
+  "b": {
+   "given_name": "Tariq",
+   "family_name": "Aziz"
+  }
+ },
+ {
+  "same": true,
+  "category": "sparse",
+  "a": {
+   "display_name": "Ana Ruiz",
+   "organization": "Acme Widgets Inc."
+  },
+  "b": {
+   "display_name": "Ana Ruiz",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  }
+ },
+ {
+  "same": true,
+  "category": "sparse",
+  "a": {
+   "given_name": "Chloe",
+   "family_name": "Tanaka",
+   "phones": [
+    "+81 90 1234 5678"
+   ]
+  },
+  "b": {
+   "given_name": "Chloé",
+   "family_name": "Tanaka",
+   "phones": [
+    "090-1234-5678"
+   ],
+   "organization": "Sakura KK"
+  }
+ },
+ {
+  "same": true,
+  "category": "phone-format",
+  "a": {
+   "given_name": "Luis",
+   "family_name": "Fernandez",
+   "phones": [
+    "(415) 555-0199"
+   ],
+   "organization": "Bay Labs"
+  },
+  "b": {
+   "given_name": "Luis",
+   "family_name": "Fernandez",
+   "phones": [
+    "+1 415 555 0199"
+   ],
+   "organization": "Bay Labs"
+  }
+ },
+ {
+  "same": true,
+  "category": "email-variant",
+  "a": {
+   "given_name": "Noah",
+   "family_name": "Fischer",
+   "emails": [
+    "noah.fischer@gmail.com"
+   ],
+   "organization": "Freelance"
+  },
+  "b": {
+   "given_name": "Noah",
+   "family_name": "Fischer",
+   "emails": [
+    "noahfischer@gmail.com"
+   ],
+   "organization": "Freelance"
+  }
+ },
+ {
+  "same": true,
+  "category": "email-variant",
+  "a": {
+   "given_name": "Noor",
+   "family_name": "Haddad",
+   "emails": [
+    "nhaddad@old.example",
+    "noor@new.example"
+   ],
+   "organization": "Cedar"
+  },
+  "b": {
+   "given_name": "Noor",
+   "family_name": "Haddad",
+   "emails": [
+    "noor@new.example"
+   ],
+   "organization": "Cedar"
+  }
+ },
+ {
+  "same": true,
+  "category": "person_ref",
+  "a": {
+   "person_ref": "prs-1",
+   "given_name": "Ana",
+   "family_name": "Ruiz"
+  },
+  "b": {
+   "person_ref": "prs-1",
+   "given_name": "Anita",
+   "family_name": "Ruiz-Perez",
+   "organization": "Elsewhere"
+  }
+ },
+ {
+  "same": true,
+  "category": "person_ref",
+  "a": {
+   "person_ref": "prs-2",
+   "given_name": "Robert",
+   "family_name": "Chen"
+  },
+  "b": {
+   "person_ref": "prs-2",
+   "given_name": "Bob",
+   "family_name": "Chen"
+  }
+ },
+ {
+  "same": true,
+  "category": "org-variant",
+  "a": {
+   "given_name": "Grace",
+   "family_name": "Hopper",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP"
+  },
+  "b": {
+   "given_name": "Grace",
+   "family_name": "Hopper",
+   "organization": "ACME Widgets, Incorporated",
+   "job_title": "Vice President"
+  }
+ },
+ {
+  "same": true,
+  "category": "org-variant",
+  "a": {
+   "given_name": "Hiro",
+   "family_name": "Sato",
+   "emails": [
+    "hs@sakura.example"
+   ],
+   "organization": "Sakura Holdings Ltd"
+  },
+  "b": {
+   "given_name": "Hiro",
+   "family_name": "Sato",
+   "emails": [
+    "hs@sakura.example"
+   ],
+   "organization": "Sakura Holdings Limited"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-diff-employer",
+  "a": {
+   "given_name": "John",
+   "family_name": "Smith",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "Engineer"
+  },
+  "b": {
+   "given_name": "John",
+   "family_name": "Smith",
+   "organization": "Globex",
+   "job_title": "Teacher"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-diff-employer",
+  "a": {
+   "given_name": "Maria",
+   "family_name": "Garcia",
+   "organization": "Iberia Foods",
+   "job_title": "Buyer"
+  },
+  "b": {
+   "given_name": "Maria",
+   "family_name": "Garcia",
+   "organization": "Pied Piper",
+   "job_title": "Designer"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-diff-employer",
+  "a": {
+   "given_name": "Wei",
+   "family_name": "Zhang",
+   "organization": "Lotus Ltd",
+   "job_title": "Manager"
+  },
+  "b": {
+   "given_name": "Wei",
+   "family_name": "Zhang",
+   "organization": "Hooli",
+   "job_title": "Intern"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-diff-employer",
+  "a": {
+   "given_name": "David",
+   "family_name": "Lee",
+   "emails": [
+    "dlee@initech.example"
+   ],
+   "organization": "Initech"
+  },
+  "b": {
+   "given_name": "David",
+   "family_name": "Lee",
+   "emails": [
+    "david.lee@globex.example"
+   ],
+   "organization": "Globex"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-diff-employer",
+  "a": {
+   "given_name": "Sarah",
+   "family_name": "Johnson",
+   "phones": [
+    "+1 212 555 0111"
+   ],
+   "organization": "Wayne Enterprises"
+  },
+  "b": {
+   "given_name": "Sarah",
+   "family_name": "Johnson",
+   "phones": [
+    "+1 312 555 0177"
+   ],
+   "organization": "Stark Industries"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-diff-employer",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "emails": [
+    "ana.ruiz@example.com"
+   ],
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  },
+  "b": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "emails": [
+    "ruiz.ana@other.example"
+   ],
+   "organization": "Hooli",
+   "job_title": "Nurse"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-no-other-info",
+  "a": {
+   "given_name": "John",
+   "family_name": "Smith"
+  },
+  "b": {
+   "given_name": "John",
+   "family_name": "Smith"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-no-other-info",
+  "a": {
+   "given_name": "Maria",
+   "family_name": "Garcia",
+   "organization": "Acme"
+  },
+  "b": {
+   "given_name": "Maria",
+   "family_name": "Garcia"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-same-employer",
+  "a": {
+   "given_name": "John",
+   "family_name": "Smith",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "Engineer"
+  },
+  "b": {
+   "given_name": "John",
+   "family_name": "Smith",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "Accountant"
+  }
+ },
+ {
+  "same": false,
+  "category": "exact-name-same-employer",
+  "a": {
+   "given_name": "Michael",
+   "family_name": "Brown",
+   "organization": "Initech",
+   "job_title": "Sales"
+  },
+  "b": {
+   "given_name": "Michael",
+   "family_name": "Brown",
+   "organization": "Initech",
+   "job_title": "Support"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-employer",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  },
+  "b": {
+   "given_name": "Ana",
+   "family_name": "Torres",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-employer",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "organization": "Acme Widgets Inc."
+  },
+  "b": {
+   "given_name": "Juan",
+   "family_name": "Ruiz",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-employer",
+  "a": {
+   "given_name": "Priya",
+   "family_name": "Natarajan",
+   "organization": "Northwind",
+   "job_title": "CEO"
+  },
+  "b": {
+   "given_name": "Rahul",
+   "family_name": "Sharma",
+   "organization": "Northwind",
+   "job_title": "CEO"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-employer",
+  "a": {
+   "given_name": "Tom",
+   "family_name": "Hale",
+   "emails": [
+    "tom@globex.example"
+   ],
+   "organization": "Globex",
+   "job_title": "Engineer"
+  },
+  "b": {
+   "given_name": "Tim",
+   "family_name": "Hall",
+   "emails": [
+    "tim@globex.example"
+   ],
+   "organization": "Globex",
+   "job_title": "Engineer"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-employer",
+  "a": {
+   "given_name": "Emma",
+   "family_name": "Stone",
+   "organization": "Hooli",
+   "job_title": "Designer"
+  },
+  "b": {
+   "given_name": "Emma",
+   "family_name": "Stein",
+   "organization": "Hooli",
+   "job_title": "Designer"
+  }
+ },
+ {
+  "same": false,
+  "category": "lookalike-name",
+  "a": {
+   "given_name": "Jon",
+   "family_name": "Smith",
+   "organization": "Acme"
+  },
+  "b": {
+   "given_name": "John",
+   "family_name": "Smyth",
+   "organization": "Acme"
+  }
+ },
+ {
+  "same": false,
+  "category": "lookalike-name",
+  "a": {
+   "given_name": "Katherine",
+   "family_name": "Doyle",
+   "organization": "Hooli"
+  },
+  "b": {
+   "given_name": "Catherine",
+   "family_name": "Doyle",
+   "organization": "Hooli Labs"
+  }
+ },
+ {
+  "same": false,
+  "category": "lookalike-name",
+  "a": {
+   "given_name": "Ian",
+   "family_name": "Clarke",
+   "organization": "Tyrell",
+   "job_title": "Pilot"
+  },
+  "b": {
+   "given_name": "Ian",
+   "family_name": "Clark",
+   "organization": "Tyrell",
+   "job_title": "Pilot"
+  }
+ },
+ {
+  "same": false,
+  "category": "lookalike-name",
+  "a": {
+   "given_name": "Lee",
+   "family_name": "Park",
+   "organization": "Hanbit"
+  },
+  "b": {
+   "given_name": "Lea",
+   "family_name": "Park",
+   "organization": "Hanbit"
+  }
+ },
+ {
+  "same": false,
+  "category": "lookalike-name",
+  "a": {
+   "given_name": "Ali",
+   "family_name": "Khan",
+   "emails": [
+    "ali.khan@a.example"
+   ]
+  },
+  "b": {
+   "given_name": "Alia",
+   "family_name": "Khan",
+   "emails": [
+    "alia.khan@a.example"
+   ]
+  }
+ },
+ {
+  "same": false,
+  "category": "lookalike-name",
+  "a": {
+   "given_name": "Mark",
+   "family_name": "Davis",
+   "organization": "Soylent",
+   "job_title": "Analyst"
+  },
+  "b": {
+   "given_name": "Marc",
+   "family_name": "Davies",
+   "organization": "Soylent",
+   "job_title": "Analyst"
+  }
+ },
+ {
+  "same": false,
+  "category": "lookalike-name",
+  "a": {
+   "given_name": "Anna",
+   "family_name": "Schmidt",
+   "organization": "Alpen Bank"
+  },
+  "b": {
+   "given_name": "Anne",
+   "family_name": "Schmitt",
+   "organization": "Alpen Bank"
+  }
+ },
+ {
+  "same": false,
+  "category": "lookalike-name",
+  "a": {
+   "given_name": "Hannah",
+   "family_name": "Lewis",
+   "organization": "Cedar"
+  },
+  "b": {
+   "given_name": "Hanna",
+   "family_name": "Louis",
+   "organization": "Cedar"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-mailbox",
+  "a": {
+   "given_name": "Carlos",
+   "family_name": "Mendes",
+   "emails": [
+    "mendes.family@example.com"
+   ],
+   "organization": "Lisbon Co"
+  },
+  "b": {
+   "given_name": "Beatriz",
+   "family_name": "Mendes",
+   "emails": [
+    "mendes.family@example.com"
+   ],
+   "organization": "Porto SA"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-mailbox",
+  "a": {
+   "given_name": "Alice",
+   "family_name": "Wong",
+   "emails": [
+    "info@bluebird.example"
+   ],
+   "organization": "Bluebird"
+  },
+  "b": {
+   "given_name": "Peter",
+   "family_name": "Nowak",
+   "emails": [
+    "info@bluebird.example"
+   ],
+   "organization": "Bluebird"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-mailbox",
+  "a": {
+   "given_name": "Rita",
+   "family_name": "Bose",
+   "emails": [
+    "sales@harbor.example"
+   ],
+   "organization": "Harbor Co",
+   "job_title": "Sales"
+  },
+  "b": {
+   "given_name": "Omar",
+   "family_name": "Farouk",
+   "emails": [
+    "sales@harbor.example"
+   ],
+   "organization": "Harbor Co",
+   "job_title": "Sales"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-mailbox",
+  "a": {
+   "given_name": "Jane",
+   "family_name": "Doe",
+   "emails": [
+    "team@startup.example"
+   ],
+   "organization": "Startup"
+  },
+  "b": {
+   "given_name": "John",
+   "family_name": "Roe",
+   "emails": [
+    "team@startup.example"
+   ],
+   "organization": "Startup"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-phone",
+  "a": {
+   "given_name": "Greta",
+   "family_name": "Lund",
+   "phones": [
+    "+46 8 123 456"
+   ],
+   "organization": "Nordic AB"
+  },
+  "b": {
+   "given_name": "Henrik",
+   "family_name": "Lund",
+   "phones": [
+    "+46 8 123 456"
+   ],
+   "organization": "Nordic AB"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-phone",
+  "a": {
+   "given_name": "Sam",
+   "family_name": "Patel",
+   "phones": [
+    "+1 415 555 0100"
+   ],
+   "organization": "Bay Labs"
+  },
+  "b": {
+   "given_name": "Nina",
+   "family_name": "Gomez",
+   "phones": [
+    "(415) 555-0100"
+   ],
+   "organization": "Bay Labs"
+  }
+ },
+ {
+  "same": false,
+  "category": "shared-phone-switchboard",
+  "a": {
+   "given_name": "Eve",
+   "family_name": "Adams",
+   "phones": [
+    "+44 20 7946 0000"
+   ],
+   "organization": "Hooli"
+  },
+  "b": {
+   "given_name": "Frank",
+   "family_name": "Baker",
+   "phones": [
+    "020 7946 0000"
+   ],
+   "organization": "Hooli"
+  }
+ },
+ {
+  "same": false,
+  "category": "family",
+  "a": {
+   "given_name": "Carlos",
+   "family_name": "Mendes",
+   "emails": [
+    "carlos@mendes.example"
+   ],
+   "phones": [
+    "+351 21 123 4567"
+   ],
+   "organization": "Lisbon Co"
+  },
+  "b": {
+   "given_name": "Carla",
+   "family_name": "Mendes",
+   "emails": [
+    "carla@mendes.example"
+   ],
+   "phones": [
+    "+351 21 123 4567"
+   ],
+   "organization": "Lisbon Co"
+  }
+ },
+ {
+  "same": false,
+  "category": "father-son",
+  "a": {
+   "given_name": "James",
+   "family_name": "Whitfield",
+   "emails": [
+    "jw@pied.example"
+   ],
+   "organization": "Pied Piper"
+  },
+  "b": {
+   "given_name": "James",
+   "family_name": "Whitfield",
+   "emails": [
+    "jw2@pied.example"
+   ],
+   "organization": "Pied Piper",
+   "job_title": "Intern"
+  }
+ },
+ {
+  "same": false,
+  "category": "father-son",
+  "a": {
+   "given_name": "Robert",
+   "family_name": "Chen",
+   "organization": "Initech",
+   "job_title": "Founder"
+  },
+  "b": {
+   "given_name": "Robert",
+   "family_name": "Chen",
+   "organization": "Initech",
+   "job_title": "Intern"
+  }
+ },
+ {
+  "same": false,
+  "category": "same-first-different-last",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "emails": [
+    "a.ruiz@acme.example"
+   ],
+   "organization": "Acme"
+  },
+  "b": {
+   "given_name": "Ana",
+   "family_name": "Rodriguez",
+   "emails": [
+    "a.rodriguez@acme.example"
+   ],
+   "organization": "Acme"
+  }
+ },
+ {
+  "same": false,
+  "category": "same-last-different-first",
+  "a": {
+   "given_name": "Fatima",
+   "family_name": "Rahman",
+   "organization": "Northwind"
+  },
+  "b": {
+   "given_name": "Hassan",
+   "family_name": "Rahman",
+   "organization": "Northwind"
+  }
+ },
+ {
+  "same": false,
+  "category": "different-names",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  },
+  "b": {
+   "given_name": "Peter",
+   "family_name": "Novak",
+   "organization": "Globex",
+   "job_title": "Pilot"
+  }
+ },
+ {
+  "same": false,
+  "category": "different-names",
+  "a": {
+   "given_name": "Grace",
+   "family_name": "Hopper",
+   "organization": "Navy"
+  },
+  "b": {
+   "given_name": "Alan",
+   "family_name": "Turing",
+   "organization": "Bletchley"
+  }
+ },
+ {
+  "same": false,
+  "category": "different-names",
+  "a": {
+   "given_name": "Yuki",
+   "family_name": "Tanaka",
+   "emails": [
+    "yt@sakura.example"
+   ]
+  },
+  "b": {
+   "given_name": "Olu",
+   "family_name": "Adeyemi",
+   "emails": [
+    "oa@lagos.example"
+   ]
+  }
+ },
+ {
+  "same": false,
+  "category": "different-names",
+  "a": {
+   "given_name": "Sofia",
+   "family_name": "Rossi",
+   "organization": "Roma SpA"
+  },
+  "b": {
+   "given_name": "Lars",
+   "family_name": "Berg",
+   "organization": "Nordic AB"
+  }
+ },
+ {
+  "same": false,
+  "category": "different-names-same-org",
+  "a": {
+   "given_name": "Sofia",
+   "family_name": "Rossi",
+   "organization": "Roma SpA",
+   "job_title": "CEO"
+  },
+  "b": {
+   "given_name": "Marco",
+   "family_name": "Bianchi",
+   "organization": "Roma SpA",
+   "job_title": "CEO"
+  }
+ },
+ {
+  "same": false,
+  "category": "different-names-same-title",
+  "a": {
+   "given_name": "Li",
+   "family_name": "Na",
+   "job_title": "Manager"
+  },
+  "b": {
+   "given_name": "Ben",
+   "family_name": "Ford",
+   "job_title": "Manager"
+  }
+ },
+ {
+  "same": false,
+  "category": "nickname-different-person",
+  "a": {
+   "given_name": "Robert",
+   "family_name": "Chen",
+   "organization": "Initech"
+  },
+  "b": {
+   "given_name": "Bob",
+   "family_name": "Chen",
+   "organization": "Globex"
+  }
+ },
+ {
+  "same": false,
+  "category": "nickname-different-person",
+  "a": {
+   "given_name": "William",
+   "family_name": "Okafor",
+   "emails": [
+    "w.okafor@umbrella.example"
+   ]
+  },
+  "b": {
+   "given_name": "Bill",
+   "family_name": "Okafor",
+   "emails": [
+    "bill@okafor-law.example"
+   ]
+  }
+ },
+ {
+  "same": false,
+  "category": "nickname-different-person",
+  "a": {
+   "given_name": "Elizabeth",
+   "family_name": "Moore",
+   "organization": "Globex"
+  },
+  "b": {
+   "given_name": "Liz",
+   "family_name": "Moore",
+   "organization": "Hooli"
+  }
+ },
+ {
+  "same": false,
+  "category": "initials-different-person",
+  "a": {
+   "given_name": "J",
+   "family_name": "Whitfield",
+   "organization": "Pied Piper"
+  },
+  "b": {
+   "given_name": "Jane",
+   "family_name": "Whitfield",
+   "organization": "Hooli"
+  }
+ },
+ {
+  "same": false,
+  "category": "initials-different-person",
+  "a": {
+   "given_name": "M.",
+   "family_name": "Alvarez",
+   "organization": "Wayne Enterprises"
+  },
+  "b": {
+   "given_name": "Mario",
+   "family_name": "Alvarez",
+   "organization": "Stark Industries"
+  }
+ },
+ {
+  "same": false,
+  "category": "initials-same-employer",
+  "a": {
+   "given_name": "J.",
+   "family_name": "Smith",
+   "organization": "Acme"
+  },
+  "b": {
+   "given_name": "Jane",
+   "family_name": "Smith",
+   "organization": "Acme"
+  }
+ },
+ {
+  "same": false,
+  "category": "common-name",
+  "a": {
+   "given_name": "Li",
+   "family_name": "Wang",
+   "organization": "Lotus Ltd"
+  },
+  "b": {
+   "given_name": "Li",
+   "family_name": "Wang",
+   "organization": "Cedar"
+  }
+ },
+ {
+  "same": false,
+  "category": "common-name",
+  "a": {
+   "given_name": "Mohamed",
+   "family_name": "Ali",
+   "organization": "Gulf Trading"
+  },
+  "b": {
+   "given_name": "Mohamed",
+   "family_name": "Ali",
+   "organization": "Nile Co"
+  }
+ },
+ {
+  "same": false,
+  "category": "common-name",
+  "a": {
+   "given_name": "Nguyen",
+   "family_name": "Tran",
+   "organization": "Saigon Co"
+  },
+  "b": {
+   "given_name": "Nguyen",
+   "family_name": "Tran",
+   "organization": "Hanoi Ltd"
+  }
+ },
+ {
+  "same": false,
+  "category": "common-name-same-city-phone",
+  "a": {
+   "given_name": "Kim",
+   "family_name": "Lee",
+   "phones": [
+    "+82 2 123 4567"
+   ]
+  },
+  "b": {
+   "given_name": "Kim",
+   "family_name": "Lee",
+   "phones": [
+    "+82 2 765 4321"
+   ]
+  }
+ },
+ {
+  "same": false,
+  "category": "same-name-same-title-diff-org",
+  "a": {
+   "given_name": "Maria",
+   "family_name": "Garcia",
+   "organization": "Iberia Foods",
+   "job_title": "VP Sales"
+  },
+  "b": {
+   "given_name": "Maria",
+   "family_name": "Garcia",
+   "organization": "Acme Widgets Inc.",
+   "job_title": "VP Sales"
+  }
+ },
+ {
+  "same": false,
+  "category": "sparse-same-name",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "job_title": "VP Sales"
+  },
+  "b": {
+   "given_name": "Ana",
+   "family_name": "Ruiz",
+   "job_title": "VP Sales"
+  }
+ },
+ {
+  "same": false,
+  "category": "sparse-same-name",
+  "a": {
+   "display_name": "David Lee"
+  },
+  "b": {
+   "display_name": "David Lee"
+  }
+ },
+ {
+  "same": false,
+  "category": "sparse-near-name",
+  "a": {
+   "given_name": "Ana",
+   "family_name": "Ruiz"
+  },
+  "b": {
+   "given_name": "Anna",
+   "family_name": "Ruiz"
+  }
+ },
+ {
+  "same": false,
+  "category": "gmail-lookalike",
+  "a": {
+   "given_name": "Noah",
+   "family_name": "Fischer",
+   "emails": [
+    "noah.fischer@gmail.com"
+   ]
+  },
+  "b": {
+   "given_name": "Noah",
+   "family_name": "Fisher",
+   "emails": [
+    "noah.fisher@gmail.com"
+   ]
+  }
+ },
+ {
+  "same": false,
+  "category": "email-same-local-diff-domain",
+  "a": {
+   "given_name": "Chris",
+   "family_name": "Taylor",
+   "emails": [
+    "ctaylor@a.example"
+   ],
+   "organization": "A Corp"
+  },
+  "b": {
+   "given_name": "Chris",
+   "family_name": "Taylor",
+   "emails": [
+    "ctaylor@b.example"
+   ],
+   "organization": "B Corp"
+  }
+ },
+ {
+  "same": false,
+  "category": "email-same-local-diff-domain",
+  "a": {
+   "given_name": "Pat",
+   "family_name": "Kelly",
+   "emails": [
+    "pkelly@a.example"
+   ]
+  },
+  "b": {
+   "given_name": "Pamela",
+   "family_name": "Kelly",
+   "emails": [
+    "pkelly@b.example"
+   ]
+  }
+ },
+ {
+  "same": false,
+  "category": "different-person-same-org-similar-title",
+  "a": {
+   "given_name": "Ruth",
+   "family_name": "Cohen",
+   "organization": "Initech",
+   "job_title": "VP Engineering"
+  },
+  "b": {
+   "given_name": "Ruth",
+   "family_name": "Cole",
+   "organization": "Initech",
+   "job_title": "VP Engineering"
+  }
+ },
+ {
+  "same": false,
+  "category": "different-person-same-org-similar-title",
+  "a": {
+   "given_name": "Dan",
+   "family_name": "Reyes",
+   "organization": "Globex",
+   "job_title": "Director"
+  },
+  "b": {
+   "given_name": "Don",
+   "family_name": "Reyes",
+   "organization": "Globex",
+   "job_title": "Director"
+  }
+ },
+ {
+  "same": false,
+  "category": "contractor-two-clients",
+  "a": {
+   "given_name": "Tara",
+   "family_name": "Singh",
+   "emails": [
+    "tara@singh.example"
+   ],
+   "organization": "Client A",
+   "job_title": "Consultant"
+  },
+  "b": {
+   "given_name": "Tara",
+   "family_name": "Singh",
+   "emails": [
+    "tara.s@clientb.example"
+   ],
+   "organization": "Client B",
+   "job_title": "Consultant"
+  }
+ }
+]

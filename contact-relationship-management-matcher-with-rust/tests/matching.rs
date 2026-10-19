@@ -250,7 +250,7 @@ fn configuration_is_validated() {
     };
     assert!(bad(|c| c.prior = 0.0).contains("prior"));
     assert!(bad(|c| c.prior = f64::NAN).contains("prior"));
-    assert!(bad(|c| c.review_threshold = 0.95).contains("review_threshold"));
+    assert!(bad(|c| c.review_threshold = 0.995).contains("review_threshold"));
     assert!(bad(|c| c.disagree_at = 0.95).contains("disagree_at"));
     assert!(bad(|c| c.email.m = 0.0001).contains("email.m"));
     assert!(bad(|c| c.phone.u = 1.0).contains("phone.u"));

@@ -68,7 +68,7 @@ impl Default for MatchConfig {
     fn default() -> Self {
         Self {
             prior: 0.001,
-            match_threshold: 0.9,
+            match_threshold: 0.99,
             review_threshold: 0.5,
             agree_at: 0.92,
             disagree_at: 0.7,
