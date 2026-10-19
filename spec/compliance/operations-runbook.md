@@ -123,6 +123,10 @@ keyless cosign (the workflow's OIDC identity; no key to store), and attaches a
 build-provenance attestation and signed CycloneDX SBOMs. Before deploying,
 verify the image you will run:
 
+> **Cosign version.** Releases up to v0.1.1 were signed with cosign 2; from v0.1.2 the
+> workflow installs cosign 3 (cosign-installer 4). Verify with cosign 3 or later. Whether
+> a cosign 2 client can verify a cosign 3 signature has not been tested.
+
 ```bash
 cosign verify ghcr.io/<owner>/<repo>/service:vX.Y.Z \
   --certificate-identity-regexp '^https://github.com/<owner>/<repo>/\.github/workflows/release\.yml@refs/tags/v' \

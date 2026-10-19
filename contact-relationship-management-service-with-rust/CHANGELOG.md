@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] — prepared 2026-10-19, not yet released
+
+Since 0.1.0 (crates.io) and the v0.1.1 images: `GET /api/contacts/{pid}/duplicates`
+(below), a dependency on the published `contact-relationship-management-matcher`
+0.1.0, the Redis tests now run in CI, the images carry OCI labels and the release
+workflow refuses a tag that disagrees with this version, and the UI image builds
+on Node 26 (v0.1.0's UI build failed on `corepack`). The release workflow now uses
+cosign-installer 4 (cosign 3) and attest-build-provenance 4: untested until a
+pre-release tag runs it.
+
 ### Added — `GET /api/contacts/{pid}/duplicates` (2026-10-19)
 
 Other contacts that are probably the same person, best first, with the
