@@ -9,6 +9,7 @@ pub mod analytics;
 pub mod audit_chain;
 pub mod engagement;
 pub mod lifecycle;
+pub mod merge;
 pub mod privacy;
 pub mod scoring;
 pub mod segment;

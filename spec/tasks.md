@@ -992,8 +992,8 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       new default only after the matcher is published (0.1.1) and the service
       dependency is bumped. The CRM-T61 note stays as is until then.
 
-- [ ] CRM-T64 **Merge two duplicate contacts.** Traces to CRM-R23 and CRM-R24
-      (proposed in `requirements.md`, awaiting review; no code until agreed), written with it (the three-part rule: spec,
+- [ ] CRM-T64 **Merge two duplicate contacts.** *Service slice done 2026-10-19 (endpoint, ledger migration, 4 DB tests, enforcement and schema checks); the UI action, the 8 locales, and the e2e and live tests remain.* Traces to CRM-R23 and CRM-R24
+      (agreed 2026-10-19: merge ledger, consent order `withdrawn` > `never` > `granted`, no second approver), written with it (the three-part rule: spec,
       code and tests together). This is the first feature built on the matcher
       that changes data, so it needs the most care. Today the duplicates
       endpoint is advice only (CRM-T61) and the manual repoint endpoint (CRM-T2)
@@ -1023,7 +1023,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       confirmation that states what moves and that consent follows the stricter
       side; the labels in all 8 locales (unreviewed, as before).
       **Done when:** database tests cover the moves, the consent cases (granted
-      with withdrawn, withdrawn with granted, pending with granted), refusal of an
+      with withdrawn, withdrawn with granted, never with granted), refusal of an
       erased contact, of the same contact twice, and of a contact the caller
       cannot write; the audit chain still verifies; a failure part-way leaves both
       contacts unchanged; OpenAPI and the checked response schema are updated; an

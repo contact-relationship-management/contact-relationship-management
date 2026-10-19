@@ -305,7 +305,7 @@ that two contact records are the same person, and why.*
 
 ## CRM-R24 — Merge two contacts into one
 
-*Status: proposed, for review before any code (CRM-T64).*
+*Status: service built (CRM-T64); the UI action is still to come.*
 
 *As someone who keeps the contact list clean, I can merge a duplicate contact
 into the one I keep, knowing the result is never more permissive about consent
@@ -329,7 +329,7 @@ than either record was, and that the merge is recorded.*
   `person_ref` is not repointed: the person service is a separate system, and
   two person records stay two until someone merges them there.
 - **Consent never widens.** The survivor's marketing consent becomes the
-  stricter of the two: `withdrawn` over `pending` over `granted`, one ordered
+  stricter of the two: `withdrawn` over `never` over `granted`, one ordered
   rule in the code, tested for every pair. A grant
   is never inferred from the other record. Both consent histories are kept,
   each entry with its original source and date, and a consent event records

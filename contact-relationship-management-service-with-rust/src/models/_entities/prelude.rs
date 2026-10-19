@@ -6,6 +6,7 @@ pub use super::articles::Entity as Articles;
 pub use super::audit_logs::Entity as AuditLogs;
 pub use super::campaigns::Entity as Campaigns;
 pub use super::consent_events::Entity as ConsentEvents;
+pub use super::contact_merges::Entity as ContactMerges;
 pub use super::contacts::Entity as Contacts;
 pub use super::deals::Entity as Deals;
 pub use super::email_deliveries::Entity as EmailDeliveries;

@@ -484,6 +484,37 @@ async fn enforcement_gates_the_real_stack() {
                 .status_code(),
             403
         );
+        // CRM-R24: a merge is destructive-classified, so a writer is refused
+        // and a service credential is not.
+        let mut pids = Vec::new();
+        for name in ["Merge One", "Merge Two"] {
+            let created: Value = request
+                .post("/api/contacts")
+                .add_header("authorization", bearer(&service))
+                .json(&json!({ "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                                "display_name": name }))
+                .await
+                .json();
+            pids.push(created["pid"].as_str().unwrap().to_string());
+        }
+        let merge_body = json!({ "into_pid": pids[1], "reason": "same person" });
+        assert_eq!(
+            request
+                .post(&format!("/api/contacts/{}/merge", pids[0]))
+                .add_header("authorization", bearer(&writer))
+                .json(&merge_body)
+                .await
+                .status_code(),
+            403,
+            "a writer cannot merge"
+        );
+        let merged: Value = request
+            .post(&format!("/api/contacts/{}/merge", pids[0]))
+            .add_header("authorization", bearer(&service))
+            .json(&merge_body)
+            .await
+            .json();
+        assert_eq!(merged["survivor_pid"], pids[1], "{merged}");
         // The review surface is admin/service tier.
         assert_eq!(
             request

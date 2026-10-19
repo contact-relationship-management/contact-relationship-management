@@ -13,6 +13,7 @@ pub mod docs;
 pub mod engagement;
 pub mod insights;
 pub mod marketing;
+pub mod merge;
 pub mod metrics;
 pub mod paging;
 pub mod privacy;

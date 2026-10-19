@@ -32,6 +32,7 @@ pub fn spec() -> Value {
                 "get": { "tags": ["relationships"], "summary": "List contacts", "responses": ok("Contacts") }
             },
             "/api/contacts/{pid}": { "get": { "tags": ["relationships"], "summary": "Contact + merged timeline (activities, deals, tickets)", "responses": ok("ContactDetail") } },
+            "/api/contacts/{pid}/merge": { "post": { "tags": ["relationships"], "summary": "Merge this contact into into_pid, which survives (dry_run previews; consent never widens; destructive-classified; refused 422 for an erased or same contact, 409 if already merged)", "responses": ok("ContactMerge") } },
             "/api/contacts/{pid}/duplicates": { "get": { "tags": ["relationships"], "summary": "Other contacts that are probably the same person (?limit=; probability and per-field breakdown; advice only)", "responses": ok("ContactDuplicates") } },
             "/api/contacts/{pid}/repoint": { "post": { "tags": ["relationships"], "summary": "Repoint the wrapper after an upstream merge (reasoned, audited)", "responses": ok("Contact") } },
             "/api/accounts": {

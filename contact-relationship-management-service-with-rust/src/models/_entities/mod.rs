@@ -6,6 +6,7 @@ pub mod articles;
 pub mod audit_logs;
 pub mod campaigns;
 pub mod consent_events;
+pub mod contact_merges;
 pub mod contacts;
 pub mod deals;
 pub mod email_deliveries;

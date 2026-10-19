@@ -22,7 +22,7 @@ use crate::rules::privacy as rules;
 
 /// The tombstone URN an erased contact's `person_ref` becomes: a
 /// syntactically valid `EntityRef` that resolves to no one.
-const TOMBSTONE_PERSON: &str = "person:00000000-0000-0000-0000-000000000000";
+pub(crate) const TOMBSTONE_PERSON: &str = "person:00000000-0000-0000-0000-000000000000";
 
 /// The scrub placeholder for erased free text and names.
 const ERASED: &str = "[erased]";

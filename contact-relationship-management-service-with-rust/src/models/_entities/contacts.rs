@@ -27,6 +27,7 @@ pub struct Model {
     pub influence: Option<i32>,
     pub interest: Option<i32>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
+    pub merged_into_pid: Option<Uuid>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

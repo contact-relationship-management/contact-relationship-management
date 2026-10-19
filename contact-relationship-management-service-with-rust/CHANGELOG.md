@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `POST /api/contacts/{pid}/merge` (CRM-R24, service only; the UI action is still to come)
+Merges the contact in the path into `into_pid`, which survives. One transaction;
+`dry_run` does the work and rolls it back, so its counts are exact. Activities,
+leads, deals (as primary contact), tickets, email deliveries, consent events,
+nurture enrolments and working-group seats move to the survivor (an enrolment or
+seat the survivor already has is dropped). The survivor's empty fields are filled
+from the merged contact; nothing it holds is overwritten. Consent is the stricter
+of the two (`withdrawn`, then `never`, then `granted`) and a consent event
+records any change. The merged contact is soft-deleted with `merged_into_pid`; a
+new `contact_merges` ledger holds the ids of every row that moved. Refused: the
+same contact (422), an erased contact (422), an already-merged one (409), a
+missing one (404), a caller who may not do destructive actions (403). Audited
+(counts, never values) and emitted as `contacts_merged`. New migration
+`m20261019_000017_contact_merges`.
+
 ## [0.1.2] — prepared 2026-10-19, not yet released
 
 Since 0.1.0 (crates.io) and the v0.1.1 images: `GET /api/contacts/{pid}/duplicates`

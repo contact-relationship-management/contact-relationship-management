@@ -21,7 +21,7 @@
 
 ## Quality evidence
 
-Unit tests (176), database tests (44 including enforcement, masking, audit,
+Unit tests (181), database tests (48 including enforcement, masking, audit,
 pagination, caching, idempotency, schema checks), front-end unit (104) and
 Playwright (91) including axe
 accessibility scans. CI runs fmt, clippy, tests, front-end build/lint and a

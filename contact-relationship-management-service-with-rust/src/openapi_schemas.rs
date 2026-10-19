@@ -159,6 +159,8 @@ fn base_schemas() -> Value {
             "joined_on": date(), "status": string(), "renewal_on": date() })),
         "GroupPayload": object(&["name"], &json!({ "name": string(), "purpose": string() })),
         "MemberPayload": object(&["contact_pid"], &json!({ "contact_pid": uuid() })),
+        "MergePayload": object(&["into_pid", "reason"], &json!({
+            "into_pid": uuid(), "reason": string(), "dry_run": boolean() })),
 
         // ---- resources (what the lists return)
         "Contact": resource(&["pid", "person_ref", "display_name", "status", "marketing_consent"], &json!({
@@ -274,6 +276,13 @@ fn view_schemas() -> Value {
                         &["field", "outcome", "similarity", "weight"], &json!({
                             "field": string(), "outcome": string(),
                             "similarity": number(), "weight": number() })) } })) } })),
+        "ContactMerge": object(&["survivor_pid", "merged_pid", "dry_run", "moved", "dropped", "filled", "consent"], &json!({
+            "survivor_pid": uuid(), "merged_pid": uuid(), "dry_run": boolean(),
+            "moved": { "type": "object", "additionalProperties": integer() },
+            "dropped": { "type": "object", "additionalProperties": integer() },
+            "filled": { "type": "array", "items": string() },
+            "consent": object(&["survivor", "merged", "result"], &json!({
+                "survivor": string(), "merged": string(), "result": string() })) })),
         "AccountDetail": object(&["account", "contacts", "deals"], &json!({
             "account": reference("Account"), "contacts": list_of("Contact"),
             "deals": list_of("Deal") })),
@@ -561,6 +570,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/accounts/{pid}/membership") => "MembershipPayload",
         ("post", "/api/groups") => "GroupPayload",
         ("post", "/api/groups/{pid}/members") => "MemberPayload",
+        ("post", "/api/contacts/{pid}/merge") => "MergePayload",
         _ => return None,
     })
 }
@@ -571,6 +581,7 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
     Some(match (method, path) {
         ("get", "/api/contacts/{pid}") => "ContactDetail",
         ("get", "/api/contacts/{pid}/duplicates") => "ContactDuplicates",
+        ("post", "/api/contacts/{pid}/merge") => "ContactMerge",
         ("get", "/api/accounts/{pid}") => "AccountDetail",
         ("get", "/api/accounts/{pid}/clv") => "Clv",
         ("get", "/api/leads/{pid}") => "LeadDetail",
