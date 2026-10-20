@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — links to records in other systems (CRM-R27)
+A contact, account, deal or lead can carry up to 50 links to the same record in HubSpot,
+Salesforce, Attio, Pipedrive, Dynamics or elsewhere: `GET` and `POST
+/api/{contacts,accounts,deals,leads}/{pid}/external-links`, `DELETE
+/api/external-links/{pid}`. Only a link: nothing is fetched or synchronised. Addresses must
+be `https`, without credentials, and on the named system's own domains. Contact links move
+with a merge, come back with an unmerge, appear in the subject-access export and are
+deleted by erasure. Migration `m20261020_000019_external_links`.
+
 ### Added — `POST /api/contacts/{pid}/unmerge` (CRM-R26)
 Undoes a merge from its ledger: rows still on the survivor move back (anything since
 moved on is left behind and counted), the dropped nurture enrolments and group seats are

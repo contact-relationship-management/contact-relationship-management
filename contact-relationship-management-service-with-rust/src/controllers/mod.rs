@@ -11,6 +11,7 @@ pub mod break_glass;
 pub mod dashboards;
 pub mod docs;
 pub mod engagement;
+pub mod external_links;
 pub mod insights;
 pub mod marketing;
 pub mod merge;

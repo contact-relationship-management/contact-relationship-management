@@ -161,6 +161,9 @@ fn base_schemas() -> Value {
         "MemberPayload": object(&["contact_pid"], &json!({ "contact_pid": uuid() })),
         "MergePayload": object(&["into_pid", "reason"], &json!({
             "into_pid": uuid(), "reason": string(), "dry_run": boolean() })),
+        "ExternalLinkPayload": object(&["system", "url"], &json!({
+            "system": string(), "url": string(),
+            "label": nullable(string()), "external_id": nullable(string()) })),
         "UnmergePayload": object(&["reason"], &json!({
             "reason": string(), "dry_run": boolean() })),
 
@@ -294,6 +297,12 @@ fn view_schemas() -> Value {
             "fields_kept": { "type": "array", "items": string() },
             "consent": object(&["survivor", "merged_before", "merged_result"], &json!({
                 "survivor": string(), "merged_before": string(), "merged_result": string() })) })),
+        "ExternalLink": object(&["pid", "subject_kind", "subject_pid", "system", "url"], &json!({
+            "pid": uuid(), "subject_kind": string(), "subject_pid": uuid(),
+            "system": string(), "url": string(), "external_id": nullable(string()),
+            "label": nullable(string()), "created_by": nullable(string()) })),
+        "ExternalLinks": object(&["links", "systems"], &json!({
+            "links": list_of("ExternalLink"), "systems": { "type": "array", "items": string() } })),
         "AccountDetail": object(&["account", "contacts", "deals"], &json!({
             "account": reference("Account"), "contacts": list_of("Contact"),
             "deals": list_of("Deal") })),
@@ -583,6 +592,13 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("post", "/api/groups/{pid}/members") => "MemberPayload",
         ("post", "/api/contacts/{pid}/merge") => "MergePayload",
         ("post", "/api/contacts/{pid}/unmerge") => "UnmergePayload",
+        (
+            "post",
+            "/api/contacts/{pid}/external-links"
+            | "/api/accounts/{pid}/external-links"
+            | "/api/deals/{pid}/external-links"
+            | "/api/leads/{pid}/external-links",
+        ) => "ExternalLinkPayload",
         _ => return None,
     })
 }
@@ -595,6 +611,20 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/contacts/{pid}/duplicates") => "ContactDuplicates",
         ("post", "/api/contacts/{pid}/merge") => "ContactMerge",
         ("post", "/api/contacts/{pid}/unmerge") => "ContactUnmerge",
+        (
+            "post",
+            "/api/contacts/{pid}/external-links"
+            | "/api/accounts/{pid}/external-links"
+            | "/api/deals/{pid}/external-links"
+            | "/api/leads/{pid}/external-links",
+        ) => "ExternalLink",
+        (
+            "get",
+            "/api/contacts/{pid}/external-links"
+            | "/api/accounts/{pid}/external-links"
+            | "/api/deals/{pid}/external-links"
+            | "/api/leads/{pid}/external-links",
+        ) => "ExternalLinks",
         ("get", "/api/accounts/{pid}") => "AccountDetail",
         ("get", "/api/accounts/{pid}/clv") => "Clv",
         ("get", "/api/leads/{pid}") => "LeadDetail",

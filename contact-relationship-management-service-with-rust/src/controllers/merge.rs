@@ -41,7 +41,7 @@ pub struct MergePayload {
 
 /// Tables whose rows move to the survivor by repointing one column:
 /// `(response key, table, contact column, extra condition, id column)`.
-pub(super) const MOVES: [(&str, &str, &str, &str, &str); 6] = [
+pub(super) const MOVES: [(&str, &str, &str, &str, &str); 7] = [
     (
         "activities",
         "activities",
@@ -57,6 +57,13 @@ pub(super) const MOVES: [(&str, &str, &str, &str, &str); 6] = [
         "email_deliveries",
         "contact_pid",
         "TRUE",
+        "pid",
+    ),
+    (
+        "external_links",
+        "external_links",
+        "subject_pid",
+        "subject_kind = 'contact'",
         "pid",
     ),
     (

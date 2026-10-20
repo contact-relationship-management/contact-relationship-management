@@ -7,6 +7,7 @@ mod board;
 mod duplicates;
 mod email_delivery;
 mod engagement;
+mod external_links;
 mod field_encryption;
 mod idempotency;
 mod insights;

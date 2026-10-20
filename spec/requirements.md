@@ -397,3 +397,25 @@ cannot expose anyone to marketing they have refused.*
 - A contact can be merged again after it is unmerged.
 - Erasing a survivor (CRM-R20) also scrubs the identity of every contact merged
   into it, and the person reference the ledger kept: they are the same person.
+
+## CRM-R27 — Link to the same record in other systems
+
+*As someone whose organisation still keeps some records in HubSpot, Salesforce,
+Attio or another CRM, I can jump from a contact, account, deal or lead here to the
+same record there.*
+
+- A contact, account, deal or lead can carry up to 50 links. A link is a system
+  (`hubspot`, `salesforce`, `attio`, `pipedrive`, `dynamics` or `other`), a web
+  address, and optionally a label and the other system's own id.
+- It is only a link. Nothing is fetched from, written to, or synchronised with the
+  other system, and no credentials for it are stored.
+- The address must be `https`, carry no user name or password, and be at most 2,048
+  characters. For a named system it must be on that system's own domains
+  (`hubspot.com`, `salesforce.com`, `force.com`, `attio.com`, and so on), so a
+  link cannot send a person to a lookalike host. `other` accepts any `https`
+  address.
+- The same address cannot be added twice to one record (409). Adding and removing
+  are audited with the system, never the address.
+- Links on a contact move with a merge (CRM-R24) and come back with an unmerge
+  (CRM-R26). They are in the subject-access export and deleted by erasure (CRM-R20).
+- Not built: importing from, or syncing with, those systems.

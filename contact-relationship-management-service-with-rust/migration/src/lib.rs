@@ -30,6 +30,7 @@ mod m20261017_000015_board_position;
 mod m20261018_000016_touch_updated_at;
 mod m20261019_000017_contact_merges;
 mod m20261020_000018_contact_unmerge;
+mod m20261020_000019_external_links;
 
 /// The crate's migrator.
 pub struct Migrator;
@@ -57,6 +58,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261018_000016_touch_updated_at::Migration),
             Box::new(m20261019_000017_contact_merges::Migration),
             Box::new(m20261020_000018_contact_unmerge::Migration),
+            Box::new(m20261020_000019_external_links::Migration),
             // inject-above (do not remove this comment)
         ]
     }

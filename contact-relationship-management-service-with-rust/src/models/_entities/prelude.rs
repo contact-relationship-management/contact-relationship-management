@@ -11,6 +11,7 @@ pub use super::contacts::Entity as Contacts;
 pub use super::deals::Entity as Deals;
 pub use super::email_deliveries::Entity as EmailDeliveries;
 pub use super::event_outbox::Entity as EventOutbox;
+pub use super::external_links::Entity as ExternalLinks;
 pub use super::forecast_snapshots::Entity as ForecastSnapshots;
 pub use super::leads::Entity as Leads;
 pub use super::nurture_enrollments::Entity as NurtureEnrollments;

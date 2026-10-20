@@ -1057,3 +1057,6 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       **Found while building it (2026-10-20):** erasing a survivor (`/erase`) left the
       merged-away duplicate's name and job title in its soft-deleted row until the
       retention sweep, and the ledger kept its `person_ref`. Erasure now scrubs both.
+
+- [x] CRM-T67 **Links to external systems, service side.** *Done 2026-10-20: migration 19 (`external_links`), `rules/external_links.rs` (6 systems, https-only, per-system domains, 4 unit tests), `GET/POST /api/{contacts,accounts,deals,leads}/{pid}/external-links` and `DELETE /api/external-links/{pid}`, merge/unmerge move contact links, subject access lists them and erasure deletes them, OpenAPI, 4 DB tests. Limits: links only, no sync or import; a masked caller can still read the addresses; two contacts both linked to the same record keep both links after a merge (no dedupe on move).* Traces to CRM-R27
+

@@ -13,8 +13,8 @@ use uuid::Uuid;
 use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{
-    activities, consent_events, contacts, deals, email_deliveries, leads, nurture_enrollments,
-    tickets,
+    activities, consent_events, contacts, deals, email_deliveries, external_links, leads,
+    nurture_enrollments, tickets,
 };
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
@@ -87,6 +87,7 @@ async fn subject_access(
         "tickets": rows_for!(db, tickets, ContactPid, cpid),
         "nurture_enrollments": rows_for!(db, nurture_enrollments, ContactPid, cpid),
         "email_deliveries": rows_for!(db, email_deliveries, ContactPid, cpid),
+        "external_links": rows_for!(db, external_links, SubjectPid, cpid),
         "exclusions": [
             "campaign delivery/open/click counters: aggregate counters. Which messages were \
              sent to this contact is in email_deliveries (state, time and message id, no \
@@ -202,6 +203,9 @@ async fn erase(
              WHERE contact_pid = '{cpid}' AND deleted_at IS NULL"
         ),
         format!("DELETE FROM working_group_members WHERE contact_pid = '{cpid}'"),
+        format!(
+            "DELETE FROM external_links WHERE subject_kind = 'contact' AND subject_pid = '{cpid}'"
+        ),
         // Contacts merged into this one are the same person: scrub their
         // identity too, and the person reference the merge ledger kept (CRM-R26).
         format!(
@@ -228,7 +232,8 @@ async fn erase(
             "activity_summaries_scrubbed": affected[0],
             "leads_scrubbed": affected[1],
             "working_group_memberships_deleted": affected[2],
-            "merged_duplicates_scrubbed": affected[3],
+            "external_links_deleted": affected[3],
+            "merged_duplicates_scrubbed": affected[4],
         })),
     )
     .await?;

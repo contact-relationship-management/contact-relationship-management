@@ -11,6 +11,7 @@ pub mod contacts;
 pub mod deals;
 pub mod email_deliveries;
 pub mod event_outbox;
+pub mod external_links;
 pub mod forecast_snapshots;
 pub mod leads;
 pub mod memberships;

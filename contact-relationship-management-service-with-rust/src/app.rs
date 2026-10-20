@@ -534,6 +534,7 @@ impl Hooks for App {
             .add_route(controllers::insights::routes())
             .add_route(controllers::engagement::routes())
             .add_route(controllers::privacy::routes())
+            .add_route(controllers::external_links::routes())
             .add_route(controllers::merge::routes())
             .add_route(controllers::unmerge::routes())
             .add_route(controllers::audits::routes())
