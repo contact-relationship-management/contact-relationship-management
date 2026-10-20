@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 30_000,
   fullyParallel: true,
   use: {
-    baseURL: "http://localhost:4173",
+    baseURL: "http://localhost:4373",
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
@@ -15,8 +15,8 @@ export default defineConfig({
   // correctly-typed ES modules, avoiding the `vite dev` cold-start
   // dependency-optimisation race that flakes module loading.
   webServer: {
-    command: "npm run build && npm run preview -- --port 4173 --strictPort",
-    url: "http://localhost:4173",
+    command: "npm run build && npm run preview -- --port 4373 --strictPort",
+    url: "http://localhost:4373",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

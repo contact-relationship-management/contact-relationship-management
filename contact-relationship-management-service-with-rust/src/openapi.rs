@@ -49,6 +49,7 @@ pub fn spec() -> Value {
                 "post": { "tags": ["relationships"], "summary": "Add a link (HubSpot, Salesforce, Attio, …); https only, and on the named system's own domains; audited", "responses": ok("ExternalLink") }
             },
             "/api/external-links/{pid}": { "delete": { "tags": ["relationships"], "summary": "Remove a link; audited", "responses": ok("Cleared") } },
+            "/api/contacts/{pid}/merges": { "get": { "tags": ["relationships"], "summary": "Contacts merged into this one that can still be undone, newest first", "responses": ok("ContactMerges") } },
             "/api/contacts/{pid}/unmerge": { "post": { "tags": ["relationships"], "summary": "Undo this contact's merge: give back the rows still on the survivor, restore what the merge dropped, clear the fields it filled; consent never widens (dry_run previews; destructive-classified; 409 if not merged, 422 if erased or the merge predates the undo record)", "responses": ok("ContactUnmerge") } },
             "/api/contacts/{pid}/merge": { "post": { "tags": ["relationships"], "summary": "Merge this contact into into_pid, which survives (dry_run previews; consent never widens; destructive-classified; refused 422 for an erased or same contact, 409 if already merged)", "responses": ok("ContactMerge") } },
             "/api/contacts/{pid}/duplicates": { "get": { "tags": ["relationships"], "summary": "Other contacts that are probably the same person (?limit=; probability and per-field breakdown; advice only)", "responses": ok("ContactDuplicates") } },

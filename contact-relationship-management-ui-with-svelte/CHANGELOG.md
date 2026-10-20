@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — undo a merge from the survivor's page (CRM-R26, 2026-10-20)
+
+A "Recently merged" list on a contact page shows the contacts merged into it, each with
+Undo. Undo previews first (what goes back, what stays because it changed since, what is
+restored, which fields are cleared, and the returning contact's consent), then needs a
+reason. Thirteen strings in all eight languages (unreviewed by native speakers).
+
+### Changed — Playwright's preview server moves to port 4373
+
+Port 4173 is Vite's default, and another project's preview server on it made the first run
+fail with every test timing out (Playwright reuses a server it finds there). The port is
+now `4373`.
+
 ### Added — links to other systems on the contact page (CRM-R27, 2026-10-20)
 
 A "Linked records" panel lists a contact's links to HubSpot, Salesforce, Attio, Pipedrive,

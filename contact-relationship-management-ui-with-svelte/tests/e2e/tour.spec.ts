@@ -600,6 +600,53 @@ test.describe("export, undo and search", () => {
     );
   });
 
+  test("a merge can be undone from the survivor's page, after a preview, with a reason", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/contacts/con-1");
+    await expect(page.getByTestId("merges")).toHaveCount(0);
+    await page.getByTestId("merge").click();
+    await page.getByTestId("merge-reason").fill("Same person");
+    await page.getByTestId("merge-confirm").click();
+    await expect(page.getByTestId("merge-done")).toBeVisible();
+
+    // The merged contact is listed, with an Undo.
+    await expect(page.getByTestId("merged-entry")).toContainText(
+      "Imogen Hartly",
+    );
+    await page.getByTestId("unmerge").click();
+    await expect(page.getByTestId("unmerge-restores")).toContainText(
+      "Will go back",
+    );
+    await expect(page.getByTestId("unmerge-consent")).toContainText(
+      "Marketing consent for the returning contact",
+    );
+    await expect(page.getByTestId("unmerge-confirm")).toBeDisabled();
+    await page.getByTestId("unmerge-reason").fill("Wrong person");
+    await page.getByTestId("unmerge-confirm").click();
+    await expect(page.getByTestId("unmerge-done")).toContainText(
+      "Merge undone.",
+    );
+    await expect(page.getByTestId("merged-entry")).toHaveCount(0);
+
+    // The contact is back in the list and is again a likely duplicate.
+    await page.goto("/contacts");
+    await expect(page.getByText("Imogen Hartly")).toBeVisible();
+  });
+
+  test("the undo panel follows the language", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/de-de/contacts/con-1");
+    await page.getByTestId("merge").click();
+    await page.getByTestId("merge-reason").fill("Gleiche Person");
+    await page.getByTestId("merge-confirm").click();
+    await page.getByTestId("unmerge").click();
+    await expect(page.getByTestId("unmerge-restores")).toContainText(
+      "Geht zurück",
+    );
+  });
+
   test("a contact lists its links to other systems, and one can be added and removed", async ({
     page,
   }) => {

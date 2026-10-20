@@ -84,6 +84,14 @@ interface FollowupSeed {
   due_on: string;
 }
 
+interface MergedRow {
+  contact: Contact;
+  survivor_pid: string;
+  links: Link;
+  external: ExternalLinkRow[];
+  at: string;
+}
+
 interface ExternalLinkRow {
   pid: string;
   subject_kind: "contact";
@@ -101,6 +109,8 @@ interface State {
   links: Record<string, Link>;
   /** Links to the same contact in other systems (CRM-R27), by contact pid. */
   external: Record<string, ExternalLinkRow[]>;
+  /** Merges that can be undone (CRM-R26). */
+  merged: MergedRow[];
   activities: Activity[];
   leads: Lead[];
   stages: Stage[];
@@ -655,6 +665,7 @@ function build(): State {
     accounts,
     contacts,
     links,
+    merged: [],
     external: {
       [contacts[0]!.pid]: [
         {
@@ -1318,6 +1329,81 @@ function contactLinks(pid: string, method: string, body: unknown): DemoReply {
   return ok(row);
 }
 
+function contactMerges(pid: string): DemoReply {
+  return ok({
+    merges: state.merged
+      .filter((m) => m.survivor_pid === pid)
+      .map((m) => ({
+        merged_pid: m.contact.pid,
+        merged_name: m.contact.display_name,
+        merged_at: m.at,
+        undoable: true,
+      }))
+      .reverse(),
+  });
+}
+
+function unmergeContact(pid: string, body: unknown): DemoReply {
+  const { reason, dry_run } = (body ?? {}) as {
+    reason?: string;
+    dry_run?: boolean;
+  };
+  if (!reason?.trim()) return problem(422, "reason is required");
+  const entry = state.merged.find((m) => m.contact.pid === pid);
+  if (!entry)
+    return problem(
+      409,
+      "this contact has not been merged into another, or was already unmerged",
+    );
+  const survivor = state.contacts.find((c) => c.pid === entry.survivor_pid);
+  if (!survivor) return problem(409, "the survivor has been deleted");
+  const rank = (s: string) => (s === "withdrawn" ? 2 : s === "granted" ? 0 : 1);
+  const result =
+    rank(survivor.marketing_consent) > rank(entry.contact.marketing_consent)
+      ? survivor.marketing_consent
+      : entry.contact.marketing_consent;
+  const reply = {
+    survivor_pid: survivor.pid,
+    merged_pid: pid,
+    dry_run: dry_run === true,
+    restored: {
+      activities: 0,
+      leads: 0,
+      deals: entry.links.deals.length,
+      tickets: entry.links.tickets.length,
+      email_deliveries: 0,
+      consent_events: 0,
+      nurture_enrollments: 0,
+      working_group_members: 0,
+      external_links: entry.external.length,
+    },
+    left_behind: {},
+    dropped_restored: { nurture_enrollments: 0, working_group_members: 0 },
+    fields_cleared: [] as string[],
+    fields_kept: [] as string[],
+    consent: {
+      survivor: survivor.marketing_consent,
+      merged_before: entry.contact.marketing_consent,
+      merged_result: result,
+    },
+  };
+  if (dry_run === true) return ok(reply);
+  const keep = state.links[survivor.pid] ?? { deals: [], tickets: [] };
+  state.links[survivor.pid] = {
+    deals: keep.deals.filter((d) => !entry.links.deals.includes(d)),
+    tickets: keep.tickets.filter((t) => !entry.links.tickets.includes(t)),
+  };
+  state.links[pid] = entry.links;
+  state.external[survivor.pid] = (state.external[survivor.pid] ?? []).filter(
+    (l) => !entry.external.some((e) => e.pid === l.pid),
+  );
+  state.external[pid] = entry.external.map((l) => ({ ...l, subject_pid: pid }));
+  entry.contact.marketing_consent = result;
+  state.contacts.push(entry.contact);
+  state.merged = state.merged.filter((m) => m !== entry);
+  return ok(reply);
+}
+
 function removeLink(linkPid: string): DemoReply {
   for (const [contact, rows] of Object.entries(state.external)) {
     const keep = rows.filter((l) => l.pid !== linkPid);
@@ -1381,6 +1467,13 @@ function mergeContact(pid: string, body: unknown): DemoReply {
     deals: [...to.deals, ...from.deals],
     tickets: [...to.tickets, ...from.tickets],
   };
+  state.merged.push({
+    contact: merged,
+    survivor_pid: survivor.pid,
+    links: from,
+    external: state.external[pid] ?? [],
+    at: new Date().toISOString(),
+  });
   state.external[survivor.pid] = [
     ...(state.external[survivor.pid] ?? []),
     ...(state.external[pid] ?? []).map((l) => ({
@@ -1679,6 +1772,8 @@ export function demoHandle(
     }
     if (tail === "erase" && post) return eraseContact(id!);
     if (tail === "merge" && post) return mergeContact(id!, body);
+    if (tail === "merges" && get) return contactMerges(id!);
+    if (tail === "unmerge" && post) return unmergeContact(id!, body);
     if (tail === "external-links" && (get || post))
       return contactLinks(id!, method, body);
   }

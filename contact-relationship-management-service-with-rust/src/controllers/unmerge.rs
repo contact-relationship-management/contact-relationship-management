@@ -409,9 +409,53 @@ async fn unmerge(
     format::json(body)
 }
 
+/// `GET /api/contacts/{pid}/merges`: the contacts merged into this one that
+/// can still be looked at, newest first, and whether each can be undone.
+#[debug_handler]
+async fn merges(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Path(pid): Path<String>,
+) -> Result<Response> {
+    let pid = records::parse_pid(&pid)?;
+    let survivor = records::find_contact(&ctx.db, pid).await?;
+    auth::authorize_record(
+        &caller,
+        authentication_verifier::Action::Read,
+        &auth::contact_resource_attrs(&survivor),
+    )
+    .map_err(record_rejection)?;
+    let ledger = contact_merges::Entity::find()
+        .filter(contact_merges::Column::SurvivorPid.eq(pid))
+        .filter(contact_merges::Column::UnmergedAt.is_null())
+        .order_by_desc(contact_merges::Column::Id)
+        .all(&ctx.db)
+        .await?;
+    let mut out = Vec::new();
+    for entry in ledger {
+        // The merged row may be gone (the retention sweep), and then so is the
+        // chance to undo it.
+        let Some(merged) = contacts::Entity::find()
+            .filter(contacts::Column::Pid.eq(entry.merged_pid))
+            .one(&ctx.db)
+            .await?
+        else {
+            continue;
+        };
+        out.push(json!({
+            "merged_pid": entry.merged_pid,
+            "merged_name": merged.display_name,
+            "merged_at": entry.created_at,
+            "undoable": entry.before.is_some() && merged.person_ref != TOMBSTONE_PERSON,
+        }));
+    }
+    format::json(json!({ "merges": out }))
+}
+
 /// The routes.
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api")
+        .add("/contacts/{pid}/merges", get(merges))
         .add("/contacts/{pid}/unmerge", post(unmerge))
 }

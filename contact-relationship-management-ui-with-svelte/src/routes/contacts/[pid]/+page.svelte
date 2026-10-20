@@ -8,15 +8,19 @@
     addContactLink,
     getContactDuplicates,
     getContactLinks,
+    getContactMerges,
     LINK_SYSTEMS,
     mergeContact,
     removeLink,
+    unmergeContact,
     money,
     type MergeResult,
     recordConsent,
     type Duplicate,
     type ExternalLink,
     type LinkSystem,
+    type MergeEntry,
+    type UnmergeResult,
   } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
@@ -36,6 +40,15 @@
   let mergeBusy = $state(false);
   let mergeError = $state<string | null>(null);
   let mergedName = $state<string | null>(null);
+
+  // Undoing a merge (CRM-R26): a preview first, then a reason.
+  let merges = $state<MergeEntry[]>([]);
+  let undoing = $state<MergeEntry | null>(null);
+  let undoPreview = $state<UnmergeResult | null>(null);
+  let undoReason = $state("");
+  let undoBusy = $state(false);
+  let undoError = $state<string | null>(null);
+  let undoneName = $state<string | null>(null);
 
   // Links to the same contact in other systems (CRM-R27). Only links: nothing
   // is fetched from, or sent to, those systems.
@@ -82,6 +95,49 @@
     }
   }
 
+  async function loadMerges() {
+    try {
+      merges = (await getContactMerges(pid)).merges;
+    } catch {
+      merges = [];
+    }
+  }
+
+  async function startUndo(entry: MergeEntry) {
+    undoError = null;
+    undoneName = null;
+    undoReason = "";
+    undoPreview = null;
+    undoing = entry;
+    try {
+      undoPreview = await unmergeContact(entry.merged_pid, "preview", true);
+    } catch (cause) {
+      undoError = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+
+  function cancelUndo() {
+    undoing = null;
+    undoPreview = null;
+    undoError = null;
+  }
+
+  async function confirmUndo() {
+    if (!undoing || !undoReason.trim()) return;
+    undoBusy = true;
+    undoError = null;
+    try {
+      await unmergeContact(undoing.merged_pid, undoReason.trim(), false);
+      undoneName = undoing.merged_name;
+      cancelUndo();
+      await Promise.all([load(), loadDuplicates(), loadLinks(), loadMerges()]);
+    } catch (cause) {
+      undoError = cause instanceof Error ? cause.message : String(cause);
+    } finally {
+      undoBusy = false;
+    }
+  }
+
   async function addLink() {
     if (!linkUrl.trim()) return;
     linkBusy = true;
@@ -123,6 +179,7 @@
       void load();
       void loadDuplicates();
       void loadLinks();
+      void loadMerges();
     }
   });
 
@@ -193,6 +250,8 @@
       cancelMerge();
       await load();
       await loadDuplicates();
+      await loadMerges();
+      await loadLinks();
     } catch (cause) {
       mergeError = cause instanceof Error ? cause.message : String(cause);
     } finally {
@@ -377,6 +436,78 @@
       <button onclick={cancelMerge} data-testid="merge-cancel">{t("contact.mergeCancel")}</button>
       {#if mergeError}<p role="alert" data-testid="merge-error">{mergeError}</p>{/if}
     </section>
+  {/if}
+
+  {#if merges.length > 0 || undoneName}
+    <h2>{t("contact.merges")}</h2>
+    <p class="muted">{t("contact.mergesHint")}</p>
+    {#if merges.length > 0}
+      <ul data-testid="merges">
+        {#each merges as entry (entry.merged_pid)}
+          <li data-testid="merged-entry">
+            {entry.merged_name} · {t("contact.mergedOn")}
+            {new Date(entry.merged_at).toLocaleDateString(i18n.locale)}
+            {#if entry.undoable}
+              <button
+                onclick={() => void startUndo(entry)}
+                disabled={undoing !== null}
+                data-testid="unmerge"
+              >
+                {t("contact.unmerge")}
+              </button>
+            {:else}
+              <span class="muted small">{t("contact.unmergeNot")}</span>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+    {#if undoneName}
+      <p role="status" data-testid="unmerge-done">{undoneName}: {t("contact.unmergeDone")}</p>
+    {/if}
+    {#if undoing}
+      <section data-testid="unmerge-panel" aria-labelledby="unmerge-heading">
+        <h3 id="unmerge-heading">{t("contact.unmerge")}: {undoing.merged_name}</h3>
+        {#if undoPreview}
+          <p data-testid="unmerge-restores">
+            {t("contact.unmergeRestores")}:
+            {counted(undoPreview.restored) || t("contact.mergeNothing")}.
+          </p>
+          {#if counted(undoPreview.left_behind)}
+            <p data-testid="unmerge-left">
+              {t("contact.unmergeLeft")}: {counted(undoPreview.left_behind)}.
+            </p>
+          {/if}
+          {#if counted(undoPreview.dropped_restored)}
+            <p data-testid="unmerge-drops">
+              {t("contact.unmergeRestoredDrops")}: {counted(undoPreview.dropped_restored)}.
+            </p>
+          {/if}
+          {#if undoPreview.fields_cleared.length > 0}
+            <p data-testid="unmerge-cleared">
+              {t("contact.unmergeCleared")}: {undoPreview.fields_cleared.join(", ")}.
+            </p>
+          {/if}
+          <p data-testid="unmerge-consent">
+            {t("contact.unmergeConsent")}: <strong>{undoPreview.consent.merged_result}</strong>
+          </p>
+          <p class="muted">{t("contact.unmergeWarn")}</p>
+          <label>
+            {t("contact.mergeReason")}
+            <input bind:value={undoReason} data-testid="unmerge-reason" />
+          </label>
+          <button
+            onclick={() => void confirmUndo()}
+            disabled={undoBusy || !undoReason.trim()}
+            data-testid="unmerge-confirm"
+          >
+            {t("contact.unmergeConfirm")}
+          </button>
+        {/if}
+        <button onclick={cancelUndo} data-testid="unmerge-cancel">{t("contact.mergeCancel")}</button>
+        {#if undoError}<p role="alert" data-testid="unmerge-error">{undoError}</p>{/if}
+      </section>
+    {/if}
   {/if}
 
   <h2>{t("contact.links")}</h2>

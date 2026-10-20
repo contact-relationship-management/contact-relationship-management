@@ -303,6 +303,10 @@ fn view_schemas() -> Value {
             "label": nullable(string()), "created_by": nullable(string()) })),
         "ExternalLinks": object(&["links", "systems"], &json!({
             "links": list_of("ExternalLink"), "systems": { "type": "array", "items": string() } })),
+        "ContactMerges": object(&["merges"], &json!({
+            "merges": { "type": "array", "items": object(&["merged_pid", "merged_name", "merged_at", "undoable"], &json!({
+                "merged_pid": uuid(), "merged_name": string(), "merged_at": string(),
+                "undoable": boolean() })) } })),
         "AccountDetail": object(&["account", "contacts", "deals"], &json!({
             "account": reference("Account"), "contacts": list_of("Contact"),
             "deals": list_of("Deal") })),
@@ -611,6 +615,7 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/contacts/{pid}/duplicates") => "ContactDuplicates",
         ("post", "/api/contacts/{pid}/merge") => "ContactMerge",
         ("post", "/api/contacts/{pid}/unmerge") => "ContactUnmerge",
+        ("get", "/api/contacts/{pid}/merges") => "ContactMerges",
         (
             "post",
             "/api/contacts/{pid}/external-links"

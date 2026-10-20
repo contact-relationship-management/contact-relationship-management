@@ -228,6 +228,50 @@ export function mergeContact(
   });
 }
 
+/** A merge that can still be looked at, and whether it can be undone. */
+export interface MergeEntry {
+  merged_pid: string;
+  merged_name: string;
+  merged_at: string;
+  undoable: boolean;
+}
+
+/** Contacts merged into this one (CRM-R26). */
+export function getContactMerges(
+  pid: string,
+): Promise<{ merges: MergeEntry[] }> {
+  return api(`/contacts/${pid}/merges`);
+}
+
+/** What an unmerge restored, or with `dry_run` would restore. */
+export interface UnmergeResult {
+  survivor_pid: string;
+  merged_pid: string;
+  dry_run: boolean;
+  restored: Record<string, number>;
+  left_behind: Record<string, number>;
+  dropped_restored: Record<string, number>;
+  fields_cleared: string[];
+  fields_kept: string[];
+  consent: { survivor: string; merged_before: string; merged_result: string };
+}
+
+/**
+ * Undo the merge of the contact `pid` (CRM-R26). Destructive-classified.
+ * Consent never widens: the returning contact gets the stricter of its own
+ * state and the survivor's.
+ */
+export function unmergeContact(
+  pid: string,
+  reason: string,
+  dryRun: boolean,
+): Promise<UnmergeResult> {
+  return api(`/contacts/${pid}/unmerge`, {
+    method: "POST",
+    body: { reason, dry_run: dryRun },
+  });
+}
+
 /** The systems a link can point at (CRM-R27); brand names, so not translated. */
 export const LINK_SYSTEMS = [
   "hubspot",

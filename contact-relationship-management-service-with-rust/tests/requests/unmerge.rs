@@ -111,6 +111,16 @@ async fn an_unmerge_gives_back_what_the_merge_took() {
             .await
             .assert_status_not_found();
 
+        // The survivor lists what can be undone.
+        let listed: Value = request
+            .get(&format!("/api/contacts/{survivor}/merges"))
+            .await
+            .json();
+        check(&doc, "ContactMerges", &listed, "merges");
+        assert_eq!(listed["merges"][0]["merged_pid"], merged.as_str());
+        assert_eq!(listed["merges"][0]["merged_name"], "A. Ruiz");
+        assert_eq!(listed["merges"][0]["undoable"], true);
+
         // A preview reports and changes nothing.
         let (status, preview) = unmerge(&request, &merged, true).await;
         assert_eq!(status, 200, "{preview}");
@@ -152,6 +162,12 @@ async fn an_unmerge_gives_back_what_the_merge_took() {
         let seats: Value = request.get(&format!("/api/groups/{g}")).await.json();
         let text = seats.to_string();
         assert!(text.contains(&merged) && text.contains(&survivor), "{text}");
+
+        let after: Value = request
+            .get(&format!("/api/contacts/{survivor}/merges"))
+            .await
+            .json();
+        assert_eq!(after["merges"].as_array().unwrap().len(), 0, "{after}");
 
         // Done once; refused the second time.
         assert_eq!(unmerge(&request, &merged, false).await.0, 409);

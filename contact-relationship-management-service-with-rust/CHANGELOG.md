@@ -17,6 +17,7 @@ with a merge, come back with an unmerge, appear in the subject-access export and
 deleted by erasure. Migration `m20261020_000019_external_links`.
 
 ### Added — `POST /api/contacts/{pid}/unmerge` (CRM-R26)
+Also `GET /api/contacts/{pid}/merges`, the contacts merged into this one that can still be undone.
 Undoes a merge from its ledger: rows still on the survivor move back (anything since
 moved on is left behind and counted), the dropped nurture enrolments and group seats are
 restored, filled fields are cleared where the survivor still holds the value it was given,
