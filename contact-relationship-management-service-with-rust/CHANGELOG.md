@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `controllers/insights.rs` split into `controllers/insights/` (2026-10-20)
+The 1,221-line file is now `mod.rs` (routes, the `live!` macro and the shared query helpers),
+`sales.rs`, `support.rs`, `compliance.rs`, `outreach.rs` and `relationships.rs`. No behaviour
+change; `controllers::insights::routes` is unchanged.
+
 ### Changed — `controllers/marketing.rs` split into `controllers/marketing/` (2026-10-20)
 The 1,659-line file is now `mod.rs` (routes and the shared `{pid}` response), `consent.rs`,
 `segment.rs`, `campaign.rs`, `nurture.rs` and `public.rs` (unsubscribe and the email
