@@ -37,7 +37,11 @@ Commands assume the container images from the repository's `Containerfile`s.
     PostgreSQL 18 and Redis: all 17 migrations applied, the service started,
     `/_ping` answered 200 and `/api/contacts` answered 401 (authentication on).
     A `start` without `--worker` runs no background jobs; run a second container
-    with `start --worker` for campaign sends.
+    with `--worker` for campaign sends (the image's entrypoint is already `start`, so the
+    argument is `--worker`, not `start --worker`). **Releases up to v0.1.3 have a bug here:**
+    a worker-only container sends with the simulated sender and marks the campaign delivered
+    while no mail leaves; use `--server-and-worker` in one container until a release with the
+    fix (see the service changelog).
 
 ## 2. Database
 
@@ -205,6 +209,21 @@ with the same `Idempotency-Key` within two minutes, gets `409` (the first attemp
 running). The service takes such a key over after two minutes, and a retry then would run
 again and could create a duplicate. That window is in the design (`src/idempotency.rs`); the
 script does not wait it out.
+
+### Running a built image
+
+`scripts/image-smoke.sh [IMAGE]` runs an image as a deployment would and uses it: production mode
+with a read-only root, no capabilities, non-root, authentication on with real signed tokens (admin,
+rep and reader personas), field encryption required, the event outbox, the image's own `db migrate`,
+then a workflow (create, merge, unmerge, a link, the audit chain) and a second phase with a mail
+server where a campaign run stays queued until a `--worker` container starts. Production refuses
+unverified SMTP certificates, so phase 2 runs the same image in development mode. 27 checks. Run it
+against a candidate image before tagging. A private ghcr.io package needs a login first
+(`gh auth token | podman login ghcr.io -u <user> --password-stdin`).
+
+On 2026-10-20 it ran the released v0.1.3 image: phase 1 passed, and phase 2 found the worker bug
+above. It passed 27 of 27 on a local build with the fix. The released image is `linux/amd64` only
+(podman warned on an arm64 host and ran it under emulation).
 
 ### Migrating a database that holds data
 

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a `--worker` container sent campaigns with the simulated sender (2026-10-20)
+
+`mail::init`, the unsubscribe links and the field-encryption check ran only in `after_routes`,
+which a process started with `--worker` never reaches. A worker-only container therefore used the
+simulated sender: it marked every recipient sent and the campaign delivered, and no mail left.
+Found by the new image smoke test against the released v0.1.3 image (24 of 27 checks passed; the
+three failures were this). `init_sending` now runs from both `after_routes` and `connect_workers`.
+Affects v0.1.3 and earlier when `CRM_MAIL_MODE=smtp` runs the sending in a separate `--worker`
+container (the arrangement the runbook describes). With `--server-and-worker` in one process, or the
+simulated default, nothing changes.
+
+### Added — `examples/mint_token.rs`
+Mints a PASETO `v4.public` token and the matching key set from a fixed, public seed, for trying the
+service with authentication on. Used by `scripts/image-smoke.sh`. Never trust that key anywhere real.
+
 ## [0.1.3] — 2026-10-20
 
 ### Added — links to records in other systems (CRM-R27)

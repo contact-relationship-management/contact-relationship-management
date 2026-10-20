@@ -494,6 +494,23 @@ impl CachedResponse {
 /// The loco.rs application hooks for
 /// `contact-relationship-management`.
 pub struct App;
+
+/// Everything a process needs before it can send campaign mail: the field-encryption check,
+/// the mail sender chosen by `CRM_MAIL_MODE` and the signed unsubscribe links. Called by the
+/// server (`after_routes`) and by the worker (`connect_workers`); calling it twice in one
+/// process (`--server-and-worker`) installs the same settings again.
+fn init_sending(ctx: &AppContext) -> Result<()> {
+    let production = matches!(ctx.environment, Environment::Production);
+    crate::hardening::check_field_encryption().map_err(loco_rs::Error::string)?;
+    // CRM-T39: choose the mail sender (simulated unless CRM_MAIL_MODE=smtp);
+    // a bad or unsafe setting stops the start rather than failing at send time.
+    crate::mail::init(production).map_err(|e| loco_rs::Error::string(&e))?;
+    // Real mail must carry signed unsubscribe links.
+    crate::unsubscribe::init(!crate::mail::current().is_simulated(), production)
+        .map_err(|e| loco_rs::Error::string(&e))?;
+    Ok(())
+}
+
 #[async_trait]
 impl Hooks for App {
     fn app_name() -> &'static str {
@@ -548,17 +565,7 @@ impl Hooks for App {
         // so the check lives here, which every start path reaches.)
         crate::hardening::check_process(matches!(ctx.environment, Environment::Production))
             .map_err(loco_rs::Error::string)?;
-        crate::hardening::check_field_encryption().map_err(loco_rs::Error::string)?;
-        // CRM-T39: choose the mail sender (simulated unless CRM_MAIL_MODE=smtp);
-        // a bad or unsafe setting stops the start rather than failing at send time.
-        crate::mail::init(matches!(ctx.environment, Environment::Production))
-            .map_err(|e| loco_rs::Error::string(&e))?;
-        // Real mail must carry signed unsubscribe links.
-        crate::unsubscribe::init(
-            !crate::mail::current().is_simulated(),
-            matches!(ctx.environment, Environment::Production),
-        )
-        .map_err(|e| loco_rs::Error::string(&e))?;
+        init_sending(ctx)?;
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();
@@ -650,6 +657,10 @@ impl Hooks for App {
     }
 
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
+        // A `--worker` process never builds routes, so `after_routes` does not run there:
+        // without this it would send campaigns with the simulated sender and mark them
+        // delivered (found by `scripts/image-smoke.sh`, CRM-T72).
+        init_sending(ctx)?;
         queue
             .register(
                 <controllers::marketing::CampaignSendWorker as loco_rs::prelude::BackgroundWorker<_>>::build(ctx),
