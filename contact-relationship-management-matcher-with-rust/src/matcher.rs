@@ -145,7 +145,7 @@ impl Matcher {
 
     /// The configuration in use.
     #[must_use]
-    pub fn config(&self) -> &MatchConfig {
+    pub const fn config(&self) -> &MatchConfig {
         &self.config
     }
 

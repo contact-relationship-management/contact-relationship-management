@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `Matcher::config` is now a `const fn`. No behaviour change.
+
 ## 0.1.1
 
 - Default `match_threshold` raised from 0.9 to 0.99, from a labelled set of

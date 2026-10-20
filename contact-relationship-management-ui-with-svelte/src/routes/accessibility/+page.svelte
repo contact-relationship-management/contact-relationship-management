@@ -93,8 +93,7 @@
 
 <style>
   /* Links inside running text must not rely on colour alone (WCAG 1.4.1). */
-  article p a,
-  article li a {
+  article p a {
     text-decoration: underline;
   }
 </style>

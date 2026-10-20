@@ -48,6 +48,7 @@ fn the_same_person_written_differently_matches() {
 }
 
 #[test]
+#[allow(clippy::many_single_char_names)]
 fn nicknames_initials_and_accents() {
     let a = Contact::new()
         .given_name("Robert")

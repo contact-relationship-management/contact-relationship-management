@@ -719,12 +719,15 @@ async fn cloud_and_relay_callbacks_are_authenticated_and_matched() {
         let mut mac = Hmac::<sha2::Sha256>::new_from_slice(SIGNING.as_bytes()).unwrap();
         mac.update(timestamp.as_bytes());
         mac.update(b"token-1");
-        let signature: String = mac
+        let signature = mac
             .finalize()
             .into_bytes()
             .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect();
+            .fold(String::new(), |mut hex, b| {
+                use std::fmt::Write as _;
+                let _ = write!(hex, "{b:02x}");
+                hex
+            });
         let signed = |signature: &str| {
             json!({ "signature": { "timestamp": timestamp, "token": "token-1", "signature": signature },
                 "event-data": { "event": "failed", "severity": "permanent",

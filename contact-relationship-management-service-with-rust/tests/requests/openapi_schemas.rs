@@ -1,6 +1,6 @@
 //! The documented schemas match the running service: real requests satisfy
 //! the request schemas, and real list responses satisfy the resource schemas
-//! (OpenAPI schemas drift silently unless something checks them).
+//! (`OpenAPI` schemas drift silently unless something checks them).
 
 use contact_relationship_management::app::App;
 use loco_rs::testing::prelude::*;
@@ -319,7 +319,7 @@ async fn read_responses_match_the_documented_schemas() {
             .get(&format!("/api/audits/{contact_pid}"))
             .await
             .json();
-        assert!(!trail.as_array().unwrap().is_empty());
+        assert_ne!(trail.as_array().unwrap().len(), 0);
         for row in trail.as_array().unwrap() {
             check(&doc, "AuditEntry", row, "/api/audits/{entity_pid}");
         }

@@ -112,12 +112,11 @@
   // Set at once, before the pickers mount (they report a language they were
   // given as a change); the effect covers later navigations. Never on the
   // server, where the store is shared between requests.
-  if (browser && addressed.locale && addressed.locale !== i18n.locale) {
-    i18n.set(addressed.locale);
-  }
-  $effect(() => {
+  const adoptAddressedLocale = () => {
     if (addressed.locale && addressed.locale !== i18n.locale) i18n.set(addressed.locale);
-  });
+  };
+  if (browser) adoptAddressedLocale();
+  $effect(adoptAddressedLocale);
   const withLocale = (href: string) =>
     addressed.locale ? `/${addressed.locale}${href === "/" ? "" : href}` : href;
 

@@ -34,7 +34,7 @@ async fn subject_rights_round_trip() {
         assert_eq!(export["contact"]["pid"], contact_pid);
         assert_eq!(export["consent_history"].as_array().unwrap().len(), 1);
         assert_eq!(export["activities"].as_array().unwrap().len(), 1);
-        assert!(!export["exclusions"].as_array().unwrap().is_empty());
+        assert_ne!(export["exclusions"].as_array().unwrap().len(), 0);
         let audits: Value = request
             .get(&format!("/api/audits/{contact_pid}"))
             .await

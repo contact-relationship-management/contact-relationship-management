@@ -3,7 +3,7 @@
 
 use serde_json::{Value, json};
 
-/// OpenAPI 3.0 marks optional nulls with `nullable`; JSON Schema wants a type
+/// `OpenAPI` 3.0 marks optional nulls with `nullable`; JSON Schema wants a type
 /// union. Rewrite so a standard validator understands the document.
 pub fn to_json_schema(value: &mut Value) {
     match value {
