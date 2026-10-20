@@ -183,3 +183,12 @@ freezes PostgreSQL and Redis, races merges, and kills the service mid-burst, the
 checks that it recovers and that no merge is left half done (CRM-R25, CRM-T65).
 It uses its own containers and database and removes them afterwards.
 
+
+### Migrating a database that holds data
+
+`scripts/migrate-with-data.sh` seeds a database through the API, rolls it back one
+migration, migrates forward with the data in place, then merges 150 pairs and checks the
+result. Run it before shipping a migration that touches an existing table. On
+2026-10-20 it showed migration 17 changing no existing row and taking about 13 ms at 300
+contacts (adding a nullable column is a metadata change in PostgreSQL, so it should not
+grow with table size; that is reasoning, not a measurement on a large table).
