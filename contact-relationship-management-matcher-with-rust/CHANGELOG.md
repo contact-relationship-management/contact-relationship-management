@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+## 0.1.2
+
 - `Matcher::config` is now a `const fn`. No behaviour change.
+  Prepared 2026-10-20; not yet published.
 
 ## 0.1.1
 
