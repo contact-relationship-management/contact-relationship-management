@@ -17,6 +17,7 @@ mod pagination;
 mod privacy;
 mod sales;
 mod support;
+mod unmerge;
 
 /// A fresh synthetic `person:` URN.
 pub fn a_person() -> String {

@@ -1053,3 +1053,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       test failover between replicas. It is not in `ci-check.sh` (it needs podman
       and takes about two minutes); run it before a release.
 
+- [x] CRM-T66 **Undo a merge.** *Done 2026-10-20, service side only: migration 18 (`before`, `unmerged_at`, `unmerged_actor`, and a partial unique index so a contact can be merged again), the merge now records what it needs, `POST /api/contacts/{pid}/unmerge`, 4 DB tests, an enforcement check, OpenAPI. Limits: no UI; merges made before migration 18 cannot be undone (none exist outside tests); the survivor keeps a consent tightened by the merge; enrolments exited by a withdrawal stay exited; two migrations back is the v0.1.1 schema, so `scripts/migrate-with-data.sh` rolls back two.* Traces to CRM-R26
+      **Found while building it (2026-10-20):** erasing a survivor (`/erase`) left the
+      merged-away duplicate's name and job title in its soft-deleted row until the
+      retention sweep, and the ledger kept its `person_ref`. Erasure now scrubs both.

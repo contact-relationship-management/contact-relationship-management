@@ -14,11 +14,13 @@ use super::{Verifier, bearer_claims};
 /// import — the latter two listed ahead of the corresponding features
 /// (dedup scan and bulk import are §13 work), so the guard is already
 /// correct when they land — plus contact erasure (`/erase`) and the
-/// retention sweep (`/sweep`, CRM-R20). A POST whose path ends with
+/// retention sweep (`/sweep`, CRM-R20), and undoing a contact merge
+/// (`/unmerge`, CRM-R26). A POST whose path ends with
 /// one of these derives [`Action::Destructive`] instead of
 /// [`Action::Write`].
-pub const DESTRUCTIVE_POST_SUFFIXES: [&str; 6] = [
+pub const DESTRUCTIVE_POST_SUFFIXES: [&str; 7] = [
     "/merge",
+    "/unmerge",
     "/deduplicate",
     "/import",
     "/erase",

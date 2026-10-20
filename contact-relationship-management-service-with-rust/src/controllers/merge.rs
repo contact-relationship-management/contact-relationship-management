@@ -41,7 +41,7 @@ pub struct MergePayload {
 
 /// Tables whose rows move to the survivor by repointing one column:
 /// `(response key, table, contact column, extra condition, id column)`.
-const MOVES: [(&str, &str, &str, &str, &str); 6] = [
+pub(super) const MOVES: [(&str, &str, &str, &str, &str); 6] = [
     (
         "activities",
         "activities",
@@ -68,7 +68,7 @@ const MOVES: [(&str, &str, &str, &str, &str); 6] = [
     ),
 ];
 
-fn conflict(message: &str) -> Error {
+pub(super) fn conflict(message: &str) -> Error {
     Error::CustomError(StatusCode::CONFLICT, ErrorDetail::new("conflict", message))
 }
 
@@ -111,14 +111,39 @@ async fn ids(
         .collect()
 }
 
-/// What moved or was dropped, by table, as the ids and as the counts.
-#[derive(Default)]
-struct Moved {
-    moved: Map<String, serde_json::Value>,
-    dropped: Map<String, serde_json::Value>,
+/// Run `sql` with two contact pids and return the first column of each row, a
+/// JSON document (`to_jsonb` of a row).
+async fn rows_json(
+    txn: &DatabaseTransaction,
+    sql: &str,
+    survivor: Uuid,
+    merged: Uuid,
+) -> Result<Vec<serde_json::Value>> {
+    let rows = txn
+        .query_all_raw(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            sql,
+            [Value::from(survivor), Value::from(merged)],
+        ))
+        .await?;
+    rows.iter()
+        .map(|row| {
+            row.try_get_by_index::<serde_json::Value>(0)
+                .map_err(|e| Error::Model(ModelError::from(e)))
+        })
+        .collect()
 }
 
-impl Moved {
+/// What moved or was dropped, by table, as the ids and as the counts, and the
+/// rows that were dropped, whole, so an unmerge can put them back.
+#[derive(Default)]
+struct Changes {
+    moved: Map<String, serde_json::Value>,
+    dropped: Map<String, serde_json::Value>,
+    dropped_rows: Map<String, serde_json::Value>,
+}
+
+impl Changes {
     fn counts(map: &Map<String, serde_json::Value>) -> serde_json::Value {
         map.iter()
             .map(|(k, v)| (k.clone(), json!(v.as_array().map_or(0, Vec::len))))
@@ -129,8 +154,8 @@ impl Moved {
 
 /// Move every row keyed to `merged` over to `survivor`, dropping the ones the
 /// survivor already has (the same nurture sequence, the same working group).
-async fn move_rows(txn: &DatabaseTransaction, survivor: Uuid, merged: Uuid) -> Result<Moved> {
-    let mut out = Moved::default();
+async fn move_rows(txn: &DatabaseTransaction, survivor: Uuid, merged: Uuid) -> Result<Changes> {
+    let mut out = Changes::default();
     for (key, table, column, condition, id) in MOVES {
         let sql = format!(
             "UPDATE {table} SET {column} = $1 WHERE {column} = $2 AND {condition} RETURNING {id}"
@@ -140,7 +165,22 @@ async fn move_rows(txn: &DatabaseTransaction, survivor: Uuid, merged: Uuid) -> R
             json!(ids(txn, &sql, survivor, merged).await?),
         );
     }
-    // An enrolment in a sequence the survivor is already in is dropped.
+    // An enrolment in a sequence the survivor is already in is dropped. Keep
+    // the rows first: an unmerge restores them as they were.
+    out.dropped_rows.insert(
+        "nurture_enrollments".into(),
+        json!(
+            rows_json(
+                txn,
+                "SELECT to_jsonb(e) FROM nurture_enrollments e \
+                 WHERE e.contact_pid = $2 AND e.deleted_at IS NULL AND e.sequence_pid IN \
+                 (SELECT sequence_pid FROM nurture_enrollments WHERE contact_pid = $1 AND deleted_at IS NULL)",
+                survivor,
+                merged,
+            )
+            .await?
+        ),
+    );
     let dropped = ids(
         txn,
         "UPDATE nurture_enrollments SET deleted_at = now(), status = 'exited', next_due_at = NULL \
@@ -167,6 +207,19 @@ async fn move_rows(txn: &DatabaseTransaction, survivor: Uuid, merged: Uuid) -> R
         ),
     );
     // A working-group seat the survivor already holds is dropped.
+    out.dropped_rows.insert(
+        "working_group_members".into(),
+        json!(
+            rows_json(
+                txn,
+                "SELECT to_jsonb(m) FROM working_group_members m WHERE m.contact_pid = $2 AND m.group_pid IN \
+                 (SELECT group_pid FROM working_group_members WHERE contact_pid = $1)",
+                survivor,
+                merged,
+            )
+            .await?
+        ),
+    );
     let dropped = ids(
         txn,
         "DELETE FROM working_group_members WHERE contact_pid = $2 AND group_pid IN \
@@ -281,6 +334,7 @@ async fn combine(
 
 /// `POST /api/contacts/{pid}/merge` (CRM-R24).
 #[debug_handler]
+#[allow(clippy::too_many_lines)]
 async fn merge(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
@@ -330,8 +384,8 @@ async fn merge(
     gone.merged_into_pid = ActiveValue::set(Some(survivor_pid));
     gone.update(&txn).await?;
 
-    let counts = Moved::counts(&moved.moved);
-    let dropped = Moved::counts(&moved.dropped);
+    let counts = Changes::counts(&moved.moved);
+    let dropped = Changes::counts(&moved.dropped);
     let body = json!({
         "survivor_pid": survivor_pid,
         "merged_pid": merged_pid,
@@ -353,6 +407,14 @@ async fn merge(
         merged_person_ref: ActiveValue::set(merged.person_ref.clone()),
         actor: ActiveValue::set(caller.actor().map(str::to_string)),
         moved: ActiveValue::set(json!({ "moved": moved.moved, "dropped": moved.dropped })),
+        // What an unmerge needs. Ids, states and field names: no personal data.
+        before: ActiveValue::set(Some(json!({
+            "version": 1,
+            "survivor_consent": before.0,
+            "merged_consent": before.1,
+            "filled": filled,
+            "dropped_rows": moved.dropped_rows,
+        }))),
         ..Default::default()
     }
     .insert(&txn)

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `POST /api/contacts/{pid}/unmerge` (CRM-R26)
+Undoes a merge from its ledger: rows still on the survivor move back (anything since
+moved on is left behind and counted), the dropped nurture enrolments and group seats are
+restored, filled fields are cleared where the survivor still holds the value it was given,
+and the contact is live again. Consent never widens (the returning contact gets the
+stricter of its own state and the survivor's). `dry_run` previews. Destructive-classified
+(`/unmerge`), audited, emitted. Migration `m20261020_000018_contact_unmerge`: the ledger
+gains `before`, `unmerged_at`, `unmerged_actor`, and the unique index on `merged_pid` is
+now partial so a contact can be merged again. Merges made before it cannot be undone.
+
+### Fixed — erasing a survivor now scrubs the contacts merged into it
+`/erase` left a merged-away duplicate's display name and job title in its soft-deleted
+row until the retention sweep, and the merge ledger kept its `person_ref`. Both are
+scrubbed with the survivor.
+
 ### Changed — `controllers/insights.rs` split into `controllers/insights/` (2026-10-20)
 The 1,221-line file is now `mod.rs` (routes, the `live!` macro and the shared query helpers),
 `sales.rs`, `support.rs`, `compliance.rs`, `outreach.rs` and `relationships.rs`. No behaviour

@@ -20,6 +20,7 @@ pub mod privacy;
 pub mod relationships;
 pub mod sales;
 pub mod support;
+pub mod unmerge;
 
 /// Map a non-empty problem list to the family's `422 Unprocessable
 /// Entity` validation error (every problem in one response).

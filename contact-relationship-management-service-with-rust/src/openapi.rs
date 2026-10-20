@@ -32,6 +32,7 @@ pub fn spec() -> Value {
                 "get": { "tags": ["relationships"], "summary": "List contacts", "responses": ok("Contacts") }
             },
             "/api/contacts/{pid}": { "get": { "tags": ["relationships"], "summary": "Contact + merged timeline (activities, deals, tickets)", "responses": ok("ContactDetail") } },
+            "/api/contacts/{pid}/unmerge": { "post": { "tags": ["relationships"], "summary": "Undo this contact's merge: give back the rows still on the survivor, restore what the merge dropped, clear the fields it filled; consent never widens (dry_run previews; destructive-classified; 409 if not merged, 422 if erased or the merge predates the undo record)", "responses": ok("ContactUnmerge") } },
             "/api/contacts/{pid}/merge": { "post": { "tags": ["relationships"], "summary": "Merge this contact into into_pid, which survives (dry_run previews; consent never widens; destructive-classified; refused 422 for an erased or same contact, 409 if already merged)", "responses": ok("ContactMerge") } },
             "/api/contacts/{pid}/duplicates": { "get": { "tags": ["relationships"], "summary": "Other contacts that are probably the same person (?limit=; probability and per-field breakdown; advice only)", "responses": ok("ContactDuplicates") } },
             "/api/contacts/{pid}/repoint": { "post": { "tags": ["relationships"], "summary": "Repoint the wrapper after an upstream merge (reasoned, audited)", "responses": ok("Contact") } },

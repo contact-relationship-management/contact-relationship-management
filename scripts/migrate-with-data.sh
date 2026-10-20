@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Migration 17 (contact merges) against a database that already holds data (CRM-T64).
 # Seeds N contacts (default 300) with activities, tickets, deals, consent, group seats and
-# nurture enrolments through the API, rolls the schema back one migration (what v0.1.1
-# had), migrates forward with the data in place, then merges 150 pairs and checks.
+# nurture enrolments through the API, rolls the schema back two migrations (what v0.1.1
+# had: two migrations back), migrates forward with the data in place, then merges 150 pairs and checks.
 # Usage: N=300 scripts/migrate-with-data.sh   (needs podman, curl and the debug binary)
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -47,7 +47,7 @@ kill $SP; wait $SP 2>/dev/null; SP=""
 echo "contacts: $(sql 'select count(*) from contacts')  activities: $(sql 'select count(*) from activities')  tickets: $(sql 'select count(*) from tickets')  deals: $(sql 'select count(*) from deals')  consent_events: $(sql 'select count(*) from consent_events')"
 
 echo "== 2. return the schema to what v0.1.1 had (migration 16)"
-run db down | tail -1
+run db down 2 | tail -2
 check_16() { [[ "$(sql "select count(*) from information_schema.columns where table_name='contacts' and column_name='merged_into_pid'")" = 0 && "$(sql "select to_regclass('contact_merges') is null")" = t ]]; }
 check_16 && echo "  ok    column and ledger are gone" || echo "  FAIL  still at 17"
 TABLES=$(sql "select string_agg(tablename,' ') from pg_tables where schemaname='public' and tablename not in ('seaql_migrations')")

@@ -369,3 +369,31 @@ freezes or returns, and when the service itself is killed mid-write.*
 - `scripts/chaos.sh` injects each of those faults against a throwaway
   PostgreSQL and Redis and checks them. It is run on purpose, not on every push.
 
+
+## CRM-R26 — Undo a merge
+
+*As an operator who merged the wrong two contacts, I can undo it, and the undo
+cannot expose anyone to marketing they have refused.*
+
+- `POST /api/contacts/{pid}/unmerge` takes the merged-away contact in the path
+  and a required `reason`. `dry_run` reports exactly what would be restored and
+  changes nothing. It is destructive-classified (`/unmerge`), audited
+  (`contacts_unmerged`, counts and reason, never values), and emitted as an event.
+- It uses the merge ledger. It moves back only rows that still point at the
+  survivor; a row that was since moved on or deleted is **left behind** and
+  counted. Work the survivor did after the merge stays with the survivor.
+- It restores the nurture enrolments and working-group seats the merge dropped,
+  clears the fields the merge filled where the survivor still holds the value it
+  was given (a field the survivor has changed is kept), and makes the contact live
+  again.
+- Consent never widens. The survivor keeps its current state. The returning
+  contact gets the stricter of its own state and the survivor's, with a consent
+  event `unmerge:<survivor>`; a withdrawal exits its active enrolments.
+- Refused: a contact that was never merged or already unmerged (409), a missing
+  one (404), an erased survivor or contact (422), a survivor that was itself
+  merged away (409: unmerge that first), a merge made before the undo record
+  existed (422), a non-admin caller (403). After the retention horizon the merged
+  contact's row is gone and the merge can no longer be undone.
+- A contact can be merged again after it is unmerged.
+- Erasing a survivor (CRM-R20) also scrubs the identity of every contact merged
+  into it, and the person reference the ledger kept: they are the same person.

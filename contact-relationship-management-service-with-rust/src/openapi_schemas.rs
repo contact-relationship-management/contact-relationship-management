@@ -161,6 +161,8 @@ fn base_schemas() -> Value {
         "MemberPayload": object(&["contact_pid"], &json!({ "contact_pid": uuid() })),
         "MergePayload": object(&["into_pid", "reason"], &json!({
             "into_pid": uuid(), "reason": string(), "dry_run": boolean() })),
+        "UnmergePayload": object(&["reason"], &json!({
+            "reason": string(), "dry_run": boolean() })),
 
         // ---- resources (what the lists return)
         "Contact": resource(&["pid", "person_ref", "display_name", "status", "marketing_consent"], &json!({
@@ -283,6 +285,15 @@ fn view_schemas() -> Value {
             "filled": { "type": "array", "items": string() },
             "consent": object(&["survivor", "merged", "result"], &json!({
                 "survivor": string(), "merged": string(), "result": string() })) })),
+        "ContactUnmerge": object(&["survivor_pid", "merged_pid", "dry_run", "restored", "left_behind", "dropped_restored", "fields_cleared", "fields_kept", "consent"], &json!({
+            "survivor_pid": uuid(), "merged_pid": uuid(), "dry_run": boolean(),
+            "restored": { "type": "object", "additionalProperties": integer() },
+            "left_behind": { "type": "object", "additionalProperties": integer() },
+            "dropped_restored": { "type": "object", "additionalProperties": integer() },
+            "fields_cleared": { "type": "array", "items": string() },
+            "fields_kept": { "type": "array", "items": string() },
+            "consent": object(&["survivor", "merged_before", "merged_result"], &json!({
+                "survivor": string(), "merged_before": string(), "merged_result": string() })) })),
         "AccountDetail": object(&["account", "contacts", "deals"], &json!({
             "account": reference("Account"), "contacts": list_of("Contact"),
             "deals": list_of("Deal") })),
@@ -571,6 +582,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("post", "/api/groups") => "GroupPayload",
         ("post", "/api/groups/{pid}/members") => "MemberPayload",
         ("post", "/api/contacts/{pid}/merge") => "MergePayload",
+        ("post", "/api/contacts/{pid}/unmerge") => "UnmergePayload",
         _ => return None,
     })
 }
@@ -582,6 +594,7 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/contacts/{pid}") => "ContactDetail",
         ("get", "/api/contacts/{pid}/duplicates") => "ContactDuplicates",
         ("post", "/api/contacts/{pid}/merge") => "ContactMerge",
+        ("post", "/api/contacts/{pid}/unmerge") => "ContactUnmerge",
         ("get", "/api/accounts/{pid}") => "AccountDetail",
         ("get", "/api/accounts/{pid}/clv") => "Clv",
         ("get", "/api/leads/{pid}") => "LeadDetail",

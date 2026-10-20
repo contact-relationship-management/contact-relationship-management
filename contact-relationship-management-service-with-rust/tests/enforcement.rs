@@ -515,6 +515,24 @@ async fn enforcement_gates_the_real_stack() {
             .await
             .json();
         assert_eq!(merged["survivor_pid"], pids[1], "{merged}");
+        let unmerge_body = json!({ "reason": "wrong person" });
+        assert_eq!(
+            request
+                .post(&format!("/api/contacts/{}/unmerge", pids[0]))
+                .add_header("authorization", bearer(&writer))
+                .json(&unmerge_body)
+                .await
+                .status_code(),
+            403,
+            "a writer cannot unmerge"
+        );
+        let undone: Value = request
+            .post(&format!("/api/contacts/{}/unmerge", pids[0]))
+            .add_header("authorization", bearer(&service))
+            .json(&unmerge_body)
+            .await
+            .json();
+        assert_eq!(undone["merged_pid"], pids[0], "{undone}");
         // The review surface is admin/service tier.
         assert_eq!(
             request

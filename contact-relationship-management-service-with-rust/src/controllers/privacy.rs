@@ -202,6 +202,16 @@ async fn erase(
              WHERE contact_pid = '{cpid}' AND deleted_at IS NULL"
         ),
         format!("DELETE FROM working_group_members WHERE contact_pid = '{cpid}'"),
+        // Contacts merged into this one are the same person: scrub their
+        // identity too, and the person reference the merge ledger kept (CRM-R26).
+        format!(
+            "UPDATE contacts SET display_name = '{ERASED}', person_ref = '{TOMBSTONE_PERSON}', \
+             job_title = NULL, marketing_consent = 'withdrawn' WHERE merged_into_pid = '{cpid}'"
+        ),
+        format!(
+            "UPDATE contact_merges SET merged_person_ref = '{TOMBSTONE_PERSON}' \
+             WHERE survivor_pid = '{cpid}'"
+        ),
     ];
     let mut affected = Vec::new();
     for statement in &statements {
@@ -218,6 +228,7 @@ async fn erase(
             "activity_summaries_scrubbed": affected[0],
             "leads_scrubbed": affected[1],
             "working_group_memberships_deleted": affected[2],
+            "merged_duplicates_scrubbed": affected[3],
         })),
     )
     .await?;
