@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Lily Design System packages (2026-10-20)
+
+`svelte-calendar` 0.6.0 to 0.7.0, `svelte-data-grid` 0.10.0 to 0.11.0,
+`svelte-gantt-chart` 0.7.0 to 0.8.0, `svelte-headless` 0.5.0 to 0.5.1. Type check,
+104 unit tests and 93 end-to-end tests pass unchanged. TypeScript 7 is available
+and not adopted (a major version; svelte-check support not checked).
+
 ### Added — merge a duplicate into this contact (CRM-R24, 2026-10-19)
 
 Each likely duplicate on a contact page has a Merge action. It asks the service

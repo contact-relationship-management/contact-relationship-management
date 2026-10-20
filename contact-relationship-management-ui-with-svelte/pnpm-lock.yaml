@@ -9,20 +9,20 @@ importers:
   .:
     dependencies:
       '@lilydesignsystem/svelte-calendar':
-        specifier: 0.6.0
-        version: 0.6.0(svelte@5.57.2)
-      '@lilydesignsystem/svelte-data-grid':
-        specifier: 0.10.0
-        version: 0.10.0(svelte@5.57.2)
-      '@lilydesignsystem/svelte-gantt-chart':
         specifier: 0.7.0
-        version: 0.7.0(svelte@5.57.2)
+        version: 0.7.0(@lilydesignsystem/svelte-headless@0.5.1(svelte@5.57.2))(svelte@5.57.2)
+      '@lilydesignsystem/svelte-data-grid':
+        specifier: 0.11.0
+        version: 0.11.0(@lilydesignsystem/svelte-headless@0.5.1(svelte@5.57.2))(svelte@5.57.2)
+      '@lilydesignsystem/svelte-gantt-chart':
+        specifier: 0.8.0
+        version: 0.8.0(@lilydesignsystem/svelte-headless@0.5.1(svelte@5.57.2))(svelte@5.57.2)
       '@lilydesignsystem/svelte-headless':
-        specifier: 0.5.0
-        version: 0.5.0(svelte@5.57.2)
+        specifier: 0.5.1
+        version: 0.5.1(svelte@5.57.2)
       '@lilydesignsystem/svelte-kanban-board':
         specifier: 0.8.1
-        version: 0.8.1(@lilydesignsystem/svelte-headless@0.5.0(svelte@5.57.2))(svelte@5.57.2)
+        version: 0.8.1(@lilydesignsystem/svelte-headless@0.5.1(svelte@5.57.2))(svelte@5.57.2)
       '@lilydesignsystem/svelte-link-picker':
         specifier: 0.2.0
         version: 0.2.0(svelte@5.57.2)
@@ -190,16 +190,18 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@lilydesignsystem/svelte-calendar@0.6.0':
-    resolution: {integrity: sha512-9VMLqCGcB7y3w/azFjmHnUuUitaGwD2VKu8Y/Ka1tONOoAmiZ9gy0fz8texbzUHg23QaQnTNEw+ykPDAaLJppw==}
+  '@lilydesignsystem/svelte-calendar@0.7.0':
+    resolution: {integrity: sha512-1JsjzG8yA8CqJxpJSbZiwzlgvhJX+zbjhwMeKxgmR1sqVxE+FZuBda4ifrl5Dn7RgdXFic7tj4qGFA+ep/LdZw==}
     engines: {node: '=26'}
     peerDependencies:
+      '@lilydesignsystem/svelte-headless': '>=0.4.0 <1.0.0'
       svelte: ^5.0.0
 
-  '@lilydesignsystem/svelte-data-grid@0.10.0':
-    resolution: {integrity: sha512-J5K0oiOkctT4+6aCq00z4KTIta44biGYKWmAapfRuvS1HtX7ia+XfeD1enGN6fnyKg1sWumK22U9HP/g52YXhA==}
+  '@lilydesignsystem/svelte-data-grid@0.11.0':
+    resolution: {integrity: sha512-zyObzpN7lXH3UIaiDtryAOj8PXptN52CdzbKMHqf2MwRVFVh4fmsRcf14J1xs4IPRSdXNG/iBPse6Ig+6+y8wg==}
     engines: {node: '=26'}
     peerDependencies:
+      '@lilydesignsystem/svelte-headless': '>=0.4.0 <1.0.0'
       svelte: ^5.0.0
 
   '@lilydesignsystem/svelte-date-time-picker@0.2.0':
@@ -208,10 +210,11 @@ packages:
     peerDependencies:
       svelte: ^5.0.0
 
-  '@lilydesignsystem/svelte-gantt-chart@0.7.0':
-    resolution: {integrity: sha512-ra45IRRTcNlLd29NsVibixxHM8tIaIjmrUH/iwWKSjjf9SDNGL85qkt93NIOuAAc7C6sFXykVcKfHRF2tCa2YA==}
+  '@lilydesignsystem/svelte-gantt-chart@0.8.0':
+    resolution: {integrity: sha512-cn+F4b0o+Y5sfqiOidBwWNWfQiP8eKflWBw9NAU8T/DjXPNaOoSWi6bwoERVEmyzWXKejrDDc/7XS+GWufRtAQ==}
     engines: {node: '=26'}
     peerDependencies:
+      '@lilydesignsystem/svelte-headless': '>=0.4.0 <1.0.0'
       svelte: ^5.0.0
 
   '@lilydesignsystem/svelte-headless@0.2.0':
@@ -226,8 +229,8 @@ packages:
     peerDependencies:
       svelte: ^5.0.0
 
-  '@lilydesignsystem/svelte-headless@0.5.0':
-    resolution: {integrity: sha512-79wGcQpsQ+FYRakkMVXNLv44G407RDhoQ8G0iCBpGC0nkqZHxefX5e8jSQtwURazxY706gnQdj3HeHALeAPi3g==}
+  '@lilydesignsystem/svelte-headless@0.5.1':
+    resolution: {integrity: sha512-55wMJ1+KPGq4eY0JqVgikPafDPxFq/mrvEPx2ps6cR/4iBGq3D+OxbHcWKV1tPbJU54T9NQ/MIfJ0zaI0UeOLA==}
     engines: {node: '=26'}
     peerDependencies:
       svelte: ^5.0.0
@@ -1136,15 +1139,15 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@lilydesignsystem/svelte-calendar@0.6.0(svelte@5.57.2)':
+  '@lilydesignsystem/svelte-calendar@0.7.0(@lilydesignsystem/svelte-headless@0.5.1(svelte@5.57.2))(svelte@5.57.2)':
     dependencies:
       '@lilydesignsystem/svelte-date-time-picker': 0.2.0(svelte@5.57.2)
-      '@lilydesignsystem/svelte-headless': 0.4.0(svelte@5.57.2)
+      '@lilydesignsystem/svelte-headless': 0.5.1(svelte@5.57.2)
       svelte: 5.57.2
 
-  '@lilydesignsystem/svelte-data-grid@0.10.0(svelte@5.57.2)':
+  '@lilydesignsystem/svelte-data-grid@0.11.0(@lilydesignsystem/svelte-headless@0.5.1(svelte@5.57.2))(svelte@5.57.2)':
     dependencies:
-      '@lilydesignsystem/svelte-headless': 0.4.0(svelte@5.57.2)
+      '@lilydesignsystem/svelte-headless': 0.5.1(svelte@5.57.2)
       svelte: 5.57.2
 
   '@lilydesignsystem/svelte-date-time-picker@0.2.0(svelte@5.57.2)':
@@ -1152,10 +1155,10 @@ snapshots:
       '@lilydesignsystem/svelte-headless': 0.2.0(svelte@5.57.2)
       svelte: 5.57.2
 
-  '@lilydesignsystem/svelte-gantt-chart@0.7.0(svelte@5.57.2)':
+  '@lilydesignsystem/svelte-gantt-chart@0.8.0(@lilydesignsystem/svelte-headless@0.5.1(svelte@5.57.2))(svelte@5.57.2)':
     dependencies:
       '@lilydesignsystem/svelte-date-time-picker': 0.2.0(svelte@5.57.2)
-      '@lilydesignsystem/svelte-headless': 0.4.0(svelte@5.57.2)
+      '@lilydesignsystem/svelte-headless': 0.5.1(svelte@5.57.2)
       svelte: 5.57.2
 
   '@lilydesignsystem/svelte-headless@0.2.0(svelte@5.57.2)':
@@ -1168,14 +1171,14 @@ snapshots:
       aria-query: 5.3.2
       svelte: 5.57.2
 
-  '@lilydesignsystem/svelte-headless@0.5.0(svelte@5.57.2)':
+  '@lilydesignsystem/svelte-headless@0.5.1(svelte@5.57.2)':
     dependencies:
       aria-query: 5.3.2
       svelte: 5.57.2
 
-  '@lilydesignsystem/svelte-kanban-board@0.8.1(@lilydesignsystem/svelte-headless@0.5.0(svelte@5.57.2))(svelte@5.57.2)':
+  '@lilydesignsystem/svelte-kanban-board@0.8.1(@lilydesignsystem/svelte-headless@0.5.1(svelte@5.57.2))(svelte@5.57.2)':
     dependencies:
-      '@lilydesignsystem/svelte-headless': 0.5.0(svelte@5.57.2)
+      '@lilydesignsystem/svelte-headless': 0.5.1(svelte@5.57.2)
       svelte: 5.57.2
 
   '@lilydesignsystem/svelte-link-picker@0.1.1(svelte@5.57.2)':
