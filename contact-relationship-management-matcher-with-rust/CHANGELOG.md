@@ -5,7 +5,7 @@
 ## 0.1.2
 
 - `Matcher::config` is now a `const fn`. No behaviour change.
-  Prepared 2026-10-20; not yet published.
+  Published to crates.io on 2026-10-20.
 
 ## 0.1.1
 
