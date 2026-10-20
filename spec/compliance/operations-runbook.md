@@ -132,8 +132,10 @@ build-provenance attestation and signed CycloneDX SBOMs. Before deploying,
 verify the image you will run:
 
 > **Cosign version.** Releases up to v0.1.1 were signed with cosign 2; from v0.1.2 the
-> workflow installs cosign 3 (cosign-installer 4). Verify with cosign 3 or later. Whether
-> a cosign 2 client can verify a cosign 3 signature has not been tested.
+> workflow installs cosign 3 (cosign-installer 4). Verify with cosign 3 or later. Checked
+> on `v0.1.2-rc.1` (2026-10-20): cosign 3.1.3 verifies both the cosign 3 signatures and the
+> older cosign 2 ones (v0.1.1); cosign 2.5.3 does **not** verify the new ones (it reports
+> "no signatures found"). Upgrade the verifier before upgrading what you deploy.
 
 ```bash
 cosign verify ghcr.io/<owner>/<repo>/service:vX.Y.Z \
