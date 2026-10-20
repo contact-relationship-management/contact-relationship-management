@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `controllers/marketing.rs` split into `controllers/marketing/` (2026-10-20)
+The 1,659-line file is now `mod.rs` (routes and the shared `{pid}` response), `consent.rs`,
+`segment.rs`, `campaign.rs`, `nurture.rs` and `public.rs` (unsubscribe and the email
+webhooks). No behaviour change; paths such as `controllers::marketing::routes` and
+`CampaignSendWorker` are unchanged.
+
 ### Changed — `src/auth.rs` split into `src/auth/` (2026-10-20)
 The 1,955-line file is now `mod.rs` (the guide and re-exports), `verifier.rs`,
 `policy.rs`, `records.rs`, `extract.rs` and `tests.rs`. No behaviour change and every
