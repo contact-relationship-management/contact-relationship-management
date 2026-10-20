@@ -187,6 +187,22 @@
   />
 {/if}
 
+{#if deals !== null && deals.length > 0}
+  <h2>{t("nav.deals")}</h2>
+  <DataTable
+    label={t("nav.deals")}
+    columns={[
+      {
+        id: "name",
+        header: t("common.name"),
+        href: (row: Record<string, unknown>) => `/deals/${row.id}`,
+      },
+    ]}
+    rows={deals.map((deal) => ({ id: deal.pid, name: deal.name }))}
+    testid="deal-list"
+  />
+{/if}
+
 {#if stageFunnel}
   <h2>Funnel — {stageFunnel.pipeline.name}</h2>
   <p class="muted">{stageFunnel.derivation}</p>

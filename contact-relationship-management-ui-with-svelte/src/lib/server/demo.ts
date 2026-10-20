@@ -94,7 +94,7 @@ interface MergedRow {
 
 interface ExternalLinkRow {
   pid: string;
-  subject_kind: "contact";
+  subject_kind: "contact" | "account" | "deal" | "lead";
   subject_pid: string;
   system: string;
   url: string;
@@ -1300,9 +1300,20 @@ function checkLinkUrl(system: string, raw: string): string {
   return "";
 }
 
-function contactLinks(pid: string, method: string, body: unknown): DemoReply {
-  if (!state.contacts.some((c) => c.pid === pid))
-    return problem(404, "contact not found");
+function recordLinks(
+  kind: "contact" | "account" | "deal" | "lead",
+  pid: string,
+  method: string,
+  body: unknown,
+): DemoReply {
+  const pool: { pid: string }[] = {
+    contact: state.contacts,
+    account: state.accounts,
+    deal: state.deals,
+    lead: state.leads,
+  }[kind];
+  if (!pool.some((r) => r.pid === pid))
+    return problem(404, `${kind} not found`);
   const list = (state.external[pid] ??= []);
   if (method === "GET")
     return ok({ links: list, systems: Object.keys(LINK_DOMAINS) });
@@ -1318,7 +1329,7 @@ function contactLinks(pid: string, method: string, body: unknown): DemoReply {
     return problem(409, "this record already has that link");
   const row: ExternalLinkRow = {
     pid: `xl-${Date.now()}-${list.length}`,
-    subject_kind: "contact",
+    subject_kind: kind,
     subject_pid: pid,
     system: String(system),
     url: address,
@@ -1775,11 +1786,31 @@ export function demoHandle(
     if (tail === "merges" && get) return contactMerges(id!);
     if (tail === "unmerge" && post) return unmergeContact(id!, body);
     if (tail === "external-links" && (get || post))
-      return contactLinks(id!, method, body);
+      return recordLinks("contact", id!, method, body);
   }
   if (head === "external-links" && method === "DELETE" && id)
     return removeLink(id);
   if (head === "accounts" && seg.length === 1 && get) return ok(state.accounts);
+  if (head === "accounts" && seg.length === 2 && get) {
+    const account = state.accounts.find((a) => a.pid === id);
+    if (!account) return problem(404, "account not found");
+    return ok({
+      account,
+      contacts: state.contacts
+        .filter((c) => c.account_pid === account.pid)
+        .map((c) => ({ pid: c.pid, display_name: c.display_name })),
+      deals: [],
+    });
+  }
+  if (tail === "external-links" && (get || post)) {
+    const kinds = {
+      accounts: "account",
+      deals: "deal",
+      leads: "lead",
+    } as const;
+    const kind = kinds[head as keyof typeof kinds];
+    if (kind) return recordLinks(kind, id!, method, body);
+  }
   if (head === "leads") {
     if (seg.length === 1 && get) return ok(state.leads);
     if (seg.length === 2 && get) return leadDetail(id!);

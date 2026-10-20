@@ -18,7 +18,11 @@
   });
 
   const columns = $derived([
-    { id: "display_name", header: t("common.name") },
+    {
+      id: "display_name",
+      header: t("common.name"),
+      href: (row: Record<string, unknown>) => `/accounts/${row.id}`,
+    },
     { id: "tier", kind: "chip", header: t("account.tier") },
     { id: "industry", header: t("account.industry") },
     { id: "pid", header: "pid" },

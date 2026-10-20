@@ -88,6 +88,8 @@ test("a deal's amount is edited on the board and the service has it", async ({
   };
   const target = 4_242_00 + Math.floor(Math.random() * 100) * 100;
   await page.goto("/deals");
+  // The page opens on the first pipeline; this deal is in its own.
+  await page.getByRole("combobox").selectOption(pipeline.pid);
   const board = page.getByTestId("deal-board");
   const shown = new Intl.NumberFormat("en-GB", {
     style: "currency",
@@ -138,7 +140,11 @@ test("a follow-up is rescheduled with the keyboard and the service has the new d
   page,
   request,
 }) => {
-  const contact = (await list(request, "contacts"))[0]!;
+  // Its own contact: a fresh database has none to borrow.
+  const contact = await create(request, "contacts", {
+    person_ref: `person:${crypto.randomUUID()}`,
+    display_name: `Follow-up ${stamp}`,
+  });
   const due = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
   const summary = `Live follow-up ${stamp}`;
   const activity = await create(request, "activities", {

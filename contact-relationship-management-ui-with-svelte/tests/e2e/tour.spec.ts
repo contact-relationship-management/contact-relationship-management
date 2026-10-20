@@ -82,7 +82,9 @@ test("signing in as example@example.com shows fictitious data on every screen", 
   await page.goto("/contacts");
   await expect(page.getByText("Imogen Hartley")).toBeVisible();
   await page.goto("/deals");
-  await expect(page.getByText("Smart-meter analytics rollout")).toBeVisible();
+  await expect(
+    page.getByText("Smart-meter analytics rollout").first(),
+  ).toBeVisible();
 });
 
 test("/<locale>/kanban shows the deal board and moves a card", async ({
@@ -674,6 +676,45 @@ test.describe("export, undo and search", () => {
     await page.getByTestId("link-remove").first().click();
     await expect(page.getByTestId("link")).toHaveCount(1);
     await expect(page.getByTestId("links")).toContainText("Attio person");
+  });
+
+  for (const [list, name, path] of [
+    ["/accounts", "Brightwater Energy", /\/accounts\/acc-1$/],
+    ["/leads", "Hollis Greenway", /\/leads\/lead-1$/],
+  ] as const) {
+    test(`a link is added and removed on a record opened from ${list}`, async ({
+      page,
+    }) => {
+      await startTour(page);
+      await page.goto(list);
+      await page.getByRole("link", { name }).click();
+      await expect(page).toHaveURL(path);
+      await expect(page.getByTestId("record-title")).toHaveText(name);
+      await expect(page.getByTestId("links-none")).toBeVisible();
+      await page.getByTestId("link-system").selectOption("salesforce");
+      await page
+        .getByTestId("link-url")
+        .fill("https://acme.lightning.force.com/lightning/r/Record/001/view");
+      await page.getByTestId("link-add").click();
+      await expect(page.getByTestId("link")).toHaveCount(1);
+      await page.getByTestId("link-remove").click();
+      await expect(page.getByTestId("links-none")).toBeVisible();
+    });
+  }
+
+  test("a deal opened from the deals page carries links too", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/deals");
+    await page.getByTestId("deal-list").getByRole("link").first().click();
+    await expect(page).toHaveURL(/\/deals\/[^/]+$/);
+    await page.getByTestId("link-system").selectOption("hubspot");
+    await page
+      .getByTestId("link-url")
+      .fill("https://app.hubspot.com/contacts/1234/deal/77");
+    await page.getByTestId("link-add").click();
+    await expect(page.getByTestId("link")).toHaveCount(1);
   });
 
   test("a link on the wrong domain, or a repeat, is refused with the reason", async ({

@@ -294,22 +294,27 @@ export interface ExternalLink {
   label: string | null;
 }
 
-/** The links on a contact. */
-export function getContactLinks(
+/** The records that can carry links (CRM-R27). */
+export type LinkKind = "contacts" | "accounts" | "deals" | "leads";
+
+/** The links on a record. */
+export function getLinks(
+  kind: LinkKind,
   pid: string,
 ): Promise<{ links: ExternalLink[] }> {
-  return api(`/contacts/${pid}/external-links`);
+  return api(`/${kind}/${pid}/external-links`);
 }
 
 /**
  * Add a link (CRM-R27). The service accepts only `https` addresses, and for a
  * named system only that system's own domains; it refuses a repeat with 409.
  */
-export function addContactLink(
+export function addLink(
+  kind: LinkKind,
   pid: string,
   link: { system: LinkSystem; url: string; label: string },
 ): Promise<ExternalLink> {
-  return api(`/contacts/${pid}/external-links`, {
+  return api(`/${kind}/${pid}/external-links`, {
     method: "POST",
     body: {
       system: link.system,
@@ -344,6 +349,18 @@ export function eraseContact(
   pid: string,
 ): Promise<{ erased: string; note: string }> {
   return api(`/contacts/${pid}/erase`, { method: "POST" });
+}
+
+/** One account with its contacts and deals. */
+export function getAccount(
+  pid: string,
+  init?: FetchLike,
+): Promise<{
+  account: Account;
+  contacts: { pid: string; display_name: string }[];
+  deals: Deal[];
+}> {
+  return api(`/accounts/${pid}`, init);
 }
 
 /** Accounts. */

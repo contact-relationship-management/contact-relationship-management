@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — links to external systems on account, deal and lead pages (CRM-R27, 2026-10-20)
+
+The links panel is now a shared component (`LinksPanel`) used by the contact page and by new
+record pages at `/accounts/{pid}`, `/deals/{pid}` and `/leads/{pid}`. The account and lead
+tables link names to those pages; the deals page lists its deals under the board for the
+same purpose. No new strings.
+
+### Fixed — live tests no longer assume data
+
+The follow-up test makes its own contact, and the deal-amount test selects its own pipeline.
+Both failed on a database that was empty or held other pipelines.
+
 ## [0.1.3] — 2026-10-20
 
 ### Added — undo a merge from the survivor's page (CRM-R26, 2026-10-20)

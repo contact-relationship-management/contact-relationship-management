@@ -21,7 +21,11 @@
 
   const columns = $derived([
     { id: "score", kind: "number", total: "avg", header: t("lead.score") },
-    { id: "display_name", header: t("common.name") },
+    {
+      id: "display_name",
+      header: t("common.name"),
+      href: (row: Record<string, unknown>) => `/leads/${row.id}`,
+    },
     { id: "source", header: t("lead.source") },
     { id: "status", kind: "chip", header: t("common.status") },
   ]);

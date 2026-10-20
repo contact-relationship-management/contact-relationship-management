@@ -40,6 +40,7 @@ const SAMPLE_ID: Record<string, string> = {
   deals: "deal-1",
   tickets: "tkt-1",
   articles: "kb-1",
+  accounts: "acc-1",
 };
 
 describe("every read the UI makes has sample data", () => {
@@ -58,6 +59,8 @@ describe("every read the UI makes has sample data", () => {
         .replace(/\?.*$/, ""),
     )
     .map((p) => p.replace(/^\//, ""))
+    // The record kind is a parameter (links work on four kinds): try contacts.
+    .map((p) => p.replace(/^x\/x\//, "contacts/x/"))
     .map((p) =>
       p.replace(
         /^(\w+)\/x/,

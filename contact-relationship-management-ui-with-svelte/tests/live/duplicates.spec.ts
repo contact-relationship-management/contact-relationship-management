@@ -125,3 +125,63 @@ test("a duplicate is merged into this contact through the UI, and the service cl
   ).json()) as { activities: unknown[] };
   expect(detail.activities).toHaveLength(1);
 });
+
+test("a merge is undone from the survivor's page, and the service gives the contact back", async ({
+  page,
+  request,
+}) => {
+  const name = `Undo${Date.now().toString(36)}`;
+  const survivor = await create(request, "contacts", {
+    person_ref: person(),
+    display_name: `Robert ${name}`,
+  });
+  const twin = await create(request, "contacts", {
+    person_ref: person(),
+    display_name: `Bob ${name}`,
+  });
+  await create(request, "activities", {
+    subject_kind: "contact",
+    subject_pid: twin.pid,
+    kind: "note",
+    summary: "Spoke on the phone",
+  });
+  const merged = await request.post(`${API}/api/contacts/${twin.pid}/merge`, {
+    data: { into_pid: survivor.pid, reason: "live test", dry_run: false },
+  });
+  expect(merged.ok()).toBeTruthy();
+  expect((await request.get(`${API}/api/contacts/${twin.pid}`)).status()).toBe(
+    404,
+  );
+
+  await page.goto(`/contacts/${survivor.pid}`);
+  await page
+    .getByTestId("merged-entry")
+    .filter({ hasText: `Bob ${name}` })
+    .getByTestId("unmerge")
+    .click();
+  // The preview is the service's dry run.
+  await expect(page.getByTestId("unmerge-restores")).toContainText(
+    "Activities: 1",
+  );
+  await expect(page.getByTestId("unmerge-confirm")).toBeDisabled();
+  await page.getByTestId("unmerge-reason").fill("Two different people");
+  await page.getByTestId("unmerge-confirm").click();
+  await expect(page.getByTestId("unmerge-done")).toContainText(`Bob ${name}`);
+
+  // The contact is back with its activity; the survivor has none.
+  const back = (await (
+    await request.get(`${API}/api/contacts/${twin.pid}`)
+  ).json()) as {
+    activities: unknown[];
+  };
+  expect(back.activities).toHaveLength(1);
+  const kept = (await (
+    await request.get(`${API}/api/contacts/${survivor.pid}`)
+  ).json()) as {
+    activities: unknown[];
+  };
+  expect(kept.activities).toHaveLength(0);
+  // Undone once, it is no longer on offer.
+  await page.reload();
+  await expect(page.getByTestId("merged-entry")).toHaveCount(0);
+});
