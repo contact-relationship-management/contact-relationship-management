@@ -599,4 +599,60 @@ test.describe("export, undo and search", () => {
       "Zusammenführen",
     );
   });
+
+  test("a contact lists its links to other systems, and one can be added and removed", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/contacts/con-1");
+    const open = page.getByTestId("link-open");
+    await expect(open).toHaveCount(1);
+    await expect(open.first()).toHaveAttribute(
+      "href",
+      "https://app.hubspot.com/contacts/1234/record/0-1/5001",
+    );
+    // Opens in a new tab without handing the other site this page.
+    await expect(open.first()).toHaveAttribute("target", "_blank");
+    await expect(open.first()).toHaveAttribute("rel", /noopener/);
+
+    await page.getByTestId("link-system").selectOption("attio");
+    await page
+      .getByTestId("link-url")
+      .fill("https://app.attio.com/acme/people/42");
+    await page.getByTestId("link-label").fill("Attio person");
+    await page.getByTestId("link-add").click();
+    await expect(page.getByTestId("link")).toHaveCount(2);
+    await expect(page.getByTestId("links")).toContainText("Attio person");
+
+    await page.getByTestId("link-remove").first().click();
+    await expect(page.getByTestId("link")).toHaveCount(1);
+    await expect(page.getByTestId("links")).toContainText("Attio person");
+  });
+
+  test("a link on the wrong domain, or a repeat, is refused with the reason", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/contacts/con-1");
+    await page.getByTestId("link-system").selectOption("hubspot");
+    await page
+      .getByTestId("link-url")
+      .fill("https://hubspot.com.evil.example/x");
+    await page.getByTestId("link-add").click();
+    await expect(page.getByTestId("link-error")).toContainText(
+      "must be on one of",
+    );
+    await page
+      .getByTestId("link-url")
+      .fill("https://app.hubspot.com/contacts/1234/record/0-1/5001");
+    await page.getByTestId("link-add").click();
+    await expect(page.getByTestId("link-error")).toContainText("already has");
+    await expect(page.getByTestId("link")).toHaveCount(1);
+  });
+
+  test("the links panel follows the language", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/de-de/contacts/con-1");
+    await expect(page.getByTestId("link-add")).toHaveText("Link hinzufügen");
+  });
 });

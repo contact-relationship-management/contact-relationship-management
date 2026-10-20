@@ -228,6 +228,58 @@ export function mergeContact(
   });
 }
 
+/** The systems a link can point at (CRM-R27); brand names, so not translated. */
+export const LINK_SYSTEMS = [
+  "hubspot",
+  "salesforce",
+  "attio",
+  "pipedrive",
+  "dynamics",
+  "other",
+] as const;
+export type LinkSystem = (typeof LINK_SYSTEMS)[number];
+
+/** A link from a record to the same record in another system. */
+export interface ExternalLink {
+  pid: string;
+  subject_kind: string;
+  subject_pid: string;
+  system: LinkSystem;
+  url: string;
+  external_id: string | null;
+  label: string | null;
+}
+
+/** The links on a contact. */
+export function getContactLinks(
+  pid: string,
+): Promise<{ links: ExternalLink[] }> {
+  return api(`/contacts/${pid}/external-links`);
+}
+
+/**
+ * Add a link (CRM-R27). The service accepts only `https` addresses, and for a
+ * named system only that system's own domains; it refuses a repeat with 409.
+ */
+export function addContactLink(
+  pid: string,
+  link: { system: LinkSystem; url: string; label: string },
+): Promise<ExternalLink> {
+  return api(`/contacts/${pid}/external-links`, {
+    method: "POST",
+    body: {
+      system: link.system,
+      url: link.url,
+      label: link.label.trim() || null,
+    },
+  });
+}
+
+/** Remove a link. */
+export function removeLink(linkPid: string): Promise<unknown> {
+  return api(`/external-links/${linkPid}`, { method: "DELETE" });
+}
+
 /** Record a consent change. */
 export function recordConsent(
   pid: string,

@@ -84,11 +84,23 @@ interface FollowupSeed {
   due_on: string;
 }
 
+interface ExternalLinkRow {
+  pid: string;
+  subject_kind: "contact";
+  subject_pid: string;
+  system: string;
+  url: string;
+  external_id: string | null;
+  label: string | null;
+}
+
 interface State {
   followups: FollowupSeed[];
   accounts: Account[];
   contacts: Contact[];
   links: Record<string, Link>;
+  /** Links to the same contact in other systems (CRM-R27), by contact pid. */
+  external: Record<string, ExternalLinkRow[]>;
   activities: Activity[];
   leads: Lead[];
   stages: Stage[];
@@ -643,6 +655,19 @@ function build(): State {
     accounts,
     contacts,
     links,
+    external: {
+      [contacts[0]!.pid]: [
+        {
+          pid: "xl-1",
+          subject_kind: "contact",
+          subject_pid: contacts[0]!.pid,
+          system: "hubspot",
+          url: "https://app.hubspot.com/contacts/1234/record/0-1/5001",
+          external_id: null,
+          label: "HubSpot contact",
+        },
+      ],
+    },
     activities,
     leads,
     stages,
@@ -1232,6 +1257,78 @@ function contactDuplicates(pid: string): DemoReply {
  * The tour moves the deals and tickets it holds; every other table is empty
  * here. Consent follows the stricter side: withdrawn, then never, then granted.
  */
+const LINK_DOMAINS: Record<string, string[]> = {
+  hubspot: ["hubspot.com"],
+  salesforce: ["salesforce.com", "force.com", "salesforce-setup.com"],
+  attio: ["attio.com"],
+  pipedrive: ["pipedrive.com"],
+  dynamics: ["dynamics.com"],
+  other: [],
+};
+
+/** The same rules as the service's `rules::external_links::check_url`. */
+function checkLinkUrl(system: string, raw: string): string {
+  if (!(system in LINK_DOMAINS))
+    return `system must be one of ${Object.keys(LINK_DOMAINS).join(", ")}`;
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return "url is not a valid web address";
+  }
+  if (url.protocol !== "https:") return "url must start with https://";
+  if (url.username || url.password)
+    return "url must not contain a user name or password";
+  const domains = LINK_DOMAINS[system]!;
+  const host = url.hostname.toLowerCase();
+  if (
+    domains.length &&
+    !domains.some((d) => host === d || host.endsWith(`.${d}`))
+  )
+    return `a ${system} link must be on one of: ${domains.join(", ")}`;
+  return "";
+}
+
+function contactLinks(pid: string, method: string, body: unknown): DemoReply {
+  if (!state.contacts.some((c) => c.pid === pid))
+    return problem(404, "contact not found");
+  const list = (state.external[pid] ??= []);
+  if (method === "GET")
+    return ok({ links: list, systems: Object.keys(LINK_DOMAINS) });
+  const { system, url, label } = (body ?? {}) as {
+    system?: string;
+    url?: string;
+    label?: string | null;
+  };
+  const why = checkLinkUrl(String(system ?? ""), String(url ?? ""));
+  if (why) return problem(422, why);
+  const address = new URL(String(url).trim()).toString();
+  if (list.some((l) => l.url === address))
+    return problem(409, "this record already has that link");
+  const row: ExternalLinkRow = {
+    pid: `xl-${Date.now()}-${list.length}`,
+    subject_kind: "contact",
+    subject_pid: pid,
+    system: String(system),
+    url: address,
+    external_id: null,
+    label: label?.trim() || null,
+  };
+  list.push(row);
+  return ok(row);
+}
+
+function removeLink(linkPid: string): DemoReply {
+  for (const [contact, rows] of Object.entries(state.external)) {
+    const keep = rows.filter((l) => l.pid !== linkPid);
+    if (keep.length !== rows.length) {
+      state.external[contact] = keep;
+      return ok({ deleted: linkPid });
+    }
+  }
+  return problem(404, "link not found");
+}
+
 function mergeContact(pid: string, body: unknown): DemoReply {
   const { into_pid, reason, dry_run } = (body ?? {}) as {
     into_pid?: string;
@@ -1268,6 +1365,7 @@ function mergeContact(pid: string, body: unknown): DemoReply {
       consent_events: 0,
       nurture_enrollments: 0,
       working_group_members: 0,
+      external_links: (state.external[pid] ?? []).length,
     },
     dropped: { nurture_enrollments: 0, working_group_members: 0 },
     filled,
@@ -1283,6 +1381,14 @@ function mergeContact(pid: string, body: unknown): DemoReply {
     deals: [...to.deals, ...from.deals],
     tickets: [...to.tickets, ...from.tickets],
   };
+  state.external[survivor.pid] = [
+    ...(state.external[survivor.pid] ?? []),
+    ...(state.external[pid] ?? []).map((l) => ({
+      ...l,
+      subject_pid: survivor.pid,
+    })),
+  ];
+  delete state.external[pid];
   delete state.links[pid];
   if (filled.length) survivor.job_title = merged.job_title;
   survivor.marketing_consent = result;
@@ -1573,7 +1679,11 @@ export function demoHandle(
     }
     if (tail === "erase" && post) return eraseContact(id!);
     if (tail === "merge" && post) return mergeContact(id!, body);
+    if (tail === "external-links" && (get || post))
+      return contactLinks(id!, method, body);
   }
+  if (head === "external-links" && method === "DELETE" && id)
+    return removeLink(id);
   if (head === "accounts" && seg.length === 1 && get) return ok(state.accounts);
   if (head === "leads") {
     if (seg.length === 1 && get) return ok(state.leads);

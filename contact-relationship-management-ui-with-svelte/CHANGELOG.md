@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — links to other systems on the contact page (CRM-R27, 2026-10-20)
+
+A "Linked records" panel lists a contact's links to HubSpot, Salesforce, Attio, Pipedrive,
+Microsoft Dynamics or elsewhere, each opening in a new tab (`noopener noreferrer`), with a
+form to add one (system, address, optional label) and a Remove button. The service refuses
+an address that is not `https` or is on the wrong domain, and the page shows its reason.
+Merge previews now count moved links. Eleven strings in all eight languages (unreviewed by
+native speakers); the tour has a sample HubSpot link. Contacts only: accounts, deals and
+leads have no detail page.
+
 ### Changed — Lily Design System packages (2026-10-20)
 
 `svelte-calendar` 0.6.0 to 0.7.0, `svelte-data-grid` 0.10.0 to 0.11.0,

@@ -5,12 +5,18 @@
   import {
     eraseContact,
     getContact,
+    addContactLink,
     getContactDuplicates,
+    getContactLinks,
+    LINK_SYSTEMS,
     mergeContact,
+    removeLink,
     money,
     type MergeResult,
     recordConsent,
     type Duplicate,
+    type ExternalLink,
+    type LinkSystem,
   } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
@@ -30,6 +36,15 @@
   let mergeBusy = $state(false);
   let mergeError = $state<string | null>(null);
   let mergedName = $state<string | null>(null);
+
+  // Links to the same contact in other systems (CRM-R27). Only links: nothing
+  // is fetched from, or sent to, those systems.
+  let links = $state<ExternalLink[] | null>(null);
+  let linkSystem = $state<LinkSystem>("hubspot");
+  let linkUrl = $state("");
+  let linkLabel = $state("");
+  let linkBusy = $state(false);
+  let linkError = $state<string | null>(null);
 
   const pid = $derived(page.params.pid ?? "");
   // Rough client-side gate from data already on the page — the
@@ -59,10 +74,55 @@
     }
   }
 
+  async function loadLinks() {
+    try {
+      links = (await getContactLinks(pid)).links;
+    } catch {
+      links = null;
+    }
+  }
+
+  async function addLink() {
+    if (!linkUrl.trim()) return;
+    linkBusy = true;
+    linkError = null;
+    try {
+      await addContactLink(pid, { system: linkSystem, url: linkUrl.trim(), label: linkLabel });
+      linkUrl = "";
+      linkLabel = "";
+      await loadLinks();
+    } catch (cause) {
+      linkError = cause instanceof Error ? cause.message : String(cause);
+    } finally {
+      linkBusy = false;
+    }
+  }
+
+  async function dropLink(link: ExternalLink) {
+    linkError = null;
+    try {
+      await removeLink(link.pid);
+      await loadLinks();
+    } catch (cause) {
+      linkError = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+
+  const systemName = (system: LinkSystem) =>
+    ({
+      hubspot: "HubSpot",
+      salesforce: "Salesforce",
+      attio: "Attio",
+      pipedrive: "Pipedrive",
+      dynamics: "Microsoft Dynamics",
+      other: t("contact.linkSystemOther"),
+    })[system];
+
   $effect(() => {
     if (pid) {
       void load();
       void loadDuplicates();
+      void loadLinks();
     }
   });
 
@@ -96,6 +156,7 @@
     consent_events: "contact.mergeTable.consent_events",
     nurture_enrollments: "contact.mergeTable.nurture_enrollments",
     working_group_members: "contact.mergeTable.working_group_members",
+    external_links: "contact.mergeTable.external_links",
   } as const;
   const counted = (counts: Record<string, number>) =>
     Object.entries(counts)
@@ -317,6 +378,60 @@
       {#if mergeError}<p role="alert" data-testid="merge-error">{mergeError}</p>{/if}
     </section>
   {/if}
+
+  <h2>{t("contact.links")}</h2>
+  <p class="muted">{t("contact.linksHint")}</p>
+  {#if links !== null}
+    {#if links.length === 0}
+      <p data-testid="links-none">{t("contact.linksNone")}</p>
+    {:else}
+      <ul data-testid="links">
+        {#each links as link (link.pid)}
+          <li data-testid="link">
+            <span class="chip">{systemName(link.system)}</span>
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${link.label ?? new URL(link.url).hostname} (${t("contact.linkOpens")})`}
+              data-testid="link-open">{link.label ?? new URL(link.url).hostname}</a
+            >
+            <button onclick={() => void dropLink(link)} data-testid="link-remove">
+              {t("contact.linkRemove")}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {/if}
+  <form
+    onsubmit={(event) => {
+      event.preventDefault();
+      void addLink();
+    }}
+    data-testid="link-form"
+  >
+    <label>
+      {t("contact.linkSystem")}
+      <select bind:value={linkSystem} data-testid="link-system">
+        {#each LINK_SYSTEMS as system (system)}
+          <option value={system}>{systemName(system)}</option>
+        {/each}
+      </select>
+    </label>
+    <label>
+      {t("contact.linkUrl")}
+      <input type="url" bind:value={linkUrl} required data-testid="link-url" />
+    </label>
+    <label>
+      {t("contact.linkLabel")}
+      <input bind:value={linkLabel} data-testid="link-label" />
+    </label>
+    <button type="submit" disabled={linkBusy || !linkUrl.trim()} data-testid="link-add">
+      {t("contact.linkAdd")}
+    </button>
+    {#if linkError}<p role="alert" data-testid="link-error">{linkError}</p>{/if}
+  </form>
 
   <h2>{t("contact.timeline")}</h2>
   <DataTable
