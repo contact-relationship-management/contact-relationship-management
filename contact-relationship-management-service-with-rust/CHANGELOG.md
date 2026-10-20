@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-10-20
+
+Since 0.1.0 (crates.io) and the v0.1.1 images: `GET /api/contacts/{pid}/duplicates`
+(below), a dependency on the published `contact-relationship-management-matcher`
+0.1.1 (the 0.99 match threshold), the Redis tests now run in CI, the images carry OCI labels and the release
+workflow refuses a tag that disagrees with this version, and the UI image builds
+on Node 26 (v0.1.0's UI build failed on `corepack`). The release workflow now uses
+cosign-installer 4 (cosign 3) and attest-build-provenance 4: `v0.1.2-rc.1` ran it and both images
+verify with cosign 3 (cosign 2 clients cannot verify the new signatures).
+
 ### Fixed — a write no longer waits on a dead Redis (CRM-R25)
 With Redis stopped or frozen, a successful write waited for the Redis pool's own
 timeout (over 20 seconds) before answering, because the insight cache's
@@ -14,7 +24,7 @@ generation bump after every write had no limit. Every insight-cache call is now
 bounded to 750 ms and its failure only skips the cache. Found by the new
 `scripts/chaos.sh`.
 
-### Added — `POST /api/contacts/{pid}/merge` (CRM-R24, service only; the UI action is still to come)
+### Added — `POST /api/contacts/{pid}/merge` (CRM-R24)
 Merges the contact in the path into `into_pid`, which survives. One transaction;
 `dry_run` does the work and rolls it back, so its counts are exact. Activities,
 leads, deals (as primary contact), tickets, email deliveries, consent events,
@@ -28,16 +38,6 @@ same contact (422), an erased contact (422), an already-merged one (409), a
 missing one (404), a caller who may not do destructive actions (403). Audited
 (counts, never values) and emitted as `contacts_merged`. New migration
 `m20261019_000017_contact_merges`.
-
-## [0.1.2] — prepared 2026-10-19, not yet released
-
-Since 0.1.0 (crates.io) and the v0.1.1 images: `GET /api/contacts/{pid}/duplicates`
-(below), a dependency on the published `contact-relationship-management-matcher`
-0.1.0, the Redis tests now run in CI, the images carry OCI labels and the release
-workflow refuses a tag that disagrees with this version, and the UI image builds
-on Node 26 (v0.1.0's UI build failed on `corepack`). The release workflow now uses
-cosign-installer 4 (cosign 3) and attest-build-provenance 4: untested until a
-pre-release tag runs it.
 
 ### Added — `GET /api/contacts/{pid}/duplicates` (2026-10-19)
 
