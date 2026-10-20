@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `src/auth.rs` split into `src/auth/` (2026-10-20)
+The 1,955-line file is now `mod.rs` (the guide and re-exports), `verifier.rs`,
+`policy.rs`, `records.rs`, `extract.rs` and `tests.rs`. No behaviour change and every
+`crate::auth::...` path is unchanged. Builds and lints clean with and without the
+`paseto` and `keycloak` features.
+
 ## [0.1.2] — 2026-10-20
 
 Since 0.1.0 (crates.io) and the v0.1.1 images: `GET /api/contacts/{pid}/duplicates`

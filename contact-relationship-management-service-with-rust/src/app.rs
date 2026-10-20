@@ -28,7 +28,7 @@ use crate::{auth, controllers, models::_entities::prelude::*, rate_limit, redis_
 
 /// Blanket auth-enforcement middleware: reads `CRM_REQUIRE_AUTH` per
 /// request and delegates to [`auth::enforce_request`]. Off by
-/// default — see `auth.rs` and `agents/share/security.md` §4.
+/// default — see `auth/` and `agents/share/security.md` §4.
 async fn require_auth_mw(req: Request, next: Next) -> Response {
     let path = req.uri().path().to_string();
     let method = req.method().clone();

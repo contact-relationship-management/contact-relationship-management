@@ -45,7 +45,7 @@ contact holds an open deal, an open ticket, or an active nurture
 enrolment — CRM-D14), and `GET /api/retention` /
 `POST /api/retention/sweep` (the floored-horizon report and sweep,
 `CRM_RETENTION_DAYS`, default 365, floor 30). `/erase` and `/sweep`
-join [`DESTRUCTIVE_POST_SUFFIXES`](../contact-relationship-management-service-with-rust/src/auth.rs)
+join [`DESTRUCTIVE_POST_SUFFIXES`](../contact-relationship-management-service-with-rust/src/auth/policy.rs)
 (⇒ `access=admin` or `svc=true` under enforcement — no persona below
 admin/svc can erase or sweep, including a manager or the record's own
 owner). Subject access is refused (`403`) to any caller whose decision

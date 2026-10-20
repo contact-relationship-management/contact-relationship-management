@@ -33,7 +33,13 @@ src/
 │                         + breakdown, forecast arithmetic, ROI,
 │                         CLV, SLA deadline/breach derivation,
 │                         segment filter evaluation
-├── auth.rs               offline PASETO + ABAC + personas + mask
+├── auth/                 offline PASETO + ABAC + personas + mask
+│   ├── mod.rs            the module guide (key source, enforcement, ABAC)
+│   ├── verifier.rs       the verifier, key fetch and rotation refresh
+│   ├── policy.rs         blanket enforcement, the action, the policy and its reload
+│   ├── records.rs        per-record attributes, masking, break-glass
+│   ├── extract.rs        the AuthUser and MaybeAuthUser extractors
+│   └── tests.rs          the unit tests
 ├── streaming.rs          envelope + memory/outbox transports
 ├── validation.rs         caps + URN shapes + money → 422
 └── openapi.rs            OpenAPI 3 doc

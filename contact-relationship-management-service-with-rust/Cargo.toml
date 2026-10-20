@@ -87,7 +87,7 @@ redis = { version = "1.7.1", default-features = false, features = ["tokio-comp",
 default = ["paseto"]
 paseto = ["authentication-verifier/paseto", "authentication-verifier/fetch"]
 # Also accept Keycloak (OIDC) access tokens, configured by
-# `CRM_KEYCLOAK_*` (see src/auth.rs). Off by default.
+# `CRM_KEYCLOAK_*` (see src/auth/). Off by default.
 keycloak = ["authentication-verifier/keycloak"]
 
 [[bin]]
