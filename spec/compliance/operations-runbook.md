@@ -178,11 +178,33 @@ Reporting a vulnerability in the software itself: [SECURITY.md](../../SECURITY.m
 
 ## Chaos test before a release
 
-Run `scripts/chaos.sh` (needs podman and a built service binary). It stops and
-freezes PostgreSQL and Redis, races merges, and kills the service mid-burst, then
-checks that it recovers and that no merge is left half done (CRM-R25, CRM-T65).
-It uses its own containers and database and removes them afterwards.
+Run `scripts/chaos.sh` (needs podman, python3 and a built service binary). It uses its own
+containers, a small TCP proxy (`scripts/chaos-proxy.py`) between the service and PostgreSQL, and
+its own database, and removes them afterwards. It breaks, one at a time, and checks that the
+service recovers without a restart and that no merge is left half done (CRM-R25, CRM-T65, CRM-T71):
 
+- Redis stopped and frozen; PostgreSQL stopped and frozen.
+- The network to PostgreSQL: packets dropped (no answer), connections reset, and slow (100 ms and
+  4 s per chunk).
+- Eight merges racing for one contact (exactly one wins).
+- The service killed with SIGKILL in the middle of a burst of merges.
+- The service killed **just after a COMMIT**, before it can answer: the merge is committed once,
+  with one audit row and one outbox event; a retry is refused as already merged. The same for a
+  create retried with an `Idempotency-Key`: one contact, and the retry creates no second.
+- Failover: the primary is killed, a streaming replica is promoted, and the proxy is pointed at
+  it. Writes acknowledged after the replica had caught up all survive; writes acknowledged an
+  instant before the kill are counted and reported (informational, because replication is
+  asynchronous). Merges and the audit chain verify on the promoted database.
+
+Last run 2026-10-20: 71 checks passed.
+
+**What it does not cover:** a full disk, a clock jump, a replica that lags by minutes, a
+failover orchestrated by a real tool (Patroni, a managed service) or an ingress, TLS, or more
+than one service replica. One finding to know: a create that crashed after committing, retried
+with the same `Idempotency-Key` within two minutes, gets `409` (the first attempt looks still
+running). The service takes such a key over after two minutes, and a retry then would run
+again and could create a duplicate. That window is in the design (`src/idempotency.rs`); the
+script does not wait it out.
 
 ### Migrating a database that holds data
 
