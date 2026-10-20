@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-10-20
+
 ### Added — links to records in other systems (CRM-R27)
 A contact, account, deal or lead can carry up to 50 links to the same record in HubSpot,
 Salesforce, Attio, Pipedrive, Dynamics or elsewhere: `GET` and `POST

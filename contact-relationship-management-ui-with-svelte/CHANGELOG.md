@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-10-20
+
 ### Added — undo a merge from the survivor's page (CRM-R26, 2026-10-20)
 
 A "Recently merged" list on a contact page shows the contacts merged into it, each with
