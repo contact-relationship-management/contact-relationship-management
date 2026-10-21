@@ -1106,7 +1106,18 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 - [ ] CRM-T88 **Matcher benchmarks and gates.** Add a criterion bench for `compare_one_to_many` at 1k, 5k and 50k candidates, recorded in `BENCHMARKS.md`. Add pedantic lints, and `cargo audit`/`deny` for the matcher. (Q14, S/M)
 - [ ] CRM-T89 **One file per locale, loaded on demand.** Split the `STRINGS` map in `i18n.svelte.ts` into one module per locale loaded with `import()`. Keep the parity test. Record bundle size before and after. List the values identical to English for native reviewers. Reconcile the root `locales/` directories (11) with the UI's 8. (Q15, M)
 - [ ] CRM-T90 **Page data through `load`.** Move the `$effect` fetches into `+page.ts` `load` functions (or one resource helper with `AbortController`). Add an `errorMessage(cause)` helper to replace the 36 copies. A test proves a fast parameter change cannot show stale data. (Q16, M)
-- [ ] CRM-T91 **Finish the SvelteKit migration.** Close or strike the 10 boxes in `MIGRATION_TASKS.md`. Make required variables in `src/env.ts` throw instead of falling back to `""`. Move every import to `#lib` and drop the deprecated `config.alias`. Delete the file when done. (Q17, S)
+- [x] CRM-T91 **Finish the SvelteKit migration.** Close or strike the 10 boxes in `MIGRATION_TASKS.md`. Make required variables in `src/env.ts` throw instead of falling back to `""`. Move every import to `#lib` and drop the deprecated `config.alias`. Delete the file when done. (Q17, S)
+      **Resolution (2026-10-21):** every listed finding turned out not to apply:
+      - `+layout.svelte` only reads `page.url`; it never mutates it.
+      - Both `goto` calls go to internal routes (`/contacts`, `/contacts/{pid}`).
+      - Nothing calls `invalidateAll`.
+      - Nothing depends on CORS for static assets.
+
+      **Imports:** every import already used `#lib`, so `alias: { $lib: "src/lib" }` was removed and `svelte-check` no longer warns.
+
+      **Environment:** the variables in `src/env.ts` keep the `""` fallback on purpose. `server/config.ts` turns `""` into the localhost defaults, and the tour needs the UI to start with nothing set. The `@migration-task` comment now says so. Making them throw would break that.
+
+      **Done:** `MIGRATION_TASKS.md` deleted. Checks: `svelte-check` 0 errors and 0 warnings, vitest 114, build, prettier, Playwright 105.
 - [~] CRM-T92 **Make the demo tour opt-in and per visitor.** `CRM_DEMO_TOUR=on` turns it on (it is on today unless set to `off`). Use a random demo session per sign-in in place of the constant `DEMO_SESSION`, and cap the demo state. Update the image smoke test (it checks the tour off and on) and the runbook. This is a behaviour change, so record it in the changelog. (Q18, S)
       **Per visitor, done 2026-10-21 (not released):**
       - **Sessions:** each tour sign-in gets `demo-tour-<random uuid>` and its own copy of the data (`startDemoSession`, `demoHandleFor` in `src/lib/server/demo.ts`). At most `MAX_DEMO_SESSIONS` (200) copies are kept; the least recently used goes first. Sign-out forgets the copy.

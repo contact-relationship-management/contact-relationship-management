@@ -12,7 +12,6 @@ export default defineConfig({
         sveltekit({
             preprocess: vitePreprocess(),
             adapter: adapter(),
-            alias: { $lib: "src/lib" },
             // Route matchers (`[locale=locale]`).
             files: { params: "src/params.ts" },
             // CRM-T33: CSP with hashes for the framework's inline bootstrap.
