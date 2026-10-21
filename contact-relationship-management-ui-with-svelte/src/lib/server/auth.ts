@@ -19,19 +19,24 @@ export function verifyMagicLink(
 }
 
 /** Request a magic link for an existing account, telling the auth service
- *  to return to THIS app's `/verify` (per-app login). */
+ *  to return to THIS app's `/verify` (per-app login). `false` when the
+ *  service refuses or cannot be reached, so the page says it failed. */
 export async function requestMagicLink(
   fetchFn: FetchFn,
   email: string,
   returnUrl: string,
   locale?: string,
 ): Promise<boolean> {
-  const res = await fetchFn(`${AUTH_API_URL}/api/auth/magic-link`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, locale, return_url: returnUrl }),
-  });
-  return res.ok;
+  try {
+    const res = await fetchFn(`${AUTH_API_URL}/api/auth/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, locale, return_url: returnUrl }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 /** Exchange the opaque session id for a short-lived PASETO (server-to-
@@ -49,14 +54,19 @@ export async function exchangeToken(
   return body.token ?? null;
 }
 
-/** Revoke the session server-side (best-effort) before the cookie clear. */
+/** Revoke the session server-side (best-effort) before the cookie clear:
+ *  an unreachable auth service must not stop the sign-out. */
 export async function signout(fetchFn: FetchFn, sid: string): Promise<void> {
-  const token = await exchangeToken(fetchFn, sid);
-  if (!token) return;
-  await fetchFn(`${AUTH_API_URL}/api/auth/signout`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${token}` },
-  });
+  try {
+    const token = await exchangeToken(fetchFn, sid);
+    if (!token) return;
+    await fetchFn(`${AUTH_API_URL}/api/auth/signout`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    });
+  } catch {
+    // Best-effort: the cookie is cleared either way.
+  }
 }
 
 /**
