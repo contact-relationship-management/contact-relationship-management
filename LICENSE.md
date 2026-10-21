@@ -11,8 +11,7 @@ your option:
 - [GPL-2.0-only](https://spdx.org/licenses/GPL-2.0-only.html)
 - [GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html)
 
-This is the expression declared by the Rust service. The Svelte front end
-declares `MIT OR Apache-2.0` in its `package.json`, which is a subset of the
-same choices.
+This is the expression declared by the Rust service, the matcher and the
+Svelte front end.
 
 Copyright (c) Joel Parker Henderson <joel@joelparkerhenderson.com>

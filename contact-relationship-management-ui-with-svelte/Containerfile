@@ -19,7 +19,7 @@ ARG VERSION=0.0.0-dev
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="Contact Relationship Management web UI" \
       org.opencontainers.image.source="https://github.com/contact-relationship-management/contact-relationship-management" \
-      org.opencontainers.image.licenses="MIT OR Apache-2.0" \
+      org.opencontainers.image.licenses="MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}"
 WORKDIR /app
