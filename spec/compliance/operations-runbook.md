@@ -223,6 +223,7 @@ against a candidate image before tagging. A private ghcr.io package needs a logi
 On 2026-10-20 it ran the released v0.1.3 image: phase 1 passed, and phase 2 found the worker bug
 above. It passed 27 of 27 on a local build with the fix. The released image is `linux/amd64` only
 (podman warned on an arm64 host and ran it under emulation).
+On 2026-10-21 it ran the released v0.1.4 image (`sha256:4cefa8b7…`): 27 of 27 passed.
 
 ### Migrating a database that holds data
 
