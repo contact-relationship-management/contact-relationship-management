@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.5] — pre-release v0.1.5-rc.1, 2026-10-21
+## [0.1.5] — 2026-10-21
 
-No service code changes. This pre-release exists to prove the multi-arch release workflow (CRM-T74):
-the service image is built for amd64 and arm64 and published as one image.
+No service code changes. The service image is now built for amd64 and arm64 (each on a native runner)
+and published as one multi-arch image (CRM-T74); proven by the pre-release `v0.1.5-rc.1`.
 
 ## [0.1.4] — 2026-10-21
 

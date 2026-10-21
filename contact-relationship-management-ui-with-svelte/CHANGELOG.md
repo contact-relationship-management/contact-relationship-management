@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.5] — pre-release v0.1.5-rc.1, 2026-10-21
+## [0.1.5] — 2026-10-21
+
+### Changed — the UI image is built for amd64 and arm64 and published as one image (CRM-T74)
 
 ### Added — a deal can be edited and reopened on its own page (2026-10-21)
 
