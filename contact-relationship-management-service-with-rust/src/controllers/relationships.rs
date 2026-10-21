@@ -2,6 +2,7 @@
 //! URN wrappers, the merged timeline, the manual repoint endpoint,
 //! and activities. Every mutation runs on one transaction (CRM-D9).
 
+use crate::json::Json;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 

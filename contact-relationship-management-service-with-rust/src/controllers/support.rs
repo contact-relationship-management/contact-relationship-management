@@ -2,6 +2,7 @@
 //! SLA deadlines and breach facts, SLA policies, the breach sweep,
 //! and the versioned knowledge base.
 
+use crate::json::Json;
 use loco_rs::prelude::*;
 use sea_orm::{QueryOrder, TransactionTrait};
 use serde::{Deserialize, Serialize};

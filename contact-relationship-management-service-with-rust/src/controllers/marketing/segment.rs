@@ -2,10 +2,11 @@
 
 use super::{
     ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, DatabaseConnection, Deserialize,
-    EntityTrait, Json, MaybeAuthUser, Path, PidRef, Problems, QueryFilter, QueryOrder, Response,
-    Result, State, TransactionTrait, Uuid, contact_facts, contacts, debug_handler, ensure_valid,
-    format, records, segment_rules, segments, tokens,
+    EntityTrait, MaybeAuthUser, Path, PidRef, Problems, QueryFilter, QueryOrder, Response, Result,
+    State, TransactionTrait, Uuid, contact_facts, contacts, debug_handler, ensure_valid, format,
+    records, segment_rules, segments, tokens,
 };
+use crate::json::Json;
 
 /// `POST /api/segments` body.
 #[derive(Debug, Deserialize)]

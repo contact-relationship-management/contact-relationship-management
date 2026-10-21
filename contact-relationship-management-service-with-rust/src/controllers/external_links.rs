@@ -7,6 +7,7 @@
 //! [`crate::rules::external_links`]. Contact links move with a merge and are
 //! deleted with an erasure.
 
+use crate::json::Json;
 use axum::http::StatusCode;
 use loco_rs::controller::ErrorDetail;
 use loco_rs::prelude::*;

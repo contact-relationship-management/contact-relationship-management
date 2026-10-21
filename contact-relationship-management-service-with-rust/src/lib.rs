@@ -43,6 +43,7 @@ pub mod controllers;
 pub mod crypto;
 pub mod hardening;
 pub mod idempotency;
+pub mod json;
 pub mod mail;
 pub mod metrics;
 pub mod models;

@@ -2,6 +2,7 @@
 //! conversion, pipelines + stages, deals with Kanban stage moves and
 //! terminal closes, and the stage-weighted forecast.
 
+use crate::json::Json;
 use loco_rs::prelude::*;
 use sea_orm::{PaginatorTrait, QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};

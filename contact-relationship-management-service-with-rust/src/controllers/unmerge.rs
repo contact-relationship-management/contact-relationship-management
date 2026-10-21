@@ -9,6 +9,7 @@
 //! with the survivor: an unmerge undoes the merge, it does not split two
 //! people's history by guesswork.
 
+use crate::json::Json;
 use loco_rs::prelude::*;
 use sea_orm::{
     ActiveValue, ConnectionTrait, DatabaseBackend, DatabaseTransaction, QueryOrder, Statement,

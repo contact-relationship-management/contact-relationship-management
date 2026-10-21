@@ -62,7 +62,7 @@ are good practice, not conformance. Findings come from reading the repository
 | Check scope on each call | Met | Role and scope checks per route (see control-mapping.md) |
 | Version the API; add the version to the URI; avoid custom headers or media types, which "can lead to your API being blocked by proxies or firewalls" | **Contradicted** | We version with the `Accepts-version` header and put no version in the URL. The earlier table row called this "Met, with a risk"; against the published text it is a deviation. The cost of moving is a breaking change to every client, so decide it deliberately |
 | Keep few active versions; tell users when a version is retired | Met (policy) | api-lifecycle.md; `Deprecation`/`Sunset` headers are not built yet |
-| Reject unknown attributes (schema validation on de-serialising endpoints) | Met (2026-10-21) | Every request body struct has `deny_unknown_fields`; a stray member is `422` (test `a_misspelt_request_member_is_refused_not_dropped`). The error does not name the field. The email webhook body is deliberately lenient |
+| Reject unknown attributes (schema validation on de-serialising endpoints) | Met (2026-10-21) | Every request body struct has `deny_unknown_fields`; a stray member is `422` (test `a_misspelt_request_member_is_refused_not_dropped`). The `422` names the unknown field (`src/json.rs`). The email webhook body is deliberately lenient |
 | Enforce content types and reject others | Probably met, untested | Axum's `Json` extractor answers 415 for a wrong `Content-Type`; no test here pins it |
 | Only allow the verbs each resource supports | Met | Router answers 405 as a problem document (tested) |
 | Rate limit anonymous endpoints | Partly met | Rate limiting exists; whether the public endpoints (unsubscribe, webhooks, consent) are covered should be checked |
@@ -88,5 +88,5 @@ are good practice, not conformance. Findings come from reading the repository
 Fixed in code on 2026-10-21: unknown request members, `Cache-Control:
 no-store`, and `RateLimit-*` headers (service and UI live tests pass). Still
 open: decide the versioning question; write the OAuth 2.0 deployment pattern
-into the runbook; make the `422` name the unknown field. An independent reviewer is
+into the runbook. An independent reviewer is
 still wanted before anyone describes this as conformant.

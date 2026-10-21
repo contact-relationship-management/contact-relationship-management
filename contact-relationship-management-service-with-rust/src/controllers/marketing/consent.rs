@@ -1,11 +1,12 @@
 //! Consent: the send-path law (CRM-R6). Recording it, its history, and the shared checks.
 
 use super::{
-    ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait, Json,
+    ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait,
     MaybeAuthUser, Path, Problems, QueryFilter, QueryOrder, Response, Result, State,
     TransactionTrait, Uuid, accounts, consent_events, contacts, debug_handler, ensure_valid,
     format, nurture_enrollments, records, segment_rules, streaming, tokens,
 };
+use crate::json::Json;
 
 /// `POST /api/contacts/{pid}/consent` body.
 #[derive(Debug, Deserialize)]

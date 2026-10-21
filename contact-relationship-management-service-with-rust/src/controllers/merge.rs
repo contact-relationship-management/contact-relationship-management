@@ -6,6 +6,7 @@
 //! permissive about consent than either contact was. With `dry_run` it does
 //! the same work and rolls it back, so the counts it returns are exact.
 
+use crate::json::Json;
 use axum::http::StatusCode;
 use loco_rs::controller::ErrorDetail;
 use loco_rs::prelude::*;

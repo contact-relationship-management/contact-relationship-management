@@ -12,6 +12,7 @@
 //! Every change is audited with the names of the fields that changed, never
 //! their values, except a due date (a day, not personal data).
 
+use crate::json::Json;
 use loco_rs::prelude::*;
 use sea_orm::{QueryOrder, TransactionTrait};
 use serde::Deserialize;

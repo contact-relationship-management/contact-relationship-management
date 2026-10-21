@@ -5,6 +5,7 @@
 //! [`crate::rules::engagement`]; the derived views live in
 //! [`super::insights`].
 
+use crate::json::Json;
 use loco_rs::prelude::*;
 use sea_orm::{ActiveValue, QueryOrder, QuerySelect};
 use serde::Deserialize;

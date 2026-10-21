@@ -1,12 +1,13 @@
 //! Nurture sequences: create, enrol, and the idempotent advance sweep (CRM-R9, CRM-D8).
 
 use super::{
-    ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait, Json,
+    ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait,
     MaybeAuthUser, Metrics, Path, PidRef, Problems, QueryFilter, QueryOrder, QuerySelect, Response,
     Result, State, TransactionTrait, Uuid, activities, clients, contacts, debug_handler,
     deliveries, ensure_valid, format, mail, nurture_enrollments, nurture_sequences, nurture_steps,
     records, streaming, unprocessable, with_unsubscribe,
 };
+use crate::json::Json;
 
 /// `POST /api/nurture-sequences` body.
 #[derive(Debug, Deserialize)]

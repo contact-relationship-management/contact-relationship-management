@@ -22,6 +22,12 @@ async fn a_misspelt_request_member_is_refused_not_dropped() {
             }))
             .await;
         response.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        let body: serde_json::Value = response.json();
+        assert_eq!(body["error"], "validation");
+        assert!(
+            body["detail"].as_str().unwrap().contains("dispaly_name"),
+            "the refusal should name the member: {body}"
+        );
 
         // The same body without the stray member still works.
         let ok = request
