@@ -1,10 +1,10 @@
 # API review against UK government API standards (draft)
 
-Status: self-review, 2026-10-10, for CRM-T49. **Caveat:** I wrote this from
-the standards' well-known principles and from reading this repository. I did
-not fetch or quote the standards' text, so a reviewer must check each row
-against the current published wording before relying on it. This is not an
-assessment outcome.
+Status: self-review, 2026-10-10; checked against the published text on
+2026-10-21 (section below), for CRM-T49. The check was made by me, not by an
+independent reviewer, and it is not an assessment outcome. The table below is
+the original self-review; where the published text disagrees, the section
+"Check against the published standard" is the later and correct position.
 
 Scope: the REST API in `contact-relationship-management-service-with-rust`
 (`/api/*`).
@@ -39,3 +39,54 @@ deprecation policy (CRM-T54, [api-lifecycle.md](api-lifecycle.md)) were built
 after this review. What remains is a reviewer's check of this draft against
 the standards' published text, and building the `Deprecation` and `Sunset`
 headers when something is first deprecated.
+
+
+## Check against the published standard (2026-10-21)
+
+Read from [GDS API technical and data standards](https://www.gov.uk/guidance/gds-api-technical-and-data-standards)
+and [Setting API service levels](https://www.gov.uk/guidance/setting-api-service-levels)
+on 2026-10-21. A search showed the older "v1 2018" and "v2 2019" publications
+are superseded by this guidance page; I did not open them. The page has no
+pagination, idempotency or HSTS requirement, so the table's claims on those
+are good practice, not conformance. Findings come from reading the repository
+(`grep` over `src/` and `config/`); I did not run requests to confirm them.
+
+| Published requirement | Position | Note |
+|---|---|---|
+| Use JSON, UTF-8, ISO 8601 dates | Met, not stated | The OpenAPI document does not say dates are ISO 8601 |
+| Consistent resource names, persistent resources | Met as far as read | Plural collection names throughout; pids are stable |
+| Standard HTTP status codes, documented, consistent, no attacker-useful detail | Met | RFC 9457 bodies; codes documented in OpenAPI |
+| TLS 1.2 or above | Not the service's job | The service speaks plain HTTP behind a proxy; the runbook must say the proxy enforces TLS 1.2+. Check it says so |
+| Authentication on every request; avoid anonymous endpoints | Met | Only probes, metrics and docs are public |
+| Use OAuth 2.0; never basic auth; avoid long-lived API keys | **Gap** | The service accepts bearer JWTs it can mint itself; there is no OAuth 2.0 authorisation server, client-credentials or PKCE flow. Whether the tokens are short-lived should be stated. Deployers normally put an OAuth provider in front |
+| Check scope on each call | Met | Role and scope checks per route (see control-mapping.md) |
+| Version the API; add the version to the URI; avoid custom headers or media types, which "can lead to your API being blocked by proxies or firewalls" | **Contradicted** | We version with the `Accepts-version` header and put no version in the URL. The earlier table row called this "Met, with a risk"; against the published text it is a deviation. The cost of moving is a breaking change to every client, so decide it deliberately |
+| Keep few active versions; tell users when a version is retired | Met (policy) | api-lifecycle.md; `Deprecation`/`Sunset` headers are not built yet |
+| Reject unknown attributes (schema validation on de-serialising endpoints) | **Gap** | No `deny_unknown_fields` anywhere in `src/`, so serde ignores unknown request members. A misspelt field is silently dropped |
+| Enforce content types and reject others | Probably met, untested | Axum's `Json` extractor answers 415 for a wrong `Content-Type`; no test here pins it |
+| Only allow the verbs each resource supports | Met | Router answers 405 as a problem document (tested) |
+| Rate limit anonymous endpoints | Partly met | Rate limiting exists; whether the public endpoints (unsubscribe, webhooks, consent) are covered should be checked |
+| Tell users when they approach limits (for example `X-RateLimit-Remaining`) | **Gap** | No rate-limit headers; only `429` with `Retry-After` |
+| Make responses cacheable; state policy with `Cache-Control`/`Vary`; never cache sensitive or user-specific data | **Gap, by design** | No `Cache-Control` anywhere in `src/`. Responses hold personal data, so caching is rightly off, but the policy is not stated: send `Cache-Control: no-store` on authenticated responses |
+| Log when personal data is provided and to whom | Met | Hash-chained audit log of reads and writes (verify with `/api/audits/verify`) |
+| Monitor for unusual activity | Partly met | Metrics and break-glass alerts; no alerting rules shipped |
+| Provide a test service with no real personal data | Partly met | The demo mode serves fictitious data; no hosted test service |
+| Document the API; OpenAPI early | Met | Enforced by the route-coverage test |
+| Use an API management system or gateway | Not applicable | A deployer's choice |
+| Host on an `api.gov.uk` name | Not applicable | Deployment |
+
+### What the check changed
+
+- The versioning row moves from "met" to "deviates from the published text".
+- Four gaps are real and small: unknown-field rejection, `Cache-Control:
+  no-store`, rate-limit headers, and a statement of the OAuth 2.0 position.
+- The "no pagination or idempotency in the standard" finding means T51 and
+  T52 stay as good practice but are not conformance evidence.
+
+### Open after this check
+
+Nothing here is fixed in code yet. Candidates, in order of value: add
+`Cache-Control: no-store` to authenticated responses; reject unknown request
+members; add `RateLimit-*` headers; decide the versioning question; write the
+OAuth 2.0 deployment pattern into the runbook. An independent reviewer is
+still wanted before anyone describes this as conformant.
