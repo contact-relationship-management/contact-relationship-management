@@ -229,6 +229,8 @@ on a native runner); the same script passed 27 of 27 on the pulled arm64 image o
 v0.1.5 is the first stable release published that way: both images are indexes with amd64 and arm64, provenance
 verified with `gh attestation verify` and with `cosign verify` (cosign 3.1.3), and the script passed 27 of 27 on the pulled
 arm64 image (2026-10-21).
+The UI image has its own check, `scripts/ui-image-smoke.sh` (hardened flags, headers, tour off and on); it passed 23 of 23
+on the pulled v0.1.5 UI image. The guided tour is on in the shipped image unless `CRM_DEMO_TOUR=off` (INSTALL.md).
 
 ### Migrating a database that holds data
 
