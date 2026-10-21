@@ -1070,3 +1070,130 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 - [x] CRM-T73 **Edit and reopen a deal on its own page.** *Done 2026-10-21: `/deals/{pid}` has an Edit form (name, amount, expected close) that sends only what changed; a masked amount is disabled and a closed deal shows why it cannot be edited. A closed deal can be reopened from the same page with a reason (`POST /deals/{pid}/reopen`). Tests: three demo-data Playwright, two live; nine new strings in eight locales.*
 - [x] CRM-T74 **Multi-arch release images.** *Done 2026-10-21, proven by the pre-release `v0.1.5-rc.1`: `.github/workflows/release.yml` builds each image on a native runner per architecture (`ubuntu-latest`, `ubuntu-24.04-arm`), pushes `-amd64` and `-arm64` tags, and a `manifest` job joins them into one image under the version tag and signs and attests the index digest. Both published images are OCI indexes with linux/amd64 and linux/arm64; the service's arm64 image passes `scripts/image-smoke.sh` 27 of 27 natively, and `gh attestation verify` on the tag exits 0. Then verified for the stable `v0.1.5` (2026-10-21): `cosign verify` (cosign 3.1.3, keyless, the release workflow identity) passes for both images at the index digests (service `sha256:8579252e…`, ui `sha256:6d20ba20…`), `gh attestation verify` exits 0, and the smoke script passes 27 of 27 on the arm64 half. The UI image now has `scripts/ui-image-smoke.sh` (23 checks: hardened flags, non-root, version label, every security header, a static file, a 404, the tour off and on, a demo edit that sticks); it passes on the pulled v0.1.5 UI image (arm64). Not checked: the amd64 half of either pulled image. Limits: the `-amd64` / `-arm64` tags stay visible in the registry; the UI smoke script does not run the UI against the service.*
 
+
+## Code quality (from the 2026-10-21 research, [plan.md](plan.md) Q1 to Q20)
+
+- [ ] CRM-T75 **Lint gates in the manifests.** Add `[lints.rust] unsafe_code = "forbid"`, and add `[lints.clippy] pedantic = "warn"`, `unwrap_used = "warn"` and `expect_used = "warn"` to the service. Each existing justified `expect` gets an `#[allow]` with its reason; `dashboards.rs:74` gets a typed struct instead. Fix or allow the 146 nursery and restriction warnings. Done when CI fails on a new pedantic warning. (Q1, S)
+- [ ] CRM-T76 **Remove write-path boilerplate.** One `audited_tx` helper (begin, mutate, audit, emit, commit); `Entity::find_live()` or a `SoftDelete` trait for the 79 `DeletedAt.is_null()` filters; a `Path<Pid>` extractor in place of the 51 `parse_pid` calls. No behaviour change, and the DB suite and the audit chain stay green. (Q2, M)
+- [ ] CRM-T77 **A service layer for domain operations.** Move lead conversion, deal opening, merge and unmerge out of their handlers (`sales.rs:255`, `merge.rs:347`, `unmerge.rs:248`) into functions that take `&impl ConnectionTrait`. Split `idempotency_mw` (185 lines) and `insight_cache_mw`. Handlers only extract, call and respond. (Q3, L; after T76)
+- [ ] CRM-T78 **Typed settings in place of process-global environment reads.** Parse one `Settings` struct at boot and keep it in `AppContext.shared_store`, replacing about 17 `OnceLock`s and 29 `env::var` calls. Done when the enforcement tests no longer need their own process or `set_var`. (Q4, M/L)
+- [ ] CRM-T79 **Typed errors and per-field 422s.** Use `thiserror` enums in place of the 27 `Result<_, String>`. `ensure_valid` emits RFC 9457 `errors: [{pointer, detail}]`. Each error source builds a `Problem` directly; the reshaping middleware stays only as a safety net. Update OpenAPI and the UI's error display. (Q5, M)
+- [ ] CRM-T80 **Aggregate insights in SQL.** Replace the 23 unbounded `live!` loads in `controllers/insights/*` with `GROUP BY`/`SUM` queries, and cap or page the related lists in contact detail (`relationships.rs:262-272`). A test with more than one page of seeded rows proves the totals stay exact, as CRM-T51 did for the activity dashboard. (Q6, M)
+- [ ] CRM-T81 **Bounded display-name cache.** Add a time limit and a size cap (`moka`, or the Redis cache) to `src/clients.rs:50-80`, and state the retention in the privacy notes. (Q7, S)
+- [ ] CRM-T82 **Tests for the middlewares and the largest controllers.** Move the six middlewares out of `app.rs` into their own modules with `tower::ServiceExt::oneshot` unit tests. Add request tests for `relationships`, `break_glass`, `streaming` and `rate_limit`. (Q8, M)
+- [ ] CRM-T83 **OpenAPI from the types.** Use typed response structs with `utoipa` (or `schemars`) derives in place of the 129 `json!` responses, and generate the document from them. Keep the checked-schema tests as the proof. (Q9, L; after T79)
+- [ ] CRM-T84 **Dependency cleanup.** Drop `tracing-subscriber` and the `sqlx-sqlite` feature. Move to reqwest 0.13 to end the duplicate. Make the service depend on the matcher by path plus version, so service CI tests the matcher in the repo. Check the duplicate count in `cargo tree -d` before and after. (Q10, S)
+- [ ] CRM-T85 **Remove dead configuration.** Delete the `auth.jwt` blocks and `JWT_SECRET` (Loco's JWT feature is off), and the `deny.toml` `allow-git` entry. Fix or remove the 12 links to the missing `agents/share/*.md`. Move the literal secrets in `development.yaml` and `test.yaml` behind clearly-fake markers. (Q11, S)
+- [ ] CRM-T86 **Fix text copied from another project.** Correct the UI `package.json` description ("ward whiteboards, bed management") and decide the UI licence against the crates' list. Replace `brand.name` "Main X · CRM" (×8 locales and two page titles), the `mxi.crm.locale` storage key (migrate the old key once), and "WPM" in `clients.rs`. (Q12, S)
+- [ ] CRM-T87 **Matcher API stability.** Mark `Field`, `Outcome`, `Verdict`, `MatchConfig` and `FieldParameters` `#[non_exhaustive]`, and make `ConfigError` an enum. Add `cargo semver-checks check-release` to CI. These are breaking changes, so they go out as 0.2.0 with a changelog entry. (Q13, S/M)
+- [ ] CRM-T88 **Matcher benchmarks and gates.** Add a criterion bench for `compare_one_to_many` at 1k, 5k and 50k candidates, recorded in `BENCHMARKS.md`. Add pedantic lints, and `cargo audit`/`deny` for the matcher. (Q14, S/M)
+- [ ] CRM-T89 **One file per locale, loaded on demand.** Split the `STRINGS` map in `i18n.svelte.ts` into one module per locale loaded with `import()`. Keep the parity test. Record bundle size before and after. List the values identical to English for native reviewers. Reconcile the root `locales/` directories (11) with the UI's 8. (Q15, M)
+- [ ] CRM-T90 **Page data through `load`.** Move the `$effect` fetches into `+page.ts` `load` functions (or one resource helper with `AbortController`). Add an `errorMessage(cause)` helper to replace the 36 copies. A test proves a fast parameter change cannot show stale data. (Q16, M)
+- [ ] CRM-T91 **Finish the SvelteKit migration.** Close or strike the 10 boxes in `MIGRATION_TASKS.md`. Make required variables in `src/env.ts` throw instead of falling back to `""`. Move every import to `#lib` and drop the deprecated `config.alias`. Delete the file when done. (Q17, S)
+- [ ] CRM-T92 **Make the demo tour opt-in and per visitor.** `CRM_DEMO_TOUR=on` turns it on (it is on today unless set to `off`). Use a random demo session per sign-in in place of the constant `DEMO_SESSION`, and cap the demo state. Update the image smoke test (it checks the tour off and on) and the runbook. This is a behaviour change, so record it in the changelog. (Q18, S)
+- [ ] CRM-T93 **UI component tests and a generated API client.** Add `@testing-library/svelte` tests for `DataTable`, `Board` and `LinksPanel`. Generate types from the service's OpenAPI with `openapi-typescript`, and check them against the 911-line `api/crm.ts`. Fix or remove the vitest `deps.inline` regex that matches nothing. (Q19, M; types after T83)
+- [ ] CRM-T94 **CI gates and hygiene.**
+  - Add coverage (`cargo llvm-cov`, vitest `--coverage`) as a report first, and set floors later.
+  - Add a scheduled `cargo mutants` run on `rules/`.
+  - Add ESLint with `eslint-plugin-svelte`, plus `typos`, markdown lint, `shellcheck`, and `actionlint` or `zizmor`.
+  - Run the Playwright e2e and a11y suites in CI.
+  - Compile the `--no-default-features --features keycloak` build.
+  - Add a top-level `permissions: contents: read` to `ci.yml`.
+  - Use Node 26 in Woodpecker's supply-chain step.
+  - Audit the matcher.
+
+  (Q20, M)
+
+## New capabilities (from the 2026-10-21 research, [plan.md](plan.md) C1 to C10)
+
+Each task first writes its requirement (proposed CRM-R28 onward) and design note, then lands spec, code and tests together.
+
+- [ ] CRM-T95 **Outbound webhooks.** A relay job reads `event_outbox` and delivers to subscriptions that admin or service callers manage.
+  - **Security:** https only, with SSRF guards that refuse private and link-local addresses. Signed in the Standard Webhooks format (`id.timestamp.body`, several signatures while a secret rotates). Payloads carry ids, never contact values.
+  - **Delivery:** retries with backoff, a dead-letter state, a delivery log, and a 410 that disables the subscription.
+  - **Audit and erasure:** every subscription change is audited. An erasure cancels queued deliveries for that contact.
+  - **Tests:** signing, retry and dead-letter, the SSRF refusals, and erasure.
+  - **Sources:** https://docs.espocrm.com/administration/webhooks/ and https://www.svix.com/resources/glossary/webhook-signature/
+  - **Limits to state:** at-least-once delivery, so receivers must dedupe on the event id.
+
+  (C1, M)
+- [ ] CRM-T96 **Consent per purpose and double opt-in.**
+  - **Model:** consent is held per purpose (for example newsletter, events, product updates), in place of the single `marketing_consent`. A new `pending` state never allows a send.
+  - **Double opt-in:** a confirmation token moves `pending` to `granted`, and the event records its source and date.
+  - **Preference page:** a signed-token page lets the subject change each purpose.
+  - **Merge and unmerge:** the stricter-side rule (CRM-R24) applies per purpose.
+  - **Migration:** existing rows become one default purpose with their history kept.
+  - **Tests:** the send gate for each state, the merge cases per purpose, and the migration against populated data (`scripts/migrate-with-data.sh`).
+  - **Source:** https://knowledge.hubspot.com/marketing-email/manage-your-marketing-hub-starter-email-account-settings
+
+  (C2, M)
+- [ ] CRM-T97 **MCP server.**
+  - **Design:** a thin MCP layer over the existing endpoints, authenticated with the caller's own token and decided by the same ABAC and masking. Tools are read-only by default.
+  - **Destructive tools:** merge, unmerge and erase are offered only as `dry_run` plus a confirmation that a person makes in the UI.
+  - **Audit:** every call is audited with an `agent` marker.
+  - **Prompt injection:** record text returned to the agent is marked as data, not instructions.
+  - **Tests:** a reader cannot write through MCP; a masked caller gets masked values; the audit rows.
+  - **Sources:** https://docs.twenty.com/user-guide/ai/capabilities/mcp and https://developers.hubspot.com/changelog/remote-hubspot-mcp-server-is-now-generally-available
+  - **Limits to state:** MCP spec versions move quickly; name the version supported.
+
+  (C3, M)
+- [ ] CRM-T98 **Web form lead capture.**
+  - **Endpoint:** a public `POST` that creates a lead with `source=web` and consent `pending` (needs T96).
+  - **Abuse protection:** rate limiting per form and per client, a honeypot field, and an origin check.
+  - **Person record:** created or resolved through the person service, since the CRM stores no email.
+  - **Optional nurture enrolment:** starts only after opt-in is confirmed.
+  - **Tests:** abuse limits, no send before confirmation, and the audit row.
+  - **Source:** https://www.pipedrive.com/features/web-forms
+
+  (C4, M)
+- [ ] CRM-T99 **Tasks, reminders and a notifications inbox.**
+  - **Tasks:** task activities gain an assignee (`worker:` URN) and a reminder time.
+  - **Notifications:** a `bg_pg` job writes notification rows for due reminders and SLA breaches. The UI gets an unread inbox, with mark-read.
+  - **Access:** a notification is created only if the recipient can read the record (ABAC is checked at write time and again at read time).
+  - **Tests:** reminders fire once, notifications for unreadable records are suppressed, and the labels exist in 8 locales.
+  - **Source:** https://knowledge.hubspot.com/sequences/complete-your-sequence-tasks
+
+  (C5, M)
+- [ ] CRM-T100 **Server-side search.**
+  - **Endpoint:** `GET /api/search?q=` over contacts, accounts, deals, leads, tickets and articles, using `tsvector` with `unaccent` and `pg_trgm` for fuzzy matches. Results are filtered by ABAC and masking, and the query is audited as a count, not as text.
+  - **UI:** the CRM-R22 search uses it when the service is present.
+  - **Tests:** accents, typos, a masked caller, and paging.
+  - **Source:** https://www.postgresql.org/docs/current/pgtrgm.html
+  - **Limits to state:** encrypted columns (`activities.summary`, `contacts.preferred_channel`) cannot be indexed.
+
+  (C6, M)
+- [ ] CRM-T101 **CSV import of leads.**
+  - **Flow:** upload, map columns, then a dry-run report per row (valid, invalid with reason, likely duplicate from the matcher, as advice only).
+  - **Commit:** in batches. An import record keeps the ids it created, so an import can be undone.
+  - **Consent:** imported only with its source and date, and never inferred.
+  - **Scope:** contacts are not imported, because they come from the person service.
+  - **Tests:** mapping, a bad row, duplicate advice, undo, and the audit chain.
+  - **Source:** https://docs.twenty.com/user-guide/data-migration/overview
+
+  (C7, M/L)
+- [ ] CRM-T102 **Saved views.**
+  - **Model:** per-user and shared views on the contacts, accounts, deals, leads and tickets lists, stored on the server. Each view is a filter in the segment language (CRM-R7) plus sort order and columns.
+  - **Sharing:** sharing a view never shares access; rows are still decided per caller.
+  - **Tests:** a view written by one user and read by another (shared), and a masked reader.
+  - **Source:** https://attio.com/help/reference/managing-your-data/views/filter-and-sort-views.md
+
+  (C8, S/M)
+- [ ] CRM-T103 **Email templates with merge tokens.**
+  - **Tokens:** a closed set (first name, account name, rep name and similar), HTML-escaped, each with a declared fallback.
+  - **Preview:** rendered against a synthetic contact.
+  - **Unsubscribe:** every marketing template carries the unsubscribe link, and saving one without it is refused.
+  - **Use:** nurture steps and campaigns refer to a template.
+  - **Tests:** escaping, a missing value, and the missing-link refusal.
+  - **Source:** https://knowledge.hubspot.com/sequences/create-and-edit-sequences
+
+  (C9, S/M)
+- [ ] CRM-T104 **Explainable workflow rules.**
+  - **Triggers:** record created or updated, a stage change, or a schedule.
+  - **Conditions:** written in the segment filter language.
+  - **Actions:** a closed set (create a task, notify, set a field, enrol in nurture, send a webhook after T95), with no arbitrary code or HTTP.
+  - **Safety:** a dry run against current data, a loop guard (depth and rate), and consent re-checked inside any action that leads to a send.
+  - **Run log:** every run records why it fired and what it did, and is audited.
+  - **Tests:** each action, the loop guard, and the consent re-check.
+  - **Source:** https://docs.twenty.com/user-guide/workflows/overview
+
+  (C10, L; after T95 and T99)
