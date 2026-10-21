@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run a released service image the way a deployment would, and use it (CRM-T72).
-#   scripts/image-smoke.sh [IMAGE]       default: the v0.1.4 image by digest
+#   scripts/image-smoke.sh [IMAGE]       default: the v0.1.5 multi-arch image by digest
 #
 # Phase 1, production mode: hardened flags (read-only root, no capabilities, no new
 # privileges, non-root), authentication on with real signed tokens (PASETO v4.public,
@@ -17,7 +17,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-IMAGE="${1:-ghcr.io/contact-relationship-management/contact-relationship-management/service@sha256:4cefa8b72feb91014a110de56077aa970beff7a6538d1e1e8f78f673e9073619}"
+IMAGE="${1:-ghcr.io/contact-relationship-management/contact-relationship-management/service@sha256:8579252e8a2702199cd9f12b768f75a1b2ba510ad22c53cd9041255b2ce2d5a5}"
 NET=crm-smoke-net PG=crm-smoke-pg RD=crm-smoke-redis MAIL=crm-smoke-mail SVC=crm-smoke-svc WRK=crm-smoke-worker
 PORT=15150 MAIL_API=18025
 API="http://localhost:${PORT}"

@@ -702,6 +702,20 @@ test.describe("export, undo and search", () => {
     });
   }
 
+  test("an account page lists its contacts' deals, each a link to the deal", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/accounts/acc-1");
+    await page
+      .getByRole("link", { name: "Smart-meter analytics rollout" })
+      .click();
+    await expect(page).toHaveURL(/\/deals\/deal-1$/);
+    await expect(page.getByTestId("record-title")).toHaveText(
+      "Smart-meter analytics rollout",
+    );
+  });
+
   test("a deal opened from the deals page carries links too", async ({
     page,
   }) => {

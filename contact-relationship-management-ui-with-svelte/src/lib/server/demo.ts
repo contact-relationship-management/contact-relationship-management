@@ -1808,12 +1808,18 @@ export function demoHandle(
   if (head === "accounts" && seg.length === 2 && get) {
     const account = state.accounts.find((a) => a.pid === id);
     if (!account) return problem(404, "account not found");
+    const people = state.contacts.filter((c) => c.account_pid === account.pid);
+    // The demo ties deals to contacts, so an account's deals are its contacts' deals.
+    const dealPids = new Set(
+      people.flatMap((c) => state.links[c.pid]?.deals ?? []),
+    );
     return ok({
       account,
-      contacts: state.contacts
-        .filter((c) => c.account_pid === account.pid)
-        .map((c) => ({ pid: c.pid, display_name: c.display_name })),
-      deals: [],
+      contacts: people.map((c) => ({
+        pid: c.pid,
+        display_name: c.display_name,
+      })),
+      deals: state.deals.filter((d) => dealPids.has(d.pid)),
     });
   }
   if (tail === "external-links" && (get || post)) {

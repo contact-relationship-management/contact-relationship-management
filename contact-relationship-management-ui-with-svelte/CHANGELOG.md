@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the tour's account pages list deals
+
+In the demo data an account's deals are its contacts' deals, so `/accounts/{pid}` shows them as links to
+the deal page (before, the list was always empty). Demo data only; the real service already returned them.
+
 ## [0.1.5] — 2026-10-21
 
 ### Changed — the UI image is built for amd64 and arm64 and published as one image (CRM-T74)
