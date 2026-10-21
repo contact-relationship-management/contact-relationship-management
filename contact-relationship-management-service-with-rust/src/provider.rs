@@ -129,6 +129,7 @@ impl ApiSender {
     /// Build the signed request for one message.
     fn request(&self, message: &Message) -> Result<reqwest::RequestBuilder, SendError> {
         let post = self.client.post(&self.url);
+        #[allow(clippy::expect_used, reason = "a serde_json Value always serializes")]
         let signed_json = |body: &Value| serde_json::to_vec(body).expect("a JSON value serializes");
         Ok(match self.kind {
             Kind::Brevo => post

@@ -1073,7 +1073,16 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 
 ## Code quality (from the 2026-10-21 research, [plan.md](plan.md) Q1 to Q20)
 
-- [ ] CRM-T75 **Lint gates in the manifests.** Add `[lints.rust] unsafe_code = "forbid"`, and add `[lints.clippy] pedantic = "warn"`, `unwrap_used = "warn"` and `expect_used = "warn"` to the service. Each existing justified `expect` gets an `#[allow]` with its reason; `dashboards.rs:74` gets a typed struct instead. Fix or allow the 146 nursery and restriction warnings. Done when CI fails on a new pedantic warning. (Q1, S)
+- [x] CRM-T75 **Lint gates in the manifests.** Add `[lints.rust] unsafe_code = "forbid"`, and add `[lints.clippy] pedantic = "warn"`, `unwrap_used = "warn"` and `expect_used = "warn"` to the service. Each existing justified `expect` gets an `#[allow]` with its reason; `dashboards.rs:74` gets a typed struct instead. Fix or allow the 146 nursery and restriction warnings. Done when CI fails on a new pedantic warning. (Q1, S)
+      **Resolution (2026-10-21, not released):**
+      - **Service:** `unsafe_code`, pedantic, and missing docs were already enforced by crate attributes in `src/lib.rs` and `src/bin/main.rs` (the audit looked only at `Cargo.toml`). Added `clippy::unwrap_used` and `clippy::expect_used` as warnings (errors in CI under `-D warnings`), allowed in tests.
+      - **The 13 existing `expect`s:**
+        - 11 are impossible failures (HMAC key length, AES-GCM on in-memory data, Prometheus registration, serde on a `Value`); each now carries `#[allow(…, reason = "…")]`.
+        - `dashboards.rs` pipeline-by-stage: the `.as_object_mut().expect("object")` on a JSON value is gone. The totals are held in typed maps and turned into JSON at the end, with the same output.
+        - `break_glass.rs`: two `ensure_valid(&[m]).unwrap_err()` calls became a new `invalid(&str)` helper in `controllers/mod.rs`.
+      - **Matcher:** `[lints.clippy]` gains pedantic, `unwrap_used` and `expect_used`; a `clippy.toml` allows both in tests. The library code needed no change.
+      - **Tests:** clippy `-D warnings` clean on the matcher, and on the service for the default + keycloak and the keycloak-only builds. 184 service unit tests, 59 DB-backed tests and the Redis tests pass; the matcher's 4 test targets pass.
+      - **Not done:** the 146 nursery and restriction warnings (indexing may panic, doc first-paragraph length, `const fn`); those are opinionated lints and are left off on purpose.
 - [ ] CRM-T76 **Remove write-path boilerplate.** One `audited_tx` helper (begin, mutate, audit, emit, commit); `Entity::find_live()` or a `SoftDelete` trait for the 79 `DeletedAt.is_null()` filters; a `Path<Pid>` extractor in place of the 51 `parse_pid` calls. No behaviour change, and the DB suite and the audit chain stay green. (Q2, M)
 - [ ] CRM-T77 **A service layer for domain operations.** Move lead conversion, deal opening, merge and unmerge out of their handlers (`sales.rs:255`, `merge.rs:347`, `unmerge.rs:248`) into functions that take `&impl ConnectionTrait`. Split `idempotency_mw` (185 lines) and `insight_cache_mw`. Handlers only extract, call and respond. (Q3, L; after T76)
 - [ ] CRM-T78 **Typed settings in place of process-global environment reads.** Parse one `Settings` struct at boot and keep it in `AppContext.shared_store`, replacing about 17 `OnceLock`s and 29 `env::var` calls. Done when the enforcement tests no longer need their own process or `set_var`. (Q4, M/L)

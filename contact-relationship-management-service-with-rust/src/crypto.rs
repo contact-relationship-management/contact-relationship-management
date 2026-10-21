@@ -128,6 +128,10 @@ impl Keyring {
     pub fn seal(&self, plain: &str) -> String {
         let cipher = Aes256Gcm::new(&self.keys[&self.active]);
         let nonce = Nonce::generate();
+        #[allow(
+            clippy::expect_used,
+            reason = "AES-GCM encryption of in-memory data cannot fail"
+        )]
         let sealed = cipher
             .encrypt(
                 &nonce,

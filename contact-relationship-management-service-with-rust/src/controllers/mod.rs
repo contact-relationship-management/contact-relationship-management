@@ -33,10 +33,17 @@ pub fn ensure_valid(problems: &[String]) -> Result<()> {
     if problems.is_empty() {
         return Ok(());
     }
-    Err(Error::CustomError(
+    Err(invalid(&problems.join("; ")))
+}
+
+/// The `422` validation error for one problem (what `ensure_valid` returns
+/// for a list of one).
+#[must_use]
+pub fn invalid(problem: &str) -> Error {
+    Error::CustomError(
         StatusCode::UNPROCESSABLE_ENTITY,
-        ErrorDetail::new("validation", problems.join("; ")),
-    ))
+        ErrorDetail::new("validation", problem),
+    )
 }
 
 /// A `422` with a single message (state-machine refusals etc.).

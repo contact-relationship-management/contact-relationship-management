@@ -27,6 +27,10 @@
 //! See `../spec/index.md` for the living specification.
 
 #![warn(clippy::pedantic)]
+// `unwrap` and `expect` only where failure is impossible, each allowed in
+// place with its reason; tests may use both freely.
+#![warn(clippy::unwrap_used, clippy::expect_used)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 // New in Rust 1.99. The tests write `assert!(x.is_empty())`, which reads plainly;
 // the lint's replacement needs a typed empty array for each case.
 #![cfg_attr(test, allow(clippy::assert_is_empty))]

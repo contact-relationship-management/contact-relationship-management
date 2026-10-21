@@ -12,7 +12,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use super::{ensure_valid, record_rejection};
+use super::{invalid, record_rejection};
 use crate::auth::{AuthUser, MaybeAuthUser};
 use crate::break_glass as rules;
 use crate::models::audit_logs::Model as Audit;
@@ -45,7 +45,7 @@ async fn grant(
     Json(payload): Json<GrantPayload>,
 ) -> Result<Response> {
     let (reason, minutes) = rules::validate_request(&payload.reason, payload.minutes)
-        .map_err(|message| ensure_valid(&[message]).unwrap_err())?;
+        .map_err(|message| invalid(&message))?;
     let now = Utc::now();
     let expires_at = rules::expiry(now, minutes);
     let pid = Uuid::new_v4();
@@ -147,7 +147,7 @@ async fn review(
         if subject == reviewer {
             record_rejection((StatusCode::FORBIDDEN, message))
         } else {
-            ensure_valid(&[message]).unwrap_err()
+            invalid(&message)
         }
     })?;
     let txn = ctx.db.begin().await?;

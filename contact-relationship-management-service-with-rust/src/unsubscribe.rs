@@ -69,6 +69,7 @@ impl Unsubscriber {
 
     fn mac(&self, payload: &[u8]) -> Tag {
         // HMAC accepts any key length, so this cannot fail.
+        #[allow(clippy::expect_used, reason = "HMAC accepts a key of any length")]
         let mut mac = Tag::new_from_slice(&self.secret).expect("hmac takes any key length");
         mac.update(payload);
         mac

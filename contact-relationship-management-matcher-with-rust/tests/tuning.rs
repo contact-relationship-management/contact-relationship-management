@@ -7,6 +7,11 @@
 //! wrote the matcher: see the README's "Tuning" section for what that does and
 //! does not show.
 
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test helpers fail the test on bad fixtures"
+)]
 // Counts here are in the hundreds, so usize-to-f64 is exact; short names are the maths.
 #![allow(clippy::cast_precision_loss, clippy::many_single_char_names)]
 

@@ -63,24 +63,27 @@ async fn sales_dashboard(
         .filter(deals::Column::ClosedAt.is_null())
         .all(&ctx.db)
         .await?;
-    let mut by_stage: std::collections::BTreeMap<String, serde_json::Value> =
-        std::collections::BTreeMap::new();
+    // Stage name to (deal count, currency to total in minor units).
+    let mut totals: std::collections::BTreeMap<
+        String,
+        (usize, std::collections::BTreeMap<String, i64>),
+    > = std::collections::BTreeMap::new();
     for deal in &open {
         let stage = records::find_stage(&ctx.db, deal.stage_pid).await?;
-        let entry = by_stage
-            .entry(stage.name.clone())
-            .or_insert_with(|| serde_json::json!({ "count": 0, "totals_minor": {} }));
-        entry["count"] = serde_json::json!(entry["count"].as_i64().unwrap_or(0) + 1);
-        let totals = entry["totals_minor"].as_object_mut().expect("object");
-        let current = totals
-            .get(&deal.currency)
-            .and_then(serde_json::Value::as_i64)
-            .unwrap_or(0);
-        totals.insert(
-            deal.currency.clone(),
-            serde_json::json!(current.saturating_add(deal.amount_minor)),
-        );
+        let (count, by_currency) = totals.entry(stage.name.clone()).or_default();
+        *count += 1;
+        let total = by_currency.entry(deal.currency.clone()).or_insert(0);
+        *total = total.saturating_add(deal.amount_minor);
     }
+    let mut by_stage: std::collections::BTreeMap<String, serde_json::Value> = totals
+        .into_iter()
+        .map(|(stage, (count, by_currency))| {
+            (
+                stage,
+                serde_json::json!({ "count": count, "totals_minor": by_currency }),
+            )
+        })
+        .collect();
     Metrics::global()
         .deals_open
         .set(i64::try_from(open.len()).unwrap_or(i64::MAX));

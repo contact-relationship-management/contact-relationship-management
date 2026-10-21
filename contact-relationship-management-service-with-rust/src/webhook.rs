@@ -24,6 +24,7 @@ pub fn secret() -> Option<String> {
 }
 
 fn tag(secret: &str, timestamp: &str, body: &[u8]) -> Hmac<Sha256> {
+    #[allow(clippy::expect_used, reason = "HMAC accepts a key of any length")]
     let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("any key length");
     mac.update(timestamp.as_bytes());
     mac.update(b".");
@@ -101,6 +102,7 @@ pub fn presented(authorization: Option<&str>, token_header: Option<&str>) -> Vec
 /// HMAC of a credential under the secret, so a comparison is over fixed-size
 /// digests whatever the credential's length.
 fn credential_mac(secret: &str, credential: &str) -> Hmac<Sha256> {
+    #[allow(clippy::expect_used, reason = "HMAC accepts a key of any length")]
     let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("any key length");
     mac.update(b"token.");
     mac.update(credential.as_bytes());

@@ -1,5 +1,11 @@
 //! Behaviour of the matcher on realistic pairs.
 
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test helpers fail the test on bad fixtures"
+)]
+
 use contact_relationship_management_matcher::{
     Contact, Field, MatchConfig, Matcher, Outcome, Verdict,
 };
