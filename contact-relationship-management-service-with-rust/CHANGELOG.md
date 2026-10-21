@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] — pre-release v0.1.5-rc.1, 2026-10-21
+
+No service code changes. This pre-release exists to prove the multi-arch release workflow (CRM-T74):
+the service image is built for amd64 and arm64 and published as one image.
+
 ## [0.1.4] — 2026-10-21
 
 ### Security — `rustls-webpki` 0.103.16 (RUSTSEC-2026-0382)

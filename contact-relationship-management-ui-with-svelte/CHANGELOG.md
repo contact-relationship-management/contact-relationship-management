@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] — pre-release v0.1.5-rc.1, 2026-10-21
+
 ### Added — a deal can be edited and reopened on its own page (2026-10-21)
 
 `/deals/{pid}` has an Edit button: name, amount and expected close, saved with `PUT /deals/{pid}`.
