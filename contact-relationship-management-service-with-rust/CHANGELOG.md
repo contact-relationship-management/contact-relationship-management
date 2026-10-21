@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` headers** on responses when the request limit is on
   (always in production), so a client sees its budget before it gets a `429`; the `429` carries them too.
 
+### Changed — the display-name cache is bounded (CRM-T81)
+- Looked-up display names are kept for 10 minutes and at most 10,000 at a time (the oldest goes first). They were
+  kept, unbounded, for the life of the process. A rename or erasure upstream now shows within 10 minutes.
+
 ### Changed — dependencies (CRM-T84)
 - **reqwest 0.13** (was 0.12) for the email-provider and upstream clients. Certificates are now checked against the
   operating system's trust store instead of bundled webpki roots, the same as the token verifier's key fetch already did.

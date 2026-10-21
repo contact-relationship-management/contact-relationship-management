@@ -22,7 +22,10 @@ the field names, or change `clients::extract_email`, before a real send.
 
 Client modules follow the stub-first pattern (patient-flow
 `clients.rs`): read-only, cached, best-effort display-name lookups
-that never block writes.
+that never block writes. The cache is in memory, per process: a name is kept
+for 10 minutes and at most 10,000 are held, the oldest going first. A display
+name is personal data, so it is not kept for the life of the process, and an
+erasure or a rename upstream shows within 10 minutes (CRM-T81).
 
 ## Dedup lives upstream
 

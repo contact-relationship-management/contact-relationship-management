@@ -17,6 +17,7 @@
 
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use entity_ref::EntityRef;
 
@@ -46,10 +47,65 @@ pub fn mode() -> Mode {
     })
 }
 
+/// How long a looked-up display name is kept. A name is personal data and can
+/// change upstream, so it is not kept for the life of the process.
+pub const NAME_TTL: Duration = Duration::from_secs(600);
+
+/// The most display names kept at once.
+pub const NAME_CAPACITY: usize = 10_000;
+
+/// A bounded display-name cache: each entry expires after `ttl`, and when it is
+/// full the oldest entry makes room. The clock is passed in, so tests need not
+/// sleep.
+struct NameCache {
+    ttl: Duration,
+    capacity: usize,
+    entries: HashMap<String, (String, Instant)>,
+}
+
+impl NameCache {
+    fn new(ttl: Duration, capacity: usize) -> Self {
+        Self {
+            ttl,
+            capacity,
+            entries: HashMap::new(),
+        }
+    }
+
+    /// The name for `urn`, unless it has expired (an expired entry is dropped).
+    fn get(&mut self, urn: &str, now: Instant) -> Option<String> {
+        let (name, stored) = self.entries.get(urn)?;
+        if now.saturating_duration_since(*stored) < self.ttl {
+            return Some(name.clone());
+        }
+        self.entries.remove(urn);
+        None
+    }
+
+    fn insert(&mut self, urn: String, name: String, now: Instant) {
+        if self.entries.len() >= self.capacity && !self.entries.contains_key(&urn) {
+            let ttl = self.ttl;
+            self.entries
+                .retain(|_, (_, stored)| now.saturating_duration_since(*stored) < ttl);
+            if self.entries.len() >= self.capacity {
+                let oldest = self
+                    .entries
+                    .iter()
+                    .min_by_key(|(_, (_, stored))| *stored)
+                    .map(|(key, _)| key.clone());
+                if let Some(key) = oldest {
+                    self.entries.remove(&key);
+                }
+            }
+        }
+        self.entries.insert(urn, (name, now));
+    }
+}
+
 /// Process-wide display-name cache (URN → name).
-fn cache() -> &'static Mutex<HashMap<String, String>> {
-    static CACHE: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
-    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+fn cache() -> &'static Mutex<NameCache> {
+    static CACHE: OnceLock<Mutex<NameCache>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(NameCache::new(NAME_TTL, NAME_CAPACITY)))
 }
 
 /// Resolve a display name for `entity_ref`, best-effort: the cache,
@@ -61,9 +117,9 @@ pub async fn display_name(entity_ref: &EntityRef) -> Option<String> {
     if let Some(hit) = cache()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .get(&urn)
+        .get(&urn, Instant::now())
     {
-        return Some(hit.clone());
+        return Some(hit);
     }
     if mode() != Mode::Http {
         return None;
@@ -73,7 +129,7 @@ pub async fn display_name(entity_ref: &EntityRef) -> Option<String> {
         cache()
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .insert(urn, name.clone());
+            .insert(urn, name.clone(), Instant::now());
     }
     fetched
 }
@@ -83,7 +139,7 @@ pub fn prime(urn: &str, name: &str) {
     cache()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .insert(urn.to_string(), name.to_string());
+        .insert(urn.to_string(), name.to_string(), Instant::now());
 }
 
 /// Process-wide primed addresses (URN → mailbox), for tests and local
@@ -229,6 +285,52 @@ mod tests {
             Some("ada@example.test")
         );
         assert_eq!(email_address("not a urn").await, None);
+    }
+
+    #[test]
+    fn a_name_expires_after_the_ttl() {
+        let start = Instant::now();
+        let mut cache = NameCache::new(Duration::from_secs(60), 10);
+        cache.insert("person:a".into(), "Ada".into(), start);
+        assert_eq!(
+            cache
+                .get("person:a", start + Duration::from_secs(59))
+                .as_deref(),
+            Some("Ada")
+        );
+        assert_eq!(cache.get("person:a", start + Duration::from_secs(60)), None);
+        assert!(cache.entries.is_empty(), "an expired entry is dropped");
+    }
+
+    #[test]
+    fn a_full_cache_drops_expired_names_first_then_the_oldest() {
+        let start = Instant::now();
+        let at = |s: u64| start + Duration::from_secs(s);
+        let mut cache = NameCache::new(Duration::from_secs(100), 3);
+        cache.insert("person:1".into(), "One".into(), at(0));
+        cache.insert("person:2".into(), "Two".into(), at(10));
+        cache.insert("person:3".into(), "Three".into(), at(20));
+        // Full, and nothing has expired: the oldest (1) makes room.
+        cache.insert("person:4".into(), "Four".into(), at(30));
+        assert_eq!(cache.entries.len(), 3);
+        assert_eq!(cache.get("person:1", at(30)), None);
+        assert!(cache.get("person:4", at(30)).is_some());
+        // Full again, but 2 and 3 have expired by now: both go, not just one.
+        cache.insert("person:5".into(), "Five".into(), at(125));
+        assert_eq!(cache.entries.len(), 2);
+        assert!(cache.get("person:4", at(125)).is_some());
+        assert!(cache.get("person:5", at(125)).is_some());
+    }
+
+    #[test]
+    fn replacing_a_name_in_a_full_cache_evicts_nothing() {
+        let start = Instant::now();
+        let mut cache = NameCache::new(Duration::from_secs(100), 2);
+        cache.insert("person:1".into(), "One".into(), start);
+        cache.insert("person:2".into(), "Two".into(), start);
+        cache.insert("person:1".into(), "Uno".into(), start);
+        assert_eq!(cache.get("person:1", start).as_deref(), Some("Uno"));
+        assert_eq!(cache.get("person:2", start).as_deref(), Some("Two"));
     }
 
     #[tokio::test]
