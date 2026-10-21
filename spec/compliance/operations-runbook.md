@@ -226,6 +226,8 @@ above. It passed 27 of 27 on a local build with the fix. The released image is `
 On 2026-10-21 it ran the released v0.1.4 image (`sha256:4cefa8b7…`): 27 of 27 passed.
 Releases up to v0.1.4 are `linux/amd64` only. From `v0.1.5-rc.1` the images are multi-arch (amd64 and arm64, each built
 on a native runner); the same script passed 27 of 27 on the pulled arm64 image on 2026-10-21 (CRM-T74).
+v0.1.5 is the first stable release published that way: both images are indexes with amd64 and arm64, provenance
+verified with `gh attestation verify`, and the script passed 27 of 27 on the pulled arm64 image (2026-10-21).
 
 ### Migrating a database that holds data
 
