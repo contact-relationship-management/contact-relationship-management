@@ -60,7 +60,7 @@ are good practice, not conformance. Findings come from reading the repository
 | Authentication on every request; avoid anonymous endpoints | Met | Only probes, metrics and docs are public |
 | Use OAuth 2.0; never basic auth; avoid long-lived API keys | **Gap** | The service accepts bearer JWTs it can mint itself; there is no OAuth 2.0 authorisation server, client-credentials or PKCE flow. Whether the tokens are short-lived should be stated. Deployers normally put an OAuth provider in front |
 | Check scope on each call | Met | Role and scope checks per route (see control-mapping.md) |
-| Version the API; add the version to the URI; avoid custom headers or media types, which "can lead to your API being blocked by proxies or firewalls" | **Contradicted** | We version with the `Accepts-version` header and put no version in the URL. The earlier table row called this "Met, with a risk"; against the published text it is a deviation. The cost of moving is a breaking change to every client, so decide it deliberately |
+| Version the API; add the version to the URI; avoid custom headers or media types, which "can lead to your API being blocked by proxies or firewalls" | **Deviation, decided (2026-10-21)** | The maintainer decided the URL stays `/api`, never `/api/v1`. We version with the `Accepts-version` header and put no version in the URL. The earlier table row called this "Met, with a risk"; against the published text it is a deviation. The cost of moving is a breaking change to every client, so  so this is a recorded, accepted deviation, not an open gap. Risk to state to a GDS assessor: a proxy or firewall that strips unknown headers would hide the version, and the client then gets the current one |
 | Keep few active versions; tell users when a version is retired | Met (policy) | api-lifecycle.md; `Deprecation`/`Sunset` headers are not built yet |
 | Reject unknown attributes (schema validation on de-serialising endpoints) | Met (2026-10-21) | Every request body struct has `deny_unknown_fields`; a stray member is `422` (test `a_misspelt_request_member_is_refused_not_dropped`). The `422` names the unknown field (`src/json.rs`). The email webhook body is deliberately lenient |
 | Enforce content types and reject others | Probably met, untested | Axum's `Json` extractor answers 415 for a wrong `Content-Type`; no test here pins it |
@@ -87,6 +87,6 @@ are good practice, not conformance. Findings come from reading the repository
 
 Fixed in code on 2026-10-21: unknown request members, `Cache-Control:
 no-store`, and `RateLimit-*` headers (service and UI live tests pass). Still
-open: decide the versioning question; write the OAuth 2.0 deployment pattern
+open: write the OAuth 2.0 deployment pattern
 into the runbook. An independent reviewer is
 still wanted before anyone describes this as conformant.

@@ -40,7 +40,7 @@ tested, so whether they produce a problem document is unverified.
 ## Versioning
 
 The API version is chosen with the `Accepts-version` request header (today
-only `1.0`). URLs carry no version. A request that names an unsupported
+only `1.0`). URLs carry no version, by decision: the path stays `/api`, never `/api/v1` (the GDS guidance prefers a version in the URI; this is a recorded deviation). A request that names an unsupported
 version gets `406` with the supported list. The response names the version
 served.
 
