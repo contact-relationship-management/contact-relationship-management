@@ -52,7 +52,9 @@ DB-free pure core; minor-unit money, per-currency reporting;
 consent gating in the send path, not the UI; `bg_pg` jobs for
 nurture/SLA/campaign (no external broker); ETag-conditional
 dashboards; family fixtures (`#![forbid(unsafe_code)]`,
-clippy-pedantic, OTLP, `Accepts-version`, Podman). **All-plural
+clippy-pedantic, OTLP, `Accepts-version`, Podman). **API versioning is the
+`Accepts-version` header on the one `/api` path; never `/api/v1`, `/api/v2`
+(CRM-R17).** **All-plural
 table names** (the loco `create_table` pluralization lesson);
 `404` mapping at `find_by_pid` call sites; enforcement tests in
 their own binary.

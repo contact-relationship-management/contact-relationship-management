@@ -177,6 +177,12 @@ tickets.*
 
 ## CRM-R17 — Family fixtures
 
+- **API versioning: the path is `/api`, and the version is chosen with the
+  `Accepts-version` request header. Never put a version in the path: no
+  `/api/v1`, `/api/v2` and so on.** A request without the header gets the
+  current version; an unsupported value is `406`. Decided by the maintainer
+  (2026-10-21); this deliberately differs from the GDS advice to version in
+  the URI (see `compliance/gds-api-review.md`).
 - OpenAPI + Swagger, `Accepts-version` negotiation, `/metrics.prom`,
   OTLP tracing, health routes, Podman build,
   `#![forbid(unsafe_code)]`, clippy-pedantic, input caps → `422`,
