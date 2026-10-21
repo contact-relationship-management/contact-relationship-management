@@ -224,6 +224,9 @@ On 2026-10-20 it ran the released v0.1.3 image: phase 1 passed, and phase 2 foun
 above. It passed 27 of 27 on a local build with the fix. The released image is `linux/amd64` only
 (podman warned on an arm64 host and ran it under emulation).
 On 2026-10-21 it ran the released v0.1.4 image (`sha256:4cefa8b7…`): 27 of 27 passed.
+Releases up to v0.1.4 are `linux/amd64` only. The next release workflow builds amd64 and arm64 on native runners and
+publishes one multi-arch image; the same script passed 27 of 27 on a natively built arm64 image on 2026-10-21. Until a
+release has been published that way, treat the workflow change as untested (see CRM-T74).
 
 ### Migrating a database that holds data
 
