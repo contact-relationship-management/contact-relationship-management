@@ -18,6 +18,7 @@ Commands assume the container images from the repository's `Containerfile`s.
    `config/abac-policy.reference.json` and run
    `cargo test --test enforcement -- --ignored` against it in staging.
 6. Configure token verification (`CRM_PASETO_KEYS_URL` or Keycloak settings).
+   See "OAuth 2.0 in front of the service" below.
 7. Restrict `/metrics.prom` and `/api-docs/*` at the ingress to the monitoring
    network; both are public inside the service.
 8. Abuse limits are on by default in production (`CRM_RATE_LIMIT_PER_MIN`,
@@ -240,3 +241,25 @@ result. Run it before shipping a migration that touches an existing table. On
 2026-10-20 it showed migration 17 changing no existing row and taking about 13 ms at 300
 contacts (adding a nullable column is a metadata change in PostgreSQL, so it should not
 grow with table size; that is reasoning, not a measurement on a large table).
+
+## OAuth 2.0 in front of the service
+
+The GDS standard says to use OAuth 2.0, never basic authentication, and to
+avoid API keys. The service follows that by being a resource server only: it
+issues no tokens. On every request it checks the bearer token's signature,
+issuer, audience and expiry (`401` otherwise), then the scope and policy.
+
+- **Humans:** the UI signs the person in against the identity provider
+  (authorisation code with PKCE) and keeps the token server-side in a session
+  cookie; the browser never holds it.
+- **Services:** a calling system gets a token from the identity provider by
+  client credentials (or token exchange to act for a user) and sends it as
+  `Authorization: Bearer`.
+- **Which tokens:** Keycloak access tokens (the shipped image is built with the
+  `keycloak` feature; set `CRM_KEYCLOAK_*`) or PASETO v4.public tokens
+  (`CRM_PASETO_KEYS_URL`). Another OAuth 2.0 provider is not supported unless it
+  issues one of those.
+- **Lifetime:** the identity provider sets it. Keep access tokens short (minutes)
+  and rotate signing keys; the PASETO key set is refreshed from its URL.
+- **Not covered here:** the identity provider itself, its client registrations
+  and its own hardening. Those belong to the deployer.

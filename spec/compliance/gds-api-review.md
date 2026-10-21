@@ -58,7 +58,7 @@ are good practice, not conformance. Findings come from reading the repository
 | Standard HTTP status codes, documented, consistent, no attacker-useful detail | Met | RFC 9457 bodies; codes documented in OpenAPI |
 | TLS 1.2 or above | Not the service's job | The service speaks plain HTTP behind a proxy; the runbook must say the proxy enforces TLS 1.2+. Check it says so |
 | Authentication on every request; avoid anonymous endpoints | Met | Only probes, metrics and docs are public |
-| Use OAuth 2.0; never basic auth; avoid long-lived API keys | **Gap** | The service accepts bearer JWTs it can mint itself; there is no OAuth 2.0 authorisation server, client-credentials or PKCE flow. Whether the tokens are short-lived should be stated. Deployers normally put an OAuth provider in front |
+| Use OAuth 2.0; never basic auth; avoid long-lived API keys | Met by deployment (2026-10-21) | The service is a resource server only: it checks the bearer token's signature, issuer, audience and expiry on every request and never issues one. It accepts PASETO v4.public tokens, and (the shipped image is built with the `keycloak` feature) Keycloak OIDC access tokens, so OAuth 2.0 client credentials, token exchange and authorisation code with PKCE are Keycloak's job. No basic authentication and no API keys. Token lifetime is set at the issuer, not here. See the runbook, "OAuth 2.0 in front of the service". The earlier wording of this row ("bearer JWTs") was wrong |
 | Check scope on each call | Met | Role and scope checks per route (see control-mapping.md) |
 | Version the API; add the version to the URI; avoid custom headers or media types, which "can lead to your API being blocked by proxies or firewalls" | **Deviation, decided (2026-10-21)** | The maintainer decided the URL stays `/api`, never `/api/v1`. We version with the `Accepts-version` header and put no version in the URL. The earlier table row called this "Met, with a risk"; against the published text it is a deviation. The cost of moving is a breaking change to every client, so  so this is a recorded, accepted deviation, not an open gap. Risk to state to a GDS assessor: a proxy or firewall that strips unknown headers would hide the version, and the client then gets the current one |
 | Keep few active versions; tell users when a version is retired | Met (policy) | api-lifecycle.md; `Deprecation`/`Sunset` headers are not built yet |
@@ -87,6 +87,5 @@ are good practice, not conformance. Findings come from reading the repository
 
 Fixed in code on 2026-10-21: unknown request members, `Cache-Control:
 no-store`, and `RateLimit-*` headers (service and UI live tests pass). Still
-open: write the OAuth 2.0 deployment pattern
-into the runbook. An independent reviewer is
+open: An independent reviewer is
 still wanted before anyone describes this as conformant.
