@@ -23,6 +23,7 @@ use crate::validation::Problems;
 
 /// `POST /api/contacts` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ContactPayload {
     person_ref: String,
     display_name: String,
@@ -38,6 +39,7 @@ struct ContactPayload {
 
 /// `POST /api/accounts` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AccountPayload {
     organization_ref: String,
     display_name: String,
@@ -52,6 +54,7 @@ struct AccountPayload {
 /// `POST /api/contacts/{pid}/repoint` body — the manual post-merge
 /// repoint (CRM-D1).
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RepointPayload {
     person_ref: String,
     reason: String,
@@ -59,6 +62,7 @@ struct RepointPayload {
 
 /// `POST /api/activities` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ActivityPayload {
     subject_kind: String,
     subject_pid: Uuid,

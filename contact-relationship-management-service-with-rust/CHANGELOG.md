@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — GDS API standards (CRM-T49)
+- **Unknown request members are refused.** Every JSON request body (the `*Payload` structs) now answers `422` for a
+  member it does not know, so a misspelt field is no longer silently dropped. Under `api-lifecycle.md` this narrows what
+  an endpoint accepts: a client that sends extra members will now fail. The webhook body and query parameters are not
+  strict. The `422` does not name the field.
+- **`Cache-Control: no-store` on every `/api/*` response**, errors included (the bodies hold personal data).
+- **`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` headers** on responses when the request limit is on
+  (always in production), so a client sees its budget before it gets a `429`; the `429` carries them too.
+
 ## [0.1.5] — 2026-10-21
 
 No service code changes. The service image is now built for amd64 and arm64 (each on a native runner)

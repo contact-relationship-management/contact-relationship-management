@@ -9,6 +9,7 @@ use super::{
 
 /// `POST /api/contacts/{pid}/consent` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct ConsentPayload {
     action: String,
     source: String,

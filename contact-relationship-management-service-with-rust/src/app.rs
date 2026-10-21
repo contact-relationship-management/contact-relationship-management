@@ -299,24 +299,28 @@ async fn abuse_guard_mw(
         )
     };
     let now = std::time::Instant::now();
+    let limit = u64::from(guard.requests.limit());
     let refused = |retry_after_secs: u64| {
-        (
-            axum::http::StatusCode::TOO_MANY_REQUESTS,
-            [(
-                axum::http::header::RETRY_AFTER,
-                retry_after_secs.to_string(),
-            )],
-            "too many requests",
+        with_budget(
+            (
+                axum::http::StatusCode::TOO_MANY_REQUESTS,
+                [(
+                    axum::http::header::RETRY_AFTER,
+                    retry_after_secs.to_string(),
+                )],
+                "too many requests",
+            )
+                .into_response(),
+            (limit > 0).then_some((limit, 0, retry_after_secs)),
         )
-            .into_response()
     };
     if let Some(shared) = &shared {
         // Shared counters (CRM_REDIS_URL): one count across all replicas.
         // A Redis error falls through to the in-process counters below.
         match shared_verdict(&guard, shared, &key).await {
-            Ok(Some(retry_after_secs)) => return refused(retry_after_secs),
-            Ok(None) => {
-                let response = next.run(req).await;
+            Ok(Err(retry_after_secs)) => return refused(retry_after_secs),
+            Ok(Ok(budget)) => {
+                let response = with_budget(next.run(req).await, budget);
                 if response.status() == axum::http::StatusCode::UNAUTHORIZED
                     && !guard.failures.disabled()
                     && let Err(error) = shared
@@ -336,32 +340,74 @@ async fn abuse_guard_mw(
     if let rate_limit::Decision::Limited { retry_after_secs } = guard.requests.hit(&key, now) {
         return refused(retry_after_secs);
     }
-    let response = next.run(req).await;
+    let budget = guard
+        .requests
+        .budget(&key, now)
+        .map(|(limit, remaining, reset)| (u64::from(limit), u64::from(remaining), reset));
+    let response = with_budget(next.run(req).await, budget);
     if response.status() == axum::http::StatusCode::UNAUTHORIZED {
         let _ = guard.failures.hit(&key, now);
     }
     response
 }
 
-/// The shared-counter decision: `Some(retry_after)` to refuse.
+/// Tell the client its budget (`RateLimit-Limit`, `-Remaining`, `-Reset`; the
+/// IETF draft names). The GDS standard asks services to warn clients before
+/// they hit the limit.
+fn with_budget(mut response: Response, budget: Option<(u64, u64, u64)>) -> Response {
+    if let Some((limit, remaining, reset)) = budget {
+        let headers = response.headers_mut();
+        for (name, value) in [
+            ("ratelimit-limit", limit),
+            ("ratelimit-remaining", remaining),
+            ("ratelimit-reset", reset),
+        ] {
+            headers.insert(name, axum::http::HeaderValue::from(value));
+        }
+    }
+    response
+}
+
+/// Every `/api/*` response says it must not be stored by a cache: the bodies
+/// hold personal data (GDS: never cache sensitive or user-specific data). A
+/// handler that set its own policy keeps it.
+async fn no_store_mw(req: Request, next: Next) -> Response {
+    let api = req.uri().path().starts_with("/api/");
+    let mut response = next.run(req).await;
+    if api {
+        response
+            .headers_mut()
+            .entry(axum::http::header::CACHE_CONTROL)
+            .or_insert(axum::http::HeaderValue::from_static("no-store"));
+    }
+    response
+}
+
+/// A client's budget: `(limit, remaining, seconds until reset)`.
+type Budget = Option<(u64, u64, u64)>;
+
+/// The shared-counter decision: `Err(retry_after)` to refuse, otherwise the
+/// client's remaining budget.
 async fn shared_verdict(
     guard: &rate_limit::Guard,
     shared: &redis_store::Shared,
     key: &str,
-) -> Result<Option<u64>, redis::RedisError> {
+) -> Result<std::result::Result<Budget, u64>, redis::RedisError> {
     if !guard.failures.disabled() {
         let (failed, ttl) = shared.peek(&format!("crm:fail:{key}")).await?;
         if failed >= u64::from(guard.failures.limit()) {
-            return Ok(Some(ttl));
+            return Ok(Err(ttl));
         }
     }
     if !guard.requests.disabled() {
+        let limit = u64::from(guard.requests.limit());
         let (count, ttl) = shared.hit(&format!("crm:req:{key}"), 60).await?;
-        if count > u64::from(guard.requests.limit()) {
-            return Ok(Some(ttl));
+        if count > limit {
+            return Ok(Err(ttl));
         }
+        return Ok(Ok(Some((limit, limit - count, ttl))));
     }
-    Ok(None)
+    Ok(Ok(None))
 }
 
 /// Insight response cache (Loco's cache, Redis-backed). Sits inside auth and
@@ -653,7 +699,9 @@ impl Hooks for App {
             ))
             // Outermost: every error above, whoever produced it, leaves as
             // `application/problem+json` (CRM-T54).
-            .layer(axum::middleware::from_fn(crate::problem::problem_mw)))
+            .layer(axum::middleware::from_fn(crate::problem::problem_mw))
+            // Outside the problem layer so errors carry the policy too.
+            .layer(axum::middleware::from_fn(no_store_mw)))
     }
 
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {

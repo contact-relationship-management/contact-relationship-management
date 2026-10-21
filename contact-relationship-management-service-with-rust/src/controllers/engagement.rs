@@ -25,6 +25,7 @@ use crate::auth::MaybeAuthUser;
 /// `PUT /api/contacts/{pid}/stakeholder` body — declared typing; an
 /// omitted field clears the declaration.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ContactStakeholderPayload {
     #[serde(default)]
     role: Option<String>,
@@ -79,6 +80,7 @@ async fn declare_contact_stakeholder(
 
 /// `PUT /api/accounts/{pid}/stakeholder` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AccountStakeholderPayload {
     #[serde(default)]
     role: Option<String>,
@@ -115,6 +117,7 @@ async fn declare_account_stakeholder(
 
 /// `POST /api/accounts/{pid}/partnerships` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct PartnershipPayload {
     kind: String,
     summary: String,
@@ -180,6 +183,7 @@ async fn list_partnerships(
 
 /// `POST /api/partnerships/{pid}/stage` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct StagePayload {
     to: String,
 }
@@ -220,6 +224,7 @@ async fn partnership_stage(
 
 /// `PUT /api/accounts/{pid}/membership` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct MembershipPayload {
     joined_on: chrono::NaiveDate,
     #[serde(default)]
@@ -286,6 +291,7 @@ async fn upsert_membership(
 
 /// `POST /api/groups` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct GroupPayload {
     name: String,
     #[serde(default)]
@@ -354,6 +360,7 @@ async fn list_groups(State(ctx): State<AppContext>) -> Result<Response> {
 
 /// `POST /api/groups/{pid}/members` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct MemberPayload {
     contact_pid: Uuid,
 }

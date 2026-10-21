@@ -22,6 +22,7 @@ use crate::validation::Problems;
 
 /// `POST /api/leads` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LeadPayload {
     display_name: String,
     source: String,
@@ -35,6 +36,7 @@ struct LeadPayload {
 
 /// `POST /api/leads/{pid}/status` body. `converted` may open a deal.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LeadStatusPayload {
     to: String,
     /// On `converted`: the person URN for the new contact (when the
@@ -48,6 +50,7 @@ struct LeadStatusPayload {
 
 /// `POST /api/pipelines` body: the named, ordered stage list.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct PipelinePayload {
     name: String,
     stages: Vec<StagePayload>,
@@ -55,6 +58,7 @@ struct PipelinePayload {
 
 /// One stage in a pipeline payload.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct StagePayload {
     name: String,
     probability_percent: i32,
@@ -66,6 +70,7 @@ struct StagePayload {
 
 /// `POST /api/deals` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct DealPayload {
     name: String,
     pipeline_pid: Uuid,
@@ -85,6 +90,7 @@ struct DealPayload {
 
 /// `POST /api/deals/{pid}/stage` body — the Kanban move.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct DealStagePayload {
     stage_pid: Uuid,
     #[serde(default)]
@@ -96,6 +102,7 @@ struct DealStagePayload {
 
 /// `POST /api/deals/{pid}/reopen` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ReopenPayload {
     reason: String,
 }

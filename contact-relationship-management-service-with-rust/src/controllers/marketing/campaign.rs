@@ -10,6 +10,7 @@ use super::{
 
 /// `POST /api/campaigns` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct CampaignPayload {
     name: String,
     #[serde(default = "default_kind")]
@@ -33,6 +34,7 @@ pub(super) const MAX_BODY_LEN: usize = 20_000;
 
 /// `POST /api/campaigns/{pid}/status` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct CampaignStatusPayload {
     to: String,
 }

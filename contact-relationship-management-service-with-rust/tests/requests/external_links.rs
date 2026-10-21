@@ -62,10 +62,8 @@ async fn links_can_be_added_listed_and_removed_on_every_kind_of_record() {
         let (pipeline, stages) = super::seed_pipeline!(&request).await;
         let deal: Value = request
             .post("/api/deals")
-            .json(
-                &json!({ "name": "Renewal", "pipeline_pid": pipeline, "stage_pid": stages[0],
-                            "amount_minor": 1000_i64, "currency": "GBP" }),
-            )
+            .json(&json!({ "name": "Renewal", "pipeline_pid": pipeline,
+                            "amount_minor": 1000_i64, "currency": "GBP" }))
             .await
             .json();
         let deal_pid = deal["pid"].as_str().unwrap().to_string();

@@ -62,12 +62,12 @@ are good practice, not conformance. Findings come from reading the repository
 | Check scope on each call | Met | Role and scope checks per route (see control-mapping.md) |
 | Version the API; add the version to the URI; avoid custom headers or media types, which "can lead to your API being blocked by proxies or firewalls" | **Contradicted** | We version with the `Accepts-version` header and put no version in the URL. The earlier table row called this "Met, with a risk"; against the published text it is a deviation. The cost of moving is a breaking change to every client, so decide it deliberately |
 | Keep few active versions; tell users when a version is retired | Met (policy) | api-lifecycle.md; `Deprecation`/`Sunset` headers are not built yet |
-| Reject unknown attributes (schema validation on de-serialising endpoints) | **Gap** | No `deny_unknown_fields` anywhere in `src/`, so serde ignores unknown request members. A misspelt field is silently dropped |
+| Reject unknown attributes (schema validation on de-serialising endpoints) | Met (2026-10-21) | Every request body struct has `deny_unknown_fields`; a stray member is `422` (test `a_misspelt_request_member_is_refused_not_dropped`). The error does not name the field. The email webhook body is deliberately lenient |
 | Enforce content types and reject others | Probably met, untested | Axum's `Json` extractor answers 415 for a wrong `Content-Type`; no test here pins it |
 | Only allow the verbs each resource supports | Met | Router answers 405 as a problem document (tested) |
 | Rate limit anonymous endpoints | Partly met | Rate limiting exists; whether the public endpoints (unsubscribe, webhooks, consent) are covered should be checked |
-| Tell users when they approach limits (for example `X-RateLimit-Remaining`) | **Gap** | No rate-limit headers; only `429` with `Retry-After` |
-| Make responses cacheable; state policy with `Cache-Control`/`Vary`; never cache sensitive or user-specific data | **Gap, by design** | No `Cache-Control` anywhere in `src/`. Responses hold personal data, so caching is rightly off, but the policy is not stated: send `Cache-Control: no-store` on authenticated responses |
+| Tell users when they approach limits (for example `X-RateLimit-Remaining`) | Met (2026-10-21) | `RateLimit-Limit`, `-Remaining`, `-Reset` (the IETF draft names, not `X-`) on responses and on the `429`, from the in-process and the Redis counters. Unit-tested for the counter; the header wiring is not covered by a request test, because the limit is off outside production |
+| Make responses cacheable; state policy with `Cache-Control`/`Vary`; never cache sensitive or user-specific data | Met (2026-10-21) | `Cache-Control: no-store` on every `/api/*` response, errors included (test `api_responses_are_not_cacheable`). Dashboards keep their ETag; a stored copy is still never reused |
 | Log when personal data is provided and to whom | Met | Hash-chained audit log of reads and writes (verify with `/api/audits/verify`) |
 | Monitor for unusual activity | Partly met | Metrics and break-glass alerts; no alerting rules shipped |
 | Provide a test service with no real personal data | Partly met | The demo mode serves fictitious data; no hosted test service |
@@ -85,8 +85,8 @@ are good practice, not conformance. Findings come from reading the repository
 
 ### Open after this check
 
-Nothing here is fixed in code yet. Candidates, in order of value: add
-`Cache-Control: no-store` to authenticated responses; reject unknown request
-members; add `RateLimit-*` headers; decide the versioning question; write the
-OAuth 2.0 deployment pattern into the runbook. An independent reviewer is
+Fixed in code on 2026-10-21: unknown request members, `Cache-Control:
+no-store`, and `RateLimit-*` headers (service and UI live tests pass). Still
+open: decide the versioning question; write the OAuth 2.0 deployment pattern
+into the runbook; make the `422` name the unknown field. An independent reviewer is
 still wanted before anyone describes this as conformant.

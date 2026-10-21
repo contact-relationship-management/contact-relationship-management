@@ -20,6 +20,7 @@ use crate::validation::Problems;
 
 /// `POST /api/sla-policies` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct PolicyPayload {
     priority: String,
     first_response_minutes: i32,
@@ -28,6 +29,7 @@ struct PolicyPayload {
 
 /// `POST /api/tickets` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TicketPayload {
     title: String,
     #[serde(default = "default_priority")]
@@ -42,12 +44,14 @@ struct TicketPayload {
 
 /// `POST /api/tickets/{pid}/status` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TicketStatusPayload {
     to: String,
 }
 
 /// `PUT /api/tickets/{pid}/priority` body (audited; re-derives SLA).
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct PriorityPayload {
     priority: String,
     reason: String,
@@ -55,6 +59,7 @@ struct PriorityPayload {
 
 /// `POST /api/articles` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ArticlePayload {
     title: String,
     body: String,
@@ -511,6 +516,7 @@ async fn update_article(
 
 /// `POST /api/articles/{pid}/status` — publish / archive.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ArticleStatusPayload {
     to: String,
 }

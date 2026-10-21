@@ -26,6 +26,7 @@ use crate::validation::Problems;
 
 /// `PUT /api/deals/{pid}` body; absent fields stay as they are.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct DealEditPayload {
     #[serde(default)]
     name: Option<String>,
@@ -37,6 +38,7 @@ struct DealEditPayload {
 
 /// `PUT /api/leads/{pid}` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LeadEditPayload {
     #[serde(default)]
     display_name: Option<String>,
@@ -44,6 +46,7 @@ struct LeadEditPayload {
 
 /// `PUT /api/tickets/{pid}` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TicketEditPayload {
     #[serde(default)]
     title: Option<String>,
@@ -51,6 +54,7 @@ struct TicketEditPayload {
 
 /// `PUT /api/{deals,leads,tickets}/{pid}/position` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct PositionPayload {
     /// 0-based place among the cards in the same column.
     position: i32,
@@ -58,6 +62,7 @@ struct PositionPayload {
 
 /// `PUT /api/activities/{pid}` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ActivityEditPayload {
     #[serde(default)]
     due_on: Option<chrono::NaiveDate>,

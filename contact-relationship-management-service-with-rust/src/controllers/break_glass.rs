@@ -19,6 +19,7 @@ use crate::models::records;
 
 /// Body of `POST /api/break-glass`.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct GrantPayload {
     reason: String,
     #[serde(default)]
@@ -27,6 +28,7 @@ struct GrantPayload {
 
 /// Body of `POST /api/break-glass/{pid}/review`.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ReviewPayload {
     note: String,
 }

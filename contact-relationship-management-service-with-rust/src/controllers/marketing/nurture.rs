@@ -10,6 +10,7 @@ use super::{
 
 /// `POST /api/nurture-sequences` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct SequencePayload {
     name: String,
     steps: Vec<StepPayload>,
@@ -17,6 +18,7 @@ pub(super) struct SequencePayload {
 
 /// One nurture step.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct StepPayload {
     delay_hours: i32,
     template_ref: String,
@@ -26,6 +28,7 @@ pub(super) struct StepPayload {
 
 /// `POST /api/nurture-sequences/{pid}/enrollments` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct EnrollPayload {
     contact_pid: Uuid,
 }

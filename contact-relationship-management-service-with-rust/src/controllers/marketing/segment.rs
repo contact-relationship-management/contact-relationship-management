@@ -9,6 +9,7 @@ use super::{
 
 /// `POST /api/segments` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct SegmentPayload {
     name: String,
     #[serde(default)]

@@ -31,6 +31,7 @@ use crate::validation::Problems;
 
 /// The unmerge request.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UnmergePayload {
     /// Why, in the operator's words. Recorded in the audit entry.
     pub reason: String,

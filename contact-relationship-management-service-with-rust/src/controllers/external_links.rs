@@ -30,6 +30,7 @@ const MAX_PER_SUBJECT: u64 = 50;
 
 /// `POST …/external-links` body.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct LinkPayload {
     /// `hubspot`, `salesforce`, `attio`, `pipedrive`, `dynamics` or `other`.
     pub system: String,

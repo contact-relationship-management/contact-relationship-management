@@ -90,6 +90,27 @@ impl Window {
         }
     }
 
+    /// What is left for `key` in the current window: `(limit, remaining,
+    /// seconds until reset)`, or `None` when the counter is off. Counts nothing.
+    #[must_use]
+    pub fn budget(&self, key: &str, now: Instant) -> Option<(u32, u32, u64)> {
+        if self.disabled() {
+            return None;
+        }
+        let state = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        Some(match state.get(key) {
+            Some((start, count)) if now.saturating_duration_since(*start) < self.span => (
+                self.limit,
+                self.limit.saturating_sub(*count),
+                self.remaining(*start, now),
+            ),
+            _ => (self.limit, self.limit, self.span.as_secs()),
+        })
+    }
+
     /// Whether `key` is already over the limit, without counting an event.
     #[must_use]
     pub fn blocked(&self, key: &str, now: Instant) -> Decision {
@@ -234,6 +255,21 @@ mod tests {
         let t0 = Instant::now();
         assert_eq!(w.hit("a", t0), Decision::Allowed);
         assert_eq!(w.hit("b", t0), Decision::Allowed);
+    }
+
+    #[test]
+    fn budget_counts_down_and_resets() {
+        let base = Instant::now();
+        let w = Window::new(3, Duration::from_secs(60));
+        assert_eq!(w.budget("k", base), Some((3, 3, 60)));
+        let _ = w.hit("k", base);
+        let _ = w.hit("k", at(base, 10));
+        assert_eq!(w.budget("k", at(base, 20)), Some((3, 1, 40)));
+        assert_eq!(w.budget("k", at(base, 61)), Some((3, 3, 60)));
+        assert_eq!(
+            Window::new(0, Duration::from_secs(60)).budget("k", base),
+            None
+        );
     }
 
     #[test]

@@ -29,6 +29,7 @@ use crate::validation::Problems;
 
 /// The merge request.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct MergePayload {
     /// The contact that survives.
     pub into_pid: String,
