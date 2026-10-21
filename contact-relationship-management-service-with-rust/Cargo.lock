@@ -1247,7 +1247,7 @@ dependencies = [
  "mimalloc",
  "prometheus",
  "redis",
- "reqwest 0.12.28",
+ "reqwest 0.13.5",
  "rusty_paseto",
  "sea-orm",
  "serde",
@@ -1256,16 +1256,15 @@ dependencies = [
  "sha2 0.11.1",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "url",
  "uuid",
 ]
 
 [[package]]
 name = "contact-relationship-management-matcher"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08affb95eec6599db9a5a22326d98a1dbb4d6810930c580cdcaeddbb948d21f1"
+checksum = "440f9fe893c8a71826e904fd14dbedf79a05fe14d87beaa2c07c93e49a22debd"
 dependencies = [
  "serde",
  "strsim",
@@ -4692,6 +4691,7 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
@@ -6432,17 +6432,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-log"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee855f1f400bd0e5c02d150ae5de3840039a3f54b025156404e34c23c03f47c3"
-dependencies = [
- "log",
- "once_cell",
- "tracing-core",
-]
-
-[[package]]
 name = "tracing-serde"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6465,11 +6454,9 @@ dependencies = [
  "serde",
  "serde_json",
  "sharded-slab",
- "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
- "tracing-log",
  "tracing-serde",
 ]
 

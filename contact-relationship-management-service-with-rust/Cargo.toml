@@ -34,11 +34,9 @@ tokio = { version = "1.53", default-features = false, features = [
 async-trait = { version = "0.1" }
 axum = { version = "0.8" }
 tracing = { version = "0.1" }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-contact-relationship-management-matcher = "0.1.1"
+contact-relationship-management-matcher = "0.1.2"
 migration = { package = "contact-relationship-management-migration", version = "0.1.0", path = "migration" }
 sea-orm = { version = "2.0", features = [
-  "sqlx-sqlite",
   "sqlx-postgres",
   "runtime-tokio-rustls",
   "macros",
@@ -55,9 +53,10 @@ base64 = { version = "0.23" }
 prometheus = { version = "0.14" }
 # Upstream display-name lookups (`http` client mode only; stub is the
 # default). Same minimal reqwest configuration as the verifier's fetch.
-reqwest = { version = "0.12", default-features = false, features = [
-  "rustls-tls",
+reqwest = { version = "0.13", default-features = false, features = [
+  "rustls",
   "json",
+  "form",
 ] }
 
 # Outbound SMTP for the real send path (CRM-T39). rustls with aws-lc-rs (the
@@ -115,3 +114,6 @@ serial_test = { version = "4.0.1" }
 ed25519-dalek = { version = "3.0.0" }
 rusty_paseto = { version = "0.10", default-features = false, features = ["v4_public", "serde_json"] }
 jsonschema = { version = "0.58", default-features = false }
+# loco's `tests_cfg::app::get_app_context` opens an in-memory SQLite
+# connection, so the driver is needed by tests only, never in the binary.
+sea-orm = { version = "2.0", features = ["sqlx-sqlite"] }

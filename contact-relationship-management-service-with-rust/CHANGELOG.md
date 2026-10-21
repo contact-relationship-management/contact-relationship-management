@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` headers** on responses when the request limit is on
   (always in production), so a client sees its budget before it gets a `429`; the `429` carries them too.
 
+### Changed — dependencies (CRM-T84)
+- **reqwest 0.13** (was 0.12) for the email-provider and upstream clients. Certificates are now checked against the
+  operating system's trust store instead of bundled webpki roots, the same as the token verifier's key fetch already did.
+- **Matcher 0.1.2** (was 0.1.1): the `const fn` change only, no behaviour change.
+- **Removed** `tracing-subscriber` (unused), and the SQLite driver from the binary (tests still use it).
+
 ## [0.1.5] — 2026-10-21
 
 No service code changes. The service image is now built for amd64 and arm64 (each on a native runner)

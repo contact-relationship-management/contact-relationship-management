@@ -27,6 +27,15 @@ case "${stage}" in
     ;;
   test)
     (cd "${SVC}" && cargo test "${FEATURES[@]}")
+    # The service depends on the published matcher (the image builds from the
+    # service directory alone), so also test it against the matcher in this
+    # repository: a matcher change that breaks the service fails here, before
+    # the matcher is published. The patch rewrites Cargo.lock, so it is put
+    # back afterwards.
+    (cd "${SVC}" && cp Cargo.lock Cargo.lock.ci-keep \
+      && trap 'mv Cargo.lock.ci-keep Cargo.lock' EXIT \
+      && cargo test "${FEATURES[@]}" --lib \
+        --config "patch.crates-io.contact-relationship-management-matcher.path=\"../${MATCHER}\"")
     (cd "${SVC}/migration" && cargo test)
     (cd "${MATCHER}" && cargo test)
     ;;
