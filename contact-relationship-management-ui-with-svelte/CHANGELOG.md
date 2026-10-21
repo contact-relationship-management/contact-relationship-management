@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-10-21
+
 ### Added — links to external systems on account, deal and lead pages (CRM-R27, 2026-10-20)
 
 The links panel is now a shared component (`LinksPanel`) used by the contact page and by new

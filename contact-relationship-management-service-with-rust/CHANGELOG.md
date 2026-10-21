@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-10-21
+
+### Security — `rustls-webpki` 0.103.16 (RUSTSEC-2026-0382)
+A certificate-verification advisory published on 2026-10-20; `Cargo.lock` now pins the fixed version.
+
 ### Fixed — a `--worker` container sent campaigns with the simulated sender (2026-10-20)
 
 `mail::init`, the unsubscribe links and the field-encryption check ran only in `after_routes`,

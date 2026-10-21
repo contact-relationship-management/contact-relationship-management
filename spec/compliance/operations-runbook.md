@@ -38,10 +38,9 @@ Commands assume the container images from the repository's `Containerfile`s.
     `/_ping` answered 200 and `/api/contacts` answered 401 (authentication on).
     A `start` without `--worker` runs no background jobs; run a second container
     with `--worker` for campaign sends (the image's entrypoint is already `start`, so the
-    argument is `--worker`, not `start --worker`). **Releases up to v0.1.3 have a bug here:**
+    argument is `--worker`, not `start --worker`). **Releases up to v0.1.3 have a bug here (fixed in v0.1.4):**
     a worker-only container sends with the simulated sender and marks the campaign delivered
-    while no mail leaves; use `--server-and-worker` in one container until a release with the
-    fix (see the service changelog).
+    while no mail leaves; use `--server-and-worker` in one container on those releases (see the service changelog).
 
 ## 2. Database
 
