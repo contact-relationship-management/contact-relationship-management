@@ -1094,7 +1094,14 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 
       **Limits:** reqwest 0.12 stays in builds with the keycloak feature, because `axum-keycloak-auth` (pulled in by `authentication-verifier`) still depends on it. The image was not rebuilt or smoke-tested.
 - [ ] CRM-T85 **Remove dead configuration.** Delete the `auth.jwt` blocks and `JWT_SECRET` (Loco's JWT feature is off), and the `deny.toml` `allow-git` entry. Fix or remove the 12 links to the missing `agents/share/*.md`. Move the literal secrets in `development.yaml` and `test.yaml` behind clearly-fake markers. (Q11, S)
-- [ ] CRM-T86 **Fix text copied from another project.** Correct the UI `package.json` description ("ward whiteboards, bed management") and decide the UI licence against the crates' list. Replace `brand.name` "Main X · CRM" (×8 locales and two page titles), the `mxi.crm.locale` storage key (migrate the old key once), and "WPM" in `clients.rs`. (Q12, S)
+- [~] CRM-T86 **Fix text copied from another project.** Correct the UI `package.json` description ("ward whiteboards, bed management") and decide the UI licence against the crates' list. Replace `brand.name` "Main X · CRM" (×8 locales and two page titles), the `mxi.crm.locale` storage key (migrate the old key once), and "WPM" in `clients.rs`. (Q12, S)
+      **Done 2026-10-21:**
+      - **UI description:** the `package.json` description now names sales, marketing, support and analytics, in place of the hospital text.
+      - **Comments:** `clients.rs` names CRM-D11 and the CRM, not WPM. The event-kind comment in `streaming.rs` lists the CRM's own entities and kinds, not WPM's employee and payroll ones.
+
+      **Kept on purpose:** "Main X" is the product family's name, not a copying mistake. The token audience is `main-x-service`, and the `mxi.crm.*` storage keys were kept deliberately in earlier changes. So `brand.name` and the storage keys stay, as do the comments that compare with WPM on purpose (`rules/privacy.rs`).
+
+      **Open:** the UI licence (`MIT OR Apache-2.0`) against the crates' five-licence list. That is the maintainer's decision.
 - [ ] CRM-T87 **Matcher API stability.** Mark `Field`, `Outcome`, `Verdict`, `MatchConfig` and `FieldParameters` `#[non_exhaustive]`, and make `ConfigError` an enum. Add `cargo semver-checks check-release` to CI. These are breaking changes, so they go out as 0.2.0 with a changelog entry. (Q13, S/M)
 - [ ] CRM-T88 **Matcher benchmarks and gates.** Add a criterion bench for `compare_one_to_many` at 1k, 5k and 50k candidates, recorded in `BENCHMARKS.md`. Add pedantic lints, and `cargo audit`/`deny` for the matcher. (Q14, S/M)
 - [ ] CRM-T89 **One file per locale, loaded on demand.** Split the `STRINGS` map in `i18n.svelte.ts` into one module per locale loaded with `import()`. Keep the parity test. Record bundle size before and after. List the values identical to English for native reviewers. Reconcile the root `locales/` directories (11) with the UI's 8. (Q15, M)

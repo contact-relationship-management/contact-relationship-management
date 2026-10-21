@@ -124,7 +124,7 @@ its code and tests, under the three-part rule.
 | Q9 | OpenAPI is hand-written and responses are untyped `json!` | `openapi.rs` 520 lines, `openapi_schemas.rs` 741 lines, 129 `json!` in controllers | L | T83 |
 | Q10 | Unused and duplicate dependencies; the service tests the published matcher, not the one in the repo | `tracing-subscriber` unused; `sqlx-sqlite` enabled but never used; reqwest 0.12 and 0.13 both present; service pins matcher 0.1.1 while the repo has 0.1.2 | S | T84 |
 | Q11 | Dead and stale configuration and references | `auth.jwt` and `JWT_SECRET` with Loco's JWT feature off; `deny.toml` `allow-git` with no git sources; 12 links to a missing `agents/share/` | S | T85 |
-| Q12 | Copied from another project ("Main X") | UI `package.json` description says "ward whiteboards, bed management"; `brand.name` "Main X · CRM" ×8; `mxi.crm.locale` key; `clients.rs` mentions "WPM" | S | T86 |
+| Q12 | Text copied from another project | UI `package.json` description says "ward whiteboards, bed management"; `clients.rs` and `streaming.rs` describe WPM. ("Main X" itself is the family's name, so it is not a mistake.) | S | T86 |
 | Q13 | Matcher's public API is not `#[non_exhaustive]`, and CI has no semver check | 0 `non_exhaustive`; `ConfigError(pub String)`; three published versions in two days | S/M | T87 |
 | Q14 | Matcher has no benchmarks, no pedantic lints, and no supply-chain gate | no `benches/`; `BENCHMARKS.md` says none exist | S/M | T88 |
 | Q15 | The UI ships all 8 locales in one bundle | `i18n.svelte.ts` is 3,320 lines; the chunk is 52 KB gzipped; 19 de-de values identical to English | M | T89 |

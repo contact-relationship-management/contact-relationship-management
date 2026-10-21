@@ -1,7 +1,7 @@
-//! Upstream service clients (WPM-D11): **stub-first** display-name
+//! Upstream service clients (CRM-D11): **stub-first** display-name
 //! resolution for `person:` / `worker:` `EntityRefs`.
 //!
-//! WPM references identities by URN and needs only display labels.
+//! The CRM references identities by URN and needs only display labels.
 //! Lookups are read-only, cached, best-effort, and **never block
 //! writes**: an unreachable upstream degrades a view to showing the
 //! URN.
@@ -54,8 +54,8 @@ fn cache() -> &'static Mutex<HashMap<String, String>> {
 
 /// Resolve a display name for `entity_ref`, best-effort: the cache,
 /// then (in `http` mode) the owning service, else `None`. Failures
-/// are logged at debug and swallowed — upstream reads never fail an
-/// WPM request.
+/// are logged at debug and swallowed — upstream reads never fail a
+/// CRM request.
 pub async fn display_name(entity_ref: &EntityRef) -> Option<String> {
     let urn = entity_ref.to_string();
     if let Some(hit) = cache()

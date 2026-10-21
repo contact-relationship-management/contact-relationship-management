@@ -11,13 +11,13 @@
 //!   no committed change lacks its event (Phase 2). A Phase-3 relay to
 //!   Fluvio is roadmap, family-wide.
 //!
-//! Unlike the single-entity registries, WPM emits for several record
-//! kinds, so `entity` and `kind` are `String`s: `employee` /
-//! `requisition` / `application` / `leave_request` / `payroll_run` /
-//! … × `created` / `updated` / `deleted` / `employee_hired` /
-//! `employee_activated` / `employee_terminated` / `leave_approved` /
-//! `payroll_run_calculated` / `review_shared` / … (the full kind list
-//! is spec `audit.md`).
+//! Unlike the single-entity registries, the CRM emits for several record
+//! kinds, so `entity` and `kind` are `String`s: `contact` / `account` /
+//! `lead` / `deal` / `campaign` / `ticket` / `article` /
+//! `nurture_enrollment` / … × `created` / `lead_captured` /
+//! `deal_opened` / `contacts_merged` / `contacts_unmerged` /
+//! `campaign_completed` / `ticket_opened` / `sla_breached` / … (the full
+//! kind list is spec `audit.md`).
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
