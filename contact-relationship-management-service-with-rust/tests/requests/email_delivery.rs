@@ -943,3 +943,55 @@ async fn nurture_steps_are_really_mailed_once_and_a_failure_is_held_for_the_next
     })
     .await;
 }
+
+/// A `--worker` process never builds routes, so `after_routes` does not run there. The
+/// worker hook must set up the real sender and the unsubscribe links itself; without
+/// that a worker-only container sent campaigns with the simulated sender and marked
+/// them delivered (found by `scripts/image-smoke.sh`, CRM-T72).
+#[tokio::test]
+#[serial]
+#[ignore = "boots the app: needs PostgreSQL (see tests/mod.rs)"]
+async fn a_worker_only_process_sets_up_the_real_sender() {
+    use loco_rs::bgworker::pg;
+    use loco_rs::config::PostgresQueueConfig;
+
+    let _restore = RestoreSender;
+    mail::set(Sender::Simulated);
+    unsubscribe::install(None);
+    let settings = [
+        ("CRM_MAIL_MODE", "smtp"),
+        ("CRM_SMTP_HOST", "mail.example.test"),
+        ("CRM_MAIL_FROM", "CRM <crm@example.test>"),
+        ("CRM_UNSUBSCRIBE_SECRET", SECRET),
+        ("CRM_PUBLIC_URL", "https://crm.example.org"),
+    ];
+    // SAFETY: `#[serial]` keeps every other test in this binary from reading the environment.
+    for (k, v) in settings {
+        unsafe { std::env::set_var(k, v) };
+    }
+    let outcome = async {
+        let ctx = boot_test::<App>().await.unwrap().app_context;
+        // Booting ran `after_routes`, which is what a server does and a worker does not:
+        // put the process back to how a worker-only one starts.
+        mail::set(Sender::Simulated);
+        unsubscribe::install(None);
+        let uri = std::env::var("DATABASE_URL").unwrap_or_else(|_| ctx.config.database.uri.clone());
+        let qcfg: PostgresQueueConfig = serde_json::from_value(json!({ "uri": uri })).unwrap();
+        let queue = pg::create_provider(&qcfg).await.unwrap();
+        // The worker hook, not `after_routes`.
+        <App as loco_rs::app::Hooks>::connect_workers(&ctx, &queue)
+            .await
+            .unwrap();
+        (
+            mail::current().is_simulated(),
+            unsubscribe::current().is_some(),
+        )
+    }
+    .await;
+    for (k, _) in settings {
+        unsafe { std::env::remove_var(k) };
+    }
+    let (simulated, has_unsubscriber) = outcome;
+    assert!(!simulated, "the worker kept the simulated sender");
+    assert!(has_unsubscriber, "the worker has no unsubscribe links");
+}

@@ -22,7 +22,12 @@ fn main() {
         std::process::exit(2);
     };
     let mut attrs = Map::new();
-    for pair in args.next().unwrap_or_default().split(',').filter(|p| !p.is_empty()) {
+    for pair in args
+        .next()
+        .unwrap_or_default()
+        .split(',')
+        .filter(|p| !p.is_empty())
+    {
         let (name, value) = pair.split_once('=').unwrap_or((pair, "true"));
         attrs.insert(name.to_string(), json!([value]));
     }

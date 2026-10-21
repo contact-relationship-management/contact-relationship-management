@@ -16,7 +16,8 @@ Found by the new image smoke test against the released v0.1.3 image (24 of 27 ch
 three failures were this). `init_sending` now runs from both `after_routes` and `connect_workers`.
 Affects v0.1.3 and earlier when `CRM_MAIL_MODE=smtp` runs the sending in a separate `--worker`
 container (the arrangement the runbook describes). With `--server-and-worker` in one process, or the
-simulated default, nothing changes.
+simulated default, nothing changes. A DB-backed test (`a_worker_only_process_sets_up_the_real_sender`) now
+calls the worker hook after resetting what `after_routes` set, and fails without the fix.
 
 ### Added — `examples/mint_token.rs`
 Mints a PASETO `v4.public` token and the matching key set from a fixed, public seed, for trying the
