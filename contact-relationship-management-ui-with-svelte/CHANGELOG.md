@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a deal can be edited on its own page (2026-10-21)
+
+`/deals/{pid}` has an Edit button: name, amount and expected close, saved with `PUT /deals/{pid}`.
+Only what changed is sent. A masked amount stays disabled, and a closed deal says it cannot be
+edited instead of showing the form. Five new strings (`deal.edit`, `deal.save`, `deal.cancel`,
+`deal.saved`, `deal.closedLocked`) in all eight locales. The live follow-up test now picks a random
+day, because the calendar shows three events a day and earlier runs left tasks on the same one.
+
 ## [0.1.4] — 2026-10-21
 
 ### Added — links to external systems on account, deal and lead pages (CRM-R27, 2026-10-20)

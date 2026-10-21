@@ -717,6 +717,29 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("link")).toHaveCount(1);
   });
 
+  test("a deal is edited on its own page", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/deals");
+    await page.getByTestId("deal-list").getByRole("link").first().click();
+    await page.getByTestId("deal-edit").click();
+    await page.getByTestId("deal-name").fill("Renamed on the deal page");
+    await page.getByTestId("deal-amount").fill("1234.50");
+    await page.getByTestId("deal-save").click();
+    await expect(page.getByTestId("deal-saved")).toBeVisible();
+    await expect(page.getByTestId("record-title")).toHaveText(
+      "Renamed on the deal page",
+    );
+    await expect(page.getByRole("main")).toContainText("1,234.50");
+    await expect(page.getByTestId("deal-form")).toHaveCount(0);
+  });
+
+  test("a closed deal says it cannot be edited", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/deals/deal-9");
+    await expect(page.getByTestId("deal-locked")).toBeVisible();
+    await expect(page.getByTestId("deal-edit")).toHaveCount(0);
+  });
+
   test("a link on the wrong domain, or a repeat, is refused with the reason", async ({
     page,
   }) => {

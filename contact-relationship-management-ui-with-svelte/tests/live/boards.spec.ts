@@ -145,7 +145,12 @@ test("a follow-up is rescheduled with the keyboard and the service has the new d
     person_ref: `person:${crypto.randomUUID()}`,
     display_name: `Follow-up ${stamp}`,
   });
-  const due = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+  // A random day in the 30-day window: the calendar shows 3 events a day, and
+  // earlier runs against the same database leave tasks behind.
+  const ahead = 3 + Math.floor(Math.random() * 20);
+  const due = new Date(Date.now() + ahead * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
   const summary = `Live follow-up ${stamp}`;
   const activity = await create(request, "activities", {
     subject_kind: "contact",

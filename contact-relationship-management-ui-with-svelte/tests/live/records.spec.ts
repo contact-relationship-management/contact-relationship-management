@@ -87,3 +87,38 @@ test("a deal page shows the deal and takes links", async ({
   await expect(page.getByTestId("record-title")).toHaveText(name);
   await linkRoundTrip(page, "https://app.hubspot.com/contacts/1/deal/9");
 });
+
+test("a deal is edited on its own page and the service keeps it", async ({
+  page,
+  request,
+}) => {
+  const pipeline = await create(request, "pipelines", {
+    name: `Edit ${Date.now()}`,
+    stages: [
+      { name: "Qualified", probability_percent: 10 },
+      { name: "Won", probability_percent: 100, is_won: true },
+    ],
+  });
+  const deal = await create(request, "deals", {
+    name: "Before",
+    pipeline_pid: pipeline.pid,
+    amount_minor: 100_000,
+    currency: "GBP",
+  });
+  await page.goto(`/deals/${deal.pid}`);
+  await page.getByTestId("deal-edit").click();
+  await page.getByTestId("deal-name").fill("After");
+  await page.getByTestId("deal-amount").fill("2500");
+  await page.getByTestId("deal-close-on").fill("2027-03-31");
+  await page.getByTestId("deal-save").click();
+  await expect(page.getByTestId("deal-saved")).toBeVisible();
+  await expect(page.getByTestId("record-title")).toHaveText("After");
+
+  const list = await request.get(`${API}/api/deals?pipeline=${pipeline.pid}`);
+  const found = (await list.json()) as Record<string, unknown>[];
+  expect(found[0]).toMatchObject({
+    name: "After",
+    amount_minor: 250_000,
+    expected_close_on: "2027-03-31",
+  });
+});
