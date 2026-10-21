@@ -1111,7 +1111,18 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       **Kept on purpose:** "Main X" is the product family's name, not a copying mistake. The token audience is `main-x-service`, and the `mxi.crm.*` storage keys were kept deliberately in earlier changes. So `brand.name` and the storage keys stay, as do the comments that compare with WPM on purpose (`rules/privacy.rs`).
 
       **Licence (maintainer chose the five-licence expression, 2026-10-21):** the UI `package.json`, the UI image label and `LICENSE.md` now carry the same expression as the crates. Only the files changed; no release carries it yet.
-- [ ] CRM-T87 **Matcher API stability.** Mark `Field`, `Outcome`, `Verdict`, `MatchConfig` and `FieldParameters` `#[non_exhaustive]`, and make `ConfigError` an enum. Add `cargo semver-checks check-release` to CI. These are breaking changes, so they go out as 0.2.0 with a changelog entry. (Q13, S/M)
+- [~] CRM-T87 **Matcher API stability.** Mark `Field`, `Outcome`, `Verdict`, `MatchConfig` and `FieldParameters` `#[non_exhaustive]`, and make `ConfigError` an enum. Add `cargo semver-checks check-release` to CI. These are breaking changes, so they go out as 0.2.0 with a changelog entry. (Q13, S/M)
+      **Done 2026-10-21 (not released; the version is still 0.1.2):**
+      - **`ConfigError`** is a `#[non_exhaustive]` enum with five variants; its `Display` text is unchanged. A test (`a_refusal_says_which_setting`) pins each variant.
+      - **`#[non_exhaustive]`** on `Field`, `Outcome`, `Verdict`, `MatchResult` and `FieldScore`.
+      - **Kept constructible, on purpose** (README, "Changing the API"):
+        - `Contact`, `MatchConfig` and `FieldParameters` are built with `..Default::default()`, which `#[non_exhaustive]` forbids.
+        - `Ranked` is built by the service to re-sort and re-score candidates. The service's unit tests against the matcher in the repo caught this (E0639) before anything was published.
+      - **`scripts/ci-check.sh semver`** runs `cargo semver-checks`. It is not in the workflows yet (CRM-T94).
+      - **Verified:** cargo-semver-checks 0.51.0 against the published 0.1.2 reports exactly three failures, all intended (enums marked non-exhaustive, structs marked non-exhaustive, `ConfigError` became an enum) and "requires a new major version"; with `--release-type major` it passes. Matcher clippy and tests pass; the service's 184 unit tests pass against the local matcher.
+
+      **Needs a decision to finish:** release as 0.2.0. That means bumping the matcher, publishing it, then moving the service's dependency to `0.2.0` and releasing the service. Not bumped now because the service's CI pins `0.1.2`.
+      **Limits:** the cargo-semver-checks installed here (0.47) cannot read Rust 1.99's rustdoc output; 0.51 or later is needed, so CI must install that.
 - [ ] CRM-T88 **Matcher benchmarks and gates.** Add a criterion bench for `compare_one_to_many` at 1k, 5k and 50k candidates, recorded in `BENCHMARKS.md`. Add pedantic lints, and `cargo audit`/`deny` for the matcher. (Q14, S/M)
 - [ ] CRM-T89 **One file per locale, loaded on demand.** Split the `STRINGS` map in `i18n.svelte.ts` into one module per locale loaded with `import()`. Keep the parity test. Record bundle size before and after. List the values identical to English for native reviewers. Reconcile the root `locales/` directories (11) with the UI's 8. (Q15, M)
 - [ ] CRM-T90 **Page data through `load`.** Move the `$effect` fetches into `+page.ts` `load` functions (or one resource helper with `AbortController`). Add an `errorMessage(cause)` helper to replace the 36 copies. A test proves a fast parameter change cannot show stale data. (Q16, M)

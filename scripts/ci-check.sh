@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | supply-chain
+#   fmt | clippy | test | test-db | front-end | supply-chain | semver
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -12,7 +12,7 @@ MATCHER=contact-relationship-management-matcher-with-rust
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|supply-chain>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|supply-chain|semver>}"
 
 case "${stage}" in
   fmt)
@@ -82,6 +82,13 @@ case "${stage}" in
     rm -f "${SVC}/migration/service.cdx.json"
     (cd "${FE}" && pnpm install --frozen-lockfile && pnpm audit --prod \
       && pnpm sbom --sbom-format cyclonedx --prod > ../sbom/ui.cdx.json)
+    ;;
+  semver)
+    # The matcher is published to crates.io, so a breaking change to its public
+    # API must come with a new version. Compares against the last published
+    # release; run it before publishing. Needs cargo-semver-checks 0.51 or
+    # later to read Rust 1.99's rustdoc output.
+    (cd "${MATCHER}" && cargo semver-checks)
     ;;
   *)
     echo "unknown stage: ${stage}" >&2

@@ -53,7 +53,7 @@ non-matches.
 options (`fold_gmail`, `default_calling_code`, extra `nicknames`). It loads from
 JSON, every key is optional, and `Matcher::new` refuses values that make no
 sense (a probability outside `(0, 1)`, an `m` not above its `u`, thresholds out
-of order).
+of order). The refusal is a `ConfigError`, an enum that says which setting.
 
 **The defaults are checked against synthetic pairs, not fitted to your data.**
 Tune them on pairs you have already reviewed before you act on a `Match`
@@ -120,6 +120,17 @@ own data, under the same data-protection rules as that data.
 - No date of birth or address.
 - It is advice. It merges and deletes nothing.
 
+## Changing the API
+
+`Field`, `Outcome`, `Verdict` and `ConfigError` are `#[non_exhaustive]`, so a new
+variant is not a breaking change; match them with a wildcard arm. So are the result
+types `MatchResult` and `FieldScore`, which you read and do not build.
+`Contact`, `MatchConfig` and `FieldParameters` are not: you build them with
+`..Default::default()`, which `#[non_exhaustive]` would forbid. `Ranked` is not
+either: the service builds it to re-sort and re-score candidates. Adding a field to
+one of those is therefore a breaking change, and goes out in a new minor version
+while the crate is 0.x.
+
 ## Privacy
 
 Contact data is personal data. The crate stores nothing, logs nothing and does
@@ -131,6 +142,7 @@ comparison time.
 
 ```bash
 cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+cargo semver-checks   # against the last published version
 ```
 
 Traces to CRM-R23 and CRM-T60 in the repository's [spec](../spec/).

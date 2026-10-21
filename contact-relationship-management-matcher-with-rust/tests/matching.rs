@@ -7,7 +7,7 @@
 )]
 
 use contact_relationship_management_matcher::{
-    Contact, Field, MatchConfig, Matcher, Outcome, Verdict,
+    ConfigError, Contact, Field, MatchConfig, Matcher, Outcome, Verdict,
 };
 
 fn matcher() -> Matcher {
@@ -263,6 +263,39 @@ fn configuration_is_validated() {
     assert!(bad(|c| c.phone.u = 1.0).contains("phone.u"));
     assert!(bad(|c| c.default_calling_code = Some("+44".into())).contains("calling"));
     assert!(Matcher::new(MatchConfig::default()).is_ok());
+}
+
+#[test]
+fn a_refusal_says_which_setting() {
+    let refused = |edit: fn(&mut MatchConfig)| {
+        let mut c = MatchConfig::default();
+        edit(&mut c);
+        c.validate().unwrap_err()
+    };
+    assert_eq!(
+        refused(|c| c.prior = 0.0),
+        ConfigError::OutOfRange {
+            name: "prior".into()
+        }
+    );
+    assert_eq!(
+        refused(|c| c.review_threshold = 0.995),
+        ConfigError::ThresholdsOutOfOrder
+    );
+    assert_eq!(
+        refused(|c| c.disagree_at = 0.95),
+        ConfigError::SimilarityBandsOutOfOrder
+    );
+    assert_eq!(
+        refused(|c| c.email.m = 0.0001),
+        ConfigError::NotDiscriminating {
+            field: "email".into()
+        }
+    );
+    assert_eq!(
+        refused(|c| c.default_calling_code = Some("+44".into())),
+        ConfigError::CallingCode
+    );
 }
 
 #[test]

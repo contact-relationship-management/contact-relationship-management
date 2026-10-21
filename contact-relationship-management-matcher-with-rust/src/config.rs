@@ -85,13 +85,45 @@ impl Default for MatchConfig {
     }
 }
 
-/// Why a [`MatchConfig`] was refused.
+/// Why a [`MatchConfig`] was refused. New reasons may be added, so match with
+/// a wildcard arm.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ConfigError(pub String);
+#[non_exhaustive]
+pub enum ConfigError {
+    /// A probability that must lie strictly between 0 and 1 does not.
+    OutOfRange {
+        /// The setting, such as `prior` or `email.m`.
+        name: String,
+    },
+    /// `review_threshold` is above `match_threshold`.
+    ThresholdsOutOfOrder,
+    /// `disagree_at` is not below `agree_at`.
+    SimilarityBandsOutOfOrder,
+    /// A field's `m` does not exceed its `u`, so agreement would count
+    /// against a match.
+    NotDiscriminating {
+        /// The field, such as `email`.
+        field: String,
+    },
+    /// `default_calling_code` is not digits.
+    CallingCode,
+}
 
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid match configuration: {}", self.0)
+        write!(f, "invalid match configuration: ")?;
+        match self {
+            Self::OutOfRange { name } => write!(f, "{name} must be between 0 and 1, exclusive"),
+            Self::ThresholdsOutOfOrder => {
+                write!(f, "review_threshold must not exceed match_threshold")
+            }
+            Self::SimilarityBandsOutOfOrder => write!(f, "disagree_at must be below agree_at"),
+            Self::NotDiscriminating { field } => write!(
+                f,
+                "{field}.m must exceed {field}.u, or agreement would count against a match"
+            ),
+            Self::CallingCode => write!(f, "default_calling_code must be digits, such as \"44\""),
+        }
     }
 }
 
@@ -111,9 +143,9 @@ impl MatchConfig {
             if v.is_finite() && v > 0.0 && v < 1.0 {
                 Ok(())
             } else {
-                Err(ConfigError(format!(
-                    "{name} must be between 0 and 1, exclusive"
-                )))
+                Err(ConfigError::OutOfRange {
+                    name: name.to_owned(),
+                })
             }
         };
         open_unit("prior", self.prior)?;
@@ -122,12 +154,10 @@ impl MatchConfig {
         open_unit("agree_at", self.agree_at)?;
         open_unit("disagree_at", self.disagree_at)?;
         if self.review_threshold > self.match_threshold {
-            return Err(ConfigError(
-                "review_threshold must not exceed match_threshold".into(),
-            ));
+            return Err(ConfigError::ThresholdsOutOfOrder);
         }
         if self.disagree_at >= self.agree_at {
-            return Err(ConfigError("disagree_at must be below agree_at".into()));
+            return Err(ConfigError::SimilarityBandsOutOfOrder);
         }
         for (name, p) in [
             ("given_name", self.given_name),
@@ -140,17 +170,15 @@ impl MatchConfig {
             open_unit(&format!("{name}.m"), p.m)?;
             open_unit(&format!("{name}.u"), p.u)?;
             if p.m <= p.u {
-                return Err(ConfigError(format!(
-                    "{name}.m must exceed {name}.u, or agreement would count against a match"
-                )));
+                return Err(ConfigError::NotDiscriminating {
+                    field: name.to_owned(),
+                });
             }
         }
         if let Some(code) = &self.default_calling_code
             && (code.is_empty() || !code.bytes().all(|b| b.is_ascii_digit()))
         {
-            return Err(ConfigError(
-                "default_calling_code must be digits, such as \"44\"".into(),
-            ));
+            return Err(ConfigError::CallingCode);
         }
         Ok(())
     }

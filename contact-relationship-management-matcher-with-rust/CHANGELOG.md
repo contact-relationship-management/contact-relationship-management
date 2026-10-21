@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+Breaking; the next version is 0.2.0 (not bumped yet: the service depends on 0.1.2 until it is released).
+
+- `ConfigError` is now a `#[non_exhaustive]` enum (`OutOfRange`, `ThresholdsOutOfOrder`,
+  `SimilarityBandsOutOfOrder`, `NotDiscriminating`, `CallingCode`), where it was a tuple struct holding a
+  `String`. Its `Display` text is unchanged.
+- `Field`, `Outcome`, `Verdict`, `MatchResult` and `FieldScore` are `#[non_exhaustive]`, so later
+  additions are not breaking. Code that matches them exhaustively needs a wildcard arm; nothing else changes
+  for code that reads them.
+- `Contact`, `MatchConfig`, `FieldParameters` and `Ranked` stay constructible (see the README, "Changing the API").
+- Lints: `clippy::pedantic`, `unwrap_used` and `expect_used` are on; the library needed no change.
+
 ## 0.1.2
 
 - `Matcher::config` is now a `const fn`. No behaviour change.

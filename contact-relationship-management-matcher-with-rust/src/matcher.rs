@@ -19,6 +19,7 @@ const INITIAL_SIMILARITY: f64 = 0.85;
 /// A field the matcher compares.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Field {
     /// Given name.
     GivenName,
@@ -37,6 +38,7 @@ pub enum Field {
 /// What a field said about the pair.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Outcome {
     /// Full agreement: counts toward a match.
     Agree,
@@ -50,6 +52,7 @@ pub enum Outcome {
 
 /// One field's contribution, for explaining a result.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct FieldScore {
     /// Which field.
     pub field: Field,
@@ -64,6 +67,7 @@ pub struct FieldScore {
 /// The decision, from the probability and the configured thresholds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Verdict {
     /// Probably the same person.
     Match,
@@ -75,6 +79,7 @@ pub enum Verdict {
 
 /// The outcome of comparing two contacts.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct MatchResult {
     /// The chance the two contacts are the same person, `0.0..=1.0`.
     pub probability: f64,
