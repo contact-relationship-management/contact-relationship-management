@@ -740,6 +740,25 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("deal-edit")).toHaveCount(0);
   });
 
+  test("a closed deal is reopened with a reason and then edited", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/deals/deal-9");
+    await page.getByTestId("deal-reopen").click();
+    await expect(page.getByTestId("deal-reopen-confirm")).toBeDisabled();
+    await page.getByTestId("deal-reopen-reason").fill("Customer came back");
+    await page.getByTestId("deal-reopen-confirm").click();
+    await expect(page.getByTestId("deal-reopened")).toBeVisible();
+    await expect(page.getByTestId("deal-locked")).toHaveCount(0);
+    await page.getByTestId("deal-edit").click();
+    await page.getByTestId("deal-name").fill("Reopened and renamed");
+    await page.getByTestId("deal-save").click();
+    await expect(page.getByTestId("record-title")).toHaveText(
+      "Reopened and renamed",
+    );
+  });
+
   test("a link on the wrong domain, or a repeat, is refused with the reason", async ({
     page,
   }) => {

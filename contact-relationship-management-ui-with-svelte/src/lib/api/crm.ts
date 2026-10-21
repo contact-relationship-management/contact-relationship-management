@@ -424,6 +424,11 @@ export function moveDeal(
   });
 }
 
+/** Reopen a closed deal into the pipeline's last open stage; a reason is required. */
+export function reopenDeal(pid: string, reason: string): Promise<Deal> {
+  return api(`/deals/${pid}/reopen`, { method: "POST", body: { reason } });
+}
+
 /** Edit an open deal in place (name, amount, expected close). */
 export function editDeal(
   pid: string,

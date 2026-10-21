@@ -122,3 +122,46 @@ test("a deal is edited on its own page and the service keeps it", async ({
     expected_close_on: "2027-03-31",
   });
 });
+
+test("a won deal is reopened with a reason and the service reopens it", async ({
+  page,
+  request,
+}) => {
+  const pipeline = await create(request, "pipelines", {
+    name: `Reopen ${Date.now()}`,
+    stages: [
+      { name: "Qualified", probability_percent: 10 },
+      { name: "Won", probability_percent: 100, is_won: true },
+    ],
+  });
+  const deal = await create(request, "deals", {
+    name: "Closed one",
+    pipeline_pid: pipeline.pid,
+    amount_minor: 50_000,
+    currency: "GBP",
+  });
+  const stages = (await (await request.get(`${API}/api/pipelines`)).json()) as {
+    pipeline: { pid: string };
+    stages: { pid: string; is_won: boolean }[];
+  }[];
+  const won = stages
+    .find((p) => p.pipeline.pid === pipeline.pid)!
+    .stages.find((s) => s.is_won)!;
+  const moved = await request.post(`${API}/api/deals/${deal.pid}/stage`, {
+    data: { stage_pid: won.pid },
+  });
+  expect(moved.ok(), `move: ${moved.status()}`).toBeTruthy();
+
+  await page.goto(`/deals/${deal.pid}`);
+  await expect(page.getByTestId("deal-locked")).toBeVisible();
+  await page.getByTestId("deal-reopen").click();
+  await page.getByTestId("deal-reopen-reason").fill("Customer came back");
+  await page.getByTestId("deal-reopen-confirm").click();
+  await expect(page.getByTestId("deal-reopened")).toBeVisible();
+  await expect(page.getByTestId("deal-edit")).toBeVisible();
+
+  const list = (await (
+    await request.get(`${API}/api/deals?pipeline=${pipeline.pid}`)
+  ).json()) as Record<string, unknown>[];
+  expect(list[0]).toMatchObject({ pid: deal.pid, closed_at: null, won: false });
+});

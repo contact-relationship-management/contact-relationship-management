@@ -1609,6 +1609,20 @@ function bodyOf(body: unknown): Record<string, unknown> {
   return (body ?? {}) as Record<string, unknown>;
 }
 
+function reopenDeal(pid: string, body: unknown): DemoReply {
+  const deal = state.deals.find((d) => d.pid === pid);
+  if (!deal) return problem(404, "deal not found");
+  const reason = (bodyOf(body).reason as string | undefined) ?? "";
+  if (!reason.trim()) return problem(422, "a reopen requires a reason");
+  if (!deal.closed_at) return problem(422, "deal is not closed");
+  const open = [...state.stages].reverse().find((s) => !s.is_won && !s.is_lost);
+  if (!open) return problem(422, "pipeline has no open stage");
+  deal.stage_pid = open.pid;
+  deal.closed_at = null;
+  deal.won = false;
+  return ok(deal);
+}
+
 function editDeal(pid: string, body: unknown): DemoReply {
   const deal = state.deals.find((d) => d.pid === pid);
   if (!deal) return problem(404, "deal not found");
@@ -1836,6 +1850,7 @@ export function demoHandle(
       return ok(pipeline && pipeline !== PIPELINE.pid ? [] : state.deals);
     }
     if (tail === "stage" && post) return moveDeal(id!, body);
+    if (tail === "reopen" && post) return reopenDeal(id!, body);
     if (method === "PUT" && seg.length === 2) return editDeal(id!, body);
     if (method === "PUT" && tail === "position") {
       return placeInColumn(

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import { editDeal, listDeals, money, type Deal } from "#lib/api/crm.js";
+  import { editDeal, listDeals, money, reopenDeal, type Deal } from "#lib/api/crm.js";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
@@ -9,6 +9,9 @@
   const pid = $derived(page.params.pid ?? "");
 
   let editing = $state(false);
+  let reopening = $state(false);
+  let reopened = $state(false);
+  let reason = $state("");
   let busy = $state(false);
   let saved = $state(false);
   let formError = $state<string | null>(null);
@@ -24,7 +27,26 @@
     closeOn = current.expected_close_on ?? "";
     formError = null;
     saved = false;
+    reopened = false;
     editing = true;
+  }
+
+  // Re-read the deal afterwards: the reopen response is the raw row, not the masked view.
+  async function reopen(current: Deal) {
+    busy = true;
+    formError = null;
+    try {
+      await reopenDeal(current.pid, reason.trim());
+      await load(current.pid);
+      reopening = false;
+      reason = "";
+      saved = false;
+      reopened = true;
+    } catch (cause) {
+      formError = cause instanceof Error ? cause.message : String(cause);
+    } finally {
+      busy = false;
+    }
   }
 
   // Only what changed is sent, so a masked amount is never overwritten with nothing.
@@ -54,17 +76,17 @@
   }
 
   // There is no single-deal read; the list is already scoped by the caller's rights.
+  async function load(id: string) {
+    try {
+      const found = (await listDeals()).find((d) => d.pid === id);
+      if (found) deal = found;
+      else error = "404";
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
   $effect(() => {
-    const id = pid;
-    void (async () => {
-      try {
-        const found = (await listDeals()).find((d) => d.pid === id);
-        if (found) deal = found;
-        else error = "404";
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
+    void load(pid);
   });
 </script>
 
@@ -79,9 +101,41 @@
     {#if deal.amount_minor !== null}<strong>{money(deal.amount_minor, deal.currency, i18n.locale)}</strong>{/if}
     {#if deal.closed_at}<span class="chip">{deal.won ? "won" : "closed"}</span>{/if}
   </p>
+  {#if reopened}<p role="status" data-testid="deal-reopened">{t("deal.reopened")}</p>{/if}
   {#if saved}<p role="status" data-testid="deal-saved">{t("deal.saved")}</p>{/if}
   {#if deal.closed_at}
     <p data-testid="deal-locked">{t("deal.closedLocked")}</p>
+    {#if reopening}
+      <form
+        onsubmit={(event) => {
+          event.preventDefault();
+          if (deal) void reopen(deal);
+        }}
+        data-testid="deal-reopen-form"
+      >
+        <label>
+          {t("deal.reopenReason")}
+          <input bind:value={reason} required data-testid="deal-reopen-reason" />
+        </label>
+        <button type="submit" disabled={busy || !reason.trim()} data-testid="deal-reopen-confirm">
+          {t("deal.reopenConfirm")}
+        </button>
+        <button type="button" onclick={() => (reopening = false)} data-testid="deal-reopen-cancel">
+          {t("deal.cancel")}
+        </button>
+        {#if formError}<p role="alert" data-testid="deal-error">{formError}</p>{/if}
+      </form>
+    {:else}
+      <button
+        onclick={() => {
+          reopening = true;
+          formError = null;
+        }}
+        data-testid="deal-reopen"
+      >
+        {t("deal.reopen")}
+      </button>
+    {/if}
   {:else if editing}
     <form
       onsubmit={(event) => {
