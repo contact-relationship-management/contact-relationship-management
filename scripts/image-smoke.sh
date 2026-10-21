@@ -15,7 +15,7 @@
 # containers crm-smoke-*, ports 15150 and 18025, removed on exit. Needs podman, curl,
 # python3 and a cargo toolchain (for the token). Not part of ci-check.sh.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 IMAGE="${1:-ghcr.io/contact-relationship-management/contact-relationship-management/service@sha256:8579252e8a2702199cd9f12b768f75a1b2ba510ad22c53cd9041255b2ce2d5a5}"
 NET=crm-smoke-net PG=crm-smoke-pg RD=crm-smoke-redis MAIL=crm-smoke-mail SVC=crm-smoke-svc WRK=crm-smoke-worker
@@ -117,7 +117,7 @@ mail_env=(-e LOCO_ENV=development -e CRM_MAIL_MODE=smtp -e "CRM_SMTP_HOST=${MAIL
 # development binds to localhost; the container needs every interface
 run_image "${SVC}" -p "${PORT}:5150" "${mail_env[@]}" -- --binding 0.0.0.0
 check "the service starts in development mode with SMTP" wait_for 60 serves
-C1="$(contact 'Mail One')"; C2="$(contact 'Mail Two')"; C3="$(contact 'Mail Three, never consented')"
+C1="$(contact 'Mail One')"; C2="$(contact 'Mail Two')"; contact 'Mail Three, never consented' >/dev/null  # created and never given consent
 for c in "${C1}" "${C2}"; do status "${ADMIN}" POST "/api/contacts/${c}/consent" '{"action":"granted","source":"image smoke"}' >/dev/null; done
 SEG="$(body "${ADMIN}" POST /api/segments '{"name":"Everyone","filter":{}}' | pid_of)"
 CAMP="$(body "${ADMIN}" POST /api/campaigns "{\"name\":\"Smoke send\",\"segment_pid\":\"${SEG}\",\"subject\":\"Smoke\",\"body\":\"Hello from the image.\"}" | pid_of)"

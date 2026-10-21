@@ -5,7 +5,7 @@
 # had: three migrations back), migrates forward with the data in place, then merges 150 pairs and checks.
 # Usage: N=300 scripts/migrate-with-data.sh   (needs podman, curl and the debug binary)
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 SVC="$(pwd)/contact-relationship-management-service-with-rust"
 BIN=$SVC/target/debug/contact-relationship-management
 PG=crm-mig-pg RD=crm-mig-redis PGP=15440 RDP=16380 PORT=5181
@@ -56,7 +56,6 @@ snap >/tmp/mig-before.txt
 echo "  rows snapshotted in $(wc -l </tmp/mig-before.txt | tr -d ' ') tables"
 
 echo "== 3. migrate up with the data in place"
-START=$(date +%s.%N 2>/dev/null || date +%s)
 run db migrate | tail -2
 sql "select count(*) from contacts where merged_into_pid is not null" | sed 's/^/  contacts already marked merged: /'
 snap >/tmp/mig-after.txt

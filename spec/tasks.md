@@ -1150,7 +1150,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 
       **Limits:** copies live in one process's memory, so several UI replicas each keep their own and a visitor moved to another replica starts again; a visitor can create copies up to the cap by signing in repeatedly, which evicts other visitors' copies.
 - [ ] CRM-T93 **UI component tests and a generated API client.** Add `@testing-library/svelte` tests for `DataTable`, `Board` and `LinksPanel`. Generate types from the service's OpenAPI with `openapi-typescript`, and check them against the 911-line `api/crm.ts`. Fix or remove the vitest `deps.inline` regex that matches nothing. (Q19, M; types after T83)
-- [ ] CRM-T94 **CI gates and hygiene.**
+- [~] CRM-T94 **CI gates and hygiene.**
   - Add coverage (`cargo llvm-cov`, vitest `--coverage`) as a report first, and set floors later.
   - Add a scheduled `cargo mutants` run on `rules/`.
   - Add ESLint with `eslint-plugin-svelte`, plus `typos`, markdown lint, `shellcheck`, and `actionlint` or `zizmor`.
@@ -1161,6 +1161,22 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
   - Audit the matcher.
 
   (Q20, M)
+
+      **Done 2026-10-21 (not yet run by GitHub Actions or Woodpecker):**
+      - **Playwright in CI:** a new `e2e` stage in `scripts/ci-check.sh`, a GitHub job and a Woodpecker step. Passes locally, 105 of 105.
+      - **Keycloak-only build:** `--no-default-features --features keycloak` is now in the `clippy` stage (clean locally).
+      - **shellcheck:** a `scripts` stage (warnings and errors only). Fixed what it found: four `cd` without `|| exit`, an unused `C3` and an unused `START`.
+      - **Matcher supply chain:** `cargo audit` and `cargo deny` run on the matcher too, with its own `deny.toml` (the licences it uses today). Both pass.
+      - **`permissions: contents: read`** at the top of `ci.yml`.
+      - **Woodpecker supply-chain step:** Node 26 (was 24) and pnpm from npm, since Node 25+ has no corepack. The nodesource `setup_26.x` URL answers 200; the step itself has not run.
+      - **`semver` stage** from CRM-T87 exists in the script but is in neither workflow: it fails by design until the matcher version is bumped.
+
+      **Not done, and why:**
+      - **Coverage** (`cargo llvm-cov`, vitest `--coverage`): the tool is not installed here, and a report-only job is best added when its output can be seen.
+      - **Mutation testing:** `cargo-mutants` is installed, but a run over `rules/` needs the database suite and takes long; a scheduled job should be set up and watched once.
+      - **ESLint** with `eslint-plugin-svelte`: new dev dependencies and a lockfile change, and its rule set is a team choice.
+      - **`typos`, markdown lint, `actionlint`/`zizmor`:** none installed here; each needs its first run reviewed for noise before it can gate.
+      - The two new workflow jobs and the Woodpecker steps have not run on their providers; expect a first-run fix.
 
 ## New capabilities (from the 2026-10-21 research, [plan.md](plan.md) C1 to C10)
 

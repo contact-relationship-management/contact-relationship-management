@@ -50,10 +50,23 @@ steps:
       - npm install --global pnpm@11.0.8
       - scripts/ci-check.sh front-end
 
+  - name: e2e
+    image: 'node:26-bookworm'
+    commands:
+      - npm install --global pnpm@11.0.8
+      - scripts/ci-check.sh e2e
+
+  - name: scripts
+    image: 'debian:bookworm-slim'
+    commands:
+      - apt-get update && apt-get install -y --no-install-recommends shellcheck
+      - scripts/ci-check.sh scripts
+
   - name: supply-chain
     image: *rust_image
     commands:
       - cargo install --locked cargo-audit cargo-deny cargo-cyclonedx
-      - curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && apt-get install -y nodejs
-      - corepack enable && corepack prepare pnpm@11.0.8 --activate
+      # The same Node major as package.json's engines; Node 25+ has no corepack.
+      - curl -fsSL https://deb.nodesource.com/setup_26.x | bash - && apt-get install -y nodejs
+      - npm install --global pnpm@11.0.8
       - scripts/ci-check.sh supply-chain

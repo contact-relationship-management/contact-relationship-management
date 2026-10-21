@@ -1,0 +1,27 @@
+# cargo-deny policy for the matcher (CRM-T94): advisories, licences and where
+# code may come from. Only the licences this crate's dependencies use today; add one when a new dependency needs it. The crate's
+# own licence is `MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only`.
+# Run by `scripts/ci-check.sh supply-chain`.
+
+[advisories]
+version = 2
+
+[licenses]
+version = 2
+allow = [
+  "Apache-2.0",
+  "BSD-3-Clause",
+  "MIT",
+  "Unicode-3.0",
+  "Zlib",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | supply-chain | semver
+#   fmt | clippy | test | test-db | front-end | e2e | scripts | supply-chain | semver
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -12,7 +12,7 @@ MATCHER=contact-relationship-management-matcher-with-rust
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|supply-chain|semver>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|scripts|supply-chain|semver>}"
 
 case "${stage}" in
   fmt)
@@ -22,6 +22,8 @@ case "${stage}" in
     ;;
   clippy)
     (cd "${SVC}" && cargo clippy --all-targets "${FEATURES[@]}" -- -D warnings)
+    # The Keycloak-only build (no PASETO) the manifest documents.
+    (cd "${SVC}" && cargo clippy --all-targets --no-default-features --features keycloak -- -D warnings)
     (cd "${SVC}/migration" && cargo clippy --all-targets -- -D warnings)
     (cd "${MATCHER}" && cargo clippy --all-targets -- -D warnings)
     ;;
@@ -70,11 +72,25 @@ case "${stage}" in
     pnpm run build
     pnpm run lint
     ;;
+  e2e)
+    # The Playwright suites (demo-data tour, accessibility, smoke): they build
+    # and serve the UI themselves and need no service.
+    cd "${FE}"
+    pnpm install --frozen-lockfile
+    pnpm exec playwright install --with-deps chromium
+    pnpm exec playwright test
+    ;;
+  scripts)
+    # Warnings and errors only; the style and info notes are not gated.
+    shellcheck -S warning scripts/*.sh
+    ;;
   supply-chain)
     # CRM-T34: known-vulnerability, licence, and source gates, plus SBOMs
     # (CycloneDX) written to sbom/ for the release record.
     mkdir -p sbom
     (cd "${SVC}" && cargo audit && cargo deny check advisories bans licenses sources)
+    # The matcher is published on its own, so it has its own gate.
+    (cd "${MATCHER}" && cargo audit && cargo deny check advisories bans licenses sources)
     (cd "${SVC}" && cargo cyclonedx --format json --spec-version 1.5 --override-filename service.cdx \
       && mv service.cdx.json ../sbom/service.cdx.json)
     # The migration crate is a path dependency, already covered by the

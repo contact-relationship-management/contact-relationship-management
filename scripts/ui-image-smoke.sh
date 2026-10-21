@@ -13,7 +13,7 @@
 # (SvelteKit's cross-site form check). Containers crm-ui-smoke-*, ports 13100 and 13101,
 # removed on exit. Needs podman and curl. Not part of ci-check.sh.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 IMAGE="${1:-ghcr.io/contact-relationship-management/contact-relationship-management/ui@sha256:6d20ba20daf38a126102ac915b7fa5d3084c1c2a23ff65727a24de340a03ec9b}"
 A=crm-ui-smoke-plain B=crm-ui-smoke-tour

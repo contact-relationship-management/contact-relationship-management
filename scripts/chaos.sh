@@ -13,7 +13,7 @@
 # (default: the service's target/debug build). Not part of `ci-check.sh`: it is
 # slow and needs a container runtime, so run it on purpose.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 SVC_DIR="$(pwd)/contact-relationship-management-service-with-rust"
 BIN="$(cd "$(dirname "${1:-${SVC_DIR}/target/debug/contact-relationship-management}")" && pwd)/$(basename "${1:-${SVC_DIR}/target/debug/contact-relationship-management}")"
