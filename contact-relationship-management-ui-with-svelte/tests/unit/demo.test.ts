@@ -2,11 +2,15 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   DEMO_EMAIL,
-  DEMO_SESSION,
+  MAX_DEMO_SESSIONS,
   demoHandle,
+  demoHandleFor,
+  demoSessionCount,
+  endDemoSession,
   isDemoEmail,
   isDemoSession,
   resetDemo,
+  startDemoSession,
 } from "../../src/lib/server/demo";
 
 const get = (path: string) => {
@@ -26,10 +30,62 @@ describe("the guided tour's identity", () => {
     expect(isDemoEmail("example@example.com.evil.test")).toBe(false);
   });
 
-  it("recognises only its own session id", () => {
-    expect(isDemoSession(DEMO_SESSION)).toBe(true);
+  it("recognises only its own session ids", () => {
+    expect(isDemoSession(startDemoSession())).toBe(true);
     expect(isDemoSession("a-real-session")).toBe(false);
     expect(isDemoSession(null)).toBe(false);
+  });
+
+  it("gives every sign-in a different session id", () => {
+    expect(startDemoSession()).not.toBe(startDemoSession());
+  });
+});
+
+describe("each visitor's own copy of the tour", () => {
+  const consent = (sid: string, action: string) =>
+    demoHandleFor(
+      sid,
+      "POST",
+      "contacts/con-1/consent",
+      new URLSearchParams(),
+      {
+        action,
+      },
+    );
+  const consentOf = (sid: string) =>
+    (
+      demoHandleFor(sid, "GET", "contacts/con-1", new URLSearchParams(), null)
+        .body as { contact: { marketing_consent: string } }
+    ).contact.marketing_consent;
+
+  it("keeps one visitor's writes out of another's", () => {
+    const a = startDemoSession();
+    const b = startDemoSession();
+    const before = consentOf(b);
+    consent(a, "withdrawn");
+    expect(consentOf(a)).toBe("withdrawn");
+    expect(consentOf(b)).toBe(before);
+    // ...and out of the default copy that `demoHandle` uses.
+    expect(
+      (get("contacts/con-1").body as { contact: { marketing_consent: string } })
+        .contact.marketing_consent,
+    ).toBe(before);
+  });
+
+  it("keeps at most MAX_DEMO_SESSIONS copies, dropping the least recently used", () => {
+    const first = startDemoSession();
+    consent(first, "withdrawn");
+    for (let i = 0; i < MAX_DEMO_SESSIONS; i += 1) startDemoSession();
+    expect(demoSessionCount()).toBe(MAX_DEMO_SESSIONS);
+    // The first copy went, so that visitor starts again from the original data.
+    expect(consentOf(first)).not.toBe("withdrawn");
+  });
+
+  it("forgets a copy at sign-out", () => {
+    const sid = startDemoSession();
+    consent(sid, "withdrawn");
+    endDemoSession(sid);
+    expect(consentOf(sid)).not.toBe("withdrawn");
   });
 });
 

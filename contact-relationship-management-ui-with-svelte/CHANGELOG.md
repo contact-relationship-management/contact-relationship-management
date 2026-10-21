@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — each tour visitor has their own copy of the data (CRM-T92)
+
+Signing in as `example@example.com` now starts a new demo session with a random id and its own copy of the
+fictitious data, so one visitor no longer sees what another typed or moved. Before, every visitor shared one copy
+under one fixed session id, and each new sign-in reset it for everyone. At most 200 copies are kept in memory; the
+least recently used goes first, and that visitor starts again from the original data. Sign-out forgets the copy.
+The tour is still on unless `CRM_DEMO_TOUR=off`.
+
+### Fixed — sign-in when the authentication service is down
+
+A magic-link request to an unreachable authentication service threw, so the sign-in page rendered blank instead
+of saying the request failed; it now says it failed. Sign-out is best-effort as documented: an unreachable service
+no longer stops it. Found because the e2e test `another address is not the tour` failed locally (Playwright does
+not run in CI; see CRM-T94).
+
 ### Changed — the tour's account pages list deals
 
 In the demo data an account's deals are its contacts' deals, so `/accounts/{pid}` shows them as links to

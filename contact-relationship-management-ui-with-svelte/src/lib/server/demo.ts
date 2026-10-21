@@ -6,10 +6,12 @@
 // with no service, no real data and no real account. Everything here is
 // invented: the people, organisations and figures do not exist.
 //
-// State lives in memory for the whole server process and is shared by every
-// demo visitor; signing in to the tour again resets it. Writes (moving a deal,
-// resolving a ticket, recording consent, …) change this state, so the screens
-// behave as they would against the real service.
+// Each sign-in to the tour gets its own session id and its own copy of the
+// data, held in memory, so one visitor never sees what another typed. Writes
+// (moving a deal, resolving a ticket, recording consent, …) change that copy,
+// so the screens behave as they would against the real service. At most
+// `MAX_DEMO_SESSIONS` copies are kept; the least recently used goes first, and
+// a visitor whose copy went starts again from the original data.
 
 import type {
   Account,
@@ -26,12 +28,15 @@ import type {
 /** The only address the tour accepts. */
 export const DEMO_EMAIL = "example@example.com";
 
-/** The session id a demo visitor holds (never sent to a real service). */
-export const DEMO_SESSION = "demo-tour-session";
+/** Every demo session id starts with this (never sent to a real service). */
+export const DEMO_SESSION_PREFIX = "demo-tour-";
 
-/** Whether `sid` is the demo session. */
+/** How many visitors' copies of the tour data are kept in memory. */
+export const MAX_DEMO_SESSIONS = 200;
+
+/** Whether `sid` is a demo session. */
 export function isDemoSession(sid: string | null | undefined): boolean {
-  return sid === DEMO_SESSION;
+  return typeof sid === "string" && sid.startsWith(DEMO_SESSION_PREFIX);
 }
 
 /** Whether `email` is the tour's address (case and spacing ignored). */
@@ -690,11 +695,60 @@ function build(): State {
   };
 }
 
+/** The copy `demoHandle` works on; `demoHandleFor` points it at a visitor's. */
 let state: State = build();
 
-/** Start the tour again from its original data. */
+/** Start the default copy (the one `demoHandle` uses alone) again. */
 export function resetDemo(): void {
   state = build();
+}
+
+/** Each visitor's copy, least recently used first. */
+const sessions = new Map<string, State>();
+
+function keep(sid: string, copy: State): void {
+  sessions.delete(sid);
+  sessions.set(sid, copy);
+  while (sessions.size > MAX_DEMO_SESSIONS) {
+    sessions.delete(sessions.keys().next().value!);
+  }
+}
+
+/** A new tour session with its own fresh copy of the data. */
+export function startDemoSession(): string {
+  const sid = `${DEMO_SESSION_PREFIX}${crypto.randomUUID()}`;
+  keep(sid, build());
+  return sid;
+}
+
+/** Forget a tour session's copy (sign-out). */
+export function endDemoSession(sid: string): void {
+  sessions.delete(sid);
+}
+
+/** How many tour copies are held (for tests). */
+export function demoSessionCount(): number {
+  return sessions.size;
+}
+
+/** `demoHandle` against the copy that belongs to `sid`. */
+export function demoHandleFor(
+  sid: string,
+  method: string,
+  path: string,
+  query: URLSearchParams,
+  body: unknown,
+): DemoReply {
+  const copy = sessions.get(sid) ?? build();
+  keep(sid, copy);
+  const saved = state;
+  state = copy;
+  try {
+    // Synchronous, so no other request can run while `state` is swapped.
+    return demoHandle(method, path, query, body);
+  } finally {
+    state = saved;
+  }
 }
 
 const ok = (body: unknown): DemoReply => ({ status: 200, body });

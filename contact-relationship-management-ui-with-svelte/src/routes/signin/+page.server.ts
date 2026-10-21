@@ -8,12 +8,7 @@ import type { Actions, PageServerLoad } from "./$types";
 import { redirect } from "@sveltejs/kit";
 import { requestMagicLink } from "#lib/server/auth.js";
 import { DEMO_TOUR_ENABLED } from "#lib/server/config.js";
-import {
-  DEMO_EMAIL,
-  DEMO_SESSION,
-  isDemoEmail,
-  resetDemo,
-} from "#lib/server/demo.js";
+import { DEMO_EMAIL, isDemoEmail, startDemoSession } from "#lib/server/demo.js";
 import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from "#lib/server/session.js";
 
 // `page.data.title` convention (see `../+layout.svelte`): mirrors this
@@ -33,10 +28,10 @@ export const actions: Actions = {
     if (!email) {
       return { sent: false, error: "email-required" };
     }
-    // The guided tour: no email is sent; the session is the demo session.
+    // The guided tour: no email is sent; the session is a new demo session
+    // with its own copy of the data.
     if (DEMO_TOUR_ENABLED && isDemoEmail(email)) {
-      resetDemo();
-      cookies.set(SESSION_COOKIE, DEMO_SESSION, SESSION_COOKIE_OPTIONS);
+      cookies.set(SESSION_COOKIE, startDemoSession(), SESSION_COOKIE_OPTIONS);
       redirect(303, "/");
     }
     const ok = await requestMagicLink(fetch, email, url.origin);

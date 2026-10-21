@@ -11,7 +11,7 @@ import type { RequestHandler } from "./$types";
 import { CRM_API_URL } from "#lib/server/config.js";
 import { exchangeToken } from "#lib/server/auth.js";
 import { DEMO_TOUR_ENABLED } from "#lib/server/config.js";
-import { demoHandle, isDemoSession } from "#lib/server/demo.js";
+import { demoHandleFor, isDemoSession } from "#lib/server/demo.js";
 
 const proxy: RequestHandler = async ({
   request,
@@ -31,7 +31,8 @@ const proxy: RequestHandler = async ({
         body = null;
       }
     }
-    const reply = demoHandle(
+    const reply = demoHandleFor(
+      locals.sessionId!,
       request.method,
       params.path ?? "",
       url.searchParams,

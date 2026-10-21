@@ -130,7 +130,7 @@ its code and tests, under the three-part rule.
 | Q15 | The UI ships all 8 locales in one bundle | `i18n.svelte.ts` is 3,320 lines; the chunk is 52 KB gzipped; 19 de-de values identical to English | M | T89 |
 | Q16 | Pages fetch in `$effect` instead of `load`, with no cancellation | 28 `$effect`s; 11 `void (async…)()`; 36 copies of the same error idiom; 0 `AbortController` | M | T90 |
 | Q17 | The SvelteKit migration is unfinished | `MIGRATION_TASKS.md` has 10 open boxes; `src/env.ts` falls back to `""` silently; `$lib` and `#lib` imports are mixed | S | T91 |
-| Q18 | The demo tour is on by default, with one fixed session id shared by every visitor | `server/config.ts:18`; `demo.ts:30` `DEMO_SESSION` | S | T92 |
+| Q18 | The demo tour is on by default, and every visitor shares one fixed session id and one copy of the data | `server/config.ts:18`; `demo.ts:30` `DEMO_SESSION` | S | T92 |
 | Q19 | No component tests; the API client is hand-written | `@testing-library/svelte` installed but unused; `api/crm.ts` 911 lines; a vitest `deps.inline` regex that matches nothing | M | T93 |
 | Q20 | Missing CI gates | no coverage, mutation testing, ESLint, `typos`/markdown/`shellcheck`/`actionlint`, or Playwright in CI; `ci.yml` has no `permissions:`; Woodpecker installs Node 24 while the project needs 26; the matcher is not audited | M | T94 |
 
