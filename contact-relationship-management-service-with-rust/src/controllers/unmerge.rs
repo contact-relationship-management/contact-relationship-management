@@ -20,7 +20,7 @@ use serde::Deserialize;
 use serde_json::{Map, json};
 use uuid::Uuid;
 
-use super::merge::{MOVES, conflict};
+use super::merge::{MOVES, authorize_destructive, conflict, lock_rows, pick_pair};
 use super::privacy::TOMBSTONE_PERSON;
 use super::{ensure_valid, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
@@ -243,59 +243,60 @@ async fn clear_filled(
     Ok((cleared, kept))
 }
 
-/// `POST /api/contacts/{pid}/unmerge` (CRM-R26).
-#[debug_handler]
-#[allow(clippy::too_many_lines)]
-async fn unmerge(
-    State(ctx): State<AppContext>,
-    caller: MaybeAuthUser,
-    PidPath(pid): PidPath,
-    Json(payload): Json<UnmergePayload>,
-) -> Result<Response> {
-    let mut problems = Problems::new();
-    problems.require_text("reason", &payload.reason);
-    ensure_valid(&problems.into_vec())?;
-    let merged_pid = pid;
-
-    let txn = ctx.db.begin().await?;
+/// The newest merge of `merged_pid` that has not been undone, or the reason
+/// there is none.
+async fn open_ledger(txn: &DatabaseTransaction, merged_pid: Uuid) -> Result<contact_merges::Model> {
     let ledger = contact_merges::Entity::find()
         .filter(contact_merges::Column::MergedPid.eq(merged_pid))
         .filter(contact_merges::Column::UnmergedAt.is_null())
         .order_by_desc(contact_merges::Column::Id)
-        .one(&txn)
+        .one(txn)
         .await?;
-    let Some(ledger) = ledger else {
-        let known = contacts::Entity::find()
-            .filter(contacts::Column::Pid.eq(merged_pid))
-            .one(&txn)
-            .await?;
-        return Err(if known.is_some() {
-            conflict("this contact has not been merged into another, or was already unmerged")
-        } else {
-            Error::NotFound
-        });
-    };
+    if let Some(ledger) = ledger {
+        return Ok(ledger);
+    }
+    let known = contacts::Entity::find()
+        .filter(contacts::Column::Pid.eq(merged_pid))
+        .one(txn)
+        .await?;
+    Err(if known.is_some() {
+        conflict("this contact has not been merged into another, or was already unmerged")
+    } else {
+        Error::NotFound
+    })
+}
+
+/// Lock both contacts in a fixed order, as merge does, then read the ledger
+/// row again under lock: another unmerge may have finished first. Returns
+/// `(ledger, merged, survivor)`.
+async fn lock_for_unmerge(
+    txn: &DatabaseTransaction,
+    ledger: &contact_merges::Model,
+    merged_pid: Uuid,
+) -> Result<(contact_merges::Model, contacts::Model, contacts::Model)> {
     let survivor_pid = ledger.survivor_pid;
-    // Lock both contacts in a fixed order, as merge does, then read the
-    // ledger row again: another unmerge may have finished first.
-    let rows = contacts::Entity::find()
-        .filter(contacts::Column::Pid.is_in([merged_pid, survivor_pid]))
-        .order_by_asc(contacts::Column::Id)
-        .lock_exclusive()
-        .all(&txn)
-        .await?;
+    let rows = lock_rows(txn, merged_pid, survivor_pid).await?;
     let ledger = contact_merges::Entity::find_by_id(ledger.id)
         .lock_exclusive()
-        .one(&txn)
+        .one(txn)
         .await?
         .filter(|l| l.unmerged_at.is_none())
         .ok_or_else(|| conflict("this merge was already undone"))?;
-    let pick = |wanted: Uuid| rows.iter().find(|c| c.pid == wanted).ok_or(Error::NotFound);
-    let (merged, survivor) = (pick(merged_pid)?, pick(survivor_pid)?);
+    let (merged, survivor) = pick_pair(&rows, merged_pid, survivor_pid)?;
+    Ok((ledger, merged, survivor))
+}
+
+/// The state the merge left must still be the state the ledger describes.
+/// Returns the ledger's `before` record, which the undo works from.
+fn check_unmergeable(
+    ledger: &contact_merges::Model,
+    merged: &contacts::Model,
+    survivor: &contacts::Model,
+) -> Result<serde_json::Value> {
     if merged.person_ref == TOMBSTONE_PERSON || survivor.person_ref == TOMBSTONE_PERSON {
         return Err(unprocessable("an erased contact cannot be unmerged"));
     }
-    if merged.merged_into_pid != Some(survivor_pid) {
+    if merged.merged_into_pid != Some(ledger.survivor_pid) {
         return Err(conflict(
             "this contact is not merged into the recorded survivor",
         ));
@@ -307,30 +308,23 @@ async fn unmerge(
             "the survivor has been deleted"
         }));
     }
-    let Some(before) = ledger.before.clone() else {
-        return Err(unprocessable(
-            "this merge was made before the undo record existed and cannot be undone",
-        ));
-    };
-    for contact in [merged, survivor] {
-        auth::authorize_record(
-            &caller,
-            authentication_verifier::Action::Destructive,
-            &auth::contact_resource_attrs(contact),
-        )
-        .map_err(record_rejection)?;
-    }
+    ledger.before.clone().ok_or_else(|| {
+        unprocessable("this merge was made before the undo record existed and cannot be undone")
+    })
+}
 
-    let (restored, left_behind) = restore_moved(&txn, &ledger).await?;
-    let dropped_restored = restore_dropped(&txn, &ledger, &before).await?;
-    let (cleared, kept) = clear_filled(&txn, &ledger, &before).await?;
-
-    // Consent never widens. The survivor keeps what it has now. The returning
-    // contact gets the stricter of its own state and the survivor's, so a
-    // withdrawal made since the merge applies to both.
+/// Bring the merged contact back. Consent never widens: the survivor keeps
+/// what it has now, and the returning contact gets the stricter of its own
+/// state and the survivor's, so a withdrawal made since the merge applies to
+/// both. Returns the returning contact's consent.
+async fn bring_back(
+    txn: &DatabaseTransaction,
+    merged: &contacts::Model,
+    survivor: &contacts::Model,
+    now: chrono::DateTime<chrono::FixedOffset>,
+) -> Result<String> {
     let result =
         rules::stricter_consent(&merged.marketing_consent, &survivor.marketing_consent).to_string();
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
     let mut back: contacts::ActiveModel = merged.clone().into();
     back.deleted_at = ActiveValue::set(None);
     back.merged_into_pid = ActiveValue::set(None);
@@ -339,23 +333,104 @@ async fn unmerge(
         back.consent_changed_at = ActiveValue::set(Some(now));
         consent_events::ActiveModel {
             pid: ActiveValue::set(Uuid::new_v4()),
-            contact_pid: ActiveValue::set(merged_pid),
+            contact_pid: ActiveValue::set(merged.pid),
             action: ActiveValue::set(result.clone()),
-            source: ActiveValue::set(format!("unmerge:{survivor_pid}")),
+            source: ActiveValue::set(format!("unmerge:{}", survivor.pid)),
             occurred_at: ActiveValue::set(now),
             ..Default::default()
         }
-        .insert(&txn)
+        .insert(txn)
         .await?;
     }
-    back.update(&txn).await?;
+    back.update(txn).await?;
     if result == "withdrawn" {
         txn.execute_unprepared(&format!(
             "UPDATE nurture_enrollments SET status = 'exited', next_due_at = NULL \
-             WHERE contact_pid = '{merged_pid}' AND status = 'active' AND deleted_at IS NULL"
+             WHERE contact_pid = '{}' AND status = 'active' AND deleted_at IS NULL",
+            merged.pid
         ))
         .await?;
     }
+    Ok(result)
+}
+
+/// What an unmerge did, for the audit entry and the event.
+struct UnmergeDone<'a> {
+    survivor_pid: Uuid,
+    merged_pid: Uuid,
+    reason: &'a str,
+    restored: &'a Map<String, serde_json::Value>,
+    left_behind: &'a Map<String, serde_json::Value>,
+    dropped_restored: &'a Map<String, serde_json::Value>,
+    cleared: &'a [String],
+    consent: &'a str,
+}
+
+/// Close the ledger row, then write the audit entry and the event.
+async fn record_unmerge(
+    txn: &DatabaseTransaction,
+    caller: &MaybeAuthUser,
+    ledger: contact_merges::Model,
+    now: chrono::DateTime<chrono::FixedOffset>,
+    done: &UnmergeDone<'_>,
+) -> Result<()> {
+    let mut closed: contact_merges::ActiveModel = ledger.into();
+    closed.unmerged_at = ActiveValue::set(Some(now));
+    closed.unmerged_actor = ActiveValue::set(caller.actor().map(str::to_string));
+    closed.update(txn).await?;
+    Audit::record(
+        txn,
+        "contact",
+        done.survivor_pid,
+        "contacts_unmerged",
+        caller.actor(),
+        Some(json!({
+            "merged_pid": done.merged_pid,
+            "reason": done.reason,
+            "restored": done.restored,
+            "left_behind": done.left_behind,
+            "dropped_restored": done.dropped_restored,
+            "fields_cleared": done.cleared,
+            "consent_result": done.consent,
+        })),
+    )
+    .await?;
+    streaming::emit_on(
+        txn,
+        "contact",
+        "contacts_unmerged",
+        &done.survivor_pid.to_string(),
+        "",
+        caller.actor(),
+        Some(json!({ "merged_pid": done.merged_pid })),
+    )
+    .await
+}
+
+/// `POST /api/contacts/{pid}/unmerge` (CRM-R26).
+#[debug_handler]
+async fn unmerge(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(merged_pid): PidPath,
+    Json(payload): Json<UnmergePayload>,
+) -> Result<Response> {
+    let mut problems = Problems::new();
+    problems.require_text("reason", &payload.reason);
+    ensure_valid(&problems.into_vec())?;
+
+    let txn = ctx.db.begin().await?;
+    let ledger = open_ledger(&txn, merged_pid).await?;
+    let survivor_pid = ledger.survivor_pid;
+    let (ledger, merged, survivor) = lock_for_unmerge(&txn, &ledger, merged_pid).await?;
+    let before = check_unmergeable(&ledger, &merged, &survivor)?;
+    authorize_destructive(&caller, [&merged, &survivor])?;
+
+    let (restored, left_behind) = restore_moved(&txn, &ledger).await?;
+    let dropped_restored = restore_dropped(&txn, &ledger, &before).await?;
+    let (cleared, kept) = clear_filled(&txn, &ledger, &before).await?;
+    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let result = bring_back(&txn, &merged, &survivor, now).await?;
 
     let body = json!({
         "survivor_pid": survivor_pid,
@@ -377,37 +452,17 @@ async fn unmerge(
         return format::json(body);
     }
 
-    let mut done: contact_merges::ActiveModel = ledger.into();
-    done.unmerged_at = ActiveValue::set(Some(now));
-    done.unmerged_actor = ActiveValue::set(caller.actor().map(str::to_string));
-    done.update(&txn).await?;
-    Audit::record(
-        &txn,
-        "contact",
+    let done = UnmergeDone {
         survivor_pid,
-        "contacts_unmerged",
-        caller.actor(),
-        Some(json!({
-            "merged_pid": merged_pid,
-            "reason": payload.reason,
-            "restored": restored,
-            "left_behind": left_behind,
-            "dropped_restored": dropped_restored,
-            "fields_cleared": cleared,
-            "consent_result": result,
-        })),
-    )
-    .await?;
-    streaming::emit_on(
-        &txn,
-        "contact",
-        "contacts_unmerged",
-        &survivor_pid.to_string(),
-        "",
-        caller.actor(),
-        Some(json!({ "merged_pid": merged_pid })),
-    )
-    .await?;
+        merged_pid,
+        reason: &payload.reason,
+        restored: &restored,
+        left_behind: &left_behind,
+        dropped_restored: &dropped_restored,
+        cleared: &cleared,
+        consent: &result,
+    };
+    record_unmerge(&txn, &caller, ledger, now, &done).await?;
     txn.commit().await?;
     format::json(body)
 }

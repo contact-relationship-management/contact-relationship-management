@@ -24,7 +24,10 @@ use loco_rs::{
 use migration::Migrator;
 use std::path::Path;
 
-use crate::{auth, controllers, models::_entities::prelude::*, rate_limit, redis_store, tasks};
+use crate::{
+    auth, controllers, idempotency_store, idempotency_store::Stored, models::_entities::prelude::*,
+    rate_limit, redis_store, tasks,
+};
 
 /// Blanket auth-enforcement middleware: reads `CRM_REQUIRE_AUTH` per
 /// request and delegates to [`auth::enforce_request`]. Off by
@@ -81,31 +84,86 @@ async fn insight_audit_mw(
     }
 }
 
+/// A JSON error from the idempotency layer.
+fn idempotency_problem(status: axum::http::StatusCode, message: &str) -> Response {
+    (
+        status,
+        axum::Json(serde_json::json!({ "error": "idempotency", "description": message })),
+    )
+        .into_response()
+}
+
+/// The store failed: refuse rather than run the request unprotected.
+fn idempotency_unavailable(error: &sea_orm::DbErr) -> Response {
+    tracing::error!(%error, "idempotency store failed");
+    idempotency_problem(
+        axum::http::StatusCode::SERVICE_UNAVAILABLE,
+        "idempotency store unavailable",
+    )
+}
+
+/// The answer to a request whose key an earlier request already holds: the
+/// stored response, or the reason there is none yet.
+fn answer_for_existing(existing: Option<&Stored>, fingerprint: &str) -> Response {
+    use axum::http::{HeaderValue, StatusCode, header};
+    let Some(stored) = existing else {
+        // The first attempt failed and cleaned up between our two statements;
+        // the client can retry at once.
+        return idempotency_problem(
+            StatusCode::CONFLICT,
+            "the original request just finished without a stored result; retry",
+        );
+    };
+    if stored.fingerprint != fingerprint {
+        return idempotency_problem(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Idempotency-Key was already used with a different request",
+        );
+    }
+    if stored.state != "done" {
+        let mut response = idempotency_problem(
+            StatusCode::CONFLICT,
+            "the original request is still being processed; retry shortly",
+        );
+        response
+            .headers_mut()
+            .insert(header::RETRY_AFTER, HeaderValue::from_static("1"));
+        return response;
+    }
+    let mut response = Response::new(axum::body::Body::from(stored.body.clone()));
+    *response.status_mut() = u16::try_from(stored.status)
+        .ok()
+        .and_then(|s| StatusCode::from_u16(s).ok())
+        .unwrap_or(StatusCode::OK);
+    if let Some(value) = stored
+        .content_type
+        .as_deref()
+        .and_then(|v| HeaderValue::from_str(v).ok())
+    {
+        response.headers_mut().insert(header::CONTENT_TYPE, value);
+    }
+    response
+        .headers_mut()
+        .insert("idempotent-replayed", HeaderValue::from_static("true"));
+    response
+}
+
 /// Idempotency keys (CRM-T52); see [`crate::idempotency`] for the contract.
 /// Runs inside auth, so only authenticated callers reach it and the key is
 /// scoped to the caller. Fails closed: a caller who asked for idempotency
 /// never gets an unprotected execution because the store was unavailable.
-#[allow(clippy::too_many_lines)] // one linear claim / run / record walk
 async fn idempotency_mw(
     axum::extract::State(db): axum::extract::State<sea_orm::DatabaseConnection>,
     req: Request,
     next: Next,
 ) -> Response {
-    use axum::http::{HeaderValue, StatusCode, header};
-    use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+    use axum::http::{StatusCode, header};
     let wants = req.method() == axum::http::Method::POST
         && req.uri().path().starts_with("/api/")
         && req.headers().contains_key(crate::idempotency::HEADER);
     if !wants {
         return next.run(req).await;
     }
-    let problem = |status: StatusCode, message: &str| {
-        (
-            status,
-            axum::Json(serde_json::json!({ "error": "idempotency", "description": message })),
-        )
-            .into_response()
-    };
     let key = req
         .headers()
         .get(crate::idempotency::HEADER)
@@ -113,14 +171,14 @@ async fn idempotency_mw(
         .unwrap_or("")
         .to_string();
     if let Err(message) = crate::idempotency::validate_key(&key) {
-        return problem(StatusCode::UNPROCESSABLE_ENTITY, &message);
+        return idempotency_problem(StatusCode::UNPROCESSABLE_ENTITY, &message);
     }
     let scope = auth::request_claims(req.headers())
         .await
         .map_or_else(|_| "anon".to_string(), |c| c.sub);
     let (parts, body) = req.into_parts();
     let Ok(bytes) = axum::body::to_bytes(body, crate::idempotency::MAX_BODY).await else {
-        return problem(StatusCode::PAYLOAD_TOO_LARGE, "request body too large");
+        return idempotency_problem(StatusCode::PAYLOAD_TOO_LARGE, "request body too large");
     };
     let fingerprint = crate::idempotency::fingerprint(
         parts.method.as_str(),
@@ -128,95 +186,16 @@ async fn idempotency_mw(
         parts.uri.query().unwrap_or(""),
         &bytes,
     );
-    let pg = DatabaseBackend::Postgres;
-    let unavailable = |error: sea_orm::DbErr| {
-        tracing::error!(%error, "idempotency store failed");
-        problem(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "idempotency store unavailable",
-        )
-    };
 
-    // Claim the key. An expired row, or one whose first attempt crashed, is
-    // taken over; anything else leaves the existing row alone.
-    let claimed = match db
-        .query_all_raw(Statement::from_sql_and_values(
-            pg,
-            "INSERT INTO idempotency_keys (scope, key, fingerprint, state) \
-             VALUES ($1, $2, $3, 'in_progress') \
-             ON CONFLICT (scope, key) DO UPDATE SET fingerprint = EXCLUDED.fingerprint, \
-               state = 'in_progress', status = NULL, content_type = NULL, body = NULL, \
-               created_at = now() \
-             WHERE idempotency_keys.created_at < now() - interval '24 hours' \
-                OR (idempotency_keys.state = 'in_progress' \
-                    AND idempotency_keys.created_at < now() - interval '2 minutes') \
-             RETURNING 1",
-            [
-                scope.clone().into(),
-                key.clone().into(),
-                fingerprint.clone().into(),
-            ],
-        ))
-        .await
-    {
-        Ok(rows) => !rows.is_empty(),
-        Err(error) => return unavailable(error),
-    };
-
-    if !claimed {
-        let existing = match db
-            .query_one_raw(Statement::from_sql_and_values(
-                pg,
-                "SELECT fingerprint, state, status, content_type, body \
-                 FROM idempotency_keys WHERE scope = $1 AND key = $2",
-                [scope.into(), key.into()],
-            ))
-            .await
-        {
-            Ok(row) => row,
-            Err(error) => return unavailable(error),
-        };
-        let Some(row) = existing else {
-            // The first attempt failed and cleaned up between our two
-            // statements; the client can retry at once.
-            return problem(
-                StatusCode::CONFLICT,
-                "the original request just finished without a stored result; retry",
-            );
-        };
-        let stored: String = row.try_get("", "fingerprint").unwrap_or_default();
-        if stored != fingerprint {
-            return problem(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "Idempotency-Key was already used with a different request",
-            );
+    match idempotency_store::claim(&db, &scope, &key, &fingerprint).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return match idempotency_store::lookup(&db, &scope, &key).await {
+                Ok(existing) => answer_for_existing(existing.as_ref(), &fingerprint),
+                Err(error) => idempotency_unavailable(&error),
+            };
         }
-        let state: String = row.try_get("", "state").unwrap_or_default();
-        if state != "done" {
-            let mut response = problem(
-                StatusCode::CONFLICT,
-                "the original request is still being processed; retry shortly",
-            );
-            response
-                .headers_mut()
-                .insert(header::RETRY_AFTER, HeaderValue::from_static("1"));
-            return response;
-        }
-        let status: i32 = row.try_get("", "status").unwrap_or(200);
-        let content_type: Option<String> = row.try_get("", "content_type").ok();
-        let text: String = row.try_get("", "body").unwrap_or_default();
-        let mut response = Response::new(axum::body::Body::from(text));
-        *response.status_mut() = u16::try_from(status)
-            .ok()
-            .and_then(|s| StatusCode::from_u16(s).ok())
-            .unwrap_or(StatusCode::OK);
-        if let Some(value) = content_type.and_then(|v| HeaderValue::from_str(&v).ok()) {
-            response.headers_mut().insert(header::CONTENT_TYPE, value);
-        }
-        response
-            .headers_mut()
-            .insert("idempotent-replayed", HeaderValue::from_static("true"));
-        return response;
+        Err(error) => return idempotency_unavailable(&error),
     }
 
     // We own the key: run the request, then record or forget the outcome.
@@ -229,38 +208,19 @@ async fn idempotency_mw(
         .ok();
     let text = body
         .as_ref()
-        .and_then(|b| String::from_utf8(b.to_vec()).ok());
-    let record = match (&text, crate::idempotency::remember(head.status.as_u16())) {
-        (Some(text), true) => Some(text.clone()),
-        _ => None,
-    };
-    let result = if let Some(text) = record {
+        .and_then(|b| String::from_utf8(b.to_vec()).ok())
+        .filter(|_| crate::idempotency::remember(head.status.as_u16()));
+    let result = if let Some(text) = text {
         let content_type = head
             .headers
             .get(header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
             .map(str::to_string);
-        db.execute_raw(Statement::from_sql_and_values(
-            pg,
-            "UPDATE idempotency_keys SET state = 'done', status = $3, content_type = $4, \
-             body = $5 WHERE scope = $1 AND key = $2",
-            [
-                scope.into(),
-                key.into(),
-                i32::from(head.status.as_u16()).into(),
-                content_type.into(),
-                text.into(),
-            ],
-        ))
-        .await
+        idempotency_store::record(&db, &scope, &key, head.status.as_u16(), content_type, &text)
+            .await
     } else {
         // Failed, oversized or not text: forget the key so a retry runs again.
-        db.execute_raw(Statement::from_sql_and_values(
-            pg,
-            "DELETE FROM idempotency_keys WHERE scope = $1 AND key = $2",
-            [scope.into(), key.into()],
-        ))
-        .await
+        idempotency_store::forget(&db, &scope, &key).await
     };
     if let Err(error) = result {
         // The work is done but could not be recorded: a retry would repeat it.
@@ -410,6 +370,43 @@ async fn shared_verdict(
     Ok(Ok(None))
 }
 
+/// The generation counter every successful write bumps.
+const CACHE_GEN_KEY: &str = "crm:cache:gen";
+/// How long an insight response is cached.
+const INSIGHT_TTL: std::time::Duration = std::time::Duration::from_secs(30);
+/// The cache is an optimisation: a Redis that is down or frozen must cost a
+/// request this long at most, never the pool's own timeout (CRM-R25).
+const CACHE_WAIT: std::time::Duration = std::time::Duration::from_millis(750);
+
+/// The cache key for an insight read: a hash of the caller's token (so masking
+/// never crosses callers), their break-glass state, the current generation, and
+/// the path and query.
+fn insight_key(token: &str, glass: bool, generation: i64, path: &str, query: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(format!("{token}|{glass}|{generation}|{path}?{query}").as_bytes());
+    let hex = digest.iter().fold(String::new(), |mut acc, b| {
+        use std::fmt::Write as _;
+        let _ = write!(acc, "{b:02x}");
+        acc
+    });
+    format!("crm:insight:{hex}")
+}
+
+/// Make every cached insight stale: a write has happened.
+async fn bump_cache_generation(cache: &loco_rs::cache::Cache) {
+    let stamp = chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default();
+    match tokio::time::timeout(
+        CACHE_WAIT,
+        cache.insert_with_expiry(CACHE_GEN_KEY, &stamp, INSIGHT_TTL * 4),
+    )
+    .await
+    {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => tracing::warn!(%error, "cache generation bump failed"),
+        Err(_) => tracing::warn!("cache generation bump timed out"),
+    }
+}
+
 /// Insight response cache (Loco's cache, Redis-backed). Sits inside auth and
 /// the read audit, so every request is still authenticated and audited; only
 /// the computation is skipped. The key carries the caller's token hash (so
@@ -421,29 +418,13 @@ async fn insight_cache_mw(
     req: Request,
     next: Next,
 ) -> Response {
-    use sha2::{Digest, Sha256};
-    const GEN_KEY: &str = "crm:cache:gen";
-    const TTL: std::time::Duration = std::time::Duration::from_secs(30);
     const MAX_BODY: usize = 1024 * 1024;
-    // The cache is an optimisation: a Redis that is down or frozen must cost a
-    // request this long at most, never the pool's own timeout (CRM-R25).
-    const CACHE_WAIT: std::time::Duration = std::time::Duration::from_millis(750);
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     if method != axum::http::Method::GET && path.starts_with("/api/") {
         let response = next.run(req).await;
         if response.status().is_success() {
-            let stamp = chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default();
-            match tokio::time::timeout(
-                CACHE_WAIT,
-                cache.insert_with_expiry(GEN_KEY, &stamp, TTL * 4),
-            )
-            .await
-            {
-                Ok(Ok(())) => {}
-                Ok(Err(error)) => tracing::warn!(%error, "cache generation bump failed"),
-                Err(_) => tracing::warn!("cache generation bump timed out"),
-            }
+            bump_cache_generation(&cache).await;
         }
         return response;
     }
@@ -464,25 +445,19 @@ async fn insight_cache_mw(
     let glass = claims
         .as_ref()
         .is_some_and(|c| crate::break_glass::registry().active(&c.sub, chrono::Utc::now()));
-    let generation: i64 = tokio::time::timeout(CACHE_WAIT, cache.get(GEN_KEY))
+    let generation: i64 = tokio::time::timeout(CACHE_WAIT, cache.get(CACHE_GEN_KEY))
         .await
         .ok()
         .and_then(Result::ok)
         .flatten()
         .unwrap_or_default();
-    let digest = Sha256::digest(
-        format!(
-            "{token}|{glass}|{generation}|{path}?{}",
-            req.uri().query().unwrap_or("")
-        )
-        .as_bytes(),
+    let key = insight_key(
+        token,
+        glass,
+        generation,
+        &path,
+        req.uri().query().unwrap_or(""),
     );
-    let hex = digest.iter().fold(String::new(), |mut acc, b| {
-        use std::fmt::Write as _;
-        let _ = write!(acc, "{b:02x}");
-        acc
-    });
-    let key = format!("crm:insight:{hex}");
     if let Ok(Ok(Some(hit))) =
         tokio::time::timeout(CACHE_WAIT, cache.get::<CachedResponse>(&key)).await
     {
@@ -506,7 +481,12 @@ async fn insight_cache_mw(
             .filter_map(|(name, value)| Some((name.to_string(), value.to_str().ok()?.to_string())))
             .collect();
         let entry = CachedResponse { headers, text };
-        match tokio::time::timeout(CACHE_WAIT, cache.insert_with_expiry(&key, &entry, TTL)).await {
+        match tokio::time::timeout(
+            CACHE_WAIT,
+            cache.insert_with_expiry(&key, &entry, INSIGHT_TTL),
+        )
+        .await
+        {
             Ok(Ok(())) => {}
             Ok(Err(error)) => tracing::warn!(%error, "insight cache write failed"),
             Err(_) => tracing::warn!("insight cache write timed out"),
@@ -756,5 +736,34 @@ impl Hooks for App {
 
     async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::insight_key;
+
+    #[test]
+    fn an_insight_key_depends_on_everything_that_changes_the_answer() {
+        let base = insight_key("Bearer a", false, 1, "/api/insights/x", "days=7");
+        assert_eq!(
+            base,
+            insight_key("Bearer a", false, 1, "/api/insights/x", "days=7"),
+            "the same request gets the same key"
+        );
+        for other in [
+            insight_key("Bearer b", false, 1, "/api/insights/x", "days=7"),
+            insight_key("Bearer a", true, 1, "/api/insights/x", "days=7"),
+            insight_key("Bearer a", false, 2, "/api/insights/x", "days=7"),
+            insight_key("Bearer a", false, 1, "/api/insights/y", "days=7"),
+            insight_key("Bearer a", false, 1, "/api/insights/x", "days=30"),
+        ] {
+            assert_ne!(base, other);
+        }
+        assert!(base.starts_with("crm:insight:"));
+        assert!(
+            !base.contains("Bearer"),
+            "the token is hashed, never stored"
+        );
     }
 }

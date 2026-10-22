@@ -6,6 +6,7 @@ use crate::controllers::PidPath;
 use crate::json::Json;
 use crate::models::live::FindLive;
 use loco_rs::prelude::*;
+use sea_orm::DatabaseTransaction;
 use sea_orm::{PaginatorTrait, QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -248,10 +249,99 @@ async fn get_lead(
     format::json(serde_json::json!({ "lead": lead, "score": breakdown }))
 }
 
+/// On conversion: the contact the lead becomes. A lead already linked to a
+/// contact keeps it; otherwise a new, never-consented contact is created from
+/// the lead and the `person_ref` the caller supplied.
+async fn contact_for_conversion(
+    txn: &DatabaseTransaction,
+    lead: &leads::Model,
+    person_ref: Option<&String>,
+) -> Result<Uuid> {
+    if let Some(linked) = lead.contact_pid {
+        return Ok(linked);
+    }
+    let person_ref = person_ref
+        .ok_or_else(|| unprocessable("conversion requires person_ref (no linked contact)"))?;
+    let mut problems = Problems::new();
+    problems.require_ref("person_ref", entity_ref::EntityType::Person, person_ref);
+    ensure_valid(&problems.into_vec())?;
+    let contact = contacts::ActiveModel {
+        pid: ActiveValue::set(Uuid::new_v4()),
+        person_ref: ActiveValue::set(person_ref.clone()),
+        account_pid: ActiveValue::set(None),
+        owner_ref: ActiveValue::set(None),
+        display_name: ActiveValue::set(lead.display_name.clone()),
+        status: ActiveValue::set("active".to_string()),
+        job_title: ActiveValue::set(None),
+        preferred_channel: ActiveValue::set("email".into()),
+        marketing_consent: ActiveValue::set("never".to_string()),
+        consent_changed_at: ActiveValue::set(None),
+        deleted_at: ActiveValue::set(None),
+        ..Default::default()
+    }
+    .insert(txn)
+    .await?;
+    Ok(contact.pid)
+}
+
+/// On conversion: open the deal in the first stage of its pipeline, with the
+/// converted contact as primary contact and, unless the request names one, the
+/// lead's campaign as its source.
+async fn open_deal_for_conversion(
+    txn: &DatabaseTransaction,
+    caller: &MaybeAuthUser,
+    lead: &leads::Model,
+    contact_pid: Uuid,
+    deal: &DealPayload,
+) -> Result<Uuid> {
+    let pipeline = records::find_pipeline(txn, deal.pipeline_pid).await?;
+    let first_stage = pipeline_stages::Entity::find()
+        .filter(pipeline_stages::Column::PipelinePid.eq(pipeline.pid))
+        .filter(pipeline_stages::Column::DeletedAt.is_null())
+        .order_by_asc(pipeline_stages::Column::Position)
+        .one(txn)
+        .await?
+        .ok_or_else(|| unprocessable("pipeline has no stages"))?;
+    if deal.amount_minor < 0 {
+        return Err(unprocessable("amount_minor must be non-negative"));
+    }
+    let row = deals::ActiveModel {
+        pid: ActiveValue::set(Uuid::new_v4()),
+        account_pid: ActiveValue::set(deal.account_pid),
+        primary_contact_pid: ActiveValue::set(Some(contact_pid)),
+        owner_ref: ActiveValue::set(deal.owner_ref.clone()),
+        pipeline_pid: ActiveValue::set(pipeline.pid),
+        stage_pid: ActiveValue::set(first_stage.pid),
+        name: ActiveValue::set(deal.name.clone()),
+        amount_minor: ActiveValue::set(deal.amount_minor),
+        currency: ActiveValue::set(deal.currency.clone()),
+        expected_close_on: ActiveValue::set(deal.expected_close_on),
+        kanban_position: ActiveValue::set(0),
+        source_campaign_pid: ActiveValue::set(deal.source_campaign_pid.or(lead.campaign_pid)),
+        closed_at: ActiveValue::set(None),
+        won: ActiveValue::set(false),
+        lost_reason: ActiveValue::set(None),
+        deleted_at: ActiveValue::set(None),
+        ..Default::default()
+    }
+    .insert(txn)
+    .await?;
+    streaming::emit_on(
+        txn,
+        "deal",
+        "deal_opened",
+        &row.pid.to_string(),
+        &row.name,
+        caller.actor(),
+        None,
+    )
+    .await?;
+    Ok(row.pid)
+}
+
 /// `POST /api/leads/{pid}/status` — one lifecycle transition;
 /// `converted` creates/links the Contact (+ optional deal) in one
 /// transaction (CRM-R3, CRM-D9).
-#[allow(clippy::too_many_lines)] // one linear walk incl. the in-tx conversion
 #[debug_handler]
 async fn lead_status(
     State(ctx): State<AppContext>,
@@ -267,89 +357,21 @@ async fn lead_status(
         .map_err(|e| unprocessable(&e))?;
     let txn = ctx.db.begin().await?;
     let from = lead.status.clone();
+    let converting = payload.to == "converted";
     let mut contact_pid = lead.contact_pid;
     let mut deal_pid = None;
-    if payload.to == "converted" {
-        // Create or link the contact.
-        if contact_pid.is_none() {
-            let person_ref = payload.person_ref.clone().ok_or_else(|| {
-                unprocessable("conversion requires person_ref (no linked contact)")
-            })?;
-            let mut problems = Problems::new();
-            problems.require_ref("person_ref", entity_ref::EntityType::Person, &person_ref);
-            ensure_valid(&problems.into_vec())?;
-            let contact = contacts::ActiveModel {
-                pid: ActiveValue::set(Uuid::new_v4()),
-                person_ref: ActiveValue::set(person_ref),
-                account_pid: ActiveValue::set(None),
-                owner_ref: ActiveValue::set(None),
-                display_name: ActiveValue::set(lead.display_name.clone()),
-                status: ActiveValue::set("active".to_string()),
-                job_title: ActiveValue::set(None),
-                preferred_channel: ActiveValue::set("email".into()),
-                marketing_consent: ActiveValue::set("never".to_string()),
-                consent_changed_at: ActiveValue::set(None),
-                deleted_at: ActiveValue::set(None),
-                ..Default::default()
-            }
-            .insert(&txn)
-            .await?;
-            contact_pid = Some(contact.pid);
-        }
-        // Optionally open the deal (attributed to the lead's campaign).
+    if converting {
+        let contact = contact_for_conversion(&txn, &lead, payload.person_ref.as_ref()).await?;
+        contact_pid = Some(contact);
         if let Some(deal) = &payload.deal {
-            let pipeline = records::find_pipeline(&txn, deal.pipeline_pid).await?;
-            let first_stage = pipeline_stages::Entity::find()
-                .filter(pipeline_stages::Column::PipelinePid.eq(pipeline.pid))
-                .filter(pipeline_stages::Column::DeletedAt.is_null())
-                .order_by_asc(pipeline_stages::Column::Position)
-                .one(&txn)
-                .await?
-                .ok_or_else(|| unprocessable("pipeline has no stages"))?;
-            if deal.amount_minor < 0 {
-                return Err(unprocessable("amount_minor must be non-negative"));
-            }
-            let row = deals::ActiveModel {
-                pid: ActiveValue::set(Uuid::new_v4()),
-                account_pid: ActiveValue::set(deal.account_pid),
-                primary_contact_pid: ActiveValue::set(contact_pid),
-                owner_ref: ActiveValue::set(deal.owner_ref.clone()),
-                pipeline_pid: ActiveValue::set(pipeline.pid),
-                stage_pid: ActiveValue::set(first_stage.pid),
-                name: ActiveValue::set(deal.name.clone()),
-                amount_minor: ActiveValue::set(deal.amount_minor),
-                currency: ActiveValue::set(deal.currency.clone()),
-                expected_close_on: ActiveValue::set(deal.expected_close_on),
-                kanban_position: ActiveValue::set(0),
-                source_campaign_pid: ActiveValue::set(
-                    deal.source_campaign_pid.or(lead.campaign_pid),
-                ),
-                closed_at: ActiveValue::set(None),
-                won: ActiveValue::set(false),
-                lost_reason: ActiveValue::set(None),
-                deleted_at: ActiveValue::set(None),
-                ..Default::default()
-            }
-            .insert(&txn)
-            .await?;
-            streaming::emit_on(
-                &txn,
-                "deal",
-                "deal_opened",
-                &row.pid.to_string(),
-                &row.name,
-                caller.actor(),
-                None,
-            )
-            .await?;
-            deal_pid = Some(row.pid);
+            deal_pid = Some(open_deal_for_conversion(&txn, &caller, &lead, contact, deal).await?);
         }
     }
     let mut active: leads::ActiveModel = lead.into();
     active.status = ActiveValue::set(payload.to.clone());
     active.contact_pid = ActiveValue::set(contact_pid);
     let row = active.update(&txn).await?;
-    let kind = if payload.to == "converted" {
+    let kind = if converting {
         "lead_converted"
     } else {
         "lead_status_changed"
@@ -374,7 +396,7 @@ async fn lead_status(
     )
     .await?;
     txn.commit().await?;
-    if payload.to == "converted" {
+    if converting {
         Metrics::global().lead_converted_total.inc();
     }
     format::json(serde_json::json!({

@@ -342,51 +342,151 @@ async fn combine(
     Ok((filled, consent))
 }
 
+/// Lock both contacts, in a fixed order so two merges (or a merge and an
+/// unmerge) cannot cross.
+pub(super) async fn lock_rows(
+    txn: &DatabaseTransaction,
+    merged_pid: Uuid,
+    survivor_pid: Uuid,
+) -> Result<Vec<contacts::Model>> {
+    Ok(contacts::Entity::find()
+        .filter(contacts::Column::Pid.is_in([merged_pid, survivor_pid]))
+        .order_by_asc(contacts::Column::Id)
+        .lock_exclusive()
+        .all(txn)
+        .await?)
+}
+
+/// `(merged, survivor)` out of locked rows, or `NotFound` if either is absent.
+pub(super) fn pick_pair(
+    rows: &[contacts::Model],
+    merged_pid: Uuid,
+    survivor_pid: Uuid,
+) -> Result<(contacts::Model, contacts::Model)> {
+    let pick = |wanted: Uuid| {
+        rows.iter()
+            .find(|c| c.pid == wanted)
+            .cloned()
+            .ok_or(Error::NotFound)
+    };
+    Ok((pick(merged_pid)?, pick(survivor_pid)?))
+}
+
+/// Both contacts must be writable by the caller at the destructive tier
+/// (CRM-T24): a merge and an unmerge each change both records.
+pub(super) fn authorize_destructive(
+    caller: &MaybeAuthUser,
+    contacts: [&contacts::Model; 2],
+) -> Result<()> {
+    for contact in contacts {
+        auth::authorize_record(
+            caller,
+            authentication_verifier::Action::Destructive,
+            &auth::contact_resource_attrs(contact),
+        )
+        .map_err(record_rejection)?;
+    }
+    Ok(())
+}
+
+/// What a merge did, for the ledger, the audit entry and the event.
+struct MergeDone<'a> {
+    survivor_pid: Uuid,
+    merged: &'a contacts::Model,
+    reason: &'a str,
+    moved: &'a Changes,
+    counts: &'a serde_json::Value,
+    dropped: &'a serde_json::Value,
+    filled: &'a [&'static str],
+    /// `(survivor, merged)` consent before the merge.
+    before: &'a (String, String),
+    consent: &'a str,
+}
+
+/// Write the ledger row (what an unmerge needs), the audit entry and the event.
+async fn record_merge(
+    txn: &DatabaseTransaction,
+    caller: &MaybeAuthUser,
+    done: &MergeDone<'_>,
+) -> Result<()> {
+    contact_merges::ActiveModel {
+        pid: ActiveValue::set(Uuid::new_v4()),
+        survivor_pid: ActiveValue::set(done.survivor_pid),
+        merged_pid: ActiveValue::set(done.merged.pid),
+        merged_person_ref: ActiveValue::set(done.merged.person_ref.clone()),
+        actor: ActiveValue::set(caller.actor().map(str::to_string)),
+        moved: ActiveValue::set(
+            json!({ "moved": done.moved.moved, "dropped": done.moved.dropped }),
+        ),
+        // What an unmerge needs. Ids, states and field names: no personal data.
+        before: ActiveValue::set(Some(json!({
+            "version": 1,
+            "survivor_consent": done.before.0,
+            "merged_consent": done.before.1,
+            "filled": done.filled,
+            "dropped_rows": done.moved.dropped_rows,
+        }))),
+        ..Default::default()
+    }
+    .insert(txn)
+    .await?;
+    Audit::record(
+        txn,
+        "contact",
+        done.survivor_pid,
+        "contacts_merged",
+        caller.actor(),
+        Some(json!({
+            "merged_pid": done.merged.pid,
+            "reason": done.reason,
+            "moved": done.counts,
+            "dropped": done.dropped,
+            "filled": done.filled,
+            "consent_result": done.consent,
+        })),
+    )
+    .await?;
+    streaming::emit_on(
+        txn,
+        "contact",
+        "contacts_merged",
+        &done.survivor_pid.to_string(),
+        "",
+        caller.actor(),
+        Some(json!({ "merged_pid": done.merged.pid })),
+    )
+    .await
+}
+
 /// `POST /api/contacts/{pid}/merge` (CRM-R24).
 #[debug_handler]
-#[allow(clippy::too_many_lines)]
 async fn merge(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    PidPath(pid): PidPath,
+    PidPath(merged_pid): PidPath,
     Json(payload): Json<MergePayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("reason", &payload.reason);
     ensure_valid(&problems.into_vec())?;
-    let merged_pid = pid;
     let survivor_pid = records::parse_pid(&payload.into_pid)?;
     if merged_pid == survivor_pid {
         return Err(unprocessable("a contact cannot be merged into itself"));
     }
 
     let txn = ctx.db.begin().await?;
-    // Lock both rows, in a fixed order, so two merges cannot cross.
-    let rows = contacts::Entity::find()
-        .filter(contacts::Column::Pid.is_in([merged_pid, survivor_pid]))
-        .order_by_asc(contacts::Column::Id)
-        .lock_exclusive()
-        .all(&txn)
-        .await?;
-    let pick = |wanted: Uuid| rows.iter().find(|c| c.pid == wanted).ok_or(Error::NotFound);
-    let (merged, survivor) = (pick(merged_pid)?, pick(survivor_pid)?);
-    usable(merged)?;
-    usable(survivor)?;
-    for contact in [merged, survivor] {
-        auth::authorize_record(
-            &caller,
-            authentication_verifier::Action::Destructive,
-            &auth::contact_resource_attrs(contact),
-        )
-        .map_err(record_rejection)?;
-    }
+    let rows = lock_rows(&txn, merged_pid, survivor_pid).await?;
+    let (merged, survivor) = pick_pair(&rows, merged_pid, survivor_pid)?;
+    usable(&merged)?;
+    usable(&survivor)?;
+    authorize_destructive(&caller, [&merged, &survivor])?;
 
     let before = (
         survivor.marketing_consent.clone(),
         merged.marketing_consent.clone(),
     );
     let moved = move_rows(&txn, survivor_pid, merged_pid).await?;
-    let (filled, consent) = combine(&txn, survivor.clone(), merged).await?;
+    let (filled, consent) = combine(&txn, survivor, &merged).await?;
 
     let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
     let mut gone: contacts::ActiveModel = merged.clone().into();
@@ -410,51 +510,18 @@ async fn merge(
         return format::json(body);
     }
 
-    contact_merges::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        survivor_pid: ActiveValue::set(survivor_pid),
-        merged_pid: ActiveValue::set(merged_pid),
-        merged_person_ref: ActiveValue::set(merged.person_ref.clone()),
-        actor: ActiveValue::set(caller.actor().map(str::to_string)),
-        moved: ActiveValue::set(json!({ "moved": moved.moved, "dropped": moved.dropped })),
-        // What an unmerge needs. Ids, states and field names: no personal data.
-        before: ActiveValue::set(Some(json!({
-            "version": 1,
-            "survivor_consent": before.0,
-            "merged_consent": before.1,
-            "filled": filled,
-            "dropped_rows": moved.dropped_rows,
-        }))),
-        ..Default::default()
-    }
-    .insert(&txn)
-    .await?;
-    Audit::record(
-        &txn,
-        "contact",
+    let done = MergeDone {
         survivor_pid,
-        "contacts_merged",
-        caller.actor(),
-        Some(json!({
-            "merged_pid": merged_pid,
-            "reason": payload.reason,
-            "moved": counts,
-            "dropped": dropped,
-            "filled": filled,
-            "consent_result": consent,
-        })),
-    )
-    .await?;
-    streaming::emit_on(
-        &txn,
-        "contact",
-        "contacts_merged",
-        &survivor_pid.to_string(),
-        "",
-        caller.actor(),
-        Some(json!({ "merged_pid": merged_pid })),
-    )
-    .await?;
+        merged: &merged,
+        reason: &payload.reason,
+        moved: &moved,
+        counts: &counts,
+        dropped: &dropped,
+        filled: &filled,
+        before: &before,
+        consent: &consent,
+    };
+    record_merge(&txn, &caller, &done).await?;
     txn.commit().await?;
     format::json(body)
 }
