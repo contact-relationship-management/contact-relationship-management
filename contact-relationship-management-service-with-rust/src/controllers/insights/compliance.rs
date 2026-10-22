@@ -1,8 +1,8 @@
 //! DPO insights: consent coverage and withdrawals, duplicate-contact hygiene, consent by account.
 
 use super::{
-    AppContext, DaysQuery, EntityTrait, HeaderMap, Response, Result, State, Uuid, accounts,
-    conditional, consent_events, contacts, days_or, debug_handler,
+    AppContext, DaysQuery, HeaderMap, Response, Result, State, accounts, conditional, contacts,
+    days_or, debug_handler,
 };
 
 /// `GET /api/insights/dpo?days=` — the data-protection view: consent
@@ -26,15 +26,8 @@ pub(super) async fn dpo(
             .entry(contact.marketing_consent.as_str())
             .or_default() += 1;
     }
-    let event_rows = consent_events::Entity::find().all(&ctx.db).await?;
-    let withdrawals_in_window = event_rows
-        .iter()
-        .filter(|event| event.action == "withdrawn" && event.occurred_at.to_utc() >= since)
-        .count();
-    let mut per_source: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
-    for event in &event_rows {
-        *per_source.entry(event.source.as_str()).or_default() += 1;
-    }
+    let withdrawals_in_window = super::rollup::withdrawals_since(&ctx.db, since).await?;
+    let per_source = super::rollup::consent_events_by_source(&ctx.db).await?;
     // Duplicate hygiene: live contacts sharing a person_ref.
     let mut by_person: std::collections::BTreeMap<&str, Vec<&contacts::Model>> =
         std::collections::BTreeMap::new();
@@ -87,21 +80,7 @@ pub(super) async fn consent_by_account(
     let since = now - chrono::Days::new(u64::try_from(window).unwrap_or(30));
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
-    let event_rows = consent_events::Entity::find().all(&ctx.db).await?;
-    let account_of: std::collections::BTreeMap<Uuid, Option<Uuid>> = contact_rows
-        .iter()
-        .map(|c| (c.pid, c.account_pid))
-        .collect();
-    let mut withdrawals: std::collections::BTreeMap<Uuid, usize> =
-        std::collections::BTreeMap::new();
-    for event in &event_rows {
-        if event.action == "withdrawn"
-            && event.occurred_at.to_utc() >= since
-            && let Some(Some(account_pid)) = account_of.get(&event.contact_pid)
-        {
-            *withdrawals.entry(*account_pid).or_default() += 1;
-        }
-    }
+    let withdrawals = super::rollup::withdrawals_by_account(&ctx.db, since).await?;
     let rows: Vec<serde_json::Value> = account_rows
         .iter()
         .map(|account| {

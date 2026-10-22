@@ -2,7 +2,7 @@
 
 use super::{
     AppContext, ColumnTrait, DaysQuery, Deserialize, EntityTrait, HeaderMap, QueryFilter, Response,
-    Result, State, Uuid, accounts, activities, audit_logs, conditional, contacts, days_or, deals,
+    Result, State, Uuid, accounts, audit_logs, conditional, contacts, days_or, deals,
     debug_handler, memberships, pipeline_stages, records, tickets,
 };
 use crate::models::live::FindLive;
@@ -23,7 +23,7 @@ pub(super) async fn cadence(
     let now = chrono::Utc::now();
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
-    let activity_rows: Vec<activities::Model> = live!(activities, &ctx.db);
+    let touches = super::rollup::touches(&ctx.db).await?;
 
     let mut last_contact_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
         std::collections::BTreeMap::new();
@@ -34,8 +34,8 @@ pub(super) async fn cadence(
         .iter()
         .map(|c| (c.pid, c.account_pid))
         .collect();
-    for activity in &activity_rows {
-        let at = activity.occurred_at.to_utc();
+    for touch in &touches {
+        let at = touch.last_at;
         let bump = |map: &mut std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>>,
                     pid: Uuid| {
             let entry = map.entry(pid).or_insert(at);
@@ -43,17 +43,17 @@ pub(super) async fn cadence(
                 *entry = at;
             }
         };
-        match activity.subject_kind.as_str() {
+        match touch.subject_kind.as_str() {
             "contact" => {
-                bump(&mut last_contact_touch, activity.subject_pid);
-                if let Some(Some(account_pid)) = account_of.get(&activity.subject_pid) {
+                bump(&mut last_contact_touch, touch.subject_pid);
+                if let Some(Some(account_pid)) = account_of.get(&touch.subject_pid) {
                     bump(&mut last_account_touch, *account_pid);
                 }
-                if !activity.done && activity.due_on.is_some() {
-                    has_next_contact.insert(activity.subject_pid);
+                if touch.open_next > 0 {
+                    has_next_contact.insert(touch.subject_pid);
                 }
             }
-            "account" => bump(&mut last_account_touch, activity.subject_pid),
+            "account" => bump(&mut last_account_touch, touch.subject_pid),
             _ => {}
         }
     }
@@ -129,32 +129,25 @@ pub(super) async fn engagement(
     let window = days_or(query.days, 90);
     let now = chrono::Utc::now();
     let since = now - chrono::Days::new(u64::try_from(window).unwrap_or(90));
-    let rows: Vec<activities::Model> = live!(activities, &ctx.db);
+    let groups = super::rollup::engagement_counts(&ctx.db, since, now).await?;
     let mut per_recorder_month: std::collections::BTreeMap<String, usize> =
         std::collections::BTreeMap::new();
     let mut per_kind: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
     let mut sentiment: std::collections::BTreeMap<String, usize> =
         std::collections::BTreeMap::new();
     let mut total = 0usize;
-    for activity in &rows {
-        let at = activity.occurred_at.to_utc();
-        if at < since || at > now {
-            continue;
-        }
-        total += 1;
-        let recorder = activity
+    for group in groups {
+        let count = usize::try_from(group.count).unwrap_or(0);
+        total += count;
+        let recorder = group
             .actor_ref
-            .clone()
             .unwrap_or_else(|| "unattributed".to_string());
         *per_recorder_month
-            .entry(format!("{} {}", recorder, at.format("%Y-%m")))
-            .or_default() += 1;
-        *per_kind.entry(activity.kind.clone()).or_default() += 1;
-        let key = activity
-            .sentiment
-            .clone()
-            .unwrap_or_else(|| "unrecorded".to_string());
-        *sentiment.entry(key).or_default() += 1;
+            .entry(format!("{recorder} {}", group.month))
+            .or_default() += count;
+        *per_kind.entry(group.kind).or_default() += count;
+        let key = group.sentiment.unwrap_or_else(|| "unrecorded".to_string());
+        *sentiment.entry(key).or_default() += count;
     }
     Ok(conditional(
         &headers,
@@ -282,7 +275,7 @@ pub(super) async fn members(
     let now = chrono::Utc::now();
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
-    let activity_rows: Vec<activities::Model> = live!(activities, &ctx.db);
+    let touches = super::rollup::touches(&ctx.db).await?;
     let ticket_rows: Vec<tickets::Model> = tickets::Entity::find_live()
         .filter(tickets::Column::Status.is_in(["open", "pending"]))
         .all(&ctx.db)
@@ -298,11 +291,11 @@ pub(super) async fn members(
         std::collections::BTreeMap::new();
     let mut open_followups: std::collections::BTreeMap<Uuid, usize> =
         std::collections::BTreeMap::new();
-    for activity in &activity_rows {
-        let at = activity.occurred_at.to_utc();
-        let account_pid = match activity.subject_kind.as_str() {
-            "account" => Some(activity.subject_pid),
-            "contact" => account_of.get(&activity.subject_pid).copied().flatten(),
+    for touch in &touches {
+        let at = touch.last_at;
+        let account_pid = match touch.subject_kind.as_str() {
+            "account" => Some(touch.subject_pid),
+            "contact" => account_of.get(&touch.subject_pid).copied().flatten(),
             _ => None,
         };
         let Some(account_pid) = account_pid else {
@@ -312,8 +305,9 @@ pub(super) async fn members(
         if at > *entry {
             *entry = at;
         }
-        if !activity.done && activity.due_on.is_some() {
-            *open_followups.entry(account_pid).or_default() += 1;
+        if touch.open_next > 0 {
+            *open_followups.entry(account_pid).or_default() +=
+                usize::try_from(touch.open_next).unwrap_or(0);
         }
     }
     let mut open_tickets: std::collections::BTreeMap<Uuid, usize> =

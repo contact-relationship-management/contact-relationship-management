@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` headers** on responses when the request limit is on
   (always in production), so a client sees its budget before it gets a `429`; the `429` carries them too.
 
+### Changed — insights are computed in the database (CRM-T80)
+- The cadence, engagement, members, stakeholders, pipeline-hygiene, DPO and consent-by-account views no longer load
+  every activity or consent event into memory; the database returns one row per subject or group. The answers are
+  the same. Pipeline hygiene was quadratic in the number of deals and now is not, and the sales dashboard no longer
+  makes a query per open deal.
+- `GET /api/contacts/{pid}` returns at most 200 activities, deals and tickets each, newest first, and says which were
+  cut in a new `truncated` member. Deals and tickets were unbounded; activities were cut at 200 without saying so.
+
 ### Added — validation errors name their member (CRM-T79)
 - A `422` validation error now has an `errors` list, `[{ "pointer": "/display_name", "detail": "…" }]`, beside the
   unchanged `error`, `description` and `detail`. `pointer` is a JSON Pointer to the request member and is left out

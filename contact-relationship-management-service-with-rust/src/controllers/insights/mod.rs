@@ -40,6 +40,7 @@ macro_rules! live {
 mod compliance;
 mod outreach;
 mod relationships;
+mod rollup;
 mod sales;
 mod support;
 

@@ -45,6 +45,50 @@ pub(crate) fn conditional(headers: &HeaderMap, payload: serde_json::Value) -> Re
     (StatusCode::OK, [(header::ETAG, tag)], axum::Json(body)).into_response()
 }
 
+/// Stage name to (open-deal count, currency to total in minor units), and the
+/// number of open deals. One grouped query, whatever the number of deals; a
+/// total beyond `i64` saturates, as the sum always did.
+async fn open_deals_by_stage(
+    db: &sea_orm::DatabaseConnection,
+) -> Result<(
+    std::collections::BTreeMap<String, (usize, std::collections::BTreeMap<String, i64>)>,
+    usize,
+)> {
+    use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+    let rows = db
+        .query_all_raw(Statement::from_string(
+            DatabaseBackend::Postgres,
+            "SELECT s.name AS stage, d.currency AS currency, COUNT(*) AS n, \
+                    SUM(d.amount_minor)::text AS total \
+             FROM deals d JOIN pipeline_stages s ON s.pid = d.stage_pid \
+             WHERE d.deleted_at IS NULL AND d.closed_at IS NULL \
+             GROUP BY s.name, d.currency",
+        ))
+        .await?;
+    let model = |e: sea_orm::DbErr| Error::Model(ModelError::from(e));
+    let mut totals: std::collections::BTreeMap<
+        String,
+        (usize, std::collections::BTreeMap<String, i64>),
+    > = std::collections::BTreeMap::new();
+    let mut open_deals = 0usize;
+    for row in &rows {
+        let stage: String = row.try_get("", "stage").map_err(model)?;
+        let currency: String = row.try_get("", "currency").map_err(model)?;
+        let n: i64 = row.try_get("", "n").map_err(model)?;
+        let total: String = row.try_get("", "total").map_err(model)?;
+        let n = usize::try_from(n).unwrap_or(0);
+        let total = total.parse::<i128>().map_or(0, |t| {
+            i64::try_from(t).unwrap_or(if t < 0 { i64::MIN } else { i64::MAX })
+        });
+        let (count, by_currency) = totals.entry(stage).or_default();
+        *count += n;
+        open_deals += n;
+        let slot = by_currency.entry(currency).or_insert(0);
+        *slot = slot.saturating_add(total);
+    }
+    Ok((totals, open_deals))
+}
+
 /// `GET /api/dashboards/sales` — win rate + pipeline value by stage
 /// (per currency) over live data.
 #[debug_handler]
@@ -60,22 +104,7 @@ async fn sales_dashboard(
         i64::try_from(lost).unwrap_or(i64::MAX),
     );
     // Pipeline value by stage, per currency.
-    let open = deals::Entity::find_live()
-        .filter(deals::Column::ClosedAt.is_null())
-        .all(&ctx.db)
-        .await?;
-    // Stage name to (deal count, currency to total in minor units).
-    let mut totals: std::collections::BTreeMap<
-        String,
-        (usize, std::collections::BTreeMap<String, i64>),
-    > = std::collections::BTreeMap::new();
-    for deal in &open {
-        let stage = records::find_stage(&ctx.db, deal.stage_pid).await?;
-        let (count, by_currency) = totals.entry(stage.name.clone()).or_default();
-        *count += 1;
-        let total = by_currency.entry(deal.currency.clone()).or_insert(0);
-        *total = total.saturating_add(deal.amount_minor);
-    }
+    let (totals, open_deals) = open_deals_by_stage(&ctx.db).await?;
     let mut by_stage: std::collections::BTreeMap<String, serde_json::Value> = totals
         .into_iter()
         .map(|(stage, (count, by_currency))| {
@@ -87,7 +116,7 @@ async fn sales_dashboard(
         .collect();
     Metrics::global()
         .deals_open
-        .set(i64::try_from(open.len()).unwrap_or(i64::MAX));
+        .set(i64::try_from(open_deals).unwrap_or(i64::MAX));
     if masked {
         // Counts and structure stay visible; the money is absent, never zero.
         for entry in by_stage.values_mut() {
@@ -96,7 +125,7 @@ async fn sales_dashboard(
     }
     Ok(conditional(
         &headers,
-        serde_json::json!({ "win_rate": rate, "open_deals": open.len(), "pipeline_by_stage": by_stage }),
+        serde_json::json!({ "win_rate": rate, "open_deals": open_deals, "pipeline_by_stage": by_stage }),
     ))
 }
 

@@ -224,6 +224,16 @@ fn to_values<T: serde::Serialize>(rows: &[T]) -> Vec<serde_json::Value> {
     rows.iter().map(|row| serde_json::json!(row)).collect()
 }
 
+/// The most activities, deals and tickets `GET /api/contacts/{pid}` returns each.
+const DETAIL_ROWS: u64 = 200;
+
+/// Drop the one row read past [`DETAIL_ROWS`]; true when there was one.
+fn cut<T>(rows: &mut Vec<T>) -> bool {
+    let more = rows.len() as u64 > DETAIL_ROWS;
+    rows.truncate(usize::try_from(DETAIL_ROWS).unwrap_or(usize::MAX));
+    more
+}
+
 /// `GET /api/contacts/{pid}` — the contact + its merged timeline
 /// (activities, deals, tickets — chronological; CRM-R1).
 ///
@@ -251,24 +261,32 @@ async fn get_contact(
         &auth::contact_resource_attrs(&contact),
     )
     .map_err(record_rejection)?;
-    let activity_rows = activities::Entity::find()
+    // Each list is cut at DETAIL_ROWS, newest first, and `truncated` says which
+    // were cut: one row more is read to know.
+    let mut activity_rows = activities::Entity::find_live()
         .filter(activities::Column::SubjectKind.eq("contact"))
         .filter(activities::Column::SubjectPid.eq(contact.pid))
-        .filter(activities::Column::DeletedAt.is_null())
         .order_by_desc(activities::Column::OccurredAt)
-        .limit(200)
+        .limit(DETAIL_ROWS + 1)
         .all(&ctx.db)
         .await?;
-    let deal_rows = deals::Entity::find()
+    let mut deal_rows = deals::Entity::find_live()
         .filter(deals::Column::PrimaryContactPid.eq(contact.pid))
-        .filter(deals::Column::DeletedAt.is_null())
+        .order_by_desc(deals::Column::Id)
+        .limit(DETAIL_ROWS + 1)
         .all(&ctx.db)
         .await?;
-    let ticket_rows = tickets::Entity::find()
+    let mut ticket_rows = tickets::Entity::find_live()
         .filter(tickets::Column::ContactPid.eq(contact.pid))
-        .filter(tickets::Column::DeletedAt.is_null())
+        .order_by_desc(tickets::Column::Id)
+        .limit(DETAIL_ROWS + 1)
         .all(&ctx.db)
         .await?;
+    let truncated = serde_json::json!({
+        "activities": cut(&mut activity_rows),
+        "deals": cut(&mut deal_rows),
+        "tickets": cut(&mut ticket_rows),
+    });
     let mut contact_json = serde_json::json!(contact);
     let masked = obligations.iter().any(|o| o == "mask");
     if masked {
@@ -317,6 +335,7 @@ async fn get_contact(
         "activities": activities_json,
         "deals": deals_json,
         "tickets": tickets_json,
+        "truncated": truncated,
     }))
 }
 

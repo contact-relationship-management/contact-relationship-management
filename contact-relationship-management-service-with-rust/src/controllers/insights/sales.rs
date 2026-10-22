@@ -180,13 +180,14 @@ pub(super) async fn pipeline_hygiene(
         .all(&ctx.db)
         .await?;
     let lead_rows: Vec<leads::Model> = live!(leads, &ctx.db);
-    let activity_rows: Vec<activities::Model> = live!(activities, &ctx.db);
+    let touches: std::collections::HashMap<(String, Uuid), chrono::DateTime<chrono::Utc>> =
+        super::rollup::touches(&ctx.db)
+            .await?
+            .into_iter()
+            .map(|t| ((t.subject_kind, t.subject_pid), t.last_at))
+            .collect();
     let last_touch = |kind: &str, pid: Uuid| -> Option<chrono::DateTime<chrono::Utc>> {
-        activity_rows
-            .iter()
-            .filter(|a| a.subject_kind == kind && a.subject_pid == pid)
-            .map(|a| a.occurred_at.to_utc())
-            .max()
+        touches.get(&(kind.to_string(), pid)).copied()
     };
     let mut findings: Vec<serde_json::Value> = Vec::new();
     for deal in &open {

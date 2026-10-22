@@ -270,7 +270,9 @@ fn view_schemas() -> Value {
         // ---- detail reads
         "ContactDetail": object(&["contact", "activities", "deals", "tickets"], &json!({
             "contact": reference("Contact"), "activities": list_of("Activity"),
-            "deals": list_of("Deal"), "tickets": list_of("Ticket") })),
+            "deals": list_of("Deal"), "tickets": list_of("Ticket"),
+            "truncated": { "type": "object", "description": "Which lists were cut at 200 rows (newest first)",
+                "properties": { "activities": boolean(), "deals": boolean(), "tickets": boolean() } } })),
         "ContactDuplicates": object(&["contact_pid", "compared", "truncated", "duplicates"], &json!({
             "contact_pid": uuid(), "compared": integer(), "truncated": boolean(),
             "duplicates": { "type": "array", "items": object(

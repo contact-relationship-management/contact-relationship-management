@@ -1,8 +1,8 @@
 //! Relationship insights: the stakeholder grid, the partnership register and membership renewals.
 
 use super::{
-    AppContext, DaysQuery, HeaderMap, Response, Result, State, Uuid, accounts, activities,
-    conditional, contacts, days_or, debug_handler, engagement_rules, memberships, partnerships,
+    AppContext, DaysQuery, HeaderMap, Response, Result, State, Uuid, accounts, conditional,
+    contacts, days_or, debug_handler, engagement_rules, memberships, partnerships,
 };
 
 /// `GET /api/insights/stakeholders` — the declared-stakeholder
@@ -17,16 +17,13 @@ pub(super) async fn stakeholders(
     let now = chrono::Utc::now();
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
-    let activity_rows: Vec<activities::Model> = live!(activities, &ctx.db);
-    let mut last_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
-        std::collections::BTreeMap::new();
-    for activity in activity_rows.iter().filter(|a| a.subject_kind == "contact") {
-        let at = activity.occurred_at.to_utc();
-        let entry = last_touch.entry(activity.subject_pid).or_insert(at);
-        if at > *entry {
-            *entry = at;
-        }
-    }
+    let last_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
+        super::rollup::touches(&ctx.db)
+            .await?
+            .into_iter()
+            .filter(|t| t.subject_kind == "contact")
+            .map(|t| (t.subject_pid, t.last_at))
+            .collect();
     let mut by_role: std::collections::BTreeMap<&str, Vec<serde_json::Value>> =
         engagement_rules::STAKEHOLDER_ROLES
             .iter()

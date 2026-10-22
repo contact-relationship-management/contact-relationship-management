@@ -11,6 +11,7 @@ mod engagement;
 mod external_links;
 mod field_encryption;
 mod idempotency;
+mod insight_rollups;
 mod insights;
 mod marketing;
 mod merge;
