@@ -11,4 +11,5 @@ pub mod audit_logs;
 pub mod deliveries;
 pub mod encrypted;
 pub mod event_outbox;
+pub mod live;
 pub mod records;

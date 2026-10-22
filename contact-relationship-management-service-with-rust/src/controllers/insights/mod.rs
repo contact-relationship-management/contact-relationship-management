@@ -31,8 +31,7 @@ use crate::rules::engagement as engagement_rules;
 /// Load all live rows of one entity (soft-deleted excluded).
 macro_rules! live {
     ($module:ident, $db:expr) => {
-        $module::Entity::find()
-            .filter($module::Column::DeletedAt.is_null())
+        <$module::Entity as crate::models::live::FindLive>::find_live()
             .all($db)
             .await?
     };

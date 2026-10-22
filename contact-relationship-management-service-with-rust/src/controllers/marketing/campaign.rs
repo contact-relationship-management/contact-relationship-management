@@ -2,12 +2,14 @@
 
 use super::{
     ActiveModelTrait, ActiveValue, AppContext, Audit, BackgroundWorker, ColumnTrait, Deserialize,
-    EntityTrait, Error, MaybeAuthUser, Path, PidRef, Problems, QueryFilter, QueryOrder, Response,
-    Result, State, TransactionTrait, Uuid, activities, analytics, async_trait, campaigns, clients,
+    EntityTrait, Error, MaybeAuthUser, PidRef, Problems, QueryFilter, QueryOrder, Response, Result,
+    State, TransactionTrait, Uuid, activities, analytics, async_trait, campaigns, clients,
     contacts, deals, debug_handler, deliveries, ensure_valid, evaluate_segment, format, lifecycle,
     mail, records, streaming, tokens, unprocessable,
 };
+use crate::controllers::PidPath;
 use crate::json::Json;
+use crate::models::live::FindLive;
 
 /// `POST /api/campaigns` body.
 #[derive(Debug, Deserialize)]
@@ -117,8 +119,7 @@ pub(super) async fn list_campaigns(
 ) -> Result<Response> {
     let masked =
         crate::auth::aggregate_masked(&caller).map_err(crate::controllers::record_rejection)?;
-    let rows = campaigns::Entity::find()
-        .filter(campaigns::Column::DeletedAt.is_null())
+    let rows = campaigns::Entity::find_live()
         .order_by_asc(campaigns::Column::Id)
         .all(&ctx.db)
         .await?;
@@ -137,13 +138,13 @@ pub(super) async fn list_campaigns(
 pub(super) async fn campaign_status(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<CampaignStatusPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::CAMPAIGN_STATUSES, &payload.to);
     ensure_valid(&problems.into_vec())?;
-    let campaign = records::find_campaign(&ctx.db, records::parse_pid(&pid)?).await?;
+    let campaign = records::find_campaign(&ctx.db, pid).await?;
     lifecycle::check(
         "campaign",
         lifecycle::CAMPAIGN,
@@ -366,9 +367,9 @@ pub(super) fn check_runnable(campaign: &campaigns::Model, sender: &mail::Sender)
 pub(super) async fn run_campaign(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let campaign = records::find_campaign(&ctx.db, records::parse_pid(&pid)?).await?;
+    let campaign = records::find_campaign(&ctx.db, pid).await?;
     let sender = mail::current();
     check_runnable(&campaign, &sender)?;
     if !sender.needs_address() {
@@ -534,9 +535,9 @@ pub(super) async fn run_batch(
 #[debug_handler]
 pub(super) async fn campaign_deliveries(
     State(ctx): State<AppContext>,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let campaign = records::find_campaign(&ctx.db, records::parse_pid(&pid)?).await?;
+    let campaign = records::find_campaign(&ctx.db, pid).await?;
     let by_state = deliveries::summary(&ctx.db, campaign.pid).await?;
     let total: i64 = by_state.values().sum();
     let remaining = deliveries::retriable(&ctx.db, campaign.pid).await?;
@@ -554,9 +555,9 @@ pub(super) async fn campaign_deliveries(
 pub(super) async fn email_suppression(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let contact = records::find_contact(&ctx.db, pid).await?;
     let found = deliveries::suppression(&ctx.db, contact.pid).await?;
     Audit::record(
         &ctx.db,
@@ -582,9 +583,9 @@ pub(super) async fn email_suppression(
 pub(super) async fn clear_email_suppression(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let contact = records::find_contact(&ctx.db, pid).await?;
     let txn = ctx.db.begin().await?;
     let removed = deliveries::unsuppress(&txn, contact.pid).await?;
     if !removed {
@@ -610,11 +611,11 @@ pub(super) async fn clear_email_suppression(
 pub(super) async fn campaign_funnel(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
     let masked =
         crate::auth::aggregate_masked(&caller).map_err(crate::controllers::record_rejection)?;
-    let campaign = records::find_campaign(&ctx.db, records::parse_pid(&pid)?).await?;
+    let campaign = records::find_campaign(&ctx.db, pid).await?;
     let lead_rows = crate::models::_entities::leads::Entity::find()
         .filter(crate::models::_entities::leads::Column::CampaignPid.eq(campaign.pid))
         .filter(crate::models::_entities::leads::Column::DeletedAt.is_null())

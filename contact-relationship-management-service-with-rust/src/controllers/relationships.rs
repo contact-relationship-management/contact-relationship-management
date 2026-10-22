@@ -2,7 +2,9 @@
 //! URN wrappers, the merged timeline, the manual repoint endpoint,
 //! and activities. Every mutation runs on one transaction (CRM-D9).
 
+use crate::controllers::PidPath;
 use crate::json::Json;
+use crate::models::live::FindLive;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
@@ -174,11 +176,7 @@ async fn list_contacts(
 ) -> Result<Response> {
     let page = Page::new(&paging, 1000)?;
     let rows = page
-        .apply(
-            contacts::Entity::find()
-                .filter(contacts::Column::DeletedAt.is_null())
-                .order_by_asc(contacts::Column::Id),
-        )
+        .apply(contacts::Entity::find_live().order_by_asc(contacts::Column::Id))
         .all(&ctx.db)
         .await?;
     let (rows, more) = page.split(rows);
@@ -244,9 +242,9 @@ fn to_values<T: serde::Serialize>(rows: &[T]) -> Vec<serde_json::Value> {
 async fn get_contact(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let contact = records::find_contact(&ctx.db, pid).await?;
     let obligations = auth::authorize_record(
         &caller,
         authentication_verifier::Action::Read,
@@ -434,10 +432,10 @@ fn sort_ranked(ranked: &mut [Ranked]) {
 async fn contact_duplicates(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Query(params): Query<DuplicateParams>,
 ) -> Result<Response> {
-    let target = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let target = records::find_contact(&ctx.db, pid).await?;
     auth::authorize_record(
         &caller,
         authentication_verifier::Action::Read,
@@ -446,8 +444,7 @@ async fn contact_duplicates(
     .map_err(record_rejection)?;
     let limit = params.limit.unwrap_or(20).clamp(1, 100);
 
-    let mut rows = contacts::Entity::find()
-        .filter(contacts::Column::DeletedAt.is_null())
+    let mut rows = contacts::Entity::find_live()
         .filter(contacts::Column::Pid.ne(target.pid))
         .order_by_asc(contacts::Column::Id)
         .limit(u64::try_from(DUPLICATE_POOL + 1).unwrap_or(u64::MAX))
@@ -532,10 +529,10 @@ async fn contact_duplicates(
 async fn repoint_contact(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<RepointPayload>,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let contact = records::find_contact(&ctx.db, pid).await?;
     auth::authorize_record(
         &caller,
         authentication_verifier::Action::Write,
@@ -632,11 +629,7 @@ async fn list_accounts(
 ) -> Result<Response> {
     let page = Page::new(&paging, 500)?;
     let rows = page
-        .apply(
-            accounts::Entity::find()
-                .filter(accounts::Column::DeletedAt.is_null())
-                .order_by_asc(accounts::Column::Id),
-        )
+        .apply(accounts::Entity::find_live().order_by_asc(accounts::Column::Id))
         .all(&ctx.db)
         .await?;
     let (rows, more) = page.split(rows);
@@ -657,9 +650,9 @@ async fn list_accounts(
 async fn get_account(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let account = records::find_account(&ctx.db, records::parse_pid(&pid)?).await?;
+    let account = records::find_account(&ctx.db, pid).await?;
     let contact_rows = contacts::Entity::find()
         .filter(contacts::Column::AccountPid.eq(account.pid))
         .filter(contacts::Column::DeletedAt.is_null())
@@ -806,7 +799,7 @@ async fn list_activities(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&paging, 200)?;
-    let mut query = activities::Entity::find().filter(activities::Column::DeletedAt.is_null());
+    let mut query = activities::Entity::find_live();
     if let Some(kind) = &params.subject_kind {
         query = query.filter(activities::Column::SubjectKind.eq(kind));
     }
@@ -839,9 +832,8 @@ async fn list_activities(
 async fn activity_done(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     let row = activities::Entity::find()
         .filter(activities::Column::Pid.eq(pid))
         .filter(activities::Column::DeletedAt.is_null())

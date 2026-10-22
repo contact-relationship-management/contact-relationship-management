@@ -6,6 +6,7 @@
 //! permissive about consent than either contact was. With `dry_run` it does
 //! the same work and rolls it back, so the counts it returns are exact.
 
+use crate::controllers::PidPath;
 use crate::json::Json;
 use axum::http::StatusCode;
 use loco_rs::controller::ErrorDetail;
@@ -347,13 +348,13 @@ async fn combine(
 async fn merge(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<MergePayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("reason", &payload.reason);
     ensure_valid(&problems.into_vec())?;
-    let merged_pid = records::parse_pid(&pid)?;
+    let merged_pid = pid;
     let survivor_pid = records::parse_pid(&payload.into_pid)?;
     if merged_pid == survivor_pid {
         return Err(unprocessable("a contact cannot be merged into itself"));

@@ -6,6 +6,8 @@
 //! store only: what the upstream person/organization/worker services
 //! hold is the deployment's coordination duty, stated in the payloads.
 
+use crate::controllers::PidPath;
+use crate::models::live::FindLive;
 use loco_rs::prelude::*;
 use sea_orm::{ActiveValue, ConnectionTrait};
 use uuid::Uuid;
@@ -54,9 +56,9 @@ macro_rules! rows_for {
 async fn subject_access(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let contact = records::find_contact(&ctx.db, pid).await?;
     let obligations = auth::authorize_record(
         &caller,
         authentication_verifier::Action::Read,
@@ -162,9 +164,9 @@ async fn has_active_nurture<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Re
 async fn erase(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let contact = records::find_contact(&ctx.db, pid).await?;
     auth::authorize_record(
         &caller,
         authentication_verifier::Action::Destructive,
@@ -284,8 +286,7 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
             tables.insert((*table).to_string(), serde_json::json!(count));
         }
     }
-    let withdrawn_consent_past_horizon = contacts::Entity::find()
-        .filter(contacts::Column::DeletedAt.is_null())
+    let withdrawn_consent_past_horizon = contacts::Entity::find_live()
         .filter(contacts::Column::MarketingConsent.eq("withdrawn"))
         .filter(
             contacts::Column::ConsentChangedAt

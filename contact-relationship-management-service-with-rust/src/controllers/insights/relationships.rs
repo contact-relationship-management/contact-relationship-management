@@ -1,9 +1,8 @@
 //! Relationship insights: the stakeholder grid, the partnership register and membership renewals.
 
 use super::{
-    AppContext, ColumnTrait, DaysQuery, EntityTrait, HeaderMap, QueryFilter, Response, Result,
-    State, Uuid, accounts, activities, conditional, contacts, days_or, debug_handler,
-    engagement_rules, memberships, partnerships,
+    AppContext, DaysQuery, HeaderMap, Response, Result, State, Uuid, accounts, activities,
+    conditional, contacts, days_or, debug_handler, engagement_rules, memberships, partnerships,
 };
 
 /// `GET /api/insights/stakeholders` — the declared-stakeholder

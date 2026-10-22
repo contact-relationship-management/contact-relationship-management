@@ -7,6 +7,7 @@
 //! [`crate::rules::external_links`]. Contact links move with a merge and are
 //! deleted with an erasure.
 
+use crate::controllers::PidPath;
 use crate::json::Json;
 use axum::http::StatusCode;
 use loco_rs::controller::ErrorDetail;
@@ -89,9 +90,8 @@ async fn list_for(
     ctx: AppContext,
     caller: MaybeAuthUser,
     kind: &'static str,
-    pid: String,
+    pid: Uuid,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     check_subject(
         &ctx,
         &caller,
@@ -113,10 +113,9 @@ async fn create_for(
     ctx: AppContext,
     caller: MaybeAuthUser,
     kind: &'static str,
-    pid: String,
+    pid: Uuid,
     payload: LinkPayload,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     let mut problems = Problems::new();
     problems.require_token("system", &rules::SYSTEM_TOKENS, &payload.system);
     problems.require_text("url", &payload.url);
@@ -189,9 +188,8 @@ async fn create_for(
 async fn remove(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     let txn = ctx.db.begin().await?;
     let link = external_links::Entity::find()
         .filter(external_links::Column::Pid.eq(pid))
@@ -236,7 +234,7 @@ macro_rules! handlers {
         async fn $list(
             State(ctx): State<AppContext>,
             caller: MaybeAuthUser,
-            Path(pid): Path<String>,
+            PidPath(pid): PidPath,
         ) -> Result<Response> {
             list_for(ctx, caller, $kind, pid).await
         }
@@ -245,7 +243,7 @@ macro_rules! handlers {
         async fn $create(
             State(ctx): State<AppContext>,
             caller: MaybeAuthUser,
-            Path(pid): Path<String>,
+            PidPath(pid): PidPath,
             Json(payload): Json<LinkPayload>,
         ) -> Result<Response> {
             create_for(ctx, caller, $kind, pid, payload).await

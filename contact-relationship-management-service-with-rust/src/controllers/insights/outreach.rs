@@ -5,6 +5,7 @@ use super::{
     Result, State, Uuid, accounts, activities, audit_logs, conditional, contacts, days_or, deals,
     debug_handler, memberships, pipeline_stages, records, tickets,
 };
+use crate::models::live::FindLive;
 
 /// `GET /api/insights/cadence?days=` — relationship-cadence aging:
 /// contacts and accounts by days since their last recorded touch
@@ -185,8 +186,7 @@ pub(super) async fn funnel(
         .filter(|stage| stage.pipeline_pid == pipeline.pid)
         .collect();
     stages.sort_by_key(|stage| stage.position);
-    let pipeline_deals: Vec<deals::Model> = deals::Entity::find()
-        .filter(deals::Column::DeletedAt.is_null())
+    let pipeline_deals: Vec<deals::Model> = deals::Entity::find_live()
         .filter(deals::Column::PipelinePid.eq(pipeline.pid))
         .all(&ctx.db)
         .await?;
@@ -283,8 +283,7 @@ pub(super) async fn members(
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
     let activity_rows: Vec<activities::Model> = live!(activities, &ctx.db);
-    let ticket_rows: Vec<tickets::Model> = tickets::Entity::find()
-        .filter(tickets::Column::DeletedAt.is_null())
+    let ticket_rows: Vec<tickets::Model> = tickets::Entity::find_live()
         .filter(tickets::Column::Status.is_in(["open", "pending"]))
         .all(&ctx.db)
         .await?;

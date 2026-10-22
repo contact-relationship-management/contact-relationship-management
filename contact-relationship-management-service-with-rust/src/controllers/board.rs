@@ -12,6 +12,7 @@
 //! Every change is audited with the names of the fields that changed, never
 //! their values, except a due date (a day, not personal data).
 
+use crate::controllers::PidPath;
 use crate::json::Json;
 use loco_rs::prelude::*;
 use sea_orm::{QueryOrder, TransactionTrait};
@@ -93,7 +94,7 @@ fn place(index: usize) -> i32 {
 async fn edit_deal(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<DealEditPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
@@ -104,7 +105,6 @@ async fn edit_deal(
         problems.push("amount_minor must not be negative");
     }
     ensure_valid(&problems.into_vec())?;
-    let pid = records::parse_pid(&pid)?;
     let txn = ctx.db.begin().await?;
     let deal = deals::Entity::find()
         .filter(deals::Column::Pid.eq(pid))
@@ -158,7 +158,7 @@ async fn edit_deal(
 async fn edit_lead(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<LeadEditPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
@@ -167,7 +167,7 @@ async fn edit_lead(
     };
     problems.require_text("display_name", &name);
     ensure_valid(&problems.into_vec())?;
-    let lead = records::find_lead(&ctx.db, records::parse_pid(&pid)?).await?;
+    let lead = records::find_lead(&ctx.db, pid).await?;
     let txn = ctx.db.begin().await?;
     let mut active: leads::ActiveModel = lead.into();
     active.display_name = ActiveValue::set(name.trim().to_string());
@@ -190,7 +190,7 @@ async fn edit_lead(
 async fn edit_ticket(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<TicketEditPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
@@ -199,7 +199,7 @@ async fn edit_ticket(
     };
     problems.require_text("title", &title);
     ensure_valid(&problems.into_vec())?;
-    let ticket = records::find_ticket(&ctx.db, records::parse_pid(&pid)?).await?;
+    let ticket = records::find_ticket(&ctx.db, pid).await?;
     let txn = ctx.db.begin().await?;
     let mut active: tickets::ActiveModel = ticket.into();
     active.title = ActiveValue::set(title.trim().to_string());
@@ -222,10 +222,9 @@ async fn edit_ticket(
 async fn deal_position(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<PositionPayload>,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     let txn = ctx.db.begin().await?;
     let deal = deals::Entity::find()
         .filter(deals::Column::Pid.eq(pid))
@@ -272,10 +271,9 @@ async fn deal_position(
 async fn lead_position(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<PositionPayload>,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     let txn = ctx.db.begin().await?;
     let lead = leads::Entity::find()
         .filter(leads::Column::Pid.eq(pid))
@@ -313,10 +311,9 @@ async fn lead_position(
 async fn ticket_position(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<PositionPayload>,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     let txn = ctx.db.begin().await?;
     let ticket = tickets::Entity::find()
         .filter(tickets::Column::Pid.eq(pid))
@@ -353,7 +350,7 @@ async fn ticket_position(
 async fn edit_activity(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<ActivityEditPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
@@ -365,7 +362,6 @@ async fn edit_activity(
     if payload.due_on.is_none() && payload.summary.is_none() {
         return Err(unprocessable("nothing to change"));
     }
-    let pid = records::parse_pid(&pid)?;
     let row = activities::Entity::find()
         .filter(activities::Column::Pid.eq(pid))
         .filter(activities::Column::DeletedAt.is_null())

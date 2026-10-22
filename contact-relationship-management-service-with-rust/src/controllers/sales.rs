@@ -2,7 +2,9 @@
 //! conversion, pipelines + stages, deals with Kanban stage moves and
 //! terminal closes, and the stage-weighted forecast.
 
+use crate::controllers::PidPath;
 use crate::json::Json;
+use crate::models::live::FindLive;
 use loco_rs::prelude::*;
 use sea_orm::{PaginatorTrait, QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
@@ -213,8 +215,7 @@ async fn list_leads(
     let page = Page::new(&paging, 1000)?;
     let rows = page
         .apply(
-            leads::Entity::find()
-                .filter(leads::Column::DeletedAt.is_null())
+            leads::Entity::find_live()
                 .order_by_asc(leads::Column::BoardPosition)
                 .order_by_desc(leads::Column::Score)
                 .order_by_asc(leads::Column::Id),
@@ -239,9 +240,9 @@ async fn list_leads(
 async fn get_lead(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let lead = records::find_lead(&ctx.db, records::parse_pid(&pid)?).await?;
+    let lead = records::find_lead(&ctx.db, pid).await?;
     let breakdown = score_lead(&ctx.db, &lead).await?;
     Audit::record_read(&ctx.db, "lead", lead.pid, "lead_read", caller.actor(), None).await?;
     format::json(serde_json::json!({ "lead": lead, "score": breakdown }))
@@ -255,13 +256,13 @@ async fn get_lead(
 async fn lead_status(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<LeadStatusPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::LEAD_STATUSES, &payload.to);
     ensure_valid(&problems.into_vec())?;
-    let lead = records::find_lead(&ctx.db, records::parse_pid(&pid)?).await?;
+    let lead = records::find_lead(&ctx.db, pid).await?;
     lifecycle::check("lead", lifecycle::LEAD, &lead.status, &payload.to)
         .map_err(|e| unprocessable(&e))?;
     let txn = ctx.db.begin().await?;
@@ -449,8 +450,7 @@ async fn create_pipeline(
 /// `GET /api/pipelines` — pipelines with their stages.
 #[debug_handler]
 async fn list_pipelines(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = pipelines::Entity::find()
-        .filter(pipelines::Column::DeletedAt.is_null())
+    let rows = pipelines::Entity::find_live()
         .order_by_asc(pipelines::Column::Id)
         .all(&ctx.db)
         .await?;
@@ -552,7 +552,7 @@ async fn list_deals(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&paging, 2000)?;
-    let mut query = deals::Entity::find().filter(deals::Column::DeletedAt.is_null());
+    let mut query = deals::Entity::find_live();
     if let Some(pipeline) = params.pipeline {
         query = query.filter(deals::Column::PipelinePid.eq(pipeline));
     }
@@ -611,10 +611,9 @@ fn readable_deals(rows: &[deals::Model], caller: &MaybeAuthUser) -> Vec<serde_js
 async fn deal_stage(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<DealStagePayload>,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     let txn = ctx.db.begin().await?;
     let deal = deals::Entity::find()
         .filter(deals::Column::Pid.eq(pid))
@@ -704,13 +703,12 @@ async fn deal_stage(
 async fn reopen_deal(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<ReopenPayload>,
 ) -> Result<Response> {
     if payload.reason.trim().is_empty() {
         return Err(unprocessable("a reopen requires a reason"));
     }
-    let pid = records::parse_pid(&pid)?;
     let txn = ctx.db.begin().await?;
     let deal = deals::Entity::find()
         .filter(deals::Column::Pid.eq(pid))
@@ -762,8 +760,7 @@ async fn reopen_deal(
 #[debug_handler]
 async fn forecast(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
-    let open = deals::Entity::find()
-        .filter(deals::Column::DeletedAt.is_null())
+    let open = deals::Entity::find_live()
         .filter(deals::Column::ClosedAt.is_null())
         .all(&ctx.db)
         .await?;
@@ -800,8 +797,7 @@ async fn forecast_snapshot(
     caller: MaybeAuthUser,
 ) -> Result<Response> {
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
-    let open = deals::Entity::find()
-        .filter(deals::Column::DeletedAt.is_null())
+    let open = deals::Entity::find_live()
         .filter(deals::Column::ClosedAt.is_null())
         .all(&ctx.db)
         .await?;
@@ -845,13 +841,11 @@ async fn forecast_snapshot(
 /// Count helper for the win-rate dashboard (exposed here so sales
 /// owns the deal queries).
 pub(crate) async fn closed_counts(db: &DatabaseConnection) -> Result<(u64, u64)> {
-    let won = deals::Entity::find()
-        .filter(deals::Column::DeletedAt.is_null())
+    let won = deals::Entity::find_live()
         .filter(deals::Column::Won.eq(true))
         .count(db)
         .await?;
-    let lost = deals::Entity::find()
-        .filter(deals::Column::DeletedAt.is_null())
+    let lost = deals::Entity::find_live()
         .filter(deals::Column::ClosedAt.is_not_null())
         .filter(deals::Column::Won.eq(false))
         .count(db)

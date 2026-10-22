@@ -6,6 +6,7 @@ use super::{
     activities, audit_logs, auth, conditional, consent_events, days_or, deals, debug_handler,
     forecast_snapshots, leads, parse_instant, pipeline_stages, record_rejection, tickets,
 };
+use crate::models::live::FindLive;
 
 /// `GET /api/insights/stale-deals?days=` — open deals by days in their
 /// current stage, oldest first. Stage entry = the newest
@@ -20,8 +21,7 @@ pub(super) async fn stale_deals(
 ) -> Result<Response> {
     let threshold = days_or(query.days, 14);
     let now = chrono::Utc::now();
-    let open: Vec<deals::Model> = deals::Entity::find()
-        .filter(deals::Column::DeletedAt.is_null())
+    let open: Vec<deals::Model> = deals::Entity::find_live()
         .filter(deals::Column::ClosedAt.is_null())
         .all(&ctx.db)
         .await?;
@@ -110,8 +110,7 @@ pub(super) async fn followups(
 ) -> Result<Response> {
     let today = chrono::Utc::now().date_naive();
     let horizon = today + chrono::Days::new(30);
-    let mut find = activities::Entity::find()
-        .filter(activities::Column::DeletedAt.is_null())
+    let mut find = activities::Entity::find_live()
         .filter(activities::Column::Done.eq(false))
         .filter(activities::Column::DueOn.is_not_null());
     if let Some(kind) = query.kind.as_deref() {
@@ -176,8 +175,7 @@ pub(super) async fn pipeline_hygiene(
     let threshold = days_or(query.days, 14);
     let now = chrono::Utc::now();
     let today = now.date_naive();
-    let open: Vec<deals::Model> = deals::Entity::find()
-        .filter(deals::Column::DeletedAt.is_null())
+    let open: Vec<deals::Model> = deals::Entity::find_live()
         .filter(deals::Column::ClosedAt.is_null())
         .all(&ctx.db)
         .await?;
@@ -302,14 +300,12 @@ pub(super) async fn executive(
             *lost_reasons.entry(reason).or_default() += 1;
         }
     }
-    let new_leads = leads::Entity::find()
-        .filter(leads::Column::DeletedAt.is_null())
+    let new_leads = leads::Entity::find_live()
         .filter(leads::Column::CreatedAt.gte(from))
         .filter(leads::Column::CreatedAt.lte(to))
         .count(&ctx.db)
         .await?;
-    let tickets_opened = tickets::Entity::find()
-        .filter(tickets::Column::DeletedAt.is_null())
+    let tickets_opened = tickets::Entity::find_live()
         .filter(tickets::Column::OpenedAt.gte(from))
         .filter(tickets::Column::OpenedAt.lte(to))
         .count(&ctx.db)
@@ -327,8 +323,7 @@ pub(super) async fn executive(
         .iter()
         .filter(|row| row.entity == "campaign" && row.action == "running")
         .count();
-    let activities_logged = activities::Entity::find()
-        .filter(activities::Column::DeletedAt.is_null())
+    let activities_logged = activities::Entity::find_live()
         .filter(activities::Column::OccurredAt.gte(from))
         .filter(activities::Column::OccurredAt.lte(to))
         .count(&ctx.db)
@@ -370,8 +365,7 @@ pub(super) async fn forecast_trends(
     headers: HeaderMap,
 ) -> Result<Response> {
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
-    let rows: Vec<forecast_snapshots::Model> = forecast_snapshots::Entity::find()
-        .filter(forecast_snapshots::Column::DeletedAt.is_null())
+    let rows: Vec<forecast_snapshots::Model> = forecast_snapshots::Entity::find_live()
         .order_by_asc(forecast_snapshots::Column::TakenOn)
         .all(&ctx.db)
         .await?;

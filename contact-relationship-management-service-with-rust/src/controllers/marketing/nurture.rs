@@ -2,12 +2,14 @@
 
 use super::{
     ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait,
-    MaybeAuthUser, Metrics, Path, PidRef, Problems, QueryFilter, QueryOrder, QuerySelect, Response,
+    MaybeAuthUser, Metrics, PidRef, Problems, QueryFilter, QueryOrder, QuerySelect, Response,
     Result, State, TransactionTrait, Uuid, activities, clients, contacts, debug_handler,
     deliveries, ensure_valid, format, mail, nurture_enrollments, nurture_sequences, nurture_steps,
     records, streaming, unprocessable, with_unsubscribe,
 };
+use crate::controllers::PidPath;
 use crate::json::Json;
+use crate::models::live::FindLive;
 
 /// `POST /api/nurture-sequences` body.
 #[derive(Debug, Deserialize)]
@@ -114,10 +116,10 @@ pub(super) async fn create_sequence(
 pub(super) async fn enroll(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<EnrollPayload>,
 ) -> Result<Response> {
-    let sequence = records::find_sequence(&ctx.db, records::parse_pid(&pid)?).await?;
+    let sequence = records::find_sequence(&ctx.db, pid).await?;
     let contact = records::find_contact(&ctx.db, payload.contact_pid).await?;
     if contact.marketing_consent != "granted" {
         return Err(unprocessable("contact has not granted marketing consent"));
@@ -402,8 +404,7 @@ pub(super) async fn advance_nurture(
 #[debug_handler]
 pub(super) async fn list_sequences(State(ctx): State<AppContext>) -> Result<Response> {
     use sea_orm::PaginatorTrait;
-    let rows = nurture_sequences::Entity::find()
-        .filter(nurture_sequences::Column::DeletedAt.is_null())
+    let rows = nurture_sequences::Entity::find_live()
         .order_by_asc(nurture_sequences::Column::Id)
         .all(&ctx.db)
         .await?;

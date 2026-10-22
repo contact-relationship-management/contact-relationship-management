@@ -2,7 +2,9 @@
 //! SLA deadlines and breach facts, SLA policies, the breach sweep,
 //! and the versioned knowledge base.
 
+use crate::controllers::PidPath;
 use crate::json::Json;
+use crate::models::live::FindLive;
 use loco_rs::prelude::*;
 use sea_orm::{QueryOrder, TransactionTrait};
 use serde::{Deserialize, Serialize};
@@ -134,8 +136,7 @@ async fn create_policy(
 /// `GET /api/sla-policies`.
 #[debug_handler]
 async fn list_policies(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = sla_policies::Entity::find()
-        .filter(sla_policies::Column::DeletedAt.is_null())
+    let rows = sla_policies::Entity::find_live()
         .order_by_asc(sla_policies::Column::Id)
         .all(&ctx.db)
         .await?;
@@ -235,7 +236,7 @@ async fn list_tickets(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&paging, 1000)?;
-    let mut query = tickets::Entity::find().filter(tickets::Column::DeletedAt.is_null());
+    let mut query = tickets::Entity::find_live();
     if let Some(status) = &params.status {
         query = query.filter(tickets::Column::Status.eq(status));
     }
@@ -283,9 +284,9 @@ async fn list_tickets(
 async fn get_ticket(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let ticket = records::find_ticket(&ctx.db, records::parse_pid(&pid)?).await?;
+    let ticket = records::find_ticket(&ctx.db, pid).await?;
     Audit::record_read(
         &ctx.db,
         "ticket",
@@ -311,13 +312,13 @@ async fn get_ticket(
 async fn ticket_status(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<TicketStatusPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::TICKET_STATUSES, &payload.to);
     ensure_valid(&problems.into_vec())?;
-    let ticket = records::find_ticket(&ctx.db, records::parse_pid(&pid)?).await?;
+    let ticket = records::find_ticket(&ctx.db, pid).await?;
     lifecycle::check("ticket", lifecycle::TICKET, &ticket.status, &payload.to)
         .map_err(|e| unprocessable(&e))?;
     let txn = ctx.db.begin().await?;
@@ -365,14 +366,14 @@ async fn ticket_status(
 async fn ticket_priority(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<PriorityPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("priority", tokens::PRIORITIES, &payload.priority);
     problems.require_text("reason", &payload.reason);
     ensure_valid(&problems.into_vec())?;
-    let ticket = records::find_ticket(&ctx.db, records::parse_pid(&pid)?).await?;
+    let ticket = records::find_ticket(&ctx.db, pid).await?;
     let deadlines = targets_for(&ctx.db, &payload.priority)
         .await?
         .map(|targets| sla::deadlines(ticket.opened_at, targets));
@@ -403,8 +404,7 @@ async fn ticket_priority(
 #[debug_handler]
 async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
     let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
-    let open = tickets::Entity::find()
-        .filter(tickets::Column::DeletedAt.is_null())
+    let open = tickets::Entity::find_live()
         .filter(tickets::Column::Status.is_in(["open", "pending", "resolved"]))
         .all(&ctx.db)
         .await?;
@@ -488,14 +488,14 @@ async fn create_article(
 async fn update_article(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<ArticlePayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("title", &payload.title);
     problems.require_text("body", &payload.body);
     ensure_valid(&problems.into_vec())?;
-    let article = records::find_article(&ctx.db, records::parse_pid(&pid)?).await?;
+    let article = records::find_article(&ctx.db, pid).await?;
     if article.status == "archived" {
         return Err(unprocessable("archived articles are read-only"));
     }
@@ -526,13 +526,13 @@ struct ArticleStatusPayload {
 async fn article_status(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<ArticleStatusPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::ARTICLE_STATUSES, &payload.to);
     ensure_valid(&problems.into_vec())?;
-    let article = records::find_article(&ctx.db, records::parse_pid(&pid)?).await?;
+    let article = records::find_article(&ctx.db, pid).await?;
     lifecycle::check("article", lifecycle::ARTICLE, &article.status, &payload.to)
         .map_err(|e| unprocessable(&e))?;
     let txn = ctx.db.begin().await?;
@@ -575,7 +575,7 @@ async fn list_articles(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&paging, 500)?;
-    let mut query = articles::Entity::find().filter(articles::Column::DeletedAt.is_null());
+    let mut query = articles::Entity::find_live();
     // Search in SQL, before the page is cut: filtering after the cut would
     // hide matches that sit beyond the first page.
     if let Some(q) = params.q.as_deref().map(str::trim).filter(|q| !q.is_empty()) {

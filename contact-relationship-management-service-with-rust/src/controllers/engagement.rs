@@ -5,7 +5,9 @@
 //! [`crate::rules::engagement`]; the derived views live in
 //! [`super::insights`].
 
+use crate::controllers::PidPath;
 use crate::json::Json;
+use crate::models::live::FindLive;
 use loco_rs::prelude::*;
 use sea_orm::{ActiveValue, QueryOrder, QuerySelect};
 use serde::Deserialize;
@@ -42,7 +44,7 @@ struct ContactStakeholderPayload {
 async fn declare_contact_stakeholder(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<ContactStakeholderPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
@@ -58,7 +60,7 @@ async fn declare_contact_stakeholder(
         }
     }
     ensure_valid(&problems.into_vec())?;
-    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let contact = records::find_contact(&ctx.db, pid).await?;
     let contact_pid = contact.pid;
     let mut active: contacts::ActiveModel = contact.into();
     active.stakeholder_role = ActiveValue::set(payload.role.clone());
@@ -93,13 +95,13 @@ struct AccountStakeholderPayload {
 async fn declare_account_stakeholder(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<AccountStakeholderPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.token_opt("role", rules::STAKEHOLDER_ROLES, payload.role.as_deref());
     ensure_valid(&problems.into_vec())?;
-    let account = records::find_account(&ctx.db, records::parse_pid(&pid)?).await?;
+    let account = records::find_account(&ctx.db, pid).await?;
     let account_pid = account.pid;
     let mut active: crate::models::_entities::accounts::ActiveModel = account.into();
     active.stakeholder_role = ActiveValue::set(payload.role.clone());
@@ -132,7 +134,7 @@ struct PartnershipPayload {
 async fn create_partnership(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<PartnershipPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
@@ -140,7 +142,7 @@ async fn create_partnership(
     problems.require_text("summary", &payload.summary);
     problems.cap_text("summary", &payload.summary);
     ensure_valid(&problems.into_vec())?;
-    let account = records::find_account(&ctx.db, records::parse_pid(&pid)?).await?;
+    let account = records::find_account(&ctx.db, pid).await?;
     let row = partnerships::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         account_pid: ActiveValue::set(account.pid),
@@ -170,9 +172,9 @@ async fn create_partnership(
 #[debug_handler]
 async fn list_partnerships(
     State(ctx): State<AppContext>,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let account = records::find_account(&ctx.db, records::parse_pid(&pid)?).await?;
+    let account = records::find_account(&ctx.db, pid).await?;
     let rows = partnerships::Entity::find()
         .filter(partnerships::Column::AccountPid.eq(account.pid))
         .filter(partnerships::Column::DeletedAt.is_null())
@@ -195,11 +197,11 @@ struct StagePayload {
 async fn partnership_stage(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<StagePayload>,
 ) -> Result<Response> {
     let row = partnerships::Entity::find()
-        .filter(partnerships::Column::Pid.eq(records::parse_pid(&pid)?))
+        .filter(partnerships::Column::Pid.eq(pid))
         .filter(partnerships::Column::DeletedAt.is_null())
         .one(&ctx.db)
         .await?
@@ -240,7 +242,7 @@ struct MembershipPayload {
 async fn upsert_membership(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<MembershipPayload>,
 ) -> Result<Response> {
     let status = payload
@@ -250,7 +252,7 @@ async fn upsert_membership(
     let mut problems = Problems::new();
     problems.require_token("status", rules::MEMBERSHIP_STATUSES, &status);
     ensure_valid(&problems.into_vec())?;
-    let account = records::find_account(&ctx.db, records::parse_pid(&pid)?).await?;
+    let account = records::find_account(&ctx.db, pid).await?;
     let existing = memberships::Entity::find()
         .filter(memberships::Column::AccountPid.eq(account.pid))
         .one(&ctx.db)
@@ -335,8 +337,7 @@ async fn create_group(
 /// `GET /api/groups` — all live working groups with member counts.
 #[debug_handler]
 async fn list_groups(State(ctx): State<AppContext>) -> Result<Response> {
-    let groups = working_groups::Entity::find()
-        .filter(working_groups::Column::DeletedAt.is_null())
+    let groups = working_groups::Entity::find_live()
         .order_by_asc(working_groups::Column::Id)
         .all(&ctx.db)
         .await?;

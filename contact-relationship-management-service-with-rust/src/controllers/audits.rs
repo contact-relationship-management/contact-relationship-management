@@ -2,12 +2,12 @@
 //! slice, the **owner-scoped query** (spec `audit.md`), and the
 //! recent event stream.
 
+use crate::controllers::PidPath;
 use loco_rs::prelude::*;
 use serde::Deserialize;
 
 use crate::models::audit_logs::Model as Audit;
 use crate::models::event_outbox::Model as Outbox;
-use crate::models::records;
 use crate::streaming;
 
 /// `GET /api/audits/recent` — the most recent entries (cap 100).
@@ -33,8 +33,8 @@ async fn verify(State(ctx): State<AppContext>) -> Result<Response> {
 
 /// `GET /api/audits/{entity_pid}` — one record's trail.
 #[debug_handler]
-async fn for_entity(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Result<Response> {
-    format::json(Audit::for_entity(&ctx.db, records::parse_pid(&pid)?).await?)
+async fn for_entity(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
+    format::json(Audit::for_entity(&ctx.db, pid).await?)
 }
 
 /// `GET /api/audits?owner=<worker-urn>&since=<rfc3339>` — everything

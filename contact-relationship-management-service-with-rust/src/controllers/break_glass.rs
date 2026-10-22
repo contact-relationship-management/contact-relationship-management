@@ -2,6 +2,7 @@
 //! elevation; list grants for review; record the after-the-fact review.
 //! See [`crate::break_glass`] for the rules and defaults.
 
+use crate::controllers::PidPath;
 use crate::json::Json;
 use std::collections::HashMap;
 
@@ -16,7 +17,6 @@ use super::{invalid, record_rejection};
 use crate::auth::{AuthUser, MaybeAuthUser};
 use crate::break_glass as rules;
 use crate::models::audit_logs::Model as Audit;
-use crate::models::records;
 
 /// Body of `POST /api/break-glass`.
 #[derive(Debug, Deserialize)]
@@ -124,10 +124,9 @@ async fn list(State(ctx): State<AppContext>) -> Result<Response> {
 async fn review(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<ReviewPayload>,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     let row = ctx
         .db
         .query_one_raw(Statement::from_sql_and_values(

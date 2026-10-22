@@ -2,6 +2,8 @@
 //! pure-core derivation from recorded facts (CRM-D4) — per-currency,
 //! honest ratios, `as_of`-stamped, ETag-conditional.
 
+use crate::controllers::PidPath;
+use crate::models::live::FindLive;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use axum::http::{HeaderMap, StatusCode, header};
@@ -58,8 +60,7 @@ async fn sales_dashboard(
         i64::try_from(lost).unwrap_or(i64::MAX),
     );
     // Pipeline value by stage, per currency.
-    let open = deals::Entity::find()
-        .filter(deals::Column::DeletedAt.is_null())
+    let open = deals::Entity::find_live()
         .filter(deals::Column::ClosedAt.is_null())
         .all(&ctx.db)
         .await?;
@@ -104,8 +105,7 @@ async fn sales_dashboard(
 #[debug_handler]
 async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Result<Response> {
     let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
-    let open = tickets::Entity::find()
-        .filter(tickets::Column::DeletedAt.is_null())
+    let open = tickets::Entity::find_live()
         .filter(tickets::Column::Status.is_in(["open", "pending"]))
         .all(&ctx.db)
         .await?;
@@ -142,10 +142,9 @@ async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Res
 /// `GET /api/accounts/{pid}/clv` — CLV per currency over won deals
 /// (CRM-R13; the v1 revenue-sum definition).
 #[debug_handler]
-async fn account_clv(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Result<Response> {
-    let account = records::find_account(&ctx.db, records::parse_pid(&pid)?).await?;
-    let won = deals::Entity::find()
-        .filter(deals::Column::DeletedAt.is_null())
+async fn account_clv(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
+    let account = records::find_account(&ctx.db, pid).await?;
+    let won = deals::Entity::find_live()
         .filter(deals::Column::AccountPid.eq(account.pid))
         .filter(deals::Column::Won.eq(true))
         .all(&ctx.db)

@@ -1,12 +1,14 @@
 //! Segments and their preview (CRM-R7).
 
 use super::{
-    ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, DatabaseConnection, Deserialize,
-    EntityTrait, MaybeAuthUser, Path, PidRef, Problems, QueryFilter, QueryOrder, Response, Result,
-    State, TransactionTrait, Uuid, contact_facts, contacts, debug_handler, ensure_valid, format,
-    records, segment_rules, segments, tokens,
+    ActiveModelTrait, ActiveValue, AppContext, Audit, DatabaseConnection, Deserialize,
+    MaybeAuthUser, PidRef, Problems, QueryOrder, Response, Result, State, TransactionTrait, Uuid,
+    contact_facts, contacts, debug_handler, ensure_valid, format, records, segment_rules, segments,
+    tokens,
 };
+use crate::controllers::PidPath;
 use crate::json::Json;
+use crate::models::live::FindLive;
 
 /// `POST /api/segments` body.
 #[derive(Debug, Deserialize)]
@@ -60,10 +62,7 @@ pub(super) async fn evaluate_segment(
 ) -> Result<Vec<contacts::Model>> {
     let filter: segment_rules::Filter =
         serde_json::from_value(segment.filter.clone()).unwrap_or_default();
-    let all = contacts::Entity::find()
-        .filter(contacts::Column::DeletedAt.is_null())
-        .all(db)
-        .await?;
+    let all = contacts::Entity::find_live().all(db).await?;
     let mut matched = Vec::new();
     for contact in all {
         let facts = contact_facts(db, &contact).await?;
@@ -79,9 +78,9 @@ pub(super) async fn evaluate_segment(
 #[debug_handler]
 pub(super) async fn preview_segment(
     State(ctx): State<AppContext>,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let segment = records::find_segment(&ctx.db, records::parse_pid(&pid)?).await?;
+    let segment = records::find_segment(&ctx.db, pid).await?;
     let matched = evaluate_segment(&ctx.db, &segment).await?;
     let sample: Vec<_> = matched
         .iter()
@@ -94,8 +93,7 @@ pub(super) async fn preview_segment(
 /// `GET /api/segments`.
 #[debug_handler]
 pub(super) async fn list_segments(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = segments::Entity::find()
-        .filter(segments::Column::DeletedAt.is_null())
+    let rows = segments::Entity::find_live()
         .order_by_asc(segments::Column::Id)
         .all(&ctx.db)
         .await?;

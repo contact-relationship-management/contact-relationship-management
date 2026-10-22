@@ -1,8 +1,8 @@
 //! DPO insights: consent coverage and withdrawals, duplicate-contact hygiene, consent by account.
 
 use super::{
-    AppContext, ColumnTrait, DaysQuery, EntityTrait, HeaderMap, QueryFilter, Response, Result,
-    State, Uuid, accounts, conditional, consent_events, contacts, days_or, debug_handler,
+    AppContext, DaysQuery, EntityTrait, HeaderMap, Response, Result, State, Uuid, accounts,
+    conditional, consent_events, contacts, days_or, debug_handler,
 };
 
 /// `GET /api/insights/dpo?days=` — the data-protection view: consent

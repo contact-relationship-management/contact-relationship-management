@@ -1,9 +1,10 @@
 //! Support insights: the SLA register and per-assignee workload.
 
 use super::{
-    AppContext, ColumnTrait, EntityTrait, HeaderMap, QueryFilter, Response, Result, State,
-    conditional, debug_handler, tickets,
+    AppContext, ColumnTrait, HeaderMap, QueryFilter, Response, Result, State, conditional,
+    debug_handler, tickets,
 };
+use crate::models::live::FindLive;
 
 /// `GET /api/insights/sla` — the breach register (open/pending tickets
 /// past a due stamp, most-overdue first) and the per-assignee
@@ -16,8 +17,7 @@ pub(super) async fn sla_register(
 ) -> Result<Response> {
     let now = chrono::Utc::now();
     let at_risk_horizon = now + chrono::Duration::hours(4);
-    let open: Vec<tickets::Model> = tickets::Entity::find()
-        .filter(tickets::Column::DeletedAt.is_null())
+    let open: Vec<tickets::Model> = tickets::Entity::find_live()
         .filter(tickets::Column::Status.is_in(["open", "pending"]))
         .all(&ctx.db)
         .await?;

@@ -23,6 +23,23 @@ pub mod sales;
 pub mod support;
 pub mod unmerge;
 
+/// The single `{pid}` path parameter, parsed as a UUID: a value that is not
+/// one is a `404`, like any other record that is not there. Replaces
+/// `Path<String>` plus `records::parse_pid` in a handler.
+#[derive(Clone, Copy, Debug)]
+pub struct PidPath(pub uuid::Uuid);
+
+impl<S: Send + Sync> axum::extract::FromRequestParts<S> for PidPath {
+    type Rejection = Error;
+
+    async fn from_request_parts(parts: &mut axum::http::request::Parts, state: &S) -> Result<Self> {
+        let Path(raw) = Path::<String>::from_request_parts(parts, state)
+            .await
+            .map_err(|_| Error::NotFound)?;
+        crate::models::records::parse_pid(&raw).map(Self)
+    }
+}
+
 /// Map a non-empty problem list to the family's `422 Unprocessable
 /// Entity` validation error (every problem in one response).
 ///
@@ -66,4 +83,30 @@ pub fn record_rejection((status, reason): (StatusCode, String)) -> Error {
         "unauthorized"
     };
     Error::CustomError(status, ErrorDetail::new(code, &reason))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{Router, routing::get};
+    use axum_test::TestServer;
+
+    async fn echo(PidPath(pid): PidPath) -> String {
+        pid.to_string()
+    }
+
+    #[tokio::test]
+    async fn pid_path_parses_a_uuid_and_answers_404_for_anything_else() {
+        let server = TestServer::new(Router::new().route("/things/{pid}", get(echo)));
+        let pid = uuid::Uuid::new_v4();
+        let ok = server.get(&format!("/things/{pid}")).await;
+        ok.assert_status_ok();
+        ok.assert_text(pid.to_string());
+        for bad in ["nope", "123", "00000000-0000-0000-0000-00000000000g"] {
+            server
+                .get(&format!("/things/{bad}"))
+                .await
+                .assert_status_not_found();
+        }
+    }
 }

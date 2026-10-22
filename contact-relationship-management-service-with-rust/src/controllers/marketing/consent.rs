@@ -2,10 +2,11 @@
 
 use super::{
     ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait,
-    MaybeAuthUser, Path, Problems, QueryFilter, QueryOrder, Response, Result, State,
-    TransactionTrait, Uuid, accounts, consent_events, contacts, debug_handler, ensure_valid,
-    format, nurture_enrollments, records, segment_rules, streaming, tokens,
+    MaybeAuthUser, Problems, QueryFilter, QueryOrder, Response, Result, State, TransactionTrait,
+    Uuid, accounts, consent_events, contacts, debug_handler, ensure_valid, format,
+    nurture_enrollments, records, segment_rules, streaming, tokens,
 };
+use crate::controllers::PidPath;
 use crate::json::Json;
 
 /// `POST /api/contacts/{pid}/consent` body.
@@ -47,14 +48,14 @@ pub(super) async fn contact_facts<C: sea_orm::ConnectionTrait>(
 pub(super) async fn record_consent(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<ConsentPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("action", tokens::CONSENT_ACTIONS, &payload.action);
     problems.require_text("source", &payload.source);
     ensure_valid(&problems.into_vec())?;
-    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let contact = records::find_contact(&ctx.db, pid).await?;
     apply_consent(
         &ctx.db,
         contact,
@@ -151,9 +152,9 @@ pub(super) async fn apply_consent_in(
 pub(super) async fn consent_history(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, records::parse_pid(&pid)?).await?;
+    let contact = records::find_contact(&ctx.db, pid).await?;
     let rows = consent_events::Entity::find()
         .filter(consent_events::Column::ContactPid.eq(contact.pid))
         .order_by_asc(consent_events::Column::Id)

@@ -9,6 +9,7 @@
 //! with the survivor: an unmerge undoes the merge, it does not split two
 //! people's history by guesswork.
 
+use crate::controllers::PidPath;
 use crate::json::Json;
 use loco_rs::prelude::*;
 use sea_orm::{
@@ -248,13 +249,13 @@ async fn clear_filled(
 async fn unmerge(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
     Json(payload): Json<UnmergePayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("reason", &payload.reason);
     ensure_valid(&problems.into_vec())?;
-    let merged_pid = records::parse_pid(&pid)?;
+    let merged_pid = pid;
 
     let txn = ctx.db.begin().await?;
     let ledger = contact_merges::Entity::find()
@@ -417,9 +418,8 @@ async fn unmerge(
 async fn merges(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Path(pid): Path<String>,
+    PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let pid = records::parse_pid(&pid)?;
     let survivor = records::find_contact(&ctx.db, pid).await?;
     auth::authorize_record(
         &caller,
