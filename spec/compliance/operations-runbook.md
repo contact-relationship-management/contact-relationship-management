@@ -33,8 +33,9 @@ Commands assume the container images from the repository's `Containerfile`s.
    production). The runtime database role needs no DDL rights.
     From the image: `podman run --rm --entrypoint /app/crm-service <env> <image> db migrate`
     (the image's entrypoint is `start`, so `db migrate` needs the override). The
-    production config refuses to load without `DATABASE_URL`, `JWT_SECRET` and
-    `CRM_REDIS_URL`. Checked 2026-10-19 with a locally built image on a fresh
+    production config refuses to load without `DATABASE_URL` and
+    `CRM_REDIS_URL` (images up to v0.1.5 also require `JWT_SECRET`, which
+    nothing reads: loco's JWT support is not compiled in). Checked 2026-10-19 with a locally built image on a fresh
     PostgreSQL 18 and Redis: all 17 migrations applied, the service started,
     `/_ping` answered 200 and `/api/contacts` answered 401 (authentication on).
     A `start` without `--worker` runs no background jobs; run a second container

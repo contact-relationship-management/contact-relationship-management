@@ -1104,7 +1104,13 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       **Tests:** clippy `-D warnings` is clean on the default + keycloak and the keycloak-only builds. 184 unit tests pass, also against the local matcher. All 59 DB-backed tests and the Redis tests pass, run against PostgreSQL 18 and Redis from `compose.test.yaml`.
 
       **Limits:** reqwest 0.12 stays in builds with the keycloak feature, because `axum-keycloak-auth` (pulled in by `authentication-verifier`) still depends on it. The image was not rebuilt or smoke-tested.
-- [ ] CRM-T85 **Remove dead configuration.** Delete the `auth.jwt` blocks and `JWT_SECRET` (Loco's JWT feature is off), and the `deny.toml` `allow-git` entry. Fix or remove the 12 links to the missing `agents/share/*.md`. Move the literal secrets in `development.yaml` and `test.yaml` behind clearly-fake markers. (Q11, S)
+- [x] CRM-T85 **Remove dead configuration.** Delete the `auth.jwt` blocks and `JWT_SECRET` (Loco's JWT feature is off), and the `deny.toml` `allow-git` entry. Fix or remove the 12 links to the missing `agents/share/*.md`. Move the literal secrets in `development.yaml` and `test.yaml` behind clearly-fake markers. (Q11, S)
+      **Resolution (2026-10-22, not released):**
+      - **JWT config:** the `auth.jwt` blocks are gone from `production.yaml`, `development.yaml` and `test.yaml`, which removes the two committed literal secrets and the production `JWT_SECRET` requirement. Checked: the production config loads with `JWT_SECRET` unset (`doctor --config`), and the 187 unit tests and 59 DB-backed tests pass without the blocks.
+      - **`deny.toml`:** `allow-git` is empty; `cargo deny check sources` passes.
+      - **Already-released images** (up to v0.1.5) still demand `JWT_SECRET` because their config template has the block; the runbook and `scripts/image-smoke.sh` say so, and the smoke script keeps passing the variable.
+      - **`agents/share/*.md` links:** left in place. They are the family's shared documents in the `main-x-service` repository, which exists beside this one on the maintainer's machine; `spec/index.md` now says so. Deleting 12 references to real documents would lose information.
+      **Limits:** the variable can be dropped from deployments only once an image built from this change is released.
 - [x] CRM-T86 **Fix text copied from another project.** Correct the UI `package.json` description ("ward whiteboards, bed management") and decide the UI licence against the crates' list. Replace `brand.name` "Main X · CRM" (×8 locales and two page titles), the `mxi.crm.locale` storage key (migrate the old key once), and "WPM" in `clients.rs`. (Q12, S)
       **Done 2026-10-21:**
       - **UI description:** the `package.json` description now names sales, marketing, support and analytics, in place of the hospital text.

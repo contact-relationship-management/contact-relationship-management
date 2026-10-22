@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` headers** on responses when the request limit is on
   (always in production), so a client sees its budget before it gets a `429`; the `429` carries them too.
 
+### Removed — unused JWT configuration (CRM-T85)
+- The `auth.jwt` blocks in `config/*.yaml` are gone. Nothing read them (loco's JWT support is not compiled in), and the
+  production one made the service refuse to start without `JWT_SECRET`. Once this is released, `JWT_SECRET` is no
+  longer needed; releases up to 0.1.5 still need it. The development and test files no longer hold literal secrets.
+
 ### Changed — the display-name cache is bounded (CRM-T81)
 - Looked-up display names are kept for 10 minutes and at most 10,000 at a time (the oldest goes first). They were
   kept, unbounded, for the life of the process. A rename or erasure upstream now shows within 10 minutes.

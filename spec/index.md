@@ -91,3 +91,9 @@ queued in `tasks.md`, and only then lands as code in a subproject.
   [security](../../agents/share/security.md),
   [privacy](../../agents/share/privacy.md) (the person-service consent
   model CRM's marketing consent mirrors)
+
+  The `agents/share/` documents (here and in code comments as
+  `agents/share/*.md`) belong to the product family's shared repository,
+  `main-x-service`, not to this one. These links resolve only in a checkout
+  where this repository sits beside that one's `agents/` directory; elsewhere
+  they are dangling, and the comments name the contract that the code follows.

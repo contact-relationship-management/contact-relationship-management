@@ -95,16 +95,6 @@ database:
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_recreate: false
 
-# Authentication Configuration
-auth:
-  # JWT authentication
-  jwt:
-    # Secret key for token generation and verification
-    secret: BHlNtxoOqYTs9tX8d2FW
-    # Token expiration time in seconds
-    expiration: 604800 # 7 days
-
-
 # Cache provider: Redis (loco `cache_redis`). Production requires CRM_REDIS_URL
 # (use rediss:// for TLS); development defaults to a local Redis.
 cache:

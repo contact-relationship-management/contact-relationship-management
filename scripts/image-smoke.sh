@@ -55,6 +55,8 @@ pid_of() { sed -n 's/.*"pid":"\([^"]*\)".*/\1/p' | head -1; }
 person() { printf 'person:%s' "$(uuidgen | tr 'A-Z' 'a-z')"; }
 contact() { body "${ADMIN}" POST /api/contacts "{\"person_ref\":\"$(person)\",\"display_name\":\"$1\"}" | pid_of; }
 
+# JWT_SECRET is read by nothing; images up to v0.1.5 refuse to load their
+# config without it, so it stays while those images are smoke-tested.
 common_env=(
   -e "DATABASE_URL=postgres://loco:loco@${PG}:5432/crm" -e JWT_SECRET=smoke-test-secret-not-a-secret
   -e "CRM_REDIS_URL=redis://${RD}:6379" -e CRM_REQUIRE_AUTH=1 -e "CRM_PASETO_KEYS=${KEYS_JSON}"

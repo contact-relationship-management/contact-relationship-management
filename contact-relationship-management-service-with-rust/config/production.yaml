@@ -81,12 +81,6 @@ database:
   dangerously_truncate: false
   dangerously_recreate: false
 
-auth:
-  jwt:
-    secret: {{ get_env(name="JWT_SECRET") }}
-    expiration: 604800
-
-
 # Cache provider: Redis (loco `cache_redis`). Production requires CRM_REDIS_URL
 # (use rediss:// for TLS); development defaults to a local Redis.
 cache:
