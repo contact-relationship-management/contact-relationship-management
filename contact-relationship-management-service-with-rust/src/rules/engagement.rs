@@ -32,21 +32,41 @@ pub fn valid_grid_score(score: i32) -> bool {
     (1..=5).contains(&score)
 }
 
+/// Why a partnership stage change is refused.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum PartnershipError {
+    /// The target is not a stage.
+    #[error("unknown stage `{to}` (stages: {PARTNERSHIP_STAGES:?})")]
+    UnknownStage {
+        /// What was asked for.
+        to: String,
+    },
+    /// A retired partnership is final.
+    #[error("a retired partnership does not transition")]
+    Retired,
+    /// Not one step forward, and not a retirement.
+    #[error("illegal transition `{from}` → `{to}` (forward one step, or retire)")]
+    Illegal {
+        /// Where it is.
+        from: String,
+        /// Where it was asked to go.
+        to: String,
+    },
+}
+
 /// The partnership lifecycle: forward one step at a time
 /// (scouting → pilot → scaled), and `retired` reachable from any
 /// live stage. Everything else refuses with a reason.
 ///
 /// # Errors
 ///
-/// A human-readable refusal naming the legal moves.
-pub fn partnership_transition(current: &str, to: &str) -> Result<(), String> {
+/// [`PartnershipError`] naming the refusal.
+pub fn partnership_transition(current: &str, to: &str) -> Result<(), PartnershipError> {
     if !PARTNERSHIP_STAGES.contains(&to) {
-        return Err(format!(
-            "unknown stage `{to}` (stages: {PARTNERSHIP_STAGES:?})"
-        ));
+        return Err(PartnershipError::UnknownStage { to: to.to_string() });
     }
     if current == "retired" {
-        return Err("a retired partnership does not transition".to_string());
+        return Err(PartnershipError::Retired);
     }
     if to == "retired" {
         return Ok(());
@@ -55,9 +75,10 @@ pub fn partnership_transition(current: &str, to: &str) -> Result<(), String> {
     let to_idx = PARTNERSHIP_STAGES.iter().position(|s| *s == to);
     match (current_idx, to_idx) {
         (Some(c), Some(t)) if t == c + 1 => Ok(()),
-        _ => Err(format!(
-            "illegal transition `{current}` → `{to}` (forward one step, or retire)"
-        )),
+        _ => Err(PartnershipError::Illegal {
+            from: current.to_string(),
+            to: to.to_string(),
+        }),
     }
 }
 
@@ -79,7 +100,10 @@ mod tests {
         assert!(partnership_transition("pilot", "scaled").is_ok());
         assert!(partnership_transition("scouting", "retired").is_ok());
         assert!(
-            partnership_transition("scouting", "scaled").is_err(),
+            matches!(
+                partnership_transition("scouting", "scaled"),
+                Err(PartnershipError::Illegal { .. })
+            ),
             "no skipping"
         );
         assert!(
@@ -87,11 +111,14 @@ mod tests {
             "no going back"
         );
         assert!(
-            partnership_transition("retired", "pilot").is_err(),
+            partnership_transition("retired", "pilot") == Err(PartnershipError::Retired),
             "retired is terminal"
         );
         assert!(
-            partnership_transition("pilot", "sideways").is_err(),
+            matches!(
+                partnership_transition("pilot", "sideways"),
+                Err(PartnershipError::UnknownStage { .. })
+            ),
             "unknown refused"
         );
     }

@@ -13,7 +13,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use super::{invalid, record_rejection};
+use super::{invalid_field, record_rejection};
 use crate::auth::{AuthUser, MaybeAuthUser};
 use crate::break_glass as rules;
 use crate::models::audit_logs::Model as Audit;
@@ -45,7 +45,7 @@ async fn grant(
     Json(payload): Json<GrantPayload>,
 ) -> Result<Response> {
     let (reason, minutes) = rules::validate_request(&payload.reason, payload.minutes)
-        .map_err(|message| invalid(&message))?;
+        .map_err(|e| invalid_field(e.field(), &e.to_string()))?;
     let now = Utc::now();
     let expires_at = rules::expiry(now, minutes);
     let pid = Uuid::new_v4();
@@ -142,12 +142,9 @@ async fn review(
         return Err(super::unprocessable("this grant has already been reviewed"));
     }
     let reviewer = caller.actor().unwrap_or("unauthenticated").to_string();
-    let note = rules::validate_review(&subject, &reviewer, &payload.note).map_err(|message| {
-        if subject == reviewer {
-            record_rejection((StatusCode::FORBIDDEN, message))
-        } else {
-            invalid(&message)
-        }
+    let note = rules::validate_review(&subject, &reviewer, &payload.note).map_err(|e| match e {
+        rules::ReviewError::SelfReview => record_rejection((StatusCode::FORBIDDEN, e.to_string())),
+        rules::ReviewError::NoteTooShort => invalid_field("note", &e.to_string()),
     })?;
     let txn = ctx.db.begin().await?;
     txn.execute_raw(Statement::from_sql_and_values(

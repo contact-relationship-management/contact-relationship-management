@@ -19,7 +19,7 @@ use sea_orm::{QueryOrder, TransactionTrait};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use super::{ensure_valid, record_rejection, unprocessable};
+use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{activities, deals, leads, tickets};
 use crate::models::audit_logs::Model as Audit;
@@ -104,7 +104,7 @@ async fn edit_deal(
     if payload.amount_minor.is_some_and(|amount| amount < 0) {
         problems.push("amount_minor must not be negative");
     }
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let txn = ctx.db.begin().await?;
     let deal = deals::Entity::find()
         .filter(deals::Column::Pid.eq(pid))
@@ -166,7 +166,7 @@ async fn edit_lead(
         return Err(unprocessable("nothing to change"));
     };
     problems.require_text("display_name", &name);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let lead = records::find_lead(&ctx.db, pid).await?;
     let txn = ctx.db.begin().await?;
     let mut active: leads::ActiveModel = lead.into();
@@ -198,7 +198,7 @@ async fn edit_ticket(
         return Err(unprocessable("nothing to change"));
     };
     problems.require_text("title", &title);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let ticket = records::find_ticket(&ctx.db, pid).await?;
     let txn = ctx.db.begin().await?;
     let mut active: tickets::ActiveModel = ticket.into();
@@ -358,7 +358,7 @@ async fn edit_activity(
         problems.require_text("summary", summary);
         problems.cap_text("summary", summary);
     }
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     if payload.due_on.is_none() && payload.summary.is_none() {
         return Err(unprocessable("nothing to change"));
     }

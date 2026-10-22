@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::paging::{Page, PageParams};
-use super::{ensure_valid, record_rejection, unprocessable};
+use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{accounts, activities, contacts, deals, tickets};
 use crate::models::audit_logs::Model as Audit;
@@ -120,7 +120,7 @@ async fn create_contact(
         &payload.preferred_channel,
     );
     problems.cap_opt("job_title", payload.job_title.as_deref());
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     if let Some(account) = payload.account_pid {
         records::find_account(&ctx.db, account).await?;
     }
@@ -546,7 +546,7 @@ async fn repoint_contact(
         &payload.person_ref,
     );
     problems.require_text("reason", &payload.reason);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let txn = ctx.db.begin().await?;
     let from = contact.person_ref.clone();
     let mut active: contacts::ActiveModel = contact.into();
@@ -588,7 +588,7 @@ async fn create_account(
         payload.owner_ref.as_deref(),
     );
     problems.cap_opt("industry", payload.industry.as_deref());
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let txn = ctx.db.begin().await?;
     let row = accounts::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
@@ -725,7 +725,7 @@ async fn create_activity(
         entity_ref::EntityType::Worker,
         payload.actor_ref.as_deref(),
     );
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let occurred_at = payload
         .occurred_at
         .unwrap_or_else(|| chrono::Utc::now().into());

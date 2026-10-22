@@ -19,7 +19,7 @@ use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
-use super::{ensure_valid, record_rejection};
+use super::record_rejection;
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::external_links;
 use crate::models::audit_logs::Model as Audit;
@@ -131,7 +131,7 @@ async fn create_for(
             None
         }
     };
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let address = address.ok_or(Error::BadRequest("url".into()))?;
     check_subject(
         &ctx,

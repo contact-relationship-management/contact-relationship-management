@@ -71,7 +71,11 @@ fn base_schemas() -> Value {
             "title": string(), "status": integer(), "detail": string(),
             "instance": { "type": "string", "description": "The request path" },
             "error": { "type": "string", "description": "Stable machine code (kept from the earlier body)" },
-            "description": { "type": "string", "description": "Same text as `detail` (kept from the earlier body)" } })),
+            "description": { "type": "string", "description": "Same text as `detail` (kept from the earlier body)" },
+            "errors": { "type": "array", "description": "On a `422` validation error: each problem, with the member it is about",
+                "items": { "type": "object", "required": ["detail"], "properties": {
+                    "pointer": { "type": "string", "description": "JSON Pointer (RFC 6901) to the request member, such as `/display_name`; a list entry is `/stages/0/name` for a body the parser refused, and `/stages/name` for a check that does not know the entry. Absent when the problem is about the request as a whole" },
+                    "detail": string() } } } })),
         "Created": resource(&["pid"], &json!({ "pid": uuid() })),
 
         // ---- requests

@@ -12,7 +12,7 @@ use sea_orm::{QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{ensure_valid, unprocessable};
+use super::unprocessable;
 use crate::auth::MaybeAuthUser;
 use crate::clients;
 use crate::mail;

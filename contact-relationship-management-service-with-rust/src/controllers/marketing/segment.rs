@@ -3,8 +3,7 @@
 use super::{
     ActiveModelTrait, ActiveValue, AppContext, Audit, DatabaseConnection, Deserialize,
     MaybeAuthUser, PidRef, Problems, QueryOrder, Response, Result, State, TransactionTrait, Uuid,
-    contact_facts, contacts, debug_handler, ensure_valid, format, records, segment_rules, segments,
-    tokens,
+    contact_facts, contacts, debug_handler, format, records, segment_rules, segments, tokens,
 };
 use crate::controllers::PidPath;
 use crate::json::Json;
@@ -37,7 +36,7 @@ pub(super) async fn create_segment(
     for tier in &payload.filter.account_tiers {
         problems.require_token("filter.account_tiers", tokens::ACCOUNT_TIERS, tier);
     }
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let txn = ctx.db.begin().await?;
     let row = segments::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),

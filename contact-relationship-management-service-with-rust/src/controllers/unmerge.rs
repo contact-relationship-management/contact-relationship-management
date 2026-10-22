@@ -22,7 +22,7 @@ use uuid::Uuid;
 
 use super::merge::{MOVES, authorize_destructive, conflict, lock_rows, pick_pair};
 use super::privacy::TOMBSTONE_PERSON;
-use super::{ensure_valid, record_rejection, unprocessable};
+use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{consent_events, contact_merges, contacts};
 use crate::models::audit_logs::Model as Audit;
@@ -417,7 +417,7 @@ async fn unmerge(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("reason", &payload.reason);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
 
     let txn = ctx.db.begin().await?;
     let ledger = open_ledger(&txn, merged_pid).await?;

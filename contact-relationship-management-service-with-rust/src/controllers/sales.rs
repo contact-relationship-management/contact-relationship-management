@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::paging::{Page, PageParams};
-use super::{ensure_valid, record_rejection, unprocessable};
+use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::metrics::Metrics;
 use crate::models::_entities::{
@@ -158,7 +158,7 @@ async fn create_lead(
     problems.require_text("display_name", &payload.display_name);
     problems.require_token("source", tokens::LEAD_SOURCES, &payload.source);
     problems.cap_opt("email", payload.email.as_deref());
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     if let Some(contact) = payload.contact_pid {
         records::find_contact(&ctx.db, contact).await?;
     }
@@ -264,7 +264,7 @@ async fn contact_for_conversion(
         .ok_or_else(|| unprocessable("conversion requires person_ref (no linked contact)"))?;
     let mut problems = Problems::new();
     problems.require_ref("person_ref", entity_ref::EntityType::Person, person_ref);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let contact = contacts::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         person_ref: ActiveValue::set(person_ref.clone()),
@@ -351,10 +351,10 @@ async fn lead_status(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::LEAD_STATUSES, &payload.to);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let lead = records::find_lead(&ctx.db, pid).await?;
     lifecycle::check("lead", lifecycle::LEAD, &lead.status, &payload.to)
-        .map_err(|e| unprocessable(&e))?;
+        .map_err(|e| unprocessable(&e.to_string()))?;
     let txn = ctx.db.begin().await?;
     let from = lead.status.clone();
     let converting = payload.to == "converted";
@@ -429,7 +429,7 @@ async fn create_pipeline(
             problems.push("a stage cannot be both won and lost".to_string());
         }
     }
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let txn = ctx.db.begin().await?;
     let pipeline = pipelines::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
@@ -507,7 +507,7 @@ async fn create_deal(
     if payload.amount_minor < 0 {
         problems.push("amount_minor must be non-negative".to_string());
     }
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let pipeline = records::find_pipeline(&ctx.db, payload.pipeline_pid).await?;
     let first_stage = pipeline_stages::Entity::find()
         .filter(pipeline_stages::Column::PipelinePid.eq(pipeline.pid))

@@ -5,6 +5,8 @@ use axum::http::StatusCode;
 use loco_rs::controller::ErrorDetail;
 use loco_rs::prelude::*;
 
+use crate::validation::FieldProblem;
+
 pub mod audits;
 pub mod board;
 pub mod break_glass;
@@ -50,17 +52,57 @@ pub fn ensure_valid(problems: &[String]) -> Result<()> {
     if problems.is_empty() {
         return Ok(());
     }
-    Err(invalid(&problems.join("; ")))
+    Err(validation_error(
+        &problems
+            .iter()
+            .map(|detail| FieldProblem {
+                pointer: None,
+                detail: detail.clone(),
+            })
+            .collect::<Vec<_>>(),
+    ))
 }
 
 /// The `422` validation error for one problem (what `ensure_valid` returns
 /// for a list of one).
 #[must_use]
 pub fn invalid(problem: &str) -> Error {
-    Error::CustomError(
-        StatusCode::UNPROCESSABLE_ENTITY,
-        ErrorDetail::new("validation", problem),
-    )
+    validation_error(&[FieldProblem {
+        pointer: None,
+        detail: problem.to_string(),
+    }])
+}
+
+/// A `422` for one problem about one request member (`field`, as the API
+/// names it).
+#[must_use]
+pub fn invalid_field(field: &str, problem: &str) -> Error {
+    validation_error(&[FieldProblem {
+        pointer: Some(crate::validation::pointer(field)),
+        detail: problem.to_string(),
+    }])
+}
+
+/// The `422` for a list of problems: `description` joins the messages and
+/// `errors` lists each with the member it is about.
+#[must_use]
+pub fn validation_error(problems: &[FieldProblem]) -> Error {
+    let joined = problems
+        .iter()
+        .map(|p| p.detail.as_str())
+        .collect::<Vec<_>>()
+        .join("; ");
+    let mut detail = ErrorDetail::new("validation", joined);
+    detail.errors = Some(serde_json::Value::Array(
+        problems
+            .iter()
+            .map(|p| match &p.pointer {
+                Some(pointer) => serde_json::json!({ "pointer": pointer, "detail": p.detail }),
+                None => serde_json::json!({ "detail": p.detail }),
+            })
+            .collect(),
+    ));
+    Error::CustomError(StatusCode::UNPROCESSABLE_ENTITY, detail)
 }
 
 /// A `422` with a single message (state-machine refusals etc.).

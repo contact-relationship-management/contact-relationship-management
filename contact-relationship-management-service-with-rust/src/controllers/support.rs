@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::paging::{Page, PageParams};
-use super::{ensure_valid, unprocessable};
+use super::unprocessable;
 use crate::auth::MaybeAuthUser;
 use crate::metrics::Metrics;
 use crate::models::_entities::{activities, articles, sla_policies, tickets};
@@ -114,7 +114,7 @@ async fn create_policy(
     if payload.first_response_minutes > payload.resolution_minutes {
         problems.push("first response target exceeds the resolution target".to_string());
     }
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let txn = ctx.db.begin().await?;
     let row = sla_policies::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
@@ -160,7 +160,7 @@ async fn create_ticket(
         entity_ref::EntityType::Worker,
         payload.assignee_ref.as_deref(),
     );
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let account_pid = if let Some(contact) = payload.contact_pid {
         records::find_contact(&ctx.db, contact).await?.account_pid
     } else {
@@ -317,10 +317,10 @@ async fn ticket_status(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::TICKET_STATUSES, &payload.to);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let ticket = records::find_ticket(&ctx.db, pid).await?;
     lifecycle::check("ticket", lifecycle::TICKET, &ticket.status, &payload.to)
-        .map_err(|e| unprocessable(&e))?;
+        .map_err(|e| unprocessable(&e.to_string()))?;
     let txn = ctx.db.begin().await?;
     let from = ticket.status.clone();
     let title = ticket.title.clone();
@@ -372,7 +372,7 @@ async fn ticket_priority(
     let mut problems = Problems::new();
     problems.require_token("priority", tokens::PRIORITIES, &payload.priority);
     problems.require_text("reason", &payload.reason);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let ticket = records::find_ticket(&ctx.db, pid).await?;
     let deadlines = targets_for(&ctx.db, &payload.priority)
         .await?
@@ -461,7 +461,7 @@ async fn create_article(
     problems.require_text("title", &payload.title);
     problems.require_text("body", &payload.body);
     problems.cap_opt("keywords", payload.keywords.as_deref());
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let txn = ctx.db.begin().await?;
     let row = articles::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
@@ -494,7 +494,7 @@ async fn update_article(
     let mut problems = Problems::new();
     problems.require_text("title", &payload.title);
     problems.require_text("body", &payload.body);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let article = records::find_article(&ctx.db, pid).await?;
     if article.status == "archived" {
         return Err(unprocessable("archived articles are read-only"));
@@ -531,10 +531,10 @@ async fn article_status(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::ARTICLE_STATUSES, &payload.to);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let article = records::find_article(&ctx.db, pid).await?;
     lifecycle::check("article", lifecycle::ARTICLE, &article.status, &payload.to)
-        .map_err(|e| unprocessable(&e))?;
+        .map_err(|e| unprocessable(&e.to_string()))?;
     let txn = ctx.db.begin().await?;
     let mut active: articles::ActiveModel = article.into();
     active.status = ActiveValue::set(payload.to.clone());

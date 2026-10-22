@@ -45,16 +45,37 @@ pub fn permits(table: &[(&str, &str)], from: &str, to: &str) -> bool {
     table.iter().any(|(f, t)| *f == from && *t == to)
 }
 
-/// Check a transition, yielding the family `422` message on refusal.
+/// A transition the table does not permit.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("cannot move {kind} from {from:?} to {to:?}")]
+pub struct TransitionError {
+    /// What was being moved (`lead`, `ticket`, …).
+    pub kind: String,
+    /// Where it is.
+    pub from: String,
+    /// Where it was asked to go.
+    pub to: String,
+}
+
+/// Check a transition.
 ///
 /// # Errors
 ///
-/// A human-readable refusal when the transition is not in the table.
-pub fn check(kind: &str, table: &[(&str, &str)], from: &str, to: &str) -> Result<(), String> {
+/// [`TransitionError`] when the transition is not in the table.
+pub fn check(
+    kind: &str,
+    table: &[(&str, &str)],
+    from: &str,
+    to: &str,
+) -> Result<(), TransitionError> {
     if permits(table, from, to) {
         Ok(())
     } else {
-        Err(format!("cannot move {kind} from {from:?} to {to:?}"))
+        Err(TransitionError {
+            kind: kind.to_string(),
+            from: from.to_string(),
+            to: to.to_string(),
+        })
     }
 }
 
@@ -82,6 +103,19 @@ mod tests {
                 assert!(tokens::is_token(vocab, to), "unknown token {to}");
             }
         }
+    }
+
+    /// A refusal says what was being moved and between which states, in the
+    /// words clients have always read.
+    #[test]
+    fn a_refused_transition_says_what_and_where() {
+        let refusal = check("lead", LEAD, "new", "converted").unwrap_err();
+        assert_eq!(refusal.kind, "lead");
+        assert_eq!(
+            refusal.to_string(),
+            r#"cannot move lead from "new" to "converted""#
+        );
+        assert!(check("lead", LEAD, "new", "contacted").is_ok());
     }
 
     /// Leads: forward path only; disqualify from any live status;

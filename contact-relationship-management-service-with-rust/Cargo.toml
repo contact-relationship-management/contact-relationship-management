@@ -43,6 +43,7 @@ sea-orm = { version = "2.0", features = [
 ] }
 chrono = { version = "0.4" }
 url = "2.5"
+thiserror = "2"
 uuid = { version = "1.26", features = ["v4", "serde"] }
 mimalloc = { version = "0.1.52" }
 # Tamper-evident audit hash chain (CRM-T31).

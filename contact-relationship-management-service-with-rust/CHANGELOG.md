@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` headers** on responses when the request limit is on
   (always in production), so a client sees its budget before it gets a `429`; the `429` carries them too.
 
+### Added — validation errors name their member (CRM-T79)
+- A `422` validation error now has an `errors` list, `[{ "pointer": "/display_name", "detail": "…" }]`, beside the
+  unchanged `error`, `description` and `detail`. `pointer` is a JSON Pointer to the request member and is left out
+  when the problem is about the request as a whole. For a body the parser refused, it follows the parser's path
+  (`/stages/2/probability_percent`). The OpenAPI `Error` schema documents it.
+- Break-glass refusals, lifecycle transitions and partnership transitions are typed errors internally; the messages
+  clients read are the same.
+
 ### Changed — settings in one place (CRM-T78)
 - The `CRM_*` settings that were read lazily from the environment (authentication switches, key and policy sources,
   the event transport, the webhook and Mailgun secrets, the mail batch, the retention horizon, the Redis URL and

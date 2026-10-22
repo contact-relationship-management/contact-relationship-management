@@ -13,9 +13,33 @@ pub const MAX_ARRAY_LEN: usize = 256;
 /// Maximum length of one list entry.
 pub const MAX_ITEM_LEN: usize = 512;
 
-/// Accumulates human-readable validation problems.
+/// One validation problem: what is wrong, and where.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldProblem {
+    /// A JSON Pointer (RFC 6901) to the member, such as `/display_name`. A
+    /// member of a list is named without its index (`stages[].name` is
+    /// `/stages/name`), because the check does not know which entry it is.
+    /// `None` when the problem is about the request as a whole.
+    pub pointer: Option<String>,
+    /// The human-readable message.
+    pub detail: String,
+}
+
+/// The JSON Pointer for a field as the API documents it: `a.b` is `/a/b`, and
+/// a `[]` (any list entry) is dropped.
+#[must_use]
+pub fn pointer(field: &str) -> String {
+    let path: Vec<&str> = field
+        .split('.')
+        .map(|part| part.trim_end_matches("[]"))
+        .collect();
+    format!("/{}", path.join("/"))
+}
+
+/// Accumulates human-readable validation problems, each with the member it is
+/// about.
 #[derive(Debug, Default)]
-pub struct Problems(Vec<String>);
+pub struct Problems(Vec<FieldProblem>);
 
 impl Problems {
     /// Start an empty problem list.
@@ -24,15 +48,26 @@ impl Problems {
         Self::default()
     }
 
-    /// Record a problem.
+    /// Record a problem about the request as a whole.
     pub fn push(&mut self, problem: impl Into<String>) {
-        self.0.push(problem.into());
+        self.0.push(FieldProblem {
+            pointer: None,
+            detail: problem.into(),
+        });
+    }
+
+    /// Record a problem about one member (`field`, as the API names it).
+    pub fn push_field(&mut self, field: &str, problem: impl Into<String>) {
+        self.0.push(FieldProblem {
+            pointer: Some(pointer(field)),
+            detail: problem.into(),
+        });
     }
 
     /// `field` must be non-blank and within [`MAX_TEXT_LEN`].
     pub fn require_text(&mut self, field: &str, value: &str) {
         if value.trim().is_empty() {
-            self.push(format!("{field} is required"));
+            self.push_field(field, format!("{field} is required"));
         }
         self.cap_text(field, value);
     }
@@ -40,7 +75,7 @@ impl Problems {
     /// `field`, when present, must be within [`MAX_TEXT_LEN`].
     pub fn cap_text(&mut self, field: &str, value: &str) {
         if value.len() > MAX_TEXT_LEN {
-            self.push(format!("{field} exceeds {MAX_TEXT_LEN} characters"));
+            self.push_field(field, format!("{field} exceeds {MAX_TEXT_LEN} characters"));
         }
     }
 
@@ -54,7 +89,10 @@ impl Problems {
     /// `field` must be a member of the closed token `set`.
     pub fn require_token(&mut self, field: &str, set: &[&str], value: &str) {
         if !crate::rules::tokens::is_token(set, value) {
-            self.push(format!("{field} must be one of {set:?}, got {value:?}"));
+            self.push_field(
+                field,
+                format!("{field} must be one of {set:?}, got {value:?}"),
+            );
         }
     }
 
@@ -69,11 +107,14 @@ impl Problems {
     pub fn require_ref(&mut self, field: &str, expected: EntityType, value: &str) {
         match EntityRef::from_str(value) {
             Ok(r) if r.entity_type == expected => {}
-            Ok(r) => self.push(format!(
-                "{field} must reference a {expected:?}, got {:?}",
-                r.entity_type
-            )),
-            Err(e) => self.push(format!("{field} is not a valid EntityRef URN: {e}")),
+            Ok(r) => self.push_field(
+                field,
+                format!(
+                    "{field} must reference a {expected:?}, got {:?}",
+                    r.entity_type
+                ),
+            ),
+            Err(e) => self.push_field(field, format!("{field} is not a valid EntityRef URN: {e}")),
         }
     }
 
@@ -88,22 +129,46 @@ impl Problems {
     /// blank entries.
     pub fn cap_list(&mut self, field: &str, values: &[String]) {
         if values.len() > MAX_ARRAY_LEN {
-            self.push(format!("{field} exceeds {MAX_ARRAY_LEN} entries"));
+            self.push_field(field, format!("{field} exceeds {MAX_ARRAY_LEN} entries"));
         }
         for v in values {
             if v.trim().is_empty() {
-                self.push(format!("{field} entries must be non-blank"));
+                self.push_field(field, format!("{field} entries must be non-blank"));
             }
             if v.len() > MAX_ITEM_LEN {
-                self.push(format!("{field} entry exceeds {MAX_ITEM_LEN} characters"));
+                self.push_field(
+                    field,
+                    format!("{field} entry exceeds {MAX_ITEM_LEN} characters"),
+                );
             }
         }
     }
 
-    /// The collected problems (empty ⇒ valid).
+    /// The messages only (empty ⇒ valid).
     #[must_use]
     pub fn into_vec(self) -> Vec<String> {
+        self.0.into_iter().map(|p| p.detail).collect()
+    }
+
+    /// The problems with the members they are about (empty ⇒ valid).
+    #[must_use]
+    pub fn into_problems(self) -> Vec<FieldProblem> {
         self.0
+    }
+
+    /// `Ok` when nothing was recorded; otherwise the `422` for the request:
+    /// `description` joins the messages (what clients have always read), and
+    /// `errors` lists each as `{ "pointer", "detail" }` (RFC 9457 §3.2), the
+    /// `pointer` left out for a problem about the request as a whole.
+    ///
+    /// # Errors
+    ///
+    /// The `422` when any problem was recorded.
+    pub fn finish(self) -> loco_rs::Result<()> {
+        if self.0.is_empty() {
+            return Ok(());
+        }
+        Err(crate::controllers::validation_error(&self.0))
     }
 }
 

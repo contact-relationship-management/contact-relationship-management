@@ -4,8 +4,8 @@ use super::{
     ActiveModelTrait, ActiveValue, AppContext, Audit, BackgroundWorker, ColumnTrait, Deserialize,
     EntityTrait, Error, MaybeAuthUser, PidRef, Problems, QueryFilter, QueryOrder, Response, Result,
     State, TransactionTrait, Uuid, activities, analytics, async_trait, campaigns, clients,
-    contacts, deals, debug_handler, deliveries, ensure_valid, evaluate_segment, format, lifecycle,
-    mail, records, streaming, tokens, unprocessable,
+    contacts, deals, debug_handler, deliveries, evaluate_segment, format, lifecycle, mail, records,
+    streaming, tokens, unprocessable,
 };
 use crate::controllers::PidPath;
 use crate::json::Json;
@@ -79,7 +79,7 @@ pub(super) async fn create_campaign(
     {
         problems.push(format!("body exceeds {MAX_BODY_LEN} characters"));
     }
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     if let Some(segment) = payload.segment_pid {
         records::find_segment(&ctx.db, segment).await?;
     }
@@ -143,7 +143,7 @@ pub(super) async fn campaign_status(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::CAMPAIGN_STATUSES, &payload.to);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let campaign = records::find_campaign(&ctx.db, pid).await?;
     lifecycle::check(
         "campaign",
@@ -151,7 +151,7 @@ pub(super) async fn campaign_status(
         &campaign.status,
         &payload.to,
     )
-    .map_err(|e| unprocessable(&e))?;
+    .map_err(|e| unprocessable(&e.to_string()))?;
     let txn = ctx.db.begin().await?;
     let from = campaign.status.clone();
     let name = campaign.name.clone();

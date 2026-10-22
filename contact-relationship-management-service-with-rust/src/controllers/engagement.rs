@@ -13,7 +13,7 @@ use sea_orm::{ActiveValue, QueryOrder, QuerySelect};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use super::{ensure_valid, unprocessable};
+use super::unprocessable;
 use crate::models::_entities::{
     activities, contacts, memberships, partnerships, working_group_members, working_groups,
 };
@@ -59,7 +59,7 @@ async fn declare_contact_stakeholder(
             problems.push(format!("{field} must be between 1 and 5"));
         }
     }
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let contact = records::find_contact(&ctx.db, pid).await?;
     let contact_pid = contact.pid;
     let mut active: contacts::ActiveModel = contact.into();
@@ -100,7 +100,7 @@ async fn declare_account_stakeholder(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.token_opt("role", rules::STAKEHOLDER_ROLES, payload.role.as_deref());
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let account = records::find_account(&ctx.db, pid).await?;
     let account_pid = account.pid;
     let mut active: crate::models::_entities::accounts::ActiveModel = account.into();
@@ -141,7 +141,7 @@ async fn create_partnership(
     problems.require_token("kind", rules::PARTNERSHIP_KINDS, &payload.kind);
     problems.require_text("summary", &payload.summary);
     problems.cap_text("summary", &payload.summary);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let account = records::find_account(&ctx.db, pid).await?;
     let row = partnerships::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
@@ -207,7 +207,7 @@ async fn partnership_stage(
         .await?
         .ok_or(Error::NotFound)?;
     rules::partnership_transition(&row.stage, &payload.to)
-        .map_err(|reason| unprocessable(&reason))?;
+        .map_err(|reason| unprocessable(&reason.to_string()))?;
     let from = row.stage.clone();
     let row_pid = row.pid;
     let mut active: partnerships::ActiveModel = row.into();
@@ -251,7 +251,7 @@ async fn upsert_membership(
         .unwrap_or_else(|| "active".to_string());
     let mut problems = Problems::new();
     problems.require_token("status", rules::MEMBERSHIP_STATUSES, &status);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let account = records::find_account(&ctx.db, pid).await?;
     let existing = memberships::Entity::find()
         .filter(memberships::Column::AccountPid.eq(account.pid))
@@ -312,7 +312,7 @@ async fn create_group(
     problems.require_text("name", &payload.name);
     problems.cap_text("name", &payload.name);
     problems.cap_opt("purpose", payload.purpose.as_deref());
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let row = working_groups::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         name: ActiveValue::set(payload.name.clone()),

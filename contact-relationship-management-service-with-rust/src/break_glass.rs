@@ -31,27 +31,59 @@ pub const MAX_MINUTES: i64 = 60;
 /// Shortest review note.
 pub const MIN_NOTE_CHARS: usize = 10;
 
+/// Why a grant request is refused.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum GrantError {
+    /// The reason is shorter than [`MIN_REASON_CHARS`].
+    #[error("reason must be at least {MIN_REASON_CHARS} characters; say why the access is needed")]
+    ReasonTooShort,
+    /// The reason is longer than [`MAX_REASON_CHARS`].
+    #[error("reason must be at most {MAX_REASON_CHARS} characters")]
+    ReasonTooLong,
+    /// The duration is outside `1..=`[`MAX_MINUTES`].
+    #[error("minutes must be between 1 and {MAX_MINUTES}")]
+    MinutesOutOfRange,
+}
+
+impl GrantError {
+    /// The request member the refusal is about.
+    #[must_use]
+    pub const fn field(&self) -> &'static str {
+        match self {
+            Self::ReasonTooShort | Self::ReasonTooLong => "reason",
+            Self::MinutesOutOfRange => "minutes",
+        }
+    }
+}
+
+/// Why a review is refused.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ReviewError {
+    /// The reviewer is the grantee: that is a `403`, not a bad request.
+    #[error("a break-glass grant must be reviewed by someone else")]
+    SelfReview,
+    /// The note is shorter than [`MIN_NOTE_CHARS`].
+    #[error("review note must be at least {MIN_NOTE_CHARS} characters")]
+    NoteTooShort,
+}
+
 /// Validate a grant request; returns the trimmed reason and the minutes.
 ///
 /// # Errors
 ///
-/// A message naming what is wrong.
-pub fn validate_request(reason: &str, minutes: Option<i64>) -> Result<(String, i64), String> {
+/// [`GrantError`] naming what is wrong.
+pub fn validate_request(reason: &str, minutes: Option<i64>) -> Result<(String, i64), GrantError> {
     let reason = reason.trim();
     let length = reason.chars().count();
     if length < MIN_REASON_CHARS {
-        return Err(format!(
-            "reason must be at least {MIN_REASON_CHARS} characters; say why the access is needed"
-        ));
+        return Err(GrantError::ReasonTooShort);
     }
     if length > MAX_REASON_CHARS {
-        return Err(format!(
-            "reason must be at most {MAX_REASON_CHARS} characters"
-        ));
+        return Err(GrantError::ReasonTooLong);
     }
     let minutes = minutes.unwrap_or(DEFAULT_MINUTES);
     if !(1..=MAX_MINUTES).contains(&minutes) {
-        return Err(format!("minutes must be between 1 and {MAX_MINUTES}"));
+        return Err(GrantError::MinutesOutOfRange);
     }
     Ok((reason.to_string(), minutes))
 }
@@ -60,16 +92,14 @@ pub fn validate_request(reason: &str, minutes: Option<i64>) -> Result<(String, i
 ///
 /// # Errors
 ///
-/// A message naming what is wrong.
-pub fn validate_review(grantee: &str, reviewer: &str, note: &str) -> Result<String, String> {
+/// [`ReviewError`] naming what is wrong.
+pub fn validate_review(grantee: &str, reviewer: &str, note: &str) -> Result<String, ReviewError> {
     if grantee == reviewer {
-        return Err("a break-glass grant must be reviewed by someone else".to_string());
+        return Err(ReviewError::SelfReview);
     }
     let note = note.trim();
     if note.chars().count() < MIN_NOTE_CHARS {
-        return Err(format!(
-            "review note must be at least {MIN_NOTE_CHARS} characters"
-        ));
+        return Err(ReviewError::NoteTooShort);
     }
     Ok(note.to_string())
 }
@@ -131,8 +161,14 @@ mod tests {
 
     #[test]
     fn a_reason_is_required_and_bounded() {
-        assert!(validate_request("too short", None).is_err());
-        assert!(validate_request(&"x".repeat(MAX_REASON_CHARS + 1), None).is_err());
+        assert_eq!(
+            validate_request("too short", None),
+            Err(GrantError::ReasonTooShort)
+        );
+        assert_eq!(
+            validate_request(&"x".repeat(MAX_REASON_CHARS + 1), None),
+            Err(GrantError::ReasonTooLong)
+        );
         let (reason, minutes) =
             validate_request("  Patient collapsed, covering colleague absent  ", None).unwrap();
         assert_eq!(reason, "Patient collapsed, covering colleague absent");
@@ -142,8 +178,14 @@ mod tests {
     #[test]
     fn duration_is_capped() {
         let reason = "Urgent case needing the unmasked record";
-        assert!(validate_request(reason, Some(0)).is_err());
-        assert!(validate_request(reason, Some(MAX_MINUTES + 1)).is_err());
+        assert_eq!(
+            validate_request(reason, Some(0)),
+            Err(GrantError::MinutesOutOfRange)
+        );
+        assert_eq!(
+            validate_request(reason, Some(MAX_MINUTES + 1)),
+            Err(GrantError::MinutesOutOfRange)
+        );
         assert_eq!(
             validate_request(reason, Some(MAX_MINUTES)).unwrap().1,
             MAX_MINUTES
@@ -152,8 +194,23 @@ mod tests {
 
     #[test]
     fn reviewer_must_differ_and_leave_a_note() {
-        assert!(validate_review("a", "a", "looked fine to me").is_err());
-        assert!(validate_review("a", "b", "ok").is_err());
+        assert_eq!(
+            validate_review("a", "a", "looked fine to me"),
+            Err(ReviewError::SelfReview)
+        );
+        assert_eq!(
+            validate_review("a", "b", "ok"),
+            Err(ReviewError::NoteTooShort)
+        );
+        // The text clients read is unchanged.
+        assert_eq!(
+            ReviewError::SelfReview.to_string(),
+            "a break-glass grant must be reviewed by someone else"
+        );
+        assert_eq!(
+            GrantError::MinutesOutOfRange.to_string(),
+            format!("minutes must be between 1 and {MAX_MINUTES}")
+        );
         assert_eq!(
             validate_review("a", "b", " justified by incident 42 ").unwrap(),
             "justified by incident 42"

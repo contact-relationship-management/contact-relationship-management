@@ -3,8 +3,8 @@
 use super::{
     ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait,
     MaybeAuthUser, Problems, QueryFilter, QueryOrder, Response, Result, State, TransactionTrait,
-    Uuid, accounts, consent_events, contacts, debug_handler, ensure_valid, format,
-    nurture_enrollments, records, segment_rules, streaming, tokens,
+    Uuid, accounts, consent_events, contacts, debug_handler, format, nurture_enrollments, records,
+    segment_rules, streaming, tokens,
 };
 use crate::controllers::PidPath;
 use crate::json::Json;
@@ -54,7 +54,7 @@ pub(super) async fn record_consent(
     let mut problems = Problems::new();
     problems.require_token("action", tokens::CONSENT_ACTIONS, &payload.action);
     problems.require_text("source", &payload.source);
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let contact = records::find_contact(&ctx.db, pid).await?;
     apply_consent(
         &ctx.db,

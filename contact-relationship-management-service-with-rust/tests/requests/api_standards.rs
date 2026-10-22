@@ -28,6 +28,7 @@ async fn a_misspelt_request_member_is_refused_not_dropped() {
             body["detail"].as_str().unwrap().contains("dispaly_name"),
             "the refusal should name the member: {body}"
         );
+        assert_eq!(body["errors"][0]["pointer"], "/dispaly_name", "{body}");
 
         // The same body without the stray member still works.
         let ok = request
@@ -35,6 +36,63 @@ async fn a_misspelt_request_member_is_refused_not_dropped() {
             .json(&json!({"person_ref": a_person(), "display_name": "Typo Test"}))
             .await;
         ok.assert_status_success();
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn each_validation_problem_names_its_member() {
+    request::<App, _, _>(|request, _ctx| async move {
+        // Two members are wrong at once; one problem has no single member.
+        let response = request
+            .post("/api/contacts")
+            .json(&json!({ "person_ref": "not-a-urn", "display_name": "  " }))
+            .await;
+        response.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        let body: serde_json::Value = response.json();
+        let errors = body["errors"].as_array().expect("errors is a list");
+        let pointers: Vec<&str> = errors
+            .iter()
+            .filter_map(|e| e["pointer"].as_str())
+            .collect();
+        assert!(pointers.contains(&"/person_ref"), "{body}");
+        assert!(pointers.contains(&"/display_name"), "{body}");
+        for error in errors {
+            assert!(
+                error["detail"].as_str().is_some_and(|d| !d.is_empty()),
+                "{body}"
+            );
+        }
+        // `description` still joins them, as clients have always read it.
+        let joined: Vec<&str> = errors.iter().filter_map(|e| e["detail"].as_str()).collect();
+        assert_eq!(body["description"], joined.join("; "));
+        assert_eq!(body["detail"], body["description"]);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_problem_about_the_whole_request_has_no_pointer() {
+    request::<App, _, _>(|request, _ctx| async move {
+        // A pipeline with one stage: the rule is about the list, not a member.
+        let response = request
+            .post("/api/pipelines")
+            .json(&json!({ "name": "Too short", "stages": [
+                { "name": "Only", "probability_percent": 10 }
+            ]}))
+            .await;
+        response.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        let body: serde_json::Value = response.json();
+        let first = &body["errors"][0];
+        assert!(first["pointer"].is_null(), "{body}");
+        assert!(
+            first["detail"].as_str().unwrap().contains("2-20 stages"),
+            "{body}"
+        );
     })
     .await;
 }

@@ -4,8 +4,8 @@ use super::{
     ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait,
     MaybeAuthUser, Metrics, PidRef, Problems, QueryFilter, QueryOrder, QuerySelect, Response,
     Result, State, TransactionTrait, Uuid, activities, clients, contacts, debug_handler,
-    deliveries, ensure_valid, format, mail, nurture_enrollments, nurture_sequences, nurture_steps,
-    records, streaming, unprocessable, with_unsubscribe,
+    deliveries, format, mail, nurture_enrollments, nurture_sequences, nurture_steps, records,
+    streaming, unprocessable, with_unsubscribe,
 };
 use crate::controllers::PidPath;
 use crate::json::Json;
@@ -70,7 +70,7 @@ pub(super) async fn create_sequence(
     {
         problems.push("every step needs a body when real mail is on".to_string());
     }
-    ensure_valid(&problems.into_vec())?;
+    problems.finish()?;
     let txn = ctx.db.begin().await?;
     let sequence = nurture_sequences::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
