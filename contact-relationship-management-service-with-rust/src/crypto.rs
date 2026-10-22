@@ -198,13 +198,11 @@ fn slot() -> &'static RwLock<Option<Arc<Keyring>>> {
 }
 
 fn load_from_env() -> Option<Arc<Keyring>> {
-    let spec = std::env::var("CRM_FIELD_KEYS")
-        .ok()
-        .filter(|v| !v.trim().is_empty())
-        .or_else(|| {
-            let path = std::env::var("CRM_FIELD_KEYS_FILE").ok()?;
-            std::fs::read_to_string(path.trim()).ok()
-        })?;
+    let settings = crate::settings::current();
+    let spec = settings.field_keys.clone().or_else(|| {
+        let path = settings.field_keys_file.as_deref()?;
+        std::fs::read_to_string(path.trim()).ok()
+    })?;
     match Keyring::from_spec(&spec) {
         Ok(ring) => Some(Arc::new(ring)),
         Err(error) => {

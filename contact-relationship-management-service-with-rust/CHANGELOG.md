@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` headers** on responses when the request limit is on
   (always in production), so a client sees its budget before it gets a `429`; the `429` carries them too.
 
+### Changed — settings in one place (CRM-T78)
+- The `CRM_*` settings that were read lazily from the environment (authentication switches, key and policy sources,
+  the event transport, the webhook and Mailgun secrets, the mail batch, the retention horizon, the Redis URL and
+  others) are parsed once into `settings::Settings`. Values and defaults are unchanged. The webhook secret, Mailgun
+  key, retention days and mail batch were read on every call and are now read once per process.
+
 ### Removed — unused JWT configuration (CRM-T85)
 - The `auth.jwt` blocks in `config/*.yaml` are gone. Nothing read them (loco's JWT support is not compiled in), and the
   production one made the service refuse to start without `JWT_SECRET`. Once this is released, `JWT_SECRET` is no

@@ -7,6 +7,7 @@
 use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};
 use contact_relationship_management::models::deliveries;
+use contact_relationship_management::settings;
 use contact_relationship_management::unsubscribe::{self, Unsubscriber};
 use contact_relationship_management::webhook;
 use loco_rs::testing::prelude::*;
@@ -448,8 +449,7 @@ macro_rules! provider_event {
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn provider_events_count_deliveries_and_suppress_bounces_and_complaints() {
-    // SAFETY: serial tests; nothing else reads the environment concurrently.
-    unsafe { std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET) };
+    settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
         let ada = seed_contact!(&request, "Ada Lovelace").await;
@@ -517,7 +517,7 @@ async fn provider_events_count_deliveries_and_suppress_bounces_and_complaints() 
         assert_eq!(to, ["ada@example.test"], "a suppressed mailbox was mailed");
     })
     .await;
-    unsafe { std::env::remove_var("CRM_WEBHOOK_SECRET") };
+    settings::update(|s| s.webhook_secret = None);
 }
 
 #[tokio::test]
@@ -525,7 +525,7 @@ async fn provider_events_count_deliveries_and_suppress_bounces_and_complaints() 
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn brevo_and_mailjet_callbacks_are_authenticated_and_applied() {
     use base64::Engine as _;
-    unsafe { std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET) };
+    settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
         let ada = seed_contact!(&request, "Ada Lovelace").await;
@@ -608,7 +608,7 @@ async fn brevo_and_mailjet_callbacks_are_authenticated_and_applied() {
         assert_eq!(grace_now["contact"]["marketing_consent"], "withdrawn");
     })
     .await;
-    unsafe { std::env::remove_var("CRM_WEBHOOK_SECRET") };
+    settings::update(|s| s.webhook_secret = None);
 }
 
 #[tokio::test]
@@ -618,10 +618,10 @@ async fn cloud_and_relay_callbacks_are_authenticated_and_matched() {
     use hmac::{Hmac, KeyInit, Mac};
     use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
     const SIGNING: &str = "mailgun-signing-key";
-    unsafe {
-        std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET);
-        std::env::set_var("CRM_MAILGUN_SIGNING_KEY", SIGNING);
-    };
+    settings::update(|s| {
+        s.webhook_secret = Some(WEBHOOK_SECRET.to_string());
+        s.mailgun_signing_key = Some(SIGNING.to_string());
+    });
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = recording();
         let mut contacts = Vec::new();
@@ -760,17 +760,17 @@ async fn cloud_and_relay_callbacks_are_authenticated_and_matched() {
         assert_eq!(edsger["contact"]["marketing_consent"], "withdrawn");
     })
     .await;
-    unsafe {
-        std::env::remove_var("CRM_WEBHOOK_SECRET");
-        std::env::remove_var("CRM_MAILGUN_SIGNING_KEY");
-    };
+    settings::update(|s| {
+        s.webhook_secret = None;
+        s.mailgun_signing_key = None;
+    });
 }
 
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_suppression_can_be_read_and_lifted_and_the_contact_is_mailed_again() {
-    unsafe { std::env::set_var("CRM_WEBHOOK_SECRET", WEBHOOK_SECRET) };
+    settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
         let ada = seed_contact!(&request, "Ada Lovelace").await;
@@ -812,14 +812,14 @@ async fn a_suppression_can_be_read_and_lifted_and_the_contact_is_mailed_again() 
         );
     })
     .await;
-    unsafe { std::env::remove_var("CRM_WEBHOOK_SECRET") };
+    settings::update(|s| s.webhook_secret = None);
 }
 
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn one_run_call_walks_a_long_audience_in_batches_and_a_stall_answers_202() {
-    unsafe { std::env::set_var("CRM_MAIL_BATCH", "1") };
+    settings::update(|s| s.mail_batch = 1);
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
         for (i, name) in ["Ada", "Grace", "Alan"].iter().enumerate() {
@@ -850,7 +850,7 @@ async fn one_run_call_walks_a_long_audience_in_batches_and_a_stall_answers_202()
         assert!(recorder.sent().is_empty());
     })
     .await;
-    unsafe { std::env::remove_var("CRM_MAIL_BATCH") };
+    settings::update(|s| s.mail_batch = 200);
 }
 
 #[tokio::test]

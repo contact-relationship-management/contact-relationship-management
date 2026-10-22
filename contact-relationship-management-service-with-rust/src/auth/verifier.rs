@@ -51,15 +51,13 @@ pub async fn init() {
 /// Seed the PASETO [`verifier`] (the `paseto` half of [`init`]).
 #[cfg(feature = "paseto")]
 pub(super) async fn init_paseto() {
-    if let Some(url) = std::env::var("CRM_PASETO_KEYS_URL")
-        .ok()
-        .filter(|s| !s.trim().is_empty())
-    {
-        let issuer = env_or("CRM_TOKEN_ISSUER", DEFAULT_ISSUER);
-        let audience = env_or("CRM_TOKEN_AUDIENCE", DEFAULT_AUDIENCE);
+    let settings = crate::settings::current();
+    if let Some(url) = settings.paseto_keys_url.as_deref() {
+        let issuer = issuer(&settings);
+        let audience = audience(&settings);
         // `fetch_or` keeps the env-built verifier as the fallback on a
         // failed fetch, so the service always has a usable verifier.
-        let fetched = fetch_or(url.trim(), &issuer, &audience, build_from_env()).await;
+        let fetched = fetch_or(url, &issuer, &audience, build_from_env()).await;
         verifier().store(fetched);
     }
 }
@@ -133,22 +131,18 @@ pub fn spawn_key_refresh() {
 /// The `paseto` half of [`spawn_key_refresh`].
 #[cfg(feature = "paseto")]
 pub(super) fn spawn_paseto_key_refresh() {
-    let Some(url) = std::env::var("CRM_PASETO_KEYS_URL")
-        .ok()
-        .map(|u| u.trim().to_string())
-        .filter(|u| !u.is_empty())
-    else {
+    let settings = crate::settings::current();
+    let Some(url) = settings.paseto_keys_url.clone() else {
         return;
     };
-    let secs = std::env::var("CRM_PASETO_KEYS_REFRESH_SECS")
-        .ok()
-        .and_then(|v| v.trim().parse::<u64>().ok())
+    let secs = settings
+        .paseto_keys_refresh_secs
         .unwrap_or(KEY_REFRESH_DEFAULT_SECS);
     if secs == 0 {
         return; // explicitly disabled
     }
-    let issuer = env_or("CRM_TOKEN_ISSUER", DEFAULT_ISSUER);
-    let audience = env_or("CRM_TOKEN_AUDIENCE", DEFAULT_AUDIENCE);
+    let issuer = issuer(&settings);
+    let audience = audience(&settings);
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(std::time::Duration::from_secs(secs));
         ticker.tick().await; // the first tick is immediate — skip it
@@ -197,15 +191,22 @@ pub async fn fetch_or(url: &str, issuer: &str, audience: &str, fallback: Verifie
     }
 }
 
-/// Read env var `name`, treating unset/blank as absent and falling back
-/// to `default`. Used for the issuer/audience so a blank value doesn't
-/// override the sensible default.
+/// The token issuer: `CRM_TOKEN_ISSUER`, or the default when unset or blank.
 #[cfg(feature = "paseto")]
-pub(super) fn env_or(name: &str, default: &str) -> String {
-    std::env::var(name)
-        .ok()
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or_else(|| default.to_string())
+pub(super) fn issuer(settings: &crate::settings::Settings) -> String {
+    settings
+        .token_issuer
+        .clone()
+        .unwrap_or_else(|| DEFAULT_ISSUER.to_string())
+}
+
+/// The token audience: `CRM_TOKEN_AUDIENCE`, or the default when unset or blank.
+#[cfg(feature = "paseto")]
+pub(super) fn audience(settings: &crate::settings::Settings) -> String {
+    settings
+        .token_audience
+        .clone()
+        .unwrap_or_else(|| DEFAULT_AUDIENCE.to_string())
 }
 
 /// Build the process-wide [`Verifier`] from the environment: issuer,
@@ -214,12 +215,13 @@ pub(super) fn env_or(name: &str, default: &str) -> String {
 /// boots without credentials configured.
 #[cfg(feature = "paseto")]
 pub(super) fn build_from_env() -> Verifier {
-    let issuer = env_or("CRM_TOKEN_ISSUER", DEFAULT_ISSUER);
-    let audience = env_or("CRM_TOKEN_AUDIENCE", DEFAULT_AUDIENCE);
-    let keys = std::env::var("CRM_PASETO_KEYS")
-        .ok()
-        .filter(|s| !s.trim().is_empty())
-        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+    let settings = crate::settings::current();
+    let issuer = issuer(&settings);
+    let audience = audience(&settings);
+    let keys = settings
+        .paseto_keys
+        .as_deref()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(raw).ok())
         .unwrap_or_else(|| serde_json::json!({ "keys": [] }));
     Verifier::from_paseto_keys_value(&keys, &issuer, &audience)
         .unwrap_or_else(|_| empty_verifier(&issuer, &audience))

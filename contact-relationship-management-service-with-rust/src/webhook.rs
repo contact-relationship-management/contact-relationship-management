@@ -13,14 +13,12 @@ use sha2::Sha256;
 pub const TOLERANCE_SECS: i64 = 300;
 
 /// Shortest accepted secret.
-pub const MIN_SECRET: usize = 32;
+pub const MIN_SECRET: usize = crate::settings::MIN_WEBHOOK_SECRET;
 
 /// The configured secret, if long enough.
 #[must_use]
 pub fn secret() -> Option<String> {
-    std::env::var("CRM_WEBHOOK_SECRET")
-        .ok()
-        .filter(|s| s.len() >= MIN_SECRET)
+    crate::settings::current().webhook_secret.clone()
 }
 
 fn tag(secret: &str, timestamp: &str, body: &[u8]) -> Hmac<Sha256> {

@@ -250,8 +250,7 @@ async fn abuse_guard_mw(
     }
     let key = {
         let header = |name: &str| req.headers().get(name).and_then(|v| v.to_str().ok());
-        let trust_forwarded =
-            auth::parse_bool(&std::env::var("CRM_TRUST_FORWARDED_FOR").unwrap_or_default());
+        let trust_forwarded = crate::settings::current().trust_forwarded_for;
         rate_limit::client_key(
             header("authorization"),
             header("x-forwarded-for"),

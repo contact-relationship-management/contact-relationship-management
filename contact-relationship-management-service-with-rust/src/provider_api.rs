@@ -107,9 +107,7 @@ fn unhex(text: &str) -> Option<Vec<u8>> {
 /// The signing key for Mailgun webhooks, if configured.
 #[must_use]
 pub fn mailgun_signing_key() -> Option<String> {
-    std::env::var("CRM_MAILGUN_SIGNING_KEY")
-        .ok()
-        .filter(|k| !k.trim().is_empty())
+    crate::settings::current().mailgun_signing_key.clone()
 }
 
 /// Mailgun events: `delivered`; `failed` split on `severity` (`permanent` is

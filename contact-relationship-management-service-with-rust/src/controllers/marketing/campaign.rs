@@ -191,10 +191,7 @@ pub(super) async fn campaign_status(
 /// a long audience is walked in several calls, each resuming where the last
 /// stopped.
 pub(super) fn batch_size() -> i64 {
-    std::env::var("CRM_MAIL_BATCH")
-        .ok()
-        .and_then(|v| v.trim().parse::<i64>().ok())
-        .map_or(200, |n| n.clamp(1, 5000))
+    crate::settings::current().mail_batch
 }
 
 /// What one `run` call did.

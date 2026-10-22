@@ -53,14 +53,12 @@ pub(super) fn is_privileged_read(path: &str) -> bool {
     })
 }
 
-/// Whether blanket `/api/*` enforcement is on, read once from
-/// `CRM_REQUIRE_AUTH` and cached. Off by default — see the
-/// module docs and `agents/share/jwt-enforcement.md`. Mirrors
-/// [`verifier`]: a process-wide `OnceLock` built from the environment.
+/// Whether blanket `/api/*` enforcement is on (`CRM_REQUIRE_AUTH`, from
+/// [`crate::settings`]). Off by default — see the module docs and
+/// `agents/share/jwt-enforcement.md`.
 #[must_use]
 pub fn require_auth() -> bool {
-    static REQUIRE_AUTH: OnceLock<bool> = OnceLock::new();
-    *REQUIRE_AUTH.get_or_init(|| parse_bool(&std::env::var("CRM_REQUIRE_AUTH").unwrap_or_default()))
+    crate::settings::current().require_auth
 }
 
 /// Lenient boolean parse: `1`/`true`/`yes`/`on` (case-insensitive,
@@ -68,10 +66,7 @@ pub fn require_auth() -> bool {
 /// (incl. empty) ⇒ `false`.
 #[must_use]
 pub fn parse_bool(value: &str) -> bool {
-    matches!(
-        value.trim().to_ascii_lowercase().as_str(),
-        "1" | "true" | "yes" | "on"
-    )
+    crate::settings::parse_bool(value)
 }
 
 /// Paths that stay public even when enforcement is on: health/ping, the
@@ -95,12 +90,10 @@ pub(super) fn is_operational_path(path: &str) -> bool {
 
 /// Whether `CRM_PROTECT_OPERATIONAL` is on (CRM-T38): the operational
 /// endpoints then require a bearer token like everything else, and a metrics
-/// scraper must present one. Read once; off by default so a scraper inside
-/// a private network keeps working.
+/// scraper must present one. Off by default so a scraper inside a private
+/// network keeps working.
 pub(super) fn protect_operational() -> bool {
-    static PROTECT: OnceLock<bool> = OnceLock::new();
-    *PROTECT
-        .get_or_init(|| parse_bool(&std::env::var("CRM_PROTECT_OPERATIONAL").unwrap_or_default()))
+    crate::settings::current().protect_operational
 }
 
 /// Derive the request's ABAC action from its HTTP method and path (per
@@ -144,14 +137,13 @@ pub fn derive_action(method: &Method, path: &str) -> Action {
 /// change.
 #[must_use]
 pub fn policy_from_env() -> Policy {
-    let source = std::env::var("CRM_ABAC_POLICY")
-        .ok()
-        .filter(|v| !v.trim().is_empty())
+    let settings = crate::settings::current();
+    let source = settings
+        .abac_policy
+        .clone()
         .or_else(|| {
-            let path = std::env::var("CRM_ABAC_POLICY_FILE")
-                .ok()
-                .filter(|v| !v.trim().is_empty())?;
-            match std::fs::read_to_string(path.trim()) {
+            let path = settings.abac_policy_file.as_deref()?;
+            match std::fs::read_to_string(path) {
                 Ok(contents) => Some(contents),
                 Err(error) => {
                     tracing::warn!(%error, %path, "ABAC policy file unreadable; using the built-in default policy");
@@ -205,11 +197,7 @@ pub(super) const POLICY_WATCH_SECS: u64 = 15;
 /// and env vars do not change at runtime. Call once at boot
 /// (`app.rs::after_routes`).
 pub fn spawn_policy_watcher() {
-    let Some(path) = std::env::var("CRM_ABAC_POLICY_FILE")
-        .ok()
-        .map(|p| p.trim().to_string())
-        .filter(|p| !p.is_empty())
-    else {
+    let Some(path) = crate::settings::current().abac_policy_file.clone() else {
         return;
     };
     tokio::spawn(async move {

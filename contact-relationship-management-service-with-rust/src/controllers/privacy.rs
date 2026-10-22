@@ -252,7 +252,7 @@ async fn erase(
 /// The retention horizon in days (`CRM_RETENTION_DAYS`, default 365,
 /// floor 30 — CRM-D14).
 fn horizon_days() -> i64 {
-    rules::retention_days(std::env::var("CRM_RETENTION_DAYS").ok().as_deref())
+    rules::retention_days(crate::settings::current().retention_days.as_deref())
 }
 
 /// `GET /api/retention` — the report: per table, soft-deleted rows

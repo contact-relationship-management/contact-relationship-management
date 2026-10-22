@@ -30,21 +30,10 @@ pub enum Mode {
     Http,
 }
 
-/// The process-wide mode, from `CRM_UPSTREAM_MODE`.
+/// The process-wide mode, from `CRM_UPSTREAM_MODE` (see [`crate::settings`]).
 #[must_use]
 pub fn mode() -> Mode {
-    static MODE: OnceLock<Mode> = OnceLock::new();
-    *MODE.get_or_init(|| {
-        match std::env::var("CRM_UPSTREAM_MODE")
-            .unwrap_or_default()
-            .trim()
-            .to_ascii_lowercase()
-            .as_str()
-        {
-            "http" => Mode::Http,
-            _ => Mode::Stub,
-        }
-    })
+    crate::settings::current().upstream_mode
 }
 
 /// How long a looked-up display name is kept. A name is personal data and can
@@ -186,9 +175,9 @@ pub async fn email_address(person_ref: &str) -> Option<String> {
         let body = reqwest_get_json(&url).await?;
         return extract_email(&body);
     }
-    let domain = std::env::var("CRM_MAIL_DEV_DOMAIN").ok()?;
-    let domain = domain.trim();
-    (!domain.is_empty()).then(|| format!("{}@{domain}", entity_ref.id))
+    let settings = crate::settings::current();
+    let domain = settings.mail_dev_domain.as_deref()?;
+    Some(format!("{}@{domain}", entity_ref.id))
 }
 
 /// The mailbox in a person record. The accepted shapes are `{"email": "a@b"}`

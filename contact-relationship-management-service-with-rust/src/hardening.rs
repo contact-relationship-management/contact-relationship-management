@@ -6,8 +6,6 @@
 //! refuses to boot with enforcement off unless the operator says so
 //! explicitly.
 
-use crate::auth::parse_bool;
-
 /// Why a production start was refused.
 pub const INSECURE_REFUSAL: &str = "refusing to start in production with CRM_REQUIRE_AUTH off; \
     set CRM_REQUIRE_AUTH=1 (see spec/auth.md, activation runbook) or, to accept the risk \
@@ -42,7 +40,7 @@ pub fn production_start_check(
 ///
 /// As [`production_start_check`].
 pub fn check_process(production: bool) -> Result<(), &'static str> {
-    let allow = parse_bool(&std::env::var("CRM_ALLOW_INSECURE").unwrap_or_default());
+    let allow = crate::settings::current().allow_insecure;
     if let Some(warning) = production_start_check(production, crate::auth::require_auth(), allow)? {
         tracing::error!("{warning}");
     }
@@ -73,7 +71,7 @@ pub fn field_encryption_check(required: bool, configured: bool) -> Result<(), &'
 /// As [`field_encryption_check`].
 pub fn check_field_encryption() -> Result<(), &'static str> {
     field_encryption_check(
-        parse_bool(&std::env::var("CRM_REQUIRE_FIELD_ENCRYPTION").unwrap_or_default()),
+        crate::settings::current().require_field_encryption,
         crate::crypto::current().is_some(),
     )
 }

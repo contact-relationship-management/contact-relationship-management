@@ -42,10 +42,7 @@ impl Shared {
     ///
     /// When the URL is set but invalid or unreachable.
     pub async fn from_env() -> Result<Option<Self>, redis::RedisError> {
-        let Some(url) = std::env::var("CRM_REDIS_URL")
-            .ok()
-            .filter(|v| !v.trim().is_empty())
-        else {
+        let Some(url) = crate::settings::current().redis_url.clone() else {
             return Ok(None);
         };
         let client = redis::Client::open(url)?;

@@ -14,6 +14,7 @@
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use contact_relationship_management::app::App;
+use contact_relationship_management::settings;
 use ed25519_dalek::SigningKey;
 use loco_rs::testing::prelude::*;
 use rusty_paseto::core::{Footer, Key, Paseto, PasetoAsymmetricPrivateKey, Payload, Public, V4};
@@ -92,12 +93,13 @@ fn test_policy() -> String {
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test --test enforcement -- --ignored`"]
 async fn enforcement_gates_the_real_stack() {
     let (keys, kid) = keys_and_kid();
-    // `set_var` is `unsafe` in edition 2024; single-threaded setup step.
-    unsafe {
-        std::env::set_var("CRM_REQUIRE_AUTH", "1");
-        std::env::set_var("CRM_PASETO_KEYS", keys.to_string());
-        std::env::set_var("CRM_ABAC_POLICY", test_policy());
-    }
+    // Settings, not the environment: the verifier and the policy are built from
+    // them on first use, so this runs before anything touches either.
+    settings::update(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
     let reader = sign_as(&kid, "reader-user", &[]);
     let writer = sign_as(&kid, "writer-user", &[("access", &["write"])]);
     let service = sign_as(&kid, "svc-user", &[("svc", &["true"])]);

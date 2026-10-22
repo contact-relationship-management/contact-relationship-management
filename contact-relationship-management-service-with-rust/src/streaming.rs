@@ -153,14 +153,11 @@ impl EventTransport {
     }
 }
 
-/// The process-wide transport, read once from
-/// `CRM_EVENT_TRANSPORT` (default `memory`).
+/// The process-wide transport, from `CRM_EVENT_TRANSPORT` (default `memory`;
+/// see [`crate::settings`]).
 #[must_use]
 pub fn transport() -> EventTransport {
-    static TRANSPORT: OnceLock<EventTransport> = OnceLock::new();
-    *TRANSPORT.get_or_init(|| {
-        EventTransport::parse(&std::env::var("CRM_EVENT_TRANSPORT").unwrap_or_default())
-    })
+    crate::settings::current().event_transport
 }
 
 /// Emit one event **on the given connection** under the active

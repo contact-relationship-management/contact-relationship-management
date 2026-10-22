@@ -61,6 +61,7 @@ pub mod provider_cloud;
 pub mod rate_limit;
 pub mod redis_store;
 pub mod rules;
+pub mod settings;
 pub mod streaming;
 pub mod tasks;
 pub mod unsubscribe;
