@@ -45,6 +45,8 @@ chrono = { version = "0.4" }
 url = "2.5"
 thiserror = "2"
 uuid = { version = "1.26", features = ["v4", "serde"] }
+# Request schemas for the OpenAPI document come from the payload structs themselves (CRM-T83).
+schemars = { version = "1", features = ["uuid1", "chrono04"] }
 mimalloc = { version = "0.1.52" }
 # Tamper-evident audit hash chain (CRM-T31).
 sha2 = { version = "0.11" }

@@ -51,10 +51,28 @@ fn reference(name: &str) -> Value {
     json!({ "$ref": format!("#/components/schemas/{name}") })
 }
 
+/// Request schemas generated from the payload structs, so a request body and
+/// its documentation cannot drift apart. The rest are still written by hand
+/// below; the move is one controller at a time (CRM-T83).
+fn generated() -> serde_json::Map<String, Value> {
+    use crate::controllers::relationships::{
+        AccountPayload, ActivityPayload, ContactPayload, RepointPayload,
+    };
+    let mut generator = schemars::generate::SchemaSettings::openapi3().into_generator();
+    generator.subschema_for::<ContactPayload>();
+    generator.subschema_for::<AccountPayload>();
+    generator.subschema_for::<RepointPayload>();
+    generator.subschema_for::<ActivityPayload>();
+    generator.take_definitions(true)
+}
+
 /// `components.schemas`.
 #[must_use]
 pub fn schemas() -> Value {
     let mut all = base_schemas();
+    if let Some(all) = all.as_object_mut() {
+        all.extend(generated());
+    }
     if let (Some(all), Some(views)) = (all.as_object_mut(), view_schemas().as_object()) {
         for (name, schema) in views {
             all.insert(name.clone(), schema.clone());
@@ -79,18 +97,6 @@ fn base_schemas() -> Value {
         "Created": resource(&["pid"], &json!({ "pid": uuid() })),
 
         // ---- requests
-        "ContactPayload": object(&["person_ref", "display_name"], &json!({
-            "person_ref": string(), "display_name": string(), "account_pid": uuid(),
-            "owner_ref": string(), "job_title": string(), "preferred_channel": string() })),
-        "AccountPayload": object(&["organization_ref", "display_name"], &json!({
-            "organization_ref": string(), "display_name": string(), "tier": string(),
-            "owner_ref": string(), "industry": string() })),
-        "RepointPayload": object(&["person_ref", "reason"], &json!({
-            "person_ref": string(), "reason": string() })),
-        "ActivityPayload": object(&["subject_kind", "subject_pid", "kind", "summary"], &json!({
-            "subject_kind": string(), "subject_pid": uuid(), "kind": string(), "summary": string(),
-            "occurred_at": date_time(), "actor_ref": string(), "due_on": date(),
-            "sentiment": string() })),
         "ConsentPayload": object(&["action", "source"], &json!({
             "action": string(), "source": string() })),
         "ContactStakeholderPayload": object(&[], &json!({
@@ -743,5 +749,32 @@ pub fn attach(doc: &mut Value) {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::generated;
+
+    #[test]
+    fn request_schemas_come_from_the_payload_structs() {
+        let all = generated();
+        let contact = &all["ContactPayload"];
+        assert_eq!(
+            contact["required"],
+            serde_json::json!(["person_ref", "display_name"])
+        );
+        assert_eq!(
+            contact["additionalProperties"], false,
+            "deny_unknown_fields"
+        );
+        // A defaulted member is optional and documents its default.
+        assert_eq!(contact["properties"]["preferred_channel"]["type"], "string");
+        assert!(contact["properties"]["preferred_channel"]["default"].is_string());
+        assert_eq!(contact["properties"]["account_pid"]["format"], "uuid");
+        assert_eq!(
+            all["AccountPayload"]["required"],
+            serde_json::json!(["organization_ref", "display_name"])
+        );
     }
 }

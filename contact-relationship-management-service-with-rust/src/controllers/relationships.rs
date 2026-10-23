@@ -25,9 +25,9 @@ use crate::streaming;
 use crate::validation::Problems;
 
 /// `POST /api/contacts` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct ContactPayload {
+pub(crate) struct ContactPayload {
     person_ref: String,
     display_name: String,
     #[serde(default)]
@@ -41,9 +41,9 @@ struct ContactPayload {
 }
 
 /// `POST /api/accounts` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct AccountPayload {
+pub(crate) struct AccountPayload {
     organization_ref: String,
     display_name: String,
     #[serde(default = "default_tier")]
@@ -56,17 +56,17 @@ struct AccountPayload {
 
 /// `POST /api/contacts/{pid}/repoint` body — the manual post-merge
 /// repoint (CRM-D1).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct RepointPayload {
+pub(crate) struct RepointPayload {
     person_ref: String,
     reason: String,
 }
 
 /// `POST /api/activities` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct ActivityPayload {
+pub(crate) struct ActivityPayload {
     subject_kind: String,
     subject_pid: Uuid,
     kind: String,
