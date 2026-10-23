@@ -68,6 +68,9 @@ fn generated() -> serde_json::Map<String, Value> {
         relationships::AccountPayload,
         relationships::RepointPayload,
         relationships::ActivityPayload,
+        relationships::ContactDetail,
+        relationships::AccountDetail,
+        relationships::ContactDuplicates,
         sales::LeadPayload,
         sales::LeadStatusPayload,
         sales::PipelinePayload,
@@ -205,25 +208,6 @@ fn view_schemas() -> Value {
             "value": nullable(number()) })),
 
         // ---- detail reads
-        "ContactDetail": object(&["contact", "activities", "deals", "tickets"], &json!({
-            "contact": reference("Contact"), "activities": list_of("Activity"),
-            "deals": list_of("Deal"), "tickets": list_of("Ticket"),
-            "truncated": { "type": "object", "description": "Which lists were cut at 200 rows (newest first)",
-                "properties": { "activities": boolean(), "deals": boolean(), "tickets": boolean() } } })),
-        "ContactDuplicates": object(&["contact_pid", "compared", "truncated", "duplicates"], &json!({
-            "contact_pid": uuid(), "compared": integer(), "truncated": boolean(),
-            "duplicates": { "type": "array", "items": object(
-                &["contact", "probability", "verdict", "deterministic", "email_checked", "fields"],
-                &json!({
-                    "contact": object(&["pid", "display_name", "status"], &json!({
-                        "pid": uuid(), "display_name": string(), "account_pid": nullable(uuid()),
-                        "job_title": nullable(string()), "status": string() })),
-                    "probability": number(), "verdict": string(),
-                    "deterministic": boolean(), "email_checked": boolean(),
-                    "fields": { "type": "array", "items": object(
-                        &["field", "outcome", "similarity", "weight"], &json!({
-                            "field": string(), "outcome": string(),
-                            "similarity": number(), "weight": number() })) } })) } })),
         "ContactMerge": object(&["survivor_pid", "merged_pid", "dry_run", "moved", "dropped", "filled", "consent"], &json!({
             "survivor_pid": uuid(), "merged_pid": uuid(), "dry_run": boolean(),
             "moved": { "type": "object", "additionalProperties": integer() },
@@ -250,9 +234,6 @@ fn view_schemas() -> Value {
             "merges": { "type": "array", "items": object(&["merged_pid", "merged_name", "merged_at", "undoable"], &json!({
                 "merged_pid": uuid(), "merged_name": string(), "merged_at": string(),
                 "undoable": boolean() })) } })),
-        "AccountDetail": object(&["account", "contacts", "deals"], &json!({
-            "account": reference("Account"), "contacts": list_of("Contact"),
-            "deals": list_of("Deal") })),
         "ScoreBreakdown": object(&["score", "label", "rules"], &json!({
             "score": integer(), "label": string(),
             "rules": { "type": "array", "items": object(&["rule", "points"], &json!({

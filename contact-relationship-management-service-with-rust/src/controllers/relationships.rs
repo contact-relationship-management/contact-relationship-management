@@ -234,6 +234,86 @@ fn cut<T>(rows: &mut Vec<T>) -> bool {
     more
 }
 
+/// Which lists of `GET /api/contacts/{pid}` were cut at [`DETAIL_ROWS`].
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ContactDetailTruncated")]
+pub(crate) struct Truncated {
+    activities: bool,
+    deals: bool,
+    tickets: bool,
+}
+
+/// `GET /api/contacts/{pid}`: the contact and its timeline. The rows are JSON
+/// values because masking rewrites them per caller; the schema attributes say
+/// what they are.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ContactDetail {
+    #[schemars(with = "contacts::Model")]
+    contact: serde_json::Value,
+    #[schemars(with = "Vec<activities::Model>")]
+    activities: Vec<serde_json::Value>,
+    #[schemars(with = "Vec<deals::Model>")]
+    deals: Vec<serde_json::Value>,
+    #[schemars(with = "Vec<tickets::Model>")]
+    tickets: Vec<serde_json::Value>,
+    /// Which lists were cut at 200 rows (newest first).
+    truncated: Truncated,
+}
+
+/// `GET /api/accounts/{pid}`: the account with its contacts and deals.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct AccountDetail {
+    account: accounts::Model,
+    #[schemars(with = "Vec<contacts::Model>")]
+    contacts: Vec<serde_json::Value>,
+    #[schemars(with = "Vec<deals::Model>")]
+    deals: Vec<serde_json::Value>,
+}
+
+/// The contact a duplicate candidate names.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ContactDuplicateContact")]
+pub(crate) struct DuplicateContact {
+    pid: Uuid,
+    display_name: String,
+    account_pid: Option<Uuid>,
+    job_title: Option<String>,
+    status: String,
+}
+
+/// How one field compared; the matcher's `FieldScore`, as the API shows it.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ContactDuplicateField")]
+pub(crate) struct DuplicateField {
+    field: String,
+    outcome: String,
+    similarity: f64,
+    weight: f64,
+}
+
+/// One likely duplicate.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ContactDuplicate")]
+pub(crate) struct DuplicateEntry {
+    contact: DuplicateContact,
+    probability: f64,
+    #[schemars(with = "String")]
+    verdict: Verdict,
+    deterministic: bool,
+    email_checked: bool,
+    #[schemars(with = "Vec<DuplicateField>")]
+    fields: Vec<contact_relationship_management_matcher::FieldScore>,
+}
+
+/// `GET /api/contacts/{pid}/duplicates`: advice only.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ContactDuplicates {
+    contact_pid: Uuid,
+    compared: usize,
+    truncated: bool,
+    duplicates: Vec<DuplicateEntry>,
+}
+
 /// `GET /api/contacts/{pid}` — the contact + its merged timeline
 /// (activities, deals, tickets — chronological; CRM-R1).
 ///
@@ -282,11 +362,11 @@ async fn get_contact(
         .limit(DETAIL_ROWS + 1)
         .all(&ctx.db)
         .await?;
-    let truncated = serde_json::json!({
-        "activities": cut(&mut activity_rows),
-        "deals": cut(&mut deal_rows),
-        "tickets": cut(&mut ticket_rows),
-    });
+    let truncated = Truncated {
+        activities: cut(&mut activity_rows),
+        deals: cut(&mut deal_rows),
+        tickets: cut(&mut ticket_rows),
+    };
     let mut contact_json = serde_json::json!(contact);
     let masked = obligations.iter().any(|o| o == "mask");
     if masked {
@@ -330,13 +410,13 @@ async fn get_contact(
             to_values(&ticket_rows),
         )
     };
-    format::json(serde_json::json!({
-        "contact": contact_json,
-        "activities": activities_json,
-        "deals": deals_json,
-        "tickets": tickets_json,
-        "truncated": truncated,
-    }))
+    format::json(ContactDetail {
+        contact: contact_json,
+        activities: activities_json,
+        deals: deals_json,
+        tickets: tickets_json,
+        truncated,
+    })
 }
 
 /// Contacts compared against the one asked about. A larger table is cut off
@@ -499,26 +579,26 @@ async fn contact_duplicates(
 
     let emailed = recheck_with_email(&target, &rows, &query, &candidates, &mut ranked).await;
 
-    let duplicates: Vec<serde_json::Value> = ranked
+    let duplicates: Vec<DuplicateEntry> = ranked
         .iter()
         .filter(|entry| entry.result.verdict != Verdict::NonMatch)
         .take(limit)
         .map(|entry| {
             let row = &rows[entry.index];
-            serde_json::json!({
-                "contact": {
-                    "pid": row.pid,
-                    "display_name": row.display_name,
-                    "account_pid": row.account_pid,
-                    "job_title": row.job_title,
-                    "status": row.status,
+            DuplicateEntry {
+                contact: DuplicateContact {
+                    pid: row.pid,
+                    display_name: row.display_name.clone(),
+                    account_pid: row.account_pid,
+                    job_title: row.job_title.clone(),
+                    status: row.status.clone(),
                 },
-                "probability": entry.result.probability,
-                "verdict": entry.result.verdict,
-                "deterministic": entry.result.deterministic,
-                "email_checked": emailed.contains(&entry.index),
-                "fields": entry.result.fields,
-            })
+                probability: entry.result.probability,
+                verdict: entry.result.verdict,
+                deterministic: entry.result.deterministic,
+                email_checked: emailed.contains(&entry.index),
+                fields: entry.result.fields.clone(),
+            }
         })
         .collect();
     Audit::record_read(
@@ -534,12 +614,12 @@ async fn contact_duplicates(
         })),
     )
     .await?;
-    format::json(serde_json::json!({
-        "contact_pid": target.pid,
-        "compared": candidates.len(),
-        "truncated": truncated,
-        "duplicates": duplicates,
-    }))
+    format::json(ContactDuplicates {
+        contact_pid: target.pid,
+        compared: candidates.len(),
+        truncated,
+        duplicates,
+    })
 }
 
 /// `POST /api/contacts/{pid}/repoint` — repoint the wrapper after an
@@ -712,9 +792,11 @@ async fn get_account(
         None,
     )
     .await?;
-    format::json(serde_json::json!({
-        "account": account, "contacts": contacts_json, "deals": deals_json,
-    }))
+    format::json(AccountDetail {
+        account,
+        contacts: contacts_json,
+        deals: deals_json,
+    })
 }
 
 /// `POST /api/activities` — log an interaction against any
