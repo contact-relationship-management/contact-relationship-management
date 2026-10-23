@@ -18,7 +18,9 @@ mod merge;
 mod openapi_schemas;
 mod pagination;
 mod privacy;
+mod relationships;
 mod sales;
+mod streaming;
 mod support;
 mod unmerge;
 
