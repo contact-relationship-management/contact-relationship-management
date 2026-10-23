@@ -51,6 +51,7 @@ pub mod idempotency_store;
 pub mod json;
 pub mod mail;
 pub mod metrics;
+pub(crate) mod middleware;
 pub mod models;
 pub mod openapi;
 pub mod openapi_schemas;
