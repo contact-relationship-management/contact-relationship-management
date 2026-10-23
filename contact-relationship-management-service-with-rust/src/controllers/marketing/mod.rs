@@ -28,11 +28,11 @@ use crate::rules::{analytics, lifecycle, segment as segment_rules, tokens};
 use crate::streaming;
 use crate::validation::Problems;
 
-mod campaign;
-mod consent;
-mod nurture;
+pub(crate) mod campaign;
+pub(crate) mod consent;
+pub(crate) mod nurture;
 mod public;
-mod segment;
+pub(crate) mod segment;
 
 pub use campaign::*;
 use consent::{apply_consent, apply_consent_in, consent_history, contact_facts, record_consent};

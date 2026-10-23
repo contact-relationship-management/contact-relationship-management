@@ -25,9 +25,9 @@ use crate::streaming;
 use crate::validation::Problems;
 
 /// `POST /api/leads` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct LeadPayload {
+pub(crate) struct LeadPayload {
     display_name: String,
     source: String,
     #[serde(default)]
@@ -39,9 +39,9 @@ struct LeadPayload {
 }
 
 /// `POST /api/leads/{pid}/status` body. `converted` may open a deal.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct LeadStatusPayload {
+pub(crate) struct LeadStatusPayload {
     to: String,
     /// On `converted`: the person URN for the new contact (when the
     /// lead is not yet linked to one).
@@ -53,17 +53,18 @@ struct LeadStatusPayload {
 }
 
 /// `POST /api/pipelines` body: the named, ordered stage list.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct PipelinePayload {
+pub(crate) struct PipelinePayload {
     name: String,
     stages: Vec<StagePayload>,
 }
 
 /// One stage in a pipeline payload.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct StagePayload {
+#[schemars(rename = "StageInput")]
+pub(crate) struct StagePayload {
     name: String,
     probability_percent: i32,
     #[serde(default)]
@@ -73,9 +74,9 @@ struct StagePayload {
 }
 
 /// `POST /api/deals` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct DealPayload {
+pub(crate) struct DealPayload {
     name: String,
     pipeline_pid: Uuid,
     amount_minor: i64,
@@ -93,9 +94,9 @@ struct DealPayload {
 }
 
 /// `POST /api/deals/{pid}/stage` body — the Kanban move.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct DealStagePayload {
+pub(crate) struct DealStagePayload {
     stage_pid: Uuid,
     #[serde(default)]
     kanban_position: Option<i32>,
@@ -105,9 +106,9 @@ struct DealStagePayload {
 }
 
 /// `POST /api/deals/{pid}/reopen` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct ReopenPayload {
+pub(crate) struct ReopenPayload {
     reason: String,
 }
 

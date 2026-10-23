@@ -55,14 +55,52 @@ fn reference(name: &str) -> Value {
 /// its documentation cannot drift apart. The rest are still written by hand
 /// below; the move is one controller at a time (CRM-T83).
 fn generated() -> serde_json::Map<String, Value> {
-    use crate::controllers::relationships::{
-        AccountPayload, ActivityPayload, ContactPayload, RepointPayload,
+    use crate::controllers::{
+        board, break_glass, engagement, external_links, marketing, merge, relationships, sales,
+        support, unmerge,
     };
     let mut generator = schemars::generate::SchemaSettings::openapi3().into_generator();
-    generator.subschema_for::<ContactPayload>();
-    generator.subschema_for::<AccountPayload>();
-    generator.subschema_for::<RepointPayload>();
-    generator.subschema_for::<ActivityPayload>();
+    macro_rules! document {
+        ($($ty:ty),* $(,)?) => {$( generator.subschema_for::<$ty>(); )*};
+    }
+    document!(
+        relationships::ContactPayload,
+        relationships::AccountPayload,
+        relationships::RepointPayload,
+        relationships::ActivityPayload,
+        sales::LeadPayload,
+        sales::LeadStatusPayload,
+        sales::PipelinePayload,
+        sales::DealPayload,
+        sales::DealStagePayload,
+        sales::ReopenPayload,
+        board::DealEditPayload,
+        board::LeadEditPayload,
+        board::TicketEditPayload,
+        board::PositionPayload,
+        board::ActivityEditPayload,
+        support::PolicyPayload,
+        support::TicketPayload,
+        support::PriorityPayload,
+        support::ArticlePayload,
+        engagement::ContactStakeholderPayload,
+        engagement::AccountStakeholderPayload,
+        engagement::PartnershipPayload,
+        engagement::MembershipPayload,
+        engagement::GroupPayload,
+        engagement::MemberPayload,
+        merge::MergePayload,
+        unmerge::UnmergePayload,
+        external_links::LinkPayload,
+        break_glass::GrantPayload,
+        break_glass::ReviewPayload,
+        marketing::consent::ConsentPayload,
+        marketing::segment::SegmentPayload,
+        marketing::nurture::SequencePayload,
+        marketing::nurture::StepPayload,
+        marketing::nurture::EnrollPayload,
+        marketing::campaign::CampaignPayload,
+    );
     generator.take_definitions(true)
 }
 
@@ -97,86 +135,12 @@ fn base_schemas() -> Value {
         "Created": resource(&["pid"], &json!({ "pid": uuid() })),
 
         // ---- requests
-        "ConsentPayload": object(&["action", "source"], &json!({
-            "action": string(), "source": string() })),
-        "ContactStakeholderPayload": object(&[], &json!({
-            "role": string(), "influence": integer(), "interest": integer() })),
-        "AccountStakeholderPayload": object(&[], &json!({ "role": string() })),
-        "LeadPayload": object(&["display_name", "source"], &json!({
-            "display_name": string(), "source": string(), "email": string(),
-            "campaign_pid": uuid(), "contact_pid": uuid() })),
-        "LeadStatusPayload": object(&["to"], &json!({
-            "to": string(), "person_ref": string(), "deal": reference("DealPayload") })),
-        "StageInput": object(&["name", "probability_percent"], &json!({
-            "name": string(), "probability_percent": integer(),
-            "is_won": boolean(), "is_lost": boolean() })),
-        "PipelinePayload": object(&["name", "stages"], &json!({
-            "name": string(), "stages": { "type": "array", "items": reference("StageInput") } })),
-        "DealPayload": object(&["name", "pipeline_pid", "amount_minor", "currency"], &json!({
-            "name": string(), "pipeline_pid": uuid(),
-            "amount_minor": { "type": "integer", "format": "int64",
-                "description": "Money in minor units (for example pence)" },
-            "currency": { "type": "string", "description": "ISO 4217 code" },
-            "account_pid": uuid(), "primary_contact_pid": uuid(), "owner_ref": string(),
-            "expected_close_on": date(), "source_campaign_pid": uuid() })),
-        "DealStagePayload": object(&["stage_pid"], &json!({
-            "stage_pid": uuid(), "kanban_position": integer(), "lost_reason": string() })),
-        "DealEditPayload": object(&[], &json!({
-            "name": string(), "amount_minor": { "type": "integer", "format": "int64" },
-            "expected_close_on": date() })),
-        "LeadEditPayload": object(&[], &json!({ "display_name": string() })),
-        "TicketEditPayload": object(&[], &json!({ "title": string() })),
-        "PositionPayload": object(&["position"], &json!({
-            "position": { "type": "integer", "minimum": 0,
-                "description": "0-based place among the cards in the same column" } })),
-        "ActivityEditPayload": object(&[], &json!({ "due_on": date(), "summary": string() })),
-        "ReopenPayload": object(&["reason"], &json!({ "reason": string() })),
-        "SegmentPayload": object(&["name"], &json!({
-            "name": string(), "filter": { "type": "object" } })),
-        "CampaignPayload": object(&["name"], &json!({
-            "name": string(), "kind": string(), "currency": string(),
-            "cost_minor": { "type": "integer", "format": "int64" }, "segment_pid": uuid(),
-            "subject": { "type": "string", "description": "Defaults to the campaign name" },
-            "body": { "type": "string", "maxLength": 20000,
-                "description": "Plain text. Required before a campaign can send through a real sender" } })),
         "StatusPayload": object(&["to"], &json!({ "to": string() })),
         "SequenceStep": object(&["delay_hours", "template_ref"], &json!({
             "delay_hours": integer(), "template_ref": string(),
             "subject": { "type": "string", "description": "Defaults to the template reference" },
             "body": { "type": "string", "maxLength": 20000,
                 "description": "Plain text. Required for every step before a real sender sends it" } })),
-        "SequencePayload": object(&["name", "steps"], &json!({
-            "name": string(), "steps": { "type": "array", "items": reference("SequenceStep") } })),
-        "EnrollPayload": object(&["contact_pid"], &json!({ "contact_pid": uuid() })),
-        "PolicyPayload": object(&["priority", "first_response_minutes", "resolution_minutes"], &json!({
-            "priority": string(), "first_response_minutes": integer(),
-            "resolution_minutes": integer() })),
-        "TicketPayload": object(&["title", "priority"], &json!({
-            "title": string(), "priority": string(), "channel": string(),
-            "contact_pid": uuid(), "assignee_ref": string() })),
-        "PriorityPayload": object(&["priority", "reason"], &json!({
-            "priority": string(), "reason": string() })),
-        "ArticlePayload": object(&["title", "body"], &json!({
-            "title": string(), "body": string(), "keywords": string() })),
-        "GrantPayload": object(&["reason"], &json!({
-            "reason": { "type": "string", "minLength": 20, "maxLength": 500 },
-            "minutes": { "type": "integer", "minimum": 1, "maximum": 60 } })),
-        "ReviewPayload": object(&["note"], &json!({
-            "note": { "type": "string", "minLength": 10 } })),
-        "PartnershipPayload": object(&["kind", "summary"], &json!({
-            "kind": string(), "summary": string(), "started_on": date() })),
-        "MembershipPayload": object(&["joined_on"], &json!({
-            "joined_on": date(), "status": string(), "renewal_on": date() })),
-        "GroupPayload": object(&["name"], &json!({ "name": string(), "purpose": string() })),
-        "MemberPayload": object(&["contact_pid"], &json!({ "contact_pid": uuid() })),
-        "MergePayload": object(&["into_pid", "reason"], &json!({
-            "into_pid": uuid(), "reason": string(), "dry_run": boolean() })),
-        "ExternalLinkPayload": object(&["system", "url"], &json!({
-            "system": string(), "url": string(),
-            "label": nullable(string()), "external_id": nullable(string()) })),
-        "UnmergePayload": object(&["reason"], &json!({
-            "reason": string(), "dry_run": boolean() })),
-
         // ---- resources (what the lists return)
         "Contact": resource(&["pid", "person_ref", "display_name", "status", "marketing_consent"], &json!({
             "pid": uuid(), "person_ref": string(), "account_pid": nullable(uuid()),
@@ -776,5 +740,34 @@ mod tests {
             all["AccountPayload"]["required"],
             serde_json::json!(["organization_ref", "display_name"])
         );
+    }
+
+    /// Every `$ref` anywhere in the schemas names a schema that exists.
+    #[test]
+    fn every_reference_resolves() {
+        fn refs(value: &serde_json::Value, found: &mut Vec<String>) {
+            match value {
+                serde_json::Value::Object(map) => {
+                    for (key, inner) in map {
+                        match (key.as_str(), inner) {
+                            ("$ref", serde_json::Value::String(r)) => found.push(r.clone()),
+                            _ => refs(inner, found),
+                        }
+                    }
+                }
+                serde_json::Value::Array(items) => items.iter().for_each(|v| refs(v, found)),
+                _ => {}
+            }
+        }
+        let all = super::schemas();
+        let mut found = Vec::new();
+        refs(&all, &mut found);
+        assert!(found.iter().any(|r| r.ends_with("/StageInput")));
+        for r in found {
+            let name = r
+                .strip_prefix("#/components/schemas/")
+                .unwrap_or_else(|| panic!("{r}"));
+            assert!(all.get(name).is_some(), "dangling reference {r}");
+        }
     }
 }

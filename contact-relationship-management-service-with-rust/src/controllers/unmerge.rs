@@ -32,9 +32,9 @@ use crate::streaming;
 use crate::validation::Problems;
 
 /// The unmerge request.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct UnmergePayload {
+pub(crate) struct UnmergePayload {
     /// Why, in the operator's words. Recorded in the audit entry.
     pub reason: String,
     /// Report what would be restored, and change nothing.

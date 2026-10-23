@@ -30,9 +30,9 @@ use crate::streaming;
 use crate::validation::Problems;
 
 /// The merge request.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct MergePayload {
+pub(crate) struct MergePayload {
     /// The contact that survives.
     pub into_pid: String,
     /// Why, in the operator's words. Recorded in the audit entry.

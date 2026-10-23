@@ -19,18 +19,18 @@ use crate::break_glass as rules;
 use crate::models::audit_logs::Model as Audit;
 
 /// Body of `POST /api/break-glass`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct GrantPayload {
+pub(crate) struct GrantPayload {
     reason: String,
     #[serde(default)]
     minutes: Option<i64>,
 }
 
 /// Body of `POST /api/break-glass/{pid}/review`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct ReviewPayload {
+pub(crate) struct ReviewPayload {
     note: String,
 }
 

@@ -22,18 +22,18 @@ use crate::streaming;
 use crate::validation::Problems;
 
 /// `POST /api/sla-policies` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct PolicyPayload {
+pub(crate) struct PolicyPayload {
     priority: String,
     first_response_minutes: i32,
     resolution_minutes: i32,
 }
 
 /// `POST /api/tickets` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct TicketPayload {
+pub(crate) struct TicketPayload {
     title: String,
     #[serde(default = "default_priority")]
     priority: String,
@@ -53,17 +53,17 @@ struct TicketStatusPayload {
 }
 
 /// `PUT /api/tickets/{pid}/priority` body (audited; re-derives SLA).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct PriorityPayload {
+pub(crate) struct PriorityPayload {
     priority: String,
     reason: String,
 }
 
 /// `POST /api/articles` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct ArticlePayload {
+pub(crate) struct ArticlePayload {
     title: String,
     body: String,
     #[serde(default)]

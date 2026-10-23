@@ -10,11 +10,13 @@ use crate::json::Json;
 use crate::models::live::FindLive;
 
 /// `POST /api/segments` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub(super) struct SegmentPayload {
+pub(crate) struct SegmentPayload {
     name: String,
+    /// The filter language of `rules::segment` (see the segment spec).
     #[serde(default)]
+    #[schemars(with = "serde_json::Map<String, serde_json::Value>")]
     filter: segment_rules::Filter,
 }
 

@@ -12,17 +12,17 @@ use crate::json::Json;
 use crate::models::live::FindLive;
 
 /// `POST /api/nurture-sequences` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub(super) struct SequencePayload {
+pub(crate) struct SequencePayload {
     name: String,
     steps: Vec<StepPayload>,
 }
 
 /// One nurture step.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub(super) struct StepPayload {
+pub(crate) struct StepPayload {
     delay_hours: i32,
     template_ref: String,
     subject: Option<String>,
@@ -30,9 +30,9 @@ pub(super) struct StepPayload {
 }
 
 /// `POST /api/nurture-sequences/{pid}/enrollments` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub(super) struct EnrollPayload {
+pub(crate) struct EnrollPayload {
     contact_pid: Uuid,
 }
 

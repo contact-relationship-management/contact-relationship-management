@@ -12,9 +12,9 @@ use crate::json::Json;
 use crate::models::live::FindLive;
 
 /// `POST /api/campaigns` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub(super) struct CampaignPayload {
+pub(crate) struct CampaignPayload {
     name: String,
     #[serde(default = "default_kind")]
     kind: String,

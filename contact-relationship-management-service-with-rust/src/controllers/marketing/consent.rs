@@ -10,9 +10,9 @@ use crate::controllers::PidPath;
 use crate::json::Json;
 
 /// `POST /api/contacts/{pid}/consent` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub(super) struct ConsentPayload {
+pub(crate) struct ConsentPayload {
     action: String,
     source: String,
 }

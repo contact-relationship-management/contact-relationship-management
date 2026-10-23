@@ -27,9 +27,9 @@ use crate::auth::MaybeAuthUser;
 
 /// `PUT /api/contacts/{pid}/stakeholder` body — declared typing; an
 /// omitted field clears the declaration.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct ContactStakeholderPayload {
+pub(crate) struct ContactStakeholderPayload {
     #[serde(default)]
     role: Option<String>,
     #[serde(default)]
@@ -82,9 +82,9 @@ async fn declare_contact_stakeholder(
 }
 
 /// `PUT /api/accounts/{pid}/stakeholder` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct AccountStakeholderPayload {
+pub(crate) struct AccountStakeholderPayload {
     #[serde(default)]
     role: Option<String>,
 }
@@ -119,9 +119,9 @@ async fn declare_account_stakeholder(
 }
 
 /// `POST /api/accounts/{pid}/partnerships` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct PartnershipPayload {
+pub(crate) struct PartnershipPayload {
     kind: String,
     summary: String,
     #[serde(default)]
@@ -226,9 +226,9 @@ async fn partnership_stage(
 }
 
 /// `PUT /api/accounts/{pid}/membership` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct MembershipPayload {
+pub(crate) struct MembershipPayload {
     joined_on: chrono::NaiveDate,
     #[serde(default)]
     status: Option<String>,
@@ -293,9 +293,9 @@ async fn upsert_membership(
 }
 
 /// `POST /api/groups` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct GroupPayload {
+pub(crate) struct GroupPayload {
     name: String,
     #[serde(default)]
     purpose: Option<String>,
@@ -361,9 +361,9 @@ async fn list_groups(State(ctx): State<AppContext>) -> Result<Response> {
 }
 
 /// `POST /api/groups/{pid}/members` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct MemberPayload {
+pub(crate) struct MemberPayload {
     contact_pid: Uuid,
 }
 

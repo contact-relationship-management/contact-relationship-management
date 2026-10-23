@@ -27,9 +27,9 @@ use crate::models::records;
 use crate::validation::Problems;
 
 /// `PUT /api/deals/{pid}` body; absent fields stay as they are.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct DealEditPayload {
+pub(crate) struct DealEditPayload {
     #[serde(default)]
     name: Option<String>,
     #[serde(default)]
@@ -39,33 +39,33 @@ struct DealEditPayload {
 }
 
 /// `PUT /api/leads/{pid}` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct LeadEditPayload {
+pub(crate) struct LeadEditPayload {
     #[serde(default)]
     display_name: Option<String>,
 }
 
 /// `PUT /api/tickets/{pid}` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct TicketEditPayload {
+pub(crate) struct TicketEditPayload {
     #[serde(default)]
     title: Option<String>,
 }
 
 /// `PUT /api/{deals,leads,tickets}/{pid}/position` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct PositionPayload {
+pub(crate) struct PositionPayload {
     /// 0-based place among the cards in the same column.
     position: i32,
 }
 
 /// `PUT /api/activities/{pid}` body.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-struct ActivityEditPayload {
+pub(crate) struct ActivityEditPayload {
     #[serde(default)]
     due_on: Option<chrono::NaiveDate>,
     #[serde(default)]
