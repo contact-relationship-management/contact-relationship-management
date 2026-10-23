@@ -79,6 +79,17 @@ fn generated() -> serde_json::Map<String, Value> {
         board::TicketEditPayload,
         board::PositionPayload,
         board::ActivityEditPayload,
+        crate::models::_entities::contacts::Model,
+        crate::models::_entities::accounts::Model,
+        crate::models::_entities::activities::Model,
+        crate::models::_entities::leads::Model,
+        crate::models::_entities::deals::Model,
+        crate::models::_entities::tickets::Model,
+        crate::models::_entities::articles::Model,
+        crate::models::_entities::campaigns::Model,
+        crate::models::_entities::segments::Model,
+        crate::models::_entities::sla_policies::Model,
+        crate::models::_entities::email_deliveries::Model,
         support::PolicyPayload,
         support::TicketPayload,
         support::PriorityPayload,
@@ -142,23 +153,6 @@ fn base_schemas() -> Value {
             "body": { "type": "string", "maxLength": 20000,
                 "description": "Plain text. Required for every step before a real sender sends it" } })),
         // ---- resources (what the lists return)
-        "Contact": resource(&["pid", "person_ref", "display_name", "status", "marketing_consent"], &json!({
-            "pid": uuid(), "person_ref": string(), "account_pid": nullable(uuid()),
-            "owner_ref": nullable(string()), "display_name": string(), "status": string(),
-            "job_title": nullable(string()), "preferred_channel": string(),
-            "marketing_consent": string() })),
-        "Account": resource(&["pid", "organization_ref", "display_name", "tier"], &json!({
-            "pid": uuid(), "organization_ref": string(), "owner_ref": nullable(string()),
-            "display_name": string(), "tier": string(), "industry": nullable(string()) })),
-        "Activity": resource(&["pid", "subject_kind", "subject_pid", "kind", "occurred_at", "done"], &json!({
-            "pid": uuid(), "subject_kind": string(), "subject_pid": uuid(), "kind": string(),
-            "occurred_at": date_time(), "actor_ref": nullable(string()), "summary": string(),
-            "due_on": nullable(date()), "done": boolean(), "sentiment": nullable(string()) })),
-        "Lead": resource(&["pid", "display_name", "source", "score", "status"], &json!({
-            "pid": uuid(), "display_name": string(), "source": string(),
-            "email": nullable(string()), "score": integer(), "status": string(),
-            "campaign_pid": nullable(uuid()), "contact_pid": nullable(uuid()),
-            "board_position": integer() })),
         "PipelineRecord": resource(&["pid", "name"], &json!({ "pid": uuid(), "name": string() })),
         "StageRecord": resource(&["pid", "pipeline_pid", "name", "position", "probability_percent",
             "is_won", "is_lost"], &json!({
@@ -167,33 +161,6 @@ fn base_schemas() -> Value {
         "Pipeline": object(&["pipeline", "stages"], &json!({
             "pipeline": reference("PipelineRecord"),
             "stages": { "type": "array", "items": reference("StageRecord") } })),
-        "Deal": resource(&["pid", "name", "pipeline_pid", "stage_pid", "currency"], &json!({
-            "pid": uuid(), "name": string(), "pipeline_pid": uuid(), "stage_pid": uuid(),
-            "amount_minor": { "type": "integer", "format": "int64", "nullable": true,
-                "description": "Null when masked for the caller" },
-            "currency": string(), "won": boolean(), "closed_at": nullable(date_time()),
-            "kanban_position": integer() })),
-        "Ticket": resource(&["pid", "title", "priority", "channel", "status"], &json!({
-            "pid": uuid(), "title": string(), "priority": string(), "channel": string(),
-            "status": string(), "contact_pid": nullable(uuid()), "board_position": integer(),
-            "assignee_ref": nullable(string()), "opened_at": date_time(),
-            "live_first_response_breached": boolean(),
-            "live_resolution_breached": boolean() })),
-        "Article": resource(&["pid", "title", "body", "status", "version"], &json!({
-            "pid": uuid(), "title": string(), "body": string(), "keywords": nullable(string()),
-            "status": string(), "version": integer() })),
-        "Campaign": resource(&["pid", "name", "kind", "status", "currency"], &json!({
-            "pid": uuid(), "name": string(), "kind": string(), "status": string(),
-            "cost_minor": { "type": "integer", "format": "int64", "nullable": true,
-                "description": "Null when masked for the caller" }, "currency": string(),
-            "segment_pid": nullable(uuid()), "subject": nullable(string()),
-            "body": nullable(string()), "recipients": integer(), "delivered": integer(),
-            "opened": integer(), "clicked": integer(), "unsubscribed": integer() })),
-        "Segment": resource(&["pid", "name"], &json!({
-            "pid": uuid(), "name": string(), "filter": { "type": "object" } })),
-        "SlaPolicy": resource(&["pid", "priority", "first_response_minutes", "resolution_minutes"], &json!({
-            "pid": uuid(), "priority": string(), "first_response_minutes": integer(),
-            "resolution_minutes": integer() })),
     })
 }
 
@@ -335,11 +302,6 @@ fn view_schemas() -> Value {
             "remaining": { "type": "integer",
                 "description": "Rows a further run could still send" },
             "by_state": counts() })),
-        "EmailDelivery": resource(&["pid", "campaign_pid", "contact_pid", "state", "attempts"], &json!({
-            "pid": uuid(), "campaign_pid": uuid(), "contact_pid": uuid(),
-            "state": { "type": "string", "enum": ["pending", "sending", "sent", "failed", "no_address", "suppressed"] },
-            "attempts": integer(), "message_id": nullable(string()), "error": nullable(string()),
-            "sent_at": nullable(date_time()) })),
         "NurtureSweep": object(&["sent", "completed"], &json!({
             "sent": integer(), "completed": integer() })),
         "SlaSweep": object(&["new_breaches"], &json!({ "new_breaches": integer() })),

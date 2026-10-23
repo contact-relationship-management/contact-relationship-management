@@ -20,6 +20,18 @@ use crate::crypto;
 #[serde(transparent)]
 pub struct EncryptedText(pub String);
 
+impl schemars::JsonSchema for EncryptedText {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "EncryptedText".into()
+    }
+    fn inline_schema() -> bool {
+        true
+    }
+    fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        <String as schemars::JsonSchema>::json_schema(generator)
+    }
+}
+
 impl EncryptedText {
     /// The plaintext.
     #[must_use]

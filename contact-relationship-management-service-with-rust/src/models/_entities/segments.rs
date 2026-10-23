@@ -5,7 +5,10 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
+)]
+#[schemars(rename = "Segment")]
 #[sea_orm(table_name = "segments")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
@@ -15,6 +18,7 @@ pub struct Model {
     #[sea_orm(unique)]
     pub pid: Uuid,
     pub name: String,
+    #[schemars(with = "serde_json::Map<String, serde_json::Value>")]
     pub filter: Json,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }

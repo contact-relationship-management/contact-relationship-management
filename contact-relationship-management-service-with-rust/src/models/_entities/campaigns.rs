@@ -5,7 +5,10 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
+)]
+#[schemars(rename = "Campaign")]
 #[sea_orm(table_name = "campaigns")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
@@ -17,6 +20,8 @@ pub struct Model {
     pub kind: String,
     pub name: String,
     pub status: String,
+    /// Absent (`null`) when masked.
+    #[schemars(with = "Option<i64>")]
     pub cost_minor: i64,
     pub currency: String,
     pub segment_pid: Option<Uuid>,

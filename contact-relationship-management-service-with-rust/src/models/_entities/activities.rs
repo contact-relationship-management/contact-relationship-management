@@ -5,7 +5,10 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
+)]
+#[schemars(rename = "Activity")]
 #[sea_orm(table_name = "activities")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,

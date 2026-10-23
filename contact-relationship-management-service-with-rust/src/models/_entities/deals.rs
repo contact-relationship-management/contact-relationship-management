@@ -5,7 +5,10 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
+)]
+#[schemars(rename = "Deal")]
 #[sea_orm(table_name = "deals")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
@@ -20,6 +23,8 @@ pub struct Model {
     pub pipeline_pid: Uuid,
     pub stage_pid: Uuid,
     pub name: String,
+    /// Absent (`null`) when masked: a masked amount is never a fake zero.
+    #[schemars(with = "Option<i64>")]
     pub amount_minor: i64,
     pub currency: String,
     pub expected_close_on: Option<Date>,
