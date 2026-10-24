@@ -45,6 +45,7 @@ pub fn app_routes() -> AppRoutes {
         .add_route(controllers::audits::routes())
         .add_route(controllers::break_glass::routes())
         .add_route(controllers::webhooks::routes())
+        .add_route(controllers::notifications::routes())
         .add_route(controllers::docs::routes())
         .add_route(controllers::metrics::routes())
 }
@@ -67,6 +68,24 @@ fn init_sending(ctx: &AppContext) -> Result<()> {
     crate::unsubscribe::init(!crate::mail::current().is_simulated(), production)
         .map_err(|e| loco_rs::Error::string(&e))?;
     Ok(())
+}
+
+/// CRM-R32: every minute, queue the job that makes due task reminders and SLA-breach
+/// notifications. It is idempotent (a uniqueness rule on the rows), so replicas may all do it.
+fn spawn_notification_sweep(ctx: &AppContext) {
+    let sweep_ctx = ctx.clone();
+    tokio::spawn(async move {
+        use loco_rs::prelude::BackgroundWorker;
+        loop {
+            tokio::time::sleep(std::time::Duration::from_mins(1)).await;
+            if let Err(error) =
+                controllers::notifications::NotificationSweepWorker::perform_later(&sweep_ctx, ())
+                    .await
+            {
+                tracing::warn!(%error, "notification sweep not queued");
+            }
+        }
+    });
 }
 
 #[async_trait]
@@ -167,6 +186,7 @@ impl Hooks for App {
                 tokio::time::sleep(std::time::Duration::from_hours(1)).await;
             }
         });
+        spawn_notification_sweep(ctx);
         let guard = std::sync::Arc::new(rate_limit::Guard::from_env(matches!(
             ctx.environment,
             Environment::Production
@@ -214,6 +234,11 @@ impl Hooks for App {
                 <controllers::marketing::CampaignSendWorker as loco_rs::prelude::BackgroundWorker<_>>::build(ctx),
             )
             .await?;
+        queue
+            .register(
+                <controllers::notifications::NotificationSweepWorker as loco_rs::prelude::BackgroundWorker<_>>::build(ctx),
+            )
+            .await?;
         Ok(())
     }
 
@@ -228,7 +253,7 @@ impl Hooks for App {
             use sea_orm::ConnectionTrait;
             ctx.db
                 .execute_unprepared(
-                    "TRUNCATE form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
+                    "TRUNCATE notifications, form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
                      email_deliveries, email_events, email_suppressions",
                 )
                 .await?;

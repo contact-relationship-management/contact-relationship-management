@@ -227,6 +227,26 @@ fn default_off_exposes_sensitive_reads_activation_is_a_release_gate() {
     }
 }
 
+#[test]
+fn marking_your_own_notifications_read_is_a_read_but_the_sweep_is_an_admin_action() {
+    assert_eq!(
+        derive_action(&Method::PUT, "/api/notifications/abc/read"),
+        Action::Read
+    );
+    assert_eq!(
+        derive_action(&Method::POST, "/api/notifications/read-all"),
+        Action::Read
+    );
+    assert_eq!(
+        derive_action(&Method::POST, "/api/notifications/sweep"),
+        Action::Destructive
+    );
+    assert_eq!(
+        derive_action(&Method::PUT, "/api/activities/abc/read"),
+        Action::Write
+    );
+}
+
 /// Enforcement on ⇒ the public paths (health/ping, `OpenAPI`,
 /// Swagger UI, Prometheus metrics) still pass without a token.
 #[test]

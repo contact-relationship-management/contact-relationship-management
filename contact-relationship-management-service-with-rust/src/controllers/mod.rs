@@ -19,6 +19,7 @@ pub mod insights;
 pub mod marketing;
 pub mod merge;
 pub mod metrics;
+pub mod notifications;
 pub mod paging;
 pub mod privacy;
 pub mod relationships;

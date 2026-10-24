@@ -224,3 +224,26 @@ describe("the sample data hangs together", () => {
     expect((get("forecast").body as { open_deals: number }).open_deals).toBe(8);
   });
 });
+
+describe("the tour's notifications inbox (CRM-R32)", () => {
+  it("lists two unread, marks one read, then the rest", () => {
+    expect((get("notifications").body as unknown[]).length).toBe(2);
+    expect(get("notifications/unread-count").body).toEqual({
+      unread: 2,
+      capped: false,
+    });
+    const read = demoHandle(
+      "PUT",
+      "notifications/note-1/read",
+      new URLSearchParams(),
+      null,
+    );
+    expect(read.status).toBe(200);
+    expect((get("notifications?unread=true").body as unknown[]).length).toBe(1);
+    expect(post("notifications/read-all").body).toEqual({ marked: 1 });
+    expect(
+      demoHandle("PUT", "notifications/nope/read", new URLSearchParams(), null)
+        .status,
+    ).toBe(404);
+  });
+});

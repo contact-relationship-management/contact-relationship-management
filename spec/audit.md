@@ -31,6 +31,10 @@ A web form submission (CRM-R31) audits as the actor `web_form:<slug>`: the conta
 `consent_pending`, the lead's `lead_captured`, and `web_form_submitted` on the lead with the form and purpose. Never the
 name or the address. A submission the honeypot caught, one over a limit and one from a refused origin write nothing.
 
+Notifications (CRM-R32) audit under the entity `notification`: `notifications_swept` (counts of created and suppressed, only
+when something happened; no actor when the periodic job ran it), `read` (one notification) and `read_all` (with how many).
+No record text.
+
 ## Integrity
 
 **A write whose audit row cannot be written is refused.** The audit row is part of the

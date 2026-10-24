@@ -70,6 +70,12 @@ pub(crate) struct ActivityEditPayload {
     due_on: Option<chrono::NaiveDate>,
     #[serde(default)]
     summary: Option<String>,
+    /// Who the task is for (a `worker:` URN); tasks only (CRM-R32).
+    #[serde(default)]
+    assignee_ref: Option<String>,
+    /// When to remind the assignee; tasks only. A new time makes a new reminder possible.
+    #[serde(default)]
+    remind_at: Option<chrono::DateTime<chrono::FixedOffset>>,
 }
 
 /// The column's pids with `pid` moved to `position` (0-based; clamped to the
@@ -358,8 +364,17 @@ async fn edit_activity(
         problems.require_text("summary", summary);
         problems.cap_text("summary", summary);
     }
+    problems.ref_opt(
+        "assignee_ref",
+        entity_ref::EntityType::Worker,
+        payload.assignee_ref.as_deref(),
+    );
     problems.finish()?;
-    if payload.due_on.is_none() && payload.summary.is_none() {
+    if payload.due_on.is_none()
+        && payload.summary.is_none()
+        && payload.assignee_ref.is_none()
+        && payload.remind_at.is_none()
+    {
         return Err(unprocessable("nothing to change"));
     }
     let row = activities::Entity::find()
@@ -370,6 +385,9 @@ async fn edit_activity(
         .ok_or(Error::NotFound)?;
     if payload.due_on.is_some() && row.due_on.is_none() {
         return Err(unprocessable("this activity has no due day to move"));
+    }
+    if (payload.assignee_ref.is_some() || payload.remind_at.is_some()) && row.kind != "task" {
+        return Err(unprocessable("only a task has an assignee or a reminder"));
     }
     if row.done {
         return Err(unprocessable("a finished activity cannot be changed"));
@@ -385,6 +403,14 @@ async fn edit_activity(
     if let Some(summary) = payload.summary {
         active.summary = ActiveValue::set(summary.trim().to_string().into());
         changed.push("summary");
+    }
+    if let Some(assignee) = payload.assignee_ref {
+        active.assignee_ref = ActiveValue::set(Some(assignee));
+        changed.push("assignee_ref");
+    }
+    if let Some(at) = payload.remind_at {
+        active.remind_at = ActiveValue::set(Some(at));
+        changed.push("remind_at");
     }
     let row = active.update(&txn).await?;
     let details = serde_json::json!({

@@ -21,6 +21,7 @@ const SCREENS = [
   "/tickets/board",
   "/articles",
   "/followups",
+  "/notifications",
   "/executive",
   "/dpo",
   "/break-glass",
@@ -188,6 +189,25 @@ test.describe("data tables", () => {
         .locator('td[data-align="end"]')
         .first(),
     ).toBeVisible();
+  });
+
+  test("the inbox lists notifications, marks one read, then all", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/notifications");
+    const list = page.getByTestId("notifications");
+    await expect(list.locator("li")).toHaveCount(2);
+    await expect(list).toContainText("Task reminder");
+    await expect(list).toContainText("SLA breach");
+    await list.getByRole("button", { name: "Mark as read" }).first().click();
+    await expect(
+      list.getByRole("button", { name: "Mark as read" }),
+    ).toHaveCount(1);
+    await page.getByTestId("mark-all").click();
+    await expect(page.getByTestId("mark-all")).toBeDisabled();
+    await page.getByTestId("unread-only").check();
+    await expect(page.getByTestId("notifications-empty")).toBeVisible();
   });
 
   test("the Board links are readable (label colour differs from the background)", async ({

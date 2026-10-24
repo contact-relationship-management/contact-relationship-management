@@ -11,6 +11,9 @@ subproject keeps a detailed changelog:
 
 ### Added
 
+- Task reminders and a notifications inbox: assigned tasks and SLA breaches notify the assignee once, only for records they may
+  read (CRM-R32).
+
 - Web form lead capture (`POST /forms/{slug}`): a sign-up form on a website makes a lead and asks the visitor to confirm
   before anything is mailed; origin check, rate limits and a honeypot protect it (CRM-R31).
 

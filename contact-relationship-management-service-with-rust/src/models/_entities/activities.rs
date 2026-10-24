@@ -24,6 +24,8 @@ pub struct Model {
     pub actor_ref: Option<String>,
     pub summary: crate::models::encrypted::EncryptedText,
     pub due_on: Option<Date>,
+    pub assignee_ref: Option<String>,
+    pub remind_at: Option<DateTimeWithTimeZone>,
     pub done: bool,
     pub sentiment: Option<String>,
     pub deleted_at: Option<DateTimeWithTimeZone>,

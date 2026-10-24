@@ -55,6 +55,7 @@ pub mod mcp;
 pub mod metrics;
 pub(crate) mod middleware;
 pub mod models;
+pub mod notifications;
 pub mod openapi;
 pub(crate) mod openapi_operations;
 pub mod openapi_schemas;

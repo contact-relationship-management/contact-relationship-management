@@ -9,6 +9,8 @@
   import { watchIdle } from "#lib/idle.js";
   import { i18n, isRtl, t, LOCALES, LOCALE_LABELS } from "#lib/i18n.svelte.js";
   import { splitLocale } from "../params";
+  import { resource } from "#lib/resource.svelte.js";
+  import { unreadNotifications } from "#lib/api/crm.js";
   import PickerBar from "@lilydesignsystem/svelte-picker-bar";
   import type { ShareTarget } from "@lilydesignsystem/svelte-share-picker";
   import type { LinkItem } from "@lilydesignsystem/svelte-link-picker";
@@ -98,6 +100,7 @@
     { href: "/tickets", key: "nav.tickets" },
     { href: "/articles", key: "nav.articles" },
     { href: "/followups", key: "nav.followups" },
+    { href: "/notifications", key: "nav.notifications" },
     { href: "/executive", key: "nav.executive" },
     { href: "/dpo", key: "nav.dpo" },
     { href: "/break-glass", key: "nav.breakGlass" },
@@ -126,13 +129,23 @@
     { href: `/${i18n.locale}/kanban`, key: "nav.kanban" as const },
   ]);
 
+  // Unread notifications (CRM-R32), shown beside the inbox link. A failure shows no count.
+  const unread = resource(
+    async () => (signedIn ? (await unreadNotifications()).unread : 0),
+    { keepWhileLoading: true },
+  );
+  const navLabel = (key: (typeof navItems)[number]["key"]) =>
+    key === "nav.notifications" && (unread.value ?? 0) > 0
+      ? `${t(key)} (${unread.value})`
+      : t(key);
+
   // Link picker (the home icon): the primary navigation when signed in,
   // else the public pages. `current` marks the page being viewed.
   const pageLinks: LinkItem[] = $derived(
     (signedIn
       ? navLinks.map((item) => ({
           href: item.key === "nav.kanban" ? item.href : withLocale(item.href),
-          label: t(item.key),
+          label: navLabel(item.key as (typeof navItems)[number]["key"]),
         }))
       : [
           { href: "/", label: t("nav.dashboard") },

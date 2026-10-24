@@ -80,6 +80,12 @@ pub(crate) struct ActivityPayload {
     /// Optional recorded sentiment (`positive` / `neutral` / `negative`).
     #[serde(default)]
     sentiment: Option<String>,
+    /// Who a task is for (a `worker:` URN); tasks only (CRM-R32).
+    #[serde(default)]
+    assignee_ref: Option<String>,
+    /// When to remind the assignee; tasks only.
+    #[serde(default)]
+    remind_at: Option<chrono::DateTime<chrono::FixedOffset>>,
 }
 
 fn default_channel() -> String {
@@ -820,6 +826,14 @@ async fn create_activity(
         entity_ref::EntityType::Worker,
         payload.actor_ref.as_deref(),
     );
+    problems.ref_opt(
+        "assignee_ref",
+        entity_ref::EntityType::Worker,
+        payload.assignee_ref.as_deref(),
+    );
+    if payload.kind != "task" && (payload.assignee_ref.is_some() || payload.remind_at.is_some()) {
+        problems.push("only a task has an assignee or a reminder");
+    }
     problems.finish()?;
     let occurred_at = payload
         .occurred_at
@@ -835,6 +849,8 @@ async fn create_activity(
         actor_ref: ActiveValue::set(payload.actor_ref.clone()),
         summary: ActiveValue::set(payload.summary.clone().into()),
         due_on: ActiveValue::set(payload.due_on),
+        assignee_ref: ActiveValue::set(payload.assignee_ref.clone()),
+        remind_at: ActiveValue::set(payload.remind_at),
         done: ActiveValue::set(false),
         deleted_at: ActiveValue::set(None),
         ..Default::default()

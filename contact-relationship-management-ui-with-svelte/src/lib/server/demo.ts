@@ -21,6 +21,7 @@ import type {
   Contact,
   Deal,
   Lead,
+  Notification,
   Stage,
   Ticket,
 } from "#lib/api/crm.js";
@@ -108,6 +109,8 @@ interface ExternalLinkRow {
 }
 
 interface State {
+  /** The inbox of the one demo user (CRM-R32). */
+  notifications: Notification[];
   followups: FollowupSeed[];
   accounts: Account[];
   contacts: Contact[];
@@ -665,7 +668,26 @@ function build(): State {
       14,
     ),
   ];
+  const notifications: Notification[] = [
+    {
+      pid: "note-1",
+      kind: "task_reminder",
+      subject_kind: "contact",
+      subject_pid: "con-5",
+      created_at: iso(0, 8),
+      read_at: null,
+    },
+    {
+      pid: "note-2",
+      kind: "sla_breach",
+      subject_kind: "ticket",
+      subject_pid: tickets[0]!.pid,
+      created_at: iso(-1, 16),
+      read_at: null,
+    },
+  ];
   return {
+    notifications,
     followups,
     accounts,
     contacts,
@@ -1855,6 +1877,25 @@ export function demoHandle(
     if (tail === "unmerge" && post) return unmergeContact(id!, body);
     if (tail === "external-links" && (get || post))
       return recordLinks("contact", id!, method, body);
+  }
+  if (head === "notifications") {
+    const unread = state.notifications.filter((n) => n.read_at === null);
+    if (seg.length === 1 && get)
+      return ok(
+        query.get("unread") === "true" ? unread : [...state.notifications],
+      );
+    if (id === "unread-count" && get)
+      return ok({ unread: unread.length, capped: false });
+    if (id === "read-all" && post) {
+      for (const n of unread) n.read_at = new Date().toISOString();
+      return ok({ marked: unread.length });
+    }
+    if (tail === "read" && method === "PUT") {
+      const found = state.notifications.find((n) => n.pid === id);
+      if (!found) return problem(404, "notification not found");
+      found.read_at ??= new Date().toISOString();
+      return ok(found);
+    }
   }
   if (head === "external-links" && method === "DELETE" && id)
     return removeLink(id);

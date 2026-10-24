@@ -1354,7 +1354,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Refactors:** `capture_lead` is shared with `POST /api/leads`; `enrol_in` with the enrolment endpoint.
       - **Tests:** 4 request tests (the whole journey including no nurture mail before confirmation and the audit row holding no name or address; origin, honeypot, bad input and preflight; client and form limits and the stranger's address; person service down and erasure), 4 rules unit tests, a settings test, and `/forms/` in the public-path test. Service: 250 unit tests, 95 request tests, clippy clean for both feature sets. UI types regenerated.
       - **Not done:** an embeddable script or form builder, CAPTCHA, translating the confirmation mail, and shared (Redis) limit counts. **Assumed, not confirmed:** the person service's `POST /api/persons` contract, which no sibling service in this repository defines.
-- [ ] CRM-T99 **Tasks, reminders and a notifications inbox.**
+- [x] CRM-T99 **Tasks, reminders and a notifications inbox.**
   - **Tasks:** task activities gain an assignee (`worker:` URN) and a reminder time.
   - **Notifications:** a `bg_pg` job writes notification rows for due reminders and SLA breaches. The UI gets an unread inbox, with mark-read.
   - **Access:** a notification is created only if the recipient can read the record (ABAC is checked at write time and again at read time).
@@ -1362,6 +1362,13 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Source:** https://knowledge.hubspot.com/sequences/complete-your-sequence-tasks
 
   (C5, M)
+      **Done (2026-10-24, not released):** requirement CRM-R32 first, then:
+      - **Tasks:** `assignee_ref` and `remind_at` on task activities (create and `PUT /api/activities/{pid}`; other kinds get `422`). Migration `000023`.
+      - **Job:** `NotificationSweepWorker`, queued every minute by the server, plus `POST /api/notifications/sweep` (admin tier) returning `{created, suppressed}`. Loco has no scheduler, so the timing is a server loop; the work is idempotent and a uniqueness rule makes each reminder fire once (a new `remind_at` fires again), so replicas may all queue it. SLA breaches are read from the flags `POST /api/sla/sweep` sets.
+      - **Access, twice:** at write time the policy is asked for the assignee as a subject with a `sub` and no attributes (the sweep has no token), and a denied or missing record is stored as `suppressed`; at read time it is asked again with the caller's own token, per record. Marking your own notifications read derives `read`, so a reader may.
+      - **API/UI:** `GET /api/notifications` (paged, `?unread=true`), `unread-count`, `PUT {pid}/read`, `read-all`; inbox page `/notifications` with an unread count beside its navigation entry; 8 keys in all 8 locales (the parity test covers them); the tour has two sample notifications. Notifications carry no record text. Erasure deletes them.
+      - **Tests:** 2 request tests (once and again; read by the recipient only; gone record suppressed; SLA breach per breach; erasure), 1 under sign-in (suppressed at write for an unreadable record, own inbox only, a record that becomes unreadable drops out), a policy unit test, 1 demo unit test and 1 Playwright test. Service: 251 unit, 97 request, 3 enforcement; UI: 134 unit; clippy clean for both feature sets; types regenerated.
+      - **Not done / limits:** a UI form to set an assignee or reminder (the API takes them); delivery by email or push; the write-time check cannot see the recipient's token attributes, so a policy that needs one suppresses their reminders (fails closed); a suppressed notification is not revived if the policy later changes.
 - [ ] CRM-T100 **Server-side search.**
   - **Endpoint:** `GET /api/search?q=` over contacts, accounts, deals, leads, tickets and articles, using `tsvector` with `unaccent` and `pg_trgm` for fuzzy matches. Results are filtered by ABAC and masking, and the query is audited as a count, not as text.
   - **UI:** the CRM-R22 search uses it when the service is present.

@@ -77,6 +77,7 @@ fn test_policy() -> String {
         { "effect": "allow",
           "actions": ["read", "write", "delete", "destructive"],
           "when": { "svc": ["true"] } },
+        { "effect": "deny", "actions": ["read"], "when": { "resource.status": ["inactive"] } },
         { "effect": "allow", "actions": ["read"], "when": { "resource.owner": ["$sub"] } },
         { "effect": "allow", "actions": ["write"], "when": { "access": ["write"] } },
         { "effect": "allow", "actions": ["read"], "when": { "env.break_glass": ["true"] } },
@@ -737,6 +738,142 @@ async fn mcp_tool_calls_are_decided_as_the_caller() {
             !audits.to_string().contains("from an agent"),
             "the free text an agent passed is not audited"
         );
+    })
+    .await;
+}
+
+/// CRM-R32: a reminder is made only if the assignee may read the record, the inbox is the caller's
+/// own, and a record that becomes unreadable drops out of the inbox. The policy denies reading an
+/// inactive contact to everyone but machine peers.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_read() {
+    use sea_orm::ConnectionTrait;
+    let (keys, kid) = keys_and_kid();
+    settings::update(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let assignee_sub = uuid::Uuid::new_v4();
+    let assignee = sign_as(&kid, &assignee_sub.to_string(), &[]);
+    let reader = sign_as(&kid, "inbox-reader", &[]);
+    let writer = sign_as(&kid, "inbox-writer", &[("access", &["write"])]);
+    let service = sign_as(&kid, "inbox-svc", &[("svc", &["true"])]);
+
+    request::<App, _, _>(|request, ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let mut contacts = Vec::new();
+        for name in ["Readable", "Hidden"] {
+            let created: Value = request
+                .post("/api/contacts")
+                .add_header("authorization", bearer(&writer))
+                .json(&json!({
+                    "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                    "display_name": name,
+                }))
+                .await
+                .json();
+            let pid = created["pid"].as_str().unwrap().to_string();
+            let remind = (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339();
+            request
+                .post("/api/activities")
+                .add_header("authorization", bearer(&writer))
+                .json(&json!({
+                    "subject_kind": "contact", "subject_pid": pid, "kind": "task",
+                    "summary": "Follow up", "assignee_ref": format!("worker:{assignee_sub}"),
+                    "remind_at": remind,
+                }))
+                .await
+                .assert_status_ok();
+            contacts.push(pid);
+        }
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
+                contacts[1]
+            ))
+            .await
+            .unwrap();
+
+        // Sweeping is an admin action; the assignee, with no attributes, may not read the
+        // inactive contact, so only the readable one is notified.
+        assert_eq!(
+            request
+                .post("/api/notifications/sweep")
+                .add_header("authorization", bearer(&writer))
+                .await
+                .status_code(),
+            403
+        );
+        let swept: Value = request
+            .post("/api/notifications/sweep")
+            .add_header("authorization", bearer(&service))
+            .await
+            .json();
+        assert_eq!(swept, json!({ "created": 1, "suppressed": 1 }));
+
+        assert_eq!(request.get("/api/notifications").await.status_code(), 401);
+        let mine: Vec<Value> = request
+            .get("/api/notifications")
+            .add_header("authorization", bearer(&assignee))
+            .await
+            .json();
+        assert_eq!(mine.len(), 1);
+        assert_eq!(mine[0]["subject_pid"], contacts[0]);
+        // A reader may read their own (empty) inbox and mark things read, but sees nothing of
+        // the assignee's, and cannot mark theirs read.
+        let theirs: Vec<Value> = request
+            .get("/api/notifications")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert!(theirs.is_empty());
+        let pid = mine[0]["pid"].as_str().unwrap();
+        assert_eq!(
+            request
+                .put(&format!("/api/notifications/{pid}/read"))
+                .add_header("authorization", bearer(&reader))
+                .await
+                .status_code(),
+            404
+        );
+
+        // The policy is asked again at read time: once the record becomes unreadable the
+        // notification is gone from the list and the count.
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
+                contacts[0]
+            ))
+            .await
+            .unwrap();
+        let after: Vec<Value> = request
+            .get("/api/notifications")
+            .add_header("authorization", bearer(&assignee))
+            .await
+            .json();
+        assert!(after.is_empty());
+        let unread: Value = request
+            .get("/api/notifications/unread-count")
+            .add_header("authorization", bearer(&assignee))
+            .await
+            .json();
+        assert_eq!(unread["unread"], 0);
+        // Reading marks it read for the one who owns it, and is allowed to a reader-tier caller.
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE contacts SET status = 'active' WHERE pid = '{}'",
+                contacts[0]
+            ))
+            .await
+            .unwrap();
+        request
+            .put(&format!("/api/notifications/{pid}/read"))
+            .add_header("authorization", bearer(&assignee))
+            .await
+            .assert_status_ok();
     })
     .await;
 }

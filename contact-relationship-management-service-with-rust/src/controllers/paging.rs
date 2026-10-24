@@ -88,6 +88,13 @@ impl Page {
         select.offset(self.offset).limit(self.limit + 1)
     }
 
+    /// The `(limit + 1, offset)` to put in a hand-written query, for a list that is not an entity
+    /// select. The extra row is the probe [`Page::split`] drops.
+    #[must_use]
+    pub fn window(&self) -> (u64, u64) {
+        (self.limit + 1, self.offset)
+    }
+
     /// Drop the probe row; the flag says whether more rows follow.
     #[must_use]
     pub fn split<T>(&self, mut rows: Vec<T>) -> (Vec<T>, bool) {

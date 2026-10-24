@@ -39,7 +39,7 @@ fn reference(name: &str) -> Value {
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         audits, board, break_glass, dashboards, engagement, external_links, insights, marketing,
-        merge, privacy, relationships, sales, support, unmerge, webhooks,
+        merge, notifications, privacy, relationships, sales, support, unmerge, webhooks,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -152,6 +152,10 @@ fn generated() -> serde_json::Map<String, Value> {
         crate::rules::analytics::Ratio,
         support::TicketDetail,
         support::SlaSweep,
+        notifications::Notification,
+        notifications::UnreadCount,
+        notifications::MarkedRead,
+        crate::notifications::Outcome,
         engagement::Group,
         crate::models::_entities::working_groups::Model,
         sales::PipelineWithStages,
@@ -310,6 +314,10 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/campaigns/{pid}/funnel") => "CampaignFunnel",
         ("post", "/api/nurture/advance") => "NurtureSweep",
         ("post", "/api/sla/sweep") => "SlaSweep",
+        ("post", "/api/notifications/sweep") => "NotificationSweep",
+        ("get", "/api/notifications/unread-count") => "UnreadCount",
+        ("post", "/api/notifications/read-all") => "MarkedRead",
+        ("put", "/api/notifications/{pid}/read") => "Notification",
         ("get", "/api/contacts/{pid}/subject-access") => "SubjectAccessExport",
         ("post", "/api/contacts/{pid}/erase") => "Erased",
         ("get", "/api/retention") => "RetentionReport",
@@ -361,6 +369,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/nurture-sequences" => "SequenceView",
         "/api/audits/recent" | "/api/audits" | "/api/audits/{entity_pid}" => "AuditEntry",
         "/api/events/recent" => "Event",
+        "/api/notifications" => "Notification",
         "/api/webhook-subscriptions" => "WebhookSubscription",
         "/api/webhook-subscriptions/{pid}/deliveries" => "WebhookDelivery",
         _ => return None,

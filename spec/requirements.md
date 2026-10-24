@@ -606,3 +606,44 @@ address, and that bots and strangers cannot fill the CRM or use it to spam someo
 - Erasure (CRM-R20) deletes the contact's submission records.
 - Not built: a form builder or embeddable script, CAPTCHA, translating the confirmation
   mail (English only), file fields, and extra fields beyond name and email.
+
+## CRM-R32 — Tasks with reminders, and an inbox that tells me when they are due
+
+*As a salesperson or support agent, I can be assigned a task with a reminder time, and
+I see in my inbox when a reminder is due or a ticket of mine breaches its SLA, and only
+for records I am allowed to see.*
+
+- **Tasks.** An activity of kind `task` may carry an `assignee_ref` (a `worker:` URN) and a
+  `remind_at` time, when created (`POST /api/activities`) and when edited
+  (`PUT /api/activities/{pid}`, which also takes them). Other kinds refuse both with `422`.
+  Changing `remind_at` makes the task eligible for a new reminder.
+- **Notifications.** A notification is a row for one recipient (`worker:` URN): its kind
+  (`task_reminder` or `sla_breach`), the record it is about (kind and pid), the activity or
+  ticket that caused it, when it was made and when it was read. It carries no record text, so
+  nothing in it can leak what the record says; the inbox shows the kind and links to the record.
+- **A periodic job makes them.** The server queues `NotificationSweepWorker` every minute (it runs as a
+  background job when `workers.mode` is a queue, inline otherwise; Loco has no scheduler of its own, so the
+  server does the timing), and `POST /api/notifications/sweep` (admin tier, like the other sweeps)
+  runs the same sweep and reports `{ created, suppressed }`. It makes a `task_reminder` for each
+  open task whose `remind_at` has passed and that has an assignee, and an `sla_breach` for each open
+  ticket whose assignee has a first-response or resolution breach flagged (by `POST /api/sla/sweep`).
+  **Each fires once**: a database uniqueness rule on recipient, kind, cause and, for a reminder, the
+  `remind_at` it was made for, so a second sweep, a second replica, or a retry makes nothing more.
+- **Access is checked twice.**
+  1. *When the notification would be written*, the access policy is asked whether the recipient may
+     read the record, as a subject known only by the `worker:` id and with no token attributes (the
+     sweep has no token; attributes exist only on a request). A record that is gone, or that the policy
+     denies to that subject, makes no notification and counts as `suppressed`. This fails closed: a policy that needs
+     an attribute to allow a read suppresses reminders for people whose attributes the sweep cannot see.
+  2. *When the inbox is read*, the policy is asked again with the caller's own token, record by record, and a
+     notification about a record the caller may not read, or that is gone, is left out (and not counted as unread).
+- **The inbox.** `GET /api/notifications` (own notifications, newest first, paged; `?unread=true`),
+  `PUT /api/notifications/{pid}/read`, `POST /api/notifications/read-all`. A notification of another
+  recipient is `404`. With sign-in off there is no caller, so `recipient=worker:…` names whose inbox is read.
+  Marking your own notifications read is open to any signed-in caller, since it changes only your inbox.
+  The UI has an inbox page and an unread count beside its navigation entry, in all eight locales.
+- **Audit.** A sweep that made or suppressed anything writes `notifications_swept` (counts only);
+  marking read writes `read` on the notification.
+- Erasure (CRM-R20) deletes notifications about the contact.
+- Not built: a form in the UI to give a task an assignee or reminder (the API takes them), email or push delivery of
+  notifications, per-user preferences, snoozing, recurring tasks, an assignee filter on the follow-ups view, and reading the recipient's real attributes at write time.

@@ -18,6 +18,9 @@ purposes (`newsletter`, `events`, `product_updates`) are rows of
 A web form submission (CRM-R31) is a row of `form_submissions` (form slug, contact, lead, purpose, the
 nurture sequence to start on confirmation, when the confirmation mail went out and when the visitor confirmed). It holds no
 name and no address, and erasure deletes it.
+A task activity may carry `assignee_ref` (`worker:` URN) and `remind_at` (CRM-R32). A notification is a row of `notifications`
+(recipient, kind `task_reminder | sla_breach`, the record it is about, the activity or ticket that caused it, a `source_key` that
+makes each fire once, `suppressed`, `read_at`); it holds no record text and erasure of the contact deletes it.
 
 **Account** — an organization relationship.
 `organization_ref` (`organization:` URN, required), `owner_ref`,

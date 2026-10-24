@@ -1,7 +1,8 @@
 //! Per-record decisions: resource attributes, masking, request attributes, break-glass.
 
 use super::{
-    Action, BTreeMap, ENTITY, MaybeAuthUser, StatusCode, contacts, deals, policy, require_auth,
+    Action, BTreeMap, Claims, ENTITY, MaybeAuthUser, StatusCode, contacts, deals, policy,
+    require_auth,
 };
 
 /// Derive the **record-level resource attributes** of a stored deal
@@ -175,6 +176,47 @@ pub fn authorize_record(
         Ok(decision.obligations)
     } else {
         Err((StatusCode::FORBIDDEN, decision.reason))
+    }
+}
+
+/// Whether the policy lets `claims` read a record with these `resource` attributes. Always true
+/// when enforcement is off. The same decision [`authorize_record`] makes, as a yes or no, for a
+/// list that leaves out what the caller may not see (CRM-R32).
+#[must_use]
+pub fn may_read(claims: &Claims, resource: &BTreeMap<String, Vec<String>>) -> bool {
+    if !require_auth() {
+        return true;
+    }
+    let mut env = request_env_attrs();
+    if crate::break_glass::registry().active(&claims.sub, chrono::Utc::now()) {
+        env.insert("break_glass".to_string(), vec!["true".to_string()]);
+    }
+    policy()
+        .current()
+        .evaluate_with_context(claims, Action::Read, ENTITY, resource, &env)
+        .allowed
+}
+
+/// What the sweep knows of a worker who is not making a request: who they are and nothing else
+/// (a token's attributes exist only on a request). `worker_ref` is the `worker:` URN.
+#[must_use]
+pub fn claims_for_worker(worker_ref: &str) -> Claims {
+    Claims {
+        sub: worker_ref
+            .split_once(':')
+            .map_or(worker_ref, |(_, id)| id)
+            .to_string(),
+        email: String::new(),
+        name: String::new(),
+        iss: String::new(),
+        aud: String::new(),
+        exp: i64::MAX,
+        iat: 0,
+        nbf: None,
+        sid: String::new(),
+        scope: Vec::new(),
+        roles: Vec::new(),
+        attrs: BTreeMap::new(),
     }
 }
 

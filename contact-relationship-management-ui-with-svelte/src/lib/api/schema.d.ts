@@ -7080,6 +7080,390 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's inbox, newest first (CRM-R32): task reminders and SLA breaches, without records the caller may not read; ?unread=true */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notification"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark the caller's whole inbox read */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MarkedRead"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/sweep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make the notifications that are due now: task reminders and SLA breaches, each once; the server also does this every minute; admin tier like the other sweeps */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationSweep"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many unread notifications the caller may see (counts the newest 200) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnreadCount"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{pid}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Mark one of the caller's notifications read; someone else's is 404 */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notification"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nurture-sequences": {
         parameters: {
             query?: never;
@@ -9666,6 +10050,7 @@ export interface components {
         };
         Activity: {
             actor_ref: string | null;
+            assignee_ref: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -9680,6 +10065,8 @@ export interface components {
             occurred_at: string;
             /** Format: uuid */
             pid: string;
+            /** Format: date-time */
+            remind_at: string | null;
             sentiment: string | null;
             subject_kind: string;
             /** Format: uuid */
@@ -9703,10 +10090,21 @@ export interface components {
         /** @description `PUT /api/activities/{pid}` body. */
         ActivityEditPayload: {
             /**
+             * @description Who the task is for (a `worker:` URN); tasks only (CRM-R32).
+             * @default null
+             */
+            assignee_ref: string | null;
+            /**
              * Format: date
              * @default null
              */
             due_on: string | null;
+            /**
+             * Format: date-time
+             * @description When to remind the assignee; tasks only. A new time makes a new reminder possible.
+             * @default null
+             */
+            remind_at: string | null;
             /** @default null */
             summary: string | null;
         };
@@ -9714,6 +10112,11 @@ export interface components {
         ActivityPayload: {
             /** @default null */
             actor_ref: string | null;
+            /**
+             * @description Who a task is for (a `worker:` URN); tasks only (CRM-R32).
+             * @default null
+             */
+            assignee_ref: string | null;
             /**
              * Format: date
              * @default null
@@ -9725,6 +10128,12 @@ export interface components {
              * @default null
              */
             occurred_at: string | null;
+            /**
+             * Format: date-time
+             * @description When to remind the assignee; tasks only.
+             * @default null
+             */
+            remind_at: string | null;
             /**
              * @description Optional recorded sentiment (`positive` / `neutral` / `negative`).
              * @default null
@@ -10747,6 +11156,11 @@ export interface components {
             person_ref: string | null;
             to: string;
         };
+        /** @description `POST /api/notifications/read-all` response. */
+        MarkedRead: {
+            /** Format: uint64 */
+            marked: number;
+        };
         /** @description One account in the members view. */
         MemberAccount: {
             /** Format: uint */
@@ -10836,6 +11250,34 @@ export interface components {
             into_pid: string;
             /** @description Why, in the operator's words. Recorded in the audit entry. */
             reason: string;
+        };
+        /** @description One inbox entry. */
+        Notification: {
+            /** Format: date-time */
+            created_at: string;
+            /** @description `task_reminder` or `sla_breach`. */
+            kind: string;
+            /** Format: uuid */
+            pid: string;
+            /** Format: date-time */
+            read_at: string | null;
+            /** @description What the notification is about: `contact`, `account`, `lead`, `deal` or `ticket`. */
+            subject_kind: string;
+            /** Format: uuid */
+            subject_pid: string;
+        };
+        /** @description What one sweep did. */
+        NotificationSweep: {
+            /**
+             * Format: uint64
+             * @description Notifications made for the recipient's inbox.
+             */
+            created: number;
+            /**
+             * Format: uint64
+             * @description Due, but the recipient may not read the record (or it is gone), so none was shown.
+             */
+            suppressed: number;
         };
         NurtureEnrollment: {
             /** Format: uuid */
@@ -11444,6 +11886,16 @@ export interface components {
             dry_run: boolean;
             /** @description Why, in the operator's words. Recorded in the audit entry. */
             reason: string;
+        };
+        /** @description `GET /api/notifications/unread-count` response. */
+        UnreadCount: {
+            /** @description True when more than 200 were unread and only the newest 200 were counted. */
+            capped: boolean;
+            /**
+             * Format: uint64
+             * @description Unread notifications about records the caller may read.
+             */
+            unread: number;
         };
         /** @description One delivery in the log. */
         WebhookDelivery: {

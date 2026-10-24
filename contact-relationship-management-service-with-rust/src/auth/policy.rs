@@ -133,6 +133,11 @@ pub fn derive_action(method: &Method, path: &str) -> Action {
         // Taking a break-glass grant is open to any authenticated caller
         // (CRM-T44); the grant, not the route, carries the privilege.
         Method::POST if path == "/api/break-glass" => Action::Read,
+        // Marking your own notifications read changes only your inbox (CRM-R32), so a reader may.
+        Method::PUT if path.starts_with("/api/notifications/") && path.ends_with("/read") => {
+            Action::Read
+        }
+        Method::POST if path == "/api/notifications/read-all" => Action::Read,
         Method::GET | Method::HEAD | Method::OPTIONS if is_privileged_read(path) => {
             Action::Destructive
         }

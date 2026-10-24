@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — tasks with reminders and a notifications inbox (CRM-T99, CRM-R32)
+
+Task activities take an `assignee_ref` and a `remind_at`. A job the server queues every minute (and `POST /api/notifications/sweep`)
+makes a notification for each due reminder and each SLA breach on an assigned ticket, once each. A notification is made only if the
+assignee may read the record, and is checked again with the caller's own token each time the inbox is read. New routes:
+`GET /api/notifications` (`?unread=true`), `GET /api/notifications/unread-count`, `PUT /api/notifications/{pid}/read`,
+`POST /api/notifications/read-all`. New tables/columns in migration `000023`. Notifications carry no record text and are deleted on erasure.
+
 ### Added — web form lead capture (CRM-T98, CRM-R31)
 
 `POST /forms/{slug}` (public, outside `/api`) turns a website sign-up form into a contact, a `source=web` lead and a `pending`

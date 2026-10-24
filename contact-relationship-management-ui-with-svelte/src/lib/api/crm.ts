@@ -454,6 +454,42 @@ export function editFollowup(
   return api(`/activities/${pid}`, { method: "PUT", body: fields });
 }
 
+/** One inbox entry (CRM-R32): which record, why, and whether it was read. No record text. */
+export interface Notification {
+  pid: string;
+  /** `task_reminder` or `sla_breach`. */
+  kind: string;
+  subject_kind: string;
+  subject_pid: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+/** The caller's inbox, newest first, without records they may not read. */
+export function notifications(
+  unreadOnly = false,
+  init?: FetchLike,
+): Promise<Notification[]> {
+  return api(`/notifications${unreadOnly ? "?unread=true" : ""}`, init);
+}
+
+/** How many unread notifications the caller may see. */
+export function unreadNotifications(
+  init?: FetchLike,
+): Promise<{ unread: number; capped: boolean }> {
+  return api("/notifications/unread-count", init);
+}
+
+/** Mark one notification read. */
+export function markNotificationRead(pid: string): Promise<Notification> {
+  return api(`/notifications/${pid}/read`, { method: "PUT" });
+}
+
+/** Mark the whole inbox read. */
+export function markAllNotificationsRead(): Promise<{ marked: number }> {
+  return api("/notifications/read-all", { method: "POST" });
+}
+
 /** The live forecast. */
 export function forecast(init?: FetchLike): Promise<{
   as_of: string;

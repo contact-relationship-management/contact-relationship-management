@@ -17,6 +17,7 @@ mod insights;
 mod marketing;
 mod mcp;
 mod merge;
+mod notifications;
 mod openapi_schemas;
 mod pagination;
 mod privacy;

@@ -224,6 +224,11 @@ async fn erase(
              WHERE contact_pid = '{cpid}' AND deleted_at IS NULL"
         ),
         format!("DELETE FROM working_group_members WHERE contact_pid = '{cpid}'"),
+        // Notifications about this contact and the duplicates merged into it (CRM-R32).
+        format!(
+            "DELETE FROM notifications WHERE subject_kind = 'contact' AND (subject_pid = '{cpid}' \
+             OR subject_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}'))"
+        ),
         // Web form submissions of this contact and the duplicates merged into it (CRM-R31).
         format!(
             "DELETE FROM form_submissions WHERE contact_pid = '{cpid}' OR contact_pid IN \
