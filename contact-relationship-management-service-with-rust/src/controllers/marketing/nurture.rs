@@ -296,6 +296,15 @@ pub(super) fn advance_enrollment(
     }
 }
 
+/// `POST /api/nurture/advance`: what one sweep did.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct NurtureSweep {
+    sent: u64,
+    completed: u64,
+    /// Steps the mail sender could not send this time; they are tried again on a later sweep.
+    held: u64,
+}
+
 /// `POST /api/nurture/advance` — the **idempotent advance sweep**
 /// (CRM-R9, CRM-D8): for each active enrolment past its `next_due_at`,
 /// simulate the step send (touch activity + `nurture_step_sent`),
@@ -396,7 +405,11 @@ pub(super) async fn advance_nurture(
         sent += 1;
         Metrics::global().nurture_step_sent_total.inc();
     }
-    format::json(serde_json::json!({ "sent": sent, "completed": completed, "held": held }))
+    format::json(NurtureSweep {
+        sent,
+        completed,
+        held,
+    })
 }
 
 /// `GET /api/nurture-sequences` — sequences with steps + live

@@ -527,6 +527,31 @@ pub(super) async fn run_batch(
     Ok((row, outcome.sent))
 }
 
+/// `GET /api/campaigns/{pid}/deliveries`: the send, counted by state.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct Deliveries {
+    campaign_pid: Uuid,
+    total: i64,
+    /// Rows a further run could still send.
+    remaining: i64,
+    by_state: std::collections::BTreeMap<String, i64>,
+}
+
+/// `GET /api/campaigns/{pid}/funnel`: leads, won revenue and ROI. Revenue and ROI are `null` when masked.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct CampaignFunnel {
+    /// The campaign; its cost is `null` when masked.
+    #[schemars(with = "campaigns::Model")]
+    campaign: serde_json::Value,
+    leads: usize,
+    won_deals: usize,
+    /// Won revenue in the campaign's own currency.
+    won_revenue_minor: Option<i64>,
+    /// Won revenue in other currencies, never summed in.
+    won_revenue_other_currencies: Option<std::collections::BTreeMap<String, i64>>,
+    roi: Option<analytics::Ratio>,
+}
+
 /// `GET /api/campaigns/{pid}/deliveries` — how a send is going: rows per state
 /// and how many a further `run` could still send. Counts only; no addresses.
 #[debug_handler]
@@ -538,12 +563,12 @@ pub(super) async fn campaign_deliveries(
     let by_state = deliveries::summary(&ctx.db, campaign.pid).await?;
     let total: i64 = by_state.values().sum();
     let remaining = deliveries::retriable(&ctx.db, campaign.pid).await?;
-    format::json(serde_json::json!({
-        "campaign_pid": campaign.pid,
-        "total": total,
-        "remaining": remaining,
-        "by_state": by_state,
-    }))
+    format::json(Deliveries {
+        campaign_pid: campaign.pid,
+        total,
+        remaining,
+        by_state,
+    })
 }
 
 /// `GET /api/contacts/{pid}/email-suppression` — whether the contact's mailbox
@@ -637,23 +662,17 @@ pub(super) async fn campaign_funnel(
         }
     }
     let roi = analytics::roi(same_currency_revenue, campaign.cost_minor);
-    let mut body = serde_json::json!({
-        "campaign": campaign,
-        "leads": lead_rows.len(),
-        "won_deals": attributed_deals.len(),
-        "won_revenue_minor": same_currency_revenue,
-        "won_revenue_other_currencies": other_currency,
-        "roi": roi,
-    });
+    // Cost, revenue and ROI are commercial and masked; counts and structure stay.
+    let mut campaign = serde_json::json!(campaign);
     if masked {
-        // Cost, revenue and ROI are commercial; counts and structure stay.
-        body = crate::auth::mask_json(
-            body,
-            &["won_revenue_minor", "won_revenue_other_currencies", "roi"],
-        );
-        if let Some(campaign) = body.get_mut("campaign") {
-            *campaign = crate::auth::mask_json(campaign.take(), &["cost_minor"]);
-        }
+        campaign = crate::auth::mask_json(campaign, &["cost_minor"]);
     }
-    format::json(body)
+    format::json(CampaignFunnel {
+        campaign,
+        leads: lead_rows.len(),
+        won_deals: attributed_deals.len(),
+        won_revenue_minor: (!masked).then_some(same_currency_revenue),
+        won_revenue_other_currencies: (!masked).then_some(other_currency),
+        roi: (!masked).then_some(roi),
+    })
 }

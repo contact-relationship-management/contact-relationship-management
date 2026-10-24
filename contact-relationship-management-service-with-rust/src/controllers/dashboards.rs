@@ -10,7 +10,7 @@ use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::IntoResponse;
 use loco_rs::prelude::*;
 use sea_orm::QuerySelect;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::sales;
 use crate::auth::MaybeAuthUser;
@@ -191,6 +191,15 @@ async fn account_clv(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Re
     }))
 }
 
+/// `GET /api/dashboards/activity?days=`: activity counts by kind in the window.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ActivityDashboard {
+    window_days: i64,
+    total: i64,
+    by_kind: std::collections::BTreeMap<String, i64>,
+    as_of: chrono::DateTime<chrono::Utc>,
+}
+
 /// `GET /api/dashboards/activity?days=` — per-kind activity counts
 /// over the window (CRM-R14).
 #[derive(Debug, Deserialize)]
@@ -223,12 +232,12 @@ async fn activity_dashboard(
         .await?;
     let total: i64 = counts.iter().map(|(_, n)| n).sum();
     let by_kind: std::collections::BTreeMap<String, i64> = counts.into_iter().collect();
-    format::json(serde_json::json!({
-        "window_days": params.days,
-        "total": total,
-        "by_kind": by_kind,
-        "as_of": chrono::Utc::now(),
-    }))
+    format::json(ActivityDashboard {
+        window_days: params.days,
+        total,
+        by_kind,
+        as_of: chrono::Utc::now(),
+    })
 }
 
 /// The dashboard routes.

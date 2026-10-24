@@ -56,8 +56,8 @@ fn reference(name: &str) -> Value {
 /// below; the move is one controller at a time (CRM-T83).
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
-        board, break_glass, engagement, external_links, marketing, merge, relationships, sales,
-        support, unmerge,
+        board, break_glass, dashboards, engagement, external_links, marketing, merge,
+        relationships, sales, support, unmerge,
     };
     let mut generator = schemars::generate::SchemaSettings::openapi3().into_generator();
     macro_rules! document {
@@ -73,6 +73,12 @@ fn generated() -> serde_json::Map<String, Value> {
         relationships::ContactDuplicates,
         merge::ContactMerge,
         sales::LeadDetail,
+        marketing::segment::Preview,
+        marketing::nurture::NurtureSweep,
+        marketing::campaign::Deliveries,
+        marketing::campaign::CampaignFunnel,
+        dashboards::ActivityDashboard,
+        crate::rules::analytics::Ratio,
         support::TicketDetail,
         support::SlaSweep,
         engagement::Group,
@@ -174,9 +180,6 @@ fn base_schemas() -> Value {
     })
 }
 
-fn number() -> Value {
-    json!({ "type": "number" })
-}
 fn counts() -> Value {
     json!({ "type": "object", "additionalProperties": { "type": "integer" } })
 }
@@ -210,10 +213,6 @@ fn view(required: &[&str], properties: &Value) -> Value {
 #[allow(clippy::too_many_lines)] // one literal table of schemas
 fn view_schemas() -> Value {
     json!({
-        "Ratio": object(&["numerator", "denominator", "value"], &json!({
-            "numerator": integer(), "denominator": integer(),
-            "value": nullable(number()) })),
-
         // ---- detail reads
         // ---- sales and analytics
         "Clv": object(&["account_pid", "won_deals", "clv_minor", "as_of"], &json!({
@@ -228,24 +227,7 @@ fn view_schemas() -> Value {
             "open_tickets": integer(),
             "by_priority": { "type": "array", "items": object(&["priority", "open", "breached"],
                 &json!({ "priority": string(), "open": integer(), "breached": integer() })) } })),
-        "ActivityDashboard": object(&["window_days", "total", "by_kind", "as_of"], &json!({
-            "window_days": integer(), "total": integer(), "by_kind": counts(),
-            "as_of": date_time() })),
-
         // ---- marketing and support
-        "Preview": object(&["count", "sample"], &json!({ "count": integer(), "sample": strings() })),
-        "CampaignFunnel": object(&["campaign", "leads", "won_deals", "won_revenue_minor", "roi"], &json!({
-            "campaign": reference("Campaign"), "leads": integer(), "won_deals": integer(),
-            "won_revenue_minor": { "type": "integer", "format": "int64", "nullable": true },
-            "won_revenue_other_currencies": masked_money_by_currency(),
-            "roi": { "allOf": [reference("Ratio")], "nullable": true } })),
-        "Deliveries": object(&["campaign_pid", "total", "remaining", "by_state"], &json!({
-            "campaign_pid": uuid(), "total": integer(),
-            "remaining": { "type": "integer",
-                "description": "Rows a further run could still send" },
-            "by_state": counts() })),
-        "NurtureSweep": object(&["sent", "completed"], &json!({
-            "sent": integer(), "completed": integer() })),
         "SequenceView": object(&["sequence", "steps", "active_enrollments"], &json!({
             "sequence": { "type": "object" }, "steps": { "type": "array", "items": { "type": "object" } },
             "active_enrollments": integer() })),

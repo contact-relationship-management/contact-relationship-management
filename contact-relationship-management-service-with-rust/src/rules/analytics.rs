@@ -39,7 +39,7 @@ pub fn forecast_by_currency(deals: &[OpenDeal]) -> Result<BTreeMap<String, i64>,
 
 /// A ratio reported honestly: numerator, denominator, and the value
 /// (`None` when the denominator is zero — never 0% or 100%).
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, schemars::JsonSchema)]
 pub struct Ratio {
     /// The numerator.
     pub numerator: i64,

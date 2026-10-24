@@ -74,6 +74,13 @@ pub(super) async fn evaluate_segment(
     Ok(matched)
 }
 
+/// `GET /api/segments/{pid}/preview`: how many contacts match, and a few names.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct Preview {
+    count: usize,
+    sample: Vec<String>,
+}
+
 /// `GET /api/segments/{pid}/preview` — count + sample before
 /// scheduling (CRM-R7).
 #[debug_handler]
@@ -88,7 +95,10 @@ pub(super) async fn preview_segment(
         .take(5)
         .map(|c| c.display_name.clone())
         .collect();
-    format::json(serde_json::json!({ "count": matched.len(), "sample": sample }))
+    format::json(Preview {
+        count: matched.len(),
+        sample,
+    })
 }
 
 /// `GET /api/segments`.
