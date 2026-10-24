@@ -54,6 +54,7 @@ pub mod metrics;
 pub(crate) mod middleware;
 pub mod models;
 pub mod openapi;
+pub(crate) mod openapi_operations;
 pub mod openapi_schemas;
 pub mod problem;
 pub mod provider;

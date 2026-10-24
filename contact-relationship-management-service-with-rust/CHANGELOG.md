@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the OpenAPI document is generated from the code (CRM-T83)
+- Every schema in `/api-docs/openapi.json` except `Error` now comes from the Rust type that is sent or received (the
+  request payloads, the database models, and typed response structs) instead of a hand-written table, and the paths
+  and verbs come from the mounted router. The wire format is unchanged. The document changed in these ways only:
+  the success response of each operation says `OK` rather than a type name; `GET .../subject-access` now lists the
+  `external_links` it always returned; `GET /api/nurture/advance` documents its `held` count; `/api/events/recent`
+  documents the four members both transports return; and the segment filter, break-glass grants and masked amounts
+  are documented as nullable where the service returns `null`.
+- The campaign, ticket, article and partnership-stage status bodies are one shared type (`StatusPayload`).
+
+### Added — tests for the middlewares and the request paths (CRM-T82)
+- The six middlewares moved out of `app.rs` into `src/middleware/`, with unit tests for the rate limit, `no-store` and
+  idempotency answers, and request tests for contacts, accounts, activities, events (both transports) and the rate limit.
+
 ### Changed — GDS API standards (CRM-T49)
 - **Unknown request members are refused.** Every JSON request body (the `*Payload` structs) now answers `422` for a
   member it does not know, so a misspelt field is no longer silently dropped. Under `api-lifecycle.md` this narrows what

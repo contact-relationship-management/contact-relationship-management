@@ -1,187 +1,38 @@
-//! Hand-written `OpenAPI` 3 description of the CRM REST API.
+//! The `OpenAPI` 3 description of the CRM REST API, built from the service itself (CRM-T83).
 //!
-//! Summary-level by design: every path and verb is present with its
-//! request/response essentials; the full field-by-field shapes live in
-//! the spec (`../spec/domain-model.md`).
+//! The paths and verbs come from the mounted router ([`crate::app::app_routes`]), so a route
+//! cannot be missing. Each `/api/` operation's tag and one-line summary come from
+//! [`crate::openapi_operations`]; the few public routes outside `/api/` are described by hand
+//! in [`public_operations`] because they carry their own bodies and no authentication. Request
+//! and response bodies come from the Rust types ([`crate::openapi_schemas`]). The field-by-field
+//! meaning lives in the spec (`../spec/domain-model.md`).
 
 use serde_json::{Value, json};
 
-/// The full `OpenAPI` document, served at `/api-docs/openapi.json`.
-#[must_use]
-#[allow(clippy::too_many_lines)] // one literal document
-pub fn spec() -> Value {
+/// `{pid}` and `{entity_pid}` are the same route shape.
+fn shape(path: &str) -> String {
+    let mut out = String::new();
+    let mut inside = false;
+    for c in path.chars() {
+        match c {
+            '{' => {
+                inside = true;
+                out.push_str("{}");
+            }
+            '}' => inside = false,
+            _ if !inside => out.push(c),
+            _ => {}
+        }
+    }
+    out
+}
+
+/// The public routes outside `/api/`: the unsubscribe page, the provider webhooks and the
+/// metrics endpoint. They carry their own request bodies and no bearer token.
+#[allow(clippy::too_many_lines)] // one literal
+fn public_operations() -> Value {
     let ok = |desc: &str| json!({ "200": { "description": desc } });
-    let created = json!({
-        "200": { "description": "Created: {pid}" },
-        "422": { "description": "Validation failure" }
-    });
-    let transition = json!({
-        "200": { "description": "The updated record" },
-        "422": { "description": "Illegal transition (names the current state)" }
-    });
-    let mut doc = json!({
-        "openapi": "3.0.3",
-        "info": {
-            "title": "Contact Relationship Management Service API",
-            "version": env!("CARGO_PKG_VERSION"),
-            "description": "CRM across four modules: sales automation (contacts/accounts over person:/organization: URNs, rule-scored leads, deal pipelines with Kanban, stage-weighted forecasting), consent-first marketing automation (segments, campaigns, nurture), support (tickets + SLA + knowledge base), analytics (derived, per-currency, honest ratios). Money is minor units + ISO-4217. Validation failures return 422. API version is negotiated with the Accepts-version header (1.0)."
-        },
-        "paths": {
-            "/api/contacts": {
-                "post": { "tags": ["relationships"], "summary": "Create a contact (person: URN wrapper; consent starts never)", "responses": created },
-                "get": { "tags": ["relationships"], "summary": "List contacts", "responses": ok("Contacts") }
-            },
-            "/api/contacts/{pid}": { "get": { "tags": ["relationships"], "summary": "Contact + merged timeline (activities, deals, tickets)", "responses": ok("ContactDetail") } },
-            "/api/contacts/{pid}/external-links": {
-                "get": { "tags": ["relationships"], "summary": "Links from this contact to its records in other systems", "responses": ok("ExternalLinks") },
-                "post": { "tags": ["relationships"], "summary": "Add a link (HubSpot, Salesforce, Attio, …); https only, and on the named system's own domains; audited", "responses": ok("ExternalLink") }
-            },
-            "/api/accounts/{pid}/external-links": {
-                "get": { "tags": ["relationships"], "summary": "Links from this account to its records in other systems", "responses": ok("ExternalLinks") },
-                "post": { "tags": ["relationships"], "summary": "Add a link (HubSpot, Salesforce, Attio, …); https only, and on the named system's own domains; audited", "responses": ok("ExternalLink") }
-            },
-            "/api/deals/{pid}/external-links": {
-                "get": { "tags": ["relationships"], "summary": "Links from this deal to its records in other systems", "responses": ok("ExternalLinks") },
-                "post": { "tags": ["relationships"], "summary": "Add a link (HubSpot, Salesforce, Attio, …); https only, and on the named system's own domains; audited", "responses": ok("ExternalLink") }
-            },
-            "/api/leads/{pid}/external-links": {
-                "get": { "tags": ["relationships"], "summary": "Links from this lead to its records in other systems", "responses": ok("ExternalLinks") },
-                "post": { "tags": ["relationships"], "summary": "Add a link (HubSpot, Salesforce, Attio, …); https only, and on the named system's own domains; audited", "responses": ok("ExternalLink") }
-            },
-            "/api/external-links/{pid}": { "delete": { "tags": ["relationships"], "summary": "Remove a link; audited", "responses": ok("Cleared") } },
-            "/api/contacts/{pid}/merges": { "get": { "tags": ["relationships"], "summary": "Contacts merged into this one that can still be undone, newest first", "responses": ok("ContactMerges") } },
-            "/api/contacts/{pid}/unmerge": { "post": { "tags": ["relationships"], "summary": "Undo this contact's merge: give back the rows still on the survivor, restore what the merge dropped, clear the fields it filled; consent never widens (dry_run previews; destructive-classified; 409 if not merged, 422 if erased or the merge predates the undo record)", "responses": ok("ContactUnmerge") } },
-            "/api/contacts/{pid}/merge": { "post": { "tags": ["relationships"], "summary": "Merge this contact into into_pid, which survives (dry_run previews; consent never widens; destructive-classified; refused 422 for an erased or same contact, 409 if already merged)", "responses": ok("ContactMerge") } },
-            "/api/contacts/{pid}/duplicates": { "get": { "tags": ["relationships"], "summary": "Other contacts that are probably the same person (?limit=; probability and per-field breakdown; advice only)", "responses": ok("ContactDuplicates") } },
-            "/api/contacts/{pid}/repoint": { "post": { "tags": ["relationships"], "summary": "Repoint the wrapper after an upstream merge (reasoned, audited)", "responses": ok("Contact") } },
-            "/api/accounts": {
-                "post": { "tags": ["relationships"], "summary": "Create an account (organization: URN wrapper)", "responses": created },
-                "get": { "tags": ["relationships"], "summary": "List accounts", "responses": ok("Accounts") }
-            },
-            "/api/accounts/{pid}": { "get": { "tags": ["relationships"], "summary": "Account + contacts + deals", "responses": ok("AccountDetail") } },
-            "/api/accounts/{pid}/clv": { "get": { "tags": ["analytics"], "summary": "CLV per currency over won deals", "responses": ok("Clv") } },
-            "/api/activities": {
-                "post": { "tags": ["relationships"], "summary": "Log an interaction (stamps ticket first-response for the assignee)", "responses": created },
-                "get": { "tags": ["relationships"], "summary": "Activity feed (?subject_kind=&subject_pid=)", "responses": ok("Activities") }
-            },
-            "/api/activities/{pid}": { "put": { "tags": ["relationships"], "summary": "Change a follow-up's due day or summary (a due-day change is audited as rescheduled)", "responses": ok("Activity") } },
-            "/api/activities/{pid}/done": { "put": { "tags": ["relationships"], "summary": "Tick a task activity", "responses": ok("Activity") } },
-            "/api/leads": {
-                "post": { "tags": ["sales"], "summary": "Capture a lead (scored immediately, breakdown returned)", "responses": created },
-                "get": { "tags": ["sales"], "summary": "The queue, score-sorted", "responses": ok("Leads") }
-            },
-            "/api/leads/{pid}": {
-                "get": { "tags": ["sales"], "summary": "Lead + live score breakdown", "responses": ok("LeadDetail") },
-                "put": { "tags": ["sales"], "summary": "Edit a lead in place (display name)", "responses": ok("Lead") }
-            },
-            "/api/leads/{pid}/position": { "put": { "tags": ["sales"], "summary": "Reorder a lead within its status column", "responses": ok("Lead") } },
-            "/api/leads/{pid}/status": { "post": { "tags": ["sales"], "summary": "Lead transition; converted creates/links the contact (+ optional deal) in one transaction", "responses": transition } },
-            "/api/pipelines": {
-                "post": { "tags": ["sales"], "summary": "Create a pipeline with ordered stages (probabilities + terminal flags)", "responses": created },
-                "get": { "tags": ["sales"], "summary": "Pipelines with stages", "responses": ok("Pipelines") }
-            },
-            "/api/deals": {
-                "post": { "tags": ["sales"], "summary": "Open a deal in the pipeline's first stage (minor units)", "responses": created },
-                "get": { "tags": ["sales"], "summary": "Deals (?pipeline=)", "responses": ok("Deals") }
-            },
-            "/api/deals/{pid}": { "put": { "tags": ["sales"], "summary": "Edit an open deal in place (name, amount, expected close)", "responses": ok("Deal") } },
-            "/api/deals/{pid}/position": { "put": { "tags": ["sales"], "summary": "Reorder an open deal within its stage", "responses": ok("Deal") } },
-            "/api/deals/{pid}/stage": { "post": { "tags": ["sales"], "summary": "Kanban stage move (pipeline-membership checked; terminal closes; lost needs a reason; row-locked)", "responses": transition } },
-            "/api/deals/{pid}/reopen": { "post": { "tags": ["sales"], "summary": "Reasoned reopen of a closed deal", "responses": transition } },
-            "/api/forecast": { "get": { "tags": ["sales"], "summary": "Live stage-weighted forecast per currency (derived, never typed)", "responses": ok("Forecast") } },
-            "/api/forecast/snapshot": { "post": { "tags": ["sales"], "summary": "Freeze the current roll-up", "responses": ok("Snapshot") } },
-            "/api/contacts/{pid}/email-suppression": {
-                "get": { "tags": ["marketing"], "summary": "Whether the contact's mailbox is suppressed after a hard bounce or complaint, and why; audited read", "responses": ok("Suppression") },
-                "delete": { "tags": ["marketing"], "summary": "Lift a mailbox suppression; does not restore marketing consent; audited; 404 when not suppressed", "responses": ok("Cleared") }
-            },
-            "/api/contacts/{pid}/consent": {
-                "post": { "tags": ["marketing"], "summary": "Record consent (withdrawal exits nurture + blocks sends)", "responses": ok("Recorded") },
-                "get": { "tags": ["marketing"], "summary": "The append-only history (audited read)", "responses": ok("ConsentEvents") }
-            },
-            "/api/segments": {
-                "post": { "tags": ["marketing"], "summary": "Create a segment (consent ANDed structurally)", "responses": created },
-                "get": { "tags": ["marketing"], "summary": "List segments", "responses": ok("Segments") }
-            },
-            "/api/segments/{pid}/preview": { "get": { "tags": ["marketing"], "summary": "Count + sample before scheduling", "responses": ok("Preview") } },
-            "/api/campaigns": {
-                "post": { "tags": ["marketing"], "summary": "Create a campaign (email kind; cost in minor units)", "responses": created },
-                "get": { "tags": ["marketing"], "summary": "List campaigns", "responses": ok("Campaigns") }
-            },
-            "/api/campaigns/{pid}/status": { "post": { "tags": ["marketing"], "summary": "Campaign transition (draft→scheduled→running→completed|cancelled)", "responses": transition } },
-            "/api/campaigns/{pid}/run": { "post": { "tags": ["marketing"], "summary": "Send the campaign: consent re-checked per contact at send time, one delivery row per contact so a re-run never mails twice, batched (CRM_MAIL_BATCH). The default sender is simulated (CRM_MAIL_MODE); smtp mode really sends", "responses": transition } },
-            "/api/campaigns/{pid}/deliveries": { "get": { "tags": ["marketing"], "summary": "How a send is going: delivery rows per state and how many a further run could still send (counts only, no addresses)", "responses": ok("Deliveries") } },
-            "/api/campaigns/{pid}/funnel": { "get": { "tags": ["marketing"], "summary": "Funnel + ROI (null on zero cost; per-currency honesty)", "responses": ok("Funnel") } },
-            "/api/nurture-sequences": {
-                "post": { "tags": ["marketing"], "summary": "Create a drip sequence (ordered delayed steps)", "responses": created },
-                "get": { "tags": ["marketing"], "summary": "Sequences + steps + active enrolments", "responses": ok("Sequences") }
-            },
-            "/api/nurture-sequences/{pid}/enrollments": { "post": { "tags": ["marketing"], "summary": "Enrol a consented contact", "responses": created } },
-            "/api/nurture/advance": { "post": { "tags": ["marketing"], "summary": "The idempotent advance sweep (send due steps; complete; exit unconsented)", "responses": ok("Sweep result") } },
-            "/api/sla-policies": {
-                "post": { "tags": ["support"], "summary": "Set a priority's SLA targets", "responses": created },
-                "get": { "tags": ["support"], "summary": "List policies", "responses": ok("Policies") }
-            },
-            "/api/tickets": {
-                "post": { "tags": ["support"], "summary": "Open a ticket (deadlines derive from the priority's policy)", "responses": created },
-                "get": { "tags": ["support"], "summary": "The queue with live breach flags (?status=)", "responses": ok("Tickets") }
-            },
-            "/api/tickets/{pid}": {
-                "get": { "tags": ["support"], "summary": "Ticket + activities", "responses": ok("TicketDetail") },
-                "put": { "tags": ["support"], "summary": "Edit a ticket in place (title)", "responses": ok("Ticket") }
-            },
-            "/api/tickets/{pid}/position": { "put": { "tags": ["support"], "summary": "Reorder a ticket within its status column", "responses": ok("Ticket") } },
-            "/api/tickets/{pid}/status": { "post": { "tags": ["support"], "summary": "Ticket transition (resolved stamps resolved_at; reopen clears it)", "responses": transition } },
-            "/api/tickets/{pid}/priority": { "put": { "tags": ["support"], "summary": "Audited priority change (re-derives the deadlines)", "responses": ok("Ticket") } },
-            "/api/sla/sweep": { "post": { "tags": ["support"], "summary": "Persist breach facts + emit sla_breached once per breach", "responses": ok("Sweep result") } },
-            "/api/articles": {
-                "post": { "tags": ["support"], "summary": "Draft a KB article", "responses": created },
-                "get": { "tags": ["support"], "summary": "Search articles (?q=)", "responses": ok("Articles") }
-            },
-            "/api/articles/{pid}": { "put": { "tags": ["support"], "summary": "Edit (published edits bump the version)", "responses": ok("Article") } },
-            "/api/articles/{pid}/status": { "post": { "tags": ["support"], "summary": "Publish / archive", "responses": transition } },
-            "/api/dashboards/sales": { "get": { "tags": ["analytics"], "summary": "Win rate + pipeline by stage (per currency; ETag conditional)", "responses": ok("SalesDashboard") } },
-            "/api/dashboards/sla": { "get": { "tags": ["analytics"], "summary": "Open tickets by priority × breach (ETag conditional)", "responses": ok("SlaDashboard") } },
-            "/api/dashboards/activity": { "get": { "tags": ["analytics"], "summary": "Activity counts by kind (?days=)", "responses": ok("ActivityDashboard") } },
-            "/api/contacts/{pid}/subject-access": { "get": { "tags": ["privacy"], "summary": "GDPR subject-access export: every table keyed to the contact, in one audited document (exclusions named)", "responses": ok("SubjectAccessExport") } },
-            "/api/contacts/{pid}/erase": { "post": { "tags": ["privacy"], "summary": "Erase (anonymise): refused 422 while an open deal, open ticket, or active nurture enrolment exists; destructive-classified", "responses": transition } },
-            "/api/retention": { "get": { "tags": ["privacy"], "summary": "Retention report: soft-deleted rows past the floored horizon, per table", "responses": ok("RetentionReport") } },
-            "/api/retention/sweep": { "post": { "tags": ["privacy"], "summary": "Hard-delete soft-deleted rows past the horizon; destructive-classified, audited with counts", "responses": ok("Sweep result") } },
-            "/api/break-glass": { "post": { "tags": ["break-glass"], "summary": "Take a time-limited read elevation: written reason (20+ chars), 1-60 minutes (default 30); audited; any authenticated caller", "responses": ok("Grant") }, "get": { "tags": ["break-glass"], "summary": "Grants newest first with the unreviewed count; admin/service tier", "responses": ok("Grants") } },
-            "/api/break-glass/{pid}/review": { "post": { "tags": ["break-glass"], "summary": "Record the after-the-fact review; refused 403 for the grantee, 422 if already reviewed; admin/service tier", "responses": transition } },
-            "/api/audits/recent": { "get": { "tags": ["audit"], "summary": "Recent audit entries", "responses": ok("Audit entries") } },
-            "/api/audits": { "get": { "tags": ["audit"], "summary": "Owner-scoped trail (?owner=&since=)", "responses": ok("Audit entries") } },
-            "/api/audits/{entity_pid}": { "get": { "tags": ["audit"], "summary": "One record's audit trail", "responses": ok("Audit entries") } },
-            "/api/events/recent": { "get": { "tags": ["events"], "summary": "Recent events (memory ring or outbox)", "responses": ok("Events") } },
-            "/api/contacts/{pid}/stakeholder": { "put": { "tags": ["engagement"], "summary": "Declare a contact's stakeholder role, influence and interest", "responses": ok("Contact") } },
-            "/api/accounts/{pid}/stakeholder": { "put": { "tags": ["engagement"], "summary": "Declare an account's stakeholder role", "responses": ok("Account") } },
-            "/api/accounts/{pid}/partnerships": {
-                "post": { "tags": ["engagement"], "summary": "Open a partnership with an account", "responses": created },
-                "get": { "tags": ["engagement"], "summary": "An account's partnerships", "responses": ok("Partnerships") }
-            },
-            "/api/partnerships/{pid}/stage": { "post": { "tags": ["engagement"], "summary": "Partnership stage transition", "responses": transition } },
-            "/api/accounts/{pid}/membership": { "put": { "tags": ["engagement"], "summary": "Create or update an account's membership", "responses": ok("Membership") } },
-            "/api/groups": {
-                "post": { "tags": ["engagement"], "summary": "Create a group", "responses": created },
-                "get": { "tags": ["engagement"], "summary": "List groups", "responses": ok("Groups") }
-            },
-            "/api/groups/{pid}": { "get": { "tags": ["engagement"], "summary": "A group and its members", "responses": ok("Group") } },
-            "/api/groups/{pid}/members": { "post": { "tags": ["engagement"], "summary": "Add a member to a group", "responses": created } },
-            "/api/audits/verify": { "get": { "tags": ["audit"], "summary": "Recompute the audit hash chain; returns the row count, head hash and first break; admin/service tier", "responses": ok("Chain verdict") } },
-            "/api/insights/stale-deals": { "get": { "tags": ["insights"], "summary": "Open deals by days in stage (?days=); audited read; cached 30 s", "responses": ok("Stale deals") } },
-            "/api/insights/followups": { "get": { "tags": ["insights"], "summary": "Overdue and upcoming follow-ups", "responses": ok("Follow-ups") } },
-            "/api/insights/pipeline-hygiene": { "get": { "tags": ["insights"], "summary": "Deals with missing amounts or close dates", "responses": ok("Hygiene findings") } },
-            "/api/insights/executive": { "get": { "tags": ["insights"], "summary": "Executive pack (ETag conditional)", "responses": ok("Executive pack") } },
-            "/api/insights/forecast-trends": { "get": { "tags": ["insights"], "summary": "Forecast snapshot series", "responses": ok("Trends") } },
-            "/api/insights/sla": { "get": { "tags": ["insights"], "summary": "SLA register", "responses": ok("SLA register") } },
-            "/api/insights/dpo": { "get": { "tags": ["insights"], "summary": "Data-protection view: consent coverage, withdrawals, duplicates (ETag conditional)", "responses": ok("DPO view") } },
-            "/api/insights/cadence": { "get": { "tags": ["insights"], "summary": "Contact cadence", "responses": ok("Cadence") } },
-            "/api/insights/engagement": { "get": { "tags": ["insights"], "summary": "Engagement view", "responses": ok("Engagement") } },
-            "/api/insights/funnel": { "get": { "tags": ["insights"], "summary": "Stage funnel (?pipeline= required)", "responses": ok("Funnel") } },
-            "/api/insights/members": { "get": { "tags": ["insights"], "summary": "Membership view", "responses": ok("Members") } },
-            "/api/insights/consent-by-account": { "get": { "tags": ["insights"], "summary": "Consent coverage by account", "responses": ok("Consent by account") } },
-            "/api/insights/stakeholders": { "get": { "tags": ["insights"], "summary": "Stakeholder register", "responses": ok("Stakeholders") } },
-            "/api/insights/partnerships": { "get": { "tags": ["insights"], "summary": "Partnerships register", "responses": ok("Partnerships register") } },
-            "/api/insights/memberships": { "get": { "tags": ["insights"], "summary": "Memberships view", "responses": ok("Memberships") } },
+    json!({
             "/unsubscribe/{token}": {
                 "get": { "tags": ["marketing"], "summary": "Public: the page an email's unsubscribe link opens; changes nothing", "security": [], "responses": ok("HTML page") },
                 "post": { "tags": ["marketing"], "summary": "Public: withdraw marketing consent through a signed link (RFC 8058 one-click); idempotent, body ignored", "security": [], "responses": ok("HTML page") }
@@ -189,7 +40,55 @@ pub fn spec() -> Value {
             "/webhooks/email": { "post": { "tags": ["marketing"], "summary": "Public, HMAC-signed (X-CRM-Timestamp, X-CRM-Signature): a provider outcome for a message (delivered, bounce_hard, bounce_soft, complaint). Hard bounces and complaints suppress the mailbox; a complaint also withdraws consent. Each event is applied once", "security": [], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["message_id", "event"], "properties": { "message_id": { "type": "string" }, "event": { "type": "string", "enum": ["delivered", "bounce_hard", "bounce_soft", "complaint"] } } } } } }, "responses": ok("Result") } },
             "/webhooks/email/{provider}": { "post": { "tags": ["marketing"], "summary": "Public: a callback in the vendor's own format (provider is brevo, mailjet, ses, azure, mailgun or sendgrid). Authenticated by CRM_WEBHOOK_SECRET as a bearer token, basic-auth password or X-CRM-Webhook-Token; Mailgun by its own body signature (CRM_MAILGUN_SIGNING_KEY). Delivered, hard or soft bounce and complaints are applied as for /webhooks/email; other events are ignored", "security": [], "parameters": [{ "name": "provider", "in": "path", "required": true, "schema": { "type": "string", "enum": ["brevo", "mailjet", "ses", "azure", "mailgun", "sendgrid"] } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object" } } } }, "responses": ok("Result") } },
             "/metrics.prom": { "get": { "tags": ["ops"], "summary": "Prometheus metrics (public)", "responses": ok("Exposition text") } }
+    })
+}
+
+/// The operation for `(method, path)`, or `None` when the document does not describe it
+/// (probes and the documentation endpoints themselves).
+fn operation(method: &str, path: &str, public: &Value) -> Option<Value> {
+    use crate::openapi_operations::{Kind, OPERATIONS};
+    if !path.starts_with("/api/") {
+        return public.get(path)?.get(method).cloned();
+    }
+    let shaped = shape(path);
+    let (_, _, tag, summary, kind) = OPERATIONS
+        .iter()
+        .find(|(m, p, ..)| *m == method && shape(p) == shaped)?;
+    let responses = match kind {
+        Kind::Ok => json!({ "200": { "description": "OK" } }),
+        Kind::Created => json!({
+            "200": { "description": "Created: {pid}" },
+            "422": { "description": "Validation failure" }
+        }),
+        Kind::Transition => json!({
+            "200": { "description": "The updated record" },
+            "422": { "description": "Illegal transition (names the current state)" }
+        }),
+    };
+    Some(json!({ "tags": [tag], "summary": summary, "responses": responses }))
+}
+
+/// The full `OpenAPI` document, served at `/api-docs/openapi.json`.
+#[must_use]
+pub fn spec() -> Value {
+    let public = public_operations();
+    let mut paths = serde_json::Map::new();
+    for route in crate::app::app_routes().collect() {
+        for method in route.actions {
+            let method = method.as_str().to_lowercase();
+            if let Some(operation) = operation(&method, &route.uri, &public) {
+                paths.entry(route.uri.clone()).or_insert_with(|| json!({}))[method] = operation;
+            }
+        }
+    }
+    let mut doc = json!({
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Contact Relationship Management Service API",
+            "version": env!("CARGO_PKG_VERSION"),
+            "description": "CRM across four modules: sales automation (contacts/accounts over person:/organization: URNs, rule-scored leads, deal pipelines with Kanban, stage-weighted forecasting), consent-first marketing automation (segments, campaigns, nurture), support (tickets + SLA + knowledge base), analytics (derived, per-currency, honest ratios). Money is minor units + ISO-4217. Validation failures return 422. API version is negotiated with the Accepts-version header (1.0)."
         },
+        "paths": paths,
         "components": { "securitySchemes": { "bearerAuth": {
             "type": "http", "scheme": "bearer", "bearerFormat": "PASETO v4.public",
             "description": "Required when the service runs with CRM_REQUIRE_AUTH (always in production); probes, metrics and docs are public."
@@ -304,25 +203,7 @@ fn add_shared_errors(doc: &mut Value) {
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
-    use loco_rs::app::Hooks;
-
-    /// `{pid}` and `{entity_pid}` are the same route shape.
-    fn shape(path: &str) -> String {
-        let mut out = String::new();
-        let mut inside = false;
-        for c in path.chars() {
-            match c {
-                '{' => {
-                    inside = true;
-                    out.push_str("{}");
-                }
-                '}' => inside = false,
-                _ if !inside => out.push(c),
-                _ => {}
-            }
-        }
-        out
-    }
+    use super::shape;
 
     /// Routes that exist but are not part of the documented API surface:
     /// Loco's probes and the documentation endpoints themselves.
@@ -346,10 +227,9 @@ mod tests {
         "put /api/activities/{}/done",
     ];
 
-    async fn mounted() -> BTreeMap<String, BTreeSet<String>> {
-        let ctx = loco_rs::tests_cfg::app::get_app_context().await;
+    fn mounted() -> BTreeMap<String, BTreeSet<String>> {
         let mut routes: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-        for route in crate::app::App::routes(&ctx).collect() {
+        for route in crate::app::app_routes().collect() {
             let entry = routes.entry(shape(&route.uri)).or_default();
             for method in route.actions {
                 entry.insert(method.as_str().to_lowercase());
@@ -361,8 +241,8 @@ mod tests {
     /// The route-coverage test: every mounted route and verb is in the
     /// document, and every documented operation is mounted, so neither side
     /// can drift without this failing.
-    #[tokio::test]
-    async fn every_mounted_route_is_documented_and_the_reverse() {
+    #[test]
+    fn every_mounted_route_is_documented_and_the_reverse() {
         let doc = super::spec();
         let mut documented: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
         for (path, item) in doc["paths"].as_object().unwrap() {
@@ -371,7 +251,7 @@ mod tests {
                 entry.insert(method.clone());
             }
         }
-        let mounted = mounted().await;
+        let mounted = mounted();
         let mut problems = Vec::new();
         for (path, methods) in &mounted {
             if UNDOCUMENTED.contains(&path.as_str()) {
@@ -391,6 +271,24 @@ mod tests {
             }
         }
         assert!(problems.is_empty(), "{}", problems.join("\n"));
+    }
+
+    /// Every entry of the operations table names a mounted route, so a removed or renamed route
+    /// leaves no stale summary behind. (The other direction, a route with no entry, is the test
+    /// above: an operation with no entry is not in the document.)
+    #[test]
+    fn every_table_entry_is_a_mounted_route() {
+        let mounted = mounted();
+        let stale: Vec<String> = crate::openapi_operations::OPERATIONS
+            .iter()
+            .filter(|(method, path, ..)| {
+                !mounted
+                    .get(&shape(path))
+                    .is_some_and(|methods| methods.contains(*method))
+            })
+            .map(|(method, path, ..)| format!("{method} {path}"))
+            .collect();
+        assert!(stale.is_empty(), "no such route: {stale:?}");
     }
 
     /// Every mutating operation under `/api/` has a request schema, or is on

@@ -23,6 +23,30 @@ use crate::{
     auth, controllers, middleware, models::_entities::prelude::*, rate_limit, redis_store, tasks,
 };
 
+/// Every route the service mounts. Free of the application context so the `OpenAPI` document
+/// can be built from the same list the server serves.
+#[must_use]
+pub fn app_routes() -> AppRoutes {
+    AppRoutes::with_default_routes()
+        .add_route(controllers::relationships::routes())
+        .add_route(controllers::sales::routes())
+        .add_route(controllers::board::routes())
+        .add_route(controllers::marketing::routes())
+        .add_route(controllers::marketing::public_routes())
+        .add_route(controllers::support::routes())
+        .add_route(controllers::dashboards::routes())
+        .add_route(controllers::insights::routes())
+        .add_route(controllers::engagement::routes())
+        .add_route(controllers::privacy::routes())
+        .add_route(controllers::external_links::routes())
+        .add_route(controllers::merge::routes())
+        .add_route(controllers::unmerge::routes())
+        .add_route(controllers::audits::routes())
+        .add_route(controllers::break_glass::routes())
+        .add_route(controllers::docs::routes())
+        .add_route(controllers::metrics::routes())
+}
+
 /// The loco.rs application hooks for
 /// `contact-relationship-management`.
 pub struct App;
@@ -72,24 +96,7 @@ impl Hooks for App {
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
-        AppRoutes::with_default_routes()
-            .add_route(controllers::relationships::routes())
-            .add_route(controllers::sales::routes())
-            .add_route(controllers::board::routes())
-            .add_route(controllers::marketing::routes())
-            .add_route(controllers::marketing::public_routes())
-            .add_route(controllers::support::routes())
-            .add_route(controllers::dashboards::routes())
-            .add_route(controllers::insights::routes())
-            .add_route(controllers::engagement::routes())
-            .add_route(controllers::privacy::routes())
-            .add_route(controllers::external_links::routes())
-            .add_route(controllers::merge::routes())
-            .add_route(controllers::unmerge::routes())
-            .add_route(controllers::audits::routes())
-            .add_route(controllers::break_glass::routes())
-            .add_route(controllers::docs::routes())
-            .add_route(controllers::metrics::routes())
+        app_routes()
     }
 
     async fn after_routes(router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
