@@ -1273,6 +1273,11 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       - **`typos`, markdown lint, `actionlint`/`zizmor`:** none installed here; each needs its first run reviewed for noise before it can gate.
       - The two new workflow jobs and the Woodpecker steps have not run on their providers; expect a first-run fix.
 
+      **Added 2026-10-24:**
+      - **Coverage report:** `front-end` runs `vitest --coverage` (`@vitest/coverage-v8`): statements 68.0%, branches 56.9%, functions 67.9%, lines 70.4% today. A new `coverage` stage runs `cargo llvm-cov --lib --summary-only`: 39% of lines, but unit tests only, since the database suite (which most handlers need) is in `test-db`. Both are reports; no floor is set. A figure for the whole suite needs `llvm-cov` around `test-db`.
+      - **`api-types` stage** (GitHub job and Woodpecker step): regenerates `schema.d.ts` from `cargo run --example openapi`, fails if it differs from the committed file, then runs `svelte-check`, so the T93 type check runs against the service as it is.
+      - **Still not done:** mutation testing, ESLint, `typos`, markdown lint, `actionlint`/`zizmor` (none installed here; each needs a reviewed first run).
+
 ## New capabilities (from the 2026-10-21 research, [plan.md](plan.md) C1 to C10)
 
 Each task first writes its requirement (proposed CRM-R28 onward) and design note, then lands spec, code and tests together.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | e2e | scripts | supply-chain | semver
+#   fmt | clippy | test | test-db | front-end | e2e | scripts | supply-chain | semver | api-types | coverage
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -12,7 +12,7 @@ MATCHER=contact-relationship-management-matcher-with-rust
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|scripts|supply-chain|semver>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|scripts|supply-chain|semver|api-types|coverage>}"
 
 case "${stage}" in
   fmt)
@@ -68,9 +68,28 @@ case "${stage}" in
     cd "${FE}"
     pnpm install --frozen-lockfile
     pnpm run check
-    pnpm exec vitest run
+    # Coverage is a report for now (CRM-T94); no floor is enforced.
+    pnpm exec vitest run --coverage --coverage.reporter=text-summary
     pnpm run build
     pnpm run lint
+    ;;
+  api-types)
+    # The UI's generated API types (src/lib/api/schema.d.ts) must be what the service's
+    # OpenAPI document says today; regenerate with `OPENAPI=... pnpm api:types`.
+    doc="$(mktemp)"
+    trap 'rm -f "${doc}"' EXIT
+    (cd "${SVC}" && cargo run -q --example openapi) > "${doc}"
+    cd "${FE}"
+    pnpm install --frozen-lockfile
+    pnpm exec openapi-typescript "${doc}" -o src/lib/api/schema.d.ts
+    git diff --exit-code -- src/lib/api/schema.d.ts \
+      || { echo "schema.d.ts is out of date: run pnpm api:types" >&2; exit 1; }
+    pnpm run check
+    ;;
+  coverage)
+    # A report, not a gate: unit tests only (the database suite is in test-db), so the figure
+    # understates what the whole suite reaches. Floors come once the numbers have been watched.
+    (cd "${SVC}" && cargo llvm-cov --lib "${FEATURES[@]}" --summary-only)
     ;;
   e2e)
     # The Playwright suites (demo-data tour, accessibility, smoke): they build

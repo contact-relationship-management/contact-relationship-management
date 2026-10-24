@@ -56,6 +56,20 @@ steps:
       - npm install --global pnpm@11.0.8
       - scripts/ci-check.sh e2e
 
+  - name: api-types
+    image: *rust_image
+    commands:
+      - curl -fsSL https://deb.nodesource.com/setup_26.x | bash - && apt-get install -y nodejs
+      - npm install --global pnpm@11.0.8
+      - scripts/ci-check.sh api-types
+
+  - name: coverage
+    image: *rust_image
+    commands:
+      - rustup component add llvm-tools-preview
+      - cargo install --locked cargo-llvm-cov
+      - scripts/ci-check.sh coverage
+
   - name: scripts
     image: 'debian:bookworm-slim'
     commands:
