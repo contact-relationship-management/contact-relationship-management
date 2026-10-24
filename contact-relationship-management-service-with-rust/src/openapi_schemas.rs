@@ -41,15 +41,59 @@ fn generated() -> serde_json::Map<String, Value> {
         audits, board, break_glass, dashboards, engagement, external_links, insights, marketing,
         merge, privacy, relationships, sales, support, unmerge,
     };
-    let mut generator = schemars::generate::SchemaSettings::openapi3().into_generator();
+    // A request is read as the service deserializes it (an optional member may be left out); a
+    // response is written as it serializes (an optional member is always there, as `null`).
+    let mut requests = schemars::generate::SchemaSettings::openapi3()
+        .for_deserialize()
+        .into_generator();
+    let mut generator = schemars::generate::SchemaSettings::openapi3()
+        .for_serialize()
+        .into_generator();
     macro_rules! document {
-        ($($ty:ty),* $(,)?) => {$( generator.subschema_for::<$ty>(); )*};
+        ($generator:ident: $($ty:ty),* $(,)?) => {$( $generator.subschema_for::<$ty>(); )*};
     }
     document!(
+        requests:
         relationships::ContactPayload,
         relationships::AccountPayload,
         relationships::RepointPayload,
         relationships::ActivityPayload,
+        crate::controllers::StatusPayload,
+        sales::LeadPayload,
+        sales::LeadStatusPayload,
+        sales::PipelinePayload,
+        sales::DealPayload,
+        sales::DealStagePayload,
+        sales::ReopenPayload,
+        board::DealEditPayload,
+        board::LeadEditPayload,
+        board::TicketEditPayload,
+        board::PositionPayload,
+        board::ActivityEditPayload,
+        support::PolicyPayload,
+        support::TicketPayload,
+        support::PriorityPayload,
+        support::ArticlePayload,
+        engagement::ContactStakeholderPayload,
+        engagement::AccountStakeholderPayload,
+        engagement::PartnershipPayload,
+        engagement::MembershipPayload,
+        engagement::GroupPayload,
+        engagement::MemberPayload,
+        merge::MergePayload,
+        unmerge::UnmergePayload,
+        external_links::LinkPayload,
+        break_glass::GrantPayload,
+        break_glass::ReviewPayload,
+        marketing::consent::ConsentPayload,
+        marketing::segment::SegmentPayload,
+        marketing::nurture::SequencePayload,
+        marketing::nurture::StepPayload,
+        marketing::nurture::EnrollPayload,
+        marketing::campaign::CampaignPayload,
+    );
+    document!(
+        generator:
         relationships::ContactDetail,
         relationships::AccountDetail,
         relationships::ContactDuplicates,
@@ -69,7 +113,6 @@ fn generated() -> serde_json::Map<String, Value> {
         dashboards::ActivityDashboard,
         insights::sales::StaleDeals,
         crate::controllers::PidRef,
-        crate::controllers::StatusPayload,
         marketing::nurture::SequenceView,
         privacy::SubjectAccessExport,
         crate::streaming::EventView,
@@ -109,17 +152,6 @@ fn generated() -> serde_json::Map<String, Value> {
         unmerge::ContactMerges,
         external_links::ExternalLinks,
         crate::models::_entities::external_links::Model,
-        sales::LeadPayload,
-        sales::LeadStatusPayload,
-        sales::PipelinePayload,
-        sales::DealPayload,
-        sales::DealStagePayload,
-        sales::ReopenPayload,
-        board::DealEditPayload,
-        board::LeadEditPayload,
-        board::TicketEditPayload,
-        board::PositionPayload,
-        board::ActivityEditPayload,
         crate::models::_entities::contacts::Model,
         crate::models::_entities::accounts::Model,
         crate::models::_entities::activities::Model,
@@ -131,29 +163,10 @@ fn generated() -> serde_json::Map<String, Value> {
         crate::models::_entities::segments::Model,
         crate::models::_entities::sla_policies::Model,
         crate::models::_entities::email_deliveries::Model,
-        support::PolicyPayload,
-        support::TicketPayload,
-        support::PriorityPayload,
-        support::ArticlePayload,
-        engagement::ContactStakeholderPayload,
-        engagement::AccountStakeholderPayload,
-        engagement::PartnershipPayload,
-        engagement::MembershipPayload,
-        engagement::GroupPayload,
-        engagement::MemberPayload,
-        merge::MergePayload,
-        unmerge::UnmergePayload,
-        external_links::LinkPayload,
-        break_glass::GrantPayload,
-        break_glass::ReviewPayload,
-        marketing::consent::ConsentPayload,
-        marketing::segment::SegmentPayload,
-        marketing::nurture::SequencePayload,
-        marketing::nurture::StepPayload,
-        marketing::nurture::EnrollPayload,
-        marketing::campaign::CampaignPayload,
     );
-    generator.take_definitions(true)
+    let mut definitions = requests.take_definitions(true);
+    definitions.extend(generator.take_definitions(true));
+    definitions
 }
 
 /// `components.schemas`.

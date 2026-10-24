@@ -48,6 +48,8 @@ pub(crate) struct Followup {
     subject_kind: String,
     subject_pid: Uuid,
     actor_ref: Option<String>,
+    /// Always set: only activities with a due day are listed.
+    #[schemars(with = "chrono::NaiveDate")]
     due_on: Option<chrono::NaiveDate>,
     overdue_days: Option<i64>,
 }

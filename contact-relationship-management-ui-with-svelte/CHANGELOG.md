@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — component tests, and the API types are checked against the service (CRM-T93)
+
+Tests for `DataTable`, `Board` and `LinksPanel`. The vitest `deps.inline` pattern never matched the Lily package it
+was meant for; it now does. `src/lib/api/schema.d.ts` is generated from the service's OpenAPI document
+(`pnpm api:types`), and `svelte-check` fails when a hand-written type in `crm.ts` expects something the document does
+not promise. It found one: a stale deal's amount can be `null` when masked, which the type did not say.
+
 ### Changed — page data goes through one helper, and a slow answer cannot replace a newer one (CRM-T90)
 
 Pages fetched in `$effect` blocks that each kept their own error handling, and a slow answer for a previous

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — response members are required in the OpenAPI document (CRM-T93)
+
+Responses are described as the service writes them: an optional member is always present, as `null`. Before, it was
+marked possibly absent, which made generated clients treat `null` and missing alike. Requests are unchanged (an
+optional member may be left out). `cargo run --example openapi` prints the document.
+
 ### Changed — the OpenAPI document is generated from the code (CRM-T83)
 - Every schema in `/api-docs/openapi.json` except `Error` now comes from the Rust type that is sent or received (the
   request payloads, the database models, and typed response structs) instead of a hand-written table, and the paths

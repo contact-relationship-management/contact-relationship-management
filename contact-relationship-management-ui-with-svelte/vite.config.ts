@@ -42,6 +42,6 @@ export default defineConfig({
         globals: true,
         // The package's `dist` imports without file extensions, which Node's ESM
         // loader refuses; Vite resolves them, so Vitest must bundle it too.
-        server: { deps: { inline: [/@lilydesignsystem\/locale-translations/] } },
+        server: { deps: { inline: [/@lilydesignsystem\/svelte-/] } },
     },
 });

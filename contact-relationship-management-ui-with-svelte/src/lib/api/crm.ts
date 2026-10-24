@@ -547,7 +547,8 @@ export interface StaleDeal {
   name: string;
   stage: string | null;
   owner_ref: string | null;
-  amount_minor: number;
+  /** Null when the caller's policy masks amounts. */
+  amount_minor: number | null;
   currency: string;
   days_in_stage: number;
   stale: boolean;

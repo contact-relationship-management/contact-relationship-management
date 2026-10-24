@@ -46,10 +46,17 @@ pub(crate) struct Grant {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "GrantRecord")]
 pub(crate) struct GrantRecord {
+    // The first five are NOT NULL columns; they are read leniently, so the code types them
+    // `Option`, but the document says what the table guarantees.
+    #[schemars(with = "Uuid")]
     pid: Option<Uuid>,
+    #[schemars(with = "String")]
     subject: Option<String>,
+    #[schemars(with = "String")]
     reason: Option<String>,
+    #[schemars(with = "DateTime<Utc>")]
     granted_at: Option<DateTime<Utc>>,
+    #[schemars(with = "DateTime<Utc>")]
     expires_at: Option<DateTime<Utc>>,
     reviewed_at: Option<DateTime<Utc>>,
     reviewed_by: Option<String>,
