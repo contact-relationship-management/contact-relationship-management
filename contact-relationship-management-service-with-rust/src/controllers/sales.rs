@@ -237,6 +237,31 @@ async fn list_leads(
     page.respond(rows, more, &uri)
 }
 
+/// `GET /api/leads/{pid}`: the lead and its live score breakdown.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct LeadDetail {
+    lead: leads::Model,
+    score: scoring::ScoreBreakdown,
+}
+
+/// One pipeline with its stages, in order.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "Pipeline")]
+pub(crate) struct PipelineWithStages {
+    pipeline: pipelines::Model,
+    stages: Vec<pipeline_stages::Model>,
+}
+
+/// `GET /api/forecast`: the stage-weighted forecast per currency over open deals.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct Forecast {
+    as_of: chrono::DateTime<chrono::Utc>,
+    open_deals: usize,
+    /// Minor units per currency, never summed across currencies; `null` when masked.
+    #[schemars(with = "Option<std::collections::BTreeMap<String, i64>>")]
+    totals_minor: serde_json::Value,
+}
+
 /// `GET /api/leads/{pid}` — the lead + its live score breakdown.
 #[debug_handler]
 async fn get_lead(
@@ -247,7 +272,10 @@ async fn get_lead(
     let lead = records::find_lead(&ctx.db, pid).await?;
     let breakdown = score_lead(&ctx.db, &lead).await?;
     Audit::record_read(&ctx.db, "lead", lead.pid, "lead_read", caller.actor(), None).await?;
-    format::json(serde_json::json!({ "lead": lead, "score": breakdown }))
+    format::json(LeadDetail {
+        lead,
+        score: breakdown,
+    })
 }
 
 /// On conversion: the contact the lead becomes. A lead already linked to a
@@ -485,7 +513,7 @@ async fn list_pipelines(State(ctx): State<AppContext>) -> Result<Response> {
             .order_by_asc(pipeline_stages::Column::Position)
             .all(&ctx.db)
             .await?;
-        out.push(serde_json::json!({ "pipeline": pipeline, "stages": stages }));
+        out.push(PipelineWithStages { pipeline, stages });
     }
     format::json(out)
 }
@@ -800,15 +828,14 @@ async fn forecast(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Resul
     Metrics::global()
         .deals_open
         .set(i64::try_from(open.len()).unwrap_or(i64::MAX));
-    let body = serde_json::json!({
-        "as_of": chrono::Utc::now(),
-        "open_deals": open.len(),
-        "totals_minor": totals,
-    });
-    format::json(if masked {
-        auth::mask_json(body, &["totals_minor"])
-    } else {
-        body
+    format::json(Forecast {
+        as_of: chrono::Utc::now(),
+        open_deals: open.len(),
+        totals_minor: if masked {
+            serde_json::Value::Null
+        } else {
+            serde_json::json!(totals)
+        },
     })
 }
 

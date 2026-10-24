@@ -72,6 +72,12 @@ fn generated() -> serde_json::Map<String, Value> {
         relationships::AccountDetail,
         relationships::ContactDuplicates,
         merge::ContactMerge,
+        sales::LeadDetail,
+        sales::PipelineWithStages,
+        sales::Forecast,
+        crate::models::_entities::pipelines::Model,
+        crate::models::_entities::pipeline_stages::Model,
+        crate::models::_entities::forecast_snapshots::Model,
         unmerge::ContactUnmerge,
         unmerge::ContactMerges,
         external_links::ExternalLinks,
@@ -161,14 +167,6 @@ fn base_schemas() -> Value {
             "body": { "type": "string", "maxLength": 20000,
                 "description": "Plain text. Required for every step before a real sender sends it" } })),
         // ---- resources (what the lists return)
-        "PipelineRecord": resource(&["pid", "name"], &json!({ "pid": uuid(), "name": string() })),
-        "StageRecord": resource(&["pid", "pipeline_pid", "name", "position", "probability_percent",
-            "is_won", "is_lost"], &json!({
-            "pid": uuid(), "pipeline_pid": uuid(), "name": string(), "position": integer(),
-            "probability_percent": integer(), "is_won": boolean(), "is_lost": boolean() })),
-        "Pipeline": object(&["pipeline", "stages"], &json!({
-            "pipeline": reference("PipelineRecord"),
-            "stages": { "type": "array", "items": reference("StageRecord") } })),
     })
 }
 
@@ -213,12 +211,6 @@ fn view_schemas() -> Value {
             "value": nullable(number()) })),
 
         // ---- detail reads
-        "ScoreBreakdown": object(&["score", "label", "rules"], &json!({
-            "score": integer(), "label": string(),
-            "rules": { "type": "array", "items": object(&["rule", "points"], &json!({
-                "rule": string(), "points": integer() })) } })),
-        "LeadDetail": object(&["lead", "score"], &json!({
-            "lead": reference("Lead"), "score": reference("ScoreBreakdown") })),
         "TicketDetail": object(&["ticket", "activities"], &json!({
             "ticket": reference("Ticket"), "activities": list_of("Activity") })),
         "Group": object(&["group", "roster", "feed", "feed_note"], &json!({
@@ -232,11 +224,6 @@ fn view_schemas() -> Value {
         "Clv": object(&["account_pid", "won_deals", "clv_minor", "as_of"], &json!({
             "account_pid": uuid(), "won_deals": integer(), "clv_minor": money_by_currency(),
             "as_of": date_time() })),
-        "Forecast": object(&["as_of", "open_deals", "totals_minor"], &json!({
-            "as_of": date_time(), "open_deals": integer(),
-            "totals_minor": masked_money_by_currency() })),
-        "Snapshot": resource(&["pid", "taken_on", "totals"], &json!({
-            "pid": uuid(), "taken_on": date(), "totals": masked_money_by_currency() })),
         "SalesDashboard": view(&["win_rate", "open_deals", "pipeline_by_stage"], &json!({
             "win_rate": reference("Ratio"), "open_deals": integer(),
             "pipeline_by_stage": { "type": "object", "additionalProperties":

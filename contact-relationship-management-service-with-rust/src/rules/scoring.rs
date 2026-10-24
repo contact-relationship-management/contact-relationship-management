@@ -74,7 +74,7 @@ pub struct LeadFacts {
 }
 
 /// One rule's contribution in the breakdown.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
 pub struct RuleScore {
     /// Stable rule id.
     pub rule: String,
@@ -83,7 +83,7 @@ pub struct RuleScore {
 }
 
 /// The score plus its explanation.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, schemars::JsonSchema)]
 pub struct ScoreBreakdown {
     /// The clamped 0–100 score.
     pub score: i32,

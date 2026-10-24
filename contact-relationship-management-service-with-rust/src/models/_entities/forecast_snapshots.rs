@@ -5,7 +5,10 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
+)]
+#[schemars(rename = "Snapshot")]
 #[sea_orm(table_name = "forecast_snapshots")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
@@ -15,6 +18,8 @@ pub struct Model {
     #[sea_orm(unique)]
     pub pid: Uuid,
     pub taken_on: Date,
+    /// Per-currency totals in minor units; `null` when masked.
+    #[schemars(with = "Option<std::collections::BTreeMap<String, i64>>")]
     pub totals: Json,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
