@@ -26,9 +26,6 @@ fn uuid() -> Value {
 fn integer() -> Value {
     json!({ "type": "integer" })
 }
-fn date() -> Value {
-    json!({ "type": "string", "format": "date" })
-}
 fn date_time() -> Value {
     json!({ "type": "string", "format": "date-time" })
 }
@@ -84,6 +81,12 @@ fn generated() -> serde_json::Map<String, Value> {
         marketing::campaign::CampaignFunnel,
         dashboards::ActivityDashboard,
         insights::sales::StaleDeals,
+        insights::relationships::StakeholderRegister,
+        insights::relationships::PartnershipsRegister,
+        insights::relationships::MembershipsView,
+        insights::support::SlaRegister,
+        insights::compliance::DpoView,
+        insights::compliance::ConsentByAccount,
         insights::outreach::Cadence,
         insights::outreach::EngagementView,
         insights::outreach::StageFunnel,
@@ -198,24 +201,12 @@ fn base_schemas() -> Value {
     })
 }
 
-fn counts() -> Value {
-    json!({ "type": "object", "additionalProperties": { "type": "integer" } })
-}
 fn list_of(name: &str) -> Value {
     json!({ "type": "array", "items": reference(name) })
 }
 fn strings() -> Value {
     json!({ "type": "array", "items": { "type": "string" } })
 }
-/// Every derived view carries `as_of` (stamped at response time).
-fn view(required: &[&str], properties: &Value) -> Value {
-    let mut required: Vec<&str> = required.to_vec();
-    required.push("as_of");
-    let mut properties = properties.clone();
-    properties["as_of"] = date_time();
-    object(&required, &properties)
-}
-
 /// Schemas for the reads that are not plain lists.
 #[allow(clippy::too_many_lines)] // one literal table of schemas
 fn view_schemas() -> Value {
@@ -250,55 +241,6 @@ fn view_schemas() -> Value {
         ] },
 
         // ---- insights
-        "SlaRegister": view(&["derivation", "breaches", "workload"], &json!({
-            "derivation": string(),
-            "breaches": { "type": "array", "items": object(&["pid", "title", "priority", "status",
-                "breached", "overdue_hours"], &json!({
-                "pid": uuid(), "title": string(), "priority": string(), "status": string(),
-                "assignee_ref": nullable(string()), "breached": string(),
-                "overdue_hours": integer() })) },
-            "workload": { "type": "array", "items": object(&["assignee_ref", "open", "breached",
-                "at_risk_4h"], &json!({ "assignee_ref": string(), "open": integer(),
-                "breached": integer(), "at_risk_4h": integer() })) } })),
-        "DpoView": view(&["note", "contacts", "consent_coverage", "window_days",
-            "withdrawals_in_window", "consent_events_by_source", "duplicate_person_refs"], &json!({
-            "note": string(), "contacts": integer(), "consent_coverage": counts(),
-            "window_days": integer(), "withdrawals_in_window": integer(),
-            "consent_events_by_source": counts(),
-            "duplicate_person_refs": { "type": "array", "items": object(&["person_ref", "contacts"], &json!({
-                "person_ref": string(),
-                "contacts": { "type": "array", "items": object(&["pid", "display_name"], &json!({
-                    "pid": uuid(), "display_name": string() })) } })) } })),
-        "ConsentByAccount": view(&["window_days", "note", "accounts"], &json!({
-            "window_days": integer(), "note": string(),
-            "accounts": { "type": "array", "items": object(&["pid", "display_name",
-                "consent_coverage", "withdrawals_in_window"], &json!({
-                "pid": uuid(), "display_name": string(), "consent_coverage": counts(),
-                "withdrawals_in_window": integer() })) } })),
-        "StakeholderRegister": view(&["note", "by_role", "grid", "stakeholders_without_grid_scores",
-            "undeclared_contacts", "account_roles"], &json!({
-            "note": string(),
-            "by_role": { "type": "object", "additionalProperties": { "type": "array", "items":
-                object(&["pid", "display_name", "marketing_consent", "days_since_touch"], &json!({
-                    "pid": uuid(), "display_name": string(), "marketing_consent": string(),
-                    "influence": nullable(integer()), "interest": nullable(integer()),
-                    "days_since_touch": integer() })) } },
-            "grid": counts(), "stakeholders_without_grid_scores": integer(),
-            "undeclared_contacts": integer(),
-            "account_roles": { "type": "array", "items": object(&["pid", "display_name", "role"], &json!({
-                "pid": uuid(), "display_name": string(), "role": string() })) } })),
-        "PartnershipsRegister": view(&["by_kind", "by_stage", "register"], &json!({
-            "by_kind": counts(), "by_stage": counts(),
-            "register": { "type": "array", "items": object(&["pid", "account_pid", "kind", "stage"], &json!({
-                "pid": uuid(), "account_pid": uuid(), "account": nullable(string()),
-                "kind": string(), "stage": string(), "summary": nullable(string()),
-                "started_on": nullable(date()) })) } })),
-        "MembershipsView": view(&["window_days", "memberships", "renewals_due", "lapsed"], &json!({
-            "window_days": integer(), "memberships": integer(),
-            "renewals_due": list_of("MembershipRow"), "lapsed": list_of("MembershipRow") })),
-        "MembershipRow": object(&["pid", "account_pid", "status", "joined_on"], &json!({
-            "pid": uuid(), "account_pid": uuid(), "account": nullable(string()), "status": string(),
-            "joined_on": date(), "renewal_on": nullable(date()) })),
     })
 }
 

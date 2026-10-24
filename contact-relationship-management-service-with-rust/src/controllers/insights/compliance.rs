@@ -5,6 +5,61 @@ use super::{
     days_or, debug_handler,
 };
 
+// Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
+// `ETag` is taken, and the schema says it is always there.
+
+/// A contact that shares a `person_ref` with another.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "DuplicatePersonContact")]
+pub(crate) struct DuplicateContact {
+    pid: uuid::Uuid,
+    display_name: String,
+}
+
+/// Live contacts sharing one `person_ref`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "DuplicatePersonRef")]
+pub(crate) struct DuplicatePersonRef {
+    person_ref: String,
+    contacts: Vec<DuplicateContact>,
+}
+
+/// `GET /api/insights/dpo`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct DpoView {
+    note: &'static str,
+    contacts: usize,
+    consent_coverage: std::collections::BTreeMap<String, usize>,
+    window_days: i64,
+    withdrawals_in_window: usize,
+    consent_events_by_source: std::collections::BTreeMap<String, usize>,
+    duplicate_person_refs: Vec<DuplicatePersonRef>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// One account's consent picture.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ConsentAccount")]
+pub(crate) struct ConsentAccount {
+    pid: uuid::Uuid,
+    display_name: String,
+    consent_coverage: std::collections::BTreeMap<String, usize>,
+    withdrawals_in_window: usize,
+}
+
+/// `GET /api/insights/consent-by-account`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct ConsentByAccount {
+    window_days: i64,
+    note: &'static str,
+    accounts: Vec<ConsentAccount>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 /// `GET /api/insights/dpo?days=` — the data-protection view: consent
 /// coverage (current per-contact state, counted verbatim),
 /// withdrawals in the window, per-source consent-event counts, and
@@ -37,31 +92,36 @@ pub(super) async fn dpo(
             .or_default()
             .push(contact);
     }
-    let duplicates: Vec<serde_json::Value> = by_person
+    let duplicates: Vec<DuplicatePersonRef> = by_person
         .iter()
         .filter(|(_, group)| group.len() > 1)
-        .map(|(person_ref, group)| {
-            serde_json::json!({
-                "person_ref": person_ref,
-                "contacts": group
-                    .iter()
-                    .map(|c| serde_json::json!({ "pid": c.pid, "display_name": c.display_name }))
-                    .collect::<Vec<_>>(),
-            })
+        .map(|(person_ref, group)| DuplicatePersonRef {
+            person_ref: (*person_ref).to_string(),
+            contacts: group
+                .iter()
+                .map(|c| DuplicateContact {
+                    pid: c.pid,
+                    display_name: c.display_name.clone(),
+                })
+                .collect(),
         })
         .collect();
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "note": "coverage counts each contact's current marketing_consent verbatim; \
-                     duplicates are CRM-local rows sharing one person_ref — identity \
-                     dedup stays upstream in the person service",
-            "contacts": contact_rows.len(),
-            "consent_coverage": coverage,
-            "window_days": window_days,
-            "withdrawals_in_window": withdrawals_in_window,
-            "consent_events_by_source": per_source,
-            "duplicate_person_refs": duplicates,
+        serde_json::json!(DpoView {
+            note: "coverage counts each contact's current marketing_consent verbatim; \
+                   duplicates are CRM-local rows sharing one person_ref — identity \
+                   dedup stays upstream in the person service",
+            contacts: contact_rows.len(),
+            consent_coverage: coverage
+                .into_iter()
+                .map(|(k, n)| (k.to_string(), n))
+                .collect(),
+            window_days,
+            withdrawals_in_window,
+            consent_events_by_source: per_source,
+            duplicate_person_refs: duplicates,
+            as_of: None,
         }),
     ))
 }
@@ -81,7 +141,7 @@ pub(super) async fn consent_by_account(
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
     let withdrawals = super::rollup::withdrawals_by_account(&ctx.db, since).await?;
-    let rows: Vec<serde_json::Value> = account_rows
+    let rows: Vec<ConsentAccount> = account_rows
         .iter()
         .map(|account| {
             let mut coverage: std::collections::BTreeMap<&str, usize> =
@@ -94,21 +154,25 @@ pub(super) async fn consent_by_account(
                     .entry(contact.marketing_consent.as_str())
                     .or_default() += 1;
             }
-            serde_json::json!({
-                "pid": account.pid,
-                "display_name": account.display_name,
-                "consent_coverage": coverage,
-                "withdrawals_in_window": withdrawals.get(&account.pid).copied().unwrap_or(0),
-            })
+            ConsentAccount {
+                pid: account.pid,
+                display_name: account.display_name.clone(),
+                consent_coverage: coverage
+                    .into_iter()
+                    .map(|(k, n)| (k.to_string(), n))
+                    .collect(),
+                withdrawals_in_window: withdrawals.get(&account.pid).copied().unwrap_or(0),
+            }
         })
         .collect();
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "window_days": window,
-            "note": "coverage counts each contact's current marketing_consent verbatim; \
-                     contacts without an account are in the estate-wide /insights/dpo view",
-            "accounts": rows,
+        serde_json::json!(ConsentByAccount {
+            window_days: window,
+            note: "coverage counts each contact's current marketing_consent verbatim; \
+                   contacts without an account are in the estate-wide /insights/dpo view",
+            accounts: rows,
+            as_of: None,
         }),
     ))
 }

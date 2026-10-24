@@ -5,6 +5,91 @@ use super::{
     contacts, days_or, debug_handler, engagement_rules, memberships, partnerships,
 };
 
+// Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
+// `ETag` is taken, and the schema says it is always there.
+
+/// A contact with a declared stakeholder role.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "StakeholderContact")]
+pub(crate) struct StakeholderContact {
+    pid: Uuid,
+    display_name: String,
+    marketing_consent: String,
+    influence: Option<i32>,
+    interest: Option<i32>,
+    days_since_touch: i64,
+}
+
+/// An account with a declared role.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "StakeholderAccountRole")]
+pub(crate) struct AccountRole {
+    pid: Uuid,
+    display_name: String,
+    role: String,
+}
+
+/// `GET /api/insights/stakeholders`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct StakeholderRegister {
+    note: &'static str,
+    by_role: std::collections::BTreeMap<&'static str, Vec<StakeholderContact>>,
+    grid: std::collections::BTreeMap<String, usize>,
+    stakeholders_without_grid_scores: usize,
+    undeclared_contacts: usize,
+    account_roles: Vec<AccountRole>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// One partnership in the register.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "PartnershipRow")]
+pub(crate) struct PartnershipRow {
+    pid: Uuid,
+    account_pid: Uuid,
+    account: Option<String>,
+    kind: String,
+    stage: String,
+    summary: String,
+    started_on: Option<chrono::NaiveDate>,
+}
+
+/// `GET /api/insights/partnerships`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct PartnershipsRegister {
+    by_kind: std::collections::BTreeMap<String, usize>,
+    by_stage: std::collections::BTreeMap<String, usize>,
+    register: Vec<PartnershipRow>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// One membership row.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct MembershipRow {
+    pid: Uuid,
+    account_pid: Uuid,
+    account: Option<String>,
+    status: String,
+    joined_on: chrono::NaiveDate,
+    renewal_on: Option<chrono::NaiveDate>,
+}
+
+/// `GET /api/insights/memberships`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct MembershipsView {
+    window_days: i64,
+    memberships: usize,
+    renewals_due: Vec<MembershipRow>,
+    lapsed: Vec<MembershipRow>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 /// `GET /api/insights/stakeholders` — the declared-stakeholder
 /// register: per-role lists with cadence and consent per row, and the
 /// power–interest grid over contacts with **both** scores declared
@@ -24,7 +109,7 @@ pub(super) async fn stakeholders(
             .filter(|t| t.subject_kind == "contact")
             .map(|t| (t.subject_pid, t.last_at))
             .collect();
-    let mut by_role: std::collections::BTreeMap<&str, Vec<serde_json::Value>> =
+    let mut by_role: std::collections::BTreeMap<&str, Vec<StakeholderContact>> =
         engagement_rules::STAKEHOLDER_ROLES
             .iter()
             .map(|r| (*r, Vec::new()))
@@ -40,14 +125,14 @@ pub(super) async fn stakeholders(
                     |at| (now - *at).num_days(),
                 );
                 if let Some(bucket) = by_role.get_mut(role) {
-                    bucket.push(serde_json::json!({
-                        "pid": contact.pid,
-                        "display_name": contact.display_name,
-                        "marketing_consent": contact.marketing_consent,
-                        "influence": contact.influence,
-                        "interest": contact.interest,
-                        "days_since_touch": days,
-                    }));
+                    bucket.push(StakeholderContact {
+                        pid: contact.pid,
+                        display_name: contact.display_name.clone(),
+                        marketing_consent: contact.marketing_consent.clone(),
+                        influence: contact.influence,
+                        interest: contact.interest,
+                        days_since_touch: days,
+                    });
                 }
                 match (contact.influence, contact.interest) {
                     (Some(influence), Some(interest)) => {
@@ -59,26 +144,27 @@ pub(super) async fn stakeholders(
             None => undeclared_contacts += 1,
         }
     }
-    let account_roles: Vec<serde_json::Value> = account_rows
+    let account_roles: Vec<AccountRole> = account_rows
         .iter()
         .filter_map(|account| {
-            account.stakeholder_role.as_deref().map(|role| {
-                serde_json::json!({
-                    "pid": account.pid, "display_name": account.display_name, "role": role,
-                })
+            account.stakeholder_role.as_deref().map(|role| AccountRole {
+                pid: account.pid,
+                display_name: account.display_name.clone(),
+                role: role.to_string(),
             })
         })
         .collect();
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "note": "roles and grid scores are declared, never inferred; the grid \
-                     covers stakeholders with both scores (key p<influence>i<interest>)",
-            "by_role": by_role,
-            "grid": grid,
-            "stakeholders_without_grid_scores": ungridded,
-            "undeclared_contacts": undeclared_contacts,
-            "account_roles": account_roles,
+        serde_json::json!(StakeholderRegister {
+            note: "roles and grid scores are declared, never inferred; the grid \
+                   covers stakeholders with both scores (key p<influence>i<interest>)",
+            by_role,
+            grid,
+            stakeholders_without_grid_scores: ungridded,
+            undeclared_contacts,
+            account_roles,
+            as_of: None,
         }),
     ))
 }
@@ -103,26 +189,31 @@ pub(super) async fn partnerships_register(
         *by_kind.entry(row.kind.as_str()).or_default() += 1;
         *by_stage.entry(row.stage.as_str()).or_default() += 1;
     }
-    let register: Vec<serde_json::Value> = rows
+    let register: Vec<PartnershipRow> = rows
         .iter()
-        .map(|row| {
-            serde_json::json!({
-                "pid": row.pid,
-                "account_pid": row.account_pid,
-                "account": names.get(&row.account_pid),
-                "kind": row.kind,
-                "stage": row.stage,
-                "summary": row.summary,
-                "started_on": row.started_on,
-            })
+        .map(|row| PartnershipRow {
+            pid: row.pid,
+            account_pid: row.account_pid,
+            account: names.get(&row.account_pid).map(|name| (*name).to_string()),
+            kind: row.kind.clone(),
+            stage: row.stage.clone(),
+            summary: row.summary.clone(),
+            started_on: row.started_on,
         })
         .collect();
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "by_kind": by_kind,
-            "by_stage": by_stage,
-            "register": register,
+        serde_json::json!(PartnershipsRegister {
+            by_kind: by_kind
+                .into_iter()
+                .map(|(k, n)| (k.to_string(), n))
+                .collect(),
+            by_stage: by_stage
+                .into_iter()
+                .map(|(k, n)| (k.to_string(), n))
+                .collect(),
+            register,
+            as_of: None,
         }),
     ))
 }
@@ -144,33 +235,32 @@ pub(super) async fn memberships_view(
         .iter()
         .map(|a| (a.pid, a.display_name.as_str()))
         .collect();
-    let view = |m: &memberships::Model| {
-        serde_json::json!({
-            "pid": m.pid,
-            "account_pid": m.account_pid,
-            "account": names.get(&m.account_pid),
-            "status": m.status,
-            "joined_on": m.joined_on,
-            "renewal_on": m.renewal_on,
-        })
+    let view = |m: &memberships::Model| MembershipRow {
+        pid: m.pid,
+        account_pid: m.account_pid,
+        account: names.get(&m.account_pid).map(|name| (*name).to_string()),
+        status: m.status.clone(),
+        joined_on: m.joined_on,
+        renewal_on: m.renewal_on,
     };
     let mut renewals_due: Vec<&memberships::Model> = rows
         .iter()
         .filter(|m| m.status == "active" && m.renewal_on.is_some_and(|d| d <= horizon))
         .collect();
     renewals_due.sort_by_key(|m| m.renewal_on);
-    let lapsed: Vec<serde_json::Value> = rows
+    let lapsed: Vec<MembershipRow> = rows
         .iter()
         .filter(|m| m.status == "lapsed")
         .map(view)
         .collect();
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "window_days": window,
-            "memberships": rows.len(),
-            "renewals_due": renewals_due.iter().map(|m| view(m)).collect::<Vec<_>>(),
-            "lapsed": lapsed,
+        serde_json::json!(MembershipsView {
+            window_days: window,
+            memberships: rows.len(),
+            renewals_due: renewals_due.iter().map(|m| view(m)).collect(),
+            lapsed,
+            as_of: None,
         }),
     ))
 }
