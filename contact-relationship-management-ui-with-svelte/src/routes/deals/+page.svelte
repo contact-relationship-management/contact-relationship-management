@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import Board from "#lib/components/Board.svelte";
   import type {
@@ -21,32 +22,27 @@
   import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
 
-  let stages = $state<Stage[]>([]);
-  let deals = $state<Deal[] | null>(null);
-  let totals = $state<Record<string, number>>({});
-  let pipelines = $state<Awaited<ReturnType<typeof listPipelines>>>([]);
-  let selectedPipeline = $state("");
-  let stageFunnel = $state<Awaited<ReturnType<typeof funnel>> | null>(null);
-  let error = $state<string | null>(null);
-
-  async function load() {
-    try {
-      pipelines = await listPipelines();
-      const active =
-        pipelines.find((p) => p.pipeline.pid === selectedPipeline) ?? pipelines[0];
-      selectedPipeline = active?.pipeline.pid ?? "";
-      stages = active?.stages ?? [];
-      deals = active ? await listDeals(active.pipeline.pid) : [];
-      totals = (await forecast()).totals_minor ?? {};
-      stageFunnel = active ? await funnel(active.pipeline.pid) : null;
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-
-  $effect(() => {
-    void load();
-  });
+  /** The pipeline the visitor picked; empty means the first. */
+  let chosen = $state("");
+  const board = resource(
+    async () => {
+      const want = chosen;
+      const pipelines = await listPipelines();
+      const active = pipelines.find((p) => p.pipeline.pid === want) ?? pipelines[0];
+      const deals = active ? await listDeals(active.pipeline.pid) : [];
+      const totals = (await forecast()).totals_minor ?? {};
+      const stageFunnel = active ? await funnel(active.pipeline.pid) : null;
+      return { pipelines, active, deals, totals, stageFunnel };
+    },
+    { keepWhileLoading: true },
+  );
+  const stages = $derived<Stage[]>(board.value?.active?.stages ?? []);
+  const deals = $derived<Deal[] | null>(board.value?.deals ?? null);
+  const totals = $derived<Record<string, number>>(board.value?.totals ?? {});
+  const pipelines = $derived(board.value?.pipelines ?? []);
+  const selectedPipeline = $derived(board.value?.active?.pipeline.pid ?? chosen);
+  const stageFunnel = $derived(board.value?.stageFunnel ?? null);
+  const error = $derived(board.error);
 
   // Columns are the pipeline's stage rows — data, not a token table
   // (CRM-D3); terminal stages are drop targets that close the deal.
@@ -98,15 +94,15 @@
     } else if (edit.fieldId === "close" && typeof edit.value === "string") {
       await editDeal(edit.cardId, { expected_close_on: edit.value });
     }
-    await load();
+    await board.reload();
   }
   async function onRename(id: string, name: string) {
     await editDeal(id, { name });
-    await load();
+    await board.reload();
   }
   const onPosition = async (id: string, position: number) => {
     await placeCard("deals", id, position);
-    await load();
+    await board.reload();
   };
 
   // Drag between stage columns = the stage-move API (a lost target
@@ -120,7 +116,7 @@
       stagePid,
       target?.is_lost ? "moved to lost on the board" : undefined,
     );
-    await load();
+    await board.reload();
   }
 
   const funnelColumns = [
@@ -148,8 +144,7 @@
       data-testid="pipeline-select"
       value={selectedPipeline}
       onchange={(event) => {
-        selectedPipeline = event.currentTarget.value;
-        void load();
+        chosen = event.currentTarget.value;
       }}
     >
       {#each pipelines as entry (entry.pipeline.pid)}

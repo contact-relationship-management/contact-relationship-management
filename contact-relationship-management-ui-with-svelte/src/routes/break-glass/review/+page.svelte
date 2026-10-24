@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { listBreakGlass, reviewBreakGlass } from "#lib/api/crm.js";
   import type { BreakGlassGrant } from "#lib/api/crm.js";
@@ -21,7 +22,7 @@
       grants = data.grants;
       unreviewed = data.unreviewed;
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
+      error = errorMessage(cause);
     }
   }
 
@@ -38,7 +39,7 @@
       intent.done();
       await load();
     } catch (cause) {
-      actionError = cause instanceof Error ? cause.message : String(cause);
+      actionError = errorMessage(cause);
     }
   }
 

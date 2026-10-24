@@ -5,6 +5,7 @@
   lifecycle), and membership renewals + the lapsed list.
 -->
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import {
     membershipsView,
@@ -17,22 +18,18 @@
   type Partnerships = Awaited<ReturnType<typeof partnershipsRegister>>;
   type Memberships = Awaited<ReturnType<typeof membershipsView>>;
 
-  let stakeholders = $state<Stakeholders | null>(null);
-  let partnerships = $state<Partnerships | null>(null);
-  let memberships = $state<Memberships | null>(null);
-  let error = $state<string | null>(null);
-
-  $effect(() => {
-    void (async () => {
-      try {
-        stakeholders = await stakeholdersView();
-        partnerships = await partnershipsRegister();
-        memberships = await membershipsView();
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
+  const data = resource(async () => {
+    const [stakeholders, partnerships, memberships] = await Promise.all([
+      stakeholdersView(),
+      partnershipsRegister(),
+      membershipsView(),
+    ]);
+    return { stakeholders, partnerships, memberships };
   });
+  const stakeholders = $derived<Stakeholders | null>(data.value?.stakeholders ?? null);
+  const partnerships = $derived<Partnerships | null>(data.value?.partnerships ?? null);
+  const memberships = $derived<Memberships | null>(data.value?.memberships ?? null);
+  const error = $derived(data.error);
 
   const SCALE = [1, 2, 3, 4, 5] as const;
   const cell = (p: number, i: number) => stakeholders?.grid[`p${p}i${i}`] ?? 0;

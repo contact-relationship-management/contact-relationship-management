@@ -4,6 +4,8 @@
   verbatim (actor_ref is the recorder, not necessarily an assignee).
 -->
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
+  import { resource } from "#lib/resource.svelte.js";
   import { packLabels } from "#lib/lily-labels.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import CalendarView, {
@@ -13,26 +15,12 @@
   import { editFollowup, followups, type Followup } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
-  let overdue = $state<Followup[] | null>(null);
-  let upcoming = $state<Followup[]>([]);
-  let note = $state("");
   let kindFilter = $state("");
-  let error = $state<string | null>(null);
-
-  async function reload() {
-    try {
-      const view = await followups(kindFilter || undefined);
-      overdue = view.overdue;
-      upcoming = view.upcoming_30d;
-      note = view.note;
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-
-  $effect(() => {
-    void reload();
-  });
+  const list = resource(() => followups(kindFilter || undefined));
+  const overdue = $derived(list.value?.overdue ?? null);
+  const upcoming = $derived(list.value?.upcoming_30d ?? []);
+  const note = $derived(list.value?.note ?? "");
+  const error = $derived(list.error);
 
   // Lily's CalendarView takes ISO dates; `date` places a one-day event.
   // Dragging an event to another day (or Alt+arrow on it) reschedules the
@@ -43,9 +31,9 @@
     try {
       await editFollowup(calendarEvent.id, { due_on: toDate });
     } catch (cause) {
-      moveError = cause instanceof Error ? cause.message : String(cause);
+      moveError = errorMessage(cause);
     }
-    await reload();
+    await list.reload();
   }
 
   const events = $derived(

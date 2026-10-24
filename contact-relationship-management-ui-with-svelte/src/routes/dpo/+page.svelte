@@ -6,26 +6,20 @@
   upstream). Also the SLA register lives with support, not here.
 -->
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { consentByAccount, dpo } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
 
   type DpoView = Awaited<ReturnType<typeof dpo>>;
   type ByAccount = Awaited<ReturnType<typeof consentByAccount>>;
-  let view = $state<DpoView | null>(null);
-  let byAccount = $state<ByAccount | null>(null);
-  let error = $state<string | null>(null);
-
-  $effect(() => {
-    void (async () => {
-      try {
-        view = await dpo();
-        byAccount = await consentByAccount();
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
+  const data = resource(async () => {
+    const [view, byAccount] = await Promise.all([dpo(), consentByAccount()]);
+    return { view, byAccount };
   });
+  const view = $derived<DpoView | null>(data.value?.view ?? null);
+  const byAccount = $derived<ByAccount | null>(data.value?.byAccount ?? null);
+  const error = $derived(data.error);
 
   const sourceColumns = [
     { id: "source", header: "Source" },

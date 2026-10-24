@@ -6,6 +6,7 @@
   All numbers server-derived; currencies never merged.
 -->
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import {
     executivePack,
@@ -38,7 +39,7 @@
         findings = (await pipelineHygiene()).findings;
         trends = await forecastTrends();
       } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
+        error = errorMessage(cause);
       }
     })();
   });

@@ -1,12 +1,21 @@
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
+  import { resource } from "#lib/resource.svelte.js";
   import { page } from "$app/state";
   import { editDeal, listDeals, money, reopenDeal, type Deal } from "#lib/api/crm.js";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
-  let deal = $state<Deal | null>(null);
-  let error = $state<string | null>(null);
   const pid = $derived(page.params.pid ?? "");
+  // There is no single-deal read; the list is already scoped by the caller's rights.
+  const record = resource(async () => {
+    const id = pid;
+    const found = (await listDeals()).find((d) => d.pid === id);
+    if (!found) throw new Error("404");
+    return found;
+  });
+  const deal = $derived(record.value);
+  const error = $derived(record.error);
 
   let editing = $state(false);
   let reopening = $state(false);
@@ -37,13 +46,13 @@
     formError = null;
     try {
       await reopenDeal(current.pid, reason.trim());
-      await load(current.pid);
+      await record.reload();
       reopening = false;
       reason = "";
       saved = false;
       reopened = true;
     } catch (cause) {
-      formError = cause instanceof Error ? cause.message : String(cause);
+      formError = errorMessage(cause);
     } finally {
       busy = false;
     }
@@ -65,29 +74,15 @@
     busy = true;
     formError = null;
     try {
-      deal = await editDeal(current.pid, fields);
+      record.value = await editDeal(current.pid, fields);
       editing = false;
       saved = true;
     } catch (cause) {
-      formError = cause instanceof Error ? cause.message : String(cause);
+      formError = errorMessage(cause);
     } finally {
       busy = false;
     }
   }
-
-  // There is no single-deal read; the list is already scoped by the caller's rights.
-  async function load(id: string) {
-    try {
-      const found = (await listDeals()).find((d) => d.pid === id);
-      if (found) deal = found;
-      else error = "404";
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-  $effect(() => {
-    void load(pid);
-  });
 </script>
 
 <p><a href="/deals">← {t("nav.deals")}</a></p>

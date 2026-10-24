@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { listContacts } from "#lib/api/crm.js";
@@ -6,18 +7,9 @@
   import { t } from "#lib/i18n.svelte.js";
   import type { Contact } from "#lib/api/crm.js";
 
-  let contacts = $state<Contact[] | null>(null);
-  let error = $state<string | null>(null);
-
-  $effect(() => {
-    void (async () => {
-      try {
-        contacts = await listContacts();
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
-  });
+  const list = resource(listContacts);
+  const contacts = $derived(list.value);
+  const error = $derived(list.error);
 
   const columns = $derived([
     {

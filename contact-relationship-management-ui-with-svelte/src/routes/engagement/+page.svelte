@@ -6,6 +6,7 @@
   server-derived; derivations shown verbatim.
 -->
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { cadence, engagementWorkload, membersHealth } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
@@ -14,22 +15,18 @@
   type Workload = Awaited<ReturnType<typeof engagementWorkload>>;
   type Members = Awaited<ReturnType<typeof membersHealth>>;
 
-  let aging = $state<Cadence | null>(null);
-  let workload = $state<Workload | null>(null);
-  let members = $state<Members | null>(null);
-  let error = $state<string | null>(null);
-
-  $effect(() => {
-    void (async () => {
-      try {
-        aging = await cadence();
-        workload = await engagementWorkload();
-        members = await membersHealth();
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
+  const data = resource(async () => {
+    const [aging, workload, members] = await Promise.all([
+      cadence(),
+      engagementWorkload(),
+      membersHealth(),
+    ]);
+    return { aging, workload, members };
   });
+  const aging = $derived<Cadence | null>(data.value?.aging ?? null);
+  const workload = $derived<Workload | null>(data.value?.workload ?? null);
+  const members = $derived<Members | null>(data.value?.members ?? null);
+  const error = $derived(data.error);
 
   const contactColumns = [
     { id: "contact", header: "Contact" },

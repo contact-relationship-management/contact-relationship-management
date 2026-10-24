@@ -8,6 +8,8 @@
     - version  change it to make the panel reload (the contact page does after a merge)
 -->
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
+  import { resource } from "#lib/resource.svelte.js";
   import {
     LINK_SYSTEMS,
     addLink,
@@ -21,7 +23,6 @@
 
   let { kind, pid, version = 0 }: { kind: LinkKind; pid: string; version?: number } = $props();
 
-  let links = $state<ExternalLink[] | null>(null);
   let system = $state<LinkSystem>("hubspot");
   let url = $state("");
   let label = $state("");
@@ -38,20 +39,16 @@
       other: t("contact.linkSystemOther"),
     })[value];
 
-  async function load() {
-    try {
-      links = (await getLinks(kind, pid)).links;
-    } catch {
-      links = null;
-    }
-  }
-
-  $effect(() => {
+  // A failed read shows no panel rather than an error.
+  const list = resource(async () => {
     void version;
-    void kind;
-    void pid;
-    void load();
+    try {
+      return (await getLinks(kind, pid)).links;
+    } catch {
+      return null;
+    }
   });
+  const links = $derived<ExternalLink[] | null>(list.value);
 
   async function add() {
     if (!url.trim()) return;
@@ -61,9 +58,9 @@
       await addLink(kind, pid, { system, url: url.trim(), label });
       url = "";
       label = "";
-      await load();
+      await list.reload();
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
+      error = errorMessage(cause);
     } finally {
       busy = false;
     }
@@ -73,9 +70,9 @@
     error = null;
     try {
       await removeLink(link.pid);
-      await load();
+      await list.reload();
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
+      error = errorMessage(cause);
     }
   }
 </script>

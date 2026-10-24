@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
   import { requestBreakGlass } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
   import { createIntent } from "#lib/intent.js";
@@ -30,7 +31,7 @@
       until = new Date(grant.expires_at).toLocaleString(i18n.locale);
       reason = "";
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
+      error = errorMessage(cause);
     } finally {
       busy = false;
     }

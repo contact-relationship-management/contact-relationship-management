@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
+  import { resource } from "#lib/resource.svelte.js";
   import CampaignTimeline from "#lib/components/CampaignTimeline.svelte";
   import DataTable from "#lib/components/DataTable.svelte";
   import { campaignFunnel, campaignStatus, listCampaigns, money, runCampaign } from "#lib/api/crm.js";
@@ -6,27 +8,16 @@
   import { i18n, t } from "#lib/i18n.svelte.js";
   import type { Campaign, Ratio } from "#lib/api/crm.js";
 
-  let campaigns = $state<Campaign[] | null>(null);
+  const list = resource(listCampaigns);
+  const campaigns = $derived(list.value);
+  const error = $derived(list.error);
   let funnel = $state<{
     pid: string;
     leads: number;
     won_revenue_minor: number | null;
     roi: Ratio | null;
   } | null>(null);
-  let error = $state<string | null>(null);
   let actionError = $state<string | null>(null);
-
-  async function load() {
-    try {
-      campaigns = await listCampaigns();
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-
-  $effect(() => {
-    void load();
-  });
 
   async function run(campaign: Campaign) {
     actionError = null;
@@ -35,9 +26,9 @@
         await campaignStatus(campaign.pid, "scheduled");
       }
       await runCampaign(campaign.pid);
-      await load();
+      await list.reload();
     } catch (cause) {
-      actionError = cause instanceof Error ? cause.message : String(cause);
+      actionError = errorMessage(cause);
     }
   }
 

@@ -1,28 +1,20 @@
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { articleStatus, listArticles } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
   import type { Article } from "#lib/api/crm.js";
 
-  let articles = $state<Article[] | null>(null);
   let query = $state("");
-  let error = $state<string | null>(null);
-
-  async function load() {
-    try {
-      articles = await listArticles(query || undefined);
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-
-  $effect(() => {
-    void load();
-  });
+  // The search runs when the box is committed, not on every keystroke.
+  let applied = $state("");
+  const list = resource(() => listArticles(applied || undefined));
+  const articles = $derived(list.value);
+  const error = $derived(list.error);
 
   async function publish(article: Article) {
     await articleStatus(article.pid, "published");
-    await load();
+    await list.reload();
   }
 
   let selectedPid = $state<string | null>(null);
@@ -55,7 +47,7 @@
 <div class="panel">
   <label>
     {t("article.search")}
-    <input bind:value={query} onchange={() => void load()} />
+    <input bind:value={query} onchange={() => (applied = query)} />
   </label>
 </div>
 

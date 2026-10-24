@@ -1,23 +1,14 @@
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import { page } from "$app/state";
   import { getAccount, money } from "#lib/api/crm.js";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
-  let detail = $state<Awaited<ReturnType<typeof getAccount>> | null>(null);
-  let error = $state<string | null>(null);
   const pid = $derived(page.params.pid ?? "");
-
-  $effect(() => {
-    const id = pid;
-    void (async () => {
-      try {
-        detail = await getAccount(id);
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
-  });
+  const record = resource(() => getAccount(pid));
+  const detail = $derived(record.value);
+  const error = $derived(record.error);
 </script>
 
 <p><a href="/accounts">← {t("nav.accounts")}</a></p>

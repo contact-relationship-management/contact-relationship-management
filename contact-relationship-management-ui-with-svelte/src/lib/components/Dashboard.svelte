@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import {
     followups,
     forecast,
@@ -9,31 +10,25 @@
   import { ratioLabel } from "#lib/format.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
-  let sales = $state<Awaited<ReturnType<typeof salesDashboard>> | null>(null);
-  let sla = $state<Awaited<ReturnType<typeof slaDashboard>> | null>(null);
-  let totals = $state<Record<string, number>>({});
-  let overdue = $state(0);
-  let error = $state<string | null>(null);
-
-  $effect(() => {
-    void (async () => {
-      try {
-        const [salesData, slaData, forecastData, followupData] =
-          await Promise.all([
-            salesDashboard(),
-            slaDashboard(),
-            forecast(),
-            followups(),
-          ]);
-        sales = salesData;
-        sla = slaData;
-        totals = forecastData.totals_minor ?? {};
-        overdue = followupData.overdue.length;
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
+  const data = resource(async () => {
+    const [sales, sla, forecastData, followupData] = await Promise.all([
+      salesDashboard(),
+      slaDashboard(),
+      forecast(),
+      followups(),
+    ]);
+    return {
+      sales,
+      sla,
+      totals: forecastData.totals_minor ?? {},
+      overdue: followupData.overdue.length,
+    };
   });
+  const sales = $derived(data.value?.sales ?? null);
+  const sla = $derived(data.value?.sla ?? null);
+  const totals = $derived<Record<string, number>>(data.value?.totals ?? {});
+  const overdue = $derived(data.value?.overdue ?? 0);
+  const error = $derived(data.error);
 
   // Tickets past a first-response or resolution deadline, across priorities.
   const breached = $derived(

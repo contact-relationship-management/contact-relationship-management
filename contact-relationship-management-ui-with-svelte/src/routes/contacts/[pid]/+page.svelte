@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
+  import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { goto } from "$app/navigation";
@@ -19,13 +21,10 @@
   } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
-  let detail = $state<Awaited<ReturnType<typeof getContact>> | null>(null);
-  let error = $state<string | null>(null);
   let actionError = $state<string | null>(null);
   let erasing = $state(false);
   // Likely duplicates (CRM-R23). Secondary: a failure here leaves the page as
   // it was, so it is not an error state.
-  let duplicates = $state<Duplicate[] | null>(null);
 
   // Merging a duplicate into this contact (CRM-R24): a dry run first, so the
   // confirmation shows exactly what will move.
@@ -37,7 +36,6 @@
   let mergedName = $state<string | null>(null);
 
   // Undoing a merge (CRM-R26): a preview first, then a reason.
-  let merges = $state<MergeEntry[]>([]);
   let undoing = $state<MergeEntry | null>(null);
   let undoPreview = $state<UnmergeResult | null>(null);
   let undoReason = $state("");
@@ -49,6 +47,29 @@
   let linksVersion = $state(0);
 
   const pid = $derived(page.params.pid ?? "");
+  const record = resource(async () => (pid ? await getContact(pid) : null));
+  const detail = $derived(record.value);
+  const error = $derived(record.error);
+  // The two below are secondary: a failure leaves the page as it was.
+  const likely = resource(async () => {
+    if (!pid) return null;
+    try {
+      return (await getContactDuplicates(pid)).duplicates;
+    } catch {
+      return null;
+    }
+  });
+  const duplicates = $derived(likely.value);
+  const mergeLog = resource(async () => {
+    if (!pid) return [];
+    try {
+      return (await getContactMerges(pid)).merges;
+    } catch {
+      return [];
+    }
+  });
+  const merges = $derived<MergeEntry[]>(mergeLog.value ?? []);
+  const reloadAll = () => Promise.all([record.reload(), likely.reload(), mergeLog.reload()]);
   // Rough client-side gate from data already on the page — the
   // service is the authority (CRM-R20 also checks nurture
   // enrolments, which this page does not load); this only avoids
@@ -59,31 +80,6 @@
         false),
   );
 
-  async function load() {
-    try {
-      detail = await getContact(pid);
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-
-  async function loadDuplicates() {
-    duplicates = null;
-    try {
-      duplicates = (await getContactDuplicates(pid)).duplicates;
-    } catch {
-      duplicates = null;
-    }
-  }
-
-  async function loadMerges() {
-    try {
-      merges = (await getContactMerges(pid)).merges;
-    } catch {
-      merges = [];
-    }
-  }
-
   async function startUndo(entry: MergeEntry) {
     undoError = null;
     undoneName = null;
@@ -93,7 +89,7 @@
     try {
       undoPreview = await unmergeContact(entry.merged_pid, "preview", true);
     } catch (cause) {
-      undoError = cause instanceof Error ? cause.message : String(cause);
+      undoError = errorMessage(cause);
     }
   }
 
@@ -111,22 +107,15 @@
       await unmergeContact(undoing.merged_pid, undoReason.trim(), false);
       undoneName = undoing.merged_name;
       cancelUndo();
-      await Promise.all([load(), loadDuplicates(), loadMerges()]);
+      await reloadAll();
     } catch (cause) {
-      undoError = cause instanceof Error ? cause.message : String(cause);
+      undoError = errorMessage(cause);
     } finally {
       undoBusy = false;
     }
   }
 
 
-  $effect(() => {
-    if (pid) {
-      void load();
-      void loadDuplicates();
-      void loadMerges();
-    }
-  });
 
   // Rounded down, so a near-certain match never reads as "100%": only a
   // shared person record is certain.
@@ -175,7 +164,7 @@
     try {
       preview = await mergeContact(d.contact.pid, pid, "preview", true);
     } catch (cause) {
-      mergeError = cause instanceof Error ? cause.message : String(cause);
+      mergeError = errorMessage(cause);
     }
   }
 
@@ -193,12 +182,10 @@
       await mergeContact(merging.contact.pid, pid, mergeReason.trim(), false);
       mergedName = merging.contact.display_name;
       cancelMerge();
-      await load();
-      await loadDuplicates();
-      await loadMerges();
+      await reloadAll();
       linksVersion += 1;
     } catch (cause) {
-      mergeError = cause instanceof Error ? cause.message : String(cause);
+      mergeError = errorMessage(cause);
     } finally {
       mergeBusy = false;
     }
@@ -208,9 +195,9 @@
     actionError = null;
     try {
       await recordConsent(pid, action);
-      await load();
+      await record.reload();
     } catch (cause) {
-      actionError = cause instanceof Error ? cause.message : String(cause);
+      actionError = errorMessage(cause);
     }
   }
 
@@ -222,7 +209,7 @@
       await eraseContact(pid);
       await goto("/contacts");
     } catch (cause) {
-      actionError = cause instanceof Error ? cause.message : String(cause);
+      actionError = errorMessage(cause);
     } finally {
       erasing = false;
     }

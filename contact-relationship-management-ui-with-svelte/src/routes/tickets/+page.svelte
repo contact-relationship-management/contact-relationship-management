@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
+  import { resource } from "#lib/resource.svelte.js";
   import { listTickets, ticketStatus } from "#lib/api/crm.js";
   import { breachedCount, slaBreached } from "#lib/format.js";
   import DataTable from "#lib/components/DataTable.svelte";
@@ -13,22 +15,11 @@
     closed: [],
   };
 
-  let tickets = $state<Ticket[] | null>(null);
+  const list = resource(listTickets);
+  const tickets = $derived(list.value);
+  const error = $derived(list.error);
   let selectedPid = $state<string | null>(null);
-  let error = $state<string | null>(null);
   let actionError = $state<string | null>(null);
-
-  async function load() {
-    try {
-      tickets = await listTickets();
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-
-  $effect(() => {
-    void load();
-  });
 
   const breachedTotal = $derived(breachedCount(tickets ?? []));
   const selected = $derived((tickets ?? []).find((x) => x.pid === selectedPid) ?? null);
@@ -59,9 +50,9 @@
     actionError = null;
     try {
       await ticketStatus(pid, to);
-      await load();
+      await list.reload();
     } catch (cause) {
-      actionError = cause instanceof Error ? cause.message : String(cause);
+      actionError = errorMessage(cause);
     }
   }
 </script>

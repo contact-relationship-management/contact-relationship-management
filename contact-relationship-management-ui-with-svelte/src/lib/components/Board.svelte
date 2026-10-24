@@ -25,6 +25,7 @@
     - testid           `data-testid` on the board
 -->
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
   import { packLabels } from "#lib/lily-labels.js";
   import KanbanBoard from "@lilydesignsystem/svelte-kanban-board";
   import type {
@@ -152,7 +153,7 @@
     try {
       await onRename?.(edit.cardId, edit.title);
     } catch (cause) {
-      moveError = cause instanceof Error ? cause.message : t("kanban.editFailed");
+      moveError = errorMessage(cause, t("kanban.editFailed"));
     }
   }
 
@@ -161,12 +162,12 @@
     try {
       await onEdit?.(edit);
     } catch (cause) {
-      moveError = cause instanceof Error ? cause.message : t("kanban.editFailed");
+      moveError = errorMessage(cause, t("kanban.editFailed"));
     }
   }
 
   function handleError(_id: string, _to: string, cause: unknown) {
-    moveError = cause instanceof Error ? cause.message : t("kanban.failed");
+    moveError = errorMessage(cause, t("kanban.failed"));
   }
 </script>
 

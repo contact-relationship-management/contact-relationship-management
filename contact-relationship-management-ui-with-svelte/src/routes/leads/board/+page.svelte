@@ -5,6 +5,8 @@
   restores the stored truth). Cards carry the rule-derived score.
 -->
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
+  import { resource } from "#lib/resource.svelte.js";
   import Board from "#lib/components/Board.svelte";
   import type {
     KanbanCard,
@@ -13,19 +15,9 @@
   import { editLead, leadStatus, listLeads, placeCard, type Lead } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
 
-  let leads = $state<Lead[] | null>(null);
-  let error = $state<string | null>(null);
-
-  async function load() {
-    try {
-      leads = await listLeads();
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-  $effect(() => {
-    void load();
-  });
+  const list = resource(listLeads);
+  const leads = $derived(list.value);
+  const error = $derived(list.error);
 
   const columns = [
     { id: "new", title: "New" },
@@ -63,18 +55,18 @@
   );
   async function onRename(id: string, title: string) {
     await editLead(id, { display_name: title });
-    await load();
+    await list.reload();
   }
   const onPosition = async (id: string, position: number) => {
     await placeCard("leads", id, position);
-    await load();
+    await list.reload();
   };
   const allowedColumns = (card: KanbanCard) => NEXT[card.columnId] ?? [];
 
   // Show the move at once; the board undoes it if the service refuses.
   async function onMove(id: string, status: string) {
     await leadStatus(id, status);
-    await load();
+    await list.reload();
   }
 </script>
 

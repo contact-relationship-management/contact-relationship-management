@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — page data goes through one helper, and a slow answer cannot replace a newer one (CRM-T90)
+
+Pages fetched in `$effect` blocks that each kept their own error handling, and a slow answer for a previous
+record could overwrite the current one. `resource()` (`src/lib/resource.svelte.ts`) now loads each page's data,
+drops any answer but the latest, and clears the previous record when the parameters change. `errorMessage()`
+replaces 39 copies of the same error-to-text line. Visible changes: a failed load clears on the next try; the
+articles search runs when the box is committed, not on each keystroke; the dashboard, DPO, engagement and partners
+pages fetch their parts in parallel.
+
 ### Changed — one language is downloaded, not eight (CRM-T89)
 
 The interface strings were one 3,300-line table (175 KB, 50 KB compressed) that every visitor downloaded for all

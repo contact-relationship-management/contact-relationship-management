@@ -1,21 +1,13 @@
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import { listAccounts } from "#lib/api/crm.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { Account } from "#lib/api/crm.js";
 
-  let accounts = $state<Account[] | null>(null);
-  let error = $state<string | null>(null);
-
-  $effect(() => {
-    void (async () => {
-      try {
-        accounts = await listAccounts();
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
-  });
+  const list = resource(listAccounts);
+  const accounts = $derived(list.value);
+  const error = $derived(list.error);
 
   const columns = $derived([
     {

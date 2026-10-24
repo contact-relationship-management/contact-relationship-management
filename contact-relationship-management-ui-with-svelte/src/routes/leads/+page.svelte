@@ -1,23 +1,15 @@
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import { getLead, listLeads } from "#lib/api/crm.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
-  import type { Lead, ScoreBreakdown } from "#lib/api/crm.js";
+  import type { ScoreBreakdown } from "#lib/api/crm.js";
 
-  let leads = $state<Lead[] | null>(null);
+  const list = resource(listLeads);
+  const leads = $derived(list.value);
+  const error = $derived(list.error);
   let selectedPid = $state<string | null>(null);
   let breakdown = $state<{ pid: string; score: ScoreBreakdown } | null>(null);
-  let error = $state<string | null>(null);
-
-  $effect(() => {
-    void (async () => {
-      try {
-        leads = await listLeads();
-      } catch (cause) {
-        error = cause instanceof Error ? cause.message : String(cause);
-      }
-    })();
-  });
 
   const columns = $derived([
     { id: "score", kind: "number", total: "avg", header: t("lead.score") },
@@ -39,7 +31,6 @@
       status: l.status,
     })),
   );
-
 
   // Explain the selected lead (defaults to the top-scored lead so the
   // button always has a subject).

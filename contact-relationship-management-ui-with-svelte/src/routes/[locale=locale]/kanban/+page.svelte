@@ -9,6 +9,7 @@
   board in German (and remembers it as the UI language).
 -->
 <script lang="ts">
+  import { resource } from "#lib/resource.svelte.js";
   import Board from "#lib/components/Board.svelte";
   import type {
     KanbanCard,
@@ -19,35 +20,24 @@
   import type { Deal, Stage } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
-  let pipeline = $state<{ pid: string; name: string } | null>(null);
-  let stages = $state<Stage[]>([]);
-  let deals = $state<Deal[] | null>(null);
-  let error = $state<string | null>(null);
+  const board = resource(async () => {
+    const first = (await listPipelines())[0];
+    if (!first) return { pipeline: null, stages: [] as Stage[], deals: [] as Deal[] };
+    return {
+      pipeline: first.pipeline,
+      stages: [...first.stages].sort((a, b) => a.position - b.position),
+      deals: await listDeals(first.pipeline.pid),
+    };
+  });
+  const pipeline = $derived(board.value?.pipeline ?? null);
+  const stages = $derived(board.value?.stages ?? []);
+  const deals = $derived(board.value?.deals ?? null);
+  const error = $derived(board.error);
 
   // The address names the language.
   $effect(() => {
     const locale = page.params.locale;
     if (locale && locale !== i18n.locale) i18n.set(locale);
-  });
-
-  async function load() {
-    try {
-      const pipelines = await listPipelines();
-      const first = pipelines[0];
-      if (!first) {
-        deals = [];
-        return;
-      }
-      pipeline = first.pipeline;
-      stages = [...first.stages].sort((a, b) => a.position - b.position);
-      deals = await listDeals(first.pipeline.pid);
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-
-  $effect(() => {
-    void load();
   });
 
   const columns = $derived<KanbanColumn[]>(
@@ -64,12 +54,12 @@
 
   async function onPosition(pid: string, position: number) {
     await placeCard("deals", pid, position);
-    await load();
+    await board.reload();
   }
 
   async function onMove(pid: string, stagePid: string) {
     await moveDeal(pid, stagePid);
-    await load();
+    await board.reload();
   }
 </script>
 

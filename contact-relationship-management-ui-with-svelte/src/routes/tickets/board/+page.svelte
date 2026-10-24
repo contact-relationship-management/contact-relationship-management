@@ -5,6 +5,8 @@
   Cards badge priority and live SLA-breach flags.
 -->
 <script lang="ts">
+  import { errorMessage } from "#lib/errors.js";
+  import { resource } from "#lib/resource.svelte.js";
   import Board from "#lib/components/Board.svelte";
   import type {
     KanbanCard,
@@ -14,19 +16,9 @@
   import { slaBreached } from "#lib/format.js";
   import { t } from "#lib/i18n.svelte.js";
 
-  let tickets = $state<Ticket[] | null>(null);
-  let error = $state<string | null>(null);
-
-  async function load() {
-    try {
-      tickets = await listTickets();
-    } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause);
-    }
-  }
-  $effect(() => {
-    void load();
-  });
+  const list = resource(listTickets);
+  const tickets = $derived(list.value);
+  const error = $derived(list.error);
 
   const columns = [
     { id: "open", title: "Open" },
@@ -64,17 +56,17 @@
   );
   async function onRename(id: string, title: string) {
     await editTicket(id, { title });
-    await load();
+    await list.reload();
   }
   const onPosition = async (id: string, position: number) => {
     await placeCard("tickets", id, position);
-    await load();
+    await list.reload();
   };
   const allowedColumns = (card: KanbanCard) => NEXT[card.columnId] ?? [];
 
   async function onMove(id: string, status: string) {
     await ticketStatus(id, status);
-    await load();
+    await list.reload();
   }
 </script>
 
