@@ -42,3 +42,27 @@ Family envelope via the `CRM_EVENT_TRANSPORT` seam (default
 `memory`; Postgres outbox rows share the mutation's transaction
 under `outbox`). Event kinds are listed in
 [domain-model.md](domain-model.md).
+
+## Outbound webhooks (CRM-R28)
+
+Two tables: `webhook_subscriptions` (address, event patterns, the signing secret sealed
+with the field keyring, the previous secret and when it stops signing, `enabled` and why
+not) and `webhook_deliveries` (one row per subscription per event: status `pending`,
+`delivered`, `dead` or `cancelled`, attempts, next attempt, last status and error). A
+column `event_outbox.webhook_fanned_out_at` marks outbox rows already turned into
+deliveries, so fan-out is a single transaction and a re-run does nothing.
+
+The relay run does two steps: **fan out** (unmarked outbox rows, oldest first, one
+delivery per enabled subscription whose patterns match `entity.kind`) and **send** (due
+deliveries, `FOR UPDATE SKIP LOCKED`, so two runs never send the same delivery twice at
+once). The body is built at send time from the outbox row's ids; it is not stored. The
+network is behind a `Sender` trait: the real one resolves, checks and pins the address;
+tests use one that records. A subscription's address is checked for shape when it is registered (https, no
+credentials, no private IP literal, no local name). Names cannot be judged until they are
+resolved, and DNS can change, so the resolution check runs at every send, and the call
+connects to the addresses it checked.
+
+Why at least once and not exactly once: a send can succeed and its record fail to be
+written. Receivers dedupe on `webhook-id`, which is the event id and is the same on every
+retry; `webhook-timestamp` changes per attempt, so a replayed capture is refused by a
+receiver that checks the timestamp window.

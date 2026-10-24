@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — outbound webhooks (CRM-T95, CRM-R28)
+
+Admin and service callers register an `https` address and the events it wants (`contact.created`, `deal.*`, `*`) under
+`/api/webhook-subscriptions`. `POST /api/webhook-subscriptions/relay` (call it on a schedule) turns new `event_outbox`
+rows into deliveries and sends what is due. Deliveries are signed in the Standard Webhooks format (`webhook-id`,
+`webhook-timestamp`, `webhook-signature`; two signatures for 24 hours after a secret rotates), carry ids and never contact
+values, are retried with growing delays and then dead-lettered, and a `410 Gone` disables the subscription. Addresses
+inside a network (private, loopback, link-local, metadata) are refused at registration and again, by resolved address, at
+every send. Erasing a contact cancels its queued deliveries. At-least-once: receivers dedupe on `webhook-id`. Needs
+migration 000020. New dependency feature: tokio `net`.
+
 ### Changed — response members are required in the OpenAPI document (CRM-T93)
 
 Responses are described as the service writes them: an optional member is always present, as `null`. Before, it was

@@ -42,6 +42,21 @@ pub const PRIVILEGED_READ_PREFIXES: [&str; 4] = [
     "/api/break-glass",
 ];
 
+/// Path prefixes that only an admin or service caller may use with *any* method
+/// (outbound webhook subscriptions, CRM-R28: they decide where change notifications go). Every
+/// request under one derives [`Action::Destructive`].
+pub const ADMIN_ONLY_PREFIXES: [&str; 1] = ["/api/webhook-subscriptions"];
+
+/// Whether `path` is under an [`ADMIN_ONLY_PREFIXES`] entry, on whole path segments.
+pub(super) fn is_admin_only(path: &str) -> bool {
+    ADMIN_ONLY_PREFIXES.iter().any(|prefix| {
+        path == *prefix
+            || path
+                .strip_prefix(prefix)
+                .is_some_and(|rest| rest.starts_with('/'))
+    })
+}
+
 /// Whether `path` is under a [`PRIVILEGED_READ_PREFIXES`] entry, matched on
 /// whole path segments so `/api/auditsfoo` does not qualify.
 pub(super) fn is_privileged_read(path: &str) -> bool {
@@ -108,6 +123,9 @@ pub fn derive_action(method: &Method, path: &str) -> Action {
     // `Destructive` rather than silently downgraded to `Write` — which would
     // let an `access=write` (non-admin) caller reach a destructive op.
     let path = path.trim_end_matches('/');
+    if is_admin_only(path) {
+        return Action::Destructive;
+    }
     match *method {
         // Taking a break-glass grant is open to any authenticated caller
         // (CRM-T44); the grant, not the route, carries the privilege.

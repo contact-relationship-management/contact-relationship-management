@@ -16,3 +16,4 @@ pub mod scoring;
 pub mod segment;
 pub mod sla;
 pub mod tokens;
+pub mod webhooks;

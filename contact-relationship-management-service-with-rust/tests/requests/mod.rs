@@ -23,6 +23,7 @@ mod sales;
 mod streaming;
 mod support;
 mod unmerge;
+mod webhooks;
 
 /// A fresh synthetic `person:` URN.
 pub fn a_person() -> String {

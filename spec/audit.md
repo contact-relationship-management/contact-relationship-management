@@ -21,6 +21,12 @@ deduped by consumers on `event_id`; transactional outbox under the
 `outbox` transport. `sla_breached` is emitted once per breach by
 the sweep job (idempotent on the breach fact).
 
+Webhook subscriptions (CRM-R28) audit under the entity `webhook_subscription`:
+`webhook_subscription_created` (with the event patterns), `webhook_secret_rotated`,
+`webhook_subscription_removed` (with how many queued deliveries were cancelled) and
+`webhook_subscription_disabled` (the receiver answered `410 Gone`; no actor). Never the address
+or the secret.
+
 ## Integrity
 
 **A write whose audit row cannot be written is refused.** The audit row is part of the

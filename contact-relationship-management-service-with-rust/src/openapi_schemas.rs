@@ -39,7 +39,7 @@ fn reference(name: &str) -> Value {
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         audits, board, break_glass, dashboards, engagement, external_links, insights, marketing,
-        merge, privacy, relationships, sales, support, unmerge,
+        merge, privacy, relationships, sales, support, unmerge, webhooks,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -84,6 +84,7 @@ fn generated() -> serde_json::Map<String, Value> {
         unmerge::UnmergePayload,
         external_links::LinkPayload,
         break_glass::GrantPayload,
+        webhooks::SubscriptionPayload,
         break_glass::ReviewPayload,
         marketing::consent::ConsentPayload,
         marketing::segment::SegmentPayload,
@@ -103,6 +104,11 @@ fn generated() -> serde_json::Map<String, Value> {
         privacy::RetentionReport,
         privacy::RetentionSweep,
         break_glass::Grant,
+        webhooks::SubscriptionCreated,
+        webhooks::SecretRotated,
+        crate::webhooks::Report,
+        webhooks::SubscriptionView,
+        webhooks::DeliveryView,
         break_glass::Grants,
         break_glass::Reviewed,
         audits::ChainVerdict,
@@ -241,6 +247,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/activities/{pid}") => "ActivityEditPayload",
         ("post", "/api/articles") | ("put", "/api/articles/{pid}") => "ArticlePayload",
         ("post", "/api/break-glass") => "GrantPayload",
+        ("post", "/api/webhook-subscriptions") => "WebhookSubscriptionPayload",
         ("post", "/api/break-glass/{pid}/review") => "ReviewPayload",
         ("post", "/api/accounts/{pid}/partnerships") => "PartnershipPayload",
         ("put", "/api/accounts/{pid}/membership") => "MembershipPayload",
@@ -302,6 +309,9 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/retention") => "RetentionReport",
         ("post", "/api/retention/sweep") => "RetentionSweep",
         ("post", "/api/break-glass") => "Grant",
+        ("post", "/api/webhook-subscriptions") => "WebhookSubscriptionCreated",
+        ("post", "/api/webhook-subscriptions/relay") => "WebhookRelay",
+        ("post", "/api/webhook-subscriptions/{pid}/rotate-secret") => "WebhookSecretRotated",
         ("get", "/api/break-glass") => "Grants",
         ("post", "/api/break-glass/{pid}/review") => "Reviewed",
         ("get", "/api/audits/verify") => "ChainVerdict",
@@ -342,6 +352,8 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/nurture-sequences" => "SequenceView",
         "/api/audits/recent" | "/api/audits" | "/api/audits/{entity_pid}" => "AuditEntry",
         "/api/events/recent" => "Event",
+        "/api/webhook-subscriptions" => "WebhookSubscription",
+        "/api/webhook-subscriptions/{pid}/deliveries" => "WebhookDelivery",
         _ => return None,
     })
 }

@@ -216,7 +216,7 @@ mod tests {
     ];
 
     /// `POST`/`PUT` operations that deliberately take no body.
-    const BODYLESS: [&str; 8] = [
+    const BODYLESS: [&str; 10] = [
         "post /unsubscribe/{}",
         "post /api/contacts/{}/erase",
         "post /api/campaigns/{}/run",
@@ -225,6 +225,8 @@ mod tests {
         "post /api/forecast/snapshot",
         "post /api/sla/sweep",
         "put /api/activities/{}/done",
+        "post /api/webhook-subscriptions/relay",
+        "post /api/webhook-subscriptions/{}/rotate-secret",
     ];
 
     fn mounted() -> BTreeMap<String, BTreeSet<String>> {

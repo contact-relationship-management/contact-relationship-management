@@ -1282,7 +1282,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 
 Each task first writes its requirement (proposed CRM-R28 onward) and design note, then lands spec, code and tests together.
 
-- [ ] CRM-T95 **Outbound webhooks.** A relay job reads `event_outbox` and delivers to subscriptions that admin or service callers manage.
+- [x] CRM-T95 **Outbound webhooks.** A relay job reads `event_outbox` and delivers to subscriptions that admin or service callers manage.
   - **Security:** https only, with SSRF guards that refuse private and link-local addresses. Signed in the Standard Webhooks format (`id.timestamp.body`, several signatures while a secret rotates). Payloads carry ids, never contact values.
   - **Delivery:** retries with backoff, a dead-letter state, a delivery log, and a 410 that disables the subscription.
   - **Audit and erasure:** every subscription change is audited. An erasure cancels queued deliveries for that contact.
@@ -1291,6 +1291,14 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Limits to state:** at-least-once delivery, so receivers must dedupe on the event id.
 
   (C1, M)
+      **Done (2026-10-24, not released):** requirement CRM-R28 and the design note in `integrations.md` first, then:
+      - **Tables** (migration 000020): `webhook_subscriptions`, `webhook_deliveries` (one row per subscription per event, unique), and `event_outbox.webhook_fanned_out_at`. A delivery stores ids only; the body is built from the outbox row when sent.
+      - **Pure rules** (`rules/webhooks.rs`, 9 tests): the address guard (`is_public_ip` covers private, loopback, link-local, shared, documentation, benchmarking, multicast, reserved, IPv4-mapped and NAT64), URL checks, event patterns, the Standard Webhooks signature (checked against the specification's own example vector), backoff, and the id-only body.
+      - **Relay** (`webhooks.rs`): fan out (marked in the same transaction, only events after the subscription existed), claim (lease, so two runs never send the same delivery), send, record. The network is behind a `Sender` trait; `HttpSender` resolves the name, refuses any non-public answer, connects to the addresses it checked, follows no redirects, times out at 10 s.
+      - **Routes** (admin/service only: the prefix derives the destructive action for every method): create (secret shown once), list, remove, rotate secret (old one also signs for 24 h), delivery log (latest 100), and `POST /api/webhook-subscriptions/relay`.
+      - **Audit and erasure:** create, rotate, remove and a `410` disable are audited without the address or secret. Erasing a contact cancels its queued deliveries and those of contacts merged into it (the erase audit row counts them).
+      - **Tests:** 8 request tests (registration and refusals, signed once with ids only, no backlog, backoff to dead, `410`, rotation, erasure, removal) plus 2 for the real sender's refusals and a policy unit test. Service: 226 unit tests, 77 request tests, clippy clean (both feature sets). OpenAPI and the UI's generated types include the new routes.
+      - **Limits (state to receivers):** at least once, so dedupe on `webhook-id`; events exist only under the `outbox` transport; a run sends at most 50 deliveries and fans out at most 500 events, so call it on a schedule; no replay button, per-subscription rate limit or log retention yet; every non-`2xx` except `410` is retried, including other `4xx`.
 - [ ] CRM-T96 **Consent per purpose and double opt-in.**
   - **Model:** consent is held per purpose (for example newsletter, events, product updates), in place of the single `marketing_consent`. A new `pending` state never allows a send.
   - **Double opt-in:** a confirmation token moves `pending` to `granted`, and the event records its source and date.

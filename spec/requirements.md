@@ -429,3 +429,38 @@ same record there.*
 - Links on a contact move with a merge (CRM-R24) and come back with an unmerge
   (CRM-R26). They are in the subject-access export and deleted by erasure (CRM-R20).
 - Not built: importing from, or syncing with, those systems.
+
+## CRM-R28 — Tell other systems when something changes
+
+*As an administrator, I can register a web address that is told when records here
+change, so another system can react without polling.*
+
+- An admin or service caller registers a **subscription**: an `https` address, and
+  which events it wants (`contact.created`, `deal.*`, or `*`). The service makes up
+  the signing secret and shows it once. A subscription can be listed, have its secret
+  rotated, and be removed (it is disabled, and its delivery log stays).
+- Events come from the event outbox (the `outbox` transport; under `memory` there is
+  nothing to deliver). A relay run (`POST /api/webhook-subscriptions/relay`, the same
+  sweep pattern as the SLA and nurture sweeps) turns new outbox rows into one delivery
+  per matching subscription and sends what is due.
+- **A delivery carries ids, never contact values**: the event id, the entity and kind,
+  the record's pid and the time. Not the display label and not the event's detail. A
+  receiver reads the record back through the API under its own rights.
+- **Signed in the Standard Webhooks format**: headers `webhook-id` (the event id),
+  `webhook-timestamp` and `webhook-signature` (`v1,` and a base64 HMAC-SHA256 of
+  `id.timestamp.body`). While a secret rotates the old one still signs for 24 hours, so
+  the header carries both signatures.
+- **The address cannot reach inside the network**: `https` only, no user name or
+  password, no IP literal in a private, loopback, link-local, multicast or unspecified
+  range, and the name is resolved at each send, refused if any answer is private, and
+  connected to by the address that was checked. Redirects are not followed.
+- **Delivery is at least once.** A delivery that does not get a `2xx` is retried with
+  growing delays (30 s, 2 min, 10 min, 1 h, 6 h, 12 h, 24 h) and then marked dead; the
+  log keeps each delivery's attempts, last status and last error. A `410 Gone` disables
+  the subscription and cancels what is queued. Receivers must dedupe on `webhook-id`.
+- Registering, rotating, removing, and a disable by `410` are audited (never the secret
+  or the address).
+- Erasing a contact (CRM-R20) cancels its queued deliveries, and those of contacts
+  merged into it. Nothing personal is stored in a delivery.
+- Not built: a retry or replay button, per-subscription rate limits, payload
+  customisation, and delivery of events written under the `memory` transport.

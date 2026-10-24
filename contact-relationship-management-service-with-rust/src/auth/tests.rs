@@ -407,6 +407,27 @@ fn derive_action_matrix() {
     );
     assert_eq!(derive_action(&Method::PUT, "/api/wards/1"), Action::Write);
     assert_eq!(derive_action(&Method::PATCH, "/api/wards/1"), Action::Write);
+    // Webhook subscriptions decide where change notifications go (CRM-R28): every method is the
+    // admin/service tier, and a lookalike prefix is not caught.
+    for method in [Method::GET, Method::POST, Method::PUT, Method::DELETE] {
+        for path in [
+            "/api/webhook-subscriptions",
+            "/api/webhook-subscriptions/",
+            "/api/webhook-subscriptions/relay",
+            "/api/webhook-subscriptions/abc/deliveries",
+            "/api/webhook-subscriptions/abc/rotate-secret",
+        ] {
+            assert_eq!(
+                derive_action(&method, path),
+                Action::Destructive,
+                "{method} {path}"
+            );
+        }
+    }
+    assert_eq!(
+        derive_action(&Method::POST, "/api/webhook-subscriptionsfoo"),
+        Action::Write
+    );
     // GET on a destructive-suffixed path is still a read — only
     // POST consults the suffix list.
     assert_eq!(

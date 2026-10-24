@@ -226,6 +226,12 @@ async fn erase(
         ),
         // Contacts merged into this one are the same person: scrub their
         // identity too, and the person reference the merge ledger kept (CRM-R26).
+        // Queued webhook deliveries about this person or the duplicates merged into it (CRM-R28).
+        format!(
+            "UPDATE webhook_deliveries SET status = 'cancelled', last_error = 'contact erased', \
+             updated_at = now() WHERE status = 'pending' AND (entity_pid = '{cpid}' OR entity_pid IN \
+             (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}'))"
+        ),
         format!(
             "UPDATE contacts SET display_name = '{ERASED}', person_ref = '{TOMBSTONE_PERSON}', \
              job_title = NULL, marketing_consent = 'withdrawn' WHERE merged_into_pid = '{cpid}'"
@@ -251,7 +257,8 @@ async fn erase(
             "leads_scrubbed": affected[1],
             "working_group_memberships_deleted": affected[2],
             "external_links_deleted": affected[3],
-            "merged_duplicates_scrubbed": affected[4],
+            "webhook_deliveries_cancelled": affected[4],
+            "merged_duplicates_scrubbed": affected[5],
         })),
     )
     .await?;

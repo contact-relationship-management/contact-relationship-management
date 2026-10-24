@@ -24,6 +24,7 @@ pub mod relationships;
 pub mod sales;
 pub mod support;
 pub mod unmerge;
+pub mod webhooks;
 
 /// A `{pid}` reference response: the record a `POST` created.
 #[derive(Debug, serde::Serialize, schemars::JsonSchema)]
