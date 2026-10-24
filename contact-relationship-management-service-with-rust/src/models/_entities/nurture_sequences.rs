@@ -18,6 +18,8 @@ pub struct Model {
     #[sea_orm(unique)]
     pub pid: Uuid,
     pub name: String,
+    /// The consent purpose the sequence is sent under.
+    pub purpose: String,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

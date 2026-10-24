@@ -28,6 +28,7 @@ use crate::models::_entities::{consent_events, contact_merges, contacts};
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
 use crate::rules::merge as rules;
+use crate::rules::tokens;
 use crate::streaming;
 use crate::validation::Problems;
 
@@ -322,7 +323,7 @@ async fn bring_back(
     merged: &contacts::Model,
     survivor: &contacts::Model,
     now: chrono::DateTime<chrono::FixedOffset>,
-) -> Result<String> {
+) -> Result<(String, Vec<crate::consents::PurposeOutcome>)> {
     let result =
         rules::stricter_consent(&merged.marketing_consent, &survivor.marketing_consent).to_string();
     let mut back: contacts::ActiveModel = merged.clone().into();
@@ -344,14 +345,17 @@ async fn bring_back(
     }
     back.update(txn).await?;
     if result == "withdrawn" {
-        txn.execute_unprepared(&format!(
-            "UPDATE nurture_enrollments SET status = 'exited', next_due_at = NULL \
-             WHERE contact_pid = '{}' AND status = 'active' AND deleted_at IS NULL",
-            merged.pid
-        ))
-        .await?;
+        crate::consents::exit_enrolments(txn, merged.pid, tokens::DEFAULT_PURPOSE).await?;
     }
-    Ok(result)
+    // The other purposes follow the same rule, each on its own (CRM-R29).
+    let purposes = crate::consents::tighten(
+        txn,
+        merged.pid,
+        survivor.pid,
+        &format!("unmerge:{}", survivor.pid),
+    )
+    .await?;
+    Ok((result, purposes))
 }
 
 /// What an unmerge did, for the audit entry and the event.
@@ -430,7 +434,7 @@ async fn unmerge(
     let dropped_restored = restore_dropped(&txn, &ledger, &before).await?;
     let (cleared, kept) = clear_filled(&txn, &ledger, &before).await?;
     let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
-    let result = bring_back(&txn, &merged, &survivor, now).await?;
+    let (result, purposes) = bring_back(&txn, &merged, &survivor, now).await?;
 
     let body = ContactUnmerge {
         survivor_pid,
@@ -445,6 +449,7 @@ async fn unmerge(
             survivor: survivor.marketing_consent.clone(),
             merged_before: merged.marketing_consent.clone(),
             merged_result: result.clone(),
+            purposes: purposes.clone(),
         },
     };
     if payload.dry_run {
@@ -474,6 +479,8 @@ pub(crate) struct UnmergeConsent {
     survivor: String,
     merged_before: String,
     merged_result: String,
+    /// The other purposes (`newsletter`, …) that either contact holds a state for.
+    purposes: Vec<crate::consents::PurposeOutcome>,
 }
 
 /// `POST /api/contacts/{pid}/unmerge`: what came back and what could not.

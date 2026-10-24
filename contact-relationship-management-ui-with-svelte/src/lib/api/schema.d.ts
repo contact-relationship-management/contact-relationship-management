@@ -2689,7 +2689,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Record consent (withdrawal exits nurture + blocks sends) */
+        /** Record consent for a purpose (default marketing); a withdrawal exits that purpose's nurture enrolments and blocks its sends */
         post: {
             parameters: {
                 query?: never;
@@ -2760,6 +2760,166 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contacts/{pid}/consent/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a double opt-in: the purpose becomes pending (never sends) and a confirmation link is returned for the caller to send (valid 7 days) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConsentRequestPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConsentRequested"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contacts/{pid}/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the contact stands on each consent purpose */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConsentPurposes"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3353,6 +3513,90 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contacts/{pid}/preferences-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A signed link (valid 90 days) to the page where the person grants or withdraws each purpose */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PreferencesLink"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -9030,6 +9274,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/confirm/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public: the page a double opt-in message links to (CRM-R29); changes nothing */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description HTML page */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Public: confirm the purpose the signed link names (pending becomes granted, source double_opt_in); a link whose purpose was withdrawn or never requested grants nothing */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description HTML page */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/metrics.prom": {
         parameters: {
             query?: never;
@@ -9058,6 +9354,67 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/preferences/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public: each consent purpose and its current state, with a button to start or stop it (CRM-R29) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description HTML page */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Public: grant or withdraw one purpose; form fields purpose and action (granted or withdrawn); recorded as a consent event with the source preference_page */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/x-www-form-urlencoded": {
+                        /** @enum {string} */
+                        action: "granted" | "withdrawn";
+                        /** @enum {string} */
+                        purpose: "marketing" | "newsletter" | "events" | "product_updates";
+                    };
+                };
+            };
+            responses: {
+                /** @description HTML page */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -9412,6 +9769,8 @@ export interface components {
             opened: number;
             /** Format: uuid */
             pid: string;
+            /** @description The consent purpose the campaign is sent under. */
+            purpose: string;
             /** Format: int32 */
             recipients: number;
             /** Format: uuid */
@@ -9460,6 +9819,12 @@ export interface components {
             /** @default email */
             kind: string;
             name: string;
+            /**
+             * @description The consent purpose it is sent under (`marketing` when absent): only contacts who
+             *     granted *that* purpose are sent to (CRM-R29).
+             * @default null
+             */
+            purpose: string | null;
             /**
              * Format: uuid
              * @default null
@@ -9532,6 +9897,8 @@ export interface components {
             occurred_at: string;
             /** Format: uuid */
             pid: string;
+            /** @description What the event was about (`marketing`, `newsletter`, …). */
+            purpose: string;
             source: string;
             /** Format: date-time */
             updated_at: string;
@@ -9539,7 +9906,56 @@ export interface components {
         /** @description `POST /api/contacts/{pid}/consent` body. */
         ConsentPayload: {
             action: string;
+            /** @description `marketing` (the default), `newsletter`, `events` or `product_updates`. */
+            purpose?: string | null;
             source: string;
+        };
+        /** @description One purpose and where the contact stands on it. */
+        ConsentPurpose: {
+            /**
+             * Format: date-time
+             * @description When it last changed; absent for a purpose nobody has asked about.
+             */
+            changed_at: string | null;
+            /** @description `marketing`, `newsletter`, `events` or `product_updates`. */
+            purpose: string;
+            /** @description `granted`, `withdrawn`, `never` or `pending`. */
+            state: string;
+        };
+        /** @description How one non-default purpose combined in a merge or an unmerge. */
+        ConsentPurposeOutcome: {
+            /** @description The receiving contact's state before. */
+            before: string;
+            /** @description The other contact's state. */
+            other: string;
+            /** @description The purpose. */
+            purpose: string;
+            /** @description The state the receiving contact has now: the stricter of the two. */
+            result: string;
+        };
+        /** @description `GET /api/contacts/{pid}/consents`: where the contact stands on each purpose. */
+        ConsentPurposes: {
+            purposes: components["schemas"]["ConsentPurpose"][];
+        };
+        /** @description `POST /api/contacts/{pid}/consent/request` body. */
+        ConsentRequestPayload: {
+            /** @description What is being asked for. */
+            purpose: string;
+            /** @description Where the request came from, kept with the event. */
+            source: string;
+        };
+        /** @description `POST /api/contacts/{pid}/consent/request` response. */
+        ConsentRequested: {
+            /**
+             * @description The page to put in the confirmation message. It changes nothing until its button
+             *     is pressed.
+             */
+            confirm_url: string;
+            /** Format: date-time */
+            expires_at: string;
+            purpose: string;
+            /** @description Always `pending`: nothing is sent until the person confirms. */
+            state: string;
         };
         Contact: {
             /** Format: uuid */
@@ -9649,6 +10065,11 @@ export interface components {
         /** @description How the two contacts' marketing consent combined. */
         ContactMergeConsent: {
             merged: string;
+            /**
+             * @description The other purposes (`newsletter`, …) that either contact holds a state for, each
+             *     combined on its own by the same rule.
+             */
+            purposes: components["schemas"]["ConsentPurposeOutcome"][];
             result: string;
             survivor: string;
         };
@@ -9723,6 +10144,8 @@ export interface components {
         ContactUnmergeConsent: {
             merged_before: string;
             merged_result: string;
+            /** @description The other purposes (`newsletter`, …) that either contact holds a state for. */
+            purposes: components["schemas"]["ConsentPurposeOutcome"][];
             survivor: string;
         };
         /** @description A `{pid}` reference response: the record a `POST` created. */
@@ -10380,6 +10803,8 @@ export interface components {
             name: string;
             /** Format: uuid */
             pid: string;
+            /** @description The consent purpose the sequence is sent under. */
+            purpose: string;
             /** Format: date-time */
             updated_at: string;
         };
@@ -10489,6 +10914,12 @@ export interface components {
              * @description 0-based place among the cards in the same column.
              */
             position: number;
+        };
+        /** @description `POST /api/contacts/{pid}/preferences-link` response. */
+        PreferencesLink: {
+            /** Format: date-time */
+            expires_at: string;
+            url: string;
         };
         /** @description `GET /api/segments/{pid}/preview`: how many contacts match, and a few names. */
         Preview: {
@@ -10645,6 +11076,11 @@ export interface components {
         /** @description `POST /api/nurture-sequences` body. */
         SequencePayload: {
             name: string;
+            /**
+             * @description The consent purpose it is sent under (`marketing` when absent).
+             * @default null
+             */
+            purpose: string | null;
             steps: components["schemas"]["StepPayload"][];
         };
         /** @description A nurture sequence with its steps and how many enrolments are active. */
@@ -10862,6 +11298,8 @@ export interface components {
             /** Format: date-time */
             as_of: string;
             consent_history: components["schemas"]["ConsentEvent"][];
+            /** @description Where the contact stands on each purpose now. */
+            consent_purposes: components["schemas"]["ConsentPurpose"][];
             contact: components["schemas"]["Contact"];
             deals_as_primary_contact: components["schemas"]["Deal"][];
             email_deliveries: components["schemas"]["EmailDelivery"][];

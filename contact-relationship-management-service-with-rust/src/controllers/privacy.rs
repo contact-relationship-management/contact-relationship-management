@@ -52,6 +52,8 @@ pub(crate) struct SubjectAccessExport {
     as_of: chrono::DateTime<chrono::Utc>,
     contact: contacts::Model,
     consent_history: Vec<consent_events::Model>,
+    /// Where the contact stands on each purpose now.
+    consent_purposes: Vec<crate::consents::PurposeState>,
     activities: Vec<activities::Model>,
     leads: Vec<leads::Model>,
     deals_as_primary_contact: Vec<deals::Model>,
@@ -97,8 +99,9 @@ async fn subject_access(
     let cpid = contact.pid;
     let export = SubjectAccessExport {
         as_of: chrono::Utc::now(),
-        contact,
+        contact: contact.clone(),
         consent_history: rows_for!(db, consent_events, ContactPid, cpid),
+        consent_purposes: crate::consents::all(db, &contact).await?,
         activities: rows_for!(db, activities, SubjectPid, cpid),
         leads: rows_for!(db, leads, ContactPid, cpid),
         deals_as_primary_contact: rows_for!(db, deals, PrimaryContactPid, cpid),
@@ -240,6 +243,12 @@ async fn erase(
             "UPDATE contact_merges SET merged_person_ref = '{TOMBSTONE_PERSON}' \
              WHERE survivor_pid = '{cpid}'"
         ),
+        // Every purpose is withdrawn, for this contact and the duplicates merged into it (CRM-R29).
+        format!(
+            "UPDATE contact_consents SET state = 'withdrawn', changed_at = now() \
+             WHERE contact_pid = '{cpid}' OR contact_pid IN \
+             (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
+        ),
     ];
     let mut affected = Vec::new();
     for statement in &statements {
@@ -259,6 +268,7 @@ async fn erase(
             "external_links_deleted": affected[3],
             "webhook_deliveries_cancelled": affected[4],
             "merged_duplicates_scrubbed": affected[5],
+            "purposes_withdrawn": affected[7],
         })),
     )
     .await?;

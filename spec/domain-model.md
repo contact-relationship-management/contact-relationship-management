@@ -11,8 +11,10 @@ security invariants.
 `person_ref` (`person:` URN, required), `account_pid` (nullable),
 `owner_ref` (`worker:` URN), `status` (`active | inactive`),
 `job_title`, `preferred_channel`, `marketing_consent`
-(`granted | withdrawn | never`), `consent_changed_at`, cached
-display name.
+(`granted | withdrawn | never | pending`; the state of the default purpose
+`marketing`, CRM-R29), `consent_changed_at`, cached display name. The other
+purposes (`newsletter`, `events`, `product_updates`) are rows of
+`contact_consents` (contact, purpose, state, changed_at); no row is `never`.
 
 **Account** — an organization relationship.
 `organization_ref` (`organization:` URN, required), `owner_ref`,
@@ -66,8 +68,9 @@ with `current_step`, `next_due_at`, `status`
 (`active | completed | exited`); exit on unsubscribe or conversion.
 
 **ConsentEvent** — append-only consent history per contact
-(`granted | withdrawn`, `source`, `occurred_at`) — the audit
-substrate behind `marketing_consent`.
+(`granted | withdrawn | pending`, `purpose`, `source`, `occurred_at`) — the audit
+substrate behind every purpose's state. A **Campaign** and a **NurtureSequence**
+name the `purpose` they are sent under (default `marketing`).
 
 ## Support
 
@@ -168,6 +171,6 @@ whose consent has stood withdrawn since before the horizon.
 `lead_captured`, `lead_scored`, `lead_converted`, `deal_opened`,
 `deal_stage_changed`, `deal_won` / `deal_lost`,
 `campaign_started` / `campaign_completed`, `consent_granted` /
-`consent_withdrawn`, `nurture_step_sent`, `ticket_opened`,
+`consent_withdrawn` / `consent_pending` (each for one purpose), `nurture_step_sent`, `ticket_opened`,
 `ticket_first_response`, `ticket_resolved` / `ticket_closed`,
 `sla_breached`, `article_published`.

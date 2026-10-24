@@ -30,6 +30,10 @@ pub(crate) struct CampaignPayload {
     /// Plain-text message body. Required before a campaign can really send.
     #[serde(default)]
     body: Option<String>,
+    /// The consent purpose it is sent under (`marketing` when absent): only contacts who
+    /// granted *that* purpose are sent to (CRM-R29).
+    #[serde(default)]
+    purpose: Option<String>,
 }
 
 /// Longest campaign message body accepted.
@@ -53,6 +57,7 @@ pub(super) async fn create_campaign(
     let mut problems = Problems::new();
     problems.require_text("name", &payload.name);
     problems.require_text("currency", &payload.currency);
+    problems.token_opt("purpose", tokens::PURPOSES, payload.purpose.as_deref());
     if payload.kind != "email" {
         problems.push("kind must be email (v1)".to_string());
     }
@@ -80,6 +85,12 @@ pub(super) async fn create_campaign(
     let row = campaigns::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         kind: ActiveValue::set(payload.kind.clone()),
+        purpose: ActiveValue::set(
+            payload
+                .purpose
+                .clone()
+                .unwrap_or_else(|| tokens::DEFAULT_PURPOSE.to_string()),
+        ),
         name: ActiveValue::set(payload.name.clone()),
         status: ActiveValue::set("draft".to_string()),
         cost_minor: ActiveValue::set(payload.cost_minor),
@@ -236,7 +247,11 @@ pub(super) async fn deliver_one(
         .filter(contacts::Column::DeletedAt.is_null())
         .one(&ctx.db)
         .await?;
-    let Some(contact) = contact.filter(|c| c.marketing_consent == "granted") else {
+    let granted = match &contact {
+        Some(c) => crate::consents::state_of(&ctx.db, c, &campaign.purpose).await? == "granted",
+        None => false,
+    };
+    let Some(contact) = contact.filter(|_| granted) else {
         deliveries::settle(
             &ctx.db,
             item.id,
@@ -434,7 +449,7 @@ pub(super) async fn run_batch(
         .segment_pid
         .ok_or_else(|| unprocessable("campaign has no segment"))?;
     let segment = records::find_segment(&ctx.db, segment_pid).await?;
-    let audience = evaluate_segment(&ctx.db, &segment).await?;
+    let audience = evaluate_segment(&ctx.db, &segment, &campaign.purpose).await?;
     let audience_pids: std::collections::HashSet<Uuid> = audience.iter().map(|c| c.pid).collect();
     let pids: Vec<Uuid> = audience.iter().map(|c| c.pid).collect();
     deliveries::ensure_rows(&ctx.db, campaign.pid, &pids).await?;

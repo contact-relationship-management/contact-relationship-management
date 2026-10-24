@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — consent per purpose and double opt-in (CRM-T96, CRM-R29)
+
+Consent is held per purpose: `marketing` (the original, still `contacts.marketing_consent`), `newsletter`, `events` and
+`product_updates`, each `granted`, `withdrawn`, `never` or the new `pending`. Only `granted` allows a send, and a
+campaign or nurture sequence now names the purpose it is sent under (default `marketing`; set `purpose` when creating
+it). `POST /api/contacts/{pid}/consent` takes an optional `purpose`; `GET /api/contacts/{pid}/consents` lists them all.
+`POST /api/contacts/{pid}/consent/request` starts a double opt-in and returns a signed link (7 days) whose page confirms on
+a button press, never on a plain visit, and never after a withdrawal. `POST /api/contacts/{pid}/preferences-link` returns a
+signed page (90 days) where the person starts or stops each purpose. An unsubscribe link withdraws the purpose of its own
+message only; a spam complaint withdraws all. Merge, unmerge and erasure apply per purpose. Existing data is the default
+purpose, unchanged. Needs migration 000021 (`scripts/migrate-consent-purposes.sh` checks it against populated data).
+
 ### Added — outbound webhooks (CRM-T95, CRM-R28)
 
 Admin and service callers register an `https` address and the events it wants (`contact.created`, `deal.*`, `*`) under

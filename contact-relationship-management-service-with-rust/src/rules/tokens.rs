@@ -8,11 +8,20 @@ pub const CONTACT_STATUSES: &[&str] = &["active", "inactive"];
 /// Preferred contact channels.
 pub const CHANNELS: &[&str] = &["email", "phone", "post", "none"];
 
-/// Marketing-consent states (CRM-R6). `never` = no consent event yet.
-pub const CONSENT_STATES: &[&str] = &["granted", "withdrawn", "never"];
+/// Consent states (CRM-R6, CRM-R29). `never` = no consent event yet; `pending` = a confirmation
+/// was asked for and has not come back. Only `granted` allows a send.
+pub const CONSENT_STATES: &[&str] = &["granted", "withdrawn", "never", "pending"];
 
-/// Consent event actions.
+/// Consent event actions a caller may record directly. `pending` comes only from a
+/// confirmation request (CRM-R29).
 pub const CONSENT_ACTIONS: &[&str] = &["granted", "withdrawn"];
+
+/// Consent purposes (CRM-R29), in a fixed order: a signed link names one by its index, so new
+/// ones go at the end. [`DEFAULT_PURPOSE`] is the original, kept in `contacts.marketing_consent`.
+pub const PURPOSES: &[&str] = &["marketing", "newsletter", "events", "product_updates"];
+
+/// The purpose a campaign or sequence without one is sent under.
+pub const DEFAULT_PURPOSE: &str = "marketing";
 
 /// Account relationship tiers.
 pub const ACCOUNT_TIERS: &[&str] = &["prospect", "customer", "partner", "former"];

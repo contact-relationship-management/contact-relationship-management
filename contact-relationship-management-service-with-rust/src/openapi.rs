@@ -37,6 +37,14 @@ fn public_operations() -> Value {
                 "get": { "tags": ["marketing"], "summary": "Public: the page an email's unsubscribe link opens; changes nothing", "security": [], "responses": ok("HTML page") },
                 "post": { "tags": ["marketing"], "summary": "Public: withdraw marketing consent through a signed link (RFC 8058 one-click); idempotent, body ignored", "security": [], "responses": ok("HTML page") }
             },
+            "/confirm/{token}": {
+                "get": { "tags": ["marketing"], "summary": "Public: the page a double opt-in message links to (CRM-R29); changes nothing", "security": [], "responses": ok("HTML page") },
+                "post": { "tags": ["marketing"], "summary": "Public: confirm the purpose the signed link names (pending becomes granted, source double_opt_in); a link whose purpose was withdrawn or never requested grants nothing", "security": [], "responses": ok("HTML page") }
+            },
+            "/preferences/{token}": {
+                "get": { "tags": ["marketing"], "summary": "Public: each consent purpose and its current state, with a button to start or stop it (CRM-R29)", "security": [], "responses": ok("HTML page") },
+                "post": { "tags": ["marketing"], "summary": "Public: grant or withdraw one purpose; form fields purpose and action (granted or withdrawn); recorded as a consent event with the source preference_page", "security": [], "requestBody": { "required": true, "content": { "application/x-www-form-urlencoded": { "schema": { "type": "object", "required": ["purpose", "action"], "properties": { "purpose": { "type": "string", "enum": ["marketing", "newsletter", "events", "product_updates"] }, "action": { "type": "string", "enum": ["granted", "withdrawn"] } } } } } }, "responses": ok("HTML page") }
+            },
             "/webhooks/email": { "post": { "tags": ["marketing"], "summary": "Public, HMAC-signed (X-CRM-Timestamp, X-CRM-Signature): a provider outcome for a message (delivered, bounce_hard, bounce_soft, complaint). Hard bounces and complaints suppress the mailbox; a complaint also withdraws consent. Each event is applied once", "security": [], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["message_id", "event"], "properties": { "message_id": { "type": "string" }, "event": { "type": "string", "enum": ["delivered", "bounce_hard", "bounce_soft", "complaint"] } } } } } }, "responses": ok("Result") } },
             "/webhooks/email/{provider}": { "post": { "tags": ["marketing"], "summary": "Public: a callback in the vendor's own format (provider is brevo, mailjet, ses, azure, mailgun or sendgrid). Authenticated by CRM_WEBHOOK_SECRET as a bearer token, basic-auth password or X-CRM-Webhook-Token; Mailgun by its own body signature (CRM_MAILGUN_SIGNING_KEY). Delivered, hard or soft bounce and complaints are applied as for /webhooks/email; other events are ignored", "security": [], "parameters": [{ "name": "provider", "in": "path", "required": true, "schema": { "type": "string", "enum": ["brevo", "mailjet", "ses", "azure", "mailgun", "sendgrid"] } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object" } } } }, "responses": ok("Result") } },
             "/metrics.prom": { "get": { "tags": ["ops"], "summary": "Prometheus metrics (public)", "responses": ok("Exposition text") } }
@@ -216,7 +224,7 @@ mod tests {
     ];
 
     /// `POST`/`PUT` operations that deliberately take no body.
-    const BODYLESS: [&str; 10] = [
+    const BODYLESS: [&str; 11] = [
         "post /unsubscribe/{}",
         "post /api/contacts/{}/erase",
         "post /api/campaigns/{}/run",
@@ -226,6 +234,7 @@ mod tests {
         "post /api/sla/sweep",
         "put /api/activities/{}/done",
         "post /api/webhook-subscriptions/relay",
+        "post /api/contacts/{}/preferences-link",
         "post /api/webhook-subscriptions/{}/rotate-secret",
     ];
 

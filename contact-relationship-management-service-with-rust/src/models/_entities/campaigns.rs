@@ -18,6 +18,8 @@ pub struct Model {
     #[sea_orm(unique)]
     pub pid: Uuid,
     pub kind: String,
+    /// The consent purpose the campaign is sent under.
+    pub purpose: String,
     pub name: String,
     pub status: String,
     /// Absent (`null`) when masked.

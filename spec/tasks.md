@@ -1299,7 +1299,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Audit and erasure:** create, rotate, remove and a `410` disable are audited without the address or secret. Erasing a contact cancels its queued deliveries and those of contacts merged into it (the erase audit row counts them).
       - **Tests:** 8 request tests (registration and refusals, signed once with ids only, no backlog, backoff to dead, `410`, rotation, erasure, removal) plus 2 for the real sender's refusals and a policy unit test. Service: 226 unit tests, 77 request tests, clippy clean (both feature sets). OpenAPI and the UI's generated types include the new routes.
       - **Limits (state to receivers):** at least once, so dedupe on `webhook-id`; events exist only under the `outbox` transport; a run sends at most 50 deliveries and fans out at most 500 events, so call it on a schedule; no replay button, per-subscription rate limit or log retention yet; every non-`2xx` except `410` is retried, including other `4xx`.
-- [ ] CRM-T96 **Consent per purpose and double opt-in.**
+- [x] CRM-T96 **Consent per purpose and double opt-in.**
   - **Model:** consent is held per purpose (for example newsletter, events, product updates), in place of the single `marketing_consent`. A new `pending` state never allows a send.
   - **Double opt-in:** a confirmation token moves `pending` to `granted`, and the event records its source and date.
   - **Preference page:** a signed-token page lets the subject change each purpose.
@@ -1309,6 +1309,16 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Source:** https://knowledge.hubspot.com/marketing-email/manage-your-marketing-hub-starter-email-account-settings
 
   (C2, M)
+      **Done (2026-10-24, not released):** requirement CRM-R29 first (and a line in CRM-R6), then:
+      - **Model:** four purposes (`marketing`, `newsletter`, `events`, `product_updates`) and four states (`granted`, `withdrawn`, `never`, `pending`). The default purpose stays in `contacts.marketing_consent`, so the 33 places that read it keep working and the existing rows *are* the default purpose with their history; the others are rows of `contact_consents` (no row is `never`). `consent_events`, `campaigns` and `nurture_sequences` gain a `purpose` (default `marketing`). Migration 000021.
+      - **Send gate:** campaign sends, nurture enrolment and the nurture sweep, and segment evaluation check the contact's state *for the campaign's or sequence's purpose*; only `granted` allows a send. Segment preview takes `?purpose=`.
+      - **Double opt-in:** `POST /api/contacts/{pid}/consent/request` makes the purpose `pending` and returns a 7-day signed confirmation link. `GET /confirm/{token}` changes nothing (mail scanners); the button `POST`s and grants with the source `double_opt_in`. A withdrawal since the request makes the link grant nothing.
+      - **Preference page:** `POST /api/contacts/{pid}/preferences-link` returns a 90-day signed link; `/preferences/{token}` lists each purpose and starts or stops one (source `preference_page`). Tokens carry a kind byte under the HMAC, so a preference token is not a confirmation token and neither is an unsubscribe token.
+      - **Unsubscribe** withdraws the purpose of the message's campaign or sequence, not the others; a spam complaint withdraws every purpose.
+      - **Merge and unmerge:** the stricter rule runs per purpose (order: withdrawn, never, pending, granted; tested for all 16 pairs), the previews show each purpose's outcome, and the events record `merge:` or `unmerge:` sources. Erasure withdraws every purpose of the contact and of contacts merged into it; the subject-access export lists each purpose's state.
+      - **Tests:** 6 request tests (gate per state and per purpose, double opt-in and stale links, preference page, unsubscribe by purpose, merge and unmerge, erasure and export), signed-link unit tests, the merge order. Service: 229 unit tests, 83 request tests, clippy clean for both feature sets. **Migration against populated data:** `scripts/migrate-consent-purposes.sh` (500 contacts in every state, their history, campaigns and sequences; rolls back and forward; all checks pass). The older `scripts/migrate-with-data.sh` is for migration 17.
+      - **Behaviour changes:** withdrawing `marketing` now exits only the enrolments in sequences sent under `marketing` (all of them, until sequences name another purpose); a complaint withdraws everything.
+      - **Not done:** sending the confirmation and preference messages (the caller does; CRM-T98's form will), translating the public pages (English only, like unsubscribe), a UI for purposes (the contact page still shows `marketing_consent`), and an editable purpose list.
 - [ ] CRM-T97 **MCP server.**
   - **Design:** a thin MCP layer over the existing endpoints, authenticated with the caller's own token and decided by the same ABAC and masking. Tools are read-only by default.
   - **Destructive tools:** merge, unmerge and erase are offered only as `dry_run` plus a confirmation that a person makes in the UI.

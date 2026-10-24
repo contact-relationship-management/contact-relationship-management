@@ -20,6 +20,8 @@ pub struct Model {
     pub contact_pid: Uuid,
     pub action: String,
     pub source: String,
+    /// What the event was about (`marketing`, `newsletter`, …).
+    pub purpose: String,
     pub occurred_at: DateTimeWithTimeZone,
 }
 

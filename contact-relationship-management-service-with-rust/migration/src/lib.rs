@@ -32,6 +32,7 @@ mod m20261019_000017_contact_merges;
 mod m20261020_000018_contact_unmerge;
 mod m20261020_000019_external_links;
 mod m20261024_000020_webhooks;
+mod m20261024_000021_consent_purposes;
 
 /// The crate's migrator.
 pub struct Migrator;
@@ -61,6 +62,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261020_000018_contact_unmerge::Migration),
             Box::new(m20261020_000019_external_links::Migration),
             Box::new(m20261024_000020_webhooks::Migration),
+            Box::new(m20261024_000021_consent_purposes::Migration),
             // inject-above (do not remove this comment)
         ]
     }

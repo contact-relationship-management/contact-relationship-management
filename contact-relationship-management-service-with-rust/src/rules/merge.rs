@@ -7,11 +7,13 @@
 use super::tokens::CONSENT_STATES;
 
 /// How restrictive a consent state is: higher is stricter. `withdrawn` (the
-/// person said no) beats `never` (no one asked), which beats `granted`.
+/// person said no) beats `never` (no one asked), which beats `pending` (asked, not yet
+/// confirmed), which beats `granted`.
 fn strictness(state: &str) -> u8 {
     match state {
-        "withdrawn" => 2,
-        "never" => 1,
+        "withdrawn" => 3,
+        "never" => 2,
+        "pending" => 1,
         _ => 0,
     }
 }
@@ -44,23 +46,24 @@ mod tests {
 
     #[test]
     fn the_stricter_state_wins_in_every_pair() {
-        let cases = [
-            ("granted", "granted", "granted"),
-            ("granted", "withdrawn", "withdrawn"),
-            ("withdrawn", "granted", "withdrawn"),
-            ("granted", "never", "never"),
-            ("never", "granted", "never"),
-            ("never", "never", "never"),
-            ("never", "withdrawn", "withdrawn"),
-            ("withdrawn", "never", "withdrawn"),
-            ("withdrawn", "withdrawn", "withdrawn"),
-        ];
-        for (survivor, merged, expected) in cases {
-            assert_eq!(
-                stricter_consent(survivor, merged),
-                expected,
-                "{survivor} + {merged}"
-            );
+        // Loosest first: the later of the two in this list wins, for all 16 pairs.
+        let order = ["granted", "pending", "never", "withdrawn"];
+        for (i, survivor) in order.iter().enumerate() {
+            for (j, merged) in order.iter().enumerate() {
+                assert_eq!(
+                    stricter_consent(survivor, merged),
+                    order[i.max(j)],
+                    "{survivor} + {merged}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_merge_never_turns_a_pending_or_a_no_into_a_grant() {
+        for state in ["pending", "never", "withdrawn"] {
+            assert_ne!(stricter_consent("granted", state), "granted");
+            assert_ne!(stricter_consent(state, "granted"), "granted");
         }
     }
 

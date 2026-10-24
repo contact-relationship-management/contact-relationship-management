@@ -16,6 +16,10 @@ use uuid::Uuid;
 
 type Tag = Hmac<Sha256>;
 
+/// Token kinds, inside the signed bytes.
+const KIND_CONFIRM: u8 = 1;
+const KIND_PREFERENCES: u8 = 2;
+
 /// Shortest accepted `CRM_UNSUBSCRIBE_SECRET`.
 const MIN_SECRET: usize = 32;
 
@@ -99,6 +103,69 @@ impl Unsubscriber {
         let contact = Uuid::from_slice(&payload[..16]).ok()?;
         let campaign = Uuid::from_slice(&payload[16..]).ok()?;
         Some((contact, campaign))
+    }
+
+    /// A signed token for a short-lived action: `kind`, the contact, one byte of detail and an
+    /// expiry (Unix seconds), all under the tag. The kind is inside the signed bytes, so a token
+    /// made for one purpose cannot be used for another, and none is mistaken for an
+    /// unsubscribe token (which is a different length).
+    fn seal(&self, kind: u8, contact: Uuid, detail: u8, expires: i64) -> String {
+        let mut payload = Vec::with_capacity(26 + 32);
+        payload.push(kind);
+        payload.extend_from_slice(contact.as_bytes());
+        payload.push(detail);
+        payload.extend_from_slice(&expires.to_be_bytes());
+        let tag = self.mac(&payload).finalize().into_bytes();
+        payload.extend_from_slice(&tag);
+        URL_SAFE_NO_PAD.encode(payload)
+    }
+
+    /// The contact and detail of a genuine, unexpired token of `kind`.
+    fn unseal(&self, token: &str, kind: u8, now: i64) -> Option<(Uuid, u8)> {
+        let bytes = URL_SAFE_NO_PAD.decode(token).ok()?;
+        if bytes.len() != 26 + 32 {
+            return None;
+        }
+        let (payload, tag) = bytes.split_at(26);
+        self.mac(payload).verify_slice(tag).ok()?;
+        if payload[0] != kind {
+            return None;
+        }
+        let expires = i64::from_be_bytes(payload[18..26].try_into().ok()?);
+        if expires < now {
+            return None;
+        }
+        Some((Uuid::from_slice(&payload[1..17]).ok()?, payload[17]))
+    }
+
+    /// A confirmation token for double opt-in: the contact and the purpose's index.
+    #[must_use]
+    pub fn confirm_token(&self, contact: Uuid, purpose_index: u8, expires: i64) -> String {
+        self.seal(KIND_CONFIRM, contact, purpose_index, expires)
+    }
+
+    /// The contact and purpose index a genuine, unexpired confirmation token names.
+    #[must_use]
+    pub fn verify_confirm(&self, token: &str, now: i64) -> Option<(Uuid, u8)> {
+        self.unseal(token, KIND_CONFIRM, now)
+    }
+
+    /// A token for the preference page.
+    #[must_use]
+    pub fn preferences_token(&self, contact: Uuid, expires: i64) -> String {
+        self.seal(KIND_PREFERENCES, contact, 0, expires)
+    }
+
+    /// The contact a genuine, unexpired preference token names.
+    #[must_use]
+    pub fn verify_preferences(&self, token: &str, now: i64) -> Option<Uuid> {
+        self.unseal(token, KIND_PREFERENCES, now).map(|(c, _)| c)
+    }
+
+    /// A link on the public address: `path` is `confirm` or `preferences`.
+    #[must_use]
+    pub fn link(&self, path: &str, token: &str) -> String {
+        format!("{}/{path}/{token}", self.base)
     }
 
     /// The full link put in a message.
@@ -191,6 +258,36 @@ mod tests {
         let other = Unsubscriber::new(&SECRET.replace('0', "9"), "https://x.test", true).unwrap();
         let token = other.token(Uuid::new_v4(), Uuid::new_v4());
         assert_eq!(make().verify(&token), None);
+    }
+
+    #[test]
+    fn a_confirmation_token_names_its_contact_and_purpose_and_expires() {
+        let (u, c) = (make(), Uuid::new_v4());
+        let token = u.confirm_token(c, 2, 1_000);
+        assert_eq!(u.verify_confirm(&token, 999), Some((c, 2)));
+        assert_eq!(u.verify_confirm(&token, 1_000), Some((c, 2)));
+        assert_eq!(u.verify_confirm(&token, 1_001), None, "expired");
+        // Not the other kind of token, and not an unsubscribe token.
+        assert_eq!(u.verify_preferences(&token, 0), None);
+        assert_eq!(u.verify(&token), None);
+        assert_eq!(u.verify_confirm(&u.token(c, Uuid::new_v4()), 0), None);
+        // Changing the purpose byte breaks the tag.
+        let mut bytes = URL_SAFE_NO_PAD.decode(&token).unwrap();
+        bytes[17] = 3;
+        assert_eq!(u.verify_confirm(&URL_SAFE_NO_PAD.encode(bytes), 0), None);
+    }
+
+    #[test]
+    fn a_preference_token_names_its_contact_and_expires() {
+        let (u, c) = (make(), Uuid::new_v4());
+        let token = u.preferences_token(c, 50);
+        assert_eq!(u.verify_preferences(&token, 49), Some(c));
+        assert_eq!(u.verify_preferences(&token, 51), None);
+        assert_eq!(u.verify_confirm(&token, 0), None);
+        assert!(
+            u.link("preferences", &token)
+                .starts_with("https://crm.example.org/preferences/")
+        );
     }
 
     #[test]

@@ -56,22 +56,30 @@ pub(super) async fn create_segment(
     })
 }
 
-/// The contacts a segment matches right now (consent-gated).
+/// The contacts a segment matches right now, gated on consent for `purpose`.
 pub(super) async fn evaluate_segment(
     db: &DatabaseConnection,
     segment: &segments::Model,
+    purpose: &str,
 ) -> Result<Vec<contacts::Model>> {
     let filter: segment_rules::Filter =
         serde_json::from_value(segment.filter.clone()).unwrap_or_default();
     let all = contacts::Entity::find_live().all(db).await?;
     let mut matched = Vec::new();
     for contact in all {
-        let facts = contact_facts(db, &contact).await?;
+        let facts = contact_facts(db, &contact, purpose).await?;
         if segment_rules::matches(&filter, &facts) {
             matched.push(contact);
         }
     }
     Ok(matched)
+}
+
+/// `GET /api/segments/{pid}/preview` query.
+#[derive(Debug, Deserialize)]
+pub(super) struct PreviewQuery {
+    /// The consent purpose to gate on (`marketing` when absent).
+    purpose: Option<String>,
 }
 
 /// `GET /api/segments/{pid}/preview`: how many contacts match, and a few names.
@@ -87,9 +95,14 @@ pub(crate) struct Preview {
 pub(super) async fn preview_segment(
     State(ctx): State<AppContext>,
     PidPath(pid): PidPath,
+    axum::extract::Query(query): axum::extract::Query<PreviewQuery>,
 ) -> Result<Response> {
+    let mut problems = Problems::new();
+    problems.token_opt("purpose", tokens::PURPOSES, query.purpose.as_deref());
+    problems.finish()?;
     let segment = records::find_segment(&ctx.db, pid).await?;
-    let matched = evaluate_segment(&ctx.db, &segment).await?;
+    let purpose = query.purpose.as_deref().unwrap_or(tokens::DEFAULT_PURPOSE);
+    let matched = evaluate_segment(&ctx.db, &segment, purpose).await?;
     let sample: Vec<_> = matched
         .iter()
         .take(5)

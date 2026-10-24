@@ -26,6 +26,7 @@ use crate::models::_entities::{consent_events, contact_merges, contacts};
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
 use crate::rules::merge as rules;
+use crate::rules::tokens;
 use crate::streaming;
 use crate::validation::Problems;
 
@@ -263,7 +264,11 @@ async fn combine(
     txn: &DatabaseTransaction,
     survivor: contacts::Model,
     merged: &contacts::Model,
-) -> Result<(Vec<&'static str>, String)> {
+) -> Result<(
+    Vec<&'static str>,
+    String,
+    Vec<crate::consents::PurposeOutcome>,
+)> {
     let mut filled = Vec::new();
     let mut note = |name: &'static str, was_empty: bool, has_value: bool| {
         if was_empty && has_value {
@@ -332,14 +337,13 @@ async fn combine(
     }
     active.update(txn).await?;
     if consent == "withdrawn" {
-        // A withdrawal exits every active enrolment, moved ones included.
-        txn.execute_unprepared(&format!(
-            "UPDATE nurture_enrollments SET status = 'exited', next_due_at = NULL \
-             WHERE contact_pid = '{pid}' AND status = 'active' AND deleted_at IS NULL"
-        ))
-        .await?;
+        // A withdrawal exits every active enrolment of that purpose, moved ones included.
+        crate::consents::exit_enrolments(txn, pid, tokens::DEFAULT_PURPOSE).await?;
     }
-    Ok((filled, consent))
+    // The other purposes follow the same rule, each on its own (CRM-R29).
+    let purposes =
+        crate::consents::tighten(txn, pid, merged.pid, &format!("merge:{}", merged.pid)).await?;
+    Ok((filled, consent, purposes))
 }
 
 /// Lock both contacts, in a fixed order so two merges (or a merge and an
@@ -465,6 +469,9 @@ pub(crate) struct MergeConsent {
     survivor: String,
     merged: String,
     result: String,
+    /// The other purposes (`newsletter`, …) that either contact holds a state for, each
+    /// combined on its own by the same rule.
+    purposes: Vec<crate::consents::PurposeOutcome>,
 }
 
 /// `POST /api/contacts/{pid}/merge`: what moved, what was dropped, what was filled.
@@ -511,7 +518,7 @@ async fn merge(
         merged.marketing_consent.clone(),
     );
     let moved = move_rows(&txn, survivor_pid, merged_pid).await?;
-    let (filled, consent) = combine(&txn, survivor, &merged).await?;
+    let (filled, consent, purposes) = combine(&txn, survivor, &merged).await?;
 
     let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
     let mut gone: contacts::ActiveModel = merged.clone().into();
@@ -532,6 +539,7 @@ async fn merge(
             survivor: before.0.clone(),
             merged: before.1.clone(),
             result: consent.clone(),
+            purposes: purposes.clone(),
         },
     };
     if payload.dry_run {

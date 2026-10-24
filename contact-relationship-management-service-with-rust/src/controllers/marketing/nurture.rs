@@ -5,7 +5,7 @@ use super::{
     MaybeAuthUser, Metrics, PidRef, Problems, QueryFilter, QueryOrder, QuerySelect, Response,
     Result, State, TransactionTrait, Uuid, activities, clients, contacts, debug_handler,
     deliveries, format, mail, nurture_enrollments, nurture_sequences, nurture_steps, records,
-    streaming, unprocessable, with_unsubscribe,
+    streaming, tokens, unprocessable, with_unsubscribe,
 };
 use crate::controllers::PidPath;
 use crate::json::Json;
@@ -17,6 +17,9 @@ use crate::models::live::FindLive;
 pub(crate) struct SequencePayload {
     name: String,
     steps: Vec<StepPayload>,
+    /// The consent purpose it is sent under (`marketing` when absent).
+    #[serde(default)]
+    purpose: Option<String>,
 }
 
 /// One nurture step.
@@ -45,6 +48,7 @@ pub(super) async fn create_sequence(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("name", &payload.name);
+    problems.token_opt("purpose", tokens::PURPOSES, payload.purpose.as_deref());
     if payload.steps.is_empty() || payload.steps.len() > 32 {
         problems.push("a sequence needs 1-32 steps".to_string());
     }
@@ -75,6 +79,12 @@ pub(super) async fn create_sequence(
     let sequence = nurture_sequences::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         name: ActiveValue::set(payload.name.clone()),
+        purpose: ActiveValue::set(
+            payload
+                .purpose
+                .clone()
+                .unwrap_or_else(|| tokens::DEFAULT_PURPOSE.to_string()),
+        ),
         deleted_at: ActiveValue::set(None),
         ..Default::default()
     }
@@ -121,8 +131,11 @@ pub(super) async fn enroll(
 ) -> Result<Response> {
     let sequence = records::find_sequence(&ctx.db, pid).await?;
     let contact = records::find_contact(&ctx.db, payload.contact_pid).await?;
-    if contact.marketing_consent != "granted" {
-        return Err(unprocessable("contact has not granted marketing consent"));
+    if crate::consents::state_of(&ctx.db, &contact, &sequence.purpose).await? != "granted" {
+        return Err(unprocessable(&format!(
+            "contact has not granted {} consent",
+            sequence.purpose
+        )));
     }
     let first_step = nurture_steps::Entity::find()
         .filter(nurture_steps::Column::SequencePid.eq(sequence.pid))
@@ -347,7 +360,12 @@ pub(super) async fn advance_nurture(
         }
         // Send-time consent re-check (CRM-D6).
         let contact = records::find_contact(&txn, row.contact_pid).await?;
-        if contact.marketing_consent != "granted" {
+        let purpose = nurture_sequences::Entity::find()
+            .filter(nurture_sequences::Column::Pid.eq(row.sequence_pid))
+            .one(&txn)
+            .await?
+            .map_or_else(|| tokens::DEFAULT_PURPOSE.to_string(), |q| q.purpose);
+        if crate::consents::state_of(&txn, &contact, &purpose).await? != "granted" {
             exit_enrollment(row, &txn).await?;
             txn.commit().await?;
             continue;

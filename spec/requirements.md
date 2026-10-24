@@ -79,7 +79,8 @@ consented to.*
 
 - `marketing_consent` per contact with append-only ConsentEvent
   history; unsubscribe withdraws immediately, exits active nurture
-  enrolments, and blocks all sends until an explicit re-grant.
+  enrolments, and blocks all sends until an explicit re-grant. Consent is held
+  per purpose (CRM-R29); `marketing_consent` is the original, default purpose.
 - The send path (campaign + nurture) re-checks consent **at send
   time**; segments implicitly require `consent = granted`.
 
@@ -464,3 +465,44 @@ change, so another system can react without polling.*
   merged into it. Nothing personal is stored in a delivery.
 - Not built: a retry or replay button, per-subscription rate limits, payload
   customisation, and delivery of events written under the `memory` transport.
+
+## CRM-R29 — Consent per purpose, and double opt-in
+
+*As a compliance owner I can show that each kind of message was consented to
+for that kind, and that an address was confirmed by its owner before anything
+was sent to it.*
+
+- Consent is held **per purpose**: `marketing` (the original purpose, kept in
+  `marketing_consent`, so everything that read it still does), `newsletter`,
+  `events` and `product_updates`. A purpose nobody has asked about is `never`.
+  Purposes are independent: withdrawing one changes no other.
+- A consent state is `granted`, `withdrawn`, `never` or **`pending`**. `pending`
+  means a confirmation was asked for and has not come back. **Only `granted`
+  allows a send**, for every send path (campaign, nurture, segments): a
+  campaign and a nurture sequence each name a purpose (default `marketing`),
+  and the contact's state *for that purpose* is checked at send time (CRM-D6).
+- Every consent event records its purpose, source and date; history is
+  append-only and existing events are `marketing` events.
+- **Double opt-in.** `POST /api/contacts/{pid}/consent/request` with a purpose
+  and a source moves the purpose to `pending` and returns a confirmation link
+  (valid 7 days). The link's page changes nothing on `GET` (mail scanners follow
+  links); its button `POST`s and moves `pending` to `granted` with the source
+  `double_opt_in`. If the person withdrew in the meantime the link no longer
+  works: a confirmation never overrides a withdrawal. Sending the confirmation
+  mail is the caller's job (CRM-T98's form does it); this service makes the
+  link.
+- **Preference page.** `POST /api/contacts/{pid}/preferences-link` returns a
+  signed link (valid 90 days). Its page shows each purpose and lets the holder
+  grant or withdraw it; each change is an ordinary consent event with the source
+  `preference_page`.
+- **Unsubscribe** from a message withdraws the purpose of that message's campaign or
+  sequence, and no other. A message whose purpose cannot be found withdraws `marketing`.
+- **Merge and unmerge** (CRM-R24, CRM-R26) apply the stricter-side rule to every
+  purpose separately. The order, strictest first: `withdrawn`, `never`,
+  `pending`, `granted`. A pending confirmation held by the merged-away contact
+  does not carry over.
+- Erasure (CRM-R20) withdraws every purpose of the contact and of contacts
+  merged into it.
+- Not built: sending the confirmation or preference mail, translating the public
+  pages, a purpose list an administrator can edit (the four are fixed in code),
+  and consent per channel.
