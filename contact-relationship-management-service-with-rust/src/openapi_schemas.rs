@@ -85,6 +85,10 @@ fn generated() -> serde_json::Map<String, Value> {
         marketing::campaign::Deliveries,
         marketing::campaign::CampaignFunnel,
         dashboards::ActivityDashboard,
+        dashboards::SalesDashboard,
+        dashboards::SlaDashboard,
+        dashboards::Clv,
+        crate::models::_entities::audit_logs::Model,
         crate::rules::analytics::Ratio,
         support::TicketDetail,
         support::SlaSweep,
@@ -222,18 +226,6 @@ fn view_schemas() -> Value {
     json!({
         // ---- detail reads
         // ---- sales and analytics
-        "Clv": object(&["account_pid", "won_deals", "clv_minor", "as_of"], &json!({
-            "account_pid": uuid(), "won_deals": integer(), "clv_minor": money_by_currency(),
-            "as_of": date_time() })),
-        "SalesDashboard": view(&["win_rate", "open_deals", "pipeline_by_stage"], &json!({
-            "win_rate": reference("Ratio"), "open_deals": integer(),
-            "pipeline_by_stage": { "type": "object", "additionalProperties":
-                object(&["count", "totals_minor"], &json!({
-                    "count": integer(), "totals_minor": masked_money_by_currency() })) } })),
-        "SlaDashboard": view(&["open_tickets", "by_priority"], &json!({
-            "open_tickets": integer(),
-            "by_priority": { "type": "array", "items": object(&["priority", "open", "breached"],
-                &json!({ "priority": string(), "open": integer(), "breached": integer() })) } })),
         // ---- marketing and support
         "SequenceView": object(&["sequence", "steps", "active_enrollments"], &json!({
             "sequence": { "type": "object" }, "steps": { "type": "array", "items": { "type": "object" } },
@@ -252,12 +244,6 @@ fn view_schemas() -> Value {
             "exclusions": strings() })),
         // ---- break-glass
         // ---- audit and events
-        "AuditEntry": resource(&["id", "entity", "entity_pid", "action", "created_at"], &json!({
-            "id": { "type": "integer", "format": "int64" }, "entity": string(),
-            "entity_pid": uuid(), "action": string(), "actor": nullable(string()),
-            "snapshot": { "nullable": true, "description": "Free-form facts of the change" },
-            "prev_hash": nullable(string()), "hash": nullable(string()),
-            "created_at": date_time(), "updated_at": date_time() })),
         "Event": { "oneOf": [
             object(&["kind", "pid", "name", "seq"], &json!({
                 "kind": string(), "pid": string(), "name": string(), "seq": integer() })),

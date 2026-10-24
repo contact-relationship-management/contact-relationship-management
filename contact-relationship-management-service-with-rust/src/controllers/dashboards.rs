@@ -89,6 +89,56 @@ async fn open_deals_by_stage(
     Ok((totals, open_deals))
 }
 
+/// One stage of the sales dashboard.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "SalesDashboardStage")]
+pub(crate) struct StageTotals {
+    count: usize,
+    /// Minor units per ISO 4217 code, never summed across currencies; `null` when masked.
+    totals_minor: Option<std::collections::BTreeMap<String, i64>>,
+}
+
+/// `GET /api/dashboards/sales`. `as_of` is stamped by [`conditional`], after the `ETag` is taken.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct SalesDashboard {
+    win_rate: analytics::Ratio,
+    open_deals: usize,
+    pipeline_by_stage: std::collections::BTreeMap<String, StageTotals>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// One priority row of the SLA dashboard.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "SlaDashboardPriority")]
+pub(crate) struct PriorityRow {
+    priority: String,
+    open: i64,
+    breached: i64,
+}
+
+/// `GET /api/dashboards/sla`.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct SlaDashboard {
+    open_tickets: usize,
+    by_priority: Vec<PriorityRow>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// `GET /api/accounts/{pid}/clv`.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[allow(clippy::struct_field_names)] // `clv_minor` is the response member clients read
+pub(crate) struct Clv {
+    account_pid: Uuid,
+    won_deals: usize,
+    /// Minor units per ISO 4217 code, never summed across currencies.
+    clv_minor: std::collections::BTreeMap<String, i64>,
+    as_of: chrono::DateTime<chrono::Utc>,
+}
+
 /// `GET /api/dashboards/sales` — win rate + pipeline value by stage
 /// (per currency) over live data.
 #[debug_handler]
@@ -105,27 +155,30 @@ async fn sales_dashboard(
     );
     // Pipeline value by stage, per currency.
     let (totals, open_deals) = open_deals_by_stage(&ctx.db).await?;
-    let mut by_stage: std::collections::BTreeMap<String, serde_json::Value> = totals
+    // Counts and structure stay visible when masked; the money is absent, never zero.
+    let by_stage: std::collections::BTreeMap<String, StageTotals> = totals
         .into_iter()
         .map(|(stage, (count, by_currency))| {
             (
                 stage,
-                serde_json::json!({ "count": count, "totals_minor": by_currency }),
+                StageTotals {
+                    count,
+                    totals_minor: (!masked).then_some(by_currency),
+                },
             )
         })
         .collect();
     Metrics::global()
         .deals_open
         .set(i64::try_from(open_deals).unwrap_or(i64::MAX));
-    if masked {
-        // Counts and structure stay visible; the money is absent, never zero.
-        for entry in by_stage.values_mut() {
-            *entry = crate::auth::mask_json(entry.take(), &["totals_minor"]);
-        }
-    }
     Ok(conditional(
         &headers,
-        serde_json::json!({ "win_rate": rate, "open_deals": open_deals, "pipeline_by_stage": by_stage }),
+        serde_json::json!(SalesDashboard {
+            win_rate: rate,
+            open_deals,
+            pipeline_by_stage: by_stage,
+            as_of: None,
+        }),
     ))
 }
 
@@ -156,15 +209,21 @@ async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Res
     Metrics::global()
         .tickets_open
         .set(i64::try_from(open.len()).unwrap_or(i64::MAX));
-    let rows: Vec<serde_json::Value> = by_priority
+    let rows: Vec<PriorityRow> = by_priority
         .into_iter()
-        .map(|(priority, (count, breached))| {
-            serde_json::json!({ "priority": priority, "open": count, "breached": breached })
+        .map(|(priority, (open, breached))| PriorityRow {
+            priority,
+            open,
+            breached,
         })
         .collect();
     Ok(conditional(
         &headers,
-        serde_json::json!({ "open_tickets": open.len(), "by_priority": rows }),
+        serde_json::json!(SlaDashboard {
+            open_tickets: open.len(),
+            by_priority: rows,
+            as_of: None,
+        }),
     ))
 }
 
@@ -183,12 +242,12 @@ async fn account_clv(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Re
         .map(|deal| (deal.amount_minor, deal.currency.clone()))
         .collect();
     let totals = analytics::clv_by_currency(&inputs).map_err(|e| super::unprocessable(&e))?;
-    format::json(serde_json::json!({
-        "account_pid": account.pid,
-        "won_deals": won.len(),
-        "clv_minor": totals,
-        "as_of": chrono::Utc::now(),
-    }))
+    format::json(Clv {
+        account_pid: account.pid,
+        won_deals: won.len(),
+        clv_minor: totals,
+        as_of: chrono::Utc::now(),
+    })
 }
 
 /// `GET /api/dashboards/activity?days=`: activity counts by kind in the window.
