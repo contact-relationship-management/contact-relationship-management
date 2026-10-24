@@ -46,6 +46,7 @@ pub fn app_routes() -> AppRoutes {
         .add_route(controllers::break_glass::routes())
         .add_route(controllers::webhooks::routes())
         .add_route(controllers::notifications::routes())
+        .add_route(controllers::search::routes())
         .add_route(controllers::docs::routes())
         .add_route(controllers::metrics::routes())
 }

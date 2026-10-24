@@ -13,6 +13,7 @@
 // `MAX_DEMO_SESSIONS` copies are kept; the least recently used goes first, and
 // a visitor whose copy went starts again from the original data.
 
+import { matches } from "#lib/search.js";
 import type {
   Account,
   Activity,
@@ -1877,6 +1878,45 @@ export function demoHandle(
     if (tail === "unmerge" && post) return unmergeContact(id!, body);
     if (tail === "external-links" && (get || post))
       return recordLinks("contact", id!, method, body);
+  }
+  if (head === "search" && get) {
+    const q = query.get("q") ?? "";
+    if (q.trim().length < 2) return ok([]);
+    const hit = (
+      kind: string,
+      pid: string,
+      title: string,
+      detail: string | null | undefined,
+      fields: (string | null | undefined)[],
+    ) =>
+      matches(fields, q) ? [{ kind, pid, title, detail: detail ?? null }] : [];
+    return ok([
+      ...state.contacts.flatMap((c) =>
+        hit("contact", c.pid, c.display_name, c.job_title, [
+          c.display_name,
+          c.job_title,
+        ]),
+      ),
+      ...state.accounts.flatMap((a) =>
+        hit("account", a.pid, a.display_name, a.industry, [
+          a.display_name,
+          a.industry,
+        ]),
+      ),
+      ...state.leads.flatMap((l) =>
+        hit("lead", l.pid, l.display_name, null, [l.display_name]),
+      ),
+      ...state.deals.flatMap((d) => hit("deal", d.pid, d.name, null, [d.name])),
+      ...state.tickets.flatMap((x) =>
+        hit("ticket", x.pid, x.title, x.status, [x.title]),
+      ),
+      ...state.campaigns.flatMap((c) =>
+        hit("campaign", c.pid, c.name, c.status, [c.name]),
+      ),
+      ...state.articles.flatMap((a) =>
+        hit("article", a.pid, a.title, a.status, [a.title, a.body]),
+      ),
+    ]);
   }
   if (head === "notifications") {
     const unread = state.notifications.filter((n) => n.read_at === null);

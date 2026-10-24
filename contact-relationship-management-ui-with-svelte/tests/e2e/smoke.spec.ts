@@ -891,7 +891,7 @@ test.describe("header pickers: pages and search", () => {
       status: "active",
       marketing_consent: "granted",
     });
-    // Every list is empty unless stubbed below (later routes win).
+    // Every list is empty unless stubbed below (later routes win). The service does the search.
     await page.route("**/api/proxy/*", (route) => route.fulfill({ json: [] }));
     await page.route("**/api/proxy/contacts", (route) =>
       route.fulfill({
@@ -901,14 +901,20 @@ test.describe("header pickers: pages and search", () => {
         ],
       }),
     );
-    await page.route("**/api/proxy/tickets", (route) =>
+    await page.route("**/api/proxy/search?*", (route) =>
       route.fulfill({
         json: [
           {
+            kind: "contact",
+            pid: "c1",
+            title: "Ada Lovelace",
+            detail: "Engineer",
+          },
+          {
+            kind: "ticket",
             pid: "t1",
             title: "Ada's laptop will not boot",
-            priority: "high",
-            status: "open",
+            detail: "open",
           },
         ],
       }),

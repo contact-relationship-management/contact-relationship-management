@@ -647,3 +647,30 @@ for records I am allowed to see.*
 - Erasure (CRM-R20) deletes notifications about the contact.
 - Not built: a form in the UI to give a task an assignee or reminder (the API takes them), email or push delivery of
   notifications, per-user preferences, snoozing, recurring tasks, an assignee filter on the follow-ups view, and reading the recipient's real attributes at write time.
+
+## CRM-R33 — Find a record by typing part of its name
+
+*As anyone using the CRM, I can type a few letters of a name, with or without accents and even with a
+typo, and be shown the matching contacts, accounts, leads, deals, tickets, campaigns and articles I am
+allowed to see.*
+
+- `GET /api/search?q=` searches the name or title of contacts (and job title), accounts (and industry),
+  leads (and the domain of their address), deals, tickets, campaigns, and articles (title, keywords and
+  body). It uses PostgreSQL full text (`tsvector`, `simple` configuration, every word a prefix) and
+  trigram similarity (`pg_trgm`), both over text folded with `unaccent` and lower-cased, so `zoe` finds
+  `Zoë` and `lovelase` finds `Lovelace`. Both are indexed (migration `000024` enables the two extensions,
+  so the database role that runs migrations must be allowed to).
+- `q` is 2 to 100 characters; only letters and digits of at most eight words are used. Anything else is
+  `422`. Results are `{ kind, pid, title, detail }`, best match first, paged like the other lists
+  (`limit`, `cursor`); a hit carries no more than the name and one plain descriptor (job title, industry,
+  status, or an address domain).
+- **Access.** A record the caller may not read (the record-level policy for contacts and deals) is left
+  out. Search shows names, which the lists already show to a caller whose reads carry the `mask`
+  obligation; masked fields (a contact's preferred channel, deal amounts) are neither searched nor
+  returned, so masking cannot be got around by searching.
+- **Audit.** The read is audited with how many were returned, never the text searched for.
+- The UI search page calls this when the service is present instead of filtering the lists in the
+  browser.
+- Not searchable, because they are encrypted at rest and cannot be indexed: activity summaries and a
+  contact's preferred channel. The CRM stores no email address, so none is searched. Pages are cut after
+  the policy filter, so a page can hold fewer than `limit` hits while more follow.

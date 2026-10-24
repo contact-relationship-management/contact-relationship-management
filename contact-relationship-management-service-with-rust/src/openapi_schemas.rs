@@ -39,7 +39,7 @@ fn reference(name: &str) -> Value {
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         audits, board, break_glass, dashboards, engagement, external_links, insights, marketing,
-        merge, notifications, privacy, relationships, sales, support, unmerge, webhooks,
+        merge, notifications, privacy, relationships, sales, search, support, unmerge, webhooks,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -153,6 +153,7 @@ fn generated() -> serde_json::Map<String, Value> {
         support::TicketDetail,
         support::SlaSweep,
         notifications::Notification,
+        search::SearchHit,
         notifications::UnreadCount,
         notifications::MarkedRead,
         crate::notifications::Outcome,
@@ -370,6 +371,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/audits/recent" | "/api/audits" | "/api/audits/{entity_pid}" => "AuditEntry",
         "/api/events/recent" => "Event",
         "/api/notifications" => "Notification",
+        "/api/search" => "SearchHit",
         "/api/webhook-subscriptions" => "WebhookSubscription",
         "/api/webhook-subscriptions/{pid}/deliveries" => "WebhookDelivery",
         _ => return None,

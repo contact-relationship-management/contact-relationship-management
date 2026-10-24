@@ -877,3 +877,78 @@ async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_rea
     })
     .await;
 }
+
+/// CRM-R33: search leaves out a contact the policy denies the caller, shows a masked caller only
+/// names (never the masked field), and needs a token.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn search_leaves_out_what_the_caller_may_not_read() {
+    use sea_orm::ConnectionTrait;
+    let (keys, kid) = keys_and_kid();
+    settings::update(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let reader = sign_as(&kid, "search-reader", &[]);
+    let writer = sign_as(&kid, "search-writer", &[("access", &["write"])]);
+    let service = sign_as(&kid, "search-svc", &[("svc", &["true"])]);
+
+    request::<App, _, _>(|request, ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let mut pids = Vec::new();
+        for name in ["Wexford Open", "Wexford Hidden"] {
+            let created: Value = request
+                .post("/api/contacts")
+                .add_header("authorization", bearer(&writer))
+                .json(
+                    &json!({ "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                               "display_name": name, "preferred_channel": "phone" }),
+                )
+                .await
+                .json();
+            pids.push(created["pid"].as_str().unwrap().to_string());
+        }
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
+                pids[1]
+            ))
+            .await
+            .unwrap();
+        assert_eq!(
+            request.get("/api/search?q=wexford").await.status_code(),
+            401
+        );
+        let as_reader: Vec<Value> = request
+            .get("/api/search?q=wexford")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        let found: Vec<&str> = as_reader
+            .iter()
+            .map(|h| h["pid"].as_str().unwrap())
+            .collect();
+        assert_eq!(found, [pids[0].as_str()], "the denied contact is left out");
+        assert!(
+            !as_reader[0].to_string().contains("phone"),
+            "no masked field is returned"
+        );
+        // A machine peer may read both.
+        let as_service: Vec<Value> = request
+            .get("/api/search?q=wexford")
+            .add_header("authorization", bearer(&service))
+            .await
+            .json();
+        assert_eq!(as_service.len(), 2);
+        // Searching for the masked field's value finds nothing: it is not indexed.
+        let by_channel: Vec<Value> = request
+            .get("/api/search?q=phone")
+            .add_header("authorization", bearer(&service))
+            .await
+            .json();
+        assert!(by_channel.is_empty());
+    })
+    .await;
+}

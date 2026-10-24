@@ -35,6 +35,8 @@ Notifications (CRM-R32) audit under the entity `notification`: `notifications_sw
 when something happened; no actor when the periodic job ran it), `read` (one notification) and `read_all` (with how many).
 No record text.
 
+Search (CRM-R33) audits as the entity `search`, action `search`, with how many hits were returned. Never the text searched for.
+
 ## Integrity
 
 **A write whose audit row cannot be written is refused.** The audit row is part of the

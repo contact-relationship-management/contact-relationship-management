@@ -454,6 +454,22 @@ export function editFollowup(
   return api(`/activities/${pid}`, { method: "PUT", body: fields });
 }
 
+/** One search hit (CRM-R33): a record named, with one plain descriptor. */
+export interface SearchHit {
+  kind: string;
+  pid: string;
+  title: string;
+  detail: string | null;
+}
+
+/** Records whose name or title matches, best first (the service's first page, up to 50). */
+export function searchRecords(
+  q: string,
+  init?: FetchLike,
+): Promise<SearchHit[]> {
+  return api(`/search?q=${encodeURIComponent(q)}`, init);
+}
+
 /** One inbox entry (CRM-R32): which record, why, and whether it was read. No record text. */
 export interface Notification {
   pid: string;

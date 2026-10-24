@@ -114,3 +114,21 @@ strict.
 
 The nurture enrolment is made by the confirmation itself (`forms::on_confirmed`, called inside the transaction that grants), from the
 `form_submissions` row the submission left. A sequence of another purpose than the form's is skipped.
+
+## Search (CRM-R33)
+
+`GET /api/search?q=` runs one `UNION ALL` over seven tables (`src/search.rs`). The text searched in each table is a single
+expression, `immutable_unaccent(lower(...))`, defined once in the migration crate (`search_docs::SOURCES`) so the two GIN indexes
+per table (full text on `to_tsvector('simple', ...)`, trigrams on the same expression) are exactly the ones the query can use. If
+they drifted the results would stay correct but the query would stop using its indexes, which no test notices; check `EXPLAIN`
+after changing an expression.
+`unaccent` is only STABLE in PostgreSQL, so it cannot be indexed; the migration wraps it in an IMMUTABLE SQL function that names the
+dictionary, which is safe because that dictionary is fixed. The migration enables the `unaccent` and `pg_trgm` extensions, which
+needs a role allowed to (both are "trusted" extensions from PostgreSQL 13, so the database owner is enough).
+
+A match is a word prefix (`tsquery` of `word:*` terms, all required) or trigram `word_similarity` of at least 0.45 (set per query
+with `SET LOCAL`; the default 0.6 is too strict for a typo). The score is `ts_rank + word_similarity`, ties broken by pid so a
+page boundary is stable. Each branch fetches `limit + offset + 1` rows, so deep pages cost more; the page size is capped at 50.
+
+Access is applied after the query, per row, for the two kinds with record-level attributes (contacts, deals); the other kinds are
+decided on the entity by the blanket guard. That is why a page can be shorter than `limit` while more follow.

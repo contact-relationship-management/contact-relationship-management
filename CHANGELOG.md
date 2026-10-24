@@ -11,6 +11,8 @@ subproject keeps a detailed changelog:
 
 ### Added
 
+- Server-side search across the main records: accent-blind, typo-tolerant, respecting what the caller may read (CRM-R33).
+
 - Task reminders and a notifications inbox: assigned tasks and SLA breaches notify the assignee once, only for records they may
   read (CRM-R32).
 

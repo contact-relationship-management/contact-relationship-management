@@ -14,6 +14,7 @@ pub mod lifecycle;
 pub mod merge;
 pub mod privacy;
 pub mod scoring;
+pub mod search;
 pub mod segment;
 pub mod sla;
 pub mod tokens;

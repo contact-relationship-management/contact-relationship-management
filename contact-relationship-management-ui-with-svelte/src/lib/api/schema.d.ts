@@ -8200,6 +8200,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find records by name or title (CRM-R33): full text and typo-tolerant, accent-blind; ?q= is 2 to 100 characters; records the caller may not read are left out; the audit row records a count, not the text */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SearchHit"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/segments": {
         parameters: {
             query?: never;
@@ -11548,6 +11620,16 @@ export interface components {
              * @description The clamped 0–100 score.
              */
             score: number;
+        };
+        /** @description One hit: the record, named, with one plain descriptor. */
+        SearchHit: {
+            /** @description A job title, industry, status or address domain; absent when there is none. */
+            detail: string | null;
+            /** @description `contact`, `account`, `lead`, `deal`, `ticket`, `campaign` or `article`. */
+            kind: string;
+            /** Format: uuid */
+            pid: string;
+            title: string;
         };
         Segment: {
             /** Format: date-time */

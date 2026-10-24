@@ -23,6 +23,7 @@ mod pagination;
 mod privacy;
 mod relationships;
 mod sales;
+mod search;
 mod streaming;
 mod support;
 mod unmerge;

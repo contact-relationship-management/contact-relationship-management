@@ -24,6 +24,7 @@ pub mod paging;
 pub mod privacy;
 pub mod relationships;
 pub mod sales;
+pub mod search;
 pub mod support;
 pub mod unmerge;
 pub mod webhooks;

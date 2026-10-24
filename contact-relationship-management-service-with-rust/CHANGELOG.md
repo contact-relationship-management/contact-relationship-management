@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — server-side search (CRM-T100, CRM-R33)
+
+`GET /api/search?q=` finds contacts, accounts, leads, deals, tickets, campaigns and articles by name or title, ignoring accents and
+forgiving typos (PostgreSQL full text plus `pg_trgm`), best match first and paged. Records the caller may not read are left out and the
+audit row records a count, not the text. Migration `000024` enables the `unaccent` and `pg_trgm` extensions and adds GIN indexes. The UI
+search page now uses it.
+
 ### Added — tasks with reminders and a notifications inbox (CRM-T99, CRM-R32)
 
 Task activities take an `assignee_ref` and a `remind_at`. A job the server queues every minute (and `POST /api/notifications/sweep`)

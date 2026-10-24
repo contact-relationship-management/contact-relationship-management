@@ -1369,7 +1369,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **API/UI:** `GET /api/notifications` (paged, `?unread=true`), `unread-count`, `PUT {pid}/read`, `read-all`; inbox page `/notifications` with an unread count beside its navigation entry; 8 keys in all 8 locales (the parity test covers them); the tour has two sample notifications. Notifications carry no record text. Erasure deletes them.
       - **Tests:** 2 request tests (once and again; read by the recipient only; gone record suppressed; SLA breach per breach; erasure), 1 under sign-in (suppressed at write for an unreadable record, own inbox only, a record that becomes unreadable drops out), a policy unit test, 1 demo unit test and 1 Playwright test. Service: 251 unit, 97 request, 3 enforcement; UI: 134 unit; clippy clean for both feature sets; types regenerated.
       - **Not done / limits:** a UI form to set an assignee or reminder (the API takes them); delivery by email or push; the write-time check cannot see the recipient's token attributes, so a policy that needs one suppresses their reminders (fails closed); a suppressed notification is not revived if the policy later changes.
-- [ ] CRM-T100 **Server-side search.**
+- [x] CRM-T100 **Server-side search.**
   - **Endpoint:** `GET /api/search?q=` over contacts, accounts, deals, leads, tickets and articles, using `tsvector` with `unaccent` and `pg_trgm` for fuzzy matches. Results are filtered by ABAC and masking, and the query is audited as a count, not as text.
   - **UI:** the CRM-R22 search uses it when the service is present.
   - **Tests:** accents, typos, a masked caller, and paging.
@@ -1377,6 +1377,12 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Limits to state:** encrypted columns (`activities.summary`, `contacts.preferred_channel`) cannot be indexed.
 
   (C6, M)
+      **Done (2026-10-24, not released):** requirement CRM-R33 first, then:
+      - **Endpoint:** `GET /api/search?q=` (2 to 100 characters, at most 8 words, letters and digits only so nothing typed becomes query syntax), paged, best first, over contacts, accounts, leads, deals, tickets, campaigns and articles (campaigns added because the browser search had them). Full text (`simple`, word prefixes) or trigram `word_similarity` >= 0.45, both over `immutable_unaccent(lower(...))`; migration `000024` enables `unaccent` and `pg_trgm`, wraps `unaccent` as IMMUTABLE and makes 14 GIN indexes. The expressions live once in `migration::search_docs` and the service query uses the same constants.
+      - **Access and masking:** contacts and deals are checked per row against the caller's token; a hit carries only a name and one plain descriptor, and masked fields are neither indexed nor returned. The audit row holds a count.
+      - **UI:** the search page calls the service once and groups the hits instead of loading and filtering seven lists in the browser; the tour answers from its sample data; short queries make no call.
+      - **Tests:** 3 rules unit tests; 2 request tests (accents both ways, prefix, typo, every kind, descriptor, lead domain, removed record, bad queries, audit with no text; paging with stable order); 1 under sign-in (a denied contact omitted, no masked field, no token is 401, the masked value is not searchable). Two bugs the tests found are fixed: per-branch limits ignored the offset, and tied scores had no tiebreak inside a branch. Service: 254 unit, 99 request, 4 enforcement; UI: 135 unit and the Playwright suite (107); clippy clean; types regenerated.
+      - **Limits:** activity summaries and `preferred_channel` are encrypted and cannot be indexed; the CRM holds no email address, so none is searched (a lead's address domain is); the policy filter runs after the query, so pages can be short; no highlighting, no search inside activities, no ranking by recency.
 - [ ] CRM-T101 **CSV import of leads.**
   - **Flow:** upload, map columns, then a dry-run report per row (valid, invalid with reason, likely duplicate from the matcher, as advice only).
   - **Commit:** in batches. An import record keeps the ids it created, so an import can be undone.
