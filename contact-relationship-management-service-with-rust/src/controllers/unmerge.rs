@@ -16,7 +16,7 @@ use sea_orm::{
     ActiveValue, ConnectionTrait, DatabaseBackend, DatabaseTransaction, QueryOrder, Statement,
     TransactionTrait, Value,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, json};
 use uuid::Uuid;
 
@@ -432,21 +432,21 @@ async fn unmerge(
     let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
     let result = bring_back(&txn, &merged, &survivor, now).await?;
 
-    let body = json!({
-        "survivor_pid": survivor_pid,
-        "merged_pid": merged_pid,
-        "dry_run": payload.dry_run,
-        "restored": restored,
-        "left_behind": left_behind,
-        "dropped_restored": dropped_restored,
-        "fields_cleared": cleared,
-        "fields_kept": kept,
-        "consent": {
-            "survivor": survivor.marketing_consent,
-            "merged_before": merged.marketing_consent,
-            "merged_result": result,
+    let body = ContactUnmerge {
+        survivor_pid,
+        merged_pid,
+        dry_run: payload.dry_run,
+        restored: restored.clone(),
+        left_behind: left_behind.clone(),
+        dropped_restored: dropped_restored.clone(),
+        fields_cleared: cleared.clone(),
+        fields_kept: kept,
+        consent: UnmergeConsent {
+            survivor: survivor.marketing_consent.clone(),
+            merged_before: merged.marketing_consent.clone(),
+            merged_result: result.clone(),
         },
-    });
+    };
     if payload.dry_run {
         txn.rollback().await?;
         return format::json(body);
@@ -465,6 +465,48 @@ async fn unmerge(
     record_unmerge(&txn, &caller, ledger, now, &done).await?;
     txn.commit().await?;
     format::json(body)
+}
+
+/// How the merged contact's consent came back.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ContactUnmergeConsent")]
+pub(crate) struct UnmergeConsent {
+    survivor: String,
+    merged_before: String,
+    merged_result: String,
+}
+
+/// `POST /api/contacts/{pid}/unmerge`: what came back and what could not.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ContactUnmerge {
+    survivor_pid: Uuid,
+    merged_pid: Uuid,
+    dry_run: bool,
+    #[schemars(with = "std::collections::BTreeMap<String, u64>")]
+    restored: Map<String, serde_json::Value>,
+    #[schemars(with = "std::collections::BTreeMap<String, u64>")]
+    left_behind: Map<String, serde_json::Value>,
+    #[schemars(with = "std::collections::BTreeMap<String, u64>")]
+    dropped_restored: Map<String, serde_json::Value>,
+    fields_cleared: Vec<String>,
+    fields_kept: Vec<String>,
+    consent: UnmergeConsent,
+}
+
+/// One entry of `GET /api/contacts/{pid}/merges`.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ContactMergeEntry")]
+pub(crate) struct MergeEntry {
+    merged_pid: Uuid,
+    merged_name: String,
+    merged_at: chrono::DateTime<chrono::FixedOffset>,
+    undoable: bool,
+}
+
+/// `GET /api/contacts/{pid}/merges`.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ContactMerges {
+    merges: Vec<MergeEntry>,
 }
 
 /// `GET /api/contacts/{pid}/merges`: the contacts merged into this one that
@@ -499,14 +541,14 @@ async fn merges(
         else {
             continue;
         };
-        out.push(json!({
-            "merged_pid": entry.merged_pid,
-            "merged_name": merged.display_name,
-            "merged_at": entry.created_at,
-            "undoable": entry.before.is_some() && merged.person_ref != TOMBSTONE_PERSON,
-        }));
+        out.push(MergeEntry {
+            merged_pid: entry.merged_pid,
+            merged_name: merged.display_name,
+            merged_at: entry.created_at,
+            undoable: entry.before.is_some() && merged.person_ref != TOMBSTONE_PERSON,
+        });
     }
-    format::json(json!({ "merges": out }))
+    format::json(ContactMerges { merges: out })
 }
 
 /// The routes.

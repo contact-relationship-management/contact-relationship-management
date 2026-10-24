@@ -15,7 +15,7 @@ use loco_rs::prelude::*;
 use sea_orm::{
     ActiveValue, ConnectionTrait, DatabaseBackend, QueryOrder, Statement, TransactionTrait, Value,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -87,6 +87,15 @@ async fn check_subject(
     Ok(())
 }
 
+/// `GET /api/{contacts,accounts,deals,leads}/{pid}/external-links`.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ExternalLinks {
+    links: Vec<external_links::Model>,
+    /// The systems a link may name.
+    #[schemars(with = "Vec<String>")]
+    systems: [&'static str; 6],
+}
+
 async fn list_for(
     ctx: AppContext,
     caller: MaybeAuthUser,
@@ -107,7 +116,10 @@ async fn list_for(
         .order_by_asc(external_links::Column::Id)
         .all(&ctx.db)
         .await?;
-    format::json(json!({ "links": links, "systems": rules::SYSTEM_TOKENS }))
+    format::json(ExternalLinks {
+        links,
+        systems: rules::SYSTEM_TOKENS,
+    })
 }
 
 async fn create_for(

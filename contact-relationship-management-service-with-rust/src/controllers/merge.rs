@@ -15,7 +15,7 @@ use sea_orm::{
     ActiveValue, ConnectionTrait, DatabaseBackend, DatabaseTransaction, QueryOrder, QuerySelect,
     Statement, TransactionTrait, Value,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, json};
 use uuid::Uuid;
 
@@ -458,6 +458,31 @@ async fn record_merge(
     .await
 }
 
+/// How the two contacts' marketing consent combined.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ContactMergeConsent")]
+pub(crate) struct MergeConsent {
+    survivor: String,
+    merged: String,
+    result: String,
+}
+
+/// `POST /api/contacts/{pid}/merge`: what moved, what was dropped, what was filled.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ContactMerge {
+    survivor_pid: Uuid,
+    merged_pid: Uuid,
+    dry_run: bool,
+    /// Rows moved to the survivor, by kind.
+    #[schemars(with = "std::collections::BTreeMap<String, u64>")]
+    moved: serde_json::Value,
+    /// Rows dropped as duplicates of the survivor's, by kind.
+    #[schemars(with = "std::collections::BTreeMap<String, u64>")]
+    dropped: serde_json::Value,
+    filled: Vec<&'static str>,
+    consent: MergeConsent,
+}
+
 /// `POST /api/contacts/{pid}/merge` (CRM-R24).
 #[debug_handler]
 async fn merge(
@@ -496,15 +521,19 @@ async fn merge(
 
     let counts = Changes::counts(&moved.moved);
     let dropped = Changes::counts(&moved.dropped);
-    let body = json!({
-        "survivor_pid": survivor_pid,
-        "merged_pid": merged_pid,
-        "dry_run": payload.dry_run,
-        "moved": counts,
-        "dropped": dropped,
-        "filled": filled,
-        "consent": { "survivor": before.0, "merged": before.1, "result": consent },
-    });
+    let body = ContactMerge {
+        survivor_pid,
+        merged_pid,
+        dry_run: payload.dry_run,
+        moved: counts.clone(),
+        dropped: dropped.clone(),
+        filled: filled.clone(),
+        consent: MergeConsent {
+            survivor: before.0.clone(),
+            merged: before.1.clone(),
+            result: consent.clone(),
+        },
+    };
     if payload.dry_run {
         txn.rollback().await?;
         return format::json(body);

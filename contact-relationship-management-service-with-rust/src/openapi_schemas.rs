@@ -71,6 +71,11 @@ fn generated() -> serde_json::Map<String, Value> {
         relationships::ContactDetail,
         relationships::AccountDetail,
         relationships::ContactDuplicates,
+        merge::ContactMerge,
+        unmerge::ContactUnmerge,
+        unmerge::ContactMerges,
+        external_links::ExternalLinks,
+        crate::models::_entities::external_links::Model,
         sales::LeadPayload,
         sales::LeadStatusPayload,
         sales::PipelinePayload,
@@ -208,32 +213,6 @@ fn view_schemas() -> Value {
             "value": nullable(number()) })),
 
         // ---- detail reads
-        "ContactMerge": object(&["survivor_pid", "merged_pid", "dry_run", "moved", "dropped", "filled", "consent"], &json!({
-            "survivor_pid": uuid(), "merged_pid": uuid(), "dry_run": boolean(),
-            "moved": { "type": "object", "additionalProperties": integer() },
-            "dropped": { "type": "object", "additionalProperties": integer() },
-            "filled": { "type": "array", "items": string() },
-            "consent": object(&["survivor", "merged", "result"], &json!({
-                "survivor": string(), "merged": string(), "result": string() })) })),
-        "ContactUnmerge": object(&["survivor_pid", "merged_pid", "dry_run", "restored", "left_behind", "dropped_restored", "fields_cleared", "fields_kept", "consent"], &json!({
-            "survivor_pid": uuid(), "merged_pid": uuid(), "dry_run": boolean(),
-            "restored": { "type": "object", "additionalProperties": integer() },
-            "left_behind": { "type": "object", "additionalProperties": integer() },
-            "dropped_restored": { "type": "object", "additionalProperties": integer() },
-            "fields_cleared": { "type": "array", "items": string() },
-            "fields_kept": { "type": "array", "items": string() },
-            "consent": object(&["survivor", "merged_before", "merged_result"], &json!({
-                "survivor": string(), "merged_before": string(), "merged_result": string() })) })),
-        "ExternalLink": object(&["pid", "subject_kind", "subject_pid", "system", "url"], &json!({
-            "pid": uuid(), "subject_kind": string(), "subject_pid": uuid(),
-            "system": string(), "url": string(), "external_id": nullable(string()),
-            "label": nullable(string()), "created_by": nullable(string()) })),
-        "ExternalLinks": object(&["links", "systems"], &json!({
-            "links": list_of("ExternalLink"), "systems": { "type": "array", "items": string() } })),
-        "ContactMerges": object(&["merges"], &json!({
-            "merges": { "type": "array", "items": object(&["merged_pid", "merged_name", "merged_at", "undoable"], &json!({
-                "merged_pid": uuid(), "merged_name": string(), "merged_at": string(),
-                "undoable": boolean() })) } })),
         "ScoreBreakdown": object(&["score", "label", "rules"], &json!({
             "score": integer(), "label": string(),
             "rules": { "type": "array", "items": object(&["rule", "points"], &json!({
