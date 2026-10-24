@@ -279,6 +279,19 @@ async fn list_tickets(
     page.respond(rows, more, &uri)
 }
 
+/// `GET /api/tickets/{pid}`: the ticket and its activities, oldest first.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct TicketDetail {
+    ticket: tickets::Model,
+    activities: Vec<activities::Model>,
+}
+
+/// `POST /api/sla/sweep`: how many tickets crossed a deadline in this sweep.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct SlaSweep {
+    new_breaches: u64,
+}
+
 /// `GET /api/tickets/{pid}` — one ticket + its activities.
 #[debug_handler]
 async fn get_ticket(
@@ -303,7 +316,10 @@ async fn get_ticket(
         .order_by_asc(activities::Column::Id)
         .all(&ctx.db)
         .await?;
-    format::json(serde_json::json!({ "ticket": ticket, "activities": activity_rows }))
+    format::json(TicketDetail {
+        ticket,
+        activities: activity_rows,
+    })
 }
 
 /// `POST /api/tickets/{pid}/status` — one lifecycle transition;
@@ -447,7 +463,9 @@ async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Resu
         breaches += u64::from(new_first) + u64::from(new_resolution);
         Metrics::global().sla_breached_total.inc();
     }
-    format::json(serde_json::json!({ "new_breaches": breaches }))
+    format::json(SlaSweep {
+        new_breaches: breaches,
+    })
 }
 
 /// `POST /api/articles` — draft an article.

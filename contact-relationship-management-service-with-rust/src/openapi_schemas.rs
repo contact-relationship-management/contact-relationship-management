@@ -73,6 +73,10 @@ fn generated() -> serde_json::Map<String, Value> {
         relationships::ContactDuplicates,
         merge::ContactMerge,
         sales::LeadDetail,
+        support::TicketDetail,
+        support::SlaSweep,
+        engagement::Group,
+        crate::models::_entities::working_groups::Model,
         sales::PipelineWithStages,
         sales::Forecast,
         crate::models::_entities::pipelines::Model,
@@ -211,15 +215,6 @@ fn view_schemas() -> Value {
             "value": nullable(number()) })),
 
         // ---- detail reads
-        "TicketDetail": object(&["ticket", "activities"], &json!({
-            "ticket": reference("Ticket"), "activities": list_of("Activity") })),
-        "Group": object(&["group", "roster", "feed", "feed_note"], &json!({
-            "group": { "type": "object" },
-            "roster": { "type": "array", "items": object(&["pid", "display_name"], &json!({
-                "pid": uuid(), "display_name": string(), "account_pid": nullable(uuid()),
-                "stakeholder_role": nullable(string()) })) },
-            "feed": list_of("Activity"), "feed_note": string() })),
-
         // ---- sales and analytics
         "Clv": object(&["account_pid", "won_deals", "clv_minor", "as_of"], &json!({
             "account_pid": uuid(), "won_deals": integer(), "clv_minor": money_by_currency(),
@@ -251,7 +246,6 @@ fn view_schemas() -> Value {
             "by_state": counts() })),
         "NurtureSweep": object(&["sent", "completed"], &json!({
             "sent": integer(), "completed": integer() })),
-        "SlaSweep": object(&["new_breaches"], &json!({ "new_breaches": integer() })),
         "SequenceView": object(&["sequence", "steps", "active_enrollments"], &json!({
             "sequence": { "type": "object" }, "steps": { "type": "array", "items": { "type": "object" } },
             "active_enrollments": integer() })),

@@ -10,7 +10,7 @@ use crate::json::Json;
 use crate::models::live::FindLive;
 use loco_rs::prelude::*;
 use sea_orm::{ActiveValue, QueryOrder, QuerySelect};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::unprocessable;
@@ -405,6 +405,27 @@ async fn add_member(
     format::json(serde_json::json!({ "group_pid": group.pid, "contact_pid": contact.pid }))
 }
 
+/// A member of a group's roster.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "GroupRosterMember")]
+pub(crate) struct RosterMember {
+    pid: Uuid,
+    display_name: String,
+    account_pid: Option<Uuid>,
+    stakeholder_role: Option<String>,
+}
+
+/// `GET /api/groups/{pid}`: the group, its roster and the recent activity of its members.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[allow(clippy::struct_field_names)] // `group` is the response member clients read
+pub(crate) struct Group {
+    group: working_groups::Model,
+    roster: Vec<RosterMember>,
+    feed: Vec<activities::Model>,
+    /// How the feed was derived.
+    feed_note: &'static str,
+}
+
 /// `GET /api/groups/{pid}` — the group, its roster (with each
 /// member's account), and the recent activity feed derived from the
 /// members' recorded activities (cap 50; derivation disclosed).
@@ -421,15 +442,13 @@ async fn get_group(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Re
         .filter(contacts::Column::DeletedAt.is_null())
         .all(&ctx.db)
         .await?;
-    let roster: Vec<serde_json::Value> = contact_rows
+    let roster: Vec<RosterMember> = contact_rows
         .iter()
-        .map(|contact| {
-            serde_json::json!({
-                "pid": contact.pid,
-                "display_name": contact.display_name,
-                "account_pid": contact.account_pid,
-                "stakeholder_role": contact.stakeholder_role,
-            })
+        .map(|contact| RosterMember {
+            pid: contact.pid,
+            display_name: contact.display_name.clone(),
+            account_pid: contact.account_pid,
+            stakeholder_role: contact.stakeholder_role.clone(),
         })
         .collect();
     let feed = if member_pids.is_empty() {
@@ -444,12 +463,12 @@ async fn get_group(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Re
             .all(&ctx.db)
             .await?
     };
-    format::json(serde_json::json!({
-        "group": group,
-        "roster": roster,
-        "feed": feed,
-        "feed_note": "recent contact-subject activities of roster members (cap 50)",
-    }))
+    format::json(Group {
+        group,
+        roster,
+        feed,
+        feed_note: "recent contact-subject activities of roster members (cap 50)",
+    })
 }
 
 /// Find one live working group by pid, or 404.
