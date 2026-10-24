@@ -174,6 +174,10 @@ tickets.*
 - Every mutation audited + evented (family envelope,
   `CRM_EVENT_TRANSPORT` memory/outbox); consent history + sensitive
   reads audited; reasoned actions carry their reasons.
+- **Fail closed:** when a write's audit row cannot be written, the write is refused (the
+  transaction rolls back and the caller gets a `500`); an audited read whose audit row cannot
+  be written is refused too. No mutation exists without its audit entry
+  ([audit.md](audit.md) Integrity).
 
 ## CRM-R17 — Family fixtures
 

@@ -23,6 +23,15 @@ the sweep job (idempotent on the breach fact).
 
 ## Integrity
 
+**A write whose audit row cannot be written is refused.** The audit row is part of the
+write, not a side effect of it: if inserting it fails, the transaction rolls back, the caller
+gets an error, and nothing changed, so no mutation exists without its audit entry. A handler
+never logs an audit failure and carries on. The same holds for a read that is audited because
+it discloses personal data (the contact, account, deal-list and insight reads, the consent
+history, the subject-access export): when its audit row cannot be written the read is
+refused, because an undisclosed disclosure is worse than an error. The failure is a server
+error (`500`), never a silent success.
+
 State transitions + audit + outbox share one transaction; lead
 conversion (lead → contact + deal) is atomic; the nurture scheduler
 is idempotent per (enrolment, step); Kanban reorder races serialize
