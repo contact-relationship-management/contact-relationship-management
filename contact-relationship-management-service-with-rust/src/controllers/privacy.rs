@@ -10,6 +10,7 @@ use crate::controllers::PidPath;
 use crate::models::live::FindLive;
 use loco_rs::prelude::*;
 use sea_orm::{ActiveValue, ConnectionTrait};
+use serde::Serialize;
 use uuid::Uuid;
 
 use super::{record_rejection, unprocessable};
@@ -240,13 +241,40 @@ async fn erase(
     )
     .await?;
     txn.commit().await?;
-    format::json(serde_json::json!({
-        "erased": cpid,
-        "note": "anonymised, not deleted: deals/tickets/consent history remain \
-                 under CRM's own retention posture, keyed to a pid that no \
-                 longer identifies anyone; coordinate erasure with the \
-                 upstream identity services",
-    }))
+    format::json(Erased {
+        erased: cpid,
+        note: "anonymised, not deleted: deals/tickets/consent history remain \
+               under CRM's own retention posture, keyed to a pid that no \
+               longer identifies anyone; coordinate erasure with the \
+               upstream identity services",
+    })
+}
+
+/// `POST /api/contacts/{pid}/erase`.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct Erased {
+    erased: Uuid,
+    note: &'static str,
+}
+
+/// `GET /api/retention`: what the sweep would delete, and what needs an operator.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct RetentionReport {
+    as_of: chrono::DateTime<chrono::Utc>,
+    horizon_days: i64,
+    /// Rows past the horizon, by table (tables with none are left out).
+    soft_deleted_past_horizon: std::collections::BTreeMap<String, i64>,
+    withdrawn_consent_past_horizon: usize,
+    derivation: &'static str,
+}
+
+/// `POST /api/retention/sweep`.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct RetentionSweep {
+    horizon_days: i64,
+    /// Rows deleted, by table (tables with none are left out).
+    deleted: std::collections::BTreeMap<String, u64>,
+    rows_deleted: u64,
 }
 
 /// The retention horizon in days (`CRM_RETENTION_DAYS`, default 365,
@@ -268,7 +296,7 @@ fn horizon_days() -> i64 {
 #[debug_handler]
 async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
     let days = horizon_days();
-    let mut tables = serde_json::Map::new();
+    let mut tables = std::collections::BTreeMap::new();
     for table in rules::SOFT_DELETED_TABLES {
         let count = ctx
             .db
@@ -283,7 +311,7 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
             .and_then(|row| row.try_get::<i64>("", "n").ok())
             .unwrap_or(0);
         if count > 0 {
-            tables.insert((*table).to_string(), serde_json::json!(count));
+            tables.insert((*table).to_string(), count);
         }
     }
     let withdrawn_consent_past_horizon = contacts::Entity::find_live()
@@ -295,16 +323,16 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
         .all(&ctx.db)
         .await?
         .len();
-    format::json(serde_json::json!({
-        "as_of": chrono::Utc::now(),
-        "horizon_days": days,
-        "soft_deleted_past_horizon": tables,
-        "withdrawn_consent_past_horizon": withdrawn_consent_past_horizon,
-        "derivation": "soft-deleted rows older than the horizon are hard-deleted by the \
-                       sweep; contacts with marketing_consent = withdrawn since before the \
-                       horizon are reported (not auto-scrubbed — each still needs the \
-                       /erase gate, CRM-R20); the horizon floors at 30 days (CRM-D14)",
-    }))
+    format::json(RetentionReport {
+        as_of: chrono::Utc::now(),
+        horizon_days: days,
+        soft_deleted_past_horizon: tables,
+        withdrawn_consent_past_horizon,
+        derivation: "soft-deleted rows older than the horizon are hard-deleted by the \
+                     sweep; contacts with marketing_consent = withdrawn since before the \
+                     horizon are reported (not auto-scrubbed — each still needs the \
+                     /erase gate, CRM-R20); the horizon floors at 30 days (CRM-D14)",
+    })
 }
 
 /// `POST /api/retention/sweep` — hard-delete soft-deleted rows past
@@ -314,7 +342,7 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
 async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
     let days = horizon_days();
     let txn = ctx.db.begin().await?;
-    let mut deleted = serde_json::Map::new();
+    let mut deleted = std::collections::BTreeMap::new();
     let mut total: u64 = 0;
     for table in rules::SOFT_DELETED_TABLES {
         let result = txn
@@ -323,10 +351,7 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
             ))
             .await?;
         if result.rows_affected() > 0 {
-            deleted.insert(
-                (*table).to_string(),
-                serde_json::json!(result.rows_affected()),
-            );
+            deleted.insert((*table).to_string(), result.rows_affected());
             total += result.rows_affected();
         }
     }
@@ -343,11 +368,11 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
     )
     .await?;
     txn.commit().await?;
-    format::json(serde_json::json!({
-        "horizon_days": days,
-        "deleted": deleted,
-        "rows_deleted": total,
-    }))
+    format::json(RetentionSweep {
+        horizon_days: days,
+        deleted,
+        rows_deleted: total,
+    })
 }
 
 /// The privacy routes.

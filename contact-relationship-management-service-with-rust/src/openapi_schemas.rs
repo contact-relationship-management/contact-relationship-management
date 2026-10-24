@@ -56,8 +56,8 @@ fn reference(name: &str) -> Value {
 /// below; the move is one controller at a time (CRM-T83).
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
-        board, break_glass, dashboards, engagement, external_links, marketing, merge,
-        relationships, sales, support, unmerge,
+        audits, board, break_glass, dashboards, engagement, external_links, marketing, merge,
+        privacy, relationships, sales, support, unmerge,
     };
     let mut generator = schemars::generate::SchemaSettings::openapi3().into_generator();
     macro_rules! document {
@@ -73,6 +73,13 @@ fn generated() -> serde_json::Map<String, Value> {
         relationships::ContactDuplicates,
         merge::ContactMerge,
         sales::LeadDetail,
+        privacy::Erased,
+        privacy::RetentionReport,
+        privacy::RetentionSweep,
+        break_glass::Grant,
+        break_glass::Grants,
+        break_glass::Reviewed,
+        audits::ChainVerdict,
         marketing::segment::Preview,
         marketing::nurture::NurtureSweep,
         marketing::campaign::Deliveries,
@@ -243,27 +250,7 @@ fn view_schemas() -> Value {
             "nurture_enrollments": { "type": "array", "items": { "type": "object" } },
             "email_deliveries": list_of("EmailDelivery"),
             "exclusions": strings() })),
-        "Erased": object(&["erased", "note"], &json!({ "erased": uuid(), "note": string() })),
-        "RetentionReport": object(&["as_of", "horizon_days", "soft_deleted_past_horizon",
-            "withdrawn_consent_past_horizon", "derivation"], &json!({
-            "as_of": date_time(), "horizon_days": integer(),
-            "soft_deleted_past_horizon": counts(),
-            "withdrawn_consent_past_horizon": integer(), "derivation": string() })),
-        "RetentionSweep": object(&["horizon_days", "deleted", "rows_deleted"], &json!({
-            "horizon_days": integer(), "deleted": counts(), "rows_deleted": integer() })),
-
         // ---- break-glass
-        "Grant": object(&["pid", "expires_at", "minutes"], &json!({
-            "pid": uuid(), "expires_at": date_time(), "minutes": integer() })),
-        "GrantRecord": object(&["pid", "subject", "reason", "granted_at", "expires_at"], &json!({
-            "pid": uuid(), "subject": string(), "reason": string(), "granted_at": date_time(),
-            "expires_at": date_time(), "reviewed_at": nullable(date_time()),
-            "reviewed_by": nullable(string()), "review_note": nullable(string()) })),
-        "Grants": object(&["unreviewed", "grants"], &json!({
-            "unreviewed": integer(), "grants": list_of("GrantRecord") })),
-        "Reviewed": object(&["pid", "reviewed_by"], &json!({
-            "pid": uuid(), "reviewed_by": string() })),
-
         // ---- audit and events
         "AuditEntry": resource(&["id", "entity", "entity_pid", "action", "created_at"], &json!({
             "id": { "type": "integer", "format": "int64" }, "entity": string(),
@@ -271,12 +258,6 @@ fn view_schemas() -> Value {
             "snapshot": { "nullable": true, "description": "Free-form facts of the change" },
             "prev_hash": nullable(string()), "hash": nullable(string()),
             "created_at": date_time(), "updated_at": date_time() })),
-        "ChainVerdict": object(&["ok", "rows", "legacy_rows", "head", "first_break"], &json!({
-            "ok": boolean(), "rows": integer(), "legacy_rows": integer(),
-            "head": nullable(string()),
-            "first_break": { "nullable": true, "type": "object",
-                "required": ["id", "reason"],
-                "properties": { "id": integer(), "reason": string() } } })),
         "Event": { "oneOf": [
             object(&["kind", "pid", "name", "seq"], &json!({
                 "kind": string(), "pid": string(), "name": string(), "seq": integer() })),

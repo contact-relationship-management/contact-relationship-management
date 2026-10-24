@@ -10,7 +10,7 @@ use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
 use loco_rs::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{invalid_field, record_rejection};
@@ -32,6 +32,42 @@ pub(crate) struct GrantPayload {
 #[serde(deny_unknown_fields)]
 pub(crate) struct ReviewPayload {
     note: String,
+}
+
+/// `POST /api/break-glass`: the grant that was taken.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct Grant {
+    pid: Uuid,
+    expires_at: DateTime<Utc>,
+    minutes: i64,
+}
+
+/// One grant in the review list.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "GrantRecord")]
+pub(crate) struct GrantRecord {
+    pid: Option<Uuid>,
+    subject: Option<String>,
+    reason: Option<String>,
+    granted_at: Option<DateTime<Utc>>,
+    expires_at: Option<DateTime<Utc>>,
+    reviewed_at: Option<DateTime<Utc>>,
+    reviewed_by: Option<String>,
+    review_note: Option<String>,
+}
+
+/// `GET /api/break-glass`: the latest grants and how many are still unreviewed.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct Grants {
+    unreviewed: u64,
+    grants: Vec<GrantRecord>,
+}
+
+/// `POST /api/break-glass/{pid}/review`.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct Reviewed {
+    pid: Uuid,
+    reviewed_by: String,
 }
 
 /// `POST /api/break-glass` — take a read elevation. Any authenticated caller
@@ -80,7 +116,11 @@ async fn grant(
         // The database copy still reaches other replicas within one refresh.
         tracing::warn!(%error, "break-glass grant not published to Redis");
     }
-    format::json(serde_json::json!({ "pid": pid, "expires_at": expires_at, "minutes": minutes }))
+    format::json(Grant {
+        pid,
+        expires_at,
+        minutes,
+    })
 }
 
 /// `GET /api/break-glass` — the grants, newest first, with the unreviewed
@@ -103,18 +143,18 @@ async fn list(State(ctx): State<AppContext>) -> Result<Response> {
         if reviewed_at.is_none() {
             unreviewed += 1;
         }
-        grants.push(serde_json::json!({
-            "pid": row.try_get::<Uuid>("", "pid").ok(),
-            "subject": row.try_get::<String>("", "subject").ok(),
-            "reason": row.try_get::<String>("", "reason").ok(),
-            "granted_at": row.try_get::<DateTime<Utc>>("", "granted_at").ok(),
-            "expires_at": row.try_get::<DateTime<Utc>>("", "expires_at").ok(),
-            "reviewed_at": reviewed_at,
-            "reviewed_by": row.try_get::<String>("", "reviewed_by").ok(),
-            "review_note": row.try_get::<String>("", "review_note").ok(),
-        }));
+        grants.push(GrantRecord {
+            pid: row.try_get::<Uuid>("", "pid").ok(),
+            subject: row.try_get::<String>("", "subject").ok(),
+            reason: row.try_get::<String>("", "reason").ok(),
+            granted_at: row.try_get::<DateTime<Utc>>("", "granted_at").ok(),
+            expires_at: row.try_get::<DateTime<Utc>>("", "expires_at").ok(),
+            reviewed_at,
+            reviewed_by: row.try_get::<String>("", "reviewed_by").ok(),
+            review_note: row.try_get::<String>("", "review_note").ok(),
+        });
     }
-    format::json(serde_json::json!({ "unreviewed": unreviewed, "grants": grants }))
+    format::json(Grants { unreviewed, grants })
 }
 
 /// `POST /api/break-glass/{pid}/review` — record the after-the-fact review
@@ -164,7 +204,10 @@ async fn review(
     )
     .await?;
     txn.commit().await?;
-    format::json(serde_json::json!({ "pid": pid, "reviewed_by": reviewer }))
+    format::json(Reviewed {
+        pid,
+        reviewed_by: reviewer,
+    })
 }
 
 /// Reload the live grants from the database into the process registry.
