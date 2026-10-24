@@ -7,6 +7,129 @@ use super::{
 };
 use crate::models::live::FindLive;
 
+// Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
+// `ETag` is taken, and the schema says it is always there.
+
+/// A contact with no recent touch.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "CadenceContact")]
+pub(crate) struct CadenceContact {
+    pid: Uuid,
+    display_name: String,
+    stakeholder_role: Option<String>,
+    days_since_touch: i64,
+    has_next_touch: bool,
+}
+
+/// An account with no recent touch.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "CadenceAccount")]
+pub(crate) struct CadenceAccount {
+    pid: Uuid,
+    display_name: String,
+    stakeholder_role: Option<String>,
+    days_since_touch: i64,
+}
+
+/// `GET /api/insights/cadence`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct Cadence {
+    derivation: &'static str,
+    threshold_days: i64,
+    untouched_contacts: Vec<CadenceContact>,
+    untouched_accounts: Vec<CadenceAccount>,
+    contacts_without_next_touch: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// `GET /api/insights/engagement`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "EngagementView")]
+pub(crate) struct EngagementView {
+    window_days: i64,
+    touches: usize,
+    per_recorder_month: std::collections::BTreeMap<String, usize>,
+    per_kind: std::collections::BTreeMap<String, usize>,
+    sentiment: std::collections::BTreeMap<String, usize>,
+    note: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// The pipeline a funnel is about.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "FunnelPipeline")]
+pub(crate) struct FunnelPipeline {
+    pid: Uuid,
+    name: String,
+}
+
+/// One stage of a funnel.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "FunnelStage")]
+pub(crate) struct FunnelStage {
+    stage: String,
+    position: i32,
+    is_won: bool,
+    is_lost: bool,
+    entered: usize,
+    /// Step conversion from the previous stage; `null` for the first stage.
+    conversion_from_previous: Option<crate::rules::analytics::Ratio>,
+}
+
+/// `GET /api/insights/funnel`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "StageFunnel")]
+pub(crate) struct StageFunnel {
+    pipeline: FunnelPipeline,
+    derivation: &'static str,
+    stages: Vec<FunnelStage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// A membership, as the members view shows it.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "MemberAccountMembership")]
+pub(crate) struct MemberMembership {
+    status: String,
+    joined_on: chrono::NaiveDate,
+    renewal_on: Option<chrono::NaiveDate>,
+}
+
+/// One account in the members view.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "MemberAccount")]
+pub(crate) struct MemberAccount {
+    pid: Uuid,
+    display_name: String,
+    tier: String,
+    stakeholder_role: Option<String>,
+    membership: Option<MemberMembership>,
+    contacts: usize,
+    days_since_touch: i64,
+    silent: bool,
+    open_followups: usize,
+    open_tickets: usize,
+}
+
+/// `GET /api/insights/members`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "MembersView")]
+pub(crate) struct MembersView {
+    derivation: &'static str,
+    threshold_days: i64,
+    accounts: Vec<MemberAccount>,
+    silent_accounts: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 /// `GET /api/insights/cadence?days=` — relationship-cadence aging:
 /// contacts and accounts by days since their last recorded touch
 /// (account touch = a direct account activity **or** one on any of
@@ -57,7 +180,7 @@ pub(super) async fn cadence(
             _ => {}
         }
     }
-    let mut untouched_contacts: Vec<(i64, serde_json::Value)> = contact_rows
+    let mut untouched_contacts: Vec<(i64, CadenceContact)> = contact_rows
         .iter()
         .map(|contact| {
             let days = last_contact_touch.get(&contact.pid).map_or_else(
@@ -66,19 +189,19 @@ pub(super) async fn cadence(
             );
             (
                 days,
-                serde_json::json!({
-                    "pid": contact.pid,
-                    "display_name": contact.display_name,
-                    "stakeholder_role": contact.stakeholder_role,
-                    "days_since_touch": days,
-                    "has_next_touch": has_next_contact.contains(&contact.pid),
-                }),
+                CadenceContact {
+                    pid: contact.pid,
+                    display_name: contact.display_name.clone(),
+                    stakeholder_role: contact.stakeholder_role.clone(),
+                    days_since_touch: days,
+                    has_next_touch: has_next_contact.contains(&contact.pid),
+                },
             )
         })
         .filter(|(days, _)| *days > threshold)
         .collect();
     untouched_contacts.sort_by_key(|(days, _)| std::cmp::Reverse(*days));
-    let mut untouched_accounts: Vec<(i64, serde_json::Value)> = account_rows
+    let mut untouched_accounts: Vec<(i64, CadenceAccount)> = account_rows
         .iter()
         .map(|account| {
             let days = last_account_touch.get(&account.pid).map_or_else(
@@ -87,12 +210,12 @@ pub(super) async fn cadence(
             );
             (
                 days,
-                serde_json::json!({
-                    "pid": account.pid,
-                    "display_name": account.display_name,
-                    "stakeholder_role": account.stakeholder_role,
-                    "days_since_touch": days,
-                }),
+                CadenceAccount {
+                    pid: account.pid,
+                    display_name: account.display_name.clone(),
+                    stakeholder_role: account.stakeholder_role.clone(),
+                    days_since_touch: days,
+                },
             )
         })
         .filter(|(days, _)| *days > threshold)
@@ -104,14 +227,15 @@ pub(super) async fn cadence(
         .count();
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "derivation": "touch = a recorded activity (account touch includes its \
-                           contacts' activities); never-touched rows age from creation; \
-                           no-next-touch = no open due-dated activity",
-            "threshold_days": threshold,
-            "untouched_contacts": untouched_contacts.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
-            "untouched_accounts": untouched_accounts.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
-            "contacts_without_next_touch": no_next_touch,
+        serde_json::json!(Cadence {
+            derivation: "touch = a recorded activity (account touch includes its \
+                         contacts' activities); never-touched rows age from creation; \
+                         no-next-touch = no open due-dated activity",
+            threshold_days: threshold,
+            untouched_contacts: untouched_contacts.into_iter().map(|(_, v)| v).collect(),
+            untouched_accounts: untouched_accounts.into_iter().map(|(_, v)| v).collect(),
+            contacts_without_next_touch: no_next_touch,
+            as_of: None,
         }),
     ))
 }
@@ -151,13 +275,14 @@ pub(super) async fn engagement(
     }
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "window_days": window,
-            "touches": total,
-            "per_recorder_month": per_recorder_month,
-            "per_kind": per_kind,
-            "sentiment": sentiment,
-            "note": "sentiment counts recorded declarations only; unrecorded stays unrecorded",
+        serde_json::json!(EngagementView {
+            window_days: window,
+            touches: total,
+            per_recorder_month,
+            per_kind,
+            sentiment,
+            note: "sentiment counts recorded declarations only; unrecorded stays unrecorded",
+            as_of: None,
         }),
     ))
 }
@@ -208,7 +333,7 @@ pub(super) async fn funnel(
         entered.entry(to_stage).or_default().insert(row.entity_pid);
     }
     let mut previous: Option<usize> = None;
-    let mut rows: Vec<serde_json::Value> = Vec::new();
+    let mut rows: Vec<FunnelStage> = Vec::new();
     for (index, stage) in stages.iter().enumerate() {
         let count = if index == 0 {
             pipeline_deals.len()
@@ -219,37 +344,37 @@ pub(super) async fn funnel(
         };
         let conversion = previous.map(|prev| {
             #[allow(clippy::cast_precision_loss)] // display ratio, not money math
-            let value = if prev == 0 {
-                serde_json::Value::Null
-            } else {
-                serde_json::json!(count as f64 / prev as f64)
-            };
-            serde_json::json!({
-                "numerator": count,
-                "denominator": prev,
-                "value": value,
-            })
+            let value = (prev != 0).then(|| count as f64 / prev as f64);
+            crate::rules::analytics::Ratio {
+                numerator: i64::try_from(count).unwrap_or(i64::MAX),
+                denominator: i64::try_from(prev).unwrap_or(i64::MAX),
+                value,
+            }
         });
-        rows.push(serde_json::json!({
-            "stage": stage.name,
-            "position": stage.position,
-            "is_won": stage.is_won,
-            "is_lost": stage.is_lost,
-            "entered": count,
-            "conversion_from_previous": conversion,
-        }));
+        rows.push(FunnelStage {
+            stage: stage.name.clone(),
+            position: stage.position,
+            is_won: stage.is_won,
+            is_lost: stage.is_lost,
+            entered: count,
+            conversion_from_previous: conversion,
+        });
         if !stage.is_lost {
             previous = Some(count);
         }
     }
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "pipeline": { "pid": pipeline.pid, "name": pipeline.name },
-            "derivation": "entered(first stage) = deals created into the pipeline; \
-                           entered(later stages) = distinct deals with a recorded \
-                           to_stage audit; conversion skips lost stages in the chain",
-            "stages": rows,
+        serde_json::json!(StageFunnel {
+            pipeline: FunnelPipeline {
+                pid: pipeline.pid,
+                name: pipeline.name,
+            },
+            derivation: "entered(first stage) = deals created into the pipeline; \
+                         entered(later stages) = distinct deals with a recorded \
+                         to_stage audit; conversion skips lost stages in the chain",
+            stages: rows,
+            as_of: None,
         }),
     ))
 }
@@ -317,7 +442,7 @@ pub(super) async fn members(
             *open_tickets.entry(account_pid).or_default() += 1;
         }
     }
-    let mut rows: Vec<serde_json::Value> = Vec::new();
+    let mut rows: Vec<MemberAccount> = Vec::new();
     let mut silent = 0usize;
     for account in &account_rows {
         let contacts_count = contact_rows
@@ -332,32 +457,34 @@ pub(super) async fn members(
         if is_silent {
             silent += 1;
         }
-        let membership = membership_of.get(&account.pid).map(|m| {
-            serde_json::json!({ "status": m.status, "joined_on": m.joined_on,
-                                "renewal_on": m.renewal_on })
+        let membership = membership_of.get(&account.pid).map(|m| MemberMembership {
+            status: m.status.clone(),
+            joined_on: m.joined_on,
+            renewal_on: m.renewal_on,
         });
-        rows.push(serde_json::json!({
-            "pid": account.pid,
-            "display_name": account.display_name,
-            "tier": account.tier,
-            "stakeholder_role": account.stakeholder_role,
-            "membership": membership,
-            "contacts": contacts_count,
-            "days_since_touch": days,
-            "silent": is_silent,
-            "open_followups": open_followups.get(&account.pid).copied().unwrap_or(0),
-            "open_tickets": open_tickets.get(&account.pid).copied().unwrap_or(0),
-        }));
+        rows.push(MemberAccount {
+            pid: account.pid,
+            display_name: account.display_name.clone(),
+            tier: account.tier.clone(),
+            stakeholder_role: account.stakeholder_role.clone(),
+            membership,
+            contacts: contacts_count,
+            days_since_touch: days,
+            silent: is_silent,
+            open_followups: open_followups.get(&account.pid).copied().unwrap_or(0),
+            open_tickets: open_tickets.get(&account.pid).copied().unwrap_or(0),
+        });
     }
-    rows.sort_by_key(|row| std::cmp::Reverse(row["days_since_touch"].as_i64().unwrap_or(0)));
+    rows.sort_by_key(|row| std::cmp::Reverse(row.days_since_touch));
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "derivation": "account touch includes its contacts' activities; \
-                           never-touched accounts age from creation",
-            "threshold_days": threshold,
-            "accounts": rows,
-            "silent_accounts": silent,
+        serde_json::json!(MembersView {
+            derivation: "account touch includes its contacts' activities; \
+                         never-touched accounts age from creation",
+            threshold_days: threshold,
+            accounts: rows,
+            silent_accounts: silent,
+            as_of: None,
         }),
     ))
 }

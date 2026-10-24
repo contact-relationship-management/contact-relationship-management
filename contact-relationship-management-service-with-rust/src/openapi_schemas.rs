@@ -26,9 +26,6 @@ fn uuid() -> Value {
 fn integer() -> Value {
     json!({ "type": "integer" })
 }
-fn boolean() -> Value {
-    json!({ "type": "boolean" })
-}
 fn date() -> Value {
     json!({ "type": "string", "format": "date" })
 }
@@ -54,6 +51,7 @@ fn reference(name: &str) -> Value {
 /// Request schemas generated from the payload structs, so a request body and
 /// its documentation cannot drift apart. The rest are still written by hand
 /// below; the move is one controller at a time (CRM-T83).
+#[allow(clippy::too_many_lines)] // one list of the documented types
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         audits, board, break_glass, dashboards, engagement, external_links, insights, marketing,
@@ -86,6 +84,10 @@ fn generated() -> serde_json::Map<String, Value> {
         marketing::campaign::CampaignFunnel,
         dashboards::ActivityDashboard,
         insights::sales::StaleDeals,
+        insights::outreach::Cadence,
+        insights::outreach::EngagementView,
+        insights::outreach::StageFunnel,
+        insights::outreach::MembersView,
         insights::sales::Followups,
         insights::sales::HygieneFindings,
         insights::sales::ExecutivePack,
@@ -267,40 +269,6 @@ fn view_schemas() -> Value {
                 "person_ref": string(),
                 "contacts": { "type": "array", "items": object(&["pid", "display_name"], &json!({
                     "pid": uuid(), "display_name": string() })) } })) } })),
-        "Cadence": view(&["derivation", "threshold_days", "untouched_contacts",
-            "untouched_accounts", "contacts_without_next_touch"], &json!({
-            "derivation": string(), "threshold_days": integer(),
-            "untouched_contacts": { "type": "array", "items": object(&["pid", "display_name",
-                "days_since_touch", "has_next_touch"], &json!({
-                "pid": uuid(), "display_name": string(), "stakeholder_role": nullable(string()),
-                "days_since_touch": integer(), "has_next_touch": boolean() })) },
-            "untouched_accounts": { "type": "array", "items": object(&["pid", "display_name",
-                "days_since_touch"], &json!({
-                "pid": uuid(), "display_name": string(), "stakeholder_role": nullable(string()),
-                "days_since_touch": integer() })) },
-            "contacts_without_next_touch": integer() })),
-        "EngagementView": view(&["window_days", "touches", "per_recorder_month", "per_kind",
-            "sentiment", "note"], &json!({
-            "window_days": integer(), "touches": integer(), "per_recorder_month": counts(),
-            "per_kind": counts(), "sentiment": counts(), "note": string() })),
-        "StageFunnel": view(&["pipeline", "derivation", "stages"], &json!({
-            "pipeline": object(&["pid", "name"], &json!({ "pid": uuid(), "name": string() })),
-            "derivation": string(),
-            "stages": { "type": "array", "items": object(&["stage", "position", "is_won",
-                "is_lost", "entered", "conversion_from_previous"], &json!({
-                "stage": string(), "position": integer(), "is_won": boolean(),
-                "is_lost": boolean(), "entered": integer(),
-                "conversion_from_previous": { "allOf": [reference("Ratio")], "nullable": true } })) } })),
-        "MembersView": view(&["derivation", "threshold_days", "accounts", "silent_accounts"], &json!({
-            "derivation": string(), "threshold_days": integer(), "silent_accounts": integer(),
-            "accounts": { "type": "array", "items": object(&["pid", "display_name", "tier",
-                "contacts", "days_since_touch", "silent", "open_followups", "open_tickets"], &json!({
-                "pid": uuid(), "display_name": string(), "tier": string(),
-                "stakeholder_role": nullable(string()),
-                "membership": { "nullable": true, "type": "object", "properties": {
-                    "status": string(), "joined_on": date(), "renewal_on": nullable(date()) } },
-                "contacts": integer(), "days_since_touch": integer(), "silent": boolean(),
-                "open_followups": integer(), "open_tickets": integer() })) } })),
         "ConsentByAccount": view(&["window_days", "note", "accounts"], &json!({
             "window_days": integer(), "note": string(),
             "accounts": { "type": "array", "items": object(&["pid", "display_name",
