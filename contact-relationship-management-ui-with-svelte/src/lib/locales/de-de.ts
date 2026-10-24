@@ -1,0 +1,411 @@
+// German (Germany) (`de-de`). Loaded on demand by `i18n.svelte.ts`; the type keeps the key set
+// identical to English.
+
+import type { StringKey } from "../i18n.svelte";
+
+export default {
+  "timeline.critical": "kritischer Pfad",
+  "timeline.slack": "{count} Tage Puffer",
+  "grid.columnMoved": "{header} ist jetzt Spalte {position} von {count}",
+  "grid.shown": "Angezeigt",
+  "grid.total": "Summe",
+  "grid.average": "Durchschnitt",
+  "cal.moved": "{title} auf {date} verschoben",
+  "kanban.movedMany": "{count} Karten nach {column} verschoben",
+  "kanban.edited": "{field} von {title} auf {text} geändert",
+  "kanban.editInvalid": "{text} ist kein gültiger Wert für {field} bei {title}",
+  "kanban.editFailed":
+    "Die Änderung konnte nicht gespeichert werden. Das Board wurde aktualisiert.",
+  "kanban.laneLocked":
+    "Karten lassen sich hier nicht zwischen Bahnen verschieben.",
+  "kanban.unassigned": "Nicht zugewiesen",
+  "kanban.amount": "Betrag",
+  "kanban.closeOn": "Erwarteter Abschluss",
+  "grid.export": "Exportieren",
+  "grid.exported": "{count} Zeilen nach {filename} exportiert",
+  "search.title": "Suche",
+  "search.prompt":
+    "Geben Sie oben im Suchfeld einen Begriff ein, um Kontakte, Konten, Leads, Deals, Tickets, Kampagnen und die Wissensdatenbank zu durchsuchen.",
+  "search.summary": "{count} Ergebnisse für „{query}“",
+  "search.failed": "Einige Listen konnten nicht durchsucht werden.",
+  "cal.more": "+{count} weitere",
+  "cal.day": "Tag",
+  "cal.agenda": "Agenda",
+  "cal.agendaEmpty": "Keine Wiedervorlagen in diesem Zeitraum.",
+  "cal.export": "Exportieren",
+  "cal.weekNumberHeader": "KW",
+  "cal.exportTitle": "Wiedervorlage",
+  "cal.exportStart": "Beginn",
+  "cal.exportEnd": "Ende",
+  "timeline.title": "Kampagnen-Zeitplan",
+  "timeline.note":
+    "Die Balken laufen von der Erstellung einer Kampagne bis zur letzten Statusänderung (bis heute, solange sie offen ist). Der Dienst speichert keine geplanten Versanddaten. Der kritische Pfad ist die Kampagne, die zuletzt endet: Sie bestimmt, wann alles fertig ist; die anderen zeigen, wie viele Tage Puffer sie haben.",
+  "timeline.task": "Kampagne",
+  "timeline.zoomIn": "Vergrößern",
+  "timeline.zoomOut": "Verkleinern",
+  "kanban.pending": "{title} wird nach {column} verschoben …",
+  "kanban.blocked": "{title} kann nicht nach {column} verschoben werden",
+  "kanban.undone":
+    "{title} wurde nicht nach {column} verschoben und ist zurückgekehrt",
+  "kanban.emptyColumn": "Keine Karten",
+  "kanban.search": "Karten durchsuchen",
+  "kanban.collapse": "{column} einklappen",
+  "kanban.expand": "{column} ausklappen",
+  "kanban.export": "Exportieren",
+  "kanban.exported": "{count} Karten nach {filename} exportiert",
+  "kanban.title.col": "Karte",
+  "kanban.column.col": "Spalte",
+  "cal.week": "Woche",
+  "cal.fourWeeks": "4 Wochen",
+  "cal.month": "Monat",
+  "cal.previous": "Voriger Zeitraum",
+  "cal.next": "Nächster Zeitraum",
+  "cal.today": "Heute",
+  "cal.showing": "Zeige {start} bis {end}",
+  "cal.label": "Anstehende Wiedervorlagen",
+  "grid.pageOf": "Seite {page} von {pages}",
+  "nav.kanban": "Kanban",
+  "kanban.title": "Mein Kanban-Board",
+  "kanban.cards": "{count} Karten",
+  "kanban.cardsOne": "1 Karte",
+  "kanban.move": "{title} verschieben",
+  "kanban.menu": "In Spalte verschieben",
+  "kanban.moved": "{title} nach {column} verschoben",
+  "kanban.empty": "Noch keine Deals vorhanden.",
+  "kanban.failed":
+    "Der Deal konnte nicht verschoben werden. Das Board wurde aktualisiert.",
+  "grid.search": "Zeilen filtern",
+  "grid.previous": "Vorherige Seite",
+  "grid.next": "Nächste Seite",
+  "grid.page": "Seite {page} von {pages} ({rows} Zeilen)",
+  "grid.sorted": "{header} sortiert: {direction}",
+  "grid.filtered": "{matches} von {total} Zeilen passen",
+  "grid.select": "Auswählen",
+  "grid.selectRow": "{row} auswählen",
+  "grid.ascending": "aufsteigend",
+  "grid.descending": "absteigend",
+  "grid.unsorted": "unsortiert",
+  "dash.breached": "Überfällige Tickets (SLA verletzt)",
+  "dash.overdue": "Überfällige Nachfassaktionen",
+  "demo.title": "Geführte Tour:",
+  "demo.body":
+    "Alles, was Sie sehen, ist erfunden. Änderungen bleiben nur im Speicher und werden beim erneuten Anmelden zur Tour zurückgesetzt.",
+  "signin.demo": "Möchten Sie die Tour? Melden Sie sich an mit",
+  "nav.pages": "Seiten",
+  "search.label": "Im CRM suchen",
+  "search.input": "Suchbegriffe",
+  "search.submit": "Suchen",
+  "search.placeholder": "Kontakte, Deals, Tickets und mehr suchen",
+  "nav.engagement": "Engagement",
+  "nav.partners": "Partner",
+  "nav.followups": "Wiedervorlagen",
+  "nav.executive": "Führung",
+  "nav.dpo": "DPO",
+  "common.board": "Board",
+  "contact.jobTitle": "Stellenbezeichnung",
+  "account.tier": "Stufe",
+  "account.industry": "Branche",
+  "brand.name": "Main X · CRM",
+  "nav.dashboard": "Übersicht",
+  "nav.contacts": "Kontakte",
+  "nav.accounts": "Konten",
+  "nav.leads": "Leads",
+  "nav.deals": "Deals",
+  "nav.campaigns": "Kampagnen",
+  "nav.tickets": "Tickets",
+  "nav.articles": "Wissensdatenbank",
+  "nav.signin": "Anmelden",
+  "chrome.language": "Sprache",
+  "nav.share": "Teilen",
+  "nav.text_size": "Textgröße",
+  "share.copy_link": "Link kopieren",
+  "share.copied": "Link kopiert",
+  "share.copy_failed":
+    "Kopieren fehlgeschlagen — bitte aus der Adressleiste kopieren",
+  "common.loading": "Wird geladen…",
+  "common.error": "Laden fehlgeschlagen",
+  "common.status": "Status",
+  "common.name": "Name",
+  "common.actions": "Aktionen",
+  "common.amount": "Betrag",
+  "common.masked": "Verborgen",
+  "dash.title": "Meine Startseite",
+  "dash.winRate": "Erfolgsquote",
+  "dash.openDeals": "Offene Deals",
+  "dash.openTickets": "Offene Tickets",
+  "dash.forecast": "Prognose",
+  "dash.noData": "Noch keine Daten",
+  "contact.consent": "Marketing-Einwilligung",
+  "contact.timeline": "Zeitleiste",
+  "contact.grant": "Einwilligung erteilen",
+  "contact.withdraw": "Widerrufen",
+  "contact.subjectAccess": "Meine Daten herunterladen",
+  "contact.erase": "Löschen (anonymisieren)",
+  "contact.duplicates": "Mögliche Duplikate",
+  "contact.duplicatesNone": "Keine wahrscheinlichen Duplikate.",
+  "contact.duplicatesHint":
+    "Nur ein Hinweis: Nichts ändert sich, bis Sie „Zusammenführen“ wählen. Verglichen werden Name, Position und Arbeitgeber; E-Mail-Adressen werden für die besten Treffer geprüft.",
+  "contact.dupMatch": "Wahrscheinlich dieselbe Person",
+  "contact.dupReview": "Einen Blick wert",
+  "contact.dupCertain": "Derselbe Personendatensatz",
+  "contact.dupAgrees": "Stimmt überein",
+  "contact.dupDiffers": "Weicht ab",
+  "contact.dupField.given_name": "Vorname",
+  "contact.dupField.family_name": "Nachname",
+  "contact.dupField.email": "E-Mail",
+  "contact.dupField.organization": "Arbeitgeber",
+  "contact.dupField.job_title": "Stellenbezeichnung",
+  "contact.merge": "In diesen Kontakt zusammenführen",
+  "contact.mergeMoves": "Wird verschoben",
+  "contact.mergeDrops": "Entfällt (schon bei diesem Kontakt)",
+  "contact.mergeNothing": "Nichts zu verschieben.",
+  "contact.mergeConsent": "Marketing-Einwilligung danach",
+  "contact.mergeReason": "Grund (wird im Prüfprotokoll festgehalten)",
+  "contact.mergeWarn":
+    "Der andere Kontakt wird geschlossen und lässt sich von diesem Bildschirm aus nicht wieder öffnen. Die Einwilligung folgt der strengeren der beiden.",
+  "contact.mergeConfirm": "Zusammenführen",
+  "contact.mergeCancel": "Abbrechen",
+  "contact.mergeDone": "Zusammengeführt.",
+  "contact.mergeTable.activities": "Aktivitäten",
+  "contact.mergeTable.leads": "Leads",
+  "contact.mergeTable.deals": "Deals",
+  "contact.mergeTable.tickets": "Tickets",
+  "contact.mergeTable.email_deliveries": "Gesendete E-Mails",
+  "contact.mergeTable.consent_events": "Einwilligungsvermerke",
+  "contact.mergeTable.nurture_enrollments": "Nurture-Teilnahmen",
+  "contact.mergeTable.working_group_members": "Arbeitsgruppen-Plätze",
+  "contact.links": "Verknüpfte Datensätze",
+  "contact.linksHint":
+    "Wo dieser Kontakt noch geführt wird. Das sind nur Links: Aus diesen Systemen wird nichts kopiert und dorthin nichts gesendet.",
+  "contact.linkSystem": "System",
+  "contact.linkUrl": "Adresse des Datensatzes (https)",
+  "contact.linkLabel": "Bezeichnung (optional)",
+  "contact.linkAdd": "Link hinzufügen",
+  "contact.linkRemove": "Entfernen",
+  "contact.linksNone": "Noch keine Links.",
+  "contact.linkOpens": "öffnet in einem neuen Tab",
+  "contact.linkSystemOther": "Andere",
+  "contact.mergeTable.external_links": "Links zu anderen Systemen",
+  "contact.merges": "Kürzlich zusammengeführt",
+  "contact.mergesHint":
+    "Kontakte, die in diesen zusammengeführt wurden. „Rückgängig“ gibt zurück, was verschoben und wiederhergestellt wurde; seither an diesem Kontakt geleistete Arbeit bleibt hier, und die Einwilligung wird nie großzügiger.",
+  "contact.unmerge": "Zusammenführung rückgängig",
+  "contact.unmergeRestores": "Geht zurück",
+  "contact.unmergeLeft": "Bleibt hier (seither geändert)",
+  "contact.unmergeRestoredDrops": "Wird wiederhergestellt",
+  "contact.unmergeCleared": "Felder, die wieder geleert werden",
+  "contact.unmergeConsent":
+    "Marketing-Einwilligung des zurückkehrenden Kontakts",
+  "contact.unmergeWarn":
+    "Der Kontakt erscheint wieder in der Kontaktliste. Das wird im Prüfprotokoll festgehalten.",
+  "contact.unmergeConfirm": "Rückgängig machen",
+  "contact.unmergeDone": "Zusammenführung rückgängig gemacht.",
+  "contact.unmergeNot":
+    "Diese Zusammenführung lässt sich nicht rückgängig machen.",
+  "contact.mergedOn": "zusammengeführt am",
+  "nav.breakGlass": "Notfallzugriff",
+  "footer.accessibility": "Barrierefreiheit",
+  "breakGlass.title": "Notfall-Lesezugriff",
+  "breakGlass.intro":
+    "Hebt die Maskierung für lesende Zugriffe zeitlich begrenzt auf. Der Grund wird protokolliert und später von einer anderen Person geprüft.",
+  "breakGlass.reason": "Grund (mindestens 20 Zeichen)",
+  "breakGlass.minutes": "Minuten",
+  "breakGlass.request": "Zugriff anfordern",
+  "breakGlass.granted": "Zugriff erweitert bis",
+  "breakGlass.reviewTitle": "Notfallzugriffe prüfen",
+  "breakGlass.unreviewed": "Ungeprüft",
+  "breakGlass.subject": "Person",
+  "breakGlass.requestedAt": "Angefordert",
+  "breakGlass.note": "Prüfnotiz (mindestens 10 Zeichen)",
+  "breakGlass.recordReview": "Prüfung erfassen",
+  "breakGlass.reviewedBy": "Geprüft von",
+  "contact.eraseConfirm":
+    "Diesen Kontakt löschen? Dies kann nicht rückgängig gemacht werden.",
+  "lead.score": "Score",
+  "lead.breakdown": "Score-Aufschlüsselung",
+  "lead.source": "Quelle",
+  "deal.board": "Deal-Board",
+  "deal.stage": "Phase",
+  "deal.edit": "Deal bearbeiten",
+  "deal.save": "Speichern",
+  "deal.cancel": "Abbrechen",
+  "deal.saved": "Deal gespeichert",
+  "deal.closedLocked":
+    "Dieser Deal ist abgeschlossen und kann nicht bearbeitet werden.",
+  "deal.reopen": "Deal wieder öffnen",
+  "deal.reopenReason": "Grund für das Wiedereröffnen",
+  "deal.reopenConfirm": "Wieder öffnen",
+  "deal.reopened": "Deal wieder geöffnet",
+  "deal.won": "Gewonnen",
+  "deal.lost": "Verloren",
+  "campaign.funnel": "Trichter",
+  "campaign.roi": "ROI",
+  "campaign.recipients": "Empfänger",
+  "campaign.run": "Ausführen (simuliert)",
+  "ticket.priority": "Priorität",
+  "ticket.due": "Antwort fällig",
+  "ticket.breached": "Verletzt",
+  "article.version": "Version",
+  "article.publish": "Veröffentlichen",
+  "article.search": "Artikel suchen",
+  "auth.signin": "Anmelden",
+  "auth.signout": "Abmelden",
+  "share.email": "Link per E-Mail senden",
+  "share.linkedin": "Auf LinkedIn teilen",
+  "share.reddit": "Auf Reddit teilen",
+  "share.bluesky": "Auf Bluesky teilen",
+  "share.mastodon": "Auf Mastodon teilen",
+  "splash.hero.secondary": "Was Sie erwartet",
+  "splash.benefits.title": "Warum Teams sich dafür entscheiden",
+  "splash.features.title": "Was Sie tun können",
+  "splash.trust.title": "Für Vertrauen gebaut",
+  "splash.trust.1.title": "Anmeldung ohne Passwort",
+  "splash.trust.1.body":
+    "Ein Magic-Link per E-Mail: kein Passwort, das verloren gehen oder mehrfach verwendet werden könnte.",
+  "splash.trust.2.title": "Attributbasierte Berechtigungen",
+  "splash.trust.2.body":
+    "Fein abgestufte Regeln legen fest, wer lesen, schreiben, zusammenführen oder löschen darf.",
+  "splash.trust.3.title": "Manipulationssicheres Audit-Protokoll",
+  "splash.trust.3.body":
+    "Ein nur ergänzbarer Verlauf hält jede Änderung fest und wer sie vorgenommen hat.",
+  "splash.trust.4.title": "Datenschutzkontrollen",
+  "splash.trust.4.body":
+    "Sensible Angaben sind maskiert, sofern Sie sie nicht einsehen dürfen.",
+  "splash.trust.5.title": "Offene Standards",
+  "splash.trust.5.body":
+    "REST mit OpenAPI und HL7 FHIR, wo Gesundheitssysteme es benötigen.",
+  "splash.trust.6.title": "Spricht Ihre Sprache",
+  "splash.trust.6.body":
+    "Arabisch, Chinesisch, Deutsch, Englisch, Französisch, Hindi, Spanisch und Walisisch.",
+  "splash.cta.title": "Bereit für den Einstieg?",
+  "splash.cta.body":
+    "Melden Sie sich mit einem Magic-Link an, der an Ihre E-Mail-Adresse gesendet wird. Kein Passwort nötig.",
+  "splash.benefits.1.title": "Eine Sicht pro Kunde",
+  "nav.tour": "Rundgang",
+  "splash.hero.tour": "Rundgang starten",
+  "tour.head": "Machen Sie den Rundgang",
+  "tour.toc": "Auf dieser Seite",
+  "tour.open": "Diese Ansicht öffnen",
+  "tour.top": "Nach oben",
+  "tour.start.title": "Bevor Sie beginnen",
+  "tour.start.summary":
+    "Für die Arbeit mit echten Daten benötigen Sie ein Konto. Die Anmeldung dauert weniger als eine Minute und kommt ohne Passwort aus.",
+  "tour.start.step.1":
+    "Wählen Sie oben rechts Anmelden und geben Sie Ihre E-Mail-Adresse ein.",
+  "tour.start.step.2":
+    "Öffnen Sie den Magic-Link, den wir Ihnen per E-Mail senden. Er funktioniert nur einmal und läuft schnell ab.",
+  "tour.start.step.3":
+    "Sie kehren angemeldet in die Anwendung zurück, ohne etwas merken oder zurücksetzen zu müssen.",
+  "tour.start.step.4":
+    "Mit den Schaltflächen neben Anmelden ändern Sie Thema, Sprache und Textgröße oder teilen die Seite.",
+  "signin.sso": "Mit SSO anmelden",
+  "brand.tagline": "Jede Kundenbeziehung an einem Ort",
+  "nav.toggle": "Navigation umschalten",
+  "nav.theme": "Thema",
+  "splash.hero.title": "Jeden Kunden kennen, jeden Vorgang abschließen",
+  "splash.hero.subtitle":
+    "Verwalten Sie Kontakte, Deals, Kampagnen und Support-Tickets in einem Arbeitsbereich, mit respektierter Einwilligung und jeder Aktion im Protokoll.",
+  "splash.benefits.1.body":
+    "Zeitleiste, Deals und Tickets eines Kontakts stehen zusammen, sodass niemand zweimal fragen muss.",
+  "splash.benefits.2.title": "Einwilligung zuerst",
+  "splash.benefits.2.body":
+    "Marketing geht nur an Kontakte, die zugestimmt haben, und ein Widerruf der Einwilligung wirkt sofort.",
+  "splash.benefits.3.title": "Auf das Wesentliche konzentrieren",
+  "splash.benefits.3.body":
+    "Lead-Scores legen ihre Herleitung offen, sodass Ihr Team weiß, warum sich ein Anruf lohnt.",
+  "splash.benefits.4.title": "Ehrliche Zahlen",
+  "splash.benefits.4.body":
+    "Erfolgsquoten zeigen die Anzahl hinter dem Prozentwert, und fehlende Daten werden als fehlend angezeigt.",
+  "splash.benefits.5.title": "Support pünktlich",
+  "splash.benefits.5.body":
+    "Live-Countdowns zeigen, welche Tickets kurz vor ihrer Frist stehen und welche sie schon überschritten haben.",
+  "splash.benefits.6.title": "Keine doppelten Identitäten",
+  "splash.benefits.6.body":
+    "Kontakte und Konten verweisen auf die gemeinsamen Personen- und Organisationsregister, statt sie zu kopieren.",
+  "splash.features.1.title": "Kontakte und Konten",
+  "splash.features.1.body":
+    "Durchsuchen Sie Personen und Organisationen, mit Einwilligung und Zeitleiste jedes Kontakts auf einer Seite.",
+  "splash.features.2.title": "Lead-Scoring",
+  "splash.features.2.body":
+    "Verfolgen Sie Leads von ihrer Quelle an, mit Score und einer Aufschlüsselung dessen, was ihn ergeben hat.",
+  "splash.features.3.title": "Deal-Board",
+  "splash.features.3.body":
+    "Ziehen Sie Deals durch die Pipeline-Phasen und sehen Sie, wie sich die Prognose vom Server aktualisiert.",
+  "splash.features.4.title": "Kampagnen und ROI",
+  "splash.features.4.body":
+    "Planen Sie Kampagnen, verfolgen Sie den Trichter von den Empfängern bis zu den Ergebnissen und sehen Sie den Ertrag jeder einzelnen.",
+  "splash.features.5.title": "Tickets mit SLAs",
+  "splash.features.5.body":
+    "Bearbeiten Sie eine Support-Warteschlange nach Priorität, mit herunterzählenden Antwortfristen an jedem Ticket.",
+  "splash.features.6.title": "Wissensdatenbank",
+  "splash.features.6.body":
+    "Schreiben, versionieren und veröffentlichen Sie Hilfeartikel und durchsuchen Sie sie, um Tickets schneller zu beantworten.",
+  "tour.intro":
+    "Ein geführter Rundgang durch das CRM: was jede Ansicht leistet und wie Sie sie nutzen, von der Prüfung der Einwilligung eines Kontakts über die Durchführung einer Kampagne bis zur Einhaltung von Support-Fristen.",
+  "tour.s1.title": "Einen Kontakt und seine Einwilligung verwalten",
+  "tour.s1.summary":
+    "Öffnen Sie einen Kontakt, um seine gesamte Beziehung an einem Ort zu sehen, und halten Sie fest, wozu er zugestimmt hat.",
+  "tour.s1.step.1":
+    "Öffnen Sie „Kontakte“ und grenzen Sie die Tabelle mit der Filterleiste nach Name, Status oder Marketing-Einwilligung ein.",
+  "tour.s1.step.2":
+    "Wählen Sie eine Zeile, um die Kontaktseite zu öffnen, die Zeitleiste, Deals und Tickets zusammen zeigt.",
+  "tour.s1.step.3":
+    "Wählen Sie unter „Marketing-Einwilligung“ „Einwilligung erteilen“ oder „Widerrufen“, um die Entscheidung des Kontakts festzuhalten; die Seite lädt mit dem neuen Zustand neu.",
+  "tour.s1.step.4":
+    "Mit „Meine Daten herunterladen“ rufen Sie die Datensätze des Kontakts ab, mit „Löschen (anonymisieren)“ entfernen Sie sie; die Löschen-Schaltfläche erscheint nur, wenn der Kontakt keine offenen Deals oder Tickets hat.",
+  "tour.s2.title": "Leads bewerten und priorisieren",
+  "tour.s2.summary":
+    "Sehen Sie, welche Leads einen Anruf verdienen und warum, und führen Sie sie dann durch ihren Lebenszyklus.",
+  "tour.s2.step.1":
+    "Öffnen Sie „Leads“, um die Warteschlange mit Score, Name, Quelle und Status jedes Leads zu sehen; filtern Sie sie mit der Filterleiste.",
+  "tour.s2.step.2":
+    "Wählen Sie einen Lead und dann „Score-Aufschlüsselung“, um den Gesamtscore, sein Label und die von jeder Regel beigesteuerten Punkte zu sehen.",
+  "tour.s2.step.3":
+    "Wählen Sie „Board“, um die Leads als Spalten zu sehen: „New“, „Contacted“, „Qualified“, „Converted“ und „Disqualified“ (neu, kontaktiert, qualifiziert, konvertiert, disqualifiziert).",
+  "tour.s2.step.4":
+    "Ziehen Sie eine Karte in eine andere Spalte, um ihren Status zu ändern; verweigert der Dienst eine unzulässige Verschiebung, lädt das Board den gespeicherten Zustand neu.",
+  "tour.s3.title": "Die Deal-Pipeline betreiben",
+  "tour.s3.summary":
+    "Bewegen Sie Deals durch die Pipeline-Phasen und sehen Sie, wie die Prognose folgt.",
+  "tour.s3.step.1":
+    "Öffnen Sie „Deals“ und wählen Sie eine Pipeline aus der Auswahlliste; jede Spalte ist eine Phase, beschriftet mit ihrer Gewinnwahrscheinlichkeit.",
+  "tour.s3.step.2":
+    "Lesen Sie die Zeile „Prognose“ über dem Board, die die vom Server berechnete Summe je Währung zeigt.",
+  "tour.s3.step.3":
+    "Ziehen Sie eine Deal-Karte in eine andere Phase, um sie zu verschieben; beim Ablegen in einer Verloren-Phase wird mit der Verschiebung ein Grund festgehalten.",
+  "tour.s3.step.4":
+    "Scrollen Sie nach unten zur Tabelle „Trichter“, um zu sehen, wie viele Deals jede Phase erreicht haben und wie hoch die Konversion von der vorherigen Phase ist.",
+  "tour.s4.title": "Eine Kampagne durchführen und ihren ROI lesen",
+  "tour.s4.summary":
+    "Senden Sie eine Kampagne an ihre Empfänger und sehen Sie, was sie eingebracht hat.",
+  "tour.s4.step.1":
+    "Öffnen Sie „Kampagnen“, um Name, Status und Empfänger jeder Kampagne zu sehen, dargestellt als Empfänger, zugestellt, geöffnet und angeklickt.",
+  "tour.s4.step.2":
+    "Wählen Sie bei einer Entwurfs- oder geplanten Kampagne „Ausführen (simuliert)“; ein Entwurf wird zuerst geplant und dann ausgeführt.",
+  "tour.s4.step.3":
+    "Wählen Sie bei einer beliebigen Kampagne „Trichter“, um ihre Zusammenfassungszeile zu öffnen.",
+  "tour.s4.step.4":
+    "Lesen Sie die Lead-Anzahl, den gewonnenen Umsatz und den ROI in Prozent samt den Zahlen dahinter, damit Sie das Ergebnis ehrlich beurteilen können.",
+  "tour.s5.title": "Die Support-Warteschlange nach SLAs bearbeiten",
+  "tour.s5.summary":
+    "Bearbeiten Sie Tickets nach Priorität und erkennen Sie die, die ihre Frist zu reißen drohen.",
+  "tour.s5.step.1":
+    "Öffnen Sie „Tickets“, um Priorität, Status und Antwort-fällig-Zeit jedes Tickets zu sehen; filtern Sie die Warteschlange mit der Filterleiste.",
+  "tour.s5.step.2":
+    "Beobachten Sie die Anzahl „Verletzt“ oben in der Warteschlange für Tickets, die eine Frist bereits verpasst haben.",
+  "tour.s5.step.3":
+    "Wählen Sie ein Ticket, um sein Feld zu öffnen, und dann eine Pfeilschaltfläche wie „→ pending“ oder „→ resolved“, um es in den nächsten Status zu versetzen.",
+  "tour.s5.step.4":
+    "Wählen Sie „Board“, um dieselben Tickets als Spalten „Open“, „Pending“, „Resolved“ und „Closed“ zu bearbeiten und Karten dazwischen zu ziehen.",
+  "tour.s6.title": "Ergebnisse und Datenschutz prüfen",
+  "tour.s6.summary":
+    "Prüfen Sie die Zahlen, die Führungskräften, Vertriebsleitung und Datenschutzbeauftragten wichtig sind.",
+  "tour.s6.step.1":
+    "Öffnen Sie die „CRM-Übersicht“, um Erfolgsquote, offene Deals, offene Tickets und Prognose auf einen Blick zu sehen.",
+  "tour.s6.step.2":
+    "Öffnen Sie „Führung“ für die Periodenzusammenfassung, veraltete Deals, Befunde zur Pipeline-Hygiene und den Prognoseverlauf.",
+  "tour.s6.step.3":
+    "Öffnen Sie „Engagement“ und „Wiedervorlagen“, um Kontakte zu finden, die zuletzt niemand angesprochen hat, und die Wiedervorlagen, die überfällig oder in den nächsten 30 Tagen fällig sind.",
+  "tour.s6.step.4":
+    "Öffnen Sie „DPO“, um die Einwilligung nach Quelle und nach Konto sowie Kontaktzeilen zu sehen, die dieselbe Person teilen.",
+} satisfies Record<StringKey, string>;

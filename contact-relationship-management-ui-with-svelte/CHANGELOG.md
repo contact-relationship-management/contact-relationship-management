@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — one language is downloaded, not eight (CRM-T89)
+
+The interface strings were one 3,300-line table (175 KB, 50 KB compressed) that every visitor downloaded for all
+eight languages. Each language is now its own file under `src/lib/locales/`, and only English (19 KB, 7 KB
+compressed) is bundled; the language a visitor chooses, or chose last time, is fetched when it is needed (17 to 34 KB,
+7 to 8 KB compressed). While it loads the page shows English, then switches without a reload. Each locale file
+is typed against the English keys, so a missing or extra key is a type error as well as a test failure.
+`scripts/identical-to-english.mjs` lists the strings that match English, for native reviewers.
+
 ### Changed — each tour visitor has their own copy of the data (CRM-T92)
 
 Signing in as `example@example.com` now starts a new demo session with a random id and its own copy of the

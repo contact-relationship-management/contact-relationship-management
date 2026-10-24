@@ -19,6 +19,24 @@ Source text: `en-gb-oxendict`, refreshed 2026-10-11.
 | cy-001 | 11 | Byte copy of cy-gb | **No** |
 | ar-001 | 11 | Translated by Claude (Modern Standard Arabic, right-to-left), native-script slugs; no regional variant | **No** |
 
+## Two locale sets (CRM-T89)
+
+The repository has two sets of locales, for two different things, and they are not meant to be equal.
+
+| Set | What it translates | Locales |
+|---|---|---|
+| `locales/` (this page) | The 11 role briefs | 11 directories: `ar-001`, `cy-001`, `cy-gb`, `en-001`, `en-gb`, `en-gb-oxendict`, `en-us`, `hi-001`, `hi-in`, `zh-001`, `zh-cn` |
+| The UI (`src/lib/locales/*.ts`) | The 330 interface strings | 8: `ar-001`, `cy-001`, `de-de`, `en-001`, `es-001`, `fr-001`, `hi-001`, `zh-cn` |
+
+- The briefs have regional variants the UI does not (`cy-gb`, `en-gb`, `en-us`, `en-gb-oxendict`, `hi-in`,
+  `zh-001`). The UI picks a locale by language, so each of them resolves to a UI locale (`en-gb` to `en-001`,
+  `hi-in` to `hi-001`, `zh-001` to `zh-cn`). A UI test reads this directory and fails if a brief locale would
+  fall back to English.
+- The UI has three languages the briefs do not (`de-de`, `es-001`, `fr-001`). A reader who chooses one of them
+  gets the UI in their language and the briefs in English until a brief is translated.
+- Each UI locale is one module loaded on demand; `scripts/identical-to-english.mjs` lists the values that match
+  English, for native reviewers (`spec/locale-review.md` in the UI folder).
+
 ## Rules applied
 
 - Each topic directory has `index.md`, a `README.md` symlink to it, and a

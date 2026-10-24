@@ -9,7 +9,8 @@ import {
   LOCALES,
   LOCALE_LABELS,
   STRING_KEYS,
-  STRINGS_BY_LOCALE,
+  loadAllLocales,
+  loadLocale,
   i18n,
   isRtl,
   translate,
@@ -28,9 +29,10 @@ describe("money", () => {
 });
 
 describe("i18n", () => {
-  it("covers every key in every locale (parity)", () => {
+  it("covers every key in every locale (parity)", async () => {
+    const tables = await loadAllLocales();
     for (const locale of LOCALES) {
-      const table = STRINGS_BY_LOCALE[locale];
+      const table = tables[locale];
       for (const key of STRING_KEYS) {
         expect(table[key], `${locale} missing ${key}`).toBeTruthy();
       }
@@ -56,7 +58,8 @@ describe("i18n", () => {
     expect(LOCALE_LABELS["zh-cn"]).toBe("中文 - 中国");
   });
 
-  it("translates with en fallback and flags RTL locales", () => {
+  it("translates with en fallback and flags RTL locales", async () => {
+    await loadLocale("es-001");
     expect(translate("nav.contacts", "es-001")).toBe("Contactos");
     expect(translate("nav.contacts", DEFAULT_LOCALE)).toBe("Contacts");
     expect(translate("nav.contacts", "xx" as never)).toBe("Contacts");
@@ -65,6 +68,37 @@ describe("i18n", () => {
     expect(isRtl("ar")).toBe(true);
     expect(isRtl("en-001")).toBe(false);
     expect(isRtl("zh-cn")).toBe(false);
+  });
+
+  it("answers in English until a locale has loaded, then in that locale", async () => {
+    // A fresh module registry: nothing but English is loaded yet.
+    vi.resetModules();
+    const fresh = await import("../../src/lib/i18n.svelte");
+    expect(fresh.translate("nav.leads", "fr-001")).toBe("Leads");
+    const pending = fresh.loadLocale("fr-001");
+    expect(fresh.loadLocale("fr-001")).toBe(pending); // one fetch, however often asked
+    await pending;
+    expect(fresh.translate("nav.leads", "fr-001")).not.toBe("Leads");
+  });
+
+  it("reads every locale directory of the role guides as one of the UI locales", async () => {
+    // The root `locales/` tree holds role guides, in more regional variants
+    // than the UI has strings for; each must still resolve to a UI locale.
+    const { readdirSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const root = resolve(process.cwd(), "../locales"); // vitest runs in the UI folder
+    const dirs = readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    expect(dirs.length).toBeGreaterThan(0);
+    for (const dir of dirs) {
+      i18n.set(dir);
+      expect((LOCALES as readonly string[]).includes(i18n.locale), dir).toBe(
+        true,
+      );
+      // An unknown code falls back to English; a guide locale must not.
+      if (!dir.startsWith("en")) expect(i18n.locale, dir).not.toBe("en-001");
+    }
   });
 
   it("normalises legacy and regional codes by primary language", () => {
@@ -165,15 +199,11 @@ describe("tour", () => {
     ]),
   ];
 
-  it("has six workflow sections of four steps in every locale", () => {
+  it("has six workflow sections of four steps in every locale", async () => {
+    const tables = await loadAllLocales();
     for (const locale of LOCALES) {
       for (const key of TOUR_KEYS) {
-        expect(
-          STRINGS_BY_LOCALE[locale][
-            key as keyof (typeof STRINGS_BY_LOCALE)["en-001"]
-          ],
-          `${locale} missing ${key}`,
-        ).toBeTruthy();
+        expect(tables[locale][key], `${locale} missing ${key}`).toBeTruthy();
       }
     }
   });
