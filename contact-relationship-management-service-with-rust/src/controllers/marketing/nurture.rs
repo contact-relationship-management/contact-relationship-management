@@ -137,40 +137,48 @@ pub(super) async fn enroll(
             sequence.purpose
         )));
     }
-    let first_step = nurture_steps::Entity::find()
+    let txn = ctx.db.begin().await?;
+    let pid = enrol_in(&txn, &sequence, contact.pid, caller.actor())
+        .await?
+        .ok_or_else(|| unprocessable("sequence has no steps"))?;
+    txn.commit().await?;
+    format::json(PidRef {
+        pid: pid.to_string(),
+    })
+}
+
+/// Start `contact` on `sequence`, due after its first step's delay, inside the caller's
+/// transaction. The caller has checked consent. `None` when the sequence has no steps.
+pub(crate) async fn enrol_in(
+    txn: &sea_orm::DatabaseTransaction,
+    sequence: &nurture_sequences::Model,
+    contact: Uuid,
+    actor: Option<&str>,
+) -> Result<Option<Uuid>> {
+    let Some(first_step) = nurture_steps::Entity::find()
         .filter(nurture_steps::Column::SequencePid.eq(sequence.pid))
         .filter(nurture_steps::Column::DeletedAt.is_null())
         .order_by_asc(nurture_steps::Column::Position)
-        .one(&ctx.db)
+        .one(txn)
         .await?
-        .ok_or_else(|| unprocessable("sequence has no steps"))?;
+    else {
+        return Ok(None);
+    };
     let due = chrono::Utc::now() + chrono::Duration::hours(i64::from(first_step.delay_hours));
-    let txn = ctx.db.begin().await?;
     let row = nurture_enrollments::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         sequence_pid: ActiveValue::set(sequence.pid),
-        contact_pid: ActiveValue::set(contact.pid),
+        contact_pid: ActiveValue::set(contact),
         current_step: ActiveValue::set(0),
         next_due_at: ActiveValue::set(Some(due.into())),
         status: ActiveValue::set("active".to_string()),
         deleted_at: ActiveValue::set(None),
         ..Default::default()
     }
-    .insert(&txn)
+    .insert(txn)
     .await?;
-    Audit::record(
-        &txn,
-        "nurture_enrollment",
-        row.pid,
-        "created",
-        caller.actor(),
-        None,
-    )
-    .await?;
-    txn.commit().await?;
-    format::json(PidRef {
-        pid: row.pid.to_string(),
-    })
+    Audit::record(txn, "nurture_enrollment", row.pid, "created", actor, None).await?;
+    Ok(Some(row.pid))
 }
 
 /// What happened to one real nurture-step send.

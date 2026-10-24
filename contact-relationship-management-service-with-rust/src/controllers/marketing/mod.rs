@@ -40,6 +40,7 @@ use consent::{
     preferences_link, record_consent, request_consent,
 };
 use nurture::{advance_nurture, create_sequence, enroll, list_sequences};
+pub(crate) use public::purpose_label;
 use public::{
     confirm_page_get, confirm_post, email_webhook, preferences_page_get, preferences_post,
     provider_webhook, unsubscribe_page_get, unsubscribe_post,

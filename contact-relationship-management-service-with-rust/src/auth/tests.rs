@@ -242,6 +242,7 @@ fn enforce_on_allows_public_paths() {
         "/swagger-ui/index.html",
         "/metrics.prom",
         "/unsubscribe/sometoken",
+        "/forms/newsletter",
     ] {
         assert!(
             enforce(

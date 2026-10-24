@@ -552,3 +552,57 @@ see what it did.*
   closed schema before any request is made; ids must be UUIDs. An answer is cut at 200 KB.
 - Not built: OAuth discovery for MCP clients (the caller presents the same PASETO bearer
   token as any API client), resources and prompts, change notifications, and a tool to erase.
+
+## CRM-R31 — Capture leads from a web form, with the visitor's confirmation
+
+*As someone who runs a website, I can put a sign-up form on it that creates a lead in
+the CRM, and I know nobody is mailed marketing until they have confirmed their own
+address, and that bots and strangers cannot fill the CRM or use it to spam someone.*
+
+- **The form is configured, not invented by the caller.** `CRM_WEB_FORMS` is a JSON
+  list; each entry has a `slug`, the `origins` allowed to post it, an optional `purpose`
+  (default `marketing`; any CRM-R29 purpose) and an optional `sequence` (a nurture
+  sequence pid). A slug that is not configured is `404`. The visitor cannot choose the
+  purpose or the sequence.
+- **`POST /forms/{slug}`** (outside `/api`, public by design, like the unsubscribe pages)
+  takes `{ "name", "email" }` and a honeypot field `website`. It answers `202` with the
+  same body whether the address is new, already known, already confirmed, or the honeypot
+  was filled, so the answer cannot be used to find out who is in the CRM.
+- **Origin check.** The request must carry an `Origin` on the form's list; one that does
+  not, or that carries none, is `403`. An `OPTIONS` preflight is answered for allowed
+  origins only, and responses carry `Access-Control-Allow-Origin` for that origin and
+  nothing wider. This keeps other websites from posting the form from a visitor's
+  browser; it does not stop a script that sets the header, which is what the next two
+  items are for.
+- **Rate limits.** Each form allows 5 submissions per client in 10 minutes and 300 per
+  hour in all (`CRM_WEB_FORM_CLIENT_LIMIT`, `CRM_WEB_FORM_LIMIT`), answering `429` with
+  `Retry-After`. Counts are kept in the process, so with several replicas each allows its
+  own; clients are told apart by `X-Forwarded-For` only when `CRM_TRUST_FORWARDED_FOR` is
+  on, and otherwise share one bucket.
+- **Honeypot.** A non-empty `website` is a bot: nothing is created, nothing is sent, and
+  the answer is the normal one.
+- **The CRM stores no email.** The address goes to the person service, which finds or
+  creates the person and returns its id; the CRM keeps the `person:` reference and the
+  name. `CRM_UPSTREAM_MODE=http` calls `POST {CRM_PERSON_SERVICE_URL}/api/persons` with
+  `{ "name", "email" }` and expects `{ "pid" }` (or `{ "id" }`) back. In the default stub
+  mode a process-local person is made (lost on restart, development only). If the person
+  service cannot be reached the answer is `503` and nothing is created. The lead carries
+  only the address's domain, as before.
+- **What is created.** A contact for that person unless one exists, a lead with
+  `source=web` (not a second one while the contact has an open web lead), the purpose set
+  to `pending` (never touching a purpose already `granted`; a withdrawn one becomes
+  `pending` again, since the person is asking), and a record of the submission. Audit rows:
+  the contact's creation and consent event, and `web_form_submitted` on the lead naming
+  the form and purpose, never the name or address.
+- **Double opt-in.** The confirmation mail, which is the only mail sent, goes to the address
+  in the request with the CRM-R29 confirmation link; it is not marketing and carries no
+  unsubscribe link. At most one is sent per contact and purpose per hour, so a stranger's
+  address cannot be flooded by repeat submissions. A failed send is logged and is not shown
+  to the visitor. Until the visitor confirms, the purpose is `pending`, which allows no
+  send.
+- **Optional nurture enrolment** happens when the visitor confirms (in the same transaction
+  as the grant), never before. A withdrawal before confirming means the link no longer works
+  and nothing is enrolled.
+- Erasure (CRM-R20) deletes the contact's submission records.
+- Not built: a form builder or embeddable script, CAPTCHA, translating the confirmation
+  mail (English only), file fields, and extra fields beyond name and email.

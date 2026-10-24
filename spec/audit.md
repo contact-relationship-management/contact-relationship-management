@@ -27,6 +27,10 @@ Webhook subscriptions (CRM-R28) audit under the entity `webhook_subscription`:
 `webhook_subscription_disabled` (the receiver answered `410 Gone`; no actor). Never the address
 or the secret.
 
+A web form submission (CRM-R31) audits as the actor `web_form:<slug>`: the contact's `created` (when new) and
+`consent_pending`, the lead's `lead_captured`, and `web_form_submitted` on the lead with the form and purpose. Never the
+name or the address. A submission the honeypot caught, one over a limit and one from a refused origin write nothing.
+
 ## Integrity
 
 **A write whose audit row cannot be written is refused.** The audit row is part of the

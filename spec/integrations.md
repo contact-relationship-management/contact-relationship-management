@@ -84,3 +84,33 @@ dry run nor the write tool, or if its path mentions erase, webhooks or break-gla
 Why not a separate MCP process calling the HTTP API: it would need its own copy of the caller's token handling and could not
 stay in step with the access policy by construction. Why stateless: the 2026-07-28 revision removed sessions, so there is
 nothing to keep per client, and for the older versions no `Mcp-Session-Id` is issued, which the specification allows.
+
+## Web form lead capture (CRM-R31)
+
+`POST /forms/{slug}` is public by design and sits outside `/api`, like the unsubscribe and confirmation pages (`auth::is_public_path`).
+The forms are configuration, not data: `CRM_WEB_FORMS` is a JSON list of `{slug, origins, purpose?, sequence?}`, read into
+`Settings` (an entry that is not valid is left out, a list that is not JSON gives no forms). Nothing the caller sends chooses the
+purpose or the sequence.
+
+What stands between the internet and the CRM, in order: the form must exist (`404`), the `Origin` must be on its list (`403`,
+and a missing `Origin` is refused, so a script must set one: the origin check keeps other websites from using a visitor's
+browser, and the limits are what stop a script), the per-client and per-form limits (`429`), then the honeypot, then validation.
+The honeypot is checked before validation so a bot gets the same answer however malformed its other fields are.
+
+Address handling: the CRM stores none. `clients::resolve_person` hands name and address to the person service
+(`POST /api/persons`, expecting `{pid}`; this is the contract this service assumes of it and should be confirmed with that service)
+and keeps the `person:` reference. The address is then used once more, in memory, as the recipient of the confirmation mail, and
+dropped. The lead keeps the address's domain only, which scoring already used. In stub mode the person is process-local, so a
+restart loses the address and the confirmation cannot be re-sent: development only.
+
+Two things stop the form being used to mail a stranger: the mail is the confirmation only (no marketing until the visitor
+presses the button, since `pending` allows no send), and at most one goes to a contact per purpose per hour however many
+submissions name the address. The answer never says whether the address was known.
+
+Limits are counted in the process (`rules::forms::Counter`), so with several replicas each allows its own count. Moving them to
+the shared Redis store is possible (the abuse guard already does it) and was left out to keep the first version small. Clients are
+told apart by `X-Forwarded-For` only with `CRM_TRUST_FORWARDED_FOR`; without it every client shares one bucket, which is safe and
+strict.
+
+The nurture enrolment is made by the confirmation itself (`forms::on_confirmed`, called inside the transaction that grants), from the
+`form_submissions` row the submission left. A sequence of another purpose than the form's is skipped.

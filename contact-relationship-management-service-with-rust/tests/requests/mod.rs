@@ -25,6 +25,7 @@ mod sales;
 mod streaming;
 mod support;
 mod unmerge;
+mod web_forms;
 mod webhooks;
 
 /// A fresh synthetic `person:` URN.

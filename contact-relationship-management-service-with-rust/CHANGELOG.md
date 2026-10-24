@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — web form lead capture (CRM-T98, CRM-R31)
+
+`POST /forms/{slug}` (public, outside `/api`) turns a website sign-up form into a contact, a `source=web` lead and a `pending`
+consent purpose, and mails one confirmation to the visitor; nothing else is sent until they press the button, and a nurture
+sequence the form names starts then. Forms are configured in `CRM_WEB_FORMS` (JSON: `slug`, `origins`, optional `purpose` and
+`sequence`). The request's `Origin` must be on the form's list; each form allows `CRM_WEB_FORM_CLIENT_LIMIT` (5) submissions per
+client per 10 minutes and `CRM_WEB_FORM_LIMIT` (300) per hour, answering `429`; a filled `website` honeypot creates nothing; every
+non-error answer is the same `202`. The address goes to the person service (`POST {CRM_PERSON_SERVICE_URL}/api/persons`) and is not
+stored. New table `form_submissions` (migration `000022`), deleted on erasure. Counts are per process.
+
 ### Added — an MCP endpoint for AI agents (CRM-T97, CRM-R30)
 
 `POST /mcp` speaks the Model Context Protocol over Streamable HTTP, statelessly: revision 2026-07-28, and 2025-11-25 and

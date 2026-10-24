@@ -142,6 +142,59 @@ async fn score_lead<C: sea_orm::ConnectionTrait>(
     Ok(scoring::score(&facts, &scoring::Weights::default()))
 }
 
+/// What a new lead is made from.
+pub(crate) struct NewLead<'a> {
+    pub source: &'a str,
+    pub campaign_pid: Option<Uuid>,
+    pub contact_pid: Option<Uuid>,
+    pub display_name: &'a str,
+    pub email: Option<&'a str>,
+    pub email_domain: Option<String>,
+}
+
+/// Insert a lead, score it, and write the `lead_captured` audit row and event, all in the
+/// caller's transaction. Shared by `POST /api/leads` and the web form (CRM-R31).
+pub(crate) async fn capture_lead(
+    txn: &sea_orm::DatabaseTransaction,
+    new: &NewLead<'_>,
+    actor: Option<&str>,
+) -> Result<(leads::Model, scoring::ScoreBreakdown)> {
+    let mut row = leads::ActiveModel {
+        pid: ActiveValue::set(Uuid::new_v4()),
+        source: ActiveValue::set(new.source.to_string()),
+        campaign_pid: ActiveValue::set(new.campaign_pid),
+        contact_pid: ActiveValue::set(new.contact_pid),
+        display_name: ActiveValue::set(new.display_name.to_string()),
+        email: ActiveValue::set(new.email.map(ToString::to_string)),
+        email_domain: ActiveValue::set(new.email_domain.clone()),
+        score: ActiveValue::set(0),
+        campaign_click: ActiveValue::set(false),
+        unsubscribed: ActiveValue::set(false),
+        status: ActiveValue::set("new".to_string()),
+        deleted_at: ActiveValue::set(None),
+        ..Default::default()
+    }
+    .insert(txn)
+    .await?;
+    let breakdown = score_lead(txn, &row).await?;
+    let mut active: leads::ActiveModel = row.clone().into();
+    active.score = ActiveValue::set(breakdown.score);
+    row = active.update(txn).await?;
+    Audit::record(txn, "lead", row.pid, "lead_captured", actor, None).await?;
+    streaming::emit_on(
+        txn,
+        "lead",
+        "lead_captured",
+        &row.pid.to_string(),
+        &row.display_name,
+        actor,
+        None,
+    )
+    .await?;
+    Metrics::global().lead_captured_total.inc();
+    Ok((row, breakdown))
+}
+
 /// `POST /api/leads` — capture (scored immediately).
 #[debug_handler]
 async fn create_lead(
@@ -163,40 +216,20 @@ async fn create_lead(
         .and_then(|e| e.rsplit_once('@'))
         .map(|(_, domain)| domain.to_ascii_lowercase());
     let txn = ctx.db.begin().await?;
-    let mut row = leads::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        source: ActiveValue::set(payload.source.clone()),
-        campaign_pid: ActiveValue::set(payload.campaign_pid),
-        contact_pid: ActiveValue::set(payload.contact_pid),
-        display_name: ActiveValue::set(payload.display_name.clone()),
-        email: ActiveValue::set(payload.email.clone()),
-        email_domain: ActiveValue::set(email_domain),
-        score: ActiveValue::set(0),
-        campaign_click: ActiveValue::set(false),
-        unsubscribed: ActiveValue::set(false),
-        status: ActiveValue::set("new".to_string()),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
-    .await?;
-    let breakdown = score_lead(&txn, &row).await?;
-    let mut active: leads::ActiveModel = row.clone().into();
-    active.score = ActiveValue::set(breakdown.score);
-    row = active.update(&txn).await?;
-    Audit::record(&txn, "lead", row.pid, "lead_captured", caller.actor(), None).await?;
-    streaming::emit_on(
+    let (row, breakdown) = capture_lead(
         &txn,
-        "lead",
-        "lead_captured",
-        &row.pid.to_string(),
-        &row.display_name,
+        &NewLead {
+            source: &payload.source,
+            campaign_pid: payload.campaign_pid,
+            contact_pid: payload.contact_pid,
+            display_name: &payload.display_name,
+            email: payload.email.as_deref(),
+            email_domain,
+        },
         caller.actor(),
-        None,
     )
     .await?;
     txn.commit().await?;
-    Metrics::global().lead_captured_total.inc();
     format::json(serde_json::json!({ "pid": row.pid, "score": breakdown }))
 }
 

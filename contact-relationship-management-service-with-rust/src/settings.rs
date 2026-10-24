@@ -79,6 +79,56 @@ pub struct Settings {
     /// `CRM_MCP_ALLOWED_ORIGINS`: browser origins the MCP endpoint answers (comma-separated;
     /// none by default, so only clients that send no `Origin` header, such as agents, connect).
     pub mcp_allowed_origins: Vec<String>,
+    /// `CRM_WEB_FORMS`: the web forms (CRM-R31), a JSON list; entries that do not parse or fail
+    /// [`WebForm::valid`] are left out.
+    pub web_forms: Vec<WebForm>,
+    /// `CRM_WEB_FORM_CLIENT_LIMIT`: submissions per client per form in 10 minutes (default 5).
+    pub web_form_client_limit: u32,
+    /// `CRM_WEB_FORM_LIMIT`: submissions per form per hour, all clients (default 300).
+    pub web_form_limit: u32,
+}
+
+/// One web form (CRM-R31).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct WebForm {
+    /// The name in the URL: lower-case letters, digits and hyphens.
+    pub slug: String,
+    /// The origins that may post it, exactly (`https://example.org`, no path).
+    pub origins: Vec<String>,
+    /// The consent purpose the form asks for.
+    #[serde(default = "default_purpose")]
+    pub purpose: String,
+    /// The nurture sequence to enrol into once the visitor confirms.
+    #[serde(default)]
+    pub sequence: Option<uuid::Uuid>,
+}
+
+fn default_purpose() -> String {
+    crate::rules::tokens::DEFAULT_PURPOSE.to_string()
+}
+
+impl WebForm {
+    /// Whether the entry can be served: a short slug, a known purpose, and at least one origin.
+    #[must_use]
+    pub fn valid(&self) -> bool {
+        !self.slug.is_empty()
+            && self.slug.len() <= 40
+            && self
+                .slug
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+            && crate::rules::tokens::PURPOSES.contains(&self.purpose.as_str())
+            && !self.origins.is_empty()
+    }
+
+    /// Whether `origin` (as a browser sends it) is one of this form's.
+    #[must_use]
+    pub fn allows(&self, origin: &str) -> bool {
+        let origin = origin.trim().trim_end_matches('/');
+        self.origins
+            .iter()
+            .any(|o| o.trim().trim_end_matches('/').eq_ignore_ascii_case(origin))
+    }
 }
 
 impl Default for Settings {
@@ -147,6 +197,16 @@ impl Settings {
                         .collect()
                 })
                 .unwrap_or_default(),
+            web_forms: text("CRM_WEB_FORMS")
+                .and_then(|v| serde_json::from_str::<Vec<WebForm>>(&v).ok())
+                .map(|forms| forms.into_iter().filter(WebForm::valid).collect())
+                .unwrap_or_default(),
+            web_form_client_limit: get("CRM_WEB_FORM_CLIENT_LIMIT")
+                .and_then(|v| v.trim().parse().ok())
+                .unwrap_or(5),
+            web_form_limit: get("CRM_WEB_FORM_LIMIT")
+                .and_then(|v| v.trim().parse().ok())
+                .unwrap_or(300),
         }
     }
 
@@ -254,6 +314,27 @@ mod tests {
                 "{off:?}"
             );
         }
+    }
+
+    #[test]
+    fn web_forms_are_read_from_json_and_bad_entries_are_left_out() {
+        let json = r#"[
+            {"slug": "news", "origins": ["https://a.example/"], "purpose": "newsletter"},
+            {"slug": "plain", "origins": ["https://a.example"]},
+            {"slug": "Bad Slug", "origins": ["https://a.example"]},
+            {"slug": "no-origin", "origins": []},
+            {"slug": "odd-purpose", "origins": ["https://a.example"], "purpose": "spam"}
+        ]"#;
+        let s = Settings::from_lookup(&lookup(&[("CRM_WEB_FORMS", json)]));
+        let slugs: Vec<&str> = s.web_forms.iter().map(|f| f.slug.as_str()).collect();
+        assert_eq!(slugs, ["news", "plain"]);
+        assert_eq!(s.web_forms[1].purpose, "marketing");
+        assert!(s.web_forms[0].allows("HTTPS://A.example"));
+        assert!(!s.web_forms[0].allows("https://a.example.evil.test"));
+        assert_eq!((s.web_form_client_limit, s.web_form_limit), (5, 300));
+        // Not JSON: no forms, rather than a failed start.
+        let broken = Settings::from_lookup(&lookup(&[("CRM_WEB_FORMS", "news=https://a")]));
+        assert!(broken.web_forms.is_empty());
     }
 
     #[test]

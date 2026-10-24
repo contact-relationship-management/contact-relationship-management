@@ -11,6 +11,9 @@ subproject keeps a detailed changelog:
 
 ### Added
 
+- Web form lead capture (`POST /forms/{slug}`): a sign-up form on a website makes a lead and asks the visitor to confirm
+  before anything is mailed; origin check, rate limits and a honeypot protect it (CRM-R31).
+
 - Production-readiness assessment ([spec/plan.md](spec/plan.md)), compliance
   evidence pack ([spec/compliance](spec/compliance/index.md)), tamper-evident
   audit chain, fail-closed production boot, security headers and CSP,

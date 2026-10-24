@@ -9326,6 +9326,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/forms/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Public web form (CRM-R31, CRM_WEB_FORMS): creates a contact and a source=web lead for the person the person service returns and asks for the form's consent purpose by double opt-in. The request's Origin must be on the form's list. Answers 202 with the same body whether or not anything was created. 403 origin not allowed, 404 no such form, 422 name or email unusable, 429 over the rate limit (Retry-After), 503 person service unavailable */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        email: string;
+                        name: string;
+                        /** @description Honeypot: leave empty. A filled value creates nothing. */
+                        website?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Received */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        /** Public: the browser preflight for the form, answered only for an allowed Origin */
+        options: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Allowed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/metrics.prom": {
         parameters: {
             query?: never;

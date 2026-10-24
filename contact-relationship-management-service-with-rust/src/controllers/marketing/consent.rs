@@ -106,7 +106,7 @@ pub(super) async fn apply_consent(
 
 /// The body of [`apply_consent`], inside the caller's transaction. `action` is the
 /// new state: `granted`, `withdrawn` or `pending`.
-pub(super) async fn apply_consent_in(
+pub(crate) async fn apply_consent_in(
     txn: &sea_orm::DatabaseTransaction,
     contact: contacts::Model,
     purpose: &str,

@@ -1337,7 +1337,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Transport:** `Origin` allow-list (`CRM_MCP_ALLOWED_ORIGINS`, none by default), header/body agreement for the modern version (`-32020`), `404`+`-32601` for an unknown method, `405` for GET/DELETE, batches refused, 256 KB request and 200 KB answer caps. `tower` (util) moved from a dev-dependency to a dependency.
       - **Tests:** tools (9 unit tests, including that every tool is a documented route and nothing destructive is offered), protocol (7 unit), 8 request tests (modern and legacy flows, injection text, previews change nothing, the write tool gated, tool errors, transport rules, audit), and under sign-in (`tests/enforcement.rs`): a stranger's read is masked, a reader's write and preview are refused, no token gets `401`, and the audit rows name the caller. Service: 247 unit tests, 91 request tests, clippy clean for both feature sets.
       - **Not done:** OAuth discovery for MCP clients (they present the same PASETO bearer token), resources, prompts, change notifications, an erase preview (erase has no `dry_run` yet; adding one is a service change), and trying it against a real MCP client.
-- [ ] CRM-T98 **Web form lead capture.**
+- [x] CRM-T98 **Web form lead capture.**
   - **Endpoint:** a public `POST` that creates a lead with `source=web` and consent `pending` (needs T96).
   - **Abuse protection:** rate limiting per form and per client, a honeypot field, and an origin check.
   - **Person record:** created or resolved through the person service, since the CRM stores no email.
@@ -1346,6 +1346,14 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Source:** https://www.pipedrive.com/features/web-forms
 
   (C4, M)
+      **Done (2026-10-24, not released):** requirement CRM-R31 first, then:
+      - **Endpoint:** `POST /forms/{slug}` (+ `OPTIONS`), public and outside `/api`. Forms come from `CRM_WEB_FORMS` (JSON: slug, origins, optional purpose and nurture sequence); the caller chooses neither purpose nor sequence. Every non-error answer is the same `202`.
+      - **Abuse protection:** `Origin` must be on the form's list (missing is refused); 5 submissions per client per 10 minutes and 300 per form per hour (`CRM_WEB_FORM_CLIENT_LIMIT`, `CRM_WEB_FORM_LIMIT`) with `429` and `Retry-After`; a filled `website` honeypot (checked before validation) creates and sends nothing. At most one confirmation mail per contact and purpose per hour, so a stranger's address cannot be flooded.
+      - **Person record:** `clients::resolve_person` asks the person service (`POST {CRM_PERSON_SERVICE_URL}/api/persons`, expecting `{pid}`) and keeps only the `person:` reference; `503` and nothing created if it fails. The lead keeps the address's domain only. Stub mode makes a process-local person.
+      - **Consent:** the purpose becomes `pending` (never touching a `granted` one) and the one mail sent is the CRM-R29 confirmation, with no unsubscribe link. The nurture enrolment is made inside the confirmation's transaction (`forms::on_confirmed`), from a `form_submissions` row (migration `000022`, no name or address, deleted on erasure).
+      - **Refactors:** `capture_lead` is shared with `POST /api/leads`; `enrol_in` with the enrolment endpoint.
+      - **Tests:** 4 request tests (the whole journey including no nurture mail before confirmation and the audit row holding no name or address; origin, honeypot, bad input and preflight; client and form limits and the stranger's address; person service down and erasure), 4 rules unit tests, a settings test, and `/forms/` in the public-path test. Service: 250 unit tests, 95 request tests, clippy clean for both feature sets. UI types regenerated.
+      - **Not done:** an embeddable script or form builder, CAPTCHA, translating the confirmation mail, and shared (Redis) limit counts. **Assumed, not confirmed:** the person service's `POST /api/persons` contract, which no sibling service in this repository defines.
 - [ ] CRM-T99 **Tasks, reminders and a notifications inbox.**
   - **Tasks:** task activities gain an assignee (`worker:` URN) and a reminder time.
   - **Notifications:** a `bg_pg` job writes notification rows for due reminders and SLA breaches. The UI gets an unread inbox, with mark-read.

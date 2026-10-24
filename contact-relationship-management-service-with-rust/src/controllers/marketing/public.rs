@@ -336,7 +336,7 @@ fn confirm_target(token: &str) -> Option<(Uuid, &'static str)> {
 }
 
 /// The words for a purpose on the public pages.
-fn purpose_label(purpose: &str) -> &'static str {
+pub(crate) fn purpose_label(purpose: &str) -> &'static str {
     match purpose {
         "marketing" => "Marketing messages",
         "newsletter" => "The newsletter",
@@ -386,6 +386,8 @@ pub(super) async fn confirm_post(
             "granted" => Some(true),
             "pending" => {
                 apply_consent_in(&txn, contact, purpose, "granted", "double_opt_in", None).await?;
+                // A web form may have asked for a nurture sequence to start on confirmation (CRM-R31).
+                crate::controllers::forms::on_confirmed(&txn, contact_pid, purpose).await?;
                 Some(true)
             }
             _ => None,

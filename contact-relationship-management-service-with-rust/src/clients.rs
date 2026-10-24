@@ -180,6 +180,63 @@ pub async fn email_address(person_ref: &str) -> Option<String> {
     Some(format!("{}@{domain}", entity_ref.id))
 }
 
+/// Find or create the person for `email` and return the `person:` reference (CRM-R31).
+///
+/// The CRM stores no address, so a web form's address goes to the person service: in `http`
+/// mode `POST {CRM_PERSON_SERVICE_URL}/api/persons` with `{"name", "email"}`, which is expected
+/// to find the person by address or make one and answer `{"pid"}` (or `{"id"}`). In `stub` mode
+/// a process-local person is made and its address primed, an existing one for the same address
+/// being reused; that is lost on restart and is for development.
+///
+/// # Errors
+///
+/// A short reason when the person service is unconfigured, unreachable or answers something
+/// that is not a person reference. The reason holds no address.
+pub async fn resolve_person(name: &str, email: &str) -> Result<String, String> {
+    if mode() != Mode::Http {
+        let mut known = addresses()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some((urn, _)) = known.iter().find(|(_, a)| a.eq_ignore_ascii_case(email)) {
+            return Ok(urn.clone());
+        }
+        let urn = format!("person:{}", uuid::Uuid::new_v4());
+        known.insert(urn.clone(), email.to_string());
+        return Ok(urn);
+    }
+    let base = std::env::var("CRM_PERSON_SERVICE_URL")
+        .map_err(|_| "CRM_PERSON_SERVICE_URL is not set".to_string())?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|_| "no http client".to_string())?;
+    let response = client
+        .post(format!("{}/api/persons", base.trim_end_matches('/')))
+        .json(&serde_json::json!({ "name": name, "email": email }))
+        .send()
+        .await
+        .map_err(|_| "the person service could not be reached".to_string())?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "the person service answered {}",
+            response.status().as_u16()
+        ));
+    }
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|_| "the person service answer was not JSON".to_string())?;
+    let id = ["pid", "id"]
+        .iter()
+        .find_map(|k| body.get(k).and_then(serde_json::Value::as_str))
+        .ok_or_else(|| "the person service gave no id".to_string())?;
+    let urn = format!("person:{id}");
+    <EntityRef as std::str::FromStr>::from_str(&urn)
+        .map_err(|_| "the person service gave an id that is not a reference".to_string())?;
+    Ok(urn)
+}
+
 /// The mailbox in a person record. The accepted shapes are `{"email": "a@b"}`
 /// and `{"emails": [...]}` where each entry is a string or an object with an
 /// `address`, `email` or `value` member; an entry marked `primary` (or

@@ -15,6 +15,9 @@ security invariants.
 `marketing`, CRM-R29), `consent_changed_at`, cached display name. The other
 purposes (`newsletter`, `events`, `product_updates`) are rows of
 `contact_consents` (contact, purpose, state, changed_at); no row is `never`.
+A web form submission (CRM-R31) is a row of `form_submissions` (form slug, contact, lead, purpose, the
+nurture sequence to start on confirmation, when the confirmation mail went out and when the visitor confirmed). It holds no
+name and no address, and erasure deletes it.
 
 **Account** — an organization relationship.
 `organization_ref` (`organization:` URN, required), `owner_ref`,
