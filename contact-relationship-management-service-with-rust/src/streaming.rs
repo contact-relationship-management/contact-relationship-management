@@ -56,8 +56,9 @@ pub struct Envelope {
     pub data: Option<serde_json::Value>,
 }
 
-/// The flat operator projection served by `/api/events/recent`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// The flat operator projection served by `/api/events/recent`, under either transport.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[schemars(rename = "Event")]
 pub struct EventView {
     /// The change kind token.
     pub kind: String,

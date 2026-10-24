@@ -25,6 +25,21 @@ pub mod sales;
 pub mod support;
 pub mod unmerge;
 
+/// A `{pid}` reference response: the record a `POST` created.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "Created")]
+pub(crate) struct PidRef {
+    #[schemars(with = "uuid::Uuid")]
+    pub(crate) pid: String,
+}
+
+/// A state change: the status or stage to move to (`POST .../status`, `.../stage`).
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct StatusPayload {
+    pub(crate) to: String,
+}
+
 /// The single `{pid}` path parameter, parsed as a UUID: a value that is not
 /// one is a `404`, like any other record that is not there. Replaces
 /// `Path<String>` plus `records::parse_pid` in a handler.

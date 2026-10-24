@@ -9,10 +9,10 @@
 
 use loco_rs::prelude::*;
 use sea_orm::{QueryOrder, QuerySelect, TransactionTrait};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use uuid::Uuid;
 
-use super::unprocessable;
+use super::{PidRef, StatusPayload, unprocessable};
 use crate::auth::MaybeAuthUser;
 use crate::clients;
 use crate::mail;
@@ -39,12 +39,6 @@ use consent::{apply_consent, apply_consent_in, consent_history, contact_facts, r
 use nurture::{advance_nurture, create_sequence, enroll, list_sequences};
 use public::{email_webhook, provider_webhook, unsubscribe_page_get, unsubscribe_post};
 use segment::{create_segment, evaluate_segment, list_segments, preview_segment};
-
-/// A `{pid}` reference response.
-#[derive(Debug, Serialize)]
-struct PidRef {
-    pid: String,
-}
 
 /// The public unsubscribe routes (outside `/api`; see `auth::is_public_path`).
 pub fn public_routes() -> Routes {

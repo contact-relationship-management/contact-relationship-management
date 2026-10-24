@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::paging::{Page, PageParams};
-use super::unprocessable;
+use super::{PidRef, StatusPayload, unprocessable};
 use crate::auth::MaybeAuthUser;
 use crate::metrics::Metrics;
 use crate::models::_entities::{activities, articles, sla_policies, tickets};
@@ -45,13 +45,6 @@ pub(crate) struct TicketPayload {
     assignee_ref: Option<String>,
 }
 
-/// `POST /api/tickets/{pid}/status` body.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct TicketStatusPayload {
-    to: String,
-}
-
 /// `PUT /api/tickets/{pid}/priority` body (audited; re-derives SLA).
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -68,12 +61,6 @@ pub(crate) struct ArticlePayload {
     body: String,
     #[serde(default)]
     keywords: Option<String>,
-}
-
-/// A `{pid}` reference response.
-#[derive(Debug, Serialize)]
-struct PidRef {
-    pid: String,
 }
 
 fn default_priority() -> String {
@@ -329,7 +316,7 @@ async fn ticket_status(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(payload): Json<TicketStatusPayload>,
+    Json(payload): Json<StatusPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::TICKET_STATUSES, &payload.to);
@@ -534,18 +521,12 @@ async fn update_article(
 }
 
 /// `POST /api/articles/{pid}/status` — publish / archive.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ArticleStatusPayload {
-    to: String,
-}
-
 #[debug_handler]
 async fn article_status(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(payload): Json<ArticleStatusPayload>,
+    Json(payload): Json<StatusPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::ARTICLE_STATUSES, &payload.to);

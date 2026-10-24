@@ -184,13 +184,6 @@ async fn list_partnerships(
     format::json(rows)
 }
 
-/// `POST /api/partnerships/{pid}/stage` body.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct StagePayload {
-    to: String,
-}
-
 /// `POST /api/partnerships/{pid}/stage` — the lifecycle move (forward
 /// one step, or retire; the pure machine refuses everything else).
 #[debug_handler]
@@ -198,7 +191,7 @@ async fn partnership_stage(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(payload): Json<StagePayload>,
+    Json(payload): Json<super::StatusPayload>,
 ) -> Result<Response> {
     let row = partnerships::Entity::find()
         .filter(partnerships::Column::Pid.eq(pid))

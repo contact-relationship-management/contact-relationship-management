@@ -3,9 +3,9 @@
 use super::{
     ActiveModelTrait, ActiveValue, AppContext, Audit, BackgroundWorker, ColumnTrait, Deserialize,
     EntityTrait, Error, MaybeAuthUser, PidRef, Problems, QueryFilter, QueryOrder, Response, Result,
-    State, TransactionTrait, Uuid, activities, analytics, async_trait, campaigns, clients,
-    contacts, deals, debug_handler, deliveries, evaluate_segment, format, lifecycle, mail, records,
-    streaming, tokens, unprocessable,
+    State, StatusPayload, TransactionTrait, Uuid, activities, analytics, async_trait, campaigns,
+    clients, contacts, deals, debug_handler, deliveries, evaluate_segment, format, lifecycle, mail,
+    records, streaming, tokens, unprocessable,
 };
 use crate::controllers::PidPath;
 use crate::json::Json;
@@ -34,13 +34,6 @@ pub(crate) struct CampaignPayload {
 
 /// Longest campaign message body accepted.
 pub(super) const MAX_BODY_LEN: usize = 20_000;
-
-/// `POST /api/campaigns/{pid}/status` body.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct CampaignStatusPayload {
-    to: String,
-}
 
 pub(super) fn default_kind() -> String {
     "email".to_string()
@@ -139,7 +132,7 @@ pub(super) async fn campaign_status(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(payload): Json<CampaignStatusPayload>,
+    Json(payload): Json<StatusPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::CAMPAIGN_STATUSES, &payload.to);

@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::paging::{Page, PageParams};
-use super::{record_rejection, unprocessable};
+use super::{PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{accounts, activities, contacts, deals, tickets};
 use crate::models::audit_logs::Model as Audit;
@@ -80,12 +80,6 @@ pub(crate) struct ActivityPayload {
     /// Optional recorded sentiment (`positive` / `neutral` / `negative`).
     #[serde(default)]
     sentiment: Option<String>,
-}
-
-/// A `{pid}` reference response.
-#[derive(Debug, Serialize)]
-struct PidRef {
-    pid: String,
 }
 
 fn default_channel() -> String {

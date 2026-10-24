@@ -35,17 +35,32 @@ const ERASED: &str = "[erased]";
 const OPEN_TICKET_STATUSES: [&str; 2] = ["open", "pending"];
 
 /// Rows keyed by one contact in `module` (helper macro: filter on the
-/// given column, return the models as JSON — no `deleted_at` filter,
+/// given column, return the models — no `deleted_at` filter,
 /// so a soft-deleted row still appears in the subject's own export).
 macro_rules! rows_for {
     ($db:expr, $module:ident, $column:ident, $pid:expr) => {
-        serde_json::json!(
-            $module::Entity::find()
-                .filter($module::Column::$column.eq($pid))
-                .all($db)
-                .await?
-        )
+        $module::Entity::find()
+            .filter($module::Column::$column.eq($pid))
+            .all($db)
+            .await?
     };
+}
+
+/// `GET /api/contacts/{pid}/subject-access`: everything CRM holds keyed to the contact.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct SubjectAccessExport {
+    as_of: chrono::DateTime<chrono::Utc>,
+    contact: contacts::Model,
+    consent_history: Vec<consent_events::Model>,
+    activities: Vec<activities::Model>,
+    leads: Vec<leads::Model>,
+    deals_as_primary_contact: Vec<deals::Model>,
+    tickets: Vec<tickets::Model>,
+    nurture_enrollments: Vec<nurture_enrollments::Model>,
+    email_deliveries: Vec<email_deliveries::Model>,
+    external_links: Vec<external_links::Model>,
+    /// What the export does not cover, and where to ask for it.
+    exclusions: [&'static str; 3],
 }
 
 /// `GET /api/contacts/{pid}/subject-access` — everything CRM holds
@@ -80,18 +95,18 @@ async fn subject_access(
     }
     let db = &ctx.db;
     let cpid = contact.pid;
-    let export = serde_json::json!({
-        "as_of": chrono::Utc::now(),
-        "contact": contact,
-        "consent_history": rows_for!(db, consent_events, ContactPid, cpid),
-        "activities": rows_for!(db, activities, SubjectPid, cpid),
-        "leads": rows_for!(db, leads, ContactPid, cpid),
-        "deals_as_primary_contact": rows_for!(db, deals, PrimaryContactPid, cpid),
-        "tickets": rows_for!(db, tickets, ContactPid, cpid),
-        "nurture_enrollments": rows_for!(db, nurture_enrollments, ContactPid, cpid),
-        "email_deliveries": rows_for!(db, email_deliveries, ContactPid, cpid),
-        "external_links": rows_for!(db, external_links, SubjectPid, cpid),
-        "exclusions": [
+    let export = SubjectAccessExport {
+        as_of: chrono::Utc::now(),
+        contact,
+        consent_history: rows_for!(db, consent_events, ContactPid, cpid),
+        activities: rows_for!(db, activities, SubjectPid, cpid),
+        leads: rows_for!(db, leads, ContactPid, cpid),
+        deals_as_primary_contact: rows_for!(db, deals, PrimaryContactPid, cpid),
+        tickets: rows_for!(db, tickets, ContactPid, cpid),
+        nurture_enrollments: rows_for!(db, nurture_enrollments, ContactPid, cpid),
+        email_deliveries: rows_for!(db, email_deliveries, ContactPid, cpid),
+        external_links: rows_for!(db, external_links, SubjectPid, cpid),
+        exclusions: [
             "campaign delivery/open/click counters: aggregate counters. Which messages were \
              sent to this contact is in email_deliveries (state, time and message id, no \
              address or body); open and click events are not recorded per contact",
@@ -100,7 +115,7 @@ async fn subject_access(
             "upstream person/organization/worker records: held by the identity services, \
              not CRM — coordinate subject access there too",
         ],
-    });
+    };
     Audit::record(
         &ctx.db,
         "contact",

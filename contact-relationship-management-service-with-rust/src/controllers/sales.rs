@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::paging::{Page, PageParams};
-use super::{record_rejection, unprocessable};
+use super::{PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::metrics::Metrics;
 use crate::models::_entities::{
@@ -110,12 +110,6 @@ pub(crate) struct DealStagePayload {
 #[serde(deny_unknown_fields)]
 pub(crate) struct ReopenPayload {
     reason: String,
-}
-
-/// A `{pid}` reference response.
-#[derive(Debug, Serialize)]
-struct PidRef {
-    pid: String,
 }
 
 /// Derive the scoring facts for a lead from its rows (activities +

@@ -412,6 +412,14 @@ pub(super) async fn advance_nurture(
     })
 }
 
+/// A nurture sequence with its steps and how many enrolments are active.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct SequenceView {
+    sequence: nurture_sequences::Model,
+    steps: Vec<nurture_steps::Model>,
+    active_enrollments: u64,
+}
+
 /// `GET /api/nurture-sequences` — sequences with steps + live
 /// enrolment counts.
 #[debug_handler]
@@ -435,9 +443,11 @@ pub(super) async fn list_sequences(State(ctx): State<AppContext>) -> Result<Resp
             .filter(nurture_enrollments::Column::DeletedAt.is_null())
             .count(&ctx.db)
             .await?;
-        out.push(serde_json::json!({
-            "sequence": sequence, "steps": steps, "active_enrollments": active,
-        }));
+        out.push(SequenceView {
+            sequence,
+            steps,
+            active_enrollments: active,
+        });
     }
     format::json(out)
 }

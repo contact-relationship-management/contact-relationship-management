@@ -1,37 +1,24 @@
-//! Request and response schemas for the `OpenAPI` document (CRM-T49 follow-up).
+//! Request and response schemas for the `OpenAPI` document (CRM-T49, CRM-T83).
 //!
-//! Request schemas mirror the `*Payload` structs in the controllers: a field is
-//! required exactly when the struct field has no `#[serde(default)]` (in any
-//! form) and is not an `Option`; a defaulted field is optional here and the
-//! service fills it in. Resource schemas describe what a list returns; they keep
-//! `additionalProperties: true` because several reads add derived fields (live
-//! breach flags, scores), and they list as `required` only fields every row
-//! carries. The DB-gated test `responses_match_the_documented_schemas`
-//! validates real responses against them, so drift fails a test.
+//! Every schema but one is generated from the Rust type that is sent or
+//! received: the `*Payload` structs for requests, the `SeaORM` models for
+//! records, and the typed response structs in the controllers for everything
+//! else (see [`generated`]). A field is required when the type has no default
+//! and is not an `Option`; a member that masking can blank (an amount, a total,
+//! a campaign cost) is an `Option` and is `null` when masked, never absent and
+//! never zero. The exception is `Error`, the problem document, which the
+//! `problem_mw` layer builds from whatever error was produced.
 //!
-//! Responses of the reads that are not plain lists (insight views, dashboards,
-//! forecast, audit, retention, the bundled detail reads) are described by
-//! `view_schemas`. Fields a role can mask (amounts, cost, ROI, totals) are
-//! `nullable`; a masked value is absent, never zero. Operations whose response
-//! is just the updated record (`transition` in `openapi.rs`) stay untyped.
+//! The DB-gated tests in `tests/requests/openapi_schemas.rs` validate real
+//! requests and responses against these schemas, so drift fails a test.
 
 use serde_json::{Value, json};
 
 fn string() -> Value {
     json!({ "type": "string" })
 }
-fn uuid() -> Value {
-    json!({ "type": "string", "format": "uuid" })
-}
 fn integer() -> Value {
     json!({ "type": "integer" })
-}
-fn date_time() -> Value {
-    json!({ "type": "string", "format": "date-time" })
-}
-fn nullable(mut schema: Value) -> Value {
-    schema["nullable"] = json!(true);
-    schema
 }
 fn object(required: &[&str], properties: &Value) -> Value {
     json!({ "type": "object", "required": required, "properties": properties })
@@ -81,6 +68,15 @@ fn generated() -> serde_json::Map<String, Value> {
         marketing::campaign::CampaignFunnel,
         dashboards::ActivityDashboard,
         insights::sales::StaleDeals,
+        crate::controllers::PidRef,
+        crate::controllers::StatusPayload,
+        marketing::nurture::SequenceView,
+        privacy::SubjectAccessExport,
+        crate::streaming::EventView,
+        crate::models::_entities::consent_events::Model,
+        crate::models::_entities::nurture_enrollments::Model,
+        crate::models::_entities::nurture_sequences::Model,
+        crate::models::_entities::nurture_steps::Model,
         insights::relationships::StakeholderRegister,
         insights::relationships::PartnershipsRegister,
         insights::relationships::MembershipsView,
@@ -167,15 +163,11 @@ pub fn schemas() -> Value {
     if let Some(all) = all.as_object_mut() {
         all.extend(generated());
     }
-    if let (Some(all), Some(views)) = (all.as_object_mut(), view_schemas().as_object()) {
-        for (name, schema) in views {
-            all.insert(name.clone(), schema.clone());
-        }
-    }
     all
 }
 
-#[allow(clippy::too_many_lines)] // one literal table of schemas
+/// The one schema that is not generated: the problem document is built by the
+/// `problem_mw` layer from whatever error a handler, guard or extractor produced.
 fn base_schemas() -> Value {
     json!({
         "Error": resource(&["type", "title", "status", "detail", "instance", "error", "description"], &json!({
@@ -188,59 +180,8 @@ fn base_schemas() -> Value {
                 "items": { "type": "object", "required": ["detail"], "properties": {
                     "pointer": { "type": "string", "description": "JSON Pointer (RFC 6901) to the request member, such as `/display_name`; a list entry is `/stages/0/name` for a body the parser refused, and `/stages/name` for a check that does not know the entry. Absent when the problem is about the request as a whole" },
                     "detail": string() } } } })),
-        "Created": resource(&["pid"], &json!({ "pid": uuid() })),
-
         // ---- requests
-        "StatusPayload": object(&["to"], &json!({ "to": string() })),
-        "SequenceStep": object(&["delay_hours", "template_ref"], &json!({
-            "delay_hours": integer(), "template_ref": string(),
-            "subject": { "type": "string", "description": "Defaults to the template reference" },
-            "body": { "type": "string", "maxLength": 20000,
-                "description": "Plain text. Required for every step before a real sender sends it" } })),
         // ---- resources (what the lists return)
-    })
-}
-
-fn list_of(name: &str) -> Value {
-    json!({ "type": "array", "items": reference(name) })
-}
-fn strings() -> Value {
-    json!({ "type": "array", "items": { "type": "string" } })
-}
-/// Schemas for the reads that are not plain lists.
-#[allow(clippy::too_many_lines)] // one literal table of schemas
-fn view_schemas() -> Value {
-    json!({
-        // ---- detail reads
-        // ---- sales and analytics
-        // ---- marketing and support
-        "SequenceView": object(&["sequence", "steps", "active_enrollments"], &json!({
-            "sequence": { "type": "object" }, "steps": { "type": "array", "items": { "type": "object" } },
-            "active_enrollments": integer() })),
-
-        // ---- privacy
-        "SubjectAccessExport": object(&["as_of", "contact", "consent_history", "activities",
-            "leads", "deals_as_primary_contact", "tickets", "nurture_enrollments", "email_deliveries",
-            "exclusions"], &json!({
-            "as_of": date_time(), "contact": reference("Contact"),
-            "consent_history": { "type": "array", "items": { "type": "object" } },
-            "activities": list_of("Activity"), "leads": list_of("Lead"),
-            "deals_as_primary_contact": list_of("Deal"), "tickets": list_of("Ticket"),
-            "nurture_enrollments": { "type": "array", "items": { "type": "object" } },
-            "email_deliveries": list_of("EmailDelivery"),
-            "exclusions": strings() })),
-        // ---- break-glass
-        // ---- audit and events
-        "Event": { "oneOf": [
-            object(&["kind", "pid", "name", "seq"], &json!({
-                "kind": string(), "pid": string(), "name": string(), "seq": integer() })),
-            resource(&["event_id", "entity", "entity_pid", "kind", "occurred_at"], &json!({
-                "event_id": uuid(), "entity": string(), "entity_pid": uuid(), "kind": string(),
-                "occurred_at": date_time(), "actor": nullable(string()),
-                "published_at": nullable(date_time()) })),
-        ] },
-
-        // ---- insights
     })
 }
 
