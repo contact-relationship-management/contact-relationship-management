@@ -8,6 +8,156 @@ use super::{
 };
 use crate::models::live::FindLive;
 
+// Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
+// `ETag` is taken, and the schema says it is always there.
+
+/// One open deal in the stale-deals view. The amount is `null` when masked.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "StaleDeal")]
+pub(crate) struct StaleDeal {
+    pid: Uuid,
+    name: String,
+    stage: Option<String>,
+    owner_ref: Option<String>,
+    amount_minor: Option<i64>,
+    currency: String,
+    days_in_stage: i64,
+    stale: bool,
+}
+
+/// `GET /api/insights/stale-deals`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[allow(clippy::struct_field_names)] // `stale_deals` is the response member clients read
+pub(crate) struct StaleDeals {
+    derivation: &'static str,
+    threshold_days: i64,
+    open_deals: usize,
+    stale_deals: usize,
+    deals: Vec<StaleDeal>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// An activity with a due day, in the follow-ups view.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct Followup {
+    pid: Uuid,
+    kind: String,
+    summary: String,
+    subject_kind: String,
+    subject_pid: Uuid,
+    actor_ref: Option<String>,
+    due_on: Option<chrono::NaiveDate>,
+    overdue_days: Option<i64>,
+}
+
+/// `GET /api/insights/followups`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct Followups {
+    note: &'static str,
+    overdue: Vec<Followup>,
+    upcoming_30d: Vec<Followup>,
+    open_by_recorder: std::collections::BTreeMap<String, usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// The deal a hygiene finding is about.
+#[derive(Debug, Clone, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "HygieneDeal")]
+pub(crate) struct HygieneDeal {
+    pid: Uuid,
+    name: String,
+}
+
+/// One rule that matched. Which of `deal`, `lead_pid`, `score` and `expected_close_on` appear depends on the rule.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "HygieneFinding")]
+pub(crate) struct HygieneFinding {
+    rule: &'static str,
+    detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    deal: Option<HygieneDeal>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lead_pid: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    score: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expected_close_on: Option<chrono::NaiveDate>,
+}
+
+impl HygieneFinding {
+    fn on_deal(rule: &'static str, detail: String, deal: &HygieneDeal) -> Self {
+        Self {
+            rule,
+            detail,
+            deal: Some(deal.clone()),
+            lead_pid: None,
+            score: None,
+            expected_close_on: None,
+        }
+    }
+}
+
+/// `GET /api/insights/pipeline-hygiene`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct HygieneFindings {
+    threshold_days: i64,
+    findings: Vec<HygieneFinding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// The period an executive pack covers.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ExecutiveWindow")]
+pub(crate) struct ExecutiveWindow {
+    from: chrono::DateTime<chrono::Utc>,
+    to: chrono::DateTime<chrono::Utc>,
+}
+
+/// `GET /api/insights/executive`. Won value is `null` when masked.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct ExecutivePack {
+    window: ExecutiveWindow,
+    deals_won: usize,
+    deals_lost: usize,
+    won_value_by_currency_minor: Option<std::collections::BTreeMap<String, i64>>,
+    lost_reasons: std::collections::BTreeMap<String, usize>,
+    new_leads: u64,
+    tickets_opened: u64,
+    tickets_resolved: usize,
+    campaigns_started: usize,
+    activities_logged: u64,
+    consent_withdrawals: u64,
+    note: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// One stored forecast snapshot. Totals are `null` when masked.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ForecastTrendPoint")]
+pub(crate) struct TrendPoint {
+    taken_on: chrono::NaiveDate,
+    #[schemars(with = "Option<std::collections::BTreeMap<String, i64>>")]
+    totals: Option<serde_json::Value>,
+}
+
+/// `GET /api/insights/forecast-trends`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct ForecastTrends {
+    note: &'static str,
+    series: Vec<TrendPoint>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
+    as_of: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 /// `GET /api/insights/stale-deals?days=` — open deals by days in their
 /// current stage, oldest first. Stage entry = the newest
 /// `deal_stage_changed` audit for the deal, else the deal's creation
@@ -43,7 +193,7 @@ pub(super) async fn stale_deals(
             *entry = at;
         }
     }
-    let mut rows: Vec<(i64, serde_json::Value)> = open
+    let mut rows: Vec<(i64, StaleDeal)> = open
         .iter()
         .filter_map(|deal| {
             // Record-level read decision per deal (CRM-T32): a denied deal is
@@ -59,33 +209,34 @@ pub(super) async fn stale_deals(
                 .copied()
                 .unwrap_or_else(|| deal.created_at.to_utc());
             let days_in_stage = (now - entered).num_days();
-            let mut row = serde_json::json!({
-                "pid": deal.pid,
-                "name": deal.name,
-                "stage": stage_names.get(&deal.stage_pid),
-                "owner_ref": deal.owner_ref,
-                "amount_minor": deal.amount_minor,
-                "currency": deal.currency,
-                "days_in_stage": days_in_stage,
-                "stale": days_in_stage > threshold,
-            });
-            if obligations.iter().any(|o| o == "mask") {
-                row = auth::mask_json(row, &["amount_minor"]);
-            }
-            Some((days_in_stage, row))
+            let masked = obligations.iter().any(|o| o == "mask");
+            Some((
+                days_in_stage,
+                StaleDeal {
+                    pid: deal.pid,
+                    name: deal.name.clone(),
+                    stage: stage_names.get(&deal.stage_pid).cloned(),
+                    owner_ref: deal.owner_ref.clone(),
+                    amount_minor: (!masked).then_some(deal.amount_minor),
+                    currency: deal.currency.clone(),
+                    days_in_stage,
+                    stale: days_in_stage > threshold,
+                },
+            ))
         })
         .collect();
     rows.sort_by_key(|(days, _)| std::cmp::Reverse(*days));
     let stale_count = rows.iter().filter(|(days, _)| *days > threshold).count();
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "derivation": "stage entry = newest deal_stage_changed audit, else deal creation \
-                           (never moved); stale = days_in_stage over the threshold",
-            "threshold_days": threshold,
-            "open_deals": rows.len(),
-            "stale_deals": stale_count,
-            "deals": rows.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
+        serde_json::json!(StaleDeals {
+            derivation: "stage entry = newest deal_stage_changed audit, else deal creation \
+                         (never moved); stale = days_in_stage over the threshold",
+            threshold_days: threshold,
+            open_deals: rows.len(),
+            stale_deals: stale_count,
+            deals: rows.into_iter().map(|(_, v)| v).collect(),
+            as_of: None,
         }),
     ))
 }
@@ -117,20 +268,18 @@ pub(super) async fn followups(
         find = find.filter(activities::Column::Kind.eq(kind));
     }
     let rows: Vec<activities::Model> = find.all(&ctx.db).await?;
-    let view = |activity: &activities::Model| {
-        serde_json::json!({
-            "pid": activity.pid,
-            "kind": activity.kind,
-            "summary": activity.summary,
-            "subject_kind": activity.subject_kind,
-            "subject_pid": activity.subject_pid,
-            "actor_ref": activity.actor_ref,
-            "due_on": activity.due_on,
-            "overdue_days": activity
-                .due_on
-                .filter(|due| *due < today)
-                .map(|due| (today - due).num_days()),
-        })
+    let view = |activity: &activities::Model| Followup {
+        pid: activity.pid,
+        kind: activity.kind.clone(),
+        summary: activity.summary.to_string(),
+        subject_kind: activity.subject_kind.clone(),
+        subject_pid: activity.subject_pid,
+        actor_ref: activity.actor_ref.clone(),
+        due_on: activity.due_on,
+        overdue_days: activity
+            .due_on
+            .filter(|due| *due < today)
+            .map(|due| (today - due).num_days()),
     };
     let mut overdue: Vec<&activities::Model> = rows
         .iter()
@@ -153,12 +302,13 @@ pub(super) async fn followups(
     }
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "note": "open follow-ups only (due_on set, not done); actor_ref is the \
-                     recording actor, not necessarily an assignee",
-            "overdue": overdue.iter().map(|a| view(a)).collect::<Vec<_>>(),
-            "upcoming_30d": upcoming.iter().map(|a| view(a)).collect::<Vec<_>>(),
-            "open_by_recorder": per_recorder,
+        serde_json::json!(Followups {
+            note: "open follow-ups only (due_on set, not done); actor_ref is the \
+                   recording actor, not necessarily an assignee",
+            overdue: overdue.iter().map(|a| view(a)).collect(),
+            upcoming_30d: upcoming.iter().map(|a| view(a)).collect(),
+            open_by_recorder: per_recorder,
+            as_of: None,
         }),
     ))
 }
@@ -189,40 +339,45 @@ pub(super) async fn pipeline_hygiene(
     let last_touch = |kind: &str, pid: Uuid| -> Option<chrono::DateTime<chrono::Utc>> {
         touches.get(&(kind.to_string(), pid)).copied()
     };
-    let mut findings: Vec<serde_json::Value> = Vec::new();
+    let mut findings: Vec<HygieneFinding> = Vec::new();
     for deal in &open {
-        let deal_ref = serde_json::json!({ "pid": deal.pid, "name": deal.name });
+        let deal_ref = HygieneDeal {
+            pid: deal.pid,
+            name: deal.name.clone(),
+        };
         if deal.amount_minor == 0 {
-            findings.push(serde_json::json!({
-                "rule": "open_deal_without_amount",
-                "detail": "an open deal carries no amount (forecast blind spot)",
-                "deal": deal_ref,
-            }));
+            findings.push(HygieneFinding::on_deal(
+                "open_deal_without_amount",
+                "an open deal carries no amount (forecast blind spot)".to_string(),
+                &deal_ref,
+            ));
         }
         if deal.expected_close_on.is_none() {
-            findings.push(serde_json::json!({
-                "rule": "open_deal_without_expected_close",
-                "detail": "an open deal has no expected close date",
-                "deal": deal_ref,
-            }));
+            findings.push(HygieneFinding::on_deal(
+                "open_deal_without_expected_close",
+                "an open deal has no expected close date".to_string(),
+                &deal_ref,
+            ));
         } else if deal.expected_close_on.is_some_and(|d| d < today) {
-            findings.push(serde_json::json!({
-                "rule": "open_deal_past_expected_close",
-                "detail": "an open deal is past its expected close date",
-                "deal": deal_ref,
-                "expected_close_on": deal.expected_close_on,
-            }));
+            findings.push(HygieneFinding {
+                expected_close_on: deal.expected_close_on,
+                ..HygieneFinding::on_deal(
+                    "open_deal_past_expected_close",
+                    "an open deal is past its expected close date".to_string(),
+                    &deal_ref,
+                )
+            });
         }
         let untouched = match last_touch("deal", deal.pid) {
             Some(at) => (now - at).num_days() > threshold,
             None => true,
         };
         if untouched {
-            findings.push(serde_json::json!({
-                "rule": "open_deal_without_recent_activity",
-                "detail": format!("no recorded activity in {threshold} days"),
-                "deal": deal_ref,
-            }));
+            findings.push(HygieneFinding::on_deal(
+                "open_deal_without_recent_activity",
+                format!("no recorded activity in {threshold} days"),
+                &deal_ref,
+            ));
         }
     }
     for lead in lead_rows
@@ -234,19 +389,25 @@ pub(super) async fn pipeline_hygiene(
             None => (now - lead.created_at.to_utc()).num_days() > threshold,
         };
         if untouched {
-            findings.push(serde_json::json!({
-                "rule": "unworked_lead",
-                "detail": format!("a {} lead with no activity in {threshold} days", lead.status),
-                "lead_pid": lead.pid,
-                "score": lead.score,
-            }));
+            findings.push(HygieneFinding {
+                rule: "unworked_lead",
+                detail: format!(
+                    "a {} lead with no activity in {threshold} days",
+                    lead.status
+                ),
+                deal: None,
+                lead_pid: Some(lead.pid),
+                score: Some(lead.score),
+                expected_close_on: None,
+            });
         }
     }
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "threshold_days": threshold,
-            "findings": findings,
+        serde_json::json!(HygieneFindings {
+            threshold_days: threshold,
+            findings,
+            as_of: None,
         }),
     ))
 }
@@ -335,25 +496,25 @@ pub(super) async fn executive(
         .filter(consent_events::Column::OccurredAt.lte(to))
         .count(&ctx.db)
         .await?;
-    let mut body = serde_json::json!({
-        "window": { "from": from, "to": to },
-        "deals_won": won,
-        "deals_lost": lost,
-        "won_value_by_currency_minor": won_value,
-        "lost_reasons": lost_reasons,
-        "new_leads": new_leads,
-        "tickets_opened": tickets_opened,
-        "tickets_resolved": tickets_resolved,
-        "campaigns_started": campaigns_started,
-        "activities_logged": activities_logged,
-        "consent_withdrawals": consent_withdrawals,
-        "note": "per-currency won value is never merged or converted; \
-                 tickets_resolved / campaigns_started derive from status audits",
-    });
-    if masked {
-        body = auth::mask_json(body, &["won_value_by_currency_minor"]);
-    }
-    Ok(conditional(&headers, body))
+    Ok(conditional(
+        &headers,
+        serde_json::json!(ExecutivePack {
+            window: ExecutiveWindow { from, to },
+            deals_won: won,
+            deals_lost: lost,
+            won_value_by_currency_minor: (!masked).then_some(won_value),
+            lost_reasons,
+            new_leads,
+            tickets_opened,
+            tickets_resolved,
+            campaigns_started,
+            activities_logged,
+            consent_withdrawals,
+            note: "per-currency won value is never merged or converted; \
+                   tickets_resolved / campaigns_started derive from status audits",
+            as_of: None,
+        }),
+    ))
 }
 
 /// `GET /api/insights/forecast-trends` — the stored forecast-snapshot
@@ -370,23 +531,20 @@ pub(super) async fn forecast_trends(
         .order_by_asc(forecast_snapshots::Column::TakenOn)
         .all(&ctx.db)
         .await?;
-    let series: Vec<serde_json::Value> = rows
+    let series: Vec<TrendPoint> = rows
         .iter()
         .take(200)
-        .map(|row| {
-            let entry = serde_json::json!({ "taken_on": row.taken_on, "totals": row.totals });
-            if masked {
-                auth::mask_json(entry, &["totals"])
-            } else {
-                entry
-            }
+        .map(|row| TrendPoint {
+            taken_on: row.taken_on,
+            totals: (!masked).then(|| row.totals.clone()),
         })
         .collect();
     Ok(conditional(
         &headers,
-        serde_json::json!({
-            "note": "stored snapshots only (POST /api/forecast/snapshot); no interpolated history",
-            "series": series,
+        serde_json::json!(ForecastTrends {
+            note: "stored snapshots only (POST /api/forecast/snapshot); no interpolated history",
+            series,
+            as_of: None,
         }),
     ))
 }

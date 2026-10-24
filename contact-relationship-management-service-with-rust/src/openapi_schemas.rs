@@ -56,8 +56,8 @@ fn reference(name: &str) -> Value {
 /// below; the move is one controller at a time (CRM-T83).
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
-        audits, board, break_glass, dashboards, engagement, external_links, marketing, merge,
-        privacy, relationships, sales, support, unmerge,
+        audits, board, break_glass, dashboards, engagement, external_links, insights, marketing,
+        merge, privacy, relationships, sales, support, unmerge,
     };
     let mut generator = schemars::generate::SchemaSettings::openapi3().into_generator();
     macro_rules! document {
@@ -85,6 +85,11 @@ fn generated() -> serde_json::Map<String, Value> {
         marketing::campaign::Deliveries,
         marketing::campaign::CampaignFunnel,
         dashboards::ActivityDashboard,
+        insights::sales::StaleDeals,
+        insights::sales::Followups,
+        insights::sales::HygieneFindings,
+        insights::sales::ExecutivePack,
+        insights::sales::ForecastTrends,
         dashboards::SalesDashboard,
         dashboards::SlaDashboard,
         dashboards::Clv,
@@ -194,17 +199,6 @@ fn base_schemas() -> Value {
 fn counts() -> Value {
     json!({ "type": "object", "additionalProperties": { "type": "integer" } })
 }
-fn money_by_currency() -> Value {
-    json!({ "type": "object",
-        "additionalProperties": { "type": "integer", "format": "int64" },
-        "description": "Minor units per ISO 4217 code; never summed across currencies" })
-}
-fn masked_money_by_currency() -> Value {
-    let mut schema = money_by_currency();
-    schema["nullable"] = json!(true);
-    schema["description"] = json!("Minor units per ISO 4217 code; null when masked for the caller");
-    schema
-}
 fn list_of(name: &str) -> Value {
     json!({ "type": "array", "items": reference(name) })
 }
@@ -254,40 +248,6 @@ fn view_schemas() -> Value {
         ] },
 
         // ---- insights
-        "StaleDeals": view(&["derivation", "threshold_days", "open_deals", "stale_deals", "deals"], &json!({
-            "derivation": string(), "threshold_days": integer(), "open_deals": integer(),
-            "stale_deals": integer(),
-            "deals": { "type": "array", "items": object(&["pid", "name", "days_in_stage", "stale"], &json!({
-                "pid": uuid(), "name": string(), "stage": nullable(string()),
-                "owner_ref": nullable(string()),
-                "amount_minor": { "type": "integer", "format": "int64", "nullable": true },
-                "currency": string(), "days_in_stage": integer(), "stale": boolean() })) } })),
-        "Followups": view(&["note", "overdue", "upcoming_30d", "open_by_recorder"], &json!({
-            "note": string(), "overdue": list_of("Followup"), "upcoming_30d": list_of("Followup"),
-            "open_by_recorder": counts() })),
-        "Followup": object(&["pid", "kind", "summary", "subject_kind", "subject_pid", "due_on"], &json!({
-            "pid": uuid(), "kind": string(), "summary": string(), "subject_kind": string(),
-            "subject_pid": uuid(), "actor_ref": nullable(string()), "due_on": date(),
-            "overdue_days": nullable(integer()) })),
-        "HygieneFindings": view(&["threshold_days", "findings"], &json!({
-            "threshold_days": integer(),
-            "findings": { "type": "array", "items": resource(&["rule", "detail"], &json!({
-                "rule": string(), "detail": string(),
-                "deal": object(&["pid", "name"], &json!({ "pid": uuid(), "name": string() })),
-                "lead_pid": uuid(), "score": integer(), "expected_close_on": date() })) } })),
-        "ExecutivePack": view(&["window", "deals_won", "deals_lost", "won_value_by_currency_minor",
-            "lost_reasons", "new_leads", "tickets_opened", "tickets_resolved", "campaigns_started",
-            "activities_logged", "consent_withdrawals", "note"], &json!({
-            "window": object(&["from", "to"], &json!({ "from": date_time(), "to": date_time() })),
-            "deals_won": integer(), "deals_lost": integer(),
-            "won_value_by_currency_minor": masked_money_by_currency(),
-            "lost_reasons": counts(), "new_leads": integer(), "tickets_opened": integer(),
-            "tickets_resolved": integer(), "campaigns_started": integer(),
-            "activities_logged": integer(), "consent_withdrawals": integer(), "note": string() })),
-        "ForecastTrends": view(&["note", "series"], &json!({
-            "note": string(),
-            "series": { "type": "array", "items": object(&["taken_on", "totals"], &json!({
-                "taken_on": date(), "totals": masked_money_by_currency() })) } })),
         "SlaRegister": view(&["derivation", "breaches", "workload"], &json!({
             "derivation": string(),
             "breaches": { "type": "array", "items": object(&["pid", "title", "priority", "status",

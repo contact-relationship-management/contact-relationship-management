@@ -37,12 +37,12 @@ macro_rules! live {
     };
 }
 
-mod compliance;
-mod outreach;
-mod relationships;
+pub(crate) mod compliance;
+pub(crate) mod outreach;
+pub(crate) mod relationships;
 mod rollup;
-mod sales;
-mod support;
+pub(crate) mod sales;
+pub(crate) mod support;
 
 use compliance::{consent_by_account, dpo};
 use outreach::{cadence, engagement, funnel, members};
