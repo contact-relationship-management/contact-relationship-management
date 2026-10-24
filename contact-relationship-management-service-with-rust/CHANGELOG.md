@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — an MCP endpoint for AI agents (CRM-T97, CRM-R30)
+
+`POST /mcp` speaks the Model Context Protocol over Streamable HTTP, statelessly: revision 2026-07-28, and 2025-11-25 and
+2025-06-18 for clients that open with `initialize`. Tools only. Each tool is one REST operation sent through the service's own
+router with the caller's own bearer token, so sign-in, the access policy, masking, rate limits and audit decide it as they decide
+the same request from any client. The tools are read-only lookups; a merge or an undo is offered only as a preview that changes
+nothing; `add_activity` appears only with `CRM_MCP_WRITES=on`; nothing erases. Every call is audited first with an `agent`
+marker (and not refused only if the audit row can be written), results are marked as data, and browser origins must be listed in
+`CRM_MCP_ALLOWED_ORIGINS`. Behaviour change in code, not in the API: `tower` is now a regular dependency.
+
 ### Added — consent per purpose and double opt-in (CRM-T96, CRM-R29)
 
 Consent is held per purpose: `marketing` (the original, still `contacts.marketing_consent`), `newsletter`, `events` and

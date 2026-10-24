@@ -74,6 +74,11 @@ pub struct Settings {
     pub field_keys_file: Option<String>,
     /// `CRM_REDIS_URL`.
     pub redis_url: Option<String>,
+    /// `CRM_MCP_WRITES`: offer the MCP write tools (off: the MCP endpoint is read-only).
+    pub mcp_writes: bool,
+    /// `CRM_MCP_ALLOWED_ORIGINS`: browser origins the MCP endpoint answers (comma-separated;
+    /// none by default, so only clients that send no `Origin` header, such as agents, connect).
+    pub mcp_allowed_origins: Vec<String>,
 }
 
 impl Default for Settings {
@@ -133,6 +138,15 @@ impl Settings {
             field_keys: text("CRM_FIELD_KEYS"),
             field_keys_file: get("CRM_FIELD_KEYS_FILE"),
             redis_url: text("CRM_REDIS_URL"),
+            mcp_writes: flag("CRM_MCP_WRITES"),
+            mcp_allowed_origins: text("CRM_MCP_ALLOWED_ORIGINS")
+                .map(|v| {
+                    v.split(',')
+                        .map(|o| o.trim().trim_end_matches('/').to_ascii_lowercase())
+                        .filter(|o| !o.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default(),
         }
     }
 

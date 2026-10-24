@@ -170,7 +170,7 @@ impl Hooks for App {
             ctx.environment,
             Environment::Production
         )));
-        Ok(router
+        let api = router
             .layer(axum::middleware::from_fn_with_state(
                 ctx.db.clone(),
                 middleware::idempotency::idempotency_mw,
@@ -197,7 +197,10 @@ impl Hooks for App {
             // `application/problem+json` (CRM-T54).
             .layer(axum::middleware::from_fn(crate::problem::problem_mw))
             // Outside the problem layer so errors carry the policy too.
-            .layer(axum::middleware::from_fn(middleware::no_store::no_store_mw)))
+            .layer(axum::middleware::from_fn(middleware::no_store::no_store_mw));
+        // The MCP endpoint (CRM-R30) calls the service's own router, as it stands above, with the
+        // caller's credentials; it is added last so it is not inside those layers itself.
+        Ok(api.clone().merge(crate::mcp::router(api, ctx.db.clone())))
     }
 
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {

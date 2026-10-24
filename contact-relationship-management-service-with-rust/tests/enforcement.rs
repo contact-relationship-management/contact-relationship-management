@@ -589,3 +589,154 @@ async fn enforcement_gates_the_real_stack() {
     })
     .await;
 }
+
+/// MCP (CRM-R30): a tool call is decided as the caller, because it is the same REST request through
+/// the same stack. A reader cannot write, a stranger sees masked values, nobody without a token
+/// gets data, and every call is audited with the agent marker.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn mcp_tool_calls_are_decided_as_the_caller() {
+    let (keys, kid) = keys_and_kid();
+    settings::update(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+        s.mcp_writes = true;
+    });
+    let reader = sign_as(&kid, "mcp-reader", &[]);
+    let writer = sign_as(&kid, "mcp-writer", &[("access", &["write"])]);
+    let owner_sub = uuid::Uuid::new_v4();
+    let owner = sign_as(&kid, &owner_sub.to_string(), &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let call = |token: Option<String>, name: &str, arguments: Value| {
+            let mut req = request
+                .post("/mcp")
+                .add_header("mcp-protocol-version", "2026-07-28")
+                .add_header("mcp-method", "tools/call")
+                .add_header("mcp-name", name.to_string());
+            if let Some(token) = token {
+                req = req.add_header("authorization", bearer(&token));
+            }
+            req.json(&json!({
+                "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": {
+                    "name": name, "arguments": arguments,
+                    "_meta": { "io.modelcontextprotocol/protocolVersion": "2026-07-28" },
+                },
+            }))
+        };
+
+        // A contact owned by `owner`, created by the writer through the REST API.
+        let created: Value = request
+            .post("/api/contacts")
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({
+                "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                "display_name": "Mcp Owned",
+                "owner_ref": format!("worker:{owner_sub}"),
+                "preferred_channel": "phone",
+            }))
+            .await
+            .json();
+        let pid = created["pid"].as_str().unwrap().to_string();
+
+        // The owner sees the real value; a stranger sees it masked, as over REST.
+        let as_owner: Value = call(Some(owner.clone()), "get_contact", json!({ "pid": pid }))
+            .await
+            .json();
+        assert_eq!(as_owner["result"]["isError"], false, "{as_owner}");
+        assert_eq!(
+            as_owner["result"]["structuredContent"]["contact"]["preferred_channel"],
+            "phone"
+        );
+        let as_stranger: Value = call(Some(reader.clone()), "get_contact", json!({ "pid": pid }))
+            .await
+            .json();
+        assert_eq!(
+            as_stranger["result"]["structuredContent"]["contact"]["preferred_channel"],
+            contact_relationship_management::auth::MASKED
+        );
+
+        // Results are marked as data.
+        let text = as_owner["result"]["content"][0]["text"].as_str().unwrap();
+        assert!(
+            text.starts_with("NOTICE: what follows is record data"),
+            "{text}"
+        );
+
+        // A reader cannot write through MCP, a writer can, and nobody without a token gets data.
+        let add = |subject: &str| {
+            json!({ "subject_kind": "contact", "subject_pid": subject,
+                                          "kind": "note", "summary": "from an agent" })
+        };
+        let refused: Value = call(Some(reader.clone()), "add_activity", add(&pid))
+            .await
+            .json();
+        assert_eq!(refused["result"]["isError"], true, "{refused}");
+        assert!(
+            refused["result"]["content"][0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("403")
+        );
+        let done: Value = call(Some(writer.clone()), "add_activity", add(&pid))
+            .await
+            .json();
+        assert_eq!(done["result"]["isError"], false, "{done}");
+        let anonymous: Value = call(None, "list_contacts", json!({})).await.json();
+        assert_eq!(anonymous["result"]["isError"], true);
+        assert!(
+            anonymous["result"]["content"][0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("401")
+        );
+
+        // A preview of a merge is allowed for a reader to ask, and still needs the access a merge needs.
+        let other = uuid::Uuid::new_v4().to_string();
+        let preview: Value = call(
+            Some(reader.clone()),
+            "preview_merge_contacts",
+            json!({ "merged_pid": pid, "into_pid": other, "reason": "same person" }),
+        )
+        .await
+        .json();
+        assert_eq!(
+            preview["result"]["isError"], true,
+            "a reader cannot even preview a merge: {preview}"
+        );
+
+        // Every call left an audit row naming the caller and the agent marker.
+        let svc = sign_as(&kid, "mcp-svc", &[("svc", &["true"])]);
+        let audits: Value = request
+            .get("/api/audits/recent")
+            .add_header("authorization", bearer(&svc))
+            .await
+            .json();
+        let rows: Vec<&Value> = audits
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|a| a["action"] == "mcp_tool_called")
+            .collect();
+        assert!(rows.len() >= 6, "{audits}");
+        assert!(rows.iter().any(|a| a["actor"] == "mcp-reader"));
+        assert!(
+            rows.iter().all(|a| a["snapshot"]["agent"] == true),
+            "{rows:?}"
+        );
+        assert!(
+            rows.iter().any(
+                |a| a["snapshot"]["tool"] == "add_activity" && a["snapshot"]["kind"] == "write"
+            )
+        );
+        assert!(
+            !audits.to_string().contains("from an agent"),
+            "the free text an agent passed is not audited"
+        );
+    })
+    .await;
+}

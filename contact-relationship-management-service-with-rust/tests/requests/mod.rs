@@ -15,6 +15,7 @@ mod idempotency;
 mod insight_rollups;
 mod insights;
 mod marketing;
+mod mcp;
 mod merge;
 mod openapi_schemas;
 mod pagination;

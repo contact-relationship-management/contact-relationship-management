@@ -1319,7 +1319,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Tests:** 6 request tests (gate per state and per purpose, double opt-in and stale links, preference page, unsubscribe by purpose, merge and unmerge, erasure and export), signed-link unit tests, the merge order. Service: 229 unit tests, 83 request tests, clippy clean for both feature sets. **Migration against populated data:** `scripts/migrate-consent-purposes.sh` (500 contacts in every state, their history, campaigns and sequences; rolls back and forward; all checks pass). The older `scripts/migrate-with-data.sh` is for migration 17.
       - **Behaviour changes:** withdrawing `marketing` now exits only the enrolments in sequences sent under `marketing` (all of them, until sequences name another purpose); a complaint withdraws everything.
       - **Not done:** sending the confirmation and preference messages (the caller does; CRM-T98's form will), translating the public pages (English only, like unsubscribe), a UI for purposes (the contact page still shows `marketing_consent`), and an editable purpose list.
-- [ ] CRM-T97 **MCP server.**
+- [x] CRM-T97 **MCP server.**
   - **Design:** a thin MCP layer over the existing endpoints, authenticated with the caller's own token and decided by the same ABAC and masking. Tools are read-only by default.
   - **Destructive tools:** merge, unmerge and erase are offered only as `dry_run` plus a confirmation that a person makes in the UI.
   - **Audit:** every call is audited with an `agent` marker.
@@ -1329,6 +1329,14 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Limits to state:** MCP spec versions move quickly; name the version supported.
 
   (C3, M)
+      **Done (2026-10-24, not released):** requirement CRM-R30 and the design note in `integrations.md`, then:
+      - **Version:** MCP `2026-07-28` (current when read on 2026-10-24: per-request version in `_meta` and `MCP-Protocol-Version`, `server/discover`, no sessions, no GET stream), plus `2025-11-25` and `2025-06-18` for clients that open with `initialize`. Unsupported versions get `400` and `-32022` listing the supported ones. Tools only.
+      - **Mechanism:** `src/mcp/` (`tools.rs` the catalog, `mod.rs` the protocol). A tool call is the REST request it stands for, sent through the service's own router with the caller's `Authorization`, so ABAC, masking, rate limits and audit apply unchanged. 22 read tools, 2 dry-run tools (`preview_merge_contacts`, `preview_unmerge_contact`: `dry_run` is fixed and not an argument), and `add_activity` only with `CRM_MCP_WRITES`. No tool erases, reaches break-glass or webhooks.
+      - **Audit:** an `mcp_tool_called` row with `agent: true`, the tool, kind and target pid, written before the call (no row, no call); the free text an agent passes is not recorded.
+      - **Prompt injection:** each description and each result says record text is data; the notice precedes all record text. Honest limit: this lowers the risk and does not remove it; the safeguard is that no tool can do more than the caller already could.
+      - **Transport:** `Origin` allow-list (`CRM_MCP_ALLOWED_ORIGINS`, none by default), header/body agreement for the modern version (`-32020`), `404`+`-32601` for an unknown method, `405` for GET/DELETE, batches refused, 256 KB request and 200 KB answer caps. `tower` (util) moved from a dev-dependency to a dependency.
+      - **Tests:** tools (9 unit tests, including that every tool is a documented route and nothing destructive is offered), protocol (7 unit), 8 request tests (modern and legacy flows, injection text, previews change nothing, the write tool gated, tool errors, transport rules, audit), and under sign-in (`tests/enforcement.rs`): a stranger's read is masked, a reader's write and preview are refused, no token gets `401`, and the audit rows name the caller. Service: 247 unit tests, 91 request tests, clippy clean for both feature sets.
+      - **Not done:** OAuth discovery for MCP clients (they present the same PASETO bearer token), resources, prompts, change notifications, an erase preview (erase has no `dry_run` yet; adding one is a service change), and trying it against a real MCP client.
 - [ ] CRM-T98 **Web form lead capture.**
   - **Endpoint:** a public `POST` that creates a lead with `source=web` and consent `pending` (needs T96).
   - **Abuse protection:** rate limiting per form and per client, a honeypot field, and an origin check.

@@ -66,3 +66,21 @@ Why at least once and not exactly once: a send can succeed and its record fail t
 written. Receivers dedupe on `webhook-id`, which is the event id and is the same on every
 retry; `webhook-timestamp` changes per attempt, so a replayed capture is refused by a
 receiver that checks the timestamp window.
+
+## MCP for AI agents (CRM-R30)
+
+`POST /mcp` (outside `/api`, so the blanket sign-in layer does not stand in front of it) builds the REST request a tool stands
+for and sends it through the service's own router, the same value `after_routes` returns, cloned before the MCP route is
+added to it. The caller's `Authorization` header (and `X-Forwarded-For`, so the rate limiter counts the same client) is
+copied; nothing else of the original request is. Because the router is the whole stack (version check, abuse guard,
+sign-in, access policy, insight cache and audit, idempotency, problem rendering), a tool call is refused, masked,
+rate-limited and audited exactly as the REST call it is. The endpoint adds only the protocol, an argument check against a
+closed schema, the `mcp_tool_called` audit row (written first), the data notice, and the cut at 200 KB.
+
+Settings: `CRM_MCP_WRITES` (off) lists `add_activity`; `CRM_MCP_ALLOWED_ORIGINS` (none) lists browser origins. A new tool is
+one entry in `src/mcp/tools.rs`; a test fails if it names a route that is not documented, if a non-GET tool is neither a
+dry run nor the write tool, or if its path mentions erase, webhooks or break-glass.
+
+Why not a separate MCP process calling the HTTP API: it would need its own copy of the caller's token handling and could not
+stay in step with the access policy by construction. Why stateless: the 2026-07-28 revision removed sessions, so there is
+nothing to keep per client, and for the older versions no `Mcp-Session-Id` is issued, which the specification allows.

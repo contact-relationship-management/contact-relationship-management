@@ -506,3 +506,49 @@ was sent to it.*
 - Not built: sending the confirmation or preference mail, translating the public
   pages, a purpose list an administrator can edit (the four are fixed in code),
   and consent per channel.
+
+## CRM-R30 — Let an AI agent use the CRM as the person who runs it
+
+*As someone who works with an AI assistant, I can let it look things up in the
+CRM, knowing it can see and do exactly what I can and no more, and that I can
+see what it did.*
+
+- `POST /mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless: no
+  session, no stream). **Supported protocol versions: `2026-07-28`** (a version on every
+  request, `server/discover`) **and, for clients that still open with `initialize`,
+  `2025-11-25` and `2025-06-18`.** Older and unknown versions get `400` with
+  `UnsupportedProtocolVersionError` listing these. Tools only: no resources, prompts,
+  sampling or subscriptions. The MCP specification moves quickly; this names the revision
+  built against.
+- **A tool is a REST request.** Each tool stands for one documented API operation. A tool
+  call is sent through the service's own router with the caller's own `Authorization`
+  header, so sign-in, the access policy, masking, idempotency, rate limits and audit decide
+  it exactly as they decide the same request from anyone else. There is no second rule set
+  and no service account: a reader cannot write through MCP, a stranger gets masked
+  values, and a caller with no token gets `401` in the tool result.
+- **Read-only by default.** The tools are lookups: contacts, accounts, leads, deals,
+  pipelines, forecast, tickets, activities, campaigns, segments (with the consent purpose to
+  gate on), knowledge-base search, follow-ups, stale deals, a contact's consent states, and
+  likely duplicates. Setting `CRM_MCP_WRITES=on` adds `add_activity`, which is still subject
+  to the caller's write rights.
+- **Destructive operations are previews.** `preview_merge_contacts` and
+  `preview_unmerge_contact` are the merge and undo-merge calls forced to `dry_run`: they
+  report and change nothing, and the agent cannot pass `dry_run` itself. A person makes the
+  real change in the CRM. No tool erases a contact, reaches break-glass, or touches webhook
+  subscriptions.
+- **Every call is audited, with an agent marker, before it is made**: entity `mcp`, action
+  `mcp_tool_called`, the caller, the tool, whether it reads, previews or writes, and the target
+  pid, never the free text the agent passed. If the row cannot be written the call is not made.
+  The REST operation behind it audits as it always does.
+- **Record text is data.** Every tool description says so, every result opens with a notice
+  that what follows is record data and not instructions, and the structured copy carries the
+  record unchanged under its own fields. This reduces, and does not remove, the risk that text
+  stored in a record steers an agent; the safeguard that matters is that no tool can do harm
+  the caller could not already do.
+- **Transport hygiene.** `Origin` is checked: a request that carries one must be on
+  `CRM_MCP_ALLOWED_ORIGINS` (none by default, so browsers are refused and agents, which send
+  none, are not). For `2026-07-28` the `MCP-Protocol-Version`, `Mcp-Method` and `Mcp-Name`
+  headers must match the body (`400`, code `-32020`). Tool arguments are validated against a
+  closed schema before any request is made; ids must be UUIDs. An answer is cut at 200 KB.
+- Not built: OAuth discovery for MCP clients (the caller presents the same PASETO bearer
+  token as any API client), resources and prompts, change notifications, and a tool to erase.

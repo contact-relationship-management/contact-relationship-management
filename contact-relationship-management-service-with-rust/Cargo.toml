@@ -33,6 +33,8 @@ tokio = { version = "1.53", default-features = false, features = [
   "net",
 ] }
 async-trait = { version = "0.1" }
+# In-process calls to the service's own router, for the MCP endpoint (CRM-R30).
+tower = { version = "0.5", features = ["util"] }
 axum = { version = "0.8" }
 tracing = { version = "0.1" }
 contact-relationship-management-matcher = "0.1.2"
@@ -108,7 +110,6 @@ loco-rs = { workspace = true, features = ["testing"] }
 # version loco's testing feature uses internally).
 axum-test = { version = "21.1.0" }
 # Drive a single middleware with `oneshot` in its unit tests.
-tower = { version = "0.5", features = ["util"] }
 tokio = { version = "1.53", default-features = false, features = [
   "rt-multi-thread",
   "macros",
