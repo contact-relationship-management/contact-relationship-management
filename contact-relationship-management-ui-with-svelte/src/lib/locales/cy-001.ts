@@ -463,4 +463,10 @@ export default {
   "tpl.empty": "Dim templedi eto.",
   "tpl.problems": "I’w trwsio cyn cadw",
   "tpl.fellBack": "Defnyddiwyd y testun wrth gefn ar gyfer",
+  "campaign.new": "Ymgyrch newydd",
+  "campaign.segment": "Cynulleidfa (segment)",
+  "campaign.noSegment": "Dim eto",
+  "campaign.template": "Templed e-bost",
+  "campaign.ownMessage": "Ysgrifennu’r neges yma",
+  "campaign.create": "Creu ymgyrch",
 } satisfies Record<StringKey, string>;

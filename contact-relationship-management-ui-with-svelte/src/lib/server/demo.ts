@@ -24,6 +24,7 @@ import type {
   Lead,
   Notification,
   SavedView,
+  Segment,
   EmailTemplate,
   MergeToken,
   TemplatePreview,
@@ -114,6 +115,7 @@ interface ExternalLinkRow {
 }
 
 interface State {
+  segments: Segment[];
   /** The demo email templates (CRM-R36). */
   templates: EmailTemplate[];
   /** The demo user's saved views (CRM-R35). */
@@ -696,6 +698,7 @@ function build(): State {
     },
   ];
   return {
+    segments: [{ pid: "seg-1", name: "Consented customers" }],
     templates: [
       {
         pid: "template-1",
@@ -2164,8 +2167,36 @@ export function demoHandle(
   if (head === "activities" && method === "PUT" && seg.length === 2)
     return editFollowup(id!, body);
   if (head === "forecast" && get) return ok(forecastNow());
+  if (head === "segments" && get) return ok(state.segments);
   if (head === "campaigns") {
     if (seg.length === 1 && get) return ok(state.campaigns);
+    if (seg.length === 1 && post) {
+      const input = (body ?? {}) as {
+        name?: string;
+        template_pid?: string;
+        subject?: string;
+        body?: string;
+      };
+      if (!input.name?.trim()) return problem(422, "name is required");
+      if (input.template_pid && (input.subject || input.body))
+        return problem(
+          422,
+          "template_pid cannot be given together with a subject or body",
+        );
+      const made = {
+        pid: `camp-${state.campaigns.length + 1}-${Date.now()}`,
+        name: input.name.trim(),
+        status: "draft",
+        cost_minor: 0,
+        currency: "GBP",
+        recipients: 0,
+        delivered: 0,
+        opened: 0,
+        clicked: 0,
+      } satisfies Campaign;
+      state.campaigns.push(made);
+      return ok({ pid: made.pid });
+    }
     if (tail === "funnel" && get) return campaignFunnel(id!);
     if (tail === "run" && post) return runCampaign(id!);
     if (tail === "status" && post)

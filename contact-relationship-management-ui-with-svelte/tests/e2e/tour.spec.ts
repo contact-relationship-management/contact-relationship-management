@@ -904,4 +904,20 @@ test.describe("export, undo and search", () => {
     await page.getByTestId("template-save").click();
     await expect(page.getByTestId("template-list")).toContainText("Welcome");
   });
+
+  test("a campaign is made from a template and listed as a draft", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/campaigns");
+    await page.getByTestId("campaign-new").click();
+    await page.getByTestId("campaign-name").fill("Autumn push");
+    await page.getByTestId("campaign-segment").selectOption("seg-1");
+    await page.getByTestId("campaign-template").selectOption("template-1");
+    // A template replaces the message fields.
+    await expect(page.getByTestId("campaign-body")).toHaveCount(0);
+    await page.getByTestId("campaign-create").click();
+    await expect(page.getByTestId("campaigns")).toContainText("Autumn push");
+    await expect(page.getByTestId("campaign-form")).toHaveCount(0);
+  });
 });

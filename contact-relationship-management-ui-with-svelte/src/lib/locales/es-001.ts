@@ -465,4 +465,10 @@ export default {
   "tpl.empty": "Aún no hay plantillas.",
   "tpl.problems": "Por corregir antes de guardar",
   "tpl.fellBack": "Se usó el texto alternativo para",
+  "campaign.new": "Nueva campaña",
+  "campaign.segment": "Audiencia (segmento)",
+  "campaign.noSegment": "Ninguno todavía",
+  "campaign.template": "Plantilla de correo",
+  "campaign.ownMessage": "Escribir el mensaje aquí",
+  "campaign.create": "Crear campaña",
 } satisfies Record<StringKey, string>;

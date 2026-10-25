@@ -770,5 +770,5 @@ recipient would get before anything is sent, and be certain every message carrie
   both is `422`. The template is read when each message is made, so changing it changes the messages not yet sent. A message that
   has already gone out is not changed, and a template missing at send time fails that delivery.
 - **Audit.** `created`, `updated` and `deleted` on the entity `email_template`, never the subject or body.
-- The UI has a templates page: a list, an editor with the token set, and a live preview that can blank each token.
+- The UI has a templates page: a list, an editor with the token set, and a live preview that can blank each token. The campaigns page has a creation form: a name, an audience segment, and either a template or the campaign's own subject and message.
 - Not built: HTML-bodied email, attachments, per-recipient-language templates, template versions, and tokens from custom fields.

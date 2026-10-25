@@ -716,6 +716,31 @@ export function forecast(init?: FetchLike): Promise<{
   return api("/forecast", init);
 }
 
+/** A saved audience (CRM-R7). */
+export interface Segment {
+  pid: string;
+  name: string;
+}
+
+/** The saved audiences a campaign can be sent to. */
+export function listSegments(init?: FetchLike): Promise<Segment[]> {
+  return api("/segments", init);
+}
+
+/** What is sent to make a campaign: a template, or its own subject and body. */
+export interface CampaignInput {
+  name: string;
+  segment_pid?: string;
+  template_pid?: string;
+  subject?: string;
+  body?: string;
+}
+
+/** Make a campaign (a draft). */
+export function createCampaign(input: CampaignInput): Promise<{ pid: string }> {
+  return api("/campaigns", { method: "POST", body: input });
+}
+
 /** Campaigns. */
 export function listCampaigns(init?: FetchLike): Promise<Campaign[]> {
   return api("/campaigns", init);

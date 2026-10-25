@@ -437,4 +437,10 @@ export default {
   "tpl.empty": "还没有模板。",
   "tpl.problems": "保存前需修正",
   "tpl.fellBack": "已使用备用文本的字段",
+  "campaign.new": "新建活动",
+  "campaign.segment": "受众（细分）",
+  "campaign.noSegment": "暂无",
+  "campaign.template": "邮件模板",
+  "campaign.ownMessage": "在此撰写消息",
+  "campaign.create": "创建活动",
 } satisfies Record<StringKey, string>;

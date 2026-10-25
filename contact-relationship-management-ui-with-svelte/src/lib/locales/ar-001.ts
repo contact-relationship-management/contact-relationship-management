@@ -459,4 +459,10 @@ export default {
   "tpl.empty": "لا توجد قوالب بعد.",
   "tpl.problems": "يجب إصلاحه قبل الحفظ",
   "tpl.fellBack": "استُخدم النص البديل لـ",
+  "campaign.new": "حملة جديدة",
+  "campaign.segment": "الجمهور (شريحة)",
+  "campaign.noSegment": "لا شيء بعد",
+  "campaign.template": "قالب البريد الإلكتروني",
+  "campaign.ownMessage": "اكتب الرسالة هنا",
+  "campaign.create": "إنشاء الحملة",
 } satisfies Record<StringKey, string>;

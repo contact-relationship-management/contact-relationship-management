@@ -459,4 +459,10 @@ export default {
   "tpl.empty": "अभी कोई टेम्पलेट नहीं।",
   "tpl.problems": "सहेजने से पहले ठीक करें",
   "tpl.fellBack": "इनके लिए वैकल्पिक पाठ उपयोग हुआ",
+  "campaign.new": "नया अभियान",
+  "campaign.segment": "श्रोता (सेगमेंट)",
+  "campaign.noSegment": "अभी कोई नहीं",
+  "campaign.template": "ईमेल टेम्पलेट",
+  "campaign.ownMessage": "संदेश यहाँ लिखें",
+  "campaign.create": "अभियान बनाएँ",
 } satisfies Record<StringKey, string>;

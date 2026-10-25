@@ -472,4 +472,10 @@ export default {
   "tpl.empty": "Noch keine Vorlagen.",
   "tpl.problems": "Vor dem Speichern beheben",
   "tpl.fellBack": "Ersatztext verwendet für",
+  "campaign.new": "Neue Kampagne",
+  "campaign.segment": "Zielgruppe (Segment)",
+  "campaign.noSegment": "Noch keine",
+  "campaign.template": "E-Mail-Vorlage",
+  "campaign.ownMessage": "Nachricht hier schreiben",
+  "campaign.create": "Kampagne anlegen",
 } satisfies Record<StringKey, string>;

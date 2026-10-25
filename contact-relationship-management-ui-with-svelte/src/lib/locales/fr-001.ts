@@ -469,4 +469,10 @@ export default {
   "tpl.empty": "Aucun modèle pour l’instant.",
   "tpl.problems": "À corriger avant d’enregistrer",
   "tpl.fellBack": "Texte de repli utilisé pour",
+  "campaign.new": "Nouvelle campagne",
+  "campaign.segment": "Audience (segment)",
+  "campaign.noSegment": "Aucun pour l’instant",
+  "campaign.template": "Modèle d’e-mail",
+  "campaign.ownMessage": "Écrire le message ici",
+  "campaign.create": "Créer la campagne",
 } satisfies Record<StringKey, string>;

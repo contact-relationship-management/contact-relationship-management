@@ -457,4 +457,10 @@ export default {
   "tpl.empty": "No templates yet.",
   "tpl.problems": "To fix before saving",
   "tpl.fellBack": "Used the fallback for",
+  "campaign.new": "New campaign",
+  "campaign.segment": "Audience (segment)",
+  "campaign.noSegment": "None yet",
+  "campaign.template": "Email template",
+  "campaign.ownMessage": "Write the message here",
+  "campaign.create": "Create campaign",
 } as const;
