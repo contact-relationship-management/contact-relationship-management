@@ -192,3 +192,43 @@ async fn a_contact_is_edited_by_the_members_sent_and_nothing_else() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn an_account_is_edited_by_the_members_sent_and_nothing_else() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let created: Value = request
+            .post("/api/accounts")
+            .json(&json!({
+                "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                "display_name": "Edit Org", "industry": "Retail",
+            }))
+            .await
+            .json();
+        let url = format!("/api/accounts/{}", created["pid"].as_str().unwrap());
+        let edited: Value = request
+            .put(&url)
+            .json(&json!({ "tier": "customer", "industry": null }))
+            .await
+            .json();
+        assert_eq!(edited["tier"], "customer");
+        assert_eq!(edited["industry"], Value::Null);
+        assert_eq!(edited["display_name"], "Edit Org");
+        for body in [
+            json!({}),
+            json!({ "display_name": "" }),
+            json!({ "tier": "nonsense" }),
+            json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()) }),
+        ] {
+            let r = request.put(&url).json(&body).await;
+            assert!(r.status_code().is_client_error(), "{body}");
+        }
+        request
+            .put(&format!("/api/accounts/{}", uuid::Uuid::new_v4()))
+            .json(&json!({ "tier": "customer" }))
+            .await
+            .assert_status(StatusCode::NOT_FOUND);
+    })
+    .await;
+}

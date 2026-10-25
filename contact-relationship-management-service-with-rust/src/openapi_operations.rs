@@ -33,6 +33,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         Kind::Created,
     ),
     (
+        "put",
+        "/api/accounts/{pid}",
+        "relationships",
+        "Change an account's own fields (only the members sent change; null clears an optional one; audited by field name, never value)",
+        Kind::Ok,
+    ),
+    (
         "get",
         "/api/accounts/{pid}",
         "relationships",

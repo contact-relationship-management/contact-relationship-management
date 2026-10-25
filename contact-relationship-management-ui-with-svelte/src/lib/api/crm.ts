@@ -359,6 +359,18 @@ export function editContact(
   return api(`/contacts/${pid}`, { method: "PUT", body: fields });
 }
 
+/** Change an account's own fields (CRM-R39); `null` clears an optional one. */
+export function editAccount(
+  pid: string,
+  fields: {
+    display_name?: string;
+    tier?: string;
+    industry?: string | null;
+  },
+): Promise<Account> {
+  return api(`/accounts/${pid}`, { method: "PUT", body: fields });
+}
+
 /**
  * Erase (anonymise) a contact (CRM-R20). Destructive; the service
  * refuses `422` while an open deal, an open ticket, or an active

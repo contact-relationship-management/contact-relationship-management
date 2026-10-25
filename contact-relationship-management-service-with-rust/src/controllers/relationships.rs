@@ -113,6 +113,23 @@ pub(crate) struct ContactChange {
     preferred_channel: Option<String>,
 }
 
+/// `PUT /api/accounts/{pid}` body (CRM-R39): only the members present change; `null` clears an
+/// optional one. The `organization_ref` never changes.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct AccountChange {
+    #[serde(default)]
+    display_name: Option<String>,
+    #[serde(default)]
+    tier: Option<String>,
+    #[serde(default)]
+    #[schemars(with = "Option<String>")]
+    owner_ref: Patch<String>,
+    #[serde(default)]
+    #[schemars(with = "Option<String>")]
+    industry: Patch<String>,
+}
+
 /// `POST /api/accounts` body.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -895,6 +912,76 @@ async fn create_account(
     })
 }
 
+/// `PUT /api/accounts/{pid}` — change an account's own fields (CRM-R39). The audit row names the
+/// fields that changed, never their values.
+#[debug_handler]
+async fn update_account(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+    Json(change): Json<AccountChange>,
+) -> Result<Response> {
+    let account = records::find_account(&ctx.db, pid).await?;
+    let mut problems = Problems::new();
+    if let Some(name) = &change.display_name {
+        problems.require_text("display_name", name);
+    }
+    if let Some(tier) = &change.tier {
+        problems.require_token("tier", tokens::ACCOUNT_TIERS, tier);
+    }
+    problems.ref_opt(
+        "owner_ref",
+        entity_ref::EntityType::Worker,
+        change.owner_ref.set().map(String::as_str),
+    );
+    problems.cap_opt("industry", change.industry.set().map(String::as_str));
+    problems.finish()?;
+    let mut changed = Vec::new();
+    let mut active: accounts::ActiveModel = account.into();
+    if let Some(name) = change.display_name {
+        active.display_name = ActiveValue::set(name);
+        changed.push("display_name");
+    }
+    if let Some(tier) = change.tier {
+        active.tier = ActiveValue::set(tier);
+        changed.push("tier");
+    }
+    if change.owner_ref.is_sent() {
+        active.owner_ref = ActiveValue::set(change.owner_ref.into_value());
+        changed.push("owner_ref");
+    }
+    if change.industry.is_sent() {
+        active.industry = ActiveValue::set(change.industry.into_value());
+        changed.push("industry");
+    }
+    if changed.is_empty() {
+        return Err(unprocessable("nothing to change"));
+    }
+    let txn = ctx.db.begin().await?;
+    let row = active.update(&txn).await?;
+    Audit::record(
+        &txn,
+        "account",
+        row.pid,
+        "updated",
+        caller.actor(),
+        Some(serde_json::json!({ "fields": changed })),
+    )
+    .await?;
+    streaming::emit_on(
+        &txn,
+        "account",
+        "updated",
+        &row.pid.to_string(),
+        &row.display_name,
+        caller.actor(),
+        None,
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(row)
+}
+
 /// `GET /api/accounts`.
 #[debug_handler]
 async fn list_accounts(
@@ -1153,6 +1240,7 @@ pub fn routes() -> Routes {
         .add("/accounts", post(create_account))
         .add("/accounts", get(list_accounts))
         .add("/accounts/{pid}", get(get_account))
+        .add("/accounts/{pid}", put(update_account))
         .add("/activities", post(create_activity))
         .add("/activities", get(list_activities))
         .add("/activities/{pid}/done", put(activity_done))

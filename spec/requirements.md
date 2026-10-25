@@ -798,3 +798,13 @@ recipient would get before anything is sent, and be certain every message carrie
   personal data in it. A `contact` `updated` event is emitted.
 - A merge fills `given_name` on the survivor when it has none, an unmerge clears it again, and erasure clears it (CRM-R24, CRM-R26, CRM-R20).
 - The contact page shows both names and an edit form.
+
+## CRM-R39 — Editing an account
+
+*As someone who keeps account details, I can correct an account after creating it.*
+
+- `PUT /api/accounts/{pid}` changes an account's `display_name`, `tier`, `owner_ref` and `industry`. Only the members sent change; `null` clears
+  an optional one; a blank name, an unknown tier, an unknown member (the `organization_ref` never changes) or an empty body is refused `422`, and
+  an unknown account `404`.
+- The change and its audit row commit together; the row names the fields that changed, never their values. An `account` `updated` event is emitted.
+- The account page shows an edit form for the name, tier and industry.

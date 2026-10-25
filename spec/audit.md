@@ -43,6 +43,8 @@ the source note and the date obtained) and `lead_import_undone` (removed and kep
 
 A contact edited with `PUT /api/contacts/{pid}` (CRM-R38) audits as `contact` `updated`, with the names of the fields changed, never their values.
 
+An account edited with `PUT /api/accounts/{pid}` (CRM-R39) audits as `account` `updated`, with the field names only.
+
 Email templates (CRM-R36) audit under the entity `email_template`: `created`, `updated`, `deleted`; never the subject or body.
 
 Saved views (CRM-R35) audit under the entity `view`: `created`, `updated`, `deleted`, with the list and whether it is shared; never the

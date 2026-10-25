@@ -2130,6 +2130,25 @@ export function demoHandle(
   if (head === "external-links" && method === "DELETE" && id)
     return removeLink(id);
   if (head === "accounts" && seg.length === 1 && get) return ok(state.accounts);
+  if (head === "accounts" && seg.length === 2 && method === "PUT") {
+    const account = state.accounts.find((a) => a.pid === id);
+    if (!account) return problem(404, "account not found");
+    const input = bodyOf(body);
+    if (
+      !["display_name", "tier", "industry"].some((n) => input[n] !== undefined)
+    )
+      return problem(422, "nothing to change");
+    if (input.display_name !== undefined) {
+      if (typeof input.display_name !== "string" || !input.display_name.trim())
+        return problem(422, "display_name is required");
+      account.display_name = input.display_name.trim();
+    }
+    if (typeof input.tier === "string") account.tier = input.tier;
+    if (input.industry === null) account.industry = null;
+    else if (typeof input.industry === "string")
+      account.industry = input.industry.trim() || null;
+    return ok(account);
+  }
   if (head === "accounts" && seg.length === 2 && get) {
     const account = state.accounts.find((a) => a.pid === id);
     if (!account) return problem(404, "account not found");

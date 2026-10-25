@@ -228,7 +228,65 @@ export interface paths {
                 };
             };
         };
-        put?: never;
+        /** Change an account's own fields (only the members sent change; null clears an optional one; audited by field name, never value) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AccountChange"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -11357,6 +11415,18 @@ export interface components {
             tier: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /**
+         * @description `PUT /api/accounts/{pid}` body (CRM-R39): only the members present change; `null` clears an
+         *     optional one. The `organization_ref` never changes.
+         */
+        AccountChange: {
+            /** @default null */
+            display_name: string | null;
+            industry?: string | null;
+            owner_ref?: string | null;
+            /** @default null */
+            tier: string | null;
         };
         /** @description `GET /api/accounts/{pid}`: the account with its contacts and deals. */
         AccountDetail: {

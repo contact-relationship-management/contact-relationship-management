@@ -940,4 +940,16 @@ test.describe("export, undo and search", () => {
     await page.getByTestId("contact-save").click();
     await expect(page.getByTestId("contact-names")).not.toContainText("Imo");
   });
+
+  test("an account's tier and industry are edited", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/accounts/acc-1");
+    await page.getByTestId("account-edit").click();
+    const form = page.getByTestId("account-form");
+    await form.getByRole("combobox").selectOption("former");
+    await form.getByRole("textbox").nth(1).fill("");
+    await page.getByTestId("account-save").click();
+    await expect(page.getByTestId("account-saved")).toBeVisible();
+    await expect(page.locator(".chip").first()).toContainText("former");
+  });
 });

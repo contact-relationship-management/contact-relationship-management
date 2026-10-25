@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — editing an account (CRM-R39)
+
+`PUT /api/accounts/{pid}` changes `display_name`, `tier`, `owner_ref` and `industry` (only the members sent; `null` clears). The audit row lists
+the field names, never the values.
+
 ### Added — a contact's given name, and editing a contact (CRM-R38)
 
 `contacts.given_name` (optional, migration `000029`), set on `POST /api/contacts`, filled by a merge, cleared by an unmerge and erased with the
