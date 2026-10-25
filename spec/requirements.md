@@ -825,3 +825,18 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Schedule:** the minute tick (and `POST /api/workflows/run-due`) works through contacts in id order, at most 50 runs and 500 contacts per workflow per tick, remembering where it stopped; one replica at a time per workflow.
 - Saving or trying a workflow needs write access; reading the list does not. Saving is audited.
 - Not built: triggers on records other than contacts and deals' stage moves (accounts, tickets, leads, web-form and lead-conversion contacts), conditions on anything but the segment clauses, branching or waiting steps, editing a workflow's actions in place beyond replacing it, and a run log across all workflows.
+
+## CRM-R41 — Typed custom fields
+
+*As someone who keeps details the standard record has no place for, I can declare a field on contacts, accounts, leads or deals, set its values, and trust that it is masked, stored, exported and erased the way its sensitivity says.*
+
+- `POST /api/custom-fields` declares a field: `entity` (`contact`, `account`, `lead`, `deal`), `key` (lower case, at most 40, fixed), `label`, `kind` (`text`, `number`, `date`, `choice`; fixed), `choices` (for a choice, 1 to 20 distinct) and `sensitivity` (fixed). A key is unique per entity; at most 30 fields per entity. `GET /api/custom-fields` lists them; `PUT /api/custom-fields/{pid}` changes the label, choices and position (a choice that values still use cannot be removed, `409`); `DELETE` removes the field and every value it holds. All audited as `custom_field`.
+- `GET` and `PUT /api/{contacts|accounts|leads|deals}/{pid}/custom-fields` read every field of the record with its value, and set or clear (`null`) values. Only the fields named change. A value is checked against its kind: text up to 500 characters, a finite number, a `YYYY-MM-DD` date, or one of the choices. A bad value, or an unknown key, is `422` naming the field, and nothing is saved. The audit row names the fields, never the values.
+- **Sensitivity** decides what happens to a field's values:
+  - `business`: operational data. Visible to a masked read; kept after an erasure.
+  - `personal`: about a person. Hidden from a masked read (`value: null`, `masked: true`), included in the subject-access export (CRM-R20), deleted when the contact is erased (and when a lead the erasure scrubs is).
+  - `sensitive`: as `personal`, and sealed with the field key in the database (CRM-T41); key rotation re-seals it.
+- Writing needs write access to the record (the record-level policy applies to contacts and deals); declaring a field needs write access too.
+- A contact's export and an erasure also cover the values set on contacts merged into it. A merge does not copy values to the survivor, and an unmerge has nothing to undo: values stay on the contact they were set on.
+- The contact, account, lead and deal pages show the fields as a form; `/custom-fields` declares them.
+- Not built: custom fields in saved views and segment filters, in lists and CSV import, in the search index, or in webhooks and the workflow conditions; a field of type multi-choice, URL or lookup; changing a field's kind or sensitivity (delete and declare it again); erasure of account and deal values (they are not personal subjects).

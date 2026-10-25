@@ -2,6 +2,7 @@
   import { resource } from "#lib/resource.svelte.js";
   import { page } from "$app/state";
   import { getLead } from "#lib/api/crm.js";
+  import CustomFields from "#lib/components/CustomFields.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { t } from "#lib/i18n.svelte.js";
 
@@ -23,5 +24,6 @@
     <span class="muted">{detail.lead.source}</span>
     · {detail.score.score} · {detail.score.label}
   </p>
+  <CustomFields kind="leads" {pid} />
   <LinksPanel kind="leads" {pid} />
 {/if}

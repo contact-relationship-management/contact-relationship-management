@@ -2,6 +2,7 @@
   import { resource } from "#lib/resource.svelte.js";
   import { page } from "$app/state";
   import { editAccount, getAccount, money } from "#lib/api/crm.js";
+  import CustomFields from "#lib/components/CustomFields.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
   import { errorMessage, fieldErrors } from "#lib/errors.js";
@@ -102,5 +103,6 @@
       {/each}
     </ul>
   {/if}
+  <CustomFields kind="accounts" {pid} />
   <LinksPanel kind="accounts" {pid} />
 {/if}

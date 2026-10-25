@@ -38,9 +38,9 @@ fn reference(name: &str) -> Value {
 #[allow(clippy::too_many_lines)] // one list of the documented types
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
-        audits, board, break_glass, dashboards, engagement, external_links, insights, lead_imports,
-        marketing, merge, notifications, privacy, relationships, sales, search, support, templates,
-        unmerge, views, webhooks, workflows,
+        audits, board, break_glass, custom_fields, dashboards, engagement, external_links,
+        insights, lead_imports, marketing, merge, notifications, privacy, relationships, sales,
+        search, support, templates, unmerge, views, webhooks, workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -161,9 +161,14 @@ fn generated() -> serde_json::Map<String, Value> {
         templates::TemplatePayload,
         templates::PreviewPayload,
         workflows::WorkflowPayload,
+        custom_fields::DefPayload,
+        custom_fields::DefChange,
+        custom_fields::ValuesPayload,
         templates::Preview,
         templates::TokenInfo,
         workflows::WorkflowView,
+        custom_fields::DefView,
+        custom_fields::ValueView,
         workflows::RunView,
         workflows::Sweep,
         crate::workflows::DryRun,
@@ -285,6 +290,15 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         }
         ("post", "/api/email-templates/preview") => "EmailTemplatePreviewPayload",
         ("post", "/api/workflows") | ("put", "/api/workflows/{pid}") => "WorkflowPayload",
+        ("post", "/api/custom-fields") => "CustomFieldPayload",
+        ("put", "/api/custom-fields/{pid}") => "CustomFieldChange",
+        (
+            "put",
+            "/api/contacts/{pid}/custom-fields"
+            | "/api/accounts/{pid}/custom-fields"
+            | "/api/leads/{pid}/custom-fields"
+            | "/api/deals/{pid}/custom-fields",
+        ) => "CustomFieldValuesPayload",
         ("post", "/api/lead-imports/preview") => "LeadImportPreviewPayload",
         ("post", "/api/lead-imports") => "LeadImportCommitPayload",
         ("post", "/api/articles") | ("put", "/api/articles/{pid}") => "ArticlePayload",
@@ -415,6 +429,11 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/email-templates" => "EmailTemplate",
         "/api/email-templates/tokens" => "MergeToken",
         "/api/workflows" => "Workflow",
+        "/api/custom-fields" => "CustomField",
+        "/api/contacts/{pid}/custom-fields"
+        | "/api/accounts/{pid}/custom-fields"
+        | "/api/leads/{pid}/custom-fields"
+        | "/api/deals/{pid}/custom-fields" => "CustomFieldValue",
         "/api/workflows/{pid}/runs" => "WorkflowRun",
         "/api/lead-imports" => "LeadImport",
         "/api/webhook-subscriptions" => "WebhookSubscription",

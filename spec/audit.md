@@ -45,6 +45,8 @@ A contact edited with `PUT /api/contacts/{pid}` (CRM-R38) audits as `contact` `u
 
 An account edited with `PUT /api/accounts/{pid}` (CRM-R39) audits as `account` `updated`, with the field names only.
 
+Custom fields (CRM-R41) audit under the entity `custom_field` (`created` with entity, key, kind and sensitivity; `updated`; `deleted` with the count of values removed). Setting values audits as the record's own entity with `custom_fields_updated` and the keys, never the values.
+
 Workflows (CRM-R40) audit under the entity `workflow`: `created`, `updated`, `deleted` (trigger and on/off, never the actions' text) and `dry_run` (counts). Each run audits as `workflow_run` with `fired`, `failed` or `blocked`, the workflow, the record and the step count, and the actor `workflow:<pid>` is the actor of every write the run makes.
 
 Email templates (CRM-R36) audit under the entity `email_template`: `created`, `updated`, `deleted`; never the subject or body.

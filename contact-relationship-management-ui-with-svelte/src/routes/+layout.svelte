@@ -98,6 +98,7 @@
     { href: "/deals", key: "nav.deals" },
     { href: "/campaigns", key: "nav.campaigns" },
     { href: "/workflows", key: "nav.workflows" },
+    { href: "/custom-fields", key: "nav.customFields" },
     { href: "/tickets", key: "nav.tickets" },
     { href: "/articles", key: "nav.articles" },
     { href: "/followups", key: "nav.followups" },

@@ -10,6 +10,7 @@ use crate::validation::FieldProblem;
 pub mod audits;
 pub mod board;
 pub mod break_glass;
+pub mod custom_fields;
 pub mod dashboards;
 pub mod docs;
 pub mod engagement;

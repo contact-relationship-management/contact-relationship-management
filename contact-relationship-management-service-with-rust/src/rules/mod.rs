@@ -7,6 +7,7 @@
 
 pub mod analytics;
 pub mod audit_chain;
+pub mod custom_fields;
 pub mod engagement;
 pub mod external_links;
 pub mod forms;

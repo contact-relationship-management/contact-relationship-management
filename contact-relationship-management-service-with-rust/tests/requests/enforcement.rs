@@ -1268,3 +1268,95 @@ async fn a_reader_may_list_workflows_but_not_save_or_try_one() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_masked_read_hides_personal_custom_fields_and_a_reader_cannot_set_any() {
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let service = sign_as(&kid, "fields-svc", &[("svc", &["true"])]);
+    let reader = sign_as(&kid, "fields-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        for (key, sensitivity) in [("plan", "business"), ("hobby", "personal")] {
+            request
+                .post("/api/custom-fields")
+                .add_header("authorization", bearer(&service))
+                .json(
+                    &json!({ "entity": "contact", "key": key, "label": key, "kind": "text",
+                               "sensitivity": sensitivity }),
+                )
+                .await
+                .assert_status_ok();
+        }
+        let made: Value = request
+            .post("/api/contacts")
+            .add_header("authorization", bearer(&service))
+            .json(
+                &json!({ "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Masked Fields" }),
+            )
+            .await
+            .json();
+        let url = format!(
+            "/api/contacts/{}/custom-fields",
+            made["pid"].as_str().unwrap()
+        );
+        request
+            .put(&url)
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "values": { "plan": "Pro", "hobby": "sailing" } }))
+            .await
+            .assert_status_ok();
+
+        let seen = |token: String| {
+            let request = &request;
+            let url = url.clone();
+            async move {
+                request
+                    .get(&url)
+                    .add_header("authorization", bearer(&token))
+                    .await
+                    .json::<Vec<Value>>()
+            }
+        };
+        let masked = seen(reader.clone()).await;
+        let by = |rows: &[Value], key: &str| rows.iter().find(|v| v["key"] == key).unwrap().clone();
+        assert_eq!(by(&masked, "plan")["value"], "Pro");
+        assert_eq!(by(&masked, "hobby")["value"], Value::Null);
+        assert_eq!(by(&masked, "hobby")["masked"], true);
+        let full = seen(service.clone()).await;
+        assert_eq!(by(&full, "hobby")["value"], "sailing");
+        assert_eq!(by(&full, "hobby")["masked"], false);
+
+        // A reader sets nothing, declares nothing.
+        assert_eq!(
+            request
+                .put(&url)
+                .add_header("authorization", bearer(&reader))
+                .json(&json!({ "values": { "plan": "Free" } }))
+                .await
+                .status_code(),
+            403
+        );
+        assert_eq!(
+            request
+                .post("/api/custom-fields")
+                .add_header("authorization", bearer(&reader))
+                .json(
+                    &json!({ "entity": "contact", "key": "x", "label": "x", "kind": "text",
+                               "sensitivity": "business" })
+                )
+                .await
+                .status_code(),
+            403
+        );
+    })
+    .await;
+}

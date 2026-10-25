@@ -54,7 +54,49 @@ pub async fn rotate(db: &DatabaseConnection) -> std::result::Result<Vec<(String,
         }
         report.push((format!("{table}.{column}"), updates.len() as u64));
     }
+    report.push((
+        "custom_field_values.value (sensitive fields)".to_string(),
+        rotate_custom(db, &ring).await?,
+    ));
     Ok(report)
+}
+
+/// Re-seal the values of `sensitive` custom fields (CRM-R41). The other fields' values are kept
+/// as plain text, so they are left alone.
+async fn rotate_custom(
+    db: &DatabaseConnection,
+    ring: &crypto::Keyring,
+) -> std::result::Result<u64, String> {
+    let rows = db
+        .query_all_raw(Statement::from_string(
+            DatabaseBackend::Postgres,
+            "SELECT v.id, v.value FROM custom_field_values v JOIN custom_field_defs d \
+             ON d.pid = v.field_pid WHERE d.sensitivity = 'sensitive' ORDER BY v.id"
+                .to_string(),
+        ))
+        .await
+        .map_err(|e| e.to_string())?;
+    let mut updates = Vec::new();
+    for row in &rows {
+        let id: i64 = row.try_get("", "id").map_err(|e| e.to_string())?;
+        let stored: String = row.try_get("", "value").map_err(|e| e.to_string())?;
+        if ring.needs_rotation(&stored) {
+            let plain = ring
+                .open(&stored)
+                .map_err(|e| format!("custom_field_values row {id}: {e}"))?;
+            updates.push((id, ring.seal(&plain)));
+        }
+    }
+    for (id, sealed) in &updates {
+        db.execute_raw(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            "UPDATE custom_field_values SET value = $1 WHERE id = $2",
+            [sealed.clone().into(), (*id).into()],
+        ))
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(updates.len() as u64)
 }
 
 /// The loco task wrapper.

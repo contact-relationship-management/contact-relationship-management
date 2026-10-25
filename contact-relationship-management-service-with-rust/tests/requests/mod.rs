@@ -6,6 +6,7 @@ mod api_standards;
 mod audit_chain;
 mod board;
 mod consent_purposes;
+mod custom_fields;
 mod duplicates;
 mod email_delivery;
 mod email_templates;

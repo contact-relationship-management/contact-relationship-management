@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — typed custom fields (CRM-T105, CRM-R41)
+
+`custom_field_defs` and `custom_field_values` (migration `000031`); `/api/custom-fields` and `/api/{contacts,accounts,leads,deals}/{pid}/custom-fields`.
+Kinds: text, number, date, choice. Sensitivity `business`, `personal` or `sensitive` decides masking, sealing, the subject-access export and erasure.
+`rotate_field_keys` re-seals the sensitive values.
+
 ### Added — explainable workflow rules (CRM-T104, CRM-R40)
 
 `workflows` and `workflow_runs` (migration `000030`); `/api/workflows` (CRUD, `dry-run`, `runs`, `run-due`). Triggers: contact created or updated, a deal's

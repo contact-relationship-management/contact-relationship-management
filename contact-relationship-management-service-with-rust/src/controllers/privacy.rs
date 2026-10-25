@@ -61,6 +61,9 @@ pub(crate) struct SubjectAccessExport {
     nurture_enrollments: Vec<nurture_enrollments::Model>,
     email_deliveries: Vec<email_deliveries::Model>,
     external_links: Vec<external_links::Model>,
+    /// The custom fields set on the contact and on contacts merged into it (CRM-R41).
+    #[schemars(with = "Vec<serde_json::Value>")]
+    custom_fields: Vec<serde_json::Value>,
     /// What the export does not cover, and where to ask for it.
     exclusions: [&'static str; 3],
 }
@@ -109,6 +112,7 @@ async fn subject_access(
         nurture_enrollments: rows_for!(db, nurture_enrollments, ContactPid, cpid),
         email_deliveries: rows_for!(db, email_deliveries, ContactPid, cpid),
         external_links: rows_for!(db, external_links, SubjectPid, cpid),
+        custom_fields: super::custom_fields::export_for(db, cpid).await?,
         exclusions: [
             "campaign delivery/open/click counters: aggregate counters. Which messages were \
              sent to this contact is in email_deliveries (state, time and message id, no \
@@ -268,8 +272,9 @@ async fn erase(
              (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
         ),
     ];
+    let custom = super::custom_fields::erase_sql(cpid);
     let mut affected = Vec::new();
-    for statement in &statements {
+    for statement in statements.iter().chain(std::iter::once(&custom)) {
         let result = txn.execute_unprepared(statement).await?;
         affected.push(result.rows_affected());
     }
@@ -287,6 +292,7 @@ async fn erase(
             "webhook_deliveries_cancelled": affected[4],
             "merged_duplicates_scrubbed": affected[5],
             "purposes_withdrawn": affected[7],
+            "custom_field_values_deleted": affected[affected.len() - 1],
         })),
     )
     .await?;

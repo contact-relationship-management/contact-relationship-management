@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — custom fields (CRM-R41)
+
+`/custom-fields` to declare them; a form of the fields on the contact, account, lead and deal pages.
+
 ### Added — workflow rules page, contact and account editing (CRM-R38 to CRM-R40)
 
 `/workflows`: list, editor, dry run and run log. The contact and account pages have an edit form (names, job title, tier, industry).

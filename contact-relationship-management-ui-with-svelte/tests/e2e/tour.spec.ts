@@ -982,4 +982,26 @@ test.describe("export, undo and search", () => {
       "Notify on update",
     );
   });
+
+  test("a custom field is declared and its value set on a contact", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/custom-fields");
+    await page.getByTestId("cf-key").fill("segment_note");
+    await page.getByTestId("cf-label").fill("Segment note");
+    await page.getByTestId("cf-add").click();
+    await expect(page.getByTestId("cf-list")).toContainText(
+      "contact.segment_note",
+    );
+
+    await page.goto("/contacts/con-1");
+    await expect(page.getByTestId("cf-hobby")).toHaveValue("sailing");
+    await page.getByTestId("cf-segment_note").fill("Renewal risk");
+    await page.getByTestId("cf-save").click();
+    await expect(page.getByTestId("cf-saved")).toBeVisible();
+    await expect(page.getByTestId("cf-segment_note")).toHaveValue(
+      "Renewal risk",
+    );
+  });
 });

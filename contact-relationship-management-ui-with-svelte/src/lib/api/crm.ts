@@ -1318,3 +1318,71 @@ export function workflowRuns(
 ): Promise<WorkflowRun[]> {
   return api(`/workflows/${pid}/runs`, init);
 }
+
+/** A declared custom field (CRM-R41). */
+export interface CustomField {
+  pid: string;
+  entity: "contact" | "account" | "lead" | "deal";
+  key: string;
+  label: string;
+  kind: "text" | "number" | "date" | "choice";
+  choices: string[];
+  sensitivity: "business" | "personal" | "sensitive";
+  position: number;
+}
+
+/** A custom field of one record, with its value. */
+export interface CustomFieldValue {
+  key: string;
+  label: string;
+  kind: CustomField["kind"];
+  sensitivity: CustomField["sensitivity"];
+  choices: string[];
+  /** `null` when none is set, or when a masked read hides it. */
+  value: string | number | null;
+  masked: boolean;
+}
+
+/** What is sent to declare a field. */
+export type CustomFieldInput = Pick<
+  CustomField,
+  "entity" | "key" | "label" | "kind" | "choices" | "sensitivity"
+>;
+
+/** The declared custom fields. */
+export function listCustomFields(init?: FetchLike): Promise<CustomField[]> {
+  return api("/custom-fields", init);
+}
+
+/** Declare a custom field. */
+export function createCustomField(
+  input: CustomFieldInput,
+): Promise<{ pid: string }> {
+  return api("/custom-fields", { method: "POST", body: input });
+}
+
+/** Delete a custom field and every value it holds. */
+export function deleteCustomField(pid: string): Promise<{ pid: string }> {
+  return api(`/custom-fields/${pid}`, { method: "DELETE" });
+}
+
+/** The custom fields of a record with their values. */
+export function getCustomFieldValues(
+  kind: LinkKind,
+  pid: string,
+  init?: FetchLike,
+): Promise<CustomFieldValue[]> {
+  return api(`/${kind}/${pid}/custom-fields`, init);
+}
+
+/** Set or clear (`null`) values on a record. */
+export function setCustomFieldValues(
+  kind: LinkKind,
+  pid: string,
+  values: Record<string, string | number | null>,
+): Promise<CustomFieldValue[]> {
+  return api(`/${kind}/${pid}/custom-fields`, {
+    method: "PUT",
+    body: { values },
+  });
+}

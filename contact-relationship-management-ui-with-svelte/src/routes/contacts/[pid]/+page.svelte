@@ -2,6 +2,7 @@
   import { errorMessage, fieldErrors } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
+  import CustomFields from "#lib/components/CustomFields.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
@@ -510,6 +511,7 @@
     {/if}
   {/if}
 
+  <CustomFields kind="contacts" {pid} />
   <LinksPanel kind="contacts" {pid} version={linksVersion} />
 
   <h2>{t("contact.timeline")}</h2>

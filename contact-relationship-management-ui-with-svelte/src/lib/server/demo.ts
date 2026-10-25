@@ -28,6 +28,8 @@ import type {
   EmailTemplate,
   Workflow,
   WorkflowRun,
+  CustomField,
+  CustomFieldValue,
   MergeToken,
   TemplatePreview,
   Stage,
@@ -123,6 +125,9 @@ interface State {
   /** The demo workflow rules and their run log (CRM-R40). */
   workflows: Workflow[];
   workflowRuns: WorkflowRun[];
+  /** The demo's custom fields and the values set on records, by field key and record (CRM-R41). */
+  customFields: CustomField[];
+  customValues: Record<string, string | number>;
   /** The demo user's saved views (CRM-R35). */
   views: SavedView[];
   /** The inbox of the one demo user (CRM-R32). */
@@ -721,6 +726,29 @@ function build(): State {
         updated_at: "2026-10-25T09:00:00Z",
       },
     ],
+    customFields: [
+      {
+        pid: "cf-1",
+        entity: "contact",
+        key: "renewal_date",
+        label: "Renewal date",
+        kind: "date",
+        choices: [],
+        sensitivity: "business",
+        position: 0,
+      },
+      {
+        pid: "cf-2",
+        entity: "contact",
+        key: "hobby",
+        label: "Hobby",
+        kind: "text",
+        choices: [],
+        sensitivity: "personal",
+        position: 1,
+      },
+    ],
+    customValues: { "cf-1:con-1": "2027-03-01", "cf-2:con-1": "sailing" },
     workflowRuns: [
       {
         pid: "run-1",
@@ -2080,6 +2108,9 @@ export function demoHandle(
       return recordLinks("contact", id!, method, body);
   }
   if (head === "email-templates") return emailTemplates(method, id, body);
+  if (head === "custom-fields") return customFieldDefs(method, id, body);
+  if (tail === "custom-fields" && id)
+    return customFieldValues(head, id, method, body);
   if (head === "workflows") return workflows(method, id, tail, body);
   if (head === "views") {
     if (get)
@@ -2499,6 +2530,106 @@ function workflows(
   if (method === "DELETE") {
     state.workflows.splice(at, 1);
     return ok({ pid: id });
+  }
+  return problem(405, "method not allowed");
+}
+
+const CUSTOM_ENTITY = {
+  contacts: "contact",
+  accounts: "account",
+  leads: "lead",
+  deals: "deal",
+} as const;
+
+/** The demo's declared custom fields: listed, declared and deleted. */
+function customFieldDefs(
+  method: string,
+  id: string | undefined,
+  body: unknown,
+) {
+  if (method === "GET" && !id) return ok(state.customFields);
+  if (method === "POST" && !id) {
+    const input = bodyOf(body) as Partial<CustomField>;
+    if (!input.key || !/^[a-z][a-z0-9_]{0,39}$/.test(input.key))
+      return problem(
+        422,
+        "key must be lower-case letters, digits and underscores",
+      );
+    if (
+      state.customFields.some(
+        (f) => f.entity === input.entity && f.key === input.key,
+      )
+    )
+      return problem(
+        422,
+        `a ${input.entity} already has a custom field with the key ${input.key}`,
+      );
+    const made: CustomField = {
+      pid: `cf-${state.customFields.length + 1}-${Date.now()}`,
+      entity: input.entity ?? "contact",
+      key: input.key,
+      label: input.label?.trim() || input.key,
+      kind: input.kind ?? "text",
+      choices: input.choices ?? [],
+      sensitivity: input.sensitivity ?? "business",
+      position: state.customFields.length,
+    };
+    state.customFields.push(made);
+    return ok({ pid: made.pid });
+  }
+  const at = state.customFields.findIndex((f) => f.pid === id);
+  if (at < 0) return problem(404, "custom field not found");
+  if (method === "DELETE") {
+    state.customFields.splice(at, 1);
+    for (const k of Object.keys(state.customValues))
+      if (k.startsWith(`${id}:`)) delete state.customValues[k];
+    return ok({ pid: id });
+  }
+  return problem(405, "method not allowed");
+}
+
+/** The demo's custom field values on one record. */
+function customFieldValues(
+  head: string | undefined,
+  pid: string,
+  method: string,
+  body: unknown,
+) {
+  const entity = CUSTOM_ENTITY[head as keyof typeof CUSTOM_ENTITY];
+  if (!entity) return problem(404, "not found");
+  const rows = (): CustomFieldValue[] =>
+    state.customFields
+      .filter((f) => f.entity === entity)
+      .map((f) => ({
+        key: f.key,
+        label: f.label,
+        kind: f.kind,
+        sensitivity: f.sensitivity,
+        choices: f.choices,
+        value: state.customValues[`${f.pid}:${pid}`] ?? null,
+        masked: false,
+      }));
+  if (method === "GET") return ok(rows());
+  if (method === "PUT") {
+    const values = (bodyOf(body).values ?? {}) as Record<string, unknown>;
+    if (!Object.keys(values).length) return problem(422, "nothing to change");
+    for (const [key, value] of Object.entries(values)) {
+      const def = state.customFields.find(
+        (f) => f.entity === entity && f.key === key,
+      );
+      if (!def)
+        return problem(422, `${key} is not a custom field of a ${entity}`);
+      if (value === null) {
+        delete state.customValues[`${def.pid}:${pid}`];
+        continue;
+      }
+      if (def.kind === "number" && typeof value !== "number")
+        return problem(422, `${key} must be a number`);
+      if (def.kind === "choice" && !def.choices.includes(String(value)))
+        return problem(422, `${key} must be one of ${def.choices.join(", ")}`);
+      state.customValues[`${def.pid}:${pid}`] = value as string | number;
+    }
+    return ok(rows());
   }
   return problem(405, "method not allowed");
 }
