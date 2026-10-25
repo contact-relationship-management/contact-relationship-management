@@ -28,12 +28,14 @@
     "contact_updated",
     "deal_stage_changed",
     "schedule",
+    "lead_created",
   ] as const;
   const TRIGGER_LABEL = {
     contact_created: "wf.trigger.contact_created",
     contact_updated: "wf.trigger.contact_updated",
     deal_stage_changed: "wf.trigger.deal_stage_changed",
     schedule: "wf.trigger.schedule",
+    lead_created: "wf.trigger.lead_created",
   } as const;
   const ACTION_LABEL = {
     create_task: "wf.action.create_task",
@@ -41,7 +43,18 @@
     set_field: "wf.action.set_field",
     enrol_nurture: "wf.action.enrol_nurture",
     send_webhook: "wf.action.send_webhook",
+    assign_owner: "wf.action.assign_owner",
   } as const;
+  // A lead is assigned, not enrolled or edited; a contact is not assigned.
+  const LEAD_ACTIONS = ["create_task", "notify", "assign_owner", "send_webhook"];
+  const CONTACT_ACTIONS = ["create_task", "notify", "set_field", "enrol_nurture", "send_webhook"];
+  const LEAD_CONDITIONS = [
+    {
+      key: "sources",
+      label: "wf.cond.sources",
+      values: ["web", "referral", "event", "import", "campaign"],
+    },
+  ] as const;
   const CONDITIONS = [
     { key: "statuses", label: "wf.cond.statuses", values: ["active", "inactive"] },
     { key: "channels", label: "wf.cond.channels", values: ["email", "phone", "post", "none"] },
@@ -59,10 +72,12 @@
   let enabled = $state(true);
   let trigger = $state<string>("contact_created");
   let every = $state(60);
+  const allowed = $derived(trigger === "lead_created" ? LEAD_ACTIONS : CONTACT_ACTIONS);
   let conditions = $state({
     statuses: [] as string[],
     channels: [] as string[],
     account_tiers: [] as string[],
+    sources: [] as string[],
   });
   let actions = $state<WorkflowAction[]>([]);
   let adding = $state<WorkflowAction["type"]>("create_task");
@@ -83,6 +98,7 @@
       statuses: [...(workflow?.conditions.statuses ?? [])],
       channels: [...(workflow?.conditions.channels ?? [])],
       account_tiers: [...(workflow?.conditions.account_tiers ?? [])],
+      sources: [...(workflow?.conditions.sources ?? [])],
     };
     actions = structuredClone($state.snapshot(workflow?.actions ?? []));
     error = null;
@@ -99,7 +115,10 @@
     }
   }
 
-  function toggle(key: "statuses" | "channels" | "account_tiers", value: string) {
+  function toggle(
+    key: "statuses" | "channels" | "account_tiers" | "sources",
+    value: string,
+  ) {
     const now = conditions[key];
     conditions[key] = now.includes(value) ? now.filter((v) => v !== value) : [...now, value];
   }
@@ -111,6 +130,7 @@
       set_field: { type: "set_field", field: "job_title", value: "" },
       enrol_nurture: { type: "enrol_nurture", sequence_pid: "" },
       send_webhook: { type: "send_webhook", event: "" },
+      assign_owner: { type: "assign_owner", pool: [], strategy: "round_robin", notify: true },
     };
     actions = [...actions, made[adding]];
   }
@@ -220,7 +240,7 @@
 
     <fieldset>
       <legend>{t("wf.conditions")}</legend>
-      {#each CONDITIONS as group (group.key)}
+      {#each trigger === "lead_created" ? LEAD_CONDITIONS : CONDITIONS as group (group.key)}
         <span>
           {t(group.label)}:
           {#each group.values as value (value)}
@@ -260,6 +280,26 @@
               <label>{t("wf.value")} <input bind:value={action.value} /></label>
             {:else if action.type === "enrol_nurture"}
               <label>{t("wf.sequence")} <input bind:value={action.sequence_pid} /></label>
+            {:else if action.type === "assign_owner"}
+              <label>
+                {t("wf.pool")}
+                <input
+                  value={action.pool.join(", ")}
+                  oninput={(e) =>
+                    (action.pool = e.currentTarget.value
+                      .split(",")
+                      .map((w) => w.trim())
+                      .filter(Boolean))}
+                />
+              </label>
+              <label>
+                {t("wf.strategy")}
+                <select bind:value={action.strategy}>
+                  <option value="round_robin">{t("wf.strategy.round_robin")}</option>
+                  <option value="least_open">{t("wf.strategy.least_open")}</option>
+                </select>
+              </label>
+              <label><input type="checkbox" bind:checked={action.notify} /> {t("wf.notifyOwner")}</label>
             {:else}
               <label>{t("wf.event")} <input bind:value={action.event} /></label>
             {/if}
@@ -270,7 +310,7 @@
         {/each}
       </ol>
       <select bind:value={adding} data-testid="workflow-action-type">
-        {#each Object.keys(ACTION_LABEL) as type (type)}
+        {#each allowed as type (type)}
           <option value={type}>{t(ACTION_LABEL[type as keyof typeof ACTION_LABEL])}</option>
         {/each}
       </select>
@@ -291,7 +331,7 @@
         {t("wf.examined")}: <strong>{dry.examined}</strong> · {t("wf.wouldFire")}:
         <strong data-testid="workflow-would-fire">{dry.would_fire}</strong>
       </p>
-      {#each dry.samples as sample (sample.contact_pid)}
+      {#each dry.samples as sample (sample.subject_pid)}
         <p class="muted">
           {#each sample.steps as step, i (i)}
             {step.action}: <span class="chip">{step.result}</span>

@@ -567,4 +567,13 @@ export default {
   "import.industryCol": "Spalte Branche",
   "import.leftOut": "Ausgelassen oder schon vorhanden",
   "import.lookupFailed": "Nicht nachschlagbar",
+  "wf.trigger.lead_created": "Ein Lead wird erfasst",
+  "wf.cond.sources": "Lead-Quelle",
+  "wf.action.assign_owner": "Lead einem Mitarbeiter zuweisen",
+  "wf.pool": "Mitarbeiter (worker-URNs, durch Komma getrennt)",
+  "wf.strategy": "Auswahlverfahren",
+  "wf.strategy.round_robin": "Der Reihe nach",
+  "wf.strategy.least_open": "Wenigste offene Leads und Deals",
+  "wf.notifyOwner": "Mitarbeiter benachrichtigen",
+  "lead.owner": "Zuständig",
 } satisfies Record<StringKey, string>;

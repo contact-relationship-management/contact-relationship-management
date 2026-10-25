@@ -552,4 +552,13 @@ export default {
   "import.industryCol": "Industry column",
   "import.leftOut": "Left out or already here",
   "import.lookupFailed": "Could not be looked up",
+  "wf.trigger.lead_created": "A lead is captured",
+  "wf.cond.sources": "Lead source",
+  "wf.action.assign_owner": "Assign the lead to a worker",
+  "wf.pool": "Workers (worker URNs, comma separated)",
+  "wf.strategy": "How to choose",
+  "wf.strategy.round_robin": "In turn",
+  "wf.strategy.least_open": "Fewest open leads and deals",
+  "wf.notifyOwner": "Tell the worker",
+  "lead.owner": "Owner",
 } as const;

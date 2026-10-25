@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — lead assignment (CRM-T108, CRM-R44)
+
+`leads.owner_ref` and `workflows.assign_cursor` (migration `000034`). Trigger `lead_created`, condition `sources`, action `assign_owner`
+(`round_robin` or `least_open`, optional notification). `DryRunSample` now names its subject: `subject_kind` and `subject_pid` replace `contact_pid`.
+
 ### Added — contact and account import (CRM-T107, CRM-R43)
 
 `record_imports` (migration `000033`); `/api/contact-imports` and `/api/account-imports` (preview, commit, list, read, undo). `clients::resolve_organization` is the

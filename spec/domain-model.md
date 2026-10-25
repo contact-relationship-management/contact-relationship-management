@@ -29,6 +29,7 @@ contact's own fields can be changed after creation with `PUT /api/contacts/{pid}
 An import of contacts or accounts (CRM-R43) is a row of `record_imports` (kind, source, obtained date, counts, and the pid of every record it made), like a lead import (CRM-R34).
 An attachment (CRM-R42) is a row of `attachments` (record kind and pid, cleaned name, content type, size, SHA-256, uploader); the bytes are a file in `CRM_ATTACHMENT_DIR` named by the row's pid.
 A custom field (CRM-R41) is a row of `custom_field_defs` (entity, key, label, kind, choices, sensitivity); its values are rows of `custom_field_values` keyed by field and record pid, as text, sealed when the field is `sensitive`.
+A lead (CRM-R44) may have an `owner_ref`, given by a `lead_created` workflow's `assign_owner` action, which keeps a counter (`assign_cursor`) for its round-robin.
 A workflow (CRM-R40) is a row of `workflows`: a trigger, conditions in the segment filter language and a closed list of actions; each run is a row of `workflow_runs` that keeps the workflow's name, the reason it fired and its steps.
 An email template (CRM-R36) is a row of `email_templates`: a name (unique, any case), a subject, a plain-text body that holds merge tokens and
 must contain `{{unsubscribe_url}}`, and the template's own fallbacks (token to text). A campaign or nurture step may carry its `template_pid`

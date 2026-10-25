@@ -869,3 +869,19 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Audit.** The preview (counts only), the commit (counts, source and date), each record created (with the import pid) and the undo.
 - The Contacts and Accounts pages link to an import page.
 - Not built: linking an imported contact to an account by a company column; an owner column; consent columns (a consent decision needs its own evidence, CRM-R6); updating existing records from a file; more than 500 rows in one import; and a confirmed contract for the person and organization services (the same assumption as the web form's, `spec/integrations.md`: `POST /api/persons` and `POST /api/organizations` answer a `pid` or `id`).
+
+## CRM-R44 — Assign new leads to a worker
+
+*As a sales manager, I want each new lead given an owner by a rule I can read, so that no lead waits for someone to notice it, and I can see why a lead went to a worker.*
+
+- A lead has an optional `owner_ref` (a `worker:` URN). It is returned with the lead, and carries over to the contact when the lead is converted.
+- A workflow (CRM-R40) can have the trigger `lead_created`: a lead was captured by `POST /api/leads` or a web form (CRM-R31). A lead brought in by a list import (CRM-R34) starts no workflow, as imported contacts start none (CRM-R43).
+- **Conditions** on a `lead_created` workflow are the lead's `sources` (`web`, `referral`, `event`, `import`, `campaign`; empty means any). The contact clauses (status, channel, tier) and `sources` cannot be mixed up: a clause that cannot apply to the trigger is refused `422`.
+- **The action `assign_owner`** (for `lead_created` only; `set_field` and `enrol_nurture` are refused there, as they are about a contact) takes a `pool` of one to twenty distinct workers, a `strategy` and `notify`.
+  - `round_robin` takes the pool in turn. The workflow keeps a counter, advanced under a row lock, so two leads captured together take different turns. Changing the pool does not reset it.
+  - `least_open` takes the worker with the fewest open leads (new, contacted, qualified) and open deals they own; the first in the pool on a tie.
+  - A lead that already has an owner is left alone (the step says so). With `notify`, the chosen worker gets an inbox notification about the lead.
+- **Explained.** The run log row says why it fired (trigger and source condition) and the step says who was chosen and how. The lead's audit trail has an `assigned` row by `workflow:<pid>` naming the worker and the strategy. A dry run lists the newest leads that meet the conditions and who each would go to, from where the counter now stands, without moving it or assigning anything.
+- The loop guard and the rate hold of CRM-R40 apply (60 runs a minute per workflow); a burst of leads beyond that is held back and noted, not assigned.
+- The lead page shows its owner, and the workflows page offers the trigger, the source condition and the action.
+- Not built: assigning contacts, accounts or deals; hand-assigning a lead (there is no edit of `owner_ref` outside a workflow); weighting or capacity limits; working hours or availability; reassigning a lead that has gone unworked; and assignment of leads imported from a list.

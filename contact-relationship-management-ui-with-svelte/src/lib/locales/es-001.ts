@@ -560,4 +560,13 @@ export default {
   "import.industryCol": "Columna del sector",
   "import.leftOut": "Omitidos o ya existentes",
   "import.lookupFailed": "No se pudieron buscar",
+  "wf.trigger.lead_created": "Se captura un lead",
+  "wf.cond.sources": "Origen del lead",
+  "wf.action.assign_owner": "Asignar el lead a un trabajador",
+  "wf.pool": "Trabajadores (worker URN, separados por comas)",
+  "wf.strategy": "Cómo elegir",
+  "wf.strategy.round_robin": "Por turnos",
+  "wf.strategy.least_open": "Menos leads y tratos abiertos",
+  "wf.notifyOwner": "Avisar al trabajador",
+  "lead.owner": "Responsable",
 } satisfies Record<StringKey, string>;

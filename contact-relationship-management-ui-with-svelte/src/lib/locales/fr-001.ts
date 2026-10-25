@@ -564,4 +564,13 @@ export default {
   "import.industryCol": "Colonne du secteur",
   "import.leftOut": "Exclus ou déjà présents",
   "import.lookupFailed": "Recherche impossible",
+  "wf.trigger.lead_created": "Un prospect est saisi",
+  "wf.cond.sources": "Source du prospect",
+  "wf.action.assign_owner": "Attribuer le prospect à un collaborateur",
+  "wf.pool": "Collaborateurs (worker URN, séparés par des virgules)",
+  "wf.strategy": "Méthode de choix",
+  "wf.strategy.round_robin": "À tour de rôle",
+  "wf.strategy.least_open": "Le moins de prospects et d'affaires ouverts",
+  "wf.notifyOwner": "Prévenir le collaborateur",
+  "lead.owner": "Responsable",
 } satisfies Record<StringKey, string>;

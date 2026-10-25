@@ -137,6 +137,11 @@ async fn validate<C: ConnectionTrait>(db: &C, payload: &WorkflowPayload) -> Resu
                 worker(&mut problems, assignee_ref.as_deref());
             }
             Action::Notify { recipient_ref } => worker(&mut problems, Some(recipient_ref)),
+            Action::AssignOwner { pool, .. } => {
+                for member in pool {
+                    worker(&mut problems, Some(member));
+                }
+            }
             Action::SetField { field, value } if field == "owner_ref" => {
                 worker(&mut problems, value.as_deref());
             }

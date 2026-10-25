@@ -192,6 +192,13 @@ pub(crate) async fn capture_lead(
     )
     .await?;
     Metrics::global().lead_captured_total.inc();
+    // A lead brought in by a list import starts no workflow (CRM-R43), like imported contacts.
+    if new.source != "import" {
+        let event = crate::workflows::Event::lead(row.pid);
+        crate::workflows::fire(txn, &event, 0, actor).await?;
+        // An action may have changed the lead (assigned an owner).
+        row = records::find_lead(txn, row.pid).await?;
+    }
     Ok((row, breakdown))
 }
 
@@ -325,7 +332,8 @@ async fn contact_for_conversion(
         pid: ActiveValue::set(Uuid::new_v4()),
         person_ref: ActiveValue::set(person_ref.clone()),
         account_pid: ActiveValue::set(None),
-        owner_ref: ActiveValue::set(None),
+        // The lead's owner carries over to the contact it becomes.
+        owner_ref: ActiveValue::set(lead.owner_ref.clone()),
         display_name: ActiveValue::set(lead.display_name.clone()),
         status: ActiveValue::set("active".to_string()),
         job_title: ActiveValue::set(None),

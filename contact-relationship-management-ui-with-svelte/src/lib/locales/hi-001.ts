@@ -554,4 +554,13 @@ export default {
   "import.industryCol": "उद्योग स्तंभ",
   "import.leftOut": "छोड़े गए या पहले से मौजूद",
   "import.lookupFailed": "खोजे नहीं जा सके",
+  "wf.trigger.lead_created": "कोई लीड दर्ज होती है",
+  "wf.cond.sources": "लीड स्रोत",
+  "wf.action.assign_owner": "लीड को किसी कर्मचारी को सौंपें",
+  "wf.pool": "कर्मचारी (worker URN, अल्पविराम से अलग)",
+  "wf.strategy": "कैसे चुनें",
+  "wf.strategy.round_robin": "बारी-बारी से",
+  "wf.strategy.least_open": "सबसे कम खुली लीड और डील",
+  "wf.notifyOwner": "कर्मचारी को सूचित करें",
+  "lead.owner": "स्वामी",
 } satisfies Record<StringKey, string>;

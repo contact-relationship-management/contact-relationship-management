@@ -48,6 +48,8 @@ export interface Lead {
   email: string | null;
   score: number;
   status: string;
+  /** The worker the lead is assigned to (CRM-R44). */
+  owner_ref: string | null;
 }
 
 /** One score-breakdown rule. */
@@ -1223,6 +1225,8 @@ export interface WorkflowConditions {
   statuses: string[];
   channels: string[];
   account_tiers: string[];
+  /** For a lead_created workflow: the lead sources to include. */
+  sources: string[];
 }
 
 /** One thing a workflow does. The set is closed. */
@@ -1236,7 +1240,13 @@ export type WorkflowAction =
   | { type: "notify"; recipient_ref: string }
   | { type: "set_field"; field: string; value: string | null }
   | { type: "enrol_nurture"; sequence_pid: string }
-  | { type: "send_webhook"; event: string };
+  | { type: "send_webhook"; event: string }
+  | {
+      type: "assign_owner";
+      pool: string[];
+      strategy: "round_robin" | "least_open";
+      notify: boolean;
+    };
 
 /** A workflow rule. */
 export interface Workflow {
@@ -1280,7 +1290,11 @@ export interface WorkflowDryRun {
   examined: number;
   would_fire: number;
   truncated: boolean;
-  samples: { contact_pid: string; steps: WorkflowStep[] }[];
+  samples: {
+    subject_kind: string;
+    subject_pid: string;
+    steps: WorkflowStep[];
+  }[];
 }
 
 /** The workflow rules. */

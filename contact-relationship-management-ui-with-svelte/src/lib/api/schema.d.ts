@@ -15735,6 +15735,7 @@ export interface components {
             email_domain: string | null;
             /** Format: int32 */
             id: number;
+            owner_ref: string | null;
             /** Format: uuid */
             pid: string;
             /** Format: int32 */
@@ -16965,6 +16966,22 @@ export interface components {
             event: string;
             /** @enum {string} */
             type: "send_webhook";
+        } | {
+            /**
+             * @description Also put a notification in the chosen worker's inbox.
+             * @default false
+             */
+            notify: boolean;
+            /** @description The workers to choose among (`worker:` URNs). */
+            pool: string[];
+            /**
+             * @description One of [`ASSIGN_STRATEGIES`]: `round_robin` takes the pool in turn, `least_open` the
+             *     worker with the fewest open leads and deals.
+             * @default round_robin
+             */
+            strategy: string;
+            /** @enum {string} */
+            type: "assign_owner";
         };
         /**
          * @description What a workflow looks at: the segment filter language, with the same clauses. There is no
@@ -16981,6 +16998,11 @@ export interface components {
              * @default []
              */
             channels: string[];
+            /**
+             * @description For a `lead_created` workflow only: the lead sources to include (empty = any).
+             * @default []
+             */
+            sources: string[];
             /**
              * @description Contact statuses to include (empty = any).
              * @default []
@@ -17006,13 +17028,15 @@ export interface components {
         };
         /** @description A contact the dry run examined that met the conditions. */
         WorkflowDryRunSample: {
-            /**
-             * Format: uuid
-             * @description The contact.
-             */
-            contact_pid: string;
             /** @description What each action would do for them. */
             steps: components["schemas"]["WorkflowStep"][];
+            /** @description `contact` or `lead`. */
+            subject_kind: string;
+            /**
+             * Format: uuid
+             * @description The contact or lead.
+             */
+            subject_pid: string;
         };
         /** @description `POST /api/workflows` and `PUT /api/workflows/{pid}` body (a `PUT` replaces the workflow). */
         WorkflowPayload: {
@@ -17023,6 +17047,7 @@ export interface components {
              * @default {
              *       "account_tiers": [],
              *       "channels": [],
+             *       "sources": [],
              *       "statuses": []
              *     }
              */

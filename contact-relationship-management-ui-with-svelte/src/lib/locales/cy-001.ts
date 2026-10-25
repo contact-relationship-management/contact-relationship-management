@@ -558,4 +558,13 @@ export default {
   "import.industryCol": "Colofn diwydiant",
   "import.leftOut": "Wedi'u gadael allan neu eisoes yma",
   "import.lookupFailed": "Methu cael eu chwilio",
+  "wf.trigger.lead_created": "Caiff arweinydd ei ddal",
+  "wf.cond.sources": "Ffynhonnell yr arweinydd",
+  "wf.action.assign_owner": "Neilltuo'r arweinydd i weithiwr",
+  "wf.pool": "Gweithwyr (worker URN, wedi'u gwahanu gan goma)",
+  "wf.strategy": "Sut i ddewis",
+  "wf.strategy.round_robin": "Yn eu tro",
+  "wf.strategy.least_open": "Y lleiaf o arweinwyr a bargeinion agored",
+  "wf.notifyOwner": "Hysbysu'r gweithiwr",
+  "lead.owner": "Perchennog",
 } satisfies Record<StringKey, string>;

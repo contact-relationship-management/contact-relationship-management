@@ -532,4 +532,13 @@ export default {
   "import.industryCol": "行业列",
   "import.leftOut": "已跳过或已存在",
   "import.lookupFailed": "无法查询",
+  "wf.trigger.lead_created": "获取新线索",
+  "wf.cond.sources": "线索来源",
+  "wf.action.assign_owner": "将线索分配给员工",
+  "wf.pool": "员工（worker URN，以逗号分隔）",
+  "wf.strategy": "选择方式",
+  "wf.strategy.round_robin": "轮流",
+  "wf.strategy.least_open": "未结线索和交易最少",
+  "wf.notifyOwner": "通知该员工",
+  "lead.owner": "负责人",
 } satisfies Record<StringKey, string>;

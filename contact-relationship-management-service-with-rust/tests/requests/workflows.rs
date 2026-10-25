@@ -339,7 +339,7 @@ async fn a_dry_run_changes_and_logs_nothing() {
         let of = |pid: &str| {
             samples
                 .iter()
-                .find(|s| s["contact_pid"] == json!(pid))
+                .find(|s| s["subject_pid"] == json!(pid))
                 .unwrap()["steps"]
                 .clone()
         };

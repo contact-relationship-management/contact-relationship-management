@@ -11,17 +11,17 @@ use std::pin::Pin;
 
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait, DatabaseBackend,
-    DatabaseConnection, DatabaseTransaction, EntityTrait, QueryFilter, Statement, TransactionTrait,
-    Value,
+    DatabaseConnection, DatabaseTransaction, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
+    Statement, TransactionTrait, Value,
 };
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::models::_entities::{activities, contacts, nurture_enrollments};
+use crate::models::_entities::{activities, contacts, leads, nurture_enrollments};
 use crate::models::audit_logs::Model as Audit;
 use crate::models::live::FindLive;
 use crate::rules::segment::{ContactFacts, clauses_match};
-use crate::rules::workflows::{Action, Conditions, SCHEDULE_BATCH, SCHEDULE_SCAN, guard};
+use crate::rules::workflows::{Action, Conditions, SCHEDULE_BATCH, SCHEDULE_SCAN, guard, pick};
 use crate::streaming;
 
 type Result<T> = loco_rs::Result<T>;
@@ -48,6 +48,17 @@ impl Event {
             subject_kind: "contact",
             subject_pid: pid,
             contact_pid: Some(pid),
+        }
+    }
+
+    /// A lead was captured (not imported).
+    #[must_use]
+    pub fn lead(pid: Uuid) -> Self {
+        Self {
+            trigger: "lead_created",
+            subject_kind: "lead",
+            subject_pid: pid,
+            contact_pid: None,
         }
     }
 
@@ -173,6 +184,57 @@ fn meets(conditions: &Conditions, contact: &contacts::Model, tier: Option<String
     )
 }
 
+/// What a run is about: a contact (and the tier of its account), or a lead.
+enum Target {
+    Contact(Box<contacts::Model>, Option<String>),
+    Lead(Box<leads::Model>),
+}
+
+impl Target {
+    /// The kind of record, as the run log and the notifications name it.
+    const fn kind(&self) -> &'static str {
+        match self {
+            Self::Contact(..) => "contact",
+            Self::Lead(_) => "lead",
+        }
+    }
+
+    fn pid(&self) -> Uuid {
+        match self {
+            Self::Contact(contact, _) => contact.pid,
+            Self::Lead(lead) => lead.pid,
+        }
+    }
+
+    /// Whether the record meets the conditions: a contact by status, channel and tier, a lead by
+    /// its source. (The rules refuse a clause that cannot apply to the trigger.)
+    fn meets(&self, conditions: &Conditions) -> bool {
+        match self {
+            Self::Contact(contact, tier) => meets(conditions, contact, tier.clone()),
+            Self::Lead(lead) => {
+                conditions.sources.is_empty() || conditions.sources.contains(&lead.source)
+            }
+        }
+    }
+}
+
+/// The record an event is about, when it is still there.
+async fn load_target<C: ConnectionTrait>(db: &C, event: &Event) -> Result<Option<Target>> {
+    if event.subject_kind == "lead" {
+        return Ok(leads::Entity::find_live()
+            .filter(leads::Column::Pid.eq(event.subject_pid))
+            .one(db)
+            .await?
+            .map(|lead| Target::Lead(Box::new(lead))));
+    }
+    let Some(contact_pid) = event.contact_pid else {
+        return Ok(None);
+    };
+    Ok(load(db, contact_pid)
+        .await?
+        .map(|(contact, tier)| Target::Contact(Box::new(contact), tier)))
+}
+
 /// Run every enabled workflow whose trigger is `event.trigger`. `depth` counts the workflows that
 /// fired this one (0 for a write by a person or the clock).
 ///
@@ -270,13 +332,10 @@ pub async fn run_one(
     depth: i32,
     actor: Option<&str>,
 ) -> Result<bool> {
-    let Some(contact_pid) = event.contact_pid else {
+    let Some(target) = load_target(txn, event).await? else {
         return Ok(false);
     };
-    let Some((contact, tier)) = load(txn, contact_pid).await? else {
-        return Ok(false);
-    };
-    if !meets(&workflow.conditions, &contact, tier) {
+    if !target.meets(&workflow.conditions) {
         return Ok(false);
     }
     let run = Uuid::new_v4();
@@ -318,7 +377,7 @@ pub async fn run_one(
             depth,
             by: &by,
         };
-        match act(&savepoint, &ctx, &contact, action).await {
+        match act(&savepoint, &ctx, &target, action).await {
             Ok((result, detail)) => steps.push(step(action, result, detail)),
             Err(error) => {
                 tracing::warn!(%error, workflow = %workflow.pid, "workflow action failed");
@@ -364,9 +423,10 @@ struct ActionContext<'a> {
 async fn act(
     txn: &DatabaseTransaction,
     ctx: &ActionContext<'_>,
-    contact: &contacts::Model,
+    target: &Target,
     action: &Action,
 ) -> Result<(&'static str, String)> {
+    let (kind, subject) = (target.kind(), target.pid());
     match action {
         Action::CreateTask {
             summary,
@@ -377,8 +437,8 @@ async fn act(
                 .map(|d| chrono::Utc::now().date_naive() + chrono::Duration::days(i64::from(d)));
             let row = activities::ActiveModel {
                 pid: ActiveValue::set(Uuid::new_v4()),
-                subject_kind: ActiveValue::set("contact".to_string()),
-                subject_pid: ActiveValue::set(contact.pid),
+                subject_kind: ActiveValue::set(kind.to_string()),
+                subject_pid: ActiveValue::set(subject),
                 kind: ActiveValue::set("task".to_string()),
                 occurred_at: ActiveValue::set(chrono::Utc::now().into()),
                 actor_ref: ActiveValue::set(None),
@@ -401,12 +461,13 @@ async fn act(
                 .execute_raw(stmt(
                     "INSERT INTO notifications (pid, recipient_ref, kind, subject_kind, \
                      subject_pid, source_pid, source_key, suppressed) \
-                     VALUES ($1, $2, 'workflow', 'contact', $3, $4, $5, FALSE) \
+                     VALUES ($1, $2, 'workflow', $3, $4, $5, $6, FALSE) \
                      ON CONFLICT DO NOTHING",
                     [
                         Uuid::new_v4().into(),
                         recipient_ref.clone().into(),
-                        contact.pid.into(),
+                        kind.into(),
+                        subject.into(),
                         ctx.run.into(),
                         ctx.index.to_string().into(),
                     ],
@@ -419,10 +480,24 @@ async fn act(
                 ("done", "notification added".to_string())
             })
         }
-        Action::SetField { field, value } => {
-            set_field(txn, ctx, contact, field, value.as_ref()).await
-        }
-        Action::EnrolNurture { sequence_pid } => enrol(txn, ctx, contact, *sequence_pid).await,
+        Action::SetField { field, value } => match target {
+            Target::Contact(contact, _) => {
+                set_field(txn, ctx, contact, field, value.as_ref()).await
+            }
+            Target::Lead(_) => Ok(not_a_contact()),
+        },
+        Action::EnrolNurture { sequence_pid } => match target {
+            Target::Contact(contact, _) => enrol(txn, ctx, contact, *sequence_pid).await,
+            Target::Lead(_) => Ok(not_a_contact()),
+        },
+        Action::AssignOwner {
+            pool,
+            strategy,
+            notify,
+        } => match target {
+            Target::Lead(lead) => assign_owner(txn, ctx, lead, pool, strategy, *notify).await,
+            Target::Contact(..) => Ok(("skipped", "assign_owner is about a lead".to_string())),
+        },
         Action::SendWebhook { event } => {
             streaming::emit_on(
                 txn,
@@ -432,14 +507,101 @@ async fn act(
                 "",
                 Some(ctx.by),
                 Some(serde_json::json!({
-                    "workflow_pid": ctx.workflow, "subject_kind": "contact",
-                    "subject_pid": contact.pid,
+                    "workflow_pid": ctx.workflow, "subject_kind": kind,
+                    "subject_pid": subject,
                 })),
             )
             .await?;
             Ok(("done", "event emitted".to_string()))
         }
     }
+}
+
+/// What an action that needs a contact answers when the run is about a lead.
+fn not_a_contact() -> (&'static str, String) {
+    (
+        "skipped",
+        "this action is about a contact, not a lead".to_string(),
+    )
+}
+
+/// How much work a worker has: open leads and open deals they own.
+async fn open_load<C: ConnectionTrait>(db: &C, worker: &str) -> Result<i64> {
+    let row = db
+        .query_one_raw(stmt(
+            "SELECT (SELECT count(*) FROM leads WHERE owner_ref = $1 AND deleted_at IS NULL \
+                       AND status IN ('new', 'contacted', 'qualified')) \
+                  + (SELECT count(*) FROM deals WHERE owner_ref = $1 AND deleted_at IS NULL \
+                       AND closed_at IS NULL) AS n",
+            [worker.to_string().into()],
+        ))
+        .await?
+        .ok_or(loco_rs::Error::NotFound)?;
+    Ok(row.try_get("", "n")?)
+}
+
+/// Give the lead an owner from the pool; a lead that already has one is left alone.
+async fn assign_owner(
+    txn: &DatabaseTransaction,
+    ctx: &ActionContext<'_>,
+    lead: &leads::Model,
+    pool: &[String],
+    strategy: &str,
+    notify: bool,
+) -> Result<(&'static str, String)> {
+    if lead.owner_ref.is_some() {
+        return Ok(("skipped", "the lead already has an owner".to_string()));
+    }
+    // The row lock on the workflow serializes concurrent assignments, so no two leads take the
+    // same turn.
+    let cursor: i64 = txn
+        .query_one_raw(stmt(
+            "UPDATE workflows SET assign_cursor = assign_cursor + 1 WHERE pid = $1 \
+             RETURNING assign_cursor - 1 AS turn",
+            [ctx.workflow.into()],
+        ))
+        .await?
+        .ok_or(loco_rs::Error::NotFound)?
+        .try_get("", "turn")?;
+    let mut loads = Vec::new();
+    if strategy == "least_open" {
+        for worker in pool {
+            loads.push(open_load(txn, worker).await?);
+        }
+    }
+    let Some(chosen) = pick(strategy, pool.len(), cursor, &loads).and_then(|i| pool.get(i)) else {
+        return Ok(("skipped", "the pool is empty".to_string()));
+    };
+    txn.execute_raw(stmt(
+        "UPDATE leads SET owner_ref = $2, updated_at = now() WHERE pid = $1",
+        [lead.pid.into(), chosen.clone().into()],
+    ))
+    .await?;
+    Audit::record(
+        txn,
+        "lead",
+        lead.pid,
+        "assigned",
+        Some(ctx.by),
+        Some(serde_json::json!({ "to": chosen, "strategy": strategy })),
+    )
+    .await?;
+    if notify {
+        txn.execute_raw(stmt(
+            "INSERT INTO notifications (pid, recipient_ref, kind, subject_kind, subject_pid, \
+             source_pid, source_key, suppressed) VALUES ($1, $2, 'workflow', 'lead', $3, $4, $5, FALSE) \
+             ON CONFLICT DO NOTHING",
+            [
+                Uuid::new_v4().into(),
+                chosen.clone().into(),
+                lead.pid.into(),
+                ctx.run.into(),
+                format!("{}-assigned", ctx.index).into(),
+            ],
+        ))
+        .await?;
+    }
+    Ok(("done", format!("assigned to {chosen} ({strategy})")))
 }
 
 /// The value a contact field has now, as text.
@@ -576,8 +738,10 @@ async fn preview<C: ConnectionTrait>(
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "WorkflowDryRunSample")]
 pub struct Sample {
-    /// The contact.
-    pub contact_pid: Uuid,
+    /// `contact` or `lead`.
+    pub subject_kind: String,
+    /// The contact or lead.
+    pub subject_pid: Uuid,
     /// What each action would do for them.
     pub steps: Vec<Step>,
 }
@@ -605,6 +769,9 @@ const SAMPLES: usize = 5;
 ///
 /// A database error.
 pub async fn dry_run<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Result<DryRun> {
+    if workflow.trigger == "lead_created" {
+        return dry_run_leads(db, workflow).await;
+    }
     let only_deal_contacts = if workflow.trigger == "deal_stage_changed" {
         "AND EXISTS (SELECT 1 FROM deals d WHERE d.primary_contact_pid = c.pid \
          AND d.deleted_at IS NULL)"
@@ -642,7 +809,73 @@ pub async fn dry_run<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Result<
                 steps.push(preview(db, &contact, action).await?);
             }
             out.samples.push(Sample {
-                contact_pid: contact.pid,
+                subject_kind: "contact".to_string(),
+                subject_pid: contact.pid,
+                steps,
+            });
+        }
+    }
+    Ok(out)
+}
+
+/// The dry run of a `lead_created` workflow: the newest leads, and what would be done for each.
+/// A lead that already has an owner shows the assignment skipped; for the others the pool is
+/// walked from where the cursor now stands, without moving it.
+async fn dry_run_leads<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Result<DryRun> {
+    let rows = leads::Entity::find_live()
+        .order_by_desc(leads::Column::Id)
+        .limit(u64::try_from(SCHEDULE_SCAN + 1).unwrap_or(u64::MAX))
+        .all(db)
+        .await?;
+    let cursor: i64 = db
+        .query_one_raw(stmt(
+            "SELECT assign_cursor FROM workflows WHERE pid = $1",
+            [workflow.pid.into()],
+        ))
+        .await?
+        .map_or(Ok(0), |r| r.try_get("", "assign_cursor"))?;
+    let mut out = DryRun {
+        examined: 0,
+        would_fire: 0,
+        truncated: rows.len() > SCHEDULE_SCAN,
+        samples: Vec::new(),
+    };
+    let mut turn = 0_i64;
+    for lead in rows.iter().take(SCHEDULE_SCAN) {
+        out.examined += 1;
+        if !Target::Lead(Box::new(lead.clone())).meets(&workflow.conditions) {
+            continue;
+        }
+        out.would_fire += 1;
+        let mut steps = Vec::new();
+        for action in &workflow.actions {
+            steps.push(match action {
+                Action::AssignOwner { pool, strategy, .. } if lead.owner_ref.is_some() => {
+                    let _ = (pool, strategy);
+                    step(action, "would_skip", "the lead already has an owner")
+                }
+                Action::AssignOwner { pool, strategy, .. } => {
+                    let mut loads = Vec::new();
+                    if strategy == "least_open" {
+                        for worker in pool {
+                            loads.push(open_load(db, worker).await?);
+                        }
+                    }
+                    let chosen =
+                        pick(strategy, pool.len(), cursor + turn, &loads).and_then(|i| pool.get(i));
+                    turn += 1;
+                    chosen.map_or_else(
+                        || step(action, "would_skip", "the pool is empty"),
+                        |w| step(action, "would_do", format!("would go to {w} ({strategy})")),
+                    )
+                }
+                _ => step(action, "would_do", ""),
+            });
+        }
+        if out.samples.len() < SAMPLES {
+            out.samples.push(Sample {
+                subject_kind: "lead".to_string(),
+                subject_pid: lead.pid,
                 steps,
             });
         }

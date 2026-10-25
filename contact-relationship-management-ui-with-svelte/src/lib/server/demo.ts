@@ -364,7 +364,15 @@ function build(): State {
     email: string | null,
     score: number,
     status: string,
-  ): Lead => ({ pid, source, display_name: name, email, score, status });
+  ): Lead => ({
+    pid,
+    source,
+    display_name: name,
+    email,
+    score,
+    status,
+    owner_ref: null,
+  });
   const leads: Lead[] = [
     lead(
       "lead-1",
@@ -721,7 +729,12 @@ function build(): State {
         enabled: true,
         trigger: "contact_created",
         every_minutes: null,
-        conditions: { statuses: [], channels: ["email"], account_tiers: [] },
+        conditions: {
+          statuses: [],
+          channels: ["email"],
+          account_tiers: [],
+          sources: [],
+        },
         actions: [
           { type: "create_task", summary: "Say hello", due_in_days: 2 },
           { type: "enrol_nurture", sequence_pid: "seq-1" },
@@ -2530,6 +2543,7 @@ function workflows(
         statuses: [],
         channels: [],
         account_tiers: [],
+        sources: [],
       },
       actions: input.actions,
       updated_at: new Date().toISOString(),
@@ -2557,7 +2571,8 @@ function workflows(
         ...meets.filter((c) => c.marketing_consent !== "granted").slice(0, 1),
         ...meets.filter((c) => c.marketing_consent === "granted").slice(0, 2),
       ].map((c) => ({
-        contact_pid: c.pid,
+        subject_kind: "contact",
+        subject_pid: c.pid,
         steps: found.actions.map((a) => ({
           action: a.type.replace(/_/g, " "),
           result:

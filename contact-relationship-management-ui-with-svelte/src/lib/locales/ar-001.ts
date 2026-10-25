@@ -554,4 +554,13 @@ export default {
   "import.industryCol": "عمود القطاع",
   "import.leftOut": "مستبعد أو موجود",
   "import.lookupFailed": "تعذّر البحث عنها",
+  "wf.trigger.lead_created": "يُلتقط عميل محتمل",
+  "wf.cond.sources": "مصدر العميل المحتمل",
+  "wf.action.assign_owner": "تعيين العميل المحتمل لموظف",
+  "wf.pool": "الموظفون (worker URN مفصولة بفواصل)",
+  "wf.strategy": "كيفية الاختيار",
+  "wf.strategy.round_robin": "بالتناوب",
+  "wf.strategy.least_open": "الأقل عملاً مفتوحاً",
+  "wf.notifyOwner": "أخبر الموظف",
+  "lead.owner": "المسؤول",
 } satisfies Record<StringKey, string>;

@@ -1058,4 +1058,32 @@ test.describe("export, undo and search", () => {
     await page.getByTestId("undo").click();
     await expect(page.getByTestId("undone")).toBeVisible();
   });
+
+  test("a workflow assigns new leads to a pool of workers", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/workflows");
+    await page.getByTestId("workflow-new").click();
+    await page.getByTestId("workflow-name").fill("Give out web leads");
+    await page.getByTestId("workflow-trigger").selectOption("lead_created");
+    // A lead is assigned, not enrolled: only its own actions are offered.
+    await expect(
+      page
+        .getByTestId("workflow-action-type")
+        .locator("option[value=enrol_nurture]"),
+    ).toHaveCount(0);
+    await page.getByTestId("workflow-action-type").selectOption("assign_owner");
+    await page.getByTestId("workflow-add-action").click();
+    await page
+      .getByTestId("workflow-actions")
+      .getByRole("textbox")
+      .fill(
+        "worker:00000000-0000-0000-0000-000000000001, worker:00000000-0000-0000-0000-000000000002",
+      );
+    await page.getByTestId("workflow-save").click();
+    await expect(page.getByTestId("workflow-list")).toContainText(
+      "Give out web leads",
+    );
+  });
 });

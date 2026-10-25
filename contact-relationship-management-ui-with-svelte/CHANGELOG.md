@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — lead assignment (CRM-R44)
+
+The workflows page offers the `lead_created` trigger, the lead source condition and the assign action; the lead page shows its owner.
+
 ### Added — contact and account import (CRM-R43)
 
 `/contacts/import` and `/accounts/import`, linked from the lists.

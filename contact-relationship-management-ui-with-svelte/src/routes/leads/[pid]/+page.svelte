@@ -24,6 +24,9 @@
     <span class="chip">{detail.lead.status}</span>
     <span class="muted">{detail.lead.source}</span>
     · {detail.score.score} · {detail.score.label}
+    {#if detail.lead.owner_ref}
+      · {t("lead.owner")}: <span data-testid="lead-owner">{detail.lead.owner_ref}</span>
+    {/if}
   </p>
   <CustomFields kind="leads" {pid} />
   <Attachments kind="leads" {pid} />

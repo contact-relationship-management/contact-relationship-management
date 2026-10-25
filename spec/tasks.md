@@ -1484,7 +1484,14 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** `RecordImport` component behind `/contacts/import` and `/accounts/import`, linked from the lists; 12 keys in 8 locales; Playwright test.
       - **Tests:** 3 request tests (a contact import end to end, with advice, no consent, no workflow and a partial undo; a person service that cannot answer; an account import with tiers, duplicates and a partial undo).
       - **Not built:** see CRM-R43 (company-to-account linking, owner, updating existing records).
-- [ ] CRM-T108 *(edge)* **Lead assignment rules.** Round-robin or load-based owner assignment of new leads, as a workflow action (CRM-R40) with a log. *Source:* `frappe/crm` (`crm/api/assignment_rule.py`). (S/M)
+- [x] CRM-T108 *(edge)* **Lead assignment rules.** Round-robin or load-based owner assignment of new leads, as a workflow action (CRM-R40) with a log. *Source:* `frappe/crm` (`crm/api/assignment_rule.py`). (S/M)
+      **Done (2026-10-25, not released):** requirement CRM-R44 first, then:
+      - **Model:** `leads.owner_ref` and `workflows.assign_cursor` (migration `000034`). Rules in `rules::workflows`: the trigger, the `sources` condition (refused where it cannot apply), `Action::AssignOwner`, and the pure `pick` (round robin by counter, least open by load), with 4 more unit tests.
+      - **Engine:** the run's subject is now a contact or a lead (`Target`); `capture_lead` fires `lead_created` (imports excluded) and reloads the lead; `assign_owner` takes the counter under a row lock, reads the loads, sets the owner, audits `assigned` and can notify; the dry run of a lead workflow walks the newest leads and shows each turn without moving the counter.
+      - **Also changed:** a lead's owner carries to the contact on conversion; the dry-run sample names its subject (`subject_kind`, `subject_pid`), which replaces `contact_pid` of CRM-R40's unreleased API.
+      - **UI:** trigger, source condition and the assign action on `/workflows` (only the actions that fit the trigger are offered); the lead page shows its owner; 9 keys in 8 locales; Playwright test.
+      - **Tests:** 4 request tests (in turn with notification and audit; by load; source condition and imports left out; refusals and a dry run that assigns nothing).
+      - **Not built:** see CRM-R44 (no hand-assignment, capacity, availability or reassignment; leads from an import are not assigned).
 - [ ] CRM-T109 *(edge)* **SLA working hours and holidays.** Ticket SLA clocks that pause outside working hours; today they are 24x7 (`rules/sla.rs`). *Source:* `frappe/crm` (`crm_service_level_agreement`: `working_hours`, `holiday_list`). (M)
 - [ ] CRM-T110 *(edge)* **Phone-width layout check.** The UI has one media query (`+layout.svelte`); test the main lists, boards and forms at 360 px and fix what breaks. *Source:* `marmelab/atomic-crm` (rated well on mobile in the January 2026 benchmark). (M)
 
