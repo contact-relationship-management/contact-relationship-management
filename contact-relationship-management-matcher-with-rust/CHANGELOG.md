@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (not published yet)
 
-Breaking; the next version is 0.2.0 (not bumped yet: the service depends on 0.1.2 until it is released).
+Breaking. The service keeps depending on 0.1.2 until this is published.
 
 - `ConfigError` is now a `#[non_exhaustive]` enum (`OutOfRange`, `ThresholdsOutOfOrder`,
   `SimilarityBandsOutOfOrder`, `NotDiscriminating`, `CallingCode`), where it was a tuple struct holding a
