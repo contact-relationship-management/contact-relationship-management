@@ -1004,4 +1004,31 @@ test.describe("export, undo and search", () => {
       "Renewal risk",
     );
   });
+
+  test("a file is attached to a contact, listed and removed", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/contacts/con-1");
+    await expect(page.getByTestId("att-list")).toContainText("proposal.pdf");
+    await page.getByTestId("att-file").setInputFiles({
+      name: "notes.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("a note"),
+    });
+    await expect(page.getByTestId("att-list")).toContainText("notes.txt");
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page
+      .getByTestId("att-list")
+      .locator("li", { hasText: "notes.txt" })
+      .getByRole("button")
+      .click();
+    await expect(page.getByTestId("att-list")).not.toContainText("notes.txt");
+    await page.getByTestId("att-file").setInputFiles({
+      name: "run.exe",
+      mimeType: "application/octet-stream",
+      buffer: Buffer.from("MZ"),
+    });
+    await expect(page.getByTestId("att-error")).toBeVisible();
+  });
 });

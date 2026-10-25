@@ -43,6 +43,7 @@ mod m20261025_000028_contact_family_name;
 mod m20261025_000029_contact_given_name;
 mod m20261025_000030_workflows;
 mod m20261025_000031_custom_fields;
+mod m20261025_000032_attachments;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -84,6 +85,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261025_000029_contact_given_name::Migration),
             Box::new(m20261025_000030_workflows::Migration),
             Box::new(m20261025_000031_custom_fields::Migration),
+            Box::new(m20261025_000032_attachments::Migration),
             // inject-above (do not remove this comment)
         ]
     }

@@ -86,6 +86,14 @@ pub struct Settings {
     pub web_form_client_limit: u32,
     /// `CRM_WEB_FORM_LIMIT`: submissions per form per hour, all clients (default 300).
     pub web_form_limit: u32,
+    /// `CRM_ATTACHMENT_DIR`: where attached files are kept. Unset, attachments are off.
+    pub attachment_dir: Option<String>,
+    /// `CRM_ATTACHMENT_MAX_BYTES`: the largest file (default 10 MiB, at most 100 MiB).
+    pub attachment_max_bytes: u64,
+    /// `CRM_ATTACHMENT_SCAN_COMMAND`: a program (and arguments, split on spaces, no shell) run
+    /// with the path of each upload as its last argument: exit 0 clean, 1 infected, anything else
+    /// is a failure. Unset, no scan is run.
+    pub attachment_scan_command: Option<String>,
 }
 
 /// One web form (CRM-R31).
@@ -207,6 +215,12 @@ impl Settings {
             web_form_limit: get("CRM_WEB_FORM_LIMIT")
                 .and_then(|v| v.trim().parse().ok())
                 .unwrap_or(300),
+            attachment_dir: text("CRM_ATTACHMENT_DIR").map(|v| v.trim().to_string()),
+            attachment_max_bytes: get("CRM_ATTACHMENT_MAX_BYTES")
+                .and_then(|v| v.trim().parse::<u64>().ok())
+                .map_or(10 * 1024 * 1024, |n| n.clamp(1, 100 * 1024 * 1024)),
+            attachment_scan_command: text("CRM_ATTACHMENT_SCAN_COMMAND")
+                .map(|v| v.trim().to_string()),
         }
     }
 

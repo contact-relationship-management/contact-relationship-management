@@ -1360,3 +1360,73 @@ async fn a_masked_read_hides_personal_custom_fields_and_a_reader_cannot_set_any(
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_masked_reader_cannot_list_or_fetch_files_and_cannot_attach_any() {
+    let dir = std::env::temp_dir().join(format!("crm-attach-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let dir_text = dir.to_string_lossy().to_string();
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+        s.attachment_dir = Some(dir_text);
+    });
+    let service = sign_as(&kid, "files-svc", &[("svc", &["true"])]);
+    let reader = sign_as(&kid, "files-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let made: Value = request
+            .post("/api/contacts")
+            .add_header("authorization", bearer(&service))
+            .json(
+                &json!({ "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Files Behind Mask" }),
+            )
+            .await
+            .json();
+        let contact = made["pid"].as_str().unwrap().to_string();
+        let url = format!("/api/contacts/{contact}/attachments?name=note.txt");
+        let stored: Value = request
+            .post(&url)
+            .add_header("authorization", bearer(&service))
+            .content_type("application/octet-stream")
+            .bytes(axum::body::Bytes::from_static(b"private words"))
+            .await
+            .json();
+        let pid = stored["pid"].as_str().unwrap().to_string();
+
+        for (method, target) in [
+            ("get", format!("/api/contacts/{contact}/attachments")),
+            ("get", format!("/api/attachments/{pid}/content")),
+        ] {
+            let r = request
+                .get(&target)
+                .add_header("authorization", bearer(&reader))
+                .await;
+            assert_eq!(r.status_code(), 403, "{method} {target}");
+        }
+        assert_eq!(
+            request
+                .post(&url)
+                .add_header("authorization", bearer(&reader))
+                .content_type("application/octet-stream")
+                .bytes(axum::body::Bytes::from_static(b"nope"))
+                .await
+                .status_code(),
+            403
+        );
+        let own = request
+            .get(&format!("/api/attachments/{pid}/content"))
+            .add_header("authorization", bearer(&service))
+            .await;
+        own.assert_status_ok();
+        assert_eq!(own.as_bytes().as_ref(), b"private words");
+    })
+    .await;
+    let _ = std::fs::remove_dir_all(&dir);
+}

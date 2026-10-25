@@ -532,4 +532,12 @@ export default {
   "cf.none": "अभी कोई कस्टम फ़ील्ड नहीं",
   "cf.masked": "आपकी पहुँच के लिए छिपा",
   "cf.save": "फ़ील्ड सहेजें",
+  "att.title": "फ़ाइलें",
+  "att.add": "फ़ाइल संलग्न करें",
+  "att.none": "कोई फ़ाइल संलग्न नहीं",
+  "att.download": "डाउनलोड",
+  "att.delete": "यह फ़ाइल हटाएँ",
+  "att.deleteConfirm": "यह फ़ाइल हटाएँ?",
+  "att.hint":
+    "केवल दस्तावेज़, चित्र और पाठ; फ़ाइल की जाँच होती है और स्कैनर होने पर स्कैन भी।",
 } satisfies Record<StringKey, string>;

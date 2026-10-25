@@ -160,3 +160,27 @@ async function send<T>(
   if (!response.ok) throw new ApiError(response.status, parsed);
   return parsed as T;
 }
+
+/**
+ * `POST` a file as the request body (CRM-R42). The service takes the bytes themselves, not JSON, and
+ * the file's name in the query. Throws [`ApiError`] on non-2xx, like [`api`].
+ */
+export async function apiUpload<T>(
+  path: string,
+  file: Blob,
+  init?: { fetch?: typeof fetch },
+): Promise<T> {
+  const doFetch = init?.fetch ?? fetch;
+  const response = await doFetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/octet-stream",
+      "idempotency-key": newIdempotencyKey(),
+    },
+    body: file,
+  });
+  const text = await response.text();
+  const parsed: unknown = text ? JSON.parse(text) : null;
+  if (!response.ok) throw new ApiError(response.status, parsed);
+  return parsed as T;
+}

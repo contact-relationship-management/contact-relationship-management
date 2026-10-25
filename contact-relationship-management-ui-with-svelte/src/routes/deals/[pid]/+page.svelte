@@ -3,6 +3,7 @@
   import { resource } from "#lib/resource.svelte.js";
   import { page } from "$app/state";
   import { editDeal, listDeals, money, reopenDeal, type Deal } from "#lib/api/crm.js";
+  import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
@@ -171,5 +172,6 @@
     <button onclick={() => deal && startEdit(deal)} data-testid="deal-edit">{t("deal.edit")}</button>
   {/if}
   <CustomFields kind="deals" {pid} />
+  <Attachments kind="deals" {pid} />
   <LinksPanel kind="deals" {pid} />
 {/if}

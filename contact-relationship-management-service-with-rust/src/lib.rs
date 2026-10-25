@@ -40,6 +40,7 @@
 #![recursion_limit = "512"]
 
 pub mod app;
+pub mod attachments;
 pub mod auth;
 pub mod break_glass;
 pub mod clients;

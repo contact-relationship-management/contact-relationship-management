@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — file attachments (CRM-T106, CRM-R42)
+
+`attachments` (migration `000032`); `/api/{contacts,accounts,leads,deals}/{pid}/attachments`, `/api/attachments/{pid}/content` and `DELETE /api/attachments/{pid}`.
+New settings `CRM_ATTACHMENT_DIR` (unset: attachments answer 503), `CRM_ATTACHMENT_MAX_BYTES` and `CRM_ATTACHMENT_SCAN_COMMAND`. The `tokio` features `fs`, `process` and `time` are now enabled.
+
 ### Added — typed custom fields (CRM-T105, CRM-R41)
 
 `custom_field_defs` and `custom_field_values` (migration `000031`); `/api/custom-fields` and `/api/{contacts,accounts,leads,deals}/{pid}/custom-fields`.

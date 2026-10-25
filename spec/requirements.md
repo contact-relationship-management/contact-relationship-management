@@ -840,3 +840,18 @@ recipient would get before anything is sent, and be certain every message carrie
 - A contact's export and an erasure also cover the values set on contacts merged into it. A merge does not copy values to the survivor, and an unmerge has nothing to undo: values stay on the contact they were set on.
 - The contact, account, lead and deal pages show the fields as a form; `/custom-fields` declares them.
 - Not built: custom fields in saved views and segment filters, in lists and CSV import, in the search index, or in webhooks and the workflow conditions; a field of type multi-choice, URL or lookup; changing a field's kind or sensitivity (delete and declare it again); erasure of account and deal values (they are not personal subjects).
+
+## CRM-R42 — File attachments
+
+*As someone who keeps the documents that go with a relationship, I can attach a file to a contact, account, lead or deal, and trust that only safe kinds are accepted, that it is scanned, and that it goes when the person is erased.*
+
+- `POST /api/{contacts|accounts|leads|deals}/{pid}/attachments?name=` takes the file itself as the body. `GET` lists a record's files (metadata); `GET /api/attachments/{pid}/content` downloads one; `DELETE /api/attachments/{pid}` removes the row and the stored file.
+- **Accepted files:** an allow-list by extension (pdf, png, jpg, jpeg, gif, webp, txt, csv, md, docx, xlsx, pptx, odt, ods). Archives, scripts, executables, HTML and SVG are not on it. The stored content type comes from the list, never from the request. For formats with a recognisable start the first bytes must agree with the extension (a `.pdf` that starts with `<script>` is refused). The name is cleaned: no directory part, no control characters, no quotes, at most 120 characters. At most 20 files per record, and a size limit (`CRM_ATTACHMENT_MAX_BYTES`, default 10 MiB, at most 100 MiB). A file refused is `422` and leaves nothing behind.
+- **Scan hook:** with `CRM_ATTACHMENT_SCAN_COMMAND` set (a program and arguments, split on spaces, run without a shell, with the file's path last), each upload is written to `incoming/`, scanned, and moved into place only on exit 0. Exit 1 is an infected file (`422`, audited as `refused_infected`); any other result, a timeout or a failure to start is `503` and the file is not stored: an unscannable file is refused, not trusted.
+- **Storage:** a directory (`CRM_ATTACHMENT_DIR`); unset, attachments answer `503` and say why. A file is stored under a random id, never its name. Its SHA-256 is kept with it and checked on every download; a file that no longer matches is not served.
+- **Downloads** are always `Content-Disposition: attachment` with `X-Content-Type-Options: nosniff`, and are audited as a disclosure.
+- **Access:** writing needs write access to the record; reading, listing and downloading need an unmasked read, so a masked reader sees no files.
+- **Audit:** `attachment` `uploaded` (type, size and digest, never the name: a name can be personal), `downloaded`, `deleted`, `refused_infected`.
+- **Subject access and erasure:** the export lists the files of the contact, of contacts merged into it and of its leads (name, type, size, digest). Erasing the contact deletes those rows in the transaction and the files once it has committed; a file that cannot be removed is logged.
+- The four record pages show the files with upload, download and delete.
+- Not built: object storage (S3 and similar; the store is one directory, on local disk or a mounted volume), encryption of the files at rest, virus-scan signatures of our own, thumbnails or previews, versions, a file on a ticket or an activity, and a retention sweep of orphan files left by a crash between disk and database.

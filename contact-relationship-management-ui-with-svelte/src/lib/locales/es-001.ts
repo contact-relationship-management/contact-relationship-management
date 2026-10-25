@@ -538,4 +538,12 @@ export default {
   "cf.none": "Aún no hay campos personalizados",
   "cf.masked": "Oculto para su acceso",
   "cf.save": "Guardar campos",
+  "att.title": "Archivos",
+  "att.add": "Adjuntar un archivo",
+  "att.none": "No hay archivos adjuntos",
+  "att.download": "Descargar",
+  "att.delete": "Eliminar este archivo",
+  "att.deleteConfirm": "¿Eliminar este archivo?",
+  "att.hint":
+    "Solo documentos, imágenes y texto; el archivo se comprueba y se analiza si el servicio tiene un analizador.",
 } satisfies Record<StringKey, string>;

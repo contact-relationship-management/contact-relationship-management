@@ -3,6 +3,7 @@
 //! journey + contract pins in [`support`].
 
 mod api_standards;
+mod attachments;
 mod audit_chain;
 mod board;
 mod consent_purposes;

@@ -510,4 +510,12 @@ export default {
   "cf.none": "尚无自定义字段",
   "cf.masked": "对您的权限隐藏",
   "cf.save": "保存字段",
+  "att.title": "文件",
+  "att.add": "附加文件",
+  "att.none": "没有附件",
+  "att.download": "下载",
+  "att.delete": "删除此文件",
+  "att.deleteConfirm": "删除此文件？",
+  "att.hint":
+    "仅限文档、图片和文本；文件会被检查，若服务配有扫描器还会被扫描。",
 } satisfies Record<StringKey, string>;

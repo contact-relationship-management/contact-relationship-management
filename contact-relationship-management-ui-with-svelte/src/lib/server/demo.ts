@@ -30,6 +30,7 @@ import type {
   WorkflowRun,
   CustomField,
   CustomFieldValue,
+  Attachment,
   MergeToken,
   TemplatePreview,
   Stage,
@@ -128,6 +129,8 @@ interface State {
   /** The demo's custom fields and the values set on records, by field key and record (CRM-R41). */
   customFields: CustomField[];
   customValues: Record<string, string | number>;
+  /** Files attached in the tour (name and size only), by record pid (CRM-R42). */
+  attachments: Record<string, Attachment[]>;
   /** The demo user's saved views (CRM-R35). */
   views: SavedView[];
   /** The inbox of the one demo user (CRM-R32). */
@@ -748,6 +751,19 @@ function build(): State {
         position: 1,
       },
     ],
+    attachments: {
+      "con-1": [
+        {
+          pid: "att-1",
+          name: "proposal.pdf",
+          content_type: "application/pdf",
+          size_bytes: 48213,
+          sha256: "0".repeat(64),
+          uploaded_by: "worker:demo",
+          created_at: "2026-10-25T09:00:00Z",
+        },
+      ],
+    },
     customValues: { "cf-1:con-1": "2027-03-01", "cf-2:con-1": "sailing" },
     workflowRuns: [
       {
@@ -2111,6 +2127,9 @@ export function demoHandle(
   if (head === "custom-fields") return customFieldDefs(method, id, body);
   if (tail === "custom-fields" && id)
     return customFieldValues(head, id, method, body);
+  if (tail === "attachments" && id) return attachmentList(id, method, query);
+  if (head === "attachments" && id && method === "DELETE")
+    return attachmentDelete(id);
   if (head === "workflows") return workflows(method, id, tail, body);
   if (head === "views") {
     if (get)
@@ -2532,6 +2551,45 @@ function workflows(
     return ok({ pid: id });
   }
   return problem(405, "method not allowed");
+}
+
+/** The demo's attached files: listed and added by name and size; the bytes are not kept. */
+function attachmentList(pid: string, method: string, query: URLSearchParams) {
+  const held = (state.attachments[pid] ??= []);
+  if (method === "GET") return ok(held);
+  if (method === "POST") {
+    const name = query.get("name")?.trim();
+    if (!name) return problem(422, "the file needs a name");
+    if (
+      !/\.(pdf|png|jpe?g|gif|webp|txt|csv|md|docx|xlsx|pptx|odt|ods)$/i.test(
+        name,
+      )
+    )
+      return problem(422, "that kind of file is not accepted");
+    const made: Attachment = {
+      pid: `att-${Date.now()}-${held.length}`,
+      name,
+      content_type: "application/octet-stream",
+      size_bytes: Number(query.get("size") ?? 0),
+      sha256: "0".repeat(64),
+      uploaded_by: "worker:demo",
+      created_at: new Date().toISOString(),
+    };
+    held.push(made);
+    return ok(made);
+  }
+  return problem(405, "method not allowed");
+}
+
+function attachmentDelete(pid: string) {
+  for (const list of Object.values(state.attachments)) {
+    const at = list.findIndex((a) => a.pid === pid);
+    if (at >= 0) {
+      list.splice(at, 1);
+      return ok({ pid });
+    }
+  }
+  return problem(404, "attachment not found");
 }
 
 const CUSTOM_ENTITY = {

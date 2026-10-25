@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — attachments (CRM-R42)
+
+A files panel on the contact, account, lead and deal pages (upload, download, delete). The BFF proxy now forwards `Content-Disposition` and `X-Content-Type-Options`.
+
 ### Added — custom fields (CRM-R41)
 
 `/custom-fields` to declare them; a form of the fields on the contact, account, lead and deal pages.

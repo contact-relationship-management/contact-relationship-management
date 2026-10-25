@@ -6,6 +6,7 @@
 //! re-implement them.
 
 pub mod analytics;
+pub mod attachments;
 pub mod audit_chain;
 pub mod custom_fields;
 pub mod engagement;

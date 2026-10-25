@@ -365,7 +365,7 @@ async fn remove(
 }
 
 /// Check the record exists and the caller may act on it; says whether the caller's read is masked.
-async fn subject<C: ConnectionTrait>(
+pub(super) async fn subject<C: ConnectionTrait>(
     db: &C,
     caller: &MaybeAuthUser,
     entity: &str,

@@ -545,4 +545,12 @@ export default {
   "cf.none": "Noch keine eigenen Felder",
   "cf.masked": "Für Ihren Zugriff verborgen",
   "cf.save": "Felder speichern",
+  "att.title": "Dateien",
+  "att.add": "Datei anhängen",
+  "att.none": "Keine Dateien angehängt",
+  "att.download": "Herunterladen",
+  "att.delete": "Diese Datei löschen",
+  "att.deleteConfirm": "Diese Datei löschen?",
+  "att.hint":
+    "Nur Dokumente, Bilder und Text; die Datei wird geprüft und, falls ein Scanner eingerichtet ist, gescannt.",
 } satisfies Record<StringKey, string>;

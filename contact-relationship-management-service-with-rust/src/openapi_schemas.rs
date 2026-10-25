@@ -38,9 +38,9 @@ fn reference(name: &str) -> Value {
 #[allow(clippy::too_many_lines)] // one list of the documented types
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
-        audits, board, break_glass, custom_fields, dashboards, engagement, external_links,
-        insights, lead_imports, marketing, merge, notifications, privacy, relationships, sales,
-        search, support, templates, unmerge, views, webhooks, workflows,
+        attachments, audits, board, break_glass, custom_fields, dashboards, engagement,
+        external_links, insights, lead_imports, marketing, merge, notifications, privacy,
+        relationships, sales, search, support, templates, unmerge, views, webhooks, workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -168,6 +168,7 @@ fn generated() -> serde_json::Map<String, Value> {
         templates::TokenInfo,
         workflows::WorkflowView,
         custom_fields::DefView,
+        attachments::AttachmentView,
         custom_fields::ValueView,
         workflows::RunView,
         workflows::Sweep,
@@ -330,6 +331,13 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/email-templates/{pid}") => "EmailTemplate",
         ("post", "/api/email-templates/preview") => "EmailTemplatePreview",
         ("get", "/api/workflows/{pid}") => "Workflow",
+        (
+            "post",
+            "/api/contacts/{pid}/attachments"
+            | "/api/accounts/{pid}/attachments"
+            | "/api/leads/{pid}/attachments"
+            | "/api/deals/{pid}/attachments",
+        ) => "Attachment",
         ("post", "/api/workflows/{pid}/dry-run") => "WorkflowDryRun",
         ("post", "/api/workflows/run-due") => "WorkflowSweep",
         ("get", "/api/contacts/{pid}/duplicates") => "ContactDuplicates",
@@ -430,6 +438,10 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/email-templates/tokens" => "MergeToken",
         "/api/workflows" => "Workflow",
         "/api/custom-fields" => "CustomField",
+        "/api/contacts/{pid}/attachments"
+        | "/api/accounts/{pid}/attachments"
+        | "/api/leads/{pid}/attachments"
+        | "/api/deals/{pid}/attachments" => "Attachment",
         "/api/contacts/{pid}/custom-fields"
         | "/api/accounts/{pid}/custom-fields"
         | "/api/leads/{pid}/custom-fields"

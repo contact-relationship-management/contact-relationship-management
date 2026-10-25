@@ -2,7 +2,7 @@
 // formatter. Paths mirror the service routes one-to-one — the
 // Playwright suite stubs these exact paths, so drift fails loudly.
 
-import { api, apiAll } from "#lib/api/client.js";
+import { api, apiAll, apiUpload } from "#lib/api/client.js";
 
 type FetchLike = { fetch?: typeof fetch };
 
@@ -1385,4 +1385,46 @@ export function setCustomFieldValues(
     method: "PUT",
     body: { values },
   });
+}
+
+/** A file attached to a record (CRM-R42). */
+export interface Attachment {
+  pid: string;
+  name: string;
+  content_type: string;
+  size_bytes: number;
+  sha256: string;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+/** The files attached to a record. */
+export function listAttachments(
+  kind: LinkKind,
+  pid: string,
+  init?: FetchLike,
+): Promise<Attachment[]> {
+  return api(`/${kind}/${pid}/attachments`, init);
+}
+
+/** Attach a file to a record. */
+export function uploadAttachment(
+  kind: LinkKind,
+  pid: string,
+  file: File,
+): Promise<Attachment> {
+  return apiUpload(
+    `/${kind}/${pid}/attachments?name=${encodeURIComponent(file.name)}`,
+    file,
+  );
+}
+
+/** Delete an attached file. */
+export function deleteAttachment(pid: string): Promise<{ pid: string }> {
+  return api(`/attachments/${pid}`, { method: "DELETE" });
+}
+
+/** Where a file is downloaded from (the browser follows it; the service sends it as an attachment). */
+export function attachmentUrl(pid: string): string {
+  return `/api/proxy/attachments/${pid}/content`;
 }

@@ -31,6 +31,9 @@ serde_json = { version = "1", features = ["float_roundtrip", "arbitrary_precisio
 tokio = { version = "1.53", default-features = false, features = [
   "rt-multi-thread",
   "net",
+  "fs",
+  "process",
+  "time",
 ] }
 async-trait = { version = "0.1" }
 # In-process calls to the service's own router, for the MCP endpoint (CRM-R30).

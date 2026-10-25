@@ -536,4 +536,12 @@ export default {
   "cf.none": "Dim meysydd personol eto",
   "cf.masked": "Wedi'i guddio ar gyfer eich mynediad",
   "cf.save": "Cadw'r meysydd",
+  "att.title": "Ffeiliau",
+  "att.add": "Atodi ffeil",
+  "att.none": "Dim ffeiliau ynghlwm",
+  "att.download": "Lawrlwytho",
+  "att.delete": "Dileu'r ffeil hon",
+  "att.deleteConfirm": "Dileu'r ffeil hon?",
+  "att.hint":
+    "Dogfennau, delweddau a thestun yn unig; caiff y ffeil ei gwirio a'i sganio os oes sganiwr gan y gwasanaeth.",
 } satisfies Record<StringKey, string>;

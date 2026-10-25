@@ -542,4 +542,12 @@ export default {
   "cf.none": "Aucun champ personnalisé",
   "cf.masked": "Masqué pour votre accès",
   "cf.save": "Enregistrer les champs",
+  "att.title": "Fichiers",
+  "att.add": "Joindre un fichier",
+  "att.none": "Aucun fichier joint",
+  "att.download": "Télécharger",
+  "att.delete": "Supprimer ce fichier",
+  "att.deleteConfirm": "Supprimer ce fichier ?",
+  "att.hint":
+    "Documents, images et texte seulement ; le fichier est vérifié et analysé si le service a un antivirus.",
 } satisfies Record<StringKey, string>;

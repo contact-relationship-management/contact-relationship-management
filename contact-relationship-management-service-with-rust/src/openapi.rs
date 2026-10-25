@@ -111,7 +111,32 @@ pub fn spec() -> Value {
     add_paging(&mut doc);
     add_idempotency(&mut doc);
     crate::openapi_schemas::attach(&mut doc);
+    add_uploads(&mut doc);
     doc
+}
+
+/// Document the file upload (CRM-R42): the body is the file itself, not JSON, so it has no schema
+/// in [`crate::openapi_schemas`]; the file's name travels in the query.
+fn add_uploads(doc: &mut Value) {
+    for kind in ["contacts", "accounts", "leads", "deals"] {
+        let path = format!("/api/{kind}/{{pid}}/attachments");
+        let Some(operation) = doc["paths"][&path]
+            .get_mut("post")
+            .filter(|o| o.is_object())
+        else {
+            continue;
+        };
+        let mut parameters = operation["parameters"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        parameters.push(json!({ "name": "name", "in": "query", "required": true,
+            "description": "The file's name with its extension; the extension must be on the allow-list",
+            "schema": { "type": "string" } }));
+        operation["parameters"] = Value::Array(parameters);
+        operation["requestBody"] = json!({ "required": true, "content": {
+            "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } });
+    }
 }
 
 /// The paginated lists (CRM-T51) and the largest page each allows.

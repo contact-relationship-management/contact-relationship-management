@@ -24,18 +24,38 @@ const proxy: RequestHandler = async ({
   // forwarded to the service.
   if (DEMO_TOUR_ENABLED && isDemoSession(locals.sessionId)) {
     let body: unknown = null;
+    const query = new URLSearchParams(url.searchParams);
+    const path = params.path ?? "";
     if (request.method !== "GET" && request.method !== "HEAD") {
-      try {
-        body = await request.json();
-      } catch {
-        body = null;
+      if (path.endsWith("/attachments")) {
+        // A file upload: the tour keeps its name and size, not its bytes.
+        query.set("size", String((await request.arrayBuffer()).byteLength));
+      } else {
+        try {
+          body = await request.json();
+        } catch {
+          body = null;
+        }
       }
+    }
+    if (
+      request.method === "GET" &&
+      /^attachments\/[^/]+\/content$/.test(path)
+    ) {
+      return new Response("This is a sample file from the guided tour.\n", {
+        status: 200,
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "content-disposition": 'attachment; filename="sample.txt"',
+          "x-content-type-options": "nosniff",
+        },
+      });
     }
     const reply = demoHandleFor(
       locals.sessionId!,
       request.method,
-      params.path ?? "",
-      url.searchParams,
+      path,
+      query,
       body,
     );
     return new Response(JSON.stringify(reply.body), {
@@ -69,7 +89,12 @@ const proxy: RequestHandler = async ({
   const upstream = await fetch(target, init);
 
   const responseHeaders = new Headers();
-  for (const name of ["content-type", "etag"]) {
+  for (const name of [
+    "content-type",
+    "etag",
+    "content-disposition",
+    "x-content-type-options",
+  ]) {
     const value = upstream.headers.get(name);
     if (value) responseHeaders.set(name, value);
   }

@@ -530,4 +530,12 @@ export default {
   "cf.none": "No custom fields yet",
   "cf.masked": "Hidden for your access",
   "cf.save": "Save fields",
+  "att.title": "Files",
+  "att.add": "Attach a file",
+  "att.none": "No files attached",
+  "att.download": "Download",
+  "att.delete": "Delete this file",
+  "att.deleteConfirm": "Delete this file?",
+  "att.hint":
+    "Documents, images and text only; the file is checked, and scanned when the service has a scanner.",
 } as const;

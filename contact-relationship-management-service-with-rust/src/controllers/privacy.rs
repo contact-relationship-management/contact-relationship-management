@@ -64,6 +64,9 @@ pub(crate) struct SubjectAccessExport {
     /// The custom fields set on the contact and on contacts merged into it (CRM-R41).
     #[schemars(with = "Vec<serde_json::Value>")]
     custom_fields: Vec<serde_json::Value>,
+    /// The files attached to the contact, to contacts merged into it and to its leads: their names,
+    /// types, sizes and digests (CRM-R42). The files themselves are fetched one by one.
+    attachments: Vec<super::attachments::AttachmentView>,
     /// What the export does not cover, and where to ask for it.
     exclusions: [&'static str; 3],
 }
@@ -113,6 +116,7 @@ async fn subject_access(
         email_deliveries: rows_for!(db, email_deliveries, ContactPid, cpid),
         external_links: rows_for!(db, external_links, SubjectPid, cpid),
         custom_fields: super::custom_fields::export_for(db, cpid).await?,
+        attachments: super::attachments::export_for(db, cpid).await?,
         exclusions: [
             "campaign delivery/open/click counters: aggregate counters. Which messages were \
              sent to this contact is in email_deliveries (state, time and message id, no \
@@ -278,6 +282,8 @@ async fn erase(
         let result = txn.execute_unprepared(statement).await?;
         affected.push(result.rows_affected());
     }
+    // The rows go in the transaction; the files go once it has committed.
+    let files = super::attachments::erase_rows(&txn, cpid).await?;
     Audit::record(
         &txn,
         "contact",
@@ -293,10 +299,12 @@ async fn erase(
             "merged_duplicates_scrubbed": affected[5],
             "purposes_withdrawn": affected[7],
             "custom_field_values_deleted": affected[affected.len() - 1],
+            "attachments_deleted": files.len(),
         })),
     )
     .await?;
     txn.commit().await?;
+    super::attachments::remove_files(&files).await;
     format::json(Erased {
         erased: cpid,
         note: "anonymised, not deleted: deals/tickets/consent history remain \

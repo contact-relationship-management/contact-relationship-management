@@ -532,4 +532,12 @@ export default {
   "cf.none": "لا حقول مخصصة بعد",
   "cf.masked": "مخفي بحسب صلاحيتك",
   "cf.save": "حفظ الحقول",
+  "att.title": "الملفات",
+  "att.add": "إرفاق ملف",
+  "att.none": "لا ملفات مرفقة",
+  "att.download": "تنزيل",
+  "att.delete": "احذف هذا الملف",
+  "att.deleteConfirm": "هل تحذف هذا الملف؟",
+  "att.hint":
+    "مستندات وصور ونصوص فقط؛ يُفحص الملف، ويُمسح ضوئياً عند توفر ماسح.",
 } satisfies Record<StringKey, string>;
