@@ -50,6 +50,7 @@ pub(super) async fn contact_facts<C: sea_orm::ConnectionTrait>(
         status: contact.status.clone(),
         channel: contact.preferred_channel.as_str().to_string(),
         account_tier: tier,
+        tags: crate::controllers::tags::names_of(db, contact.pid).await?,
     })
 }
 

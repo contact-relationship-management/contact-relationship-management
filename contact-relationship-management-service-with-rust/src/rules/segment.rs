@@ -18,6 +18,9 @@ pub struct Filter {
     /// account match only when this is empty).
     #[serde(default)]
     pub account_tiers: Vec<String>,
+    /// Tags to include: the contact has at least one of them, in any case (empty = any; CRM-R47).
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 /// The contact facts the evaluator consumes.
@@ -31,6 +34,8 @@ pub struct ContactFacts {
     pub channel: String,
     /// The linked account's tier, when any.
     pub account_tier: Option<String>,
+    /// The names of the contact's tags.
+    pub tags: Vec<String>,
 }
 
 /// Whether the contact is in the segment. **Consent is `ANDed`
@@ -53,7 +58,14 @@ pub fn clauses_match(filter: &Filter, facts: &ContactFacts) -> bool {
             .account_tier
             .as_ref()
             .is_some_and(|tier| filter.account_tiers.contains(tier));
-    status_ok && channel_ok && tier_ok
+    let tag_ok = filter.tags.is_empty()
+        || filter.tags.iter().any(|wanted| {
+            facts
+                .tags
+                .iter()
+                .any(|held| held.to_lowercase() == wanted.to_lowercase())
+        });
+    status_ok && channel_ok && tier_ok && tag_ok
 }
 
 #[cfg(test)]
@@ -66,6 +78,7 @@ mod tests {
             status: "active".to_string(),
             channel: "email".to_string(),
             account_tier: Some("customer".to_string()),
+            tags: vec!["VIP".to_string()],
         }
     }
 
@@ -87,6 +100,7 @@ mod tests {
             statuses: vec!["active".to_string()],
             channels: vec![],
             account_tiers: vec!["customer".to_string()],
+            tags: vec![],
         };
         assert!(matches(&filter, &facts("granted")));
         let mut inactive = facts("granted");
@@ -101,5 +115,23 @@ mod tests {
             ..Filter::default()
         };
         assert!(matches(&loose, &no_account));
+    }
+
+    /// A tag clause matches a contact with any one of its tags, in any case, and the consent gate
+    /// still applies.
+    #[test]
+    fn a_tag_clause_means_any_of_the_tags() {
+        let want = |names: &[&str]| Filter {
+            tags: names.iter().map(ToString::to_string).collect(),
+            ..Filter::default()
+        };
+        assert!(matches(&want(&["vip"]), &facts("granted")));
+        assert!(matches(&want(&["press", "VIP"]), &facts("granted")));
+        assert!(!matches(&want(&["press"]), &facts("granted")));
+        assert!(!matches(&want(&["vip"]), &facts("withdrawn")));
+        let mut untagged = facts("granted");
+        untagged.tags.clear();
+        assert!(!matches(&want(&["vip"]), &untagged));
+        assert!(matches(&Filter::default(), &untagged));
     }
 }

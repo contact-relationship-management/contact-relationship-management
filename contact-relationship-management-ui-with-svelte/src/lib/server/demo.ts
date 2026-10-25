@@ -31,6 +31,7 @@ import type {
   CustomField,
   CustomFieldValue,
   Attachment,
+  Tag,
   MergeToken,
   TemplatePreview,
   Stage,
@@ -131,6 +132,9 @@ interface State {
   customValues: Record<string, string | number>;
   /** Files attached in the tour (name and size only), by record pid (CRM-R42). */
   attachments: Record<string, Attachment[]>;
+  /** Tag names by record pid, and the tags that exist (CRM-R47). */
+  tagged: Record<string, string[]>;
+  tags: Tag[];
   /** The demo user's saved views (CRM-R35). */
   views: SavedView[];
   /** The inbox of the one demo user (CRM-R32). */
@@ -764,6 +768,8 @@ function build(): State {
         position: 1,
       },
     ],
+    tagged: { "con-1": ["Key account"], "acc-1": ["Key account"] },
+    tags: [{ pid: "tag-1", name: "Key account", uses: 2 }],
     attachments: {
       "con-1": [
         {
@@ -2151,7 +2157,7 @@ export function demoHandle(
   const post = method === "POST";
 
   if (head === "contacts") {
-    if (seg.length === 1 && get) return ok(state.contacts);
+    if (seg.length === 1 && get) return ok(taggedOnly(state.contacts, query));
     if (seg.length === 2 && get) return contactDetail(id!);
     if (tail === "duplicates" && get) return contactDuplicates(id!);
     if (tail === "consent" && post) {
@@ -2175,6 +2181,8 @@ export function demoHandle(
   if (tail === "custom-fields" && id)
     return customFieldValues(head, id, method, body);
   if (tail === "attachments" && id) return attachmentList(id, method, query);
+  if (head === "tags" && !id && method === "GET") return ok(demoTags());
+  if (tail === "tags" && id) return recordTags(id, method, body);
   if (head === "attachments" && id && method === "DELETE")
     return attachmentDelete(id);
   if (head === "workflows") return workflows(method, id, tail, body);
@@ -2276,7 +2284,8 @@ export function demoHandle(
   }
   if (head === "external-links" && method === "DELETE" && id)
     return removeLink(id);
-  if (head === "accounts" && seg.length === 1 && get) return ok(state.accounts);
+  if (head === "accounts" && seg.length === 1 && get)
+    return ok(taggedOnly(state.accounts, query));
   if (head === "accounts" && seg.length === 2 && method === "PUT") {
     const account = state.accounts.find((a) => a.pid === id);
     if (!account) return problem(404, "account not found");
@@ -2323,7 +2332,7 @@ export function demoHandle(
     if (kind) return recordLinks(kind, id!, method, body);
   }
   if (head === "leads") {
-    if (seg.length === 1 && get) return ok(state.leads);
+    if (seg.length === 1 && get) return ok(taggedOnly(state.leads, query));
     if (seg.length === 2 && get) return leadDetail(id!);
     if (tail === "status" && post)
       return transition(state.leads, id!, body, "lead");
@@ -2602,6 +2611,44 @@ function workflows(
     return ok({ pid: id });
   }
   return problem(405, "method not allowed");
+}
+
+/** The tags that exist, with how many records carry each. */
+function demoTags(): Tag[] {
+  const names = new Set(Object.values(state.tagged).flat());
+  return [...names].sort().map((name, i) => ({
+    pid: `tag-${i + 1}`,
+    name,
+    uses: Object.values(state.tagged).filter((l) => l.includes(name)).length,
+  }));
+}
+
+/** The tour's tags on one record: read, or set whole. */
+function recordTags(pid: string, method: string, body: unknown) {
+  if (method === "GET") return ok(state.tagged[pid] ?? []);
+  if (method === "PUT") {
+    const tags = ((bodyOf(body).tags ?? []) as unknown[]).map((t) =>
+      String(t).trim().replace(/\s+/g, " "),
+    );
+    if (tags.some((n) => !n || n.length > 40))
+      return problem(422, "a tag name is 1 to 40 characters");
+    if (tags.length > 20) return problem(422, "a record has at most 20 tags");
+    state.tagged[pid] = [...new Set(tags)];
+    return ok(state.tagged[pid]);
+  }
+  return problem(405, "method not allowed");
+}
+
+/** A list narrowed by `?tag=` (any case), as the service does. */
+function taggedOnly<T extends { pid: string }>(
+  rows: T[],
+  query: URLSearchParams,
+): T[] {
+  const tag = query.get("tag")?.trim().toLowerCase();
+  if (!tag) return rows;
+  return rows.filter((r) =>
+    (state.tagged[r.pid] ?? []).some((n) => n.toLowerCase() === tag),
+  );
 }
 
 /** The demo's attached files: listed and added by name and size; the bytes are not kept. */

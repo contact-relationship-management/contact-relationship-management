@@ -378,15 +378,19 @@ async fn list_contacts(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(paging): Query<PageParams>,
+    Query(tag): Query<super::tags::TagFilter>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&paging, 1000)?;
-    let rows = page
-        .apply(contacts::Entity::find_live().order_by_asc(contacts::Column::Id))
-        .all(&ctx.db)
-        .await?;
+    let mut query = contacts::Entity::find_live().order_by_asc(contacts::Column::Id);
+    let tagged = super::tags::filter_pids(&ctx.db, "contact", &tag).await?;
+    if let Some(pids) = &tagged {
+        query = query.filter(contacts::Column::Pid.is_in(pids.clone()));
+    }
+    let rows = page.apply(query).all(&ctx.db).await?;
     let (rows, more) = page.split(rows);
-    let readable = readable_contacts(&rows, &caller);
+    // Narrowing by tag must not show which masked records carry it, so those are left out.
+    let readable = readable_contacts(&rows, &caller, tagged.is_some());
     Audit::record_read(
         &ctx.db,
         "contact",
@@ -407,7 +411,11 @@ async fn list_contacts(
 /// `GET /{pid}` would (CRM-T24; `agents/share/security.md` invariant 5).
 /// With enforcement off (the default) or no deny rule configured,
 /// `authorize_record` never denies, so this is a no-op.
-fn readable_contacts(rows: &[contacts::Model], caller: &MaybeAuthUser) -> Vec<serde_json::Value> {
+fn readable_contacts(
+    rows: &[contacts::Model],
+    caller: &MaybeAuthUser,
+    drop_masked: bool,
+) -> Vec<serde_json::Value> {
     rows.iter()
         .filter_map(|row| {
             let obligations = auth::authorize_record(
@@ -418,6 +426,9 @@ fn readable_contacts(rows: &[contacts::Model], caller: &MaybeAuthUser) -> Vec<se
             .ok()?;
             let mut value = serde_json::json!(row);
             if obligations.iter().any(|o| o == "mask") {
+                if drop_masked {
+                    return None;
+                }
                 value = auth::mask_text_json(value, &["preferred_channel"]);
             }
             Some(value)
@@ -1003,13 +1014,15 @@ async fn list_accounts(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(paging): Query<PageParams>,
+    Query(tag): Query<super::tags::TagFilter>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&paging, 500)?;
-    let rows = page
-        .apply(accounts::Entity::find_live().order_by_asc(accounts::Column::Id))
-        .all(&ctx.db)
-        .await?;
+    let mut query = accounts::Entity::find_live().order_by_asc(accounts::Column::Id);
+    if let Some(pids) = super::tags::filter_pids(&ctx.db, "account", &tag).await? {
+        query = query.filter(accounts::Column::Pid.is_in(pids));
+    }
+    let rows = page.apply(query).all(&ctx.db).await?;
     let (rows, more) = page.split(rows);
     Audit::record_read(
         &ctx.db,
@@ -1044,7 +1057,7 @@ async fn get_account(
     // The bundled contacts and deals follow the same record-level decisions
     // as their own endpoints (CRM-T32): a denied row is omitted, a masked
     // one loses its channel detail or amount.
-    let contacts_json = readable_contacts(&contact_rows, &caller);
+    let contacts_json = readable_contacts(&contact_rows, &caller, false);
     let deals_json: Vec<serde_json::Value> = deal_rows
         .iter()
         .filter_map(|deal| {

@@ -1118,4 +1118,27 @@ test.describe("export, undo and search", () => {
     }
     expect(wide).toEqual([]);
   });
+
+  test("a contact is tagged, and the list is narrowed by the tag", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/contacts/con-2");
+    await expect(page.getByTestId("tags-none")).toBeVisible();
+    await page.getByTestId("tag-input").fill("Press");
+    await page.getByTestId("tag-add").click();
+    await expect(page.getByTestId("tag-list")).toContainText("Press");
+    await page.goto("/contacts");
+    await page.getByTestId("tag-filter").selectOption("Press");
+    await expect(page.getByTestId("contact-table")).toContainText(
+      "Rafael Okonkwo",
+    );
+    await expect(page.getByTestId("contact-table")).not.toContainText(
+      "Imogen Hartley",
+    );
+    await page.getByTestId("tag-filter").selectOption("");
+    await expect(page.getByTestId("contact-table")).toContainText(
+      "Imogen Hartley",
+    );
+  });
 });

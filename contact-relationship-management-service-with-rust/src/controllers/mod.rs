@@ -31,6 +31,7 @@ pub mod relationships;
 pub mod sales;
 pub mod search;
 pub mod support;
+pub mod tags;
 pub mod templates;
 pub mod unmerge;
 pub mod views;

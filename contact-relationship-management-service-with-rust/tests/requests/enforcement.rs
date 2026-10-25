@@ -1430,3 +1430,78 @@ async fn a_masked_reader_cannot_list_or_fetch_files_and_cannot_attach_any() {
     .await;
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_masked_reader_cannot_see_tags_and_a_tag_filter_does_not_show_masked_records() {
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let service = sign_as(&kid, "tags-svc", &[("svc", &["true"])]);
+    let reader = sign_as(&kid, "tags-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let made: Value = request
+            .post("/api/contacts")
+            .add_header("authorization", bearer(&service))
+            .json(
+                &json!({ "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Tagged Behind Mask" }),
+            )
+            .await
+            .json();
+        let contact = made["pid"].as_str().unwrap().to_string();
+        request
+            .put(&format!("/api/contacts/{contact}/tags"))
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "tags": ["sensitive-label"] }))
+            .await
+            .assert_status_ok();
+
+        // The unmasked caller sees the tag and finds the record by it.
+        let own: Vec<Value> = request
+            .get("/api/contacts?tag=sensitive-label")
+            .add_header("authorization", bearer(&service))
+            .await
+            .json();
+        assert_eq!(own.len(), 1);
+
+        // The masked reader sees neither the tag nor, by filtering, which records carry it.
+        assert_eq!(
+            request
+                .get(&format!("/api/contacts/{contact}/tags"))
+                .add_header("authorization", bearer(&reader))
+                .await
+                .status_code(),
+            403
+        );
+        assert_eq!(
+            request
+                .put(&format!("/api/contacts/{contact}/tags"))
+                .add_header("authorization", bearer(&reader))
+                .json(&json!({ "tags": ["x"] }))
+                .await
+                .status_code(),
+            403
+        );
+        let hidden: Vec<Value> = request
+            .get("/api/contacts?tag=sensitive-label")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert!(hidden.is_empty(), "{hidden:?}");
+        // Unfiltered, the reader still gets the masked list as before.
+        let masked: Vec<Value> = request
+            .get("/api/contacts")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert!(!masked.is_empty());
+    })
+    .await;
+}

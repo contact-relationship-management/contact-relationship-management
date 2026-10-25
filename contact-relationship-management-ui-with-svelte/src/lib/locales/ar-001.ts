@@ -563,4 +563,11 @@ export default {
   "wf.strategy.least_open": "الأقل عملاً مفتوحاً",
   "wf.notifyOwner": "أخبر الموظف",
   "lead.owner": "المسؤول",
+  "tag.title": "الوسوم",
+  "tag.add": "إضافة وسم",
+  "tag.new": "وسم جديد",
+  "tag.remove": "أزل هذا الوسم",
+  "tag.none": "لا وسوم",
+  "tag.filter": "بالوسم",
+  "tag.any": "أي",
 } satisfies Record<StringKey, string>;

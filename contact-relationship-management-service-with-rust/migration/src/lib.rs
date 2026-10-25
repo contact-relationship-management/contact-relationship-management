@@ -47,6 +47,7 @@ mod m20261025_000032_attachments;
 mod m20261025_000033_record_imports;
 mod m20261025_000034_lead_owner;
 mod m20261025_000035_business_calendars;
+mod m20261025_000036_tags;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -92,6 +93,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261025_000033_record_imports::Migration),
             Box::new(m20261025_000034_lead_owner::Migration),
             Box::new(m20261025_000035_business_calendars::Migration),
+            Box::new(m20261025_000036_tags::Migration),
             // inject-above (do not remove this comment)
         ]
     }

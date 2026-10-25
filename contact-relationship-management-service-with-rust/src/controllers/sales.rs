@@ -246,18 +246,18 @@ async fn list_leads(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(paging): Query<PageParams>,
+    Query(tag): Query<super::tags::TagFilter>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&paging, 1000)?;
-    let rows = page
-        .apply(
-            leads::Entity::find_live()
-                .order_by_asc(leads::Column::BoardPosition)
-                .order_by_desc(leads::Column::Score)
-                .order_by_asc(leads::Column::Id),
-        )
-        .all(&ctx.db)
-        .await?;
+    let mut query = leads::Entity::find_live()
+        .order_by_asc(leads::Column::BoardPosition)
+        .order_by_desc(leads::Column::Score)
+        .order_by_asc(leads::Column::Id);
+    if let Some(pids) = super::tags::filter_pids(&ctx.db, "lead", &tag).await? {
+        query = query.filter(leads::Column::Pid.is_in(pids));
+    }
+    let rows = page.apply(query).all(&ctx.db).await?;
     let (rows, more) = page.split(rows);
     Audit::record_read(
         &ctx.db,
@@ -637,12 +637,17 @@ async fn list_deals(
     caller: MaybeAuthUser,
     Query(params): Query<DealListParams>,
     Query(paging): Query<PageParams>,
+    Query(tag): Query<super::tags::TagFilter>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&paging, 2000)?;
     let mut query = deals::Entity::find_live();
     if let Some(pipeline) = params.pipeline {
         query = query.filter(deals::Column::PipelinePid.eq(pipeline));
+    }
+    let tagged = super::tags::filter_pids(&ctx.db, "deal", &tag).await?;
+    if let Some(pids) = &tagged {
+        query = query.filter(deals::Column::Pid.is_in(pids.clone()));
     }
     let rows = page
         .apply(
@@ -662,7 +667,7 @@ async fn list_deals(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    page.respond(readable_deals(&rows, &caller), more, &uri)
+    page.respond(readable_deals(&rows, &caller, tagged.is_some()), more, &uri)
 }
 
 /// Filter `rows` down to the ones `caller`'s record-level ABAC policy
@@ -674,7 +679,11 @@ async fn list_deals(
 /// reasoning `relationships.rs`'s `readable_contacts` applies to
 /// contacts). With enforcement off (the default) or no deny rule
 /// configured, `authorize_record` never denies, so this is a no-op.
-fn readable_deals(rows: &[deals::Model], caller: &MaybeAuthUser) -> Vec<serde_json::Value> {
+fn readable_deals(
+    rows: &[deals::Model],
+    caller: &MaybeAuthUser,
+    drop_masked: bool,
+) -> Vec<serde_json::Value> {
     rows.iter()
         .filter_map(|row| {
             let obligations = auth::authorize_record(
@@ -685,6 +694,10 @@ fn readable_deals(rows: &[deals::Model], caller: &MaybeAuthUser) -> Vec<serde_js
             .ok()?;
             let mut value = serde_json::json!(row);
             if obligations.iter().any(|o| o == "mask") {
+                // Narrowing by tag must not show which masked records carry it.
+                if drop_masked {
+                    return None;
+                }
                 value = auth::mask_json(value, &["amount_minor"]);
             }
             Some(value)

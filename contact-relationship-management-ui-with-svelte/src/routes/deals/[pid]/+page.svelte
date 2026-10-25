@@ -5,6 +5,7 @@
   import { editDeal, listDeals, money, reopenDeal, type Deal } from "#lib/api/crm.js";
   import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";
+  import Tags from "#lib/components/Tags.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
@@ -171,6 +172,7 @@
   {:else}
     <button onclick={() => deal && startEdit(deal)} data-testid="deal-edit">{t("deal.edit")}</button>
   {/if}
+  <Tags kind="deals" {pid} />
   <CustomFields kind="deals" {pid} />
   <Attachments kind="deals" {pid} />
   <LinksPanel kind="deals" {pid} />

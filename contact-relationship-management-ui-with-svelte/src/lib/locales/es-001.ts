@@ -569,4 +569,11 @@ export default {
   "wf.strategy.least_open": "Menos leads y tratos abiertos",
   "wf.notifyOwner": "Avisar al trabajador",
   "lead.owner": "Responsable",
+  "tag.title": "Etiquetas",
+  "tag.add": "Añadir etiqueta",
+  "tag.new": "Nueva etiqueta",
+  "tag.remove": "Quitar esta etiqueta",
+  "tag.none": "Sin etiquetas",
+  "tag.filter": "Con la etiqueta",
+  "tag.any": "Cualquiera",
 } satisfies Record<StringKey, string>;

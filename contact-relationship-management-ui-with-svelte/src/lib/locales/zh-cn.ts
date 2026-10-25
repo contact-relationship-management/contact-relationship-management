@@ -541,4 +541,11 @@ export default {
   "wf.strategy.least_open": "未结线索和交易最少",
   "wf.notifyOwner": "通知该员工",
   "lead.owner": "负责人",
+  "tag.title": "标签",
+  "tag.add": "添加标签",
+  "tag.new": "新标签",
+  "tag.remove": "移除此标签",
+  "tag.none": "无标签",
+  "tag.filter": "带有标签",
+  "tag.any": "全部",
 } satisfies Record<StringKey, string>;

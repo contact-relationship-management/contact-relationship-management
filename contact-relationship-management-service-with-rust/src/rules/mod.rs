@@ -22,6 +22,7 @@ pub mod scoring;
 pub mod search;
 pub mod segment;
 pub mod sla;
+pub mod tags;
 pub mod templates;
 pub mod tokens;
 pub mod views;

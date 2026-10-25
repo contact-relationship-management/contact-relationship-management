@@ -4,6 +4,7 @@
   import DataTable from "#lib/components/DataTable.svelte";
   import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";
+  import Tags from "#lib/components/Tags.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
@@ -512,6 +513,7 @@
     {/if}
   {/if}
 
+  <Tags kind="contacts" {pid} />
   <CustomFields kind="contacts" {pid} />
   <Attachments kind="contacts" {pid} />
   <LinksPanel kind="contacts" {pid} version={linksVersion} />

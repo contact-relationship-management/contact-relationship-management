@@ -2,13 +2,15 @@
   import { resource } from "#lib/resource.svelte.js";
   import { listAccounts } from "#lib/api/crm.js";
   import DataTable from "#lib/components/DataTable.svelte";
+  import TagFilter from "#lib/components/TagFilter.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { Account } from "#lib/api/crm.js";
   import ViewBar from "#lib/components/ViewBar.svelte";
   import { applyFilter, applyShape } from "#lib/views.js";
   import type { SavedView } from "#lib/api/crm.js";
 
-  const list = resource(listAccounts);
+  let tag = $state("");
+  const list = resource(() => listAccounts(undefined, tag || undefined));
   const accounts = $derived(list.value);
   const error = $derived(list.error);
 
@@ -39,6 +41,7 @@
 </script>
 
 <h1>{t("nav.accounts")}</h1>
+<p><TagFilter bind:value={tag} /></p>
 <p><a class="button" href="/accounts/import" data-testid="import-link">{t("import.accountsTitle")}</a></p>
 <ViewBar kind="account" bind:active={view} labels={headings} />
 

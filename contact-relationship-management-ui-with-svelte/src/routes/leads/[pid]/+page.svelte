@@ -4,6 +4,7 @@
   import { getLead } from "#lib/api/crm.js";
   import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";
+  import Tags from "#lib/components/Tags.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { t } from "#lib/i18n.svelte.js";
 
@@ -28,6 +29,7 @@
       · {t("lead.owner")}: <span data-testid="lead-owner">{detail.lead.owner_ref}</span>
     {/if}
   </p>
+  <Tags kind="leads" {pid} />
   <CustomFields kind="leads" {pid} />
   <Attachments kind="leads" {pid} />
   <LinksPanel kind="leads" {pid} />

@@ -40,8 +40,8 @@ fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         attachments, audits, board, break_glass, calendars, custom_fields, dashboards, engagement,
         external_links, insights, lead_imports, marketing, merge, notifications, privacy,
-        record_imports, relationships, sales, search, support, templates, unmerge, views, webhooks,
-        workflows,
+        record_imports, relationships, sales, search, support, tags, templates, unmerge, views,
+        webhooks, workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -77,6 +77,8 @@ fn generated() -> serde_json::Map<String, Value> {
         support::PolicyPayload,
         support::PolicyCalendarPayload,
         calendars::CalendarPayload,
+        tags::TagPayload,
+        tags::RecordTagsPayload,
         support::TicketPayload,
         support::PriorityPayload,
         support::ArticlePayload,
@@ -173,6 +175,7 @@ fn generated() -> serde_json::Map<String, Value> {
         custom_fields::DefView,
         attachments::AttachmentView,
         calendars::CalendarView,
+        tags::TagView,
         custom_fields::ValueView,
         workflows::RunView,
         workflows::Sweep,
@@ -304,6 +307,14 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("post", "/api/email-templates/preview") => "EmailTemplatePreviewPayload",
         ("post", "/api/workflows") | ("put", "/api/workflows/{pid}") => "WorkflowPayload",
         ("post", "/api/custom-fields") => "CustomFieldPayload",
+        ("post", "/api/tags") | ("put", "/api/tags/{pid}") => "TagPayload",
+        (
+            "put",
+            "/api/contacts/{pid}/tags"
+            | "/api/accounts/{pid}/tags"
+            | "/api/leads/{pid}/tags"
+            | "/api/deals/{pid}/tags",
+        ) => "RecordTagsPayload",
         ("post", "/api/business-calendars") | ("put", "/api/business-calendars/{pid}") => {
             "BusinessCalendarPayload"
         }
@@ -467,6 +478,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/email-templates/tokens" => "MergeToken",
         "/api/workflows" => "Workflow",
         "/api/custom-fields" => "CustomField",
+        "/api/tags" => "Tag",
         "/api/business-calendars" => "BusinessCalendar",
         "/api/contacts/{pid}/attachments"
         | "/api/accounts/{pid}/attachments"

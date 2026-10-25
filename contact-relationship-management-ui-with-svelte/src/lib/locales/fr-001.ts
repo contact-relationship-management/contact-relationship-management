@@ -573,4 +573,11 @@ export default {
   "wf.strategy.least_open": "Le moins de prospects et d'affaires ouverts",
   "wf.notifyOwner": "Prévenir le collaborateur",
   "lead.owner": "Responsable",
+  "tag.title": "Étiquettes",
+  "tag.add": "Ajouter une étiquette",
+  "tag.new": "Nouvelle étiquette",
+  "tag.remove": "Retirer cette étiquette",
+  "tag.none": "Aucune étiquette",
+  "tag.filter": "Avec l'étiquette",
+  "tag.any": "Tous",
 } satisfies Record<StringKey, string>;

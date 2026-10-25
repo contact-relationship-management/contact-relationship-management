@@ -4,6 +4,7 @@
   import { editAccount, getAccount, money } from "#lib/api/crm.js";
   import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";
+  import Tags from "#lib/components/Tags.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
   import { errorMessage, fieldErrors } from "#lib/errors.js";
@@ -104,6 +105,7 @@
       {/each}
     </ul>
   {/if}
+  <Tags kind="accounts" {pid} />
   <CustomFields kind="accounts" {pid} />
   <Attachments kind="accounts" {pid} />
   <LinksPanel kind="accounts" {pid} />

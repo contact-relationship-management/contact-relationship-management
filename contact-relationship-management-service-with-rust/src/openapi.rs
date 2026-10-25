@@ -112,6 +112,7 @@ pub fn spec() -> Value {
     add_idempotency(&mut doc);
     crate::openapi_schemas::attach(&mut doc);
     add_uploads(&mut doc);
+    add_tag_filters(&mut doc);
     doc
 }
 
@@ -136,6 +137,23 @@ fn add_uploads(doc: &mut Value) {
         operation["parameters"] = Value::Array(parameters);
         operation["requestBody"] = json!({ "required": true, "content": {
             "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } });
+    }
+}
+
+/// Document `?tag=` on the lists it narrows (CRM-R47).
+fn add_tag_filters(doc: &mut Value) {
+    for path in ["/api/contacts", "/api/accounts", "/api/leads", "/api/deals"] {
+        let Some(operation) = doc["paths"][path].get_mut("get").filter(|o| o.is_object()) else {
+            continue;
+        };
+        let mut parameters = operation["parameters"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        parameters.push(json!({ "name": "tag", "in": "query", "required": false,
+            "description": "Only the records that carry this tag (any case); a record the caller sees masked is left out",
+            "schema": { "type": "string" } }));
+        operation["parameters"] = Value::Array(parameters);
     }
 }
 

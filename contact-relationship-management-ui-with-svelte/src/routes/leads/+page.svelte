@@ -2,13 +2,15 @@
   import { resource } from "#lib/resource.svelte.js";
   import { getLead, listLeads } from "#lib/api/crm.js";
   import DataTable from "#lib/components/DataTable.svelte";
+  import TagFilter from "#lib/components/TagFilter.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { ScoreBreakdown } from "#lib/api/crm.js";
   import ViewBar from "#lib/components/ViewBar.svelte";
   import { applyFilter, applyShape } from "#lib/views.js";
   import type { SavedView } from "#lib/api/crm.js";
 
-  const list = resource(listLeads);
+  let tag = $state("");
+  const list = resource(() => listLeads(undefined, tag || undefined));
   const leads = $derived(list.value);
   const error = $derived(list.error);
   let selectedPid = $state<string | null>(null);
@@ -50,6 +52,7 @@
 </script>
 
 <h1>{t("nav.leads")}</h1>
+<p><TagFilter bind:value={tag} /></p>
 <p>
   <a class="button" href="/leads/board">{t("common.board")}</a>
   <a class="button" href="/leads/import">{t("import.title")}</a>

@@ -4,13 +4,15 @@
   import { page } from "$app/state";
   import { listContacts } from "#lib/api/crm.js";
   import DataTable from "#lib/components/DataTable.svelte";
+  import TagFilter from "#lib/components/TagFilter.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { Contact } from "#lib/api/crm.js";
   import ViewBar from "#lib/components/ViewBar.svelte";
   import { applyFilter, applyShape } from "#lib/views.js";
   import type { SavedView } from "#lib/api/crm.js";
 
-  const list = resource(listContacts);
+  let tag = $state("");
+  const list = resource(() => listContacts(undefined, tag || undefined));
   const contacts = $derived(list.value);
   const error = $derived(list.error);
 
@@ -56,6 +58,7 @@
 </script>
 
 <h1>{t("nav.contacts")}</h1>
+<p><TagFilter bind:value={tag} /></p>
 <p><a class="button" href="/contacts/import" data-testid="import-link">{t("import.contactsTitle")}</a></p>
 <ViewBar kind="contact" bind:active={view} labels={headings} />
 

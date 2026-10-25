@@ -38,12 +38,18 @@ pub(super) async fn create_segment(
     for tier in &payload.filter.account_tiers {
         problems.require_token("filter.account_tiers", tokens::ACCOUNT_TIERS, tier);
     }
+    // Tags are tidied the way a record's are, so a segment and a record agree on a name.
+    let mut filter = payload.filter.clone();
+    match crate::rules::tags::set_of(&payload.filter.tags) {
+        Ok(tags) => filter.tags = tags,
+        Err(why) => problems.push_field("filter.tags", why),
+    }
     problems.finish()?;
     let txn = ctx.db.begin().await?;
     let row = segments::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         name: ActiveValue::set(payload.name.clone()),
-        filter: ActiveValue::set(serde_json::to_value(&payload.filter).unwrap_or_default()),
+        filter: ActiveValue::set(serde_json::to_value(&filter).unwrap_or_default()),
         deleted_at: ActiveValue::set(None),
         ..Default::default()
     }

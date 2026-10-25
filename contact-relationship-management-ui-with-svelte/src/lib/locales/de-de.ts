@@ -576,4 +576,11 @@ export default {
   "wf.strategy.least_open": "Wenigste offene Leads und Deals",
   "wf.notifyOwner": "Mitarbeiter benachrichtigen",
   "lead.owner": "Zuständig",
+  "tag.title": "Tags",
+  "tag.add": "Tag hinzufügen",
+  "tag.new": "Neuer Tag",
+  "tag.remove": "Diesen Tag entfernen",
+  "tag.none": "Keine Tags",
+  "tag.filter": "Mit dem Tag",
+  "tag.any": "Alle",
 } satisfies Record<StringKey, string>;

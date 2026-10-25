@@ -567,4 +567,11 @@ export default {
   "wf.strategy.least_open": "Y lleiaf o arweinwyr a bargeinion agored",
   "wf.notifyOwner": "Hysbysu'r gweithiwr",
   "lead.owner": "Perchennog",
+  "tag.title": "Tagiau",
+  "tag.add": "Ychwanegu tag",
+  "tag.new": "Tag newydd",
+  "tag.remove": "Dileu'r tag hwn",
+  "tag.none": "Dim tagiau",
+  "tag.filter": "Gyda'r tag",
+  "tag.any": "Unrhyw un",
 } satisfies Record<StringKey, string>;

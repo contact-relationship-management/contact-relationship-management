@@ -68,6 +68,7 @@ impl Conditions {
             statuses: self.statuses.clone(),
             channels: self.channels.clone(),
             account_tiers: self.account_tiers.clone(),
+            tags: Vec::new(),
         }
     }
 

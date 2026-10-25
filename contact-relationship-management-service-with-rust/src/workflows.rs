@@ -180,6 +180,8 @@ fn meets(conditions: &Conditions, contact: &contacts::Model, tier: Option<String
             status: contact.status.clone(),
             channel: contact.preferred_channel.as_str().to_string(),
             account_tier: tier,
+            // A workflow does not look at tags (CRM-R47).
+            tags: Vec::new(),
         },
     )
 }

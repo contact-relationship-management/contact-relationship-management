@@ -67,6 +67,8 @@ pub(crate) struct SubjectAccessExport {
     /// The files attached to the contact, to contacts merged into it and to its leads: their names,
     /// types, sizes and digests (CRM-R42). The files themselves are fetched one by one.
     attachments: Vec<super::attachments::AttachmentView>,
+    /// The names of the tags on the contact, on contacts merged into it and on its leads (CRM-R47).
+    tags: Vec<String>,
     /// What the export does not cover, and where to ask for it.
     exclusions: [&'static str; 3],
 }
@@ -117,6 +119,7 @@ async fn subject_access(
         external_links: rows_for!(db, external_links, SubjectPid, cpid),
         custom_fields: super::custom_fields::export_for(db, cpid).await?,
         attachments: super::attachments::export_for(db, cpid).await?,
+        tags: super::tags::export_for(db, cpid).await?,
         exclusions: [
             "campaign delivery/open/click counters: aggregate counters. Which messages were \
              sent to this contact is in email_deliveries (state, time and message id, no \
@@ -185,6 +188,17 @@ fn scrub(contact: contacts::Model) -> contacts::ActiveModel {
     scrubbed.marketing_consent = ActiveValue::set("withdrawn".to_string());
     scrubbed.deleted_at = ActiveValue::set(Some(chrono::Utc::now().into()));
     scrubbed
+}
+
+/// Delete what is attached to a contact being erased: its files (the rows here; the caller removes
+/// the files once the transaction has committed) and its tags' taggings.
+async fn erase_attached(
+    txn: &sea_orm::DatabaseTransaction,
+    contact: Uuid,
+) -> Result<(Vec<Uuid>, u64)> {
+    let files = super::attachments::erase_rows(txn, contact).await?;
+    let tags = super::tags::erase_rows(txn, contact).await?;
+    Ok((files, tags))
 }
 
 /// `POST /api/contacts/{pid}/erase` — anonymise (CRM-D14): scrub the
@@ -283,7 +297,7 @@ async fn erase(
         affected.push(result.rows_affected());
     }
     // The rows go in the transaction; the files go once it has committed.
-    let files = super::attachments::erase_rows(&txn, cpid).await?;
+    let (files, tags_removed) = erase_attached(&txn, cpid).await?;
     Audit::record(
         &txn,
         "contact",
@@ -300,6 +314,7 @@ async fn erase(
             "purposes_withdrawn": affected[7],
             "custom_field_values_deleted": affected[affected.len() - 1],
             "attachments_deleted": files.len(),
+            "taggings_deleted": tags_removed,
         })),
     )
     .await?;

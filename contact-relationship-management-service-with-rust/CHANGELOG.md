@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — tags (CRM-T111, CRM-R47)
+
+`tags` and `taggings` (migration `000036`); `/api/tags`, `/api/{contacts,accounts,leads,deals}/{pid}/tags`, and `?tag=` on the four lists. A segment filter has `tags`
+(any of), so `segment::Filter` and `ContactFacts` gained a field. The subject-access export has `tags`.
+
 ### Added — SLA working hours and holidays (CRM-T109, CRM-R45)
 
 `business_calendars` and `sla_policies.calendar_pid` (migration `000035`); `/api/business-calendars` and `PUT /api/sla-policies/{pid}/calendar`.

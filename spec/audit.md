@@ -51,6 +51,8 @@ Attachments (CRM-R42) audit under the entity `attachment`: `uploaded` (subject, 
 
 Custom fields (CRM-R41) audit under the entity `custom_field` (`created` with entity, key, kind and sensitivity; `updated`; `deleted` with the count of values removed). Setting values audits as the record's own entity with `custom_fields_updated` and the keys, never the values.
 
+Tags (CRM-R47) audit under the entity `tag` (`created`, `renamed`, `deleted` with how many taggings went). Setting a record's tags audits as the record's own entity, `tags_set`, with the count and no names; erasing a contact records how many taggings went.
+
 Business calendars (CRM-R45) audit under the entity `business_calendar` (`created`, `updated`, `deleted`); a policy changing calendar audits as `sla_policy` `calendar_set`.
 
 A lead given an owner by a workflow audits as `lead` `assigned` (CRM-R44), by the actor `workflow:<pid>`, with the worker and the strategy.

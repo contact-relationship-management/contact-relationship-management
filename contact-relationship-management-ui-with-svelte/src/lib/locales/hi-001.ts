@@ -563,4 +563,11 @@ export default {
   "wf.strategy.least_open": "सबसे कम खुली लीड और डील",
   "wf.notifyOwner": "कर्मचारी को सूचित करें",
   "lead.owner": "स्वामी",
+  "tag.title": "टैग",
+  "tag.add": "टैग जोड़ें",
+  "tag.new": "नया टैग",
+  "tag.remove": "यह टैग हटाएँ",
+  "tag.none": "कोई टैग नहीं",
+  "tag.filter": "इस टैग के साथ",
+  "tag.any": "कोई भी",
 } satisfies Record<StringKey, string>;

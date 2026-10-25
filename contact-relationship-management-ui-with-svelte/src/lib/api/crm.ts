@@ -151,8 +151,13 @@ export function money(
 }
 
 /** Contacts. */
-export function listContacts(init?: FetchLike): Promise<Contact[]> {
-  return apiAll("/contacts", init);
+export function listContacts(
+  init?: FetchLike,
+  tag?: string,
+): Promise<Contact[]> {
+  return tag
+    ? apiAll(`/contacts?tag=${encodeURIComponent(tag)}`, init)
+    : apiAll("/contacts", init);
 }
 
 /** One contact + timeline. */
@@ -397,13 +402,20 @@ export function getAccount(
 }
 
 /** Accounts. */
-export function listAccounts(init?: FetchLike): Promise<Account[]> {
-  return apiAll("/accounts", init);
+export function listAccounts(
+  init?: FetchLike,
+  tag?: string,
+): Promise<Account[]> {
+  return tag
+    ? apiAll(`/accounts?tag=${encodeURIComponent(tag)}`, init)
+    : apiAll("/accounts", init);
 }
 
 /** The score-sorted lead queue. */
-export function listLeads(init?: FetchLike): Promise<Lead[]> {
-  return apiAll("/leads", init);
+export function listLeads(init?: FetchLike, tag?: string): Promise<Lead[]> {
+  return tag
+    ? apiAll(`/leads?tag=${encodeURIComponent(tag)}`, init)
+    : apiAll("/leads", init);
 }
 
 /** One lead + live breakdown. */
@@ -1518,4 +1530,34 @@ export function undoRecordImport(
   pid: string,
 ): Promise<{ removed: number; kept: number }> {
   return api(`${importPath(kind)}/${pid}/undo`, { method: "POST" });
+}
+
+/** A tag, with how many records carry it. */
+export interface Tag {
+  pid: string;
+  name: string;
+  uses: number;
+}
+
+/** The tags. */
+export function listTags(init?: FetchLike): Promise<Tag[]> {
+  return api("/tags", init);
+}
+
+/** The names of the tags on a record (refused for a masked read). */
+export function getRecordTags(
+  kind: LinkKind,
+  pid: string,
+  init?: FetchLike,
+): Promise<string[]> {
+  return api(`/${kind}/${pid}/tags`, init);
+}
+
+/** Set the whole set of a record's tags; a new name becomes a tag. */
+export function setRecordTags(
+  kind: LinkKind,
+  pid: string,
+  tags: string[],
+): Promise<string[]> {
+  return api(`/${kind}/${pid}/tags`, { method: "PUT", body: { tags } });
 }

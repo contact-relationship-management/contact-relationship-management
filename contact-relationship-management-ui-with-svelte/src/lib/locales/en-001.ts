@@ -561,4 +561,11 @@ export default {
   "wf.strategy.least_open": "Fewest open leads and deals",
   "wf.notifyOwner": "Tell the worker",
   "lead.owner": "Owner",
+  "tag.title": "Tags",
+  "tag.add": "Add a tag",
+  "tag.new": "New tag",
+  "tag.remove": "Remove this tag",
+  "tag.none": "No tags",
+  "tag.filter": "With the tag",
+  "tag.any": "Any",
 } as const;

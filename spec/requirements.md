@@ -905,3 +905,16 @@ recipient would get before anything is sent, and be certain every message carrie
 - Below 40 rem the header wraps (the title and menu, the session button and the picker buttons each take the room they need) rather than running past the edge, and a text field, a selector or a file chooser takes at most the width of its container.
 - A Playwright test walks the tour's screens and the new ones (workflows, custom fields, templates, imports, and a contact, account, lead, deal and ticket page) at 360 by 740 and fails if any is wider than the viewport.
 - Not built: a phone layout for the boards (they scroll inside their own area), a bottom navigation bar, touch-size checks for every control, or a native app.
+
+## CRM-R47 — Tags
+
+*As someone who sorts contacts, accounts, leads and deals my own way, I can label them with tags and then find them, and select them for a campaign, by tag.*
+
+- A **tag** is a short label (1 to 40 characters, no control characters). Names are tidied (spaces trimmed and collapsed) and unique in any case, so `VIP` and `vip` are one tag, which keeps the spelling it was first given. At most 500 tags. `GET /api/tags` lists them with how many records carry each; `POST /api/tags`, `PUT /api/tags/{pid}` (rename; records keep it) and `DELETE /api/tags/{pid}` (it comes off every record) manage them, audited as `tag`.
+- A **record's tags** are read with `GET /api/{contacts|accounts|leads|deals}/{pid}/tags` (the names) and set whole with `PUT` of `{ "tags": [names] }`: at most 20, repeats in any case counted once, a name that is not yet a tag becomes one. Writing needs write access to the record. The audit row counts the tags and names none, because a tag can say something about a person.
+- **Hidden from a masked read.** A caller whose read of a contact or deal is masked is refused (`403`) when reading or setting its tags. Narrowing a list by tag leaves out the records that caller sees masked, so the filter cannot be used to learn which of them carry a tag.
+- **Narrowing a list:** `GET /api/contacts`, `/accounts`, `/leads` and `/deals` take `?tag=<name>` (any case); an unknown tag gives an empty list, a blank one `422`.
+- **Segments.** A segment filter may hold `tags`: a contact is in the segment if it has at least one of them, in any case, and the other clauses and the consent gate (CRM-R7) apply as ever. A segment's tags are tidied as a record's are. Workflow conditions (CRM-R40) do not look at tags.
+- **Subject access and erasure.** The export (CRM-R20) lists the names of the tags on the contact, on contacts merged into it and on its leads. Erasing the contact deletes those taggings; the tags themselves stay, because they are labels, not the person.
+- The contact, account, lead and deal pages show a record's tags with a box to add one; the contact, account and lead lists have a tag selector.
+- Not built: tags in saved views (a view filters rows the browser already holds, which do not carry tags); tags in workflow conditions; colours or groups of tags; the tag selector on the deals board; bulk tagging; and tags on tickets, activities or articles.
