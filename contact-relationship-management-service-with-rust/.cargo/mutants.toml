@@ -1,0 +1,5 @@
+# Mutation testing (CRM-T94): the pure rules are where a surviving mutant means a missing test.
+# Unit tests only (`--lib`): they need no database and run in seconds, so a run over `rules/` is
+# minutes, not hours. The controllers are left to the request tests, which need PostgreSQL.
+examine_globs = ["src/rules/**/*.rs"]
+additional_cargo_test_args = ["--lib"]

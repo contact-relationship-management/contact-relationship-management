@@ -505,7 +505,79 @@ mod tests {
             for field in fields(kind) {
                 assert!(plan(&spec(kind, field)).is_ok(), "{kind} by {field}");
             }
+            // A kind with no fields would pass the loop above by doing nothing.
+            assert!(!fields(kind).is_empty(), "{kind} has fields");
         }
         assert!(fields("deal").contains(&"tag") && !fields("ticket").contains(&"tag"));
+    }
+
+    #[test]
+    fn the_measure_defaults_to_a_count() {
+        let parsed: Spec = serde_json::from_str(r#"{"kind":"lead","group_by":"source"}"#).unwrap();
+        assert_eq!(parsed.measure, "count");
+        assert!(
+            serde_json::from_str::<Spec>(r#"{"kind":"lead","group_by":"source","x":1}"#).is_err()
+        );
+    }
+
+    #[test]
+    fn each_fixed_filter_takes_its_own_values_and_no_others() {
+        let cases = [
+            ("contact", "status", "active", "gone"),
+            ("contact", "marketing_consent", "granted", "maybe"),
+            ("account", "tier", "customer", "vip"),
+            ("lead", "status", "new", "lost"),
+            ("lead", "source", "web", "pigeon"),
+            ("deal", "state", "won", "drawn"),
+            ("ticket", "status", "open", "stuck"),
+            ("ticket", "priority", "urgent", "whenever"),
+            ("ticket", "channel", "chat", "pigeon"),
+        ];
+        for (kind, field, good, bad) in cases {
+            let mut s = spec(kind, field);
+            s.filter.insert(field.into(), vec![good.into()]);
+            assert!(plan(&s).is_ok(), "{kind}.{field} takes {good}");
+            s.filter.insert(field.into(), vec![bad.into()]);
+            assert!(plan(&s).is_err(), "{kind}.{field} refuses {bad}");
+        }
+    }
+
+    #[test]
+    fn every_filter_field_uses_its_own_expression() {
+        let mut s = spec("contact", "owner");
+        s.filter.insert("status".into(), vec!["active".into()]);
+        s.filter
+            .insert("marketing_consent".into(), vec!["granted".into()]);
+        let sql = plan(&s).unwrap().sql;
+        // Filters go in key order, so the first placeholder belongs to `marketing_consent`.
+        assert!(
+            sql.contains("c.marketing_consent IN (SELECT jsonb_array_elements_text($1::jsonb))"),
+            "{sql}"
+        );
+        assert!(
+            sql.contains("c.status IN (SELECT jsonb_array_elements_text($2::jsonb))"),
+            "{sql}"
+        );
+    }
+
+    #[test]
+    fn the_limits_on_values_and_dates_are_inclusive() {
+        let values = |n: usize| -> Vec<String> { (0..n).map(|i| format!("o{i}")).collect() };
+        let mut s = spec("lead", "source");
+        s.filter.insert("owner".into(), values(MAX_VALUES));
+        assert!(plan(&s).is_ok(), "twenty values are allowed");
+        s.filter.insert("owner".into(), values(MAX_VALUES + 1));
+        assert!(plan(&s).is_err(), "twenty-one are not");
+        s.filter.insert("owner".into(), vec!["x".repeat(100)]);
+        assert!(plan(&s).is_ok(), "a hundred characters are allowed");
+        s.filter.insert("owner".into(), vec!["x".repeat(101)]);
+        assert!(plan(&s).is_err(), "a hundred and one are not");
+        s.filter.insert("owner".into(), vec!["  ".into()]);
+        assert!(plan(&s).is_err(), "a blank value is not");
+        s.filter.clear();
+        let day = NaiveDate::from_ymd_opt(2026, 6, 1);
+        s.from = day;
+        s.to = day;
+        assert!(plan(&s).is_ok(), "one day is a range");
     }
 }

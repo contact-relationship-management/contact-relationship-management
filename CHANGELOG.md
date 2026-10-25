@@ -11,6 +11,7 @@ subproject keeps a detailed changelog:
 
 ### Fixed
 
+- Tests for the limits and the fixed filter values of the new rules (calendar, reports), found by mutation testing; a weekly mutation-testing workflow (CRM-T94).
 - The release workflow no longer expands tag names, the actor or step outputs into shell scripts, keeps no token in the checkout, and uses no build cache in the job that signs and publishes; Dependabot waits a week before proposing a new release (found by `zizmor`, CRM-T94). Not yet run: test it with a release-candidate tag.
 - On a phone-width screen (360 px) the page no longer scrolls sideways: the header wraps and form fields fit their panel (CRM-R46).
 

@@ -370,4 +370,26 @@ mod tests {
         };
         assert!(bad("UTC", &one, &days).iter().any(|(m, _)| m == "holidays"));
     }
+
+    #[test]
+    fn the_limits_are_inclusive_and_windows_may_touch() {
+        // Exactly the most windows in a day, and as many holidays as allowed, are accepted.
+        let four: Vec<Hours> = (0..MAX_WINDOWS)
+            .map(|i| hours(&format!("{:02}:00", i * 4), &format!("{:02}:30", i * 4)))
+            .collect();
+        let week = Week {
+            mon: four,
+            ..Week::default()
+        };
+        let days: Vec<NaiveDate> = (0..i64::try_from(MAX_HOLIDAYS).unwrap())
+            .map(|i| NaiveDate::from_ymd_opt(2026, 1, 1).unwrap() + Duration::days(i))
+            .collect();
+        assert!(Calendar::build("UTC", &week, &days).is_ok());
+        // One window ending where the next starts is not an overlap.
+        let touching = Week {
+            mon: vec![hours("09:00", "12:00"), hours("12:00", "13:00")],
+            ..Week::default()
+        };
+        assert!(Calendar::build("UTC", &touching, &[]).is_ok());
+    }
 }

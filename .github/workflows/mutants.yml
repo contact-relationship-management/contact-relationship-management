@@ -1,0 +1,28 @@
+name: Mutation testing
+# Weekly, not on every push: it re-runs the unit tests once for each small change to a rule in
+# `src/rules` (about 800 of them). A surviving mutant is a rule that no test pins (CRM-T94).
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2
+        with:
+          tool: cargo-mutants
+      - run: scripts/ci-check.sh mutants
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: mutants
+          path: contact-relationship-management-service-with-rust/mutants-out/

@@ -3,3 +3,6 @@
 # resolves different versions and the SBOM describes a graph nobody
 # can reconstruct.
 !Cargo.lock
+mutants-out/
+mutants.out/
+mutants.out.old/

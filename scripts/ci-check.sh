@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | e2e | scripts | lint | supply-chain | semver | api-types | coverage
+#   fmt | clippy | test | test-db | front-end | e2e | scripts | lint | mutants | supply-chain | semver | api-types | coverage
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -12,7 +12,7 @@ MATCHER=contact-relationship-management-matcher-with-rust
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|scripts|lint|supply-chain|semver|api-types|coverage>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|scripts|lint|mutants|supply-chain|semver|api-types|coverage>}"
 
 case "${stage}" in
   fmt)
@@ -109,6 +109,12 @@ case "${stage}" in
     # workspace, caches in jobs that publish. Offline, so it needs no token.
     typos
     zizmor --offline .github
+    ;;
+  mutants)
+    # CRM-T94: change each pure rule a little and check that a unit test notices. A mutant that
+    # survives is a rule no test pins. Scheduled weekly, not on every push: it takes a while.
+    # `.cargo/mutants.toml` limits it to src/rules and the unit tests.
+    (cd "${SVC}" && cargo mutants -j 2 --no-shuffle --output "${PWD}/mutants-out" "${@:2}")
     ;;
   supply-chain)
     # CRM-T34: known-vulnerability, licence, and source gates, plus SBOMs
