@@ -44,10 +44,11 @@ pub(crate) struct UnmergePayload {
 }
 
 /// The fields a merge can fill, which an unmerge may clear again.
-const FILLABLE: [&str; 6] = [
+const FILLABLE: [&str; 7] = [
     "account_pid",
     "owner_ref",
     "job_title",
+    "family_name",
     "stakeholder_role",
     "influence",
     "interest",

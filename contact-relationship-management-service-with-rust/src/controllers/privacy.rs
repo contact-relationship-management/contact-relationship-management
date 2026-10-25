@@ -210,6 +210,7 @@ async fn erase(
     scrubbed.display_name = ActiveValue::set(ERASED.to_string());
     scrubbed.person_ref = ActiveValue::set(TOMBSTONE_PERSON.to_string());
     scrubbed.job_title = ActiveValue::set(None);
+    scrubbed.family_name = ActiveValue::set(None);
     scrubbed.marketing_consent = ActiveValue::set("withdrawn".to_string());
     scrubbed.deleted_at = ActiveValue::set(Some(chrono::Utc::now().into()));
     scrubbed.update(&txn).await?;
@@ -247,7 +248,7 @@ async fn erase(
         ),
         format!(
             "UPDATE contacts SET display_name = '{ERASED}', person_ref = '{TOMBSTONE_PERSON}', \
-             job_title = NULL, marketing_consent = 'withdrawn' WHERE merged_into_pid = '{cpid}'"
+             job_title = NULL, family_name = NULL, marketing_consent = 'withdrawn' WHERE merged_into_pid = '{cpid}'"
         ),
         format!(
             "UPDATE contact_merges SET merged_person_ref = '{TOMBSTONE_PERSON}' \

@@ -30,6 +30,9 @@ use crate::validation::Problems;
 pub(crate) struct ContactPayload {
     person_ref: String,
     display_name: String,
+    /// Optional; used by the `family_name` merge token (CRM-R37).
+    #[serde(default)]
+    family_name: Option<String>,
     #[serde(default)]
     account_pid: Option<Uuid>,
     #[serde(default)]
@@ -120,6 +123,7 @@ async fn create_contact(
         &payload.preferred_channel,
     );
     problems.cap_opt("job_title", payload.job_title.as_deref());
+    problems.cap_opt("family_name", payload.family_name.as_deref());
     problems.finish()?;
     if let Some(account) = payload.account_pid {
         records::find_account(&ctx.db, account).await?;
@@ -133,6 +137,7 @@ async fn create_contact(
         display_name: ActiveValue::set(payload.display_name.clone()),
         status: ActiveValue::set("active".to_string()),
         job_title: ActiveValue::set(payload.job_title.clone()),
+        family_name: ActiveValue::set(payload.family_name.clone()),
         preferred_channel: ActiveValue::set(payload.preferred_channel.clone().into()),
         marketing_consent: ActiveValue::set("never".to_string()),
         consent_changed_at: ActiveValue::set(None),

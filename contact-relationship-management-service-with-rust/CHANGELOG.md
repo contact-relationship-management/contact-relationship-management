@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a contact's family name (CRM-R37)
+
+`contacts.family_name` (optional, migration `000028`), set on `POST /api/contacts`, filled by a merge and cleared by an unmerge, erased with the
+contact. The new merge token `family_name` fills from it; it is never guessed from the display name.
+
 ### Added — email templates with merge tokens (CRM-T103, CRM-R36)
 
 `/api/email-templates` stores templates (name, subject, plain-text body, fallbacks). Merge tokens come from a closed set (`given_name`, `name`,

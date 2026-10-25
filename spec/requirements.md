@@ -748,11 +748,11 @@ recipient would get before anything is sent, and be certain every message carrie
   server. `GET/POST /api/email-templates`, `GET/PUT/DELETE /api/email-templates/{pid}`. A template that a campaign or a
   nurture step still refers to cannot be deleted (`409`).
 - **Merge tokens** are written `{{name}}` (spaces inside the braces are ignored) from a closed set: `given_name` (the first word
-  of the contact's name), `name`, `account_name`, `rep_name` (the contact's owner, or the account's when the contact has none),
+  of the contact's name), `name`, `family_name` (only when the contact has one recorded; never guessed from the display name), `account_name`, `rep_name` (the contact's owner, or the account's when the contact has none),
   `job_title`, and `unsubscribe_url`. Anything else, or a `{{` that is never closed, is `422`; there is no escape for a literal
   `{{`. `GET /api/email-templates/tokens` lists the set with each token's default fallback.
 - **Fallbacks.** Every token except `unsubscribe_url` has a declared fallback (`given_name` and `name`: "there"; `account_name`:
-  "your organisation"; `rep_name`: "the team"; `job_title`: "your role"). A template may declare its own text per token. A value
+  "your organisation"; `family_name`: "customer"; `rep_name`: "the team"; `job_title`: "your role"). A template may declare its own text per token. A value
   that is missing, empty or only white space renders as the fallback, so a message never carries an empty gap or a raw `{{token}}`.
   `unsubscribe_url` has no fallback and cannot be given one.
 - **Escaping.** A value is data, never markup. Rendering produces the plain text that is mailed (values as they are) and an HTML
@@ -772,3 +772,15 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Audit.** `created`, `updated` and `deleted` on the entity `email_template`, never the subject or body.
 - The UI has a templates page: a list, an editor with the token set, and a live preview that can blank each token. The campaigns page has a creation form: a name, an audience segment, and either a template or the campaign's own subject and message.
 - Not built: HTML-bodied email, attachments, per-recipient-language templates, template versions, and tokens from custom fields.
+
+## CRM-R37 — A contact's family name
+
+*As someone who writes formal email, I can address a contact by family name when we know it, and fall back politely when we do not.*
+
+- A contact has an optional `family_name` (at most the usual field length), given on `POST /api/contacts` and returned with the contact.
+  The CRM keeps one display name; the family name is **never derived from it**, because names do not split reliably into parts.
+- The merge token `family_name` (CRM-R36) fills from it. A contact without one gets the token's fallback ("customer", or the template's own).
+- A merge fills it on the survivor when the survivor has none, and an unmerge clears it again, like the other fillable fields (CRM-R24, CRM-R26).
+- Erasing a contact (CRM-R20) clears it, on the contact and on contacts merged into it.
+- Not built: a `given_name` column (the `given_name` token is still the first word of the display name), editing it after creation, and
+  showing it in the UI.

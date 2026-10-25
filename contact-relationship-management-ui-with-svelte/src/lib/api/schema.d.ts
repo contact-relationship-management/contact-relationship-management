@@ -11726,6 +11726,8 @@ export interface components {
             /** Format: date-time */
             deleted_at: string | null;
             display_name: string;
+            /** @description Optional; never derived from `display_name` (CRM-R37). */
+            family_name: string | null;
             /** Format: int32 */
             id: number;
             /** Format: int32 */
@@ -11853,6 +11855,11 @@ export interface components {
              */
             account_pid: string | null;
             display_name: string;
+            /**
+             * @description Optional; used by the `family_name` merge token (CRM-R37).
+             * @default null
+             */
+            family_name: string | null;
             /** @default null */
             job_title: string | null;
             /** @default null */

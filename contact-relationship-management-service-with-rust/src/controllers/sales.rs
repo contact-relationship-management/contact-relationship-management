@@ -329,6 +329,7 @@ async fn contact_for_conversion(
         display_name: ActiveValue::set(lead.display_name.clone()),
         status: ActiveValue::set("active".to_string()),
         job_title: ActiveValue::set(None),
+        family_name: ActiveValue::set(None),
         preferred_channel: ActiveValue::set("email".into()),
         marketing_consent: ActiveValue::set("never".to_string()),
         consent_changed_at: ActiveValue::set(None),

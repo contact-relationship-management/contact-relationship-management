@@ -368,6 +368,9 @@ pub(crate) async fn contact_values(
         values.insert("given_name".to_string(), first);
     }
     values.insert("name".to_string(), contact.display_name.clone());
+    if let Some(family) = &contact.family_name {
+        values.insert("family_name".to_string(), family.clone());
+    }
     if let Some(title) = &contact.job_title {
         values.insert("job_title".to_string(), title.clone());
     }

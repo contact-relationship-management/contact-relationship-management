@@ -21,6 +21,8 @@ pub struct Model {
     pub account_pid: Option<Uuid>,
     pub owner_ref: Option<String>,
     pub display_name: String,
+    /// Optional; never derived from `display_name` (CRM-R37).
+    pub family_name: Option<String>,
     pub status: String,
     pub job_title: Option<String>,
     pub preferred_channel: crate::models::encrypted::EncryptedText,

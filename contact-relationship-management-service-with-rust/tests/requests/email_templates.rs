@@ -266,3 +266,91 @@ async fn a_campaign_and_a_nurture_step_are_made_from_a_template() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
+    request::<App, _, _>(|request, ctx| async move {
+        use sea_orm::ConnectionTrait;
+        let (recorder, _restore) = recording();
+        let mut pids = Vec::new();
+        for (name, family) in [("Ada Lovelace", Some("Lovelace")), ("Grace Hopper", None)] {
+            let mut body = json!({ "person_ref": super::a_person(), "display_name": name });
+            if let Some(family) = family {
+                body["family_name"] = json!(family);
+            }
+            let created: Value = request.post("/api/contacts").json(&body).await.json();
+            let pid = created["pid"].as_str().unwrap().to_string();
+            request
+                .post(&format!("/api/contacts/{pid}/consent"))
+                .json(&json!({ "action": "granted", "source": "web form" }))
+                .await
+                .assert_status_ok();
+            let detail: Value = request.get(&format!("/api/contacts/{pid}")).await.json();
+            assert_eq!(detail["contact"]["family_name"], json!(family));
+            let person_ref = detail["contact"]["person_ref"].as_str().unwrap();
+            contact_relationship_management::clients::prime_email(
+                person_ref,
+                &format!(
+                    "{}@example.test",
+                    name.split(' ').next().unwrap().to_lowercase()
+                ),
+            );
+            pids.push(pid);
+        }
+        let made: Value = request
+            .post("/api/email-templates")
+            .json(
+                &json!({ "name": "Formal", "subject": "Dear {{family_name}}",
+                           "body": "Dear {{family_name}}\n{{unsubscribe_url}}" }),
+            )
+            .await
+            .json();
+        let segment: Value = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json();
+        let campaign: Value = request
+            .post("/api/campaigns")
+            .json(&json!({ "name": "Formal", "segment_pid": segment["pid"],
+                           "template_pid": made["pid"] }))
+            .await
+            .json();
+        let campaign = campaign["pid"].as_str().unwrap().to_string();
+        request
+            .post(&format!("/api/campaigns/{campaign}/status"))
+            .json(&json!({ "to": "scheduled" }))
+            .await
+            .assert_status_ok();
+        request
+            .post(&format!("/api/campaigns/{campaign}/run"))
+            .await
+            .assert_status_ok();
+        let mut subjects: Vec<String> = recorder.sent().iter().map(|m| m.subject.clone()).collect();
+        subjects.sort();
+        // Grace has none recorded, and it is not guessed from "Hopper".
+        assert_eq!(subjects, ["Dear Lovelace", "Dear customer"]);
+
+        // Erasure clears it.
+        request
+            .post(&format!("/api/contacts/{}/erase", pids[0]))
+            .await
+            .assert_status_ok();
+        let row = ctx
+            .db
+            .query_one_raw(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Postgres,
+                format!("SELECT family_name FROM contacts WHERE pid = '{}'", pids[0]),
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            row.try_get::<Option<String>>("", "family_name").unwrap(),
+            None
+        );
+    })
+    .await;
+}

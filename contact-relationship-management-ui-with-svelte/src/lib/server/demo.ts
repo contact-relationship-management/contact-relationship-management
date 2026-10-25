@@ -2263,6 +2263,11 @@ export function demoHandle(
 const MERGE_TOKENS: MergeToken[] = [
   ["given_name", "The first word of the contact's name", "there"],
   ["name", "The contact's full name", "there"],
+  [
+    "family_name",
+    "The contact's family name, when one is recorded",
+    "customer",
+  ],
   ["account_name", "The name of the contact's account", "your organisation"],
   ["rep_name", "The name of the contact's owner, or the account's", "the team"],
   ["job_title", "The contact's job title", "your role"],
@@ -2283,6 +2288,7 @@ MERGE_TOKENS.push({
 const SYNTHETIC: Record<string, string> = {
   given_name: "Alex",
   name: "Alex Example",
+  family_name: "Example",
   account_name: "Example Ltd",
   rep_name: "Sam Rep",
   job_title: "Operations Lead",

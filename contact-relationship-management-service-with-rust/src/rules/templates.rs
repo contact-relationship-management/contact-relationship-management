@@ -34,6 +34,11 @@ pub const TOKENS: &[Token] = &[
         fallback: "there",
     },
     Token {
+        name: "family_name",
+        description: "The contact's family name, when one is recorded",
+        fallback: "customer",
+    },
+    Token {
         name: "account_name",
         description: "The name of the contact's account",
         fallback: "your organisation",
@@ -313,6 +318,7 @@ pub fn synthetic_values() -> BTreeMap<String, String> {
     [
         ("given_name", "Alex"),
         ("name", "Alex Example"),
+        ("family_name", "Example"),
         ("account_name", "Example Ltd"),
         ("rep_name", "Sam Rep"),
         ("job_title", "Operations Lead"),
