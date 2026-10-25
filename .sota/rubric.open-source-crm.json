@@ -1,0 +1,96 @@
+{
+  "domain": "open-source-crm",
+  "version": 1,
+  "capabilities": [
+    {
+      "id": "contacts-accounts",
+      "tier": "table-stakes",
+      "test": "contacts and accounts with a timeline"
+    },
+    {
+      "id": "leads-pipeline",
+      "tier": "table-stakes",
+      "test": "leads, scoring, deals on a staged pipeline with a board"
+    },
+    {
+      "id": "tickets-sla",
+      "tier": "table-stakes",
+      "test": "support tickets with SLA deadlines"
+    },
+    {
+      "id": "marketing-automation",
+      "tier": "table-stakes",
+      "test": "segments, campaigns, nurture sequences, templates"
+    },
+    {
+      "id": "workflow-automation",
+      "tier": "table-stakes",
+      "test": "trigger, condition, action rules with a log"
+    },
+    {
+      "id": "api-webhooks",
+      "tier": "table-stakes",
+      "test": "documented API and outbound webhooks"
+    },
+    {
+      "id": "roles-permissions",
+      "tier": "table-stakes",
+      "test": "fine-grained roles and record access"
+    },
+    {
+      "id": "dashboards-reports",
+      "tier": "table-stakes",
+      "test": "dashboards over sales, support and marketing"
+    },
+    {
+      "id": "contact-import",
+      "tier": "table-stakes",
+      "test": "CSV import of contacts and accounts with mapping and undo"
+    },
+    {
+      "id": "custom-fields",
+      "tier": "table-stakes",
+      "test": "admin-defined fields on records without code"
+    },
+    {
+      "id": "file-attachments",
+      "tier": "table-stakes",
+      "test": "files attached to records"
+    },
+    {
+      "id": "assignment-rules",
+      "tier": "edge",
+      "test": "automatic owner assignment of new leads"
+    },
+    {
+      "id": "sla-business-hours",
+      "tier": "edge",
+      "test": "SLA clocks that follow working hours and holidays"
+    },
+    {
+      "id": "tags",
+      "tier": "edge",
+      "test": "free labels on records"
+    },
+    {
+      "id": "report-builder",
+      "tier": "edge",
+      "test": "user-built reports or dashboard widgets"
+    },
+    {
+      "id": "mobile-ui",
+      "tier": "edge",
+      "test": "usable on a phone"
+    },
+    {
+      "id": "agent-interface",
+      "tier": "edge",
+      "test": "MCP server for AI agents"
+    },
+    {
+      "id": "duplicate-merge",
+      "tier": "edge",
+      "test": "duplicate detection with merge and undo"
+    }
+  ]
+}

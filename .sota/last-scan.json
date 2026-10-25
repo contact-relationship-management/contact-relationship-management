@@ -1,0 +1,143 @@
+{
+  "date": "2026-10-25",
+  "domains": [
+    "open-source-crm"
+  ],
+  "rubric_version": 1,
+  "field": [
+    {
+      "repo": "twentyhq/twenty",
+      "stars": 59689,
+      "pushed": "2026-10-25"
+    },
+    {
+      "repo": "odoo/odoo",
+      "stars": 55310,
+      "pushed": "2026-10-25"
+    },
+    {
+      "repo": "krayin/laravel-crm",
+      "stars": 24056,
+      "pushed": "2026-10-21"
+    },
+    {
+      "repo": "SuiteCRM/SuiteCRM",
+      "stars": 5809,
+      "pushed": "2026-10-23"
+    },
+    {
+      "repo": "frappe/crm",
+      "stars": 3854,
+      "pushed": "2026-10-23"
+    },
+    {
+      "repo": "espocrm/espocrm",
+      "stars": 3519,
+      "pushed": "2026-10-24"
+    },
+    {
+      "repo": "marmelab/atomic-crm",
+      "stars": 1400,
+      "pushed": "2026-10-24"
+    }
+  ],
+  "matrix": [
+    {
+      "id": "contacts-accounts",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "leads-pipeline",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "tickets-sla",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "marketing-automation",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "workflow-automation",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "api-webhooks",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "roles-permissions",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "dashboards-reports",
+      "us": "met",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "contact-import",
+      "us": "partial",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "custom-fields",
+      "us": "missing",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "file-attachments",
+      "us": "missing",
+      "tier": "table-stakes"
+    },
+    {
+      "id": "assignment-rules",
+      "us": "partial",
+      "tier": "edge"
+    },
+    {
+      "id": "sla-business-hours",
+      "us": "missing",
+      "tier": "edge"
+    },
+    {
+      "id": "tags",
+      "us": "missing",
+      "tier": "edge"
+    },
+    {
+      "id": "report-builder",
+      "us": "missing",
+      "tier": "edge"
+    },
+    {
+      "id": "mobile-ui",
+      "us": "partial",
+      "tier": "edge"
+    },
+    {
+      "id": "agent-interface",
+      "us": "met",
+      "tier": "edge"
+    },
+    {
+      "id": "duplicate-merge",
+      "us": "met",
+      "tier": "edge"
+    }
+  ],
+  "coverage": {
+    "met": 8,
+    "total": 11,
+    "pct": 73
+  },
+  "tier": "BEHIND",
+  "gaps_total": 3
+}
