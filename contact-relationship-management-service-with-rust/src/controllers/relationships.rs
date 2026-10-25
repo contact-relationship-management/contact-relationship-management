@@ -421,7 +421,7 @@ async fn get_contact(
 
 /// Contacts compared against the one asked about. A larger table is cut off
 /// here and the answer says so (`truncated`).
-const DUPLICATE_POOL: usize = 5000;
+pub(crate) const DUPLICATE_POOL: usize = 5000;
 /// How many of the best candidates get their email address fetched and the
 /// comparison repeated. The CRM holds no addresses (they live on the person
 /// record), so each one costs a call to the person service.
@@ -434,14 +434,17 @@ struct DuplicateParams {
     limit: Option<usize>,
 }
 
-fn matcher() -> &'static Matcher {
+pub(crate) fn matcher() -> &'static Matcher {
     static MATCHER: OnceLock<Matcher> = OnceLock::new();
     MATCHER.get_or_init(Matcher::default)
 }
 
 /// A contact as the matcher sees it: the name, title and employer the CRM
 /// holds, and the person reference.
-fn match_contact(contact: &contacts::Model, accounts: &HashMap<Uuid, String>) -> MatchContact {
+pub(crate) fn match_contact(
+    contact: &contacts::Model,
+    accounts: &HashMap<Uuid, String>,
+) -> MatchContact {
     let mut m = MatchContact::new()
         .person_ref(&contact.person_ref)
         .display_name(&contact.display_name);
@@ -455,7 +458,7 @@ fn match_contact(contact: &contacts::Model, accounts: &HashMap<Uuid, String>) ->
 }
 
 /// Display names of the accounts the given contacts belong to.
-async fn account_names<'a>(
+pub(crate) async fn account_names<'a>(
     db: &DatabaseConnection,
     contacts: impl Iterator<Item = &'a contacts::Model>,
 ) -> Result<HashMap<Uuid, String>> {

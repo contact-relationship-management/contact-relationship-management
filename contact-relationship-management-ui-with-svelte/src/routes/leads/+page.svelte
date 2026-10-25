@@ -43,7 +43,10 @@
 </script>
 
 <h1>{t("nav.leads")}</h1>
-<p><a class="button" href="/leads/board">{t("common.board")}</a></p>
+<p>
+  <a class="button" href="/leads/board">{t("common.board")}</a>
+  <a class="button" href="/leads/import">{t("import.title")}</a>
+</p>
 
 {#if error}
   <p class="error" data-testid="error">{t("common.error")}: {error}</p>

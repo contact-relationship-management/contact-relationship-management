@@ -37,6 +37,10 @@ No record text.
 
 Search (CRM-R33) audits as the entity `search`, action `search`, with how many hits were returned. Never the text searched for.
 
+Lead imports (CRM-R34) audit under the entity `lead_import`: `lead_import_previewed` (counts), `lead_import_committed` (counts,
+the source note and the date obtained) and `lead_import_undone` (removed and kept), plus the usual `lead_captured` for each lead made and
+`import_undone` on each removed. Never a name or an address.
+
 ## Integrity
 
 **A write whose audit row cannot be written is refused.** The audit row is part of the

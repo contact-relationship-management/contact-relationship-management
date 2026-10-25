@@ -674,3 +674,39 @@ allowed to see.*
 - Not searchable, because they are encrypted at rest and cannot be indexed: activity summaries and a
   contact's preferred channel. The CRM stores no email address, so none is searched. Pages are cut after
   the policy filter, so a page can hold fewer than `limit` hits while more follow.
+
+## CRM-R34 — Bring in a list of leads from a spreadsheet, and take it back out
+
+*As a salesperson with a list from a trade show, I can load it as leads, see what is wrong
+with each row and which rows look like people we already have before anything is saved,
+and undo the whole import if it was a mistake.*
+
+- **Scope.** Only leads. Contacts are not imported, because they come from the person service. At most 500 rows
+  and 1 MB of text per import; a larger list is imported in pieces.
+- **Upload and map.** The file is sent as text in a JSON body (`csv`): a header row, comma separated, quoted fields
+  allowed. `POST /api/lead-imports/preview` with no `mapping` answers with the columns, how many rows there are, and a
+  suggested mapping (a column named `name`, `full name` or `display name`; `email` or `e-mail`; `company` or
+  `organization`). With a `mapping` of `display_name` (required), `email` and `company` to column names, it answers one report
+  line per row. Nothing is saved by a preview.
+- **The row report.** Each row is `valid`, or `invalid` with the reason (no name, a name that is too long or has a line break,
+  an address that is not usable, the wrong number of columns). A valid row also lists *likely duplicates*: existing contacts
+  the caller may read and existing leads, and earlier rows of the same file, that the matcher (CRM-R23) scores as `match` or
+  `review` on name and company. This is advice only; it never blocks a row. Only candidates that share a word of the name are
+  compared, so the report is quick.
+- **Commit.** `POST /api/lead-imports` with the same body plus `source_note` (where the list came from) and `obtained_on`
+  (the date it was obtained), both required. It saves the valid rows in batches of 100 as leads with `source=import`, scored
+  like any lead, and answers with the import's pid and counts. `skip_likely_duplicates` leaves out rows with advice. Invalid rows are
+  never saved. The import record is written first and keeps the pid of every lead created as each batch commits, so an import that
+  stops half way can still be undone.
+- **The CRM stores no email.** Like the web form, a lead keeps only the domain of the address; the address is used for the
+  syntax check and then dropped.
+- **Consent is never inferred.** An imported lead is not a contact and has no consent of any kind; nothing is sent to it. What the
+  import does record is its source and the date it was obtained, on the import record and in its audit row. Marketing to these
+  people needs consent given through the web form or the consent endpoints.
+- **Undo.** `POST /api/lead-imports/{pid}/undo` removes the leads the import created that are still `new` and have no activity;
+  leads that have since been worked stay, and the answer says how many of each. Undoing twice is `422`.
+- `GET /api/lead-imports` and `GET /api/lead-imports/{pid}` list and show import records (counts, source, who, when, undone).
+- **Audit.** `lead_import_previewed` (counts), `lead_import_committed` (counts, source note, obtained date; never a name or
+  address), each created lead's `lead_captured`, `lead_import_undone`, and `import_undone` on each removed lead.
+- Not built: contacts and accounts import, files over 500 rows, other delimiters or encodings, a column for the lead's source or
+  score, updating existing leads, and a background import.

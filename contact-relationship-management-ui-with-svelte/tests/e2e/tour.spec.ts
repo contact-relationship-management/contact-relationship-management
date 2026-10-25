@@ -22,6 +22,7 @@ const SCREENS = [
   "/articles",
   "/followups",
   "/notifications",
+  "/leads/import",
   "/executive",
   "/dpo",
   "/break-glass",
@@ -208,6 +209,29 @@ test.describe("data tables", () => {
     await expect(page.getByTestId("mark-all")).toBeDisabled();
     await page.getByTestId("unread-only").check();
     await expect(page.getByTestId("notifications-empty")).toBeVisible();
+  });
+
+  test("a CSV is mapped, reported row by row, imported and undone", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/leads/import");
+    await page.getByTestId("file").setInputFiles({
+      name: "leads.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from("Name,Email\nNew Person,n@x.test\n,nobody@x.test\n"),
+    });
+    await expect(page.getByTestId("map-display_name")).toHaveValue("Name");
+    await page.getByTestId("check").click();
+    await expect(page.getByTestId("summary")).toContainText("1");
+    await expect(page.getByTestId("import-report")).toContainText(
+      "has no name",
+    );
+    await page.getByTestId("source").fill("Trade show");
+    await page.getByTestId("commit").click();
+    await expect(page.getByTestId("done")).toContainText("1");
+    await page.getByTestId("undo").click();
+    await expect(page.getByTestId("undone")).toBeVisible();
   });
 
   test("the Board links are readable (label colour differs from the background)", async ({

@@ -38,8 +38,9 @@ fn reference(name: &str) -> Value {
 #[allow(clippy::too_many_lines)] // one list of the documented types
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
-        audits, board, break_glass, dashboards, engagement, external_links, insights, marketing,
-        merge, notifications, privacy, relationships, sales, search, support, unmerge, webhooks,
+        audits, board, break_glass, dashboards, engagement, external_links, insights, lead_imports,
+        marketing, merge, notifications, privacy, relationships, sales, search, support, unmerge,
+        webhooks,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -154,6 +155,11 @@ fn generated() -> serde_json::Map<String, Value> {
         support::SlaSweep,
         notifications::Notification,
         search::SearchHit,
+        lead_imports::Preview,
+        lead_imports::ImportRecord,
+        lead_imports::Undone,
+        lead_imports::PreviewPayload,
+        lead_imports::CommitPayload,
         notifications::UnreadCount,
         notifications::MarkedRead,
         crate::notifications::Outcome,
@@ -256,6 +262,8 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
             | "/api/tickets/{pid}/position",
         ) => "PositionPayload",
         ("put", "/api/activities/{pid}") => "ActivityEditPayload",
+        ("post", "/api/lead-imports/preview") => "LeadImportPreviewPayload",
+        ("post", "/api/lead-imports") => "LeadImportCommitPayload",
         ("post", "/api/articles") | ("put", "/api/articles/{pid}") => "ArticlePayload",
         ("post", "/api/break-glass") => "GrantPayload",
         ("post", "/api/webhook-subscriptions") => "WebhookSubscriptionPayload",
@@ -316,6 +324,9 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("post", "/api/nurture/advance") => "NurtureSweep",
         ("post", "/api/sla/sweep") => "SlaSweep",
         ("post", "/api/notifications/sweep") => "NotificationSweep",
+        ("post", "/api/lead-imports/preview") => "LeadImportPreview",
+        ("post", "/api/lead-imports") | ("get", "/api/lead-imports/{pid}") => "LeadImport",
+        ("post", "/api/lead-imports/{pid}/undo") => "LeadImportUndone",
         ("get", "/api/notifications/unread-count") => "UnreadCount",
         ("post", "/api/notifications/read-all") => "MarkedRead",
         ("put", "/api/notifications/{pid}/read") => "Notification",
@@ -372,6 +383,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/events/recent" => "Event",
         "/api/notifications" => "Notification",
         "/api/search" => "SearchHit",
+        "/api/lead-imports" => "LeadImport",
         "/api/webhook-subscriptions" => "WebhookSubscription",
         "/api/webhook-subscriptions/{pid}/deliveries" => "WebhookDelivery",
         _ => return None,

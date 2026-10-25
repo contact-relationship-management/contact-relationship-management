@@ -228,7 +228,7 @@ mod tests {
     ];
 
     /// `POST`/`PUT` operations that deliberately take no body.
-    const BODYLESS: [&str; 14] = [
+    const BODYLESS: [&str; 15] = [
         "post /unsubscribe/{}",
         "post /api/contacts/{}/erase",
         "post /api/campaigns/{}/run",
@@ -240,6 +240,7 @@ mod tests {
         "post /api/webhook-subscriptions/relay",
         "post /api/notifications/read-all",
         "post /api/notifications/sweep",
+        "post /api/lead-imports/{}/undo",
         "put /api/notifications/{}/read",
         "post /api/contacts/{}/preferences-link",
         "post /api/webhook-subscriptions/{}/rotate-secret",

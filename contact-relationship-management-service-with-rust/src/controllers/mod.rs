@@ -16,6 +16,7 @@ pub mod engagement;
 pub mod external_links;
 pub mod forms;
 pub mod insights;
+pub mod lead_imports;
 pub mod marketing;
 pub mod merge;
 pub mod metrics;

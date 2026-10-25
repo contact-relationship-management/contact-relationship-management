@@ -1383,7 +1383,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** the search page calls the service once and groups the hits instead of loading and filtering seven lists in the browser; the tour answers from its sample data; short queries make no call.
       - **Tests:** 3 rules unit tests; 2 request tests (accents both ways, prefix, typo, every kind, descriptor, lead domain, removed record, bad queries, audit with no text; paging with stable order); 1 under sign-in (a denied contact omitted, no masked field, no token is 401, the masked value is not searchable). Two bugs the tests found are fixed: per-branch limits ignored the offset, and tied scores had no tiebreak inside a branch. Service: 254 unit, 99 request, 4 enforcement; UI: 135 unit and the Playwright suite (107); clippy clean; types regenerated.
       - **Limits:** activity summaries and `preferred_channel` are encrypted and cannot be indexed; the CRM holds no email address, so none is searched (a lead's address domain is); the policy filter runs after the query, so pages can be short; no highlighting, no search inside activities, no ranking by recency.
-- [ ] CRM-T101 **CSV import of leads.**
+- [x] CRM-T101 **CSV import of leads.**
   - **Flow:** upload, map columns, then a dry-run report per row (valid, invalid with reason, likely duplicate from the matcher, as advice only).
   - **Commit:** in batches. An import record keeps the ids it created, so an import can be undone.
   - **Consent:** imported only with its source and date, and never inferred.
@@ -1392,6 +1392,14 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Source:** https://docs.twenty.com/user-guide/data-migration/overview
 
   (C7, M/L)
+      **Done (2026-10-25, not released):** requirement CRM-R34 first, then:
+      - **Flow:** `POST /api/lead-imports/preview` (no mapping: columns, row count, suggested mapping; with a mapping: a report per row, valid or invalid with the reason, and likely duplicates), `POST /api/lead-imports` (commit), `POST /api/lead-imports/{pid}/undo`, `GET /api/lead-imports[/{pid}]`. The CSV is JSON text, at most 500 rows and 1 MB, read with the `csv` crate (new dependency; `cargo deny check licenses` passes).
+      - **Duplicate advice:** the CRM-R23 matcher on name and company against contacts the caller may read, the newest 2000 leads and earlier rows of the file, narrowed to people sharing a name word of 3+ letters (at most 200 per row); advice only, with `skip_likely_duplicates` to leave such rows out.
+      - **Commit and undo:** the import record first, then batches of 100 that append their lead pids in the same transaction; undo removes the leads still `new` with no activity and keeps and counts the rest; twice is `422`, serialised by a row lock.
+      - **Consent and email:** leads are `source=import`, no contact, no consent, nothing sent; `source_note` and `obtained_on` are required and recorded on the import and in its audit row. Only the address's domain is kept, as for the web form.
+      - **UI:** `/leads/import` (choose file, map, report table, source and date, import, undo), linked from the leads page; 21 keys in all 8 locales; the tour imports nothing but answers the whole flow.
+      - **Tests:** 4 rules unit tests; 3 request tests (mapping, bad rows, advice and nothing saved; commit, no email/contact/consent, audit rows and chain, undo with a worked lead kept; skip duplicates and 250 rows in three batches with undo); 1 under sign-in (a reader cannot import; advice never names a contact the caller cannot read); 1 Playwright test. Service: 258 unit, 102 request, 5 enforcement; UI: 135 unit; clippy clean; types regenerated.
+      - **Limits:** leads only (contacts come from the person service); 500 rows; comma-separated UTF-8 only; no update of existing leads; no lead source or score column; advice misses a pair with no shared name word; not a background job.
 - [ ] CRM-T102 **Saved views.**
   - **Model:** per-user and shared views on the contacts, accounts, deals, leads and tickets lists, stored on the server. Each view is a filter in the segment language (CRM-R7) plus sort order and columns.
   - **Sharing:** sharing a view never shares access; rows are still decided per caller.

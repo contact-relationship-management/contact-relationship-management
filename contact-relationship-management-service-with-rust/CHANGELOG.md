@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — CSV import of leads (CRM-T101, CRM-R34)
+
+`POST /api/lead-imports/preview` reads a CSV (sent as text, up to 500 rows) and reports each row as valid or invalid with the reason, with
+likely duplicates from the matcher as advice only. `POST /api/lead-imports` saves the valid rows as `source=import` leads in batches, recording
+where the list came from and when it was obtained; no consent is inferred and only the address's domain is kept.
+`POST /api/lead-imports/{pid}/undo` removes the leads still new and untouched. New dependency: `csv`. Migration `000025`.
+
 ### Added — server-side search (CRM-T100, CRM-R33)
 
 `GET /api/search?q=` finds contacts, accounts, leads, deals, tickets, campaigns and articles by name or title, ignoring accents and

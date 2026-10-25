@@ -14,6 +14,7 @@ mod field_encryption;
 mod idempotency;
 mod insight_rollups;
 mod insights;
+mod lead_imports;
 mod marketing;
 mod mcp;
 mod merge;

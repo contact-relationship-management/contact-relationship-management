@@ -1845,6 +1845,96 @@ function breakGlass(
   return null;
 }
 
+/** The tour's lead import (CRM-R34): a plain comma split, no quoting, nothing is saved. */
+function leadImports(
+  method: string,
+  id: string | undefined,
+  tail: string | undefined,
+  body: unknown,
+): DemoReply {
+  if (method === "POST" && id === "preview") {
+    const { csv, mapping } = (body ?? {}) as {
+      csv?: string;
+      mapping?: { display_name?: string; email?: string };
+    };
+    const lines = (csv ?? "").split(/\r?\n/).filter((l) => l.trim() !== "");
+    if (lines.length === 0) return problem(422, "the file is empty");
+    const columns = lines[0]!.split(",").map((c) => c.trim());
+    const guess = (...names: string[]) =>
+      columns.find((c) => names.includes(c.toLowerCase())) ?? null;
+    const suggested = {
+      display_name: guess("name", "full name", "display name"),
+      email: guess("email", "e-mail"),
+      company: guess("company", "organisation", "organization"),
+    };
+    if (!mapping) {
+      return ok({
+        columns,
+        rows: lines.length - 1,
+        suggested_mapping: suggested,
+        report: null,
+        valid: 0,
+        invalid: 0,
+        likely_duplicates: 0,
+      });
+    }
+    const at = columns.indexOf(mapping.display_name ?? "");
+    if (at < 0) return problem(422, "display_name must be mapped to a column");
+    const known = state.contacts.map((c) => c.display_name.toLowerCase());
+    const report = lines.slice(1).map((line, i) => {
+      const name = (line.split(",")[at] ?? "").trim();
+      const twin = known.find((k) => name !== "" && k === name.toLowerCase());
+      return {
+        row: i + 1,
+        status: name === "" ? "invalid" : "valid",
+        reason: name === "" ? "has no name" : null,
+        name: name === "" ? null : name,
+        likely_duplicates: twin
+          ? [
+              {
+                kind: "contact",
+                pid: null,
+                row: null,
+                name: twin,
+                probability: 0.97,
+                verdict: "match",
+              },
+            ]
+          : [],
+      };
+    });
+    return ok({
+      columns,
+      rows: report.length,
+      suggested_mapping: suggested,
+      report,
+      valid: report.filter((r) => r.status === "valid").length,
+      invalid: report.filter((r) => r.status === "invalid").length,
+      likely_duplicates: report.filter((r) => r.likely_duplicates.length > 0)
+        .length,
+    });
+  }
+  if (method === "POST" && id === undefined) {
+    const preview = leadImports("POST", "preview", undefined, body);
+    if (preview.status !== 200) return preview;
+    const p = preview.body as { rows: number; valid: number; invalid: number };
+    const f = body as { source_note: string; obtained_on: string };
+    return ok({
+      pid: "import-1",
+      source_note: f.source_note,
+      obtained_on: f.obtained_on,
+      status: "completed",
+      row_count: p.rows,
+      invalid_count: p.invalid,
+      skipped_count: 0,
+      created_count: p.valid,
+      undone_count: null,
+    });
+  }
+  if (method === "POST" && tail === "undo") return ok({ removed: 2, kept: 0 });
+  return problem(404, "not found");
+}
+
 /**
  * Answer one API call. `path` is the service path without `/api/proxy/`
  * (for example `deals/deal-1/stage`).
@@ -1879,6 +1969,7 @@ export function demoHandle(
     if (tail === "external-links" && (get || post))
       return recordLinks("contact", id!, method, body);
   }
+  if (head === "lead-imports") return leadImports(method, id, tail, body);
   if (head === "search" && get) {
     const q = query.get("q") ?? "";
     if (q.trim().length < 2) return ok([]);

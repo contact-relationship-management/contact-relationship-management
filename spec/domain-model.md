@@ -21,6 +21,8 @@ name and no address, and erasure deletes it.
 A task activity may carry `assignee_ref` (`worker:` URN) and `remind_at` (CRM-R32). A notification is a row of `notifications`
 (recipient, kind `task_reminder | sla_breach`, the record it is about, the activity or ticket that caused it, a `source_key` that
 makes each fire once, `suppressed`, `read_at`); it holds no record text and erasure of the contact deletes it.
+A lead import (CRM-R34) is a row of `lead_imports`: who, where the list came from (`source_note`), the date it was obtained, counts,
+status (`running | completed | undone`) and the pid of every lead it made. Imported leads have `source=import`, no contact and no consent.
 
 **Account** — an organization relationship.
 `organization_ref` (`organization:` URN, required), `owner_ref`,

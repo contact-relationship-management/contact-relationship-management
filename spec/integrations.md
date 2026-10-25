@@ -132,3 +132,19 @@ page boundary is stable. Each branch fetches `limit + offset + 1` rows, so deep 
 
 Access is applied after the query, per row, for the two kinds with record-level attributes (contacts, deals); the other kinds are
 decided on the entity by the blanket guard. That is why a page can be shorter than `limit` while more follow.
+
+## Lead import (CRM-R34)
+
+The CSV travels as text in a JSON body rather than as a multipart upload: the service has no multipart dependency, the limit is small
+(500 rows, 1 MB), and the same body serves the preview and the commit, so a client holds the text and sends it twice. The commit reads
+and judges the file again rather than trusting a report the client sends back.
+
+Duplicate advice reuses the CRM-R23 matcher with the name and company only. The matcher compares one record with many by scoring all
+of them, which is quadratic over a file, so each row is compared only with the people who share a word of its name (three letters or
+more), at most 200 of them. A pair with no shared word is never compared; that is the price of speed, and the advice is advice. The
+people compared are contacts the caller may read (the same filter as the duplicates endpoint), the 2000 newest leads, and the
+earlier rows of the same file.
+
+A commit writes the import record in its own transaction first, then saves leads in transactions of 100, appending their pids to the
+record in the same transaction as the leads. A crash between batches leaves a `running` record naming exactly the leads that exist, so
+undo is still correct. Undo locks the record row, so two undo calls cannot both remove leads.

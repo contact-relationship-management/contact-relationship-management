@@ -47,6 +47,7 @@ sea-orm = { version = "2.0", features = [
 chrono = { version = "0.4" }
 url = "2.5"
 thiserror = "2"
+csv = "1"
 uuid = { version = "1.26", features = ["v4", "serde"] }
 # Request schemas for the OpenAPI document come from the payload structs themselves (CRM-T83).
 schemars = { version = "1", features = ["uuid1", "chrono04"] }

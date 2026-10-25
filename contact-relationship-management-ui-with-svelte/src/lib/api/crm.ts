@@ -454,6 +454,82 @@ export function editFollowup(
   return api(`/activities/${pid}`, { method: "PUT", body: fields });
 }
 
+/** Which CSV column holds what (CRM-R34). */
+export interface LeadImportMapping {
+  display_name?: string | null;
+  email?: string | null;
+  company?: string | null;
+}
+
+/** One row of an import report: valid or invalid with a reason, and advice about duplicates. */
+export interface LeadImportRow {
+  row: number;
+  status: "valid" | "invalid";
+  reason: string | null;
+  name: string | null;
+  likely_duplicates: {
+    kind: string;
+    pid: string | null;
+    row: number | null;
+    name: string;
+    probability: number;
+    verdict: string;
+  }[];
+}
+
+/** The answer to a preview: the columns and a suggestion, and the report once mapped. */
+export interface LeadImportPreview {
+  columns: string[];
+  rows: number;
+  suggested_mapping: LeadImportMapping;
+  report: LeadImportRow[] | null;
+  valid: number;
+  invalid: number;
+  likely_duplicates: number;
+}
+
+/** One import record. */
+export interface LeadImport {
+  pid: string;
+  source_note: string;
+  obtained_on: string;
+  status: string;
+  row_count: number;
+  invalid_count: number;
+  skipped_count: number;
+  created_count: number;
+  undone_count: number | null;
+}
+
+/** Read a CSV and report each row; saves nothing. */
+export function previewLeadImport(
+  csv: string,
+  mapping?: LeadImportMapping,
+): Promise<LeadImportPreview> {
+  return api("/lead-imports/preview", {
+    method: "POST",
+    body: mapping ? { csv, mapping } : { csv },
+  });
+}
+
+/** Save the valid rows as leads. */
+export function commitLeadImport(fields: {
+  csv: string;
+  mapping: LeadImportMapping;
+  source_note: string;
+  obtained_on: string;
+  skip_likely_duplicates: boolean;
+}): Promise<LeadImport> {
+  return api("/lead-imports", { method: "POST", body: fields });
+}
+
+/** Take an import back: new, untouched leads are removed, the rest kept. */
+export function undoLeadImport(
+  pid: string,
+): Promise<{ removed: number; kept: number }> {
+  return api(`/lead-imports/${pid}/undo`, { method: "POST" });
+}
+
 /** One search hit (CRM-R33): a record named, with one plain descriptor. */
 export interface SearchHit {
   kind: string;

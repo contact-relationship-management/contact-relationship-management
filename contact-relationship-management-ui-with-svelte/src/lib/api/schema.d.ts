@@ -6477,6 +6477,394 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lead-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List lead imports, newest first */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LeadImport"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Import the valid rows of a CSV as source=import leads in batches, recording where the list came from and when it was obtained; no consent is inferred; up to 500 rows */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LeadImportCommitPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LeadImport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lead-imports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a CSV (text in the body) and report each row as valid or invalid with a reason, with likely duplicates from the matcher as advice only (CRM-R34); with no mapping, answers the columns and a suggested mapping; saves nothing */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LeadImportPreviewPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LeadImportPreview"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lead-imports/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One lead import: counts, source, who, when, undone */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LeadImport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lead-imports/{pid}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove the leads this import made that are still new and untouched; the rest are kept and counted */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LeadImportUndone"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leads": {
         parameters: {
             query?: never;
@@ -11198,6 +11586,144 @@ export interface components {
         LeadEditPayload: {
             /** @default null */
             display_name: string | null;
+        };
+        /** @description An import record. */
+        LeadImport: {
+            /** Format: date-time */
+            created_at: string;
+            created_by: string | null;
+            /**
+             * Format: uint
+             * @description Leads this import made.
+             */
+            created_count: number;
+            /** Format: int32 */
+            invalid_count: number;
+            /** Format: date */
+            obtained_on: string;
+            /** Format: uuid */
+            pid: string;
+            /** Format: int32 */
+            row_count: number;
+            /** Format: int32 */
+            skipped_count: number;
+            source_note: string;
+            /** @description `running`, `completed` or `undone`. */
+            status: string;
+            /** Format: date-time */
+            undone_at: string | null;
+            /**
+             * Format: int32
+             * @description Leads removed by the undo.
+             */
+            undone_count: number | null;
+        };
+        /** @description `POST /api/lead-imports` body. */
+        LeadImportCommitPayload: {
+            csv: string;
+            mapping: components["schemas"]["LeadImportMapping"];
+            /**
+             * Format: date
+             * @description The day the list was obtained.
+             */
+            obtained_on: string;
+            /**
+             * @description Leave out rows that look like someone already known.
+             * @default false
+             */
+            skip_likely_duplicates: boolean;
+            /** @description Where the list came from (a trade show, a partner). */
+            source_note: string;
+        };
+        /** @description Something a row looks like. */
+        LeadImportDuplicate: {
+            /** @description `contact`, `lead` or `row` (an earlier row of this file). */
+            kind: string;
+            name: string;
+            /**
+             * Format: uuid
+             * @description The record's pid, for a contact or a lead.
+             */
+            pid: string | null;
+            /** Format: double */
+            probability: number;
+            /**
+             * Format: uint
+             * @description The file row, for `row` (1-based, after the header).
+             */
+            row: number | null;
+            verdict: string;
+        };
+        /** @description Which column holds what. Each value is a header from the file. */
+        LeadImportMapping: {
+            /**
+             * @description The column with the company, used only to judge duplicates.
+             * @default null
+             */
+            company: string | null;
+            /**
+             * @description The column with the lead's name (required).
+             * @default null
+             */
+            display_name: string | null;
+            /**
+             * @description The column with the address; only its domain is kept.
+             * @default null
+             */
+            email: string | null;
+        };
+        /** @description `POST /api/lead-imports/preview` response. */
+        LeadImportPreview: {
+            columns: string[];
+            /** Format: uint */
+            invalid: number;
+            /** Format: uint */
+            likely_duplicates: number;
+            /** @description Present when a mapping was given. */
+            report: components["schemas"]["LeadImportRow"][] | null;
+            /** Format: uint */
+            rows: number;
+            suggested_mapping: components["schemas"]["LeadImportMapping"];
+            /** Format: uint */
+            valid: number;
+        };
+        /** @description `POST /api/lead-imports/preview` body. */
+        LeadImportPreviewPayload: {
+            /** @description The file's text: a header row, then one lead per row. */
+            csv: string;
+            /**
+             * @description Which column holds what; leave out to get the columns and a suggestion.
+             * @default null
+             */
+            mapping: components["schemas"]["LeadImportMapping"] | (null);
+        };
+        /** @description One row of the report. */
+        LeadImportRow: {
+            /** @description Advice only: who this row looks like. */
+            likely_duplicates: components["schemas"]["LeadImportDuplicate"][];
+            name: string | null;
+            /** @description Why a row is invalid. */
+            reason: string | null;
+            /**
+             * Format: uint
+             * @description 1-based, after the header.
+             */
+            row: number;
+            /** @description `valid` or `invalid`. */
+            status: string;
+        };
+        /** @description `POST /api/lead-imports/{pid}/undo` response. */
+        LeadImportUndone: {
+            /**
+             * Format: uint
+             * @description Leads kept because they have been worked since.
+             */
+            kept: number;
+            /**
+             * Format: uint
+             * @description Leads removed.
+             */
+            removed: number;
         };
         /** @description `POST /api/leads` body. */
         LeadPayload: {

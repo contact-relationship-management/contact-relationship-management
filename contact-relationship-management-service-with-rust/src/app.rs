@@ -47,6 +47,7 @@ pub fn app_routes() -> AppRoutes {
         .add_route(controllers::webhooks::routes())
         .add_route(controllers::notifications::routes())
         .add_route(controllers::search::routes())
+        .add_route(controllers::lead_imports::routes())
         .add_route(controllers::docs::routes())
         .add_route(controllers::metrics::routes())
 }
@@ -254,7 +255,7 @@ impl Hooks for App {
             use sea_orm::ConnectionTrait;
             ctx.db
                 .execute_unprepared(
-                    "TRUNCATE notifications, form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
+                    "TRUNCATE lead_imports, notifications, form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
                      email_deliveries, email_events, email_suppressions",
                 )
                 .await?;

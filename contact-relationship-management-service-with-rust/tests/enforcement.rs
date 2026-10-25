@@ -952,3 +952,77 @@ async fn search_leaves_out_what_the_caller_may_not_read() {
     })
     .await;
 }
+
+/// CRM-R34: importing needs write access, and duplicate advice never names a contact the caller
+/// may not read.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn lead_import_needs_write_and_advice_hides_unreadable_contacts() {
+    use sea_orm::ConnectionTrait;
+    let (keys, kid) = keys_and_kid();
+    settings::update(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let reader = sign_as(&kid, "import-reader", &[]);
+    let writer = sign_as(&kid, "import-writer", &[("access", &["write"])]);
+    let service = sign_as(&kid, "import-svc", &[("svc", &["true"])]);
+
+    request::<App, _, _>(|request, ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let created: Value = request
+            .post("/api/contacts")
+            .add_header("authorization", bearer(&writer))
+            .json(
+                &json!({ "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Quentin Vanderbilt" }),
+            )
+            .await
+            .json();
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
+                created["pid"].as_str().unwrap()
+            ))
+            .await
+            .unwrap();
+        let body =
+            json!({ "csv": "Name\nQuentin Vanderbilt\n", "mapping": { "display_name": "Name" } });
+        assert_eq!(
+            request
+                .post("/api/lead-imports/preview")
+                .add_header("authorization", bearer(&reader))
+                .json(&body)
+                .await
+                .status_code(),
+            403,
+            "a reader cannot import"
+        );
+        let as_writer: Value = request
+            .post("/api/lead-imports/preview")
+            .add_header("authorization", bearer(&writer))
+            .json(&body)
+            .await
+            .json();
+        assert!(
+            as_writer["report"][0]["likely_duplicates"]
+                .as_array()
+                .unwrap()
+                .is_empty(),
+            "the writer may not read that contact: {as_writer}"
+        );
+        let as_service: Value = request
+            .post("/api/lead-imports/preview")
+            .add_header("authorization", bearer(&service))
+            .json(&body)
+            .await
+            .json();
+        assert_eq!(
+            as_service["report"][0]["likely_duplicates"][0]["kind"], "contact",
+            "{as_service}"
+        );
+    })
+    .await;
+}
