@@ -23,7 +23,7 @@
 services:
   stalwart:
     # Pinned by digest (the multi-architecture index). Dependabot proposes bumps.
-    image: docker.io/stalwartlabs/stalwart:v0.16@sha256:254ce5d7f3dbe4bb628ce2c7912e664ecb1c3466db79907f4a44d9a00117776b
+    image: docker.io/stalwartlabs/stalwart:v0.16@sha256:c429b311c93db5606598abc1c68225a85a6953183848ae01bee9c6a98885836c
     container_name: mxi-contact-relationship-management-mail
     environment:
       # Sets the administrator for the web UI, the API and stalwart-cli.
