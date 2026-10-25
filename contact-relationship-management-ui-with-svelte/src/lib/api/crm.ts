@@ -1217,3 +1217,104 @@ export function reviewBreakGlass(
     idempotencyKey,
   });
 }
+
+/** What a workflow looks at: the segment filter language (CRM-R40). */
+export interface WorkflowConditions {
+  statuses: string[];
+  channels: string[];
+  account_tiers: string[];
+}
+
+/** One thing a workflow does. The set is closed. */
+export type WorkflowAction =
+  | {
+      type: "create_task";
+      summary: string;
+      assignee_ref?: string | null;
+      due_in_days?: number | null;
+    }
+  | { type: "notify"; recipient_ref: string }
+  | { type: "set_field"; field: string; value: string | null }
+  | { type: "enrol_nurture"; sequence_pid: string }
+  | { type: "send_webhook"; event: string };
+
+/** A workflow rule. */
+export interface Workflow {
+  pid: string;
+  name: string;
+  enabled: boolean;
+  trigger: string;
+  every_minutes: number | null;
+  conditions: WorkflowConditions;
+  actions: WorkflowAction[];
+  updated_at: string;
+}
+
+/** What is sent to save or replace a workflow. */
+export type WorkflowInput = Omit<Workflow, "pid" | "updated_at">;
+
+/** One action of a run, or of a dry run. */
+export interface WorkflowStep {
+  action: string;
+  result: string;
+  detail: string;
+}
+
+/** One run: why it fired and what it did. */
+export interface WorkflowRun {
+  pid: string;
+  workflow_pid: string;
+  workflow_name: string;
+  trigger: string;
+  subject_kind: string;
+  subject_pid: string;
+  depth: number;
+  outcome: string;
+  reason: string;
+  steps: WorkflowStep[];
+  created_at: string;
+}
+
+/** What a workflow would do to the current data. */
+export interface WorkflowDryRun {
+  examined: number;
+  would_fire: number;
+  truncated: boolean;
+  samples: { contact_pid: string; steps: WorkflowStep[] }[];
+}
+
+/** The workflow rules. */
+export function listWorkflows(init?: FetchLike): Promise<Workflow[]> {
+  return api("/workflows", init);
+}
+
+/** Make a workflow. */
+export function saveWorkflow(input: WorkflowInput): Promise<{ pid: string }> {
+  return api("/workflows", { method: "POST", body: input });
+}
+
+/** Replace a workflow. */
+export function replaceWorkflow(
+  pid: string,
+  input: WorkflowInput,
+): Promise<{ pid: string }> {
+  return api(`/workflows/${pid}`, { method: "PUT", body: input });
+}
+
+/** Delete a workflow; its run log stays. */
+export function deleteWorkflow(pid: string): Promise<{ pid: string }> {
+  return api(`/workflows/${pid}`, { method: "DELETE" });
+}
+
+/** Try a workflow against the current data; changes and sends nothing. */
+export function dryRunWorkflow(pid: string): Promise<WorkflowDryRun> {
+  return api(`/workflows/${pid}/dry-run`, { method: "POST" });
+}
+
+/** The newest runs of a workflow. */
+export function workflowRuns(
+  pid: string,
+  init?: FetchLike,
+): Promise<WorkflowRun[]> {
+  return api(`/workflows/${pid}/runs`, init);
+}

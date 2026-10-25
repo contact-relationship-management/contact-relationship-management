@@ -952,4 +952,34 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("account-saved")).toBeVisible();
     await expect(page.locator(".chip").first()).toContainText("former");
   });
+
+  test("a workflow is read, tried with a dry run, and made", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/workflows");
+    await page.getByRole("button", { name: "Greet new emailers" }).click();
+    await expect(page.getByTestId("workflow-runs")).toContainText(
+      "channel is email",
+    );
+    await page.getByTestId("workflow-dry").click();
+    await expect(page.getByTestId("workflow-would-fire")).not.toHaveText("0");
+    await expect(page.getByTestId("workflow-dry-result")).toContainText(
+      "would_skip",
+    );
+
+    await page.getByTestId("workflow-new").click();
+    await page.getByTestId("workflow-name").fill("Notify on update");
+    await page.getByTestId("workflow-trigger").selectOption("contact_updated");
+    await page.getByTestId("workflow-action-type").selectOption("send_webhook");
+    await page.getByTestId("workflow-add-action").click();
+    await page
+      .getByTestId("workflow-actions")
+      .getByRole("textbox")
+      .fill("changed");
+    await page.getByTestId("workflow-save").click();
+    await expect(page.getByTestId("workflow-list")).toContainText(
+      "Notify on update",
+    );
+  });
 });

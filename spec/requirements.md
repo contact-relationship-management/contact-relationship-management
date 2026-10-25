@@ -808,3 +808,20 @@ recipient would get before anything is sent, and be certain every message carrie
   an unknown account `404`.
 - The change and its audit row commit together; the row names the fields that changed, never their values. An `account` `updated` event is emitted.
 - The account page shows an edit form for the name, tier and industry.
+
+## CRM-R40 — Explainable workflow rules
+
+*As someone who wants the CRM to do routine follow-up, I can write a rule from a trigger, conditions and a few actions, try it on today's data first, and read afterwards why it ran and what it did.*
+
+- A workflow has a name (unique, any case), an on/off switch, one **trigger**, **conditions** and one to five **actions**, done in order.
+  - Triggers: `contact_created`, `contact_updated`, `deal_stage_changed` (a move to a non-closing stage; the actions are about the deal's primary contact) and `schedule` (with `every_minutes`, 5 to 43 200: the least time between runs on the same contact).
+  - Conditions use the segment filter language (`statuses`, `channels`, `account_tiers`; empty means any). An unknown clause is refused, so a typo cannot match everyone. There is no consent clause; consent is checked inside the actions that need it.
+  - Actions are a closed set: `create_task`, `notify`, `set_field` (`job_title`, `owner_ref`, `preferred_channel`, `status`), `enrol_nurture` and `send_webhook` (emits `workflow.<event>` to the subscriptions that ask for it, CRM-R28). There is no code and no URL. Anything else is refused `422`.
+- A run happens in the transaction of the write that triggered it. Its actions sit in a savepoint: if one fails none stays, the run is logged `failed`, and the triggering write is unharmed. A run log row that cannot be written refuses the write (CRM-R19).
+- **Consent:** `enrol_nurture` reads the contact's consent for the sequence's purpose at that moment, not at the trigger, and skips with the reason when it is not `granted`, or when the contact is already enrolled.
+- **Loop guard:** a `set_field` is itself a `contact_updated` event, one level deeper; a chain cut at depth 3 is logged `blocked`. A workflow is held back after 60 completed runs in a minute. A held-back run is noted once a minute, not once per attempt.
+- **Dry run:** `POST /api/workflows/{pid}/dry-run` looks at up to 500 contacts and says how many meet the conditions and, for the first few, what each action would do (including the consent skip). It changes, sends and logs nothing as a run; the dry run itself is audited.
+- **Run log:** each run records the trigger, the record, the depth, an outcome (`done`, `failed`, `blocked`), the reason it fired (trigger and conditions in words) and each step with its result and reason, with no contact data. It is audited as `workflow_run` and survives the workflow's deletion.
+- **Schedule:** the minute tick (and `POST /api/workflows/run-due`) works through contacts in id order, at most 50 runs and 500 contacts per workflow per tick, remembering where it stopped; one replica at a time per workflow.
+- Saving or trying a workflow needs write access; reading the list does not. Saving is audited.
+- Not built: triggers on records other than contacts and deals' stage moves (accounts, tickets, leads, web-form and lead-conversion contacts), conditions on anything but the segment clauses, branching or waiting steps, editing a workflow's actions in place beyond replacing it, and a run log across all workflows.

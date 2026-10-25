@@ -1221,3 +1221,54 @@ async fn a_reader_may_preview_a_template_but_not_save_one() {
 fn draft_without_name(draft: &Value) -> Value {
     json!({ "subject": draft["subject"], "body": draft["body"] })
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_reader_may_list_workflows_but_not_save_or_try_one() {
+    let (keys, kid) = keys_and_kid();
+    settings::update(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let writer = sign_as(&kid, "workflows-writer", &[("access", &["write"])]);
+    let reader = sign_as(&kid, "workflows-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let draft = json!({ "name": "Greet", "trigger": "contact_created",
+                            "actions": [{ "type": "create_task", "summary": "Say hello" }] });
+        assert_eq!(request.get("/api/workflows").await.status_code(), 401);
+        assert_eq!(
+            request
+                .post("/api/workflows")
+                .add_header("authorization", bearer(&reader))
+                .json(&draft)
+                .await
+                .status_code(),
+            403
+        );
+        let made: Value = request
+            .post("/api/workflows")
+            .add_header("authorization", bearer(&writer))
+            .json(&draft)
+            .await
+            .json();
+        let pid = made["pid"].as_str().unwrap();
+        request
+            .get("/api/workflows")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .assert_status_ok();
+        assert_eq!(
+            request
+                .post(&format!("/api/workflows/{pid}/dry-run"))
+                .add_header("authorization", bearer(&reader))
+                .await
+                .status_code(),
+            403
+        );
+    })
+    .await;
+}

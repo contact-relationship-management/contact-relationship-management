@@ -22,3 +22,4 @@ pub mod templates;
 pub mod tokens;
 pub mod views;
 pub mod webhooks;
+pub mod workflows;

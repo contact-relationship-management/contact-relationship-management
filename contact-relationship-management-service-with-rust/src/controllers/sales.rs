@@ -768,6 +768,10 @@ async fn deal_stage(
         None,
     )
     .await?;
+    if kind == "deal_stage_changed" {
+        let event = crate::workflows::Event::deal_stage(row.pid, row.primary_contact_pid);
+        crate::workflows::fire(&txn, &event, 0, caller.actor()).await?;
+    }
     txn.commit().await?;
     match kind {
         "deal_won" => Metrics::global().deal_won_total.inc(),

@@ -40,7 +40,7 @@ fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         audits, board, break_glass, dashboards, engagement, external_links, insights, lead_imports,
         marketing, merge, notifications, privacy, relationships, sales, search, support, templates,
-        unmerge, views, webhooks,
+        unmerge, views, webhooks, workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -160,8 +160,13 @@ fn generated() -> serde_json::Map<String, Value> {
         templates::TemplateView,
         templates::TemplatePayload,
         templates::PreviewPayload,
+        workflows::WorkflowPayload,
         templates::Preview,
         templates::TokenInfo,
+        workflows::WorkflowView,
+        workflows::RunView,
+        workflows::Sweep,
+        crate::workflows::DryRun,
         views::View,
         views::ViewPayload,
         views::SortSpec,
@@ -279,6 +284,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
             "EmailTemplatePayload"
         }
         ("post", "/api/email-templates/preview") => "EmailTemplatePreviewPayload",
+        ("post", "/api/workflows") | ("put", "/api/workflows/{pid}") => "WorkflowPayload",
         ("post", "/api/lead-imports/preview") => "LeadImportPreviewPayload",
         ("post", "/api/lead-imports") => "LeadImportCommitPayload",
         ("post", "/api/articles") | ("put", "/api/articles/{pid}") => "ArticlePayload",
@@ -309,6 +315,9 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/contacts/{pid}") => "ContactDetail",
         ("get", "/api/email-templates/{pid}") => "EmailTemplate",
         ("post", "/api/email-templates/preview") => "EmailTemplatePreview",
+        ("get", "/api/workflows/{pid}") => "Workflow",
+        ("post", "/api/workflows/{pid}/dry-run") => "WorkflowDryRun",
+        ("post", "/api/workflows/run-due") => "WorkflowSweep",
         ("get", "/api/contacts/{pid}/duplicates") => "ContactDuplicates",
         ("post", "/api/contacts/{pid}/merge") => "ContactMerge",
         ("post", "/api/contacts/{pid}/unmerge") => "ContactUnmerge",
@@ -405,6 +414,8 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/views" => "View",
         "/api/email-templates" => "EmailTemplate",
         "/api/email-templates/tokens" => "MergeToken",
+        "/api/workflows" => "Workflow",
+        "/api/workflows/{pid}/runs" => "WorkflowRun",
         "/api/lead-imports" => "LeadImport",
         "/api/webhook-subscriptions" => "WebhookSubscription",
         "/api/webhook-subscriptions/{pid}/deliveries" => "WebhookDelivery",

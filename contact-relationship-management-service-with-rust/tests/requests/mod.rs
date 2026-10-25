@@ -32,6 +32,7 @@ mod unmerge;
 mod views;
 mod web_forms;
 mod webhooks;
+mod workflows;
 
 /// A fresh synthetic `person:` URN.
 pub fn a_person() -> String {

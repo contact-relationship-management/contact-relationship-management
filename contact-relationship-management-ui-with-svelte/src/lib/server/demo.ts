@@ -26,6 +26,8 @@ import type {
   SavedView,
   Segment,
   EmailTemplate,
+  Workflow,
+  WorkflowRun,
   MergeToken,
   TemplatePreview,
   Stage,
@@ -118,6 +120,9 @@ interface State {
   segments: Segment[];
   /** The demo email templates (CRM-R36). */
   templates: EmailTemplate[];
+  /** The demo workflow rules and their run log (CRM-R40). */
+  workflows: Workflow[];
+  workflowRuns: WorkflowRun[];
   /** The demo user's saved views (CRM-R35). */
   views: SavedView[];
   /** The inbox of the one demo user (CRM-R32). */
@@ -701,6 +706,48 @@ function build(): State {
   ];
   return {
     segments: [{ pid: "seg-1", name: "Consented customers" }],
+    workflows: [
+      {
+        pid: "wf-1",
+        name: "Greet new emailers",
+        enabled: true,
+        trigger: "contact_created",
+        every_minutes: null,
+        conditions: { statuses: [], channels: ["email"], account_tiers: [] },
+        actions: [
+          { type: "create_task", summary: "Say hello", due_in_days: 2 },
+          { type: "enrol_nurture", sequence_pid: "seq-1" },
+        ],
+        updated_at: "2026-10-25T09:00:00Z",
+      },
+    ],
+    workflowRuns: [
+      {
+        pid: "run-1",
+        workflow_pid: "wf-1",
+        workflow_name: "Greet new emailers",
+        trigger: "contact_created",
+        subject_kind: "contact",
+        subject_pid: "con-2",
+        depth: 0,
+        outcome: "done",
+        reason:
+          "contact created on a contact; conditions met (channel is email)",
+        steps: [
+          {
+            action: "create a task: Say hello",
+            result: "done",
+            detail: "task created",
+          },
+          {
+            action: "enrol in nurture sequence seq-1",
+            result: "skipped",
+            detail: "no marketing consent at this moment",
+          },
+        ],
+        created_at: "2026-10-25T09:05:00Z",
+      },
+    ],
     templates: [
       {
         pid: "template-1",
@@ -2033,6 +2080,7 @@ export function demoHandle(
       return recordLinks("contact", id!, method, body);
   }
   if (head === "email-templates") return emailTemplates(method, id, body);
+  if (head === "workflows") return workflows(method, id, tail, body);
   if (head === "views") {
     if (get)
       return ok(
@@ -2371,6 +2419,88 @@ function renderDraft(
       "body must contain {{unsubscribe_url}}, the link a recipient uses to unsubscribe",
     );
   return { subject, text, html: text, fell_back: fell, problems };
+}
+
+/** The demo's workflow rules: stored and listed, with a dry run over the sample contacts. */
+function workflows(
+  method: string,
+  id: string | undefined,
+  tail: string | undefined,
+  body: unknown,
+) {
+  const input = (body ?? {}) as Partial<Workflow>;
+  if (method === "GET" && !id) return ok(state.workflows);
+  if (method === "POST" && !id) {
+    if (!input.name?.trim()) return problem(422, "name is required");
+    if (!input.actions?.length)
+      return problem(422, "actions needs one to 5 actions");
+    const made: Workflow = {
+      pid: `wf-${state.workflows.length + 1}-${Date.now()}`,
+      name: input.name.trim(),
+      enabled: input.enabled ?? true,
+      trigger: input.trigger ?? "contact_created",
+      every_minutes: input.every_minutes ?? null,
+      conditions: input.conditions ?? {
+        statuses: [],
+        channels: [],
+        account_tiers: [],
+      },
+      actions: input.actions,
+      updated_at: new Date().toISOString(),
+    };
+    state.workflows.push(made);
+    return ok({ pid: made.pid });
+  }
+  const at = state.workflows.findIndex((x) => x.pid === id);
+  if (tail === "runs") {
+    return ok(state.workflowRuns.filter((r) => r.workflow_pid === id));
+  }
+  if (at < 0) return problem(404, "workflow not found");
+  const found = state.workflows[at]!;
+  if (tail === "dry-run" && method === "POST") {
+    const channels = found.conditions.channels;
+    const meets = state.contacts.filter(
+      (c) => !channels.length || channels.includes(c.preferred_channel),
+    );
+    return ok({
+      examined: state.contacts.length,
+      would_fire: meets.length,
+      truncated: false,
+      // One contact without consent is shown first, so the re-check is visible.
+      samples: [
+        ...meets.filter((c) => c.marketing_consent !== "granted").slice(0, 1),
+        ...meets.filter((c) => c.marketing_consent === "granted").slice(0, 2),
+      ].map((c) => ({
+        contact_pid: c.pid,
+        steps: found.actions.map((a) => ({
+          action: a.type.replace(/_/g, " "),
+          result:
+            a.type === "enrol_nurture" && c.marketing_consent !== "granted"
+              ? "would_skip"
+              : "would_do",
+          detail:
+            a.type === "enrol_nurture" && c.marketing_consent !== "granted"
+              ? "no marketing consent at this moment"
+              : "",
+        })),
+      })),
+    });
+  }
+  if (method === "GET") return ok(found);
+  if (method === "PUT") {
+    state.workflows[at] = {
+      ...found,
+      ...input,
+      pid: id!,
+      updated_at: new Date().toISOString(),
+    };
+    return ok({ pid: id });
+  }
+  if (method === "DELETE") {
+    state.workflows.splice(at, 1);
+    return ok({ pid: id });
+  }
+  return problem(405, "method not allowed");
 }
 
 function emailTemplates(method: string, id: string | undefined, body: unknown) {

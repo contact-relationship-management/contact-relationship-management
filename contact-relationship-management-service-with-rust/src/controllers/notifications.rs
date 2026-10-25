@@ -27,7 +27,7 @@ const COUNT_CAP: i64 = 200;
 pub(crate) struct Notification {
     #[schemars(with = "uuid::Uuid")]
     pid: String,
-    /// `task_reminder` or `sla_breach`.
+    /// `task_reminder`, `sla_breach` or `workflow`.
     kind: String,
     /// What the notification is about: `contact`, `account`, `lead`, `deal` or `ticket`.
     subject_kind: String,
@@ -304,6 +304,8 @@ impl BackgroundWorker<()> for NotificationSweepWorker {
                 "notification sweep"
             );
         }
+        // The same minute tick runs the scheduled workflows (CRM-R40).
+        crate::workflows::run_due(&self.ctx.db).await?;
         Ok(())
     }
 }

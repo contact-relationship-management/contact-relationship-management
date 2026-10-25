@@ -11048,6 +11048,601 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The workflow rules */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Workflow"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Make a workflow: a trigger, conditions in the segment filter language, and one to five actions from a closed set (create_task, notify, set_field, enrol_nurture, send_webhook) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["WorkflowPayload"];
+                };
+            };
+            responses: {
+                /** @description Created: {pid} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Created"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Validation failure */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workflows/run-due": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the scheduled workflows that are due now (the server also does so every minute) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WorkflowSweep"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workflows/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One workflow */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Workflow"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Replace a workflow */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["WorkflowPayload"];
+                };
+            };
+            responses: {
+                /** @description Created: {pid} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Validation failure */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a workflow; its run log stays */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Created: {pid} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Validation failure */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workflows/{pid}/dry-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What the workflow would do to the current data: how many contacts meet its conditions and, for the first few, what each action would do. Changes and sends nothing; the dry run is audited */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WorkflowDryRun"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workflows/{pid}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The newest runs of a workflow, each with why it fired and what it did, even after the workflow was deleted */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WorkflowRun"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/confirm/{token}": {
         parameters: {
             query?: never;
@@ -12904,7 +13499,7 @@ export interface components {
         Notification: {
             /** Format: date-time */
             created_at: string;
-            /** @description `task_reminder` or `sla_breach`. */
+            /** @description `task_reminder`, `sla_breach` or `workflow`. */
             kind: string;
             /** Format: uuid */
             pid: string;
@@ -13721,6 +14316,189 @@ export interface components {
             events: string[];
             /** @description Where to send events. `https` only, to a public address. */
             url: string;
+        };
+        /** @description One workflow. */
+        Workflow: {
+            actions: components["schemas"]["WorkflowAction"][];
+            conditions: components["schemas"]["WorkflowConditions"];
+            enabled: boolean;
+            /** Format: int32 */
+            every_minutes: number | null;
+            name: string;
+            /** Format: uuid */
+            pid: string;
+            trigger: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description One thing a workflow does. The set is closed. */
+        WorkflowAction: {
+            /**
+             * @description Who it is for (a `worker:` URN).
+             * @default null
+             */
+            assignee_ref: string | null;
+            /**
+             * Format: uint32
+             * @description Due this many days from now.
+             * @default null
+             */
+            due_in_days: number | null;
+            /** @description What the task says. */
+            summary: string;
+            /** @enum {string} */
+            type: "create_task";
+        } | {
+            /** @description The worker (a `worker:` URN). */
+            recipient_ref: string;
+            /** @enum {string} */
+            type: "notify";
+        } | {
+            /** @description One of [`SET_FIELDS`]. */
+            field: string;
+            /** @enum {string} */
+            type: "set_field";
+            /**
+             * @description The new value; `null` clears `job_title` or `owner_ref`.
+             * @default null
+             */
+            value: string | null;
+        } | {
+            /**
+             * Format: uuid
+             * @description The sequence.
+             */
+            sequence_pid: string;
+            /** @enum {string} */
+            type: "enrol_nurture";
+        } | {
+            /** @description A short name: lower-case letters, digits and underscores. */
+            event: string;
+            /** @enum {string} */
+            type: "send_webhook";
+        };
+        /**
+         * @description What a workflow looks at: the segment filter language, with the same clauses. There is no
+         *     consent clause, because consent is checked inside each action that leads to a send.
+         */
+        WorkflowConditions: {
+            /**
+             * @description Account tiers to include (empty = any; a contact with no account matches only when empty).
+             * @default []
+             */
+            account_tiers: string[];
+            /**
+             * @description Preferred channels to include (empty = any).
+             * @default []
+             */
+            channels: string[];
+            /**
+             * @description Contact statuses to include (empty = any).
+             * @default []
+             */
+            statuses: string[];
+        };
+        /** @description The result of a dry run. */
+        WorkflowDryRun: {
+            /**
+             * Format: int64
+             * @description How many contacts were looked at (at most 500).
+             */
+            examined: number;
+            /** @description The first few that meet them, with what would happen. */
+            samples: components["schemas"]["WorkflowDryRunSample"][];
+            /** @description Whether there were more contacts than were looked at. */
+            truncated: boolean;
+            /**
+             * Format: int64
+             * @description How many of them meet the conditions.
+             */
+            would_fire: number;
+        };
+        /** @description A contact the dry run examined that met the conditions. */
+        WorkflowDryRunSample: {
+            /**
+             * Format: uuid
+             * @description The contact.
+             */
+            contact_pid: string;
+            /** @description What each action would do for them. */
+            steps: components["schemas"]["WorkflowStep"][];
+        };
+        /** @description `POST /api/workflows` and `PUT /api/workflows/{pid}` body (a `PUT` replaces the workflow). */
+        WorkflowPayload: {
+            /** @description One to five actions, done in order. */
+            actions: components["schemas"]["WorkflowAction"][];
+            /**
+             * @description What the contact must look like (the segment filter language, without consent).
+             * @default {
+             *       "account_tiers": [],
+             *       "channels": [],
+             *       "statuses": []
+             *     }
+             */
+            conditions: components["schemas"]["WorkflowConditions"];
+            /**
+             * @description A workflow that is off never runs.
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Format: int32
+             * @description For a schedule only: the least time between runs on the same contact, in minutes.
+             * @default null
+             */
+            every_minutes: number | null;
+            /** @description Unique, ignoring case. */
+            name: string;
+            /** @description `contact_created`, `contact_updated`, `deal_stage_changed` or `schedule`. */
+            trigger: string;
+        };
+        /** @description One run: why it fired and what it did. */
+        WorkflowRun: {
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: int32
+             * @description How many workflows fired this one (0 for a person's write or the clock).
+             */
+            depth: number;
+            /** @description `done`, `failed` (its actions were undone) or `blocked` (held back by the loop guard). */
+            outcome: string;
+            /** Format: uuid */
+            pid: string;
+            /** @description Why it fired, or why it was held back. */
+            reason: string;
+            steps: components["schemas"]["WorkflowStep"][];
+            /** @description The kind of record that changed. */
+            subject_kind: string;
+            /** Format: uuid */
+            subject_pid: string;
+            trigger: string;
+            /** @description The workflow's name when it ran. */
+            workflow_name: string;
+            /** Format: uuid */
+            workflow_pid: string;
+        };
+        /** @description One action of a run, or of a dry run. */
+        WorkflowStep: {
+            /** @description What the action does, in words. */
+            action: string;
+            /** @description Why, in words; never contact data. */
+            detail: string;
+            /**
+             * @description `done`, `skipped`, `failed`, `rolled_back` (a run that failed undid it), or, in a dry run,
+             *     `would_do` or `would_skip`.
+             */
+            result: string;
+        };
+        /** @description What `POST /api/workflows/run-due` did. */
+        WorkflowSweep: {
+            /**
+             * Format: uint64
+             * @description How many scheduled runs were made.
+             */
+            runs: number;
         };
         WorkingGroup: {
             /** Format: date-time */

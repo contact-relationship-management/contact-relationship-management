@@ -31,6 +31,7 @@ pub mod templates;
 pub mod unmerge;
 pub mod views;
 pub mod webhooks;
+pub mod workflows;
 
 /// A `{pid}` reference response: the record a `POST` created.
 #[derive(Debug, serde::Serialize, schemars::JsonSchema)]

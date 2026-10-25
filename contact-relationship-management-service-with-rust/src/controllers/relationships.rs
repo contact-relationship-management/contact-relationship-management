@@ -23,6 +23,7 @@ use crate::models::records;
 use crate::rules::tokens;
 use crate::streaming;
 use crate::validation::Problems;
+use crate::workflows;
 
 /// `POST /api/contacts` body.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -254,6 +255,13 @@ async fn create_contact(
         None,
     )
     .await?;
+    workflows::fire(
+        &txn,
+        &workflows::Event::contact("contact_created", row.pid),
+        0,
+        caller.actor(),
+    )
+    .await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: row.pid.to_string(),
@@ -351,6 +359,13 @@ async fn update_contact(
         &row.display_name,
         caller.actor(),
         None,
+    )
+    .await?;
+    workflows::fire(
+        &txn,
+        &workflows::Event::contact("contact_updated", row.pid),
+        0,
+        caller.actor(),
     )
     .await?;
     txn.commit().await?;

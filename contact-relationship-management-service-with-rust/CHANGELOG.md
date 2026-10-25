@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — explainable workflow rules (CRM-T104, CRM-R40)
+
+`workflows` and `workflow_runs` (migration `000030`); `/api/workflows` (CRUD, `dry-run`, `runs`, `run-due`). Triggers: contact created or updated, a deal's
+stage move, a schedule. Actions: `create_task`, `notify`, `set_field`, `enrol_nurture`, `send_webhook`. A failing action undoes the run; depth and rate
+guards cut loops; `enrol_nurture` re-reads consent. Notifications have the new kind `workflow`.
+
 ### Added — editing an account (CRM-R39)
 
 `PUT /api/accounts/{pid}` changes `display_name`, `tier`, `owner_ref` and `industry` (only the members sent; `null` clears). The audit row lists

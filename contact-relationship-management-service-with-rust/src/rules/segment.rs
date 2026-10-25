@@ -38,9 +38,14 @@ pub struct ContactFacts {
 /// the filter says.
 #[must_use]
 pub fn matches(filter: &Filter, facts: &ContactFacts) -> bool {
-    if facts.consent != "granted" {
-        return false;
-    }
+    facts.consent == "granted" && clauses_match(filter, facts)
+}
+
+/// Whether the facts satisfy the filter's clauses, **without** the consent gate. Workflow
+/// conditions (CRM-R40) use it, because a workflow may act on a contact who has not consented
+/// (a new contact starts at `never`); anything that leads to a send re-checks consent itself.
+#[must_use]
+pub fn clauses_match(filter: &Filter, facts: &ContactFacts) -> bool {
     let status_ok = filter.statuses.is_empty() || filter.statuses.contains(&facts.status);
     let channel_ok = filter.channels.is_empty() || filter.channels.contains(&facts.channel);
     let tier_ok = filter.account_tiers.is_empty()

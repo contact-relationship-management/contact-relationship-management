@@ -1435,7 +1435,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Tests:** 9 rules unit tests (escaping, a missing value, header injection, the missing-link refusal, fallback checks); 2 request tests (save, refusals, preview, replace, delete; a campaign and a nurture step really mailed from a template, one link and no footer, edit reaches the next send, 409 while in use); 1 under sign-in (a reader previews and reads but cannot save); Playwright for the page. Service: 272 unit, 107 request, 7 enforcement; UI: 143 unit and 111 Playwright; clippy clean; types regenerated.
       - **Limits:** plain text only (no HTML-bodied mail, attachments or per-language templates); no template versions; a template deleted between the in-use check and a send fails that delivery.
 
-- [ ] CRM-T104 **Explainable workflow rules.**
+- [x] CRM-T104 **Explainable workflow rules.**
   - **Triggers:** record created or updated, a stage change, or a schedule.
   - **Conditions:** written in the segment filter language.
   - **Actions:** a closed set (create a task, notify, set a field, enrol in nurture, send a webhook after T95), with no arbitrary code or HTTP.
@@ -1445,3 +1445,12 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Source:** https://docs.twenty.com/user-guide/workflows/overview
 
   (C10, L; after T95 and T99)
+      **Done (2026-10-25, not released):** requirement CRM-R40 first, then:
+      - **Model:** `workflows` and `workflow_runs` (migration `000030`). Pure rules in `rules::workflows` (triggers, the closed `Action` enum with `deny_unknown_fields`, `Conditions`, `check`, `guard`); the engine in `workflows.rs`; routes in `controllers/workflows.rs`.
+      - **Conditions:** the segment filter clauses without the consent gate (`segment::clauses_match`; `matches` still ANDs consent), as their own type that rejects unknown clauses.
+      - **Triggers hooked:** contact create, contact update, and a deal's non-closing stage move; `schedule` runs on the existing minute job.
+      - **Safety:** actions in a savepoint (a failing one undoes all, run logged `failed`); depth 3 and 60 runs a minute; consent read inside `enrol_nurture`; dry run over up to 500 contacts with no writes but its own audit row.
+      - **API:** `GET/POST /api/workflows`, `GET/PUT/DELETE /api/workflows/{pid}`, `POST /api/workflows/{pid}/dry-run`, `GET /api/workflows/{pid}/runs`, `POST /api/workflows/run-due`. A reader may list but not save or try (derives `write`). Notifications gained the kind `workflow`.
+      - **UI:** `/workflows` (nav): list, editor (trigger, condition checkboxes, action editor), dry run and run log; 39 keys in 8 locales; sample workflow and run in the tour; Playwright test.
+      - **Tests:** 9 rules unit tests; 8 request tests (a task made only for matching contacts with the run's reason, notify/set_field/send_webhook, the consent re-check, the loop cut and the rate hold, the dry run changing nothing, the schedule interval, a deal stage move, the closed set refused, a failing action undone) and 1 under sign-in. Service: see the changelog; UI: 146 unit and 115 Playwright; clippy clean both feature sets.
+      - **Limits:** see CRM-R40 "Not built". A workflow edit restarts a schedule's scan from the first contact. Rollback of a failed run is tested by renaming a table; other failure modes use the same path.
