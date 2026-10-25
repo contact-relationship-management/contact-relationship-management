@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { errorMessage } from "#lib/errors.js";
+  import { errorMessage, fieldErrors } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
@@ -27,6 +27,7 @@
   // Editing the contact's own details (CRM-R38). An emptied optional box clears it.
   let editing = $state(false);
   let saved = $state(false);
+  let problems = $state<Record<string, string>>({});
   let form = $state({ display_name: "", given_name: "", family_name: "", job_title: "" });
 
   function startEdit() {
@@ -40,11 +41,13 @@
     };
     saved = false;
     actionError = null;
+    problems = {};
     editing = true;
   }
 
   async function saveEdit() {
     actionError = null;
+    problems = {};
     const orNull = (v: string) => (v.trim() ? v.trim() : null);
     try {
       await editContact(pid, {
@@ -57,6 +60,7 @@
       saved = true;
       await record.reload();
     } catch (cause) {
+      problems = fieldErrors(cause);
       actionError = errorMessage(cause);
     }
   }
@@ -324,10 +328,10 @@
         }}
         data-testid="contact-form"
       >
-        <label>{t("common.name")} <input bind:value={form.display_name} required /></label>
-        <label>{t("contact.dupField.given_name")} <input bind:value={form.given_name} /></label>
-        <label>{t("contact.dupField.family_name")} <input bind:value={form.family_name} /></label>
-        <label>{t("contact.dupField.job_title")} <input bind:value={form.job_title} /></label>
+        <label>{t("common.name")} <input bind:value={form.display_name} aria-invalid={problems.display_name ? "true" : undefined} />{#if problems.display_name}<span class="error small" data-testid="problem-display_name">{problems.display_name}</span>{/if}</label>
+        <label>{t("contact.dupField.given_name")} <input bind:value={form.given_name} aria-invalid={problems.given_name ? "true" : undefined} />{#if problems.given_name}<span class="error small" data-testid="problem-given_name">{problems.given_name}</span>{/if}</label>
+        <label>{t("contact.dupField.family_name")} <input bind:value={form.family_name} aria-invalid={problems.family_name ? "true" : undefined} />{#if problems.family_name}<span class="error small" data-testid="problem-family_name">{problems.family_name}</span>{/if}</label>
+        <label>{t("contact.dupField.job_title")} <input bind:value={form.job_title} aria-invalid={problems.job_title ? "true" : undefined} />{#if problems.job_title}<span class="error small" data-testid="problem-job_title">{problems.job_title}</span>{/if}</label>
         <button type="submit" data-testid="contact-save">{t("contact.editSave")}</button>
         <button type="button" onclick={() => (editing = false)}>{t("contact.editCancel")}</button>
       </form>

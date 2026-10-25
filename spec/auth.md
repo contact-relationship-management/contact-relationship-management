@@ -74,7 +74,7 @@ config tweak:
    `CRM_TOKEN_AUDIENCE` if they differ from the defaults.
 3. **Flip the flag.** `CRM_REQUIRE_AUTH=1` (read once at boot —
    restart to change).
-4. **Verify.** `cargo test --test enforcement -- --ignored` runs the
+4. **Verify.** `cargo test --test mod enforcement -- --ignored` runs the
    activation matrix against the reference policy shape: public paths
    open; 401 without a token; a reader can GET but not POST; a writer
    (`access=write`) completes a real consent-gated flow end to end.

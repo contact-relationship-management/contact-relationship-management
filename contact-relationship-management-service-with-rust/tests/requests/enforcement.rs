@@ -1,20 +1,16 @@
 //! Auth-activation persona matrix over the live routes (CRM-R15).
 //!
-//! Its own test binary (not part of `tests/mod.rs`) because
-//! `CRM_REQUIRE_AUTH` and the key set are cached in process-wide
-//! `OnceLock`s — the flag must be set **before** the app boots, once
-//! per process. A throwaway Ed25519 key mints PASETO tokens + the
-//! matching key set in-process (no auth service needed).
+//! Each test changes the settings (`require_auth`, the key set, the policy) for its own length
+//! with [`scoped`], which puts them back, so these share a process with the other request tests.
+//! A throwaway Ed25519 key mints PASETO tokens + the matching key set in-process (no auth service
+//! needed).
 //!
-//! `#[ignore]`d: boots the app (needs PostgreSQL via
-//! `config/test.yaml` / `DATABASE_URL`). Run with
-//! `cargo test --test enforcement -- --ignored`.
+//! `#[ignore]`d: boots the app (needs PostgreSQL via `config/test.yaml` / `DATABASE_URL`).
 #![cfg(feature = "paseto")]
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use contact_relationship_management::app::App;
-use contact_relationship_management::settings;
 use ed25519_dalek::SigningKey;
 use loco_rs::testing::prelude::*;
 use rusty_paseto::core::{Footer, Key, Paseto, PasetoAsymmetricPrivateKey, Payload, Public, V4};
@@ -22,8 +18,8 @@ use serde_json::{Value, json};
 use serial_test::serial;
 use sha2::{Digest, Sha256};
 
-#[path = "support/schema_check.rs"]
-mod schema_check;
+use crate::schema_check;
+use crate::scoped_auth::scoped;
 
 const ISSUER: &str = "authentication-service";
 const AUDIENCE: &str = "main-x-service";
@@ -96,7 +92,7 @@ async fn enforcement_gates_the_real_stack() {
     let (keys, kid) = keys_and_kid();
     // Settings, not the environment: the verifier and the policy are built from
     // them on first use, so this runs before anything touches either.
-    settings::update(|s| {
+    let _scope = scoped(|s| {
         s.require_auth = true;
         s.paseto_keys = Some(keys.to_string());
         s.abac_policy = Some(test_policy());
@@ -599,7 +595,7 @@ async fn enforcement_gates_the_real_stack() {
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn mcp_tool_calls_are_decided_as_the_caller() {
     let (keys, kid) = keys_and_kid();
-    settings::update(|s| {
+    let _scope = scoped(|s| {
         s.require_auth = true;
         s.paseto_keys = Some(keys.to_string());
         s.abac_policy = Some(test_policy());
@@ -751,7 +747,7 @@ async fn mcp_tool_calls_are_decided_as_the_caller() {
 async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_read() {
     use sea_orm::ConnectionTrait;
     let (keys, kid) = keys_and_kid();
-    settings::update(|s| {
+    let _scope = scoped(|s| {
         s.require_auth = true;
         s.paseto_keys = Some(keys.to_string());
         s.abac_policy = Some(test_policy());
@@ -886,7 +882,7 @@ async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_rea
 async fn search_leaves_out_what_the_caller_may_not_read() {
     use sea_orm::ConnectionTrait;
     let (keys, kid) = keys_and_kid();
-    settings::update(|s| {
+    let _scope = scoped(|s| {
         s.require_auth = true;
         s.paseto_keys = Some(keys.to_string());
         s.abac_policy = Some(test_policy());
@@ -961,7 +957,7 @@ async fn search_leaves_out_what_the_caller_may_not_read() {
 async fn lead_import_needs_write_and_advice_hides_unreadable_contacts() {
     use sea_orm::ConnectionTrait;
     let (keys, kid) = keys_and_kid();
-    settings::update(|s| {
+    let _scope = scoped(|s| {
         s.require_auth = true;
         s.paseto_keys = Some(keys.to_string());
         s.abac_policy = Some(test_policy());
@@ -1035,7 +1031,7 @@ async fn lead_import_needs_write_and_advice_hides_unreadable_contacts() {
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn views_are_shared_without_sharing_access() {
     let (keys, kid) = keys_and_kid();
-    settings::update(|s| {
+    let _scope = scoped(|s| {
         s.require_auth = true;
         s.paseto_keys = Some(keys.to_string());
         s.abac_policy = Some(test_policy());
@@ -1172,7 +1168,7 @@ async fn views_are_shared_without_sharing_access() {
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_reader_may_preview_a_template_but_not_save_one() {
     let (keys, kid) = keys_and_kid();
-    settings::update(|s| {
+    let _scope = scoped(|s| {
         s.require_auth = true;
         s.paseto_keys = Some(keys.to_string());
         s.abac_policy = Some(test_policy());
@@ -1227,7 +1223,7 @@ fn draft_without_name(draft: &Value) -> Value {
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_reader_may_list_workflows_but_not_save_or_try_one() {
     let (keys, kid) = keys_and_kid();
-    settings::update(|s| {
+    let _scope = scoped(|s| {
         s.require_auth = true;
         s.paseto_keys = Some(keys.to_string());
         s.abac_policy = Some(test_policy());

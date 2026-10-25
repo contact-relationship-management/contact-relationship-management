@@ -29,6 +29,16 @@ pub fn verifier() -> &'static ReloadableVerifier {
     VERIFIER.get_or_init(|| ReloadableVerifier::new(build_from_env()))
 }
 
+/// Rebuild the token verifier and the ABAC policy from the current [`crate::settings`], and swap
+/// them in. Boot builds both from the settings on first use; this is for a process whose
+/// settings change afterwards (a test that signs in with its own keys and policy, then puts the
+/// old ones back).
+pub fn reload_from_settings() {
+    #[cfg(feature = "paseto")]
+    verifier().store(build_from_env());
+    super::policy().store(super::policy_from_env());
+}
+
 /// Seed the process-wide [`verifier`] before the app serves traffic
 /// (called from `App::after_routes`). When `CRM_PASETO_KEYS_URL` is set
 /// (non-blank) the published key set is fetched over HTTP **once at boot**

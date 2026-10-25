@@ -331,7 +331,11 @@ pub(super) async fn pipeline_hygiene(
         .filter(deals::Column::ClosedAt.is_null())
         .all(&ctx.db)
         .await?;
-    let lead_rows: Vec<leads::Model> = live!(leads, &ctx.db);
+    // Only the leads the rule is about, not all of them.
+    let lead_rows: Vec<leads::Model> = leads::Entity::find_live()
+        .filter(leads::Column::Status.is_in(["new", "contacted"]))
+        .all(&ctx.db)
+        .await?;
     let touches: std::collections::HashMap<(String, Uuid), chrono::DateTime<chrono::Utc>> =
         super::rollup::touches(&ctx.db)
             .await?
@@ -441,7 +445,12 @@ pub(super) async fn executive(
         .unwrap_or(to - chrono::Days::new(30));
     let in_window = |at: chrono::DateTime<chrono::Utc>| at >= from && at <= to;
 
-    let deal_rows: Vec<deals::Model> = live!(deals, &ctx.db);
+    // Only the deals closed in the window.
+    let deal_rows: Vec<deals::Model> = deals::Entity::find_live()
+        .filter(deals::Column::ClosedAt.gte(from))
+        .filter(deals::Column::ClosedAt.lte(to))
+        .all(&ctx.db)
+        .await?;
     let mut won = 0usize;
     let mut lost = 0usize;
     let mut won_value: std::collections::BTreeMap<String, i64> = std::collections::BTreeMap::new();
@@ -474,19 +483,19 @@ pub(super) async fn executive(
         .filter(tickets::Column::OpenedAt.lte(to))
         .count(&ctx.db)
         .await?;
-    let audit_rows = audit_logs::Entity::find()
-        .filter(audit_logs::Column::CreatedAt.gte(from))
-        .filter(audit_logs::Column::CreatedAt.lte(to))
-        .all(&ctx.db)
-        .await?;
-    let tickets_resolved = audit_rows
-        .iter()
-        .filter(|row| row.entity == "ticket" && row.action == "resolved")
-        .count();
-    let campaigns_started = audit_rows
-        .iter()
-        .filter(|row| row.entity == "campaign" && row.action == "running")
-        .count();
+    // Counted in the database, not by loading every audit row of the window.
+    let audited = |entity: &'static str, action: &'static str| {
+        audit_logs::Entity::find()
+            .filter(audit_logs::Column::CreatedAt.gte(from))
+            .filter(audit_logs::Column::CreatedAt.lte(to))
+            .filter(audit_logs::Column::Entity.eq(entity))
+            .filter(audit_logs::Column::Action.eq(action))
+            .count(&ctx.db)
+    };
+    let tickets_resolved =
+        usize::try_from(audited("ticket", "resolved").await?).unwrap_or(usize::MAX);
+    let campaigns_started =
+        usize::try_from(audited("campaign", "running").await?).unwrap_or(usize::MAX);
     let activities_logged = activities::Entity::find_live()
         .filter(activities::Column::OccurredAt.gte(from))
         .filter(activities::Column::OccurredAt.lte(to))

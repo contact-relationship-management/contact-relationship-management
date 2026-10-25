@@ -80,7 +80,7 @@ tests with no siblings running.
 Loco-idiomatic layout, forbid-unsafe + clippy-pedantic, OpenAPI +
 Swagger, `Accepts-version`, OTLP + `/metrics.prom`, Podman, input
 caps, `404` mapping at `find_by_pid` call sites, enforcement tests
-in their own binary (the OnceLock lesson), ETag-conditional
+that scope the settings they change (the OnceLock lesson), ETag-conditional
 dashboards, 13-locale i18n in the front-end from the start (the
 PPM lesson).
 

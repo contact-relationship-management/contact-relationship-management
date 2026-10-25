@@ -219,3 +219,39 @@ describe("tour", () => {
     expect(() => run("/contacts")).toThrow();
   });
 });
+
+import { fieldErrors } from "../../src/lib/errors";
+
+describe("fieldErrors", () => {
+  it("maps each pointer to the member it names", () => {
+    const cause = {
+      body: {
+        errors: [
+          { pointer: "/display_name", detail: "display_name is required" },
+          { pointer: "/stages/2/name", detail: "too long" },
+          { detail: "about the whole request" },
+        ],
+      },
+    };
+    expect(fieldErrors(cause)).toEqual({
+      display_name: "display_name is required",
+      "stages/2/name": "too long",
+    });
+  });
+
+  it("keeps the first problem for a member, and gives {} for anything else", () => {
+    expect(
+      fieldErrors({
+        body: {
+          errors: [
+            { pointer: "/a", detail: "first" },
+            { pointer: "/a", detail: "second" },
+          ],
+        },
+      }),
+    ).toEqual({ a: "first" });
+    expect(fieldErrors(new Error("x"))).toEqual({});
+    expect(fieldErrors(null)).toEqual({});
+    expect(fieldErrors({ body: { errors: "no" } })).toEqual({});
+  });
+});

@@ -4,7 +4,7 @@
   import { editAccount, getAccount, money } from "#lib/api/crm.js";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
-  import { errorMessage } from "#lib/errors.js";
+  import { errorMessage, fieldErrors } from "#lib/errors.js";
 
   const pid = $derived(page.params.pid ?? "");
   const record = resource(() => getAccount(pid));
@@ -16,6 +16,7 @@
   let editing = $state(false);
   let saved = $state(false);
   let editError = $state<string | null>(null);
+  let problems = $state<Record<string, string>>({});
   let form = $state({ display_name: "", tier: "prospect", industry: "" });
 
   function startEdit() {
@@ -29,6 +30,7 @@
 
   async function saveEdit() {
     editError = null;
+    problems = {};
     try {
       await editAccount(pid, {
         display_name: form.display_name,
@@ -39,6 +41,7 @@
       saved = true;
       await record.reload();
     } catch (cause) {
+      problems = fieldErrors(cause);
       editError = errorMessage(cause);
     }
   }
@@ -64,14 +67,14 @@
       }}
       data-testid="account-form"
     >
-      <label>{t("common.name")} <input bind:value={form.display_name} required /></label>
+      <label>{t("common.name")} <input bind:value={form.display_name} aria-invalid={problems.display_name ? "true" : undefined} />{#if problems.display_name}<span class="error small" data-testid="problem-display_name">{problems.display_name}</span>{/if}</label>
       <label>
         {t("account.tier")}
         <select bind:value={form.tier}>
           {#each TIERS as tier (tier)}<option value={tier}>{tier}</option>{/each}
         </select>
       </label>
-      <label>{t("account.industry")} <input bind:value={form.industry} /></label>
+      <label>{t("account.industry")} <input bind:value={form.industry} aria-invalid={problems.industry ? "true" : undefined} />{#if problems.industry}<span class="error small" data-testid="problem-industry">{problems.industry}</span>{/if}</label>
       <button type="submit" data-testid="account-save">{t("contact.editSave")}</button>
       <button type="button" onclick={() => (editing = false)}>{t("contact.editCancel")}</button>
       {#if editError}<p class="error" data-testid="action-error">{editError}</p>{/if}
