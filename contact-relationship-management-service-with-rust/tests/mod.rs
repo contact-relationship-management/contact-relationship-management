@@ -6,8 +6,6 @@
 //! `requests/enforcement.rs`; its tests change the settings for their own length
 //! (`support/scoped_auth.rs`) and so share this process.
 
-#[path = "support/schema_check.rs"]
-mod schema_check;
 #[path = "support/scoped_auth.rs"]
 mod scoped_auth;
 

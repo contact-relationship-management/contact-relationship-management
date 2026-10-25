@@ -18,7 +18,7 @@ use serde_json::{Value, json};
 use serial_test::serial;
 use sha2::{Digest, Sha256};
 
-use crate::schema_check;
+use super::openapi_schemas::schema_check;
 use crate::scoped_auth::scoped;
 
 const ISSUER: &str = "authentication-service";
