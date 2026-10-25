@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the screens fit a phone (CRM-T110, CRM-R46)
+
+At 360 px every screen scrolled sideways: the header's seven buttons ran past the edge (14 px on every page), and forms were wider than their panel (up to 49 px). The header now wraps below 40 rem, and a field takes at most its container's width. A Playwright test checks 32 screens at 360 by 740.
+
 ### Added — lead assignment (CRM-R44)
 
 The workflows page offers the `lead_created` trigger, the lead source condition and the assign action; the lead page shows its owner.

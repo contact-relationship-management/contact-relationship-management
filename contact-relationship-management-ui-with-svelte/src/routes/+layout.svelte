@@ -489,8 +489,21 @@
       padding-inline: 0.75rem;
       gap: 0.5rem;
     }
+    /* Seven buttons do not fit one row on a phone: the header's end wraps instead of
+       pushing the page sideways. */
+    .topbar {
+      flex-wrap: wrap;
+    }
     .header-end {
       gap: 0.375rem;
+      flex: 1 1 auto;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      min-width: 0;
+    }
+    .header-end :global(.picker-bar) {
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
     .header-end :global(.theme-picker-option),
     .header-end :global(.locale-picker-option),

@@ -479,6 +479,19 @@ select {
   background: var(--panel);
   color: var(--ink);
 }
+/* On a phone a field takes the width it has, not the width it asks for. */
+@media (max-width: 40rem) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    max-width: 100%;
+  }
+  label > input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  label > select,
+  label > textarea {
+    width: 100%;
+  }
+}
 form.row {
   display: flex;
   gap: 0.5rem;

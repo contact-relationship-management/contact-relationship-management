@@ -1086,4 +1086,36 @@ test.describe("export, undo and search", () => {
       "Give out web leads",
     );
   });
+
+  test("every screen fits a phone: no sideways scroll at 360px", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await startTour(page);
+    const wide: string[] = [];
+    for (const path of [
+      ...SCREENS,
+      "/workflows",
+      "/custom-fields",
+      "/templates",
+      "/contacts/import",
+      "/accounts/import",
+      "/accounts/acc-1",
+      "/leads/lead-1",
+      "/deals/deal-1",
+      "/tickets/tkt-1",
+    ]) {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      await expect(page.locator("main h1").first(), path).toBeVisible();
+      // The page itself must not scroll sideways; a wide table may scroll inside its own box.
+      const excess = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+      if (excess > 1) wide.push(`${path} (+${excess}px)`);
+    }
+    expect(wide).toEqual([]);
+  });
 });

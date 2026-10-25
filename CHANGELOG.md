@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed
+
+- On a phone-width screen (360 px) the page no longer scrolls sideways: the header wraps and form fields fit their panel (CRM-R46).
+
 ### Added
 
 - Business calendars: an SLA policy can count its targets in working time (windows per weekday, a time zone, holidays) instead of round the clock (CRM-R45).

@@ -896,3 +896,12 @@ recipient would get before anything is sent, and be certain every message carrie
 - Deadlines are still **stored on the ticket** (CRM-R11), so breach flags, the sweep, dashboards and notifications are unchanged. They are derived when a ticket is opened and again on an audited priority change; replacing a calendar, or changing which one a policy uses, does **not** move the deadlines of tickets already open.
 - Audited as `business_calendar` (`created`, `updated`, `deleted`) and `sla_policy` `calendar_set`.
 - Not built: a screen for SLA policies and calendars (they are managed through the API); pausing the clock while a ticket waits for the customer; different calendars per account or per channel; re-deriving the deadlines of open tickets when a calendar changes; and showing the remaining time in working hours (the countdown is still to the stored deadline).
+
+## CRM-R46 — The screens fit a phone
+
+*As someone using the CRM on a phone, I can read and use every screen without scrolling the page sideways.*
+
+- At a width of 360 CSS pixels no screen makes the page scroll sideways. A wide table may scroll inside its own box; the page may not.
+- Below 40 rem the header wraps (the title and menu, the session button and the picker buttons each take the room they need) rather than running past the edge, and a text field, a selector or a file chooser takes at most the width of its container.
+- A Playwright test walks the tour's screens and the new ones (workflows, custom fields, templates, imports, and a contact, account, lead, deal and ticket page) at 360 by 740 and fails if any is wider than the viewport.
+- Not built: a phone layout for the boards (they scroll inside their own area), a bottom navigation bar, touch-size checks for every control, or a native app.

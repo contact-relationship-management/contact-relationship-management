@@ -1499,5 +1499,10 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **API:** `/api/business-calendars` (CRUD, 409 while used) and `PUT /api/sla-policies/{pid}/calendar`.
       - **Tests:** 2 request tests (calendars checked and kept while used; a ticket moved to a calendar priority gets Friday 17:00 and Wednesday 10:00 with a Monday holiday between, and goes back to round-the-clock).
       - **Not built:** a UI for policies and calendars (the SLA settings have no screen today); pausing while waiting for the customer; per-account calendars; re-deriving open tickets when a calendar changes.
-- [ ] CRM-T110 *(edge)* **Phone-width layout check.** The UI has one media query (`+layout.svelte`); test the main lists, boards and forms at 360 px and fix what breaks. *Source:* `marmelab/atomic-crm` (rated well on mobile in the January 2026 benchmark). (M)
+- [x] CRM-T110 *(edge)* **Phone-width layout check.** The UI has one media query (`+layout.svelte`); test the main lists, boards and forms at 360 px and fix what breaks. *Source:* `marmelab/atomic-crm` (rated well on mobile in the January 2026 benchmark). (M)
+      **Done (2026-10-25, not released):** requirement CRM-R46 first, then:
+      - **Test first:** a Playwright test walks 32 screens at 360 by 740 and fails on any page wider than the viewport. It failed on all of them: 14 px on every page (the header's picker buttons), 27 px on the pages with forms, 49 px on the custom-fields page.
+      - **Fixes:** below 40 rem the top bar and the header's end wrap (`+layout.svelte`), and a field never exceeds its container (`app.css`, one media rule). A file chooser on the record pages needed the same limit; a second run found it.
+      - **Checked by eye:** a screenshot of a contact page at 360 px, header wrapped into three rows.
+      - **Not done:** the rest of the task's wording, "fix what breaks", was limited to sideways overflow; I did not check touch-target sizes, the boards on a phone, or text at the larger text sizes.
 
