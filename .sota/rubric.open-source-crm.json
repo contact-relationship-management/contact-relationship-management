@@ -1,6 +1,6 @@
 {
   "domain": "open-source-crm",
-  "version": 1,
+  "version": 2,
   "capabilities": [
     {
       "id": "contacts-accounts",
@@ -91,6 +91,11 @@
       "id": "duplicate-merge",
       "tier": "edge",
       "test": "duplicate detection with merge and undo"
+    },
+    {
+      "id": "campaign-engagement-events",
+      "tier": "edge",
+      "test": "opens and clicks of a campaign recorded from the provider"
     }
   ]
 }

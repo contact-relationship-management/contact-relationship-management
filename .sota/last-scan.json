@@ -3,42 +3,37 @@
   "domains": [
     "open-source-crm"
   ],
-  "rubric_version": 1,
+  "rubric_version": 2,
   "field": [
     {
       "repo": "twentyhq/twenty",
-      "stars": 59689,
-      "pushed": "2026-10-25"
-    },
-    {
-      "repo": "odoo/odoo",
-      "stars": 55310,
+      "stars": 59723,
       "pushed": "2026-10-25"
     },
     {
       "repo": "krayin/laravel-crm",
-      "stars": 24056,
+      "stars": 24060,
       "pushed": "2026-10-21"
     },
     {
       "repo": "SuiteCRM/SuiteCRM",
-      "stars": 5809,
+      "stars": 5810,
       "pushed": "2026-10-23"
     },
     {
       "repo": "frappe/crm",
       "stars": 3854,
-      "pushed": "2026-10-23"
+      "pushed": "2026-10-25"
     },
     {
       "repo": "espocrm/espocrm",
-      "stars": 3519,
+      "stars": 3520,
       "pushed": "2026-10-24"
     },
     {
       "repo": "marmelab/atomic-crm",
-      "stars": 1400,
-      "pushed": "2026-10-24"
+      "stars": 1401,
+      "pushed": "2026-10-25"
     }
   ],
   "matrix": [
@@ -84,27 +79,27 @@
     },
     {
       "id": "contact-import",
-      "us": "partial",
+      "us": "met",
       "tier": "table-stakes"
     },
     {
       "id": "custom-fields",
-      "us": "missing",
+      "us": "met",
       "tier": "table-stakes"
     },
     {
       "id": "file-attachments",
-      "us": "missing",
+      "us": "met",
       "tier": "table-stakes"
     },
     {
       "id": "assignment-rules",
-      "us": "partial",
+      "us": "met",
       "tier": "edge"
     },
     {
       "id": "sla-business-hours",
-      "us": "missing",
+      "us": "met",
       "tier": "edge"
     },
     {
@@ -131,13 +126,18 @@
       "id": "duplicate-merge",
       "us": "met",
       "tier": "edge"
+    },
+    {
+      "id": "campaign-engagement-events",
+      "us": "missing",
+      "tier": "edge"
     }
   ],
   "coverage": {
-    "met": 8,
+    "met": 11,
     "total": 11,
-    "pct": 73
+    "pct": 100
   },
-  "tier": "BEHIND",
-  "gaps_total": 3
+  "tier": "FRONTIER",
+  "gaps_total": 0
 }
