@@ -51,6 +51,8 @@ Attachments (CRM-R42) audit under the entity `attachment`: `uploaded` (subject, 
 
 Custom fields (CRM-R41) audit under the entity `custom_field` (`created` with entity, key, kind and sensitivity; `updated`; `deleted` with the count of values removed). Setting values audits as the record's own entity with `custom_fields_updated` and the keys, never the values.
 
+Business calendars (CRM-R45) audit under the entity `business_calendar` (`created`, `updated`, `deleted`); a policy changing calendar audits as `sla_policy` `calendar_set`.
+
 A lead given an owner by a workflow audits as `lead` `assigned` (CRM-R44), by the actor `workflow:<pid>`, with the worker and the strategy.
 
 Workflows (CRM-R40) audit under the entity `workflow`: `created`, `updated`, `deleted` (trigger and on/off, never the actions' text) and `dry_run` (counts). Each run audits as `workflow_run` with `fired`, `failed` or `blocked`, the workflow, the record and the step count, and the actor `workflow:<pid>` is the actor of every write the run makes.

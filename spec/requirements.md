@@ -130,7 +130,7 @@ themselves.*
 *As a support lead I see promised response times and every breach.*
 
 - SlaPolicy per priority (first-response + resolution minutes, 24×7
-  v1); deadlines derived at open and re-derived on audited priority
+  unless a business calendar is named, CRM-R45); deadlines derived at open and re-derived on audited priority
   change; breach flags computed on read and swept by a job emitting
   `sla_breached` once per breach; breaches clear only by meeting
   the metric.
@@ -885,3 +885,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - The loop guard and the rate hold of CRM-R40 apply (60 runs a minute per workflow); a burst of leads beyond that is held back and noted, not assigned.
 - The lead page shows its owner, and the workflows page offers the trigger, the source condition and the action.
 - Not built: assigning contacts, accounts or deals; hand-assigning a lead (there is no edit of `owner_ref` outside a workflow); weighting or capacity limits; working hours or availability; reassigning a lead that has gone unworked; and assignment of leads imported from a list.
+
+## CRM-R45 — SLA clocks that follow working hours
+
+*As a support lead, I want a promise of "four hours" to mean four working hours, so that a ticket opened on Friday evening is not already late on Monday morning.*
+
+- A **business calendar** (`/api/business-calendars`: list, create, read, replace, delete) has a name (unique, any case), an IANA time zone, the working windows of each weekday (`mon` to `sun`, up to four `{start, end}` windows a day written `HH:MM` in the zone's local time; a day with none is a day off) and a list of holidays. It needs at least one working window; overlapping or backwards windows, an unknown zone and more than 400 holidays are refused `422`. Deleting one that a policy uses is `409`.
+- An **SLA policy** may name a calendar (`calendar_pid` on `POST /api/sla-policies`, or `PUT /api/sla-policies/{pid}/calendar`, which also takes `null` to go back to round-the-clock). Without one a policy behaves as before (CRM-R11).
+- **Deadlines** of a ticket opened under such a policy are counted in working time from the moment it opens: time outside the windows and the days on the holiday list do not count, and the deadline falls on the instant the target's working minutes have run out. A ticket opened outside working hours starts counting when work next starts. Windows are local to the zone, so they follow its clock changes (summer time). A target the calendar cannot place within about ten years of days falls back to round-the-clock, so a ticket never loses its deadline.
+- Deadlines are still **stored on the ticket** (CRM-R11), so breach flags, the sweep, dashboards and notifications are unchanged. They are derived when a ticket is opened and again on an audited priority change; replacing a calendar, or changing which one a policy uses, does **not** move the deadlines of tickets already open.
+- Audited as `business_calendar` (`created`, `updated`, `deleted`) and `sla_policy` `calendar_set`.
+- Not built: a screen for SLA policies and calendars (they are managed through the API); pausing the clock while a ticket waits for the customer; different calendars per account or per channel; re-deriving the deadlines of open tickets when a calendar changes; and showing the remaining time in working hours (the countdown is still to the stored deadline).

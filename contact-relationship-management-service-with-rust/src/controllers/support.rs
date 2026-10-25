@@ -17,6 +17,7 @@ use crate::metrics::Metrics;
 use crate::models::_entities::{activities, articles, sla_policies, tickets};
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
+use crate::rules::calendar::Calendar;
 use crate::rules::{lifecycle, sla, tokens};
 use crate::streaming;
 use crate::validation::Problems;
@@ -28,6 +29,19 @@ pub(crate) struct PolicyPayload {
     priority: String,
     first_response_minutes: i32,
     resolution_minutes: i32,
+    /// A business calendar (CRM-R45): the targets are then counted in its working time. Leave out
+    /// for round-the-clock.
+    #[serde(default)]
+    calendar_pid: Option<Uuid>,
+}
+
+/// `PUT /api/sla-policies/{pid}/calendar` body.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct PolicyCalendarPayload {
+    /// The calendar, or `null` to go back to round-the-clock. Tickets already open keep their
+    /// deadlines.
+    calendar_pid: Option<Uuid>,
 }
 
 /// `POST /api/tickets` body.
@@ -70,20 +84,31 @@ fn default_ticket_channel() -> String {
     "web".to_string()
 }
 
-/// The SLA targets for a priority, when a policy exists.
+/// The SLA targets for a priority, with the business calendar they are counted on, when a policy
+/// exists.
 async fn targets_for<C: sea_orm::ConnectionTrait>(
     db: &C,
     priority: &str,
-) -> Result<Option<sla::Targets>> {
+) -> Result<Option<(sla::Targets, Option<Calendar>)>> {
     let policy = sla_policies::Entity::find()
         .filter(sla_policies::Column::Priority.eq(priority))
         .filter(sla_policies::Column::DeletedAt.is_null())
         .one(db)
         .await?;
-    Ok(policy.map(|p| sla::Targets {
-        first_response_minutes: p.first_response_minutes,
-        resolution_minutes: p.resolution_minutes,
-    }))
+    let Some(p) = policy else {
+        return Ok(None);
+    };
+    let calendar = match p.calendar_pid {
+        Some(pid) => super::calendars::load(db, pid).await?,
+        None => None,
+    };
+    Ok(Some((
+        sla::Targets {
+            first_response_minutes: p.first_response_minutes,
+            resolution_minutes: p.resolution_minutes,
+        },
+        calendar,
+    )))
 }
 
 /// `POST /api/sla-policies`.
@@ -102,12 +127,18 @@ async fn create_policy(
         problems.push("first response target exceeds the resolution target".to_string());
     }
     problems.finish()?;
+    if let Some(calendar) = payload.calendar_pid
+        && !super::calendars::exists(&ctx.db, calendar).await?
+    {
+        return Err(unprocessable("that business calendar does not exist"));
+    }
     let txn = ctx.db.begin().await?;
     let row = sla_policies::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         priority: ActiveValue::set(payload.priority.clone()),
         first_response_minutes: ActiveValue::set(payload.first_response_minutes),
         resolution_minutes: ActiveValue::set(payload.resolution_minutes),
+        calendar_pid: ActiveValue::set(payload.calendar_pid),
         deleted_at: ActiveValue::set(None),
         ..Default::default()
     }
@@ -118,6 +149,42 @@ async fn create_policy(
     format::json(PidRef {
         pid: row.pid.to_string(),
     })
+}
+
+/// `PUT /api/sla-policies/{pid}/calendar` — count a policy's targets on a business calendar, or
+/// stop (CRM-R45). Tickets already open keep the deadlines they were given.
+#[debug_handler]
+async fn set_policy_calendar(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+    Json(payload): Json<PolicyCalendarPayload>,
+) -> Result<Response> {
+    if let Some(calendar) = payload.calendar_pid
+        && !super::calendars::exists(&ctx.db, calendar).await?
+    {
+        return Err(unprocessable("that business calendar does not exist"));
+    }
+    let policy = sla_policies::Entity::find_live()
+        .filter(sla_policies::Column::Pid.eq(pid))
+        .one(&ctx.db)
+        .await?
+        .ok_or(Error::NotFound)?;
+    let txn = ctx.db.begin().await?;
+    let mut active: sla_policies::ActiveModel = policy.into();
+    active.calendar_pid = ActiveValue::set(payload.calendar_pid);
+    let row = active.update(&txn).await?;
+    Audit::record(
+        &txn,
+        "sla_policy",
+        row.pid,
+        "calendar_set",
+        caller.actor(),
+        Some(serde_json::json!({ "calendar_pid": payload.calendar_pid })),
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(row)
 }
 
 /// `GET /api/sla-policies`.
@@ -156,7 +223,7 @@ async fn create_ticket(
     let opened_at: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
     let deadlines = targets_for(&ctx.db, &payload.priority)
         .await?
-        .map(|targets| sla::deadlines(opened_at, targets));
+        .map(|(targets, calendar)| sla::deadlines_on(opened_at, targets, calendar.as_ref()));
     let txn = ctx.db.begin().await?;
     let row = tickets::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
@@ -379,7 +446,7 @@ async fn ticket_priority(
     let ticket = records::find_ticket(&ctx.db, pid).await?;
     let deadlines = targets_for(&ctx.db, &payload.priority)
         .await?
-        .map(|targets| sla::deadlines(ticket.opened_at, targets));
+        .map(|(targets, calendar)| sla::deadlines_on(ticket.opened_at, targets, calendar.as_ref()));
     let txn = ctx.db.begin().await?;
     let from = ticket.priority.clone();
     let mut active: tickets::ActiveModel = ticket.into();
@@ -602,6 +669,7 @@ pub fn routes() -> Routes {
         .prefix("/api")
         .add("/sla-policies", post(create_policy))
         .add("/sla-policies", get(list_policies))
+        .add("/sla-policies/{pid}/calendar", put(set_policy_calendar))
         .add("/tickets", post(create_ticket))
         .add("/tickets", get(list_tickets))
         .add("/tickets/{pid}", get(get_ticket))

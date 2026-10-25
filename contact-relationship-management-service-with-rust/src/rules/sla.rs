@@ -4,6 +4,8 @@
 
 use chrono::{DateTime, Duration, FixedOffset};
 
+use super::calendar::Calendar;
+
 /// One priority's SLA targets, minutes.
 #[derive(Debug, Clone, Copy)]
 pub struct Targets {
@@ -30,6 +32,30 @@ pub fn deadlines(opened_at: DateTime<FixedOffset>, targets: Targets) -> Deadline
         first_response_due_at: opened_at
             + Duration::minutes(i64::from(targets.first_response_minutes)),
         resolution_due_at: opened_at + Duration::minutes(i64::from(targets.resolution_minutes)),
+    }
+}
+
+/// Like [`deadlines`], but counted in working time on `calendar` when there is one (CRM-R45): the
+/// clock runs only inside the calendar's working windows and not on its holidays. A target the
+/// calendar cannot place within its search horizon falls back to round-the-clock, so a ticket
+/// never loses its deadline.
+#[must_use]
+pub fn deadlines_on(
+    opened_at: DateTime<FixedOffset>,
+    targets: Targets,
+    calendar: Option<&Calendar>,
+) -> Deadlines {
+    let round_the_clock = deadlines(opened_at, targets);
+    let Some(calendar) = calendar else {
+        return round_the_clock;
+    };
+    Deadlines {
+        first_response_due_at: calendar
+            .add_working_minutes(opened_at, i64::from(targets.first_response_minutes))
+            .unwrap_or(round_the_clock.first_response_due_at),
+        resolution_due_at: calendar
+            .add_working_minutes(opened_at, i64::from(targets.resolution_minutes))
+            .unwrap_or(round_the_clock.resolution_due_at),
     }
 }
 
@@ -85,6 +111,36 @@ mod tests {
         );
         assert_eq!(d.first_response_due_at, at(10, 0));
         assert_eq!(d.resolution_due_at, at(17, 0));
+    }
+
+    /// On a calendar the target runs in working time only.
+    #[test]
+    fn deadlines_on_a_calendar_count_working_time() {
+        use crate::rules::calendar::{Hours, Week};
+        let day = vec![Hours {
+            start: "09:00".into(),
+            end: "17:00".into(),
+        }];
+        let week = Week {
+            mon: day.clone(),
+            tue: day,
+            ..Week::default()
+        };
+        let calendar = Calendar::build("UTC", &week, &[]).unwrap();
+        let targets = Targets {
+            first_response_minutes: 60,
+            resolution_minutes: 540,
+        };
+        // Opened Monday 16:00: one hour left today, the other eight on Tuesday.
+        let opened = at(16, 0);
+        let d = deadlines_on(opened, targets, Some(&calendar));
+        assert_eq!(d.first_response_due_at, at(17, 0));
+        assert_eq!(d.resolution_due_at, at(17, 0) + Duration::days(1));
+        // With no calendar it is the round-the-clock answer.
+        assert_eq!(
+            deadlines_on(opened, targets, None),
+            deadlines(opened, targets)
+        );
     }
 
     /// Breach truth table: on-time response never breaches (even

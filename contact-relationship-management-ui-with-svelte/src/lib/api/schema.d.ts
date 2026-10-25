@@ -2783,6 +2783,361 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/business-calendars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The business calendars: a time zone, working windows per weekday and holidays */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BusinessCalendar"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Make a business calendar (CRM-R45); an SLA policy may count its targets on one */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BusinessCalendarPayload"];
+                };
+            };
+            responses: {
+                /** @description Created: {pid} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Created"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Validation failure */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/business-calendars/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One business calendar, with how many SLA policies use it */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BusinessCalendar"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Replace a business calendar; tickets already open keep their deadlines */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BusinessCalendarPayload"];
+                };
+            };
+            responses: {
+                /** @description Created: {pid} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Validation failure */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a business calendar; 409 while an SLA policy uses it */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Created: {pid} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Validation failure */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns": {
         parameters: {
             query?: never;
@@ -12001,6 +12356,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sla-policies/{pid}/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Count a policy's targets on a business calendar, or null for round-the-clock; tickets already open keep their deadlines */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PolicyCalendarPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SlaPolicy"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sla/sweep": {
         parameters: {
             query?: never;
@@ -14584,6 +15015,34 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        /** @description One calendar. */
+        BusinessCalendar: {
+            holidays: string[];
+            /**
+             * Format: int64
+             * @description How many SLA policies use it.
+             */
+            in_use: number;
+            name: string;
+            /** Format: uuid */
+            pid: string;
+            timezone: string;
+            week: components["schemas"]["WorkingWeek"];
+        };
+        /** @description `POST /api/business-calendars` and `PUT /api/business-calendars/{pid}` body (a `PUT` replaces). */
+        BusinessCalendarPayload: {
+            /**
+             * @description Days that are not working days, as `YYYY-MM-DD`.
+             * @default []
+             */
+            holidays: string[];
+            /** @description Unique, ignoring case. */
+            name: string;
+            /** @description An IANA time zone name, such as `Europe/London`; the windows are local to it. */
+            timezone: string;
+            /** @description The working windows of each weekday. */
+            week: components["schemas"]["WorkingWeek"];
+        };
         /** @description `GET /api/insights/cadence`. */
         Cadence: {
             /** Format: date-time */
@@ -16187,8 +16646,24 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        /** @description `PUT /api/sla-policies/{pid}/calendar` body. */
+        PolicyCalendarPayload: {
+            /**
+             * Format: uuid
+             * @description The calendar, or `null` to go back to round-the-clock. Tickets already open keep their
+             *     deadlines.
+             */
+            calendar_pid?: string | null;
+        };
         /** @description `POST /api/sla-policies` body. */
         PolicyPayload: {
+            /**
+             * Format: uuid
+             * @description A business calendar (CRM-R45): the targets are then counted in its working time. Leave out
+             *     for round-the-clock.
+             * @default null
+             */
+            calendar_pid: string | null;
             /** Format: int32 */
             first_response_minutes: number;
             priority: string;
@@ -16469,6 +16944,8 @@ export interface components {
             priority: string;
         };
         SlaPolicy: {
+            /** Format: uuid */
+            calendar_pid: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -17127,6 +17604,51 @@ export interface components {
             purpose: string | null;
             /** Format: date-time */
             updated_at: string;
+        };
+        /** @description The working windows of each weekday. A day with none is a day off. */
+        WorkingWeek: {
+            /**
+             * @description Friday.
+             * @default []
+             */
+            fri: components["schemas"]["WorkingWindow"][];
+            /**
+             * @description Monday.
+             * @default []
+             */
+            mon: components["schemas"]["WorkingWindow"][];
+            /**
+             * @description Saturday.
+             * @default []
+             */
+            sat: components["schemas"]["WorkingWindow"][];
+            /**
+             * @description Sunday.
+             * @default []
+             */
+            sun: components["schemas"]["WorkingWindow"][];
+            /**
+             * @description Thursday.
+             * @default []
+             */
+            thu: components["schemas"]["WorkingWindow"][];
+            /**
+             * @description Tuesday.
+             * @default []
+             */
+            tue: components["schemas"]["WorkingWindow"][];
+            /**
+             * @description Wednesday.
+             * @default []
+             */
+            wed: components["schemas"]["WorkingWindow"][];
+        };
+        /** @description One working window: local start and end, written `HH:MM`. */
+        WorkingWindow: {
+            /** @description When work ends, `HH:MM`, after the start. */
+            end: string;
+            /** @description When work starts, `HH:MM`. */
+            start: string;
         };
     };
     responses: never;

@@ -1492,6 +1492,12 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** trigger, source condition and the assign action on `/workflows` (only the actions that fit the trigger are offered); the lead page shows its owner; 9 keys in 8 locales; Playwright test.
       - **Tests:** 4 request tests (in turn with notification and audit; by load; source condition and imports left out; refusals and a dry run that assigns nothing).
       - **Not built:** see CRM-R44 (no hand-assignment, capacity, availability or reassignment; leads from an import are not assigned).
-- [ ] CRM-T109 *(edge)* **SLA working hours and holidays.** Ticket SLA clocks that pause outside working hours; today they are 24x7 (`rules/sla.rs`). *Source:* `frappe/crm` (`crm_service_level_agreement`: `working_hours`, `holiday_list`). (M)
+- [x] CRM-T109 *(edge)* **SLA working hours and holidays.** Ticket SLA clocks that pause outside working hours; today they are 24x7 (`rules/sla.rs`). *Source:* `frappe/crm` (`crm_service_level_agreement`: `working_hours`, `holiday_list`). (M)
+      **Done (2026-10-25, not released):** requirement CRM-R45 first, then:
+      - **Model:** `business_calendars` and `sla_policies.calendar_pid` (migration `000035`). `rules::calendar` (`Calendar::build` checks the zone, the windows and the holidays; `add_working_minutes` walks the days, skipping holidays and time outside the windows) with 6 tests, including a weekend, a holiday, a lunch break and New York's change to summer time; `sla::deadlines_on` with one more. `chrono-tz` is now a direct dependency (it was already in the tree).
+      - **Wiring:** `targets_for` returns the policy's calendar with its targets; a new ticket and an audited priority change use it. Deadlines stay stored on the ticket, so breach flags, the sweep and the dashboards needed no change.
+      - **API:** `/api/business-calendars` (CRUD, 409 while used) and `PUT /api/sla-policies/{pid}/calendar`.
+      - **Tests:** 2 request tests (calendars checked and kept while used; a ticket moved to a calendar priority gets Friday 17:00 and Wednesday 10:00 with a Monday holiday between, and goes back to round-the-clock).
+      - **Not built:** a UI for policies and calendars (the SLA settings have no screen today); pausing while waiting for the customer; per-account calendars; re-deriving open tickets when a calendar changes.
 - [ ] CRM-T110 *(edge)* **Phone-width layout check.** The UI has one media query (`+layout.svelte`); test the main lists, boards and forms at 360 px and fix what breaks. *Source:* `marmelab/atomic-crm` (rated well on mobile in the January 2026 benchmark). (M)
 

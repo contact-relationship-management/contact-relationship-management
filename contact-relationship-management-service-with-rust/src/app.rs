@@ -53,6 +53,7 @@ pub fn app_routes() -> AppRoutes {
         .add_route(controllers::workflows::routes())
         .add_route(controllers::custom_fields::routes())
         .add_route(controllers::attachments::routes())
+        .add_route(controllers::calendars::routes())
         .add_route(controllers::record_imports::routes())
         .add_route(controllers::docs::routes())
         .add_route(controllers::metrics::routes())

@@ -11,6 +11,7 @@ subproject keeps a detailed changelog:
 
 ### Added
 
+- Business calendars: an SLA policy can count its targets in working time (windows per weekday, a time zone, holidays) instead of round the clock (CRM-R45).
 - Lead assignment: a `lead_created` workflow trigger, a lead source condition and an `assign_owner` action that gives each new lead to a worker in turn or by load, with a notification, a run log and a dry run (CRM-R44).
 - Import of contacts and accounts from a CSV, with a preview, duplicate advice, lookups in the person and organization services, no consent and no workflows, and undo (CRM-R43).
 - File attachments on contacts, accounts, leads and deals: an allow-list of types checked against the file's start, a size limit, an optional malware-scan command, integrity-checked downloads that are always attachments, subject access and erasure (CRM-R42).

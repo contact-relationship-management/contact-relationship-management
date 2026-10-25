@@ -20,6 +20,7 @@ pub struct Model {
     pub priority: String,
     pub first_response_minutes: i32,
     pub resolution_minutes: i32,
+    pub calendar_pid: Option<Uuid>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

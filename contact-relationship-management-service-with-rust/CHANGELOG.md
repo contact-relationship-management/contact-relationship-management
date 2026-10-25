@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — SLA working hours and holidays (CRM-T109, CRM-R45)
+
+`business_calendars` and `sla_policies.calendar_pid` (migration `000035`); `/api/business-calendars` and `PUT /api/sla-policies/{pid}/calendar`.
+`rules::calendar` counts working minutes; `sla::deadlines_on` uses it. New direct dependency `chrono-tz` 0.10 (already in the tree through `loco-rs`).
+
 ### Added — lead assignment (CRM-T108, CRM-R44)
 
 `leads.owner_ref` and `workflows.assign_cursor` (migration `000034`). Trigger `lead_created`, condition `sources`, action `assign_owner`

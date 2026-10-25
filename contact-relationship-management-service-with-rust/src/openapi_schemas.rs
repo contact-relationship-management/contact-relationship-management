@@ -38,7 +38,7 @@ fn reference(name: &str) -> Value {
 #[allow(clippy::too_many_lines)] // one list of the documented types
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
-        attachments, audits, board, break_glass, custom_fields, dashboards, engagement,
+        attachments, audits, board, break_glass, calendars, custom_fields, dashboards, engagement,
         external_links, insights, lead_imports, marketing, merge, notifications, privacy,
         record_imports, relationships, sales, search, support, templates, unmerge, views, webhooks,
         workflows,
@@ -75,6 +75,8 @@ fn generated() -> serde_json::Map<String, Value> {
         board::PositionPayload,
         board::ActivityEditPayload,
         support::PolicyPayload,
+        support::PolicyCalendarPayload,
+        calendars::CalendarPayload,
         support::TicketPayload,
         support::PriorityPayload,
         support::ArticlePayload,
@@ -170,6 +172,7 @@ fn generated() -> serde_json::Map<String, Value> {
         workflows::WorkflowView,
         custom_fields::DefView,
         attachments::AttachmentView,
+        calendars::CalendarView,
         custom_fields::ValueView,
         workflows::RunView,
         workflows::Sweep,
@@ -301,6 +304,10 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("post", "/api/email-templates/preview") => "EmailTemplatePreviewPayload",
         ("post", "/api/workflows") | ("put", "/api/workflows/{pid}") => "WorkflowPayload",
         ("post", "/api/custom-fields") => "CustomFieldPayload",
+        ("post", "/api/business-calendars") | ("put", "/api/business-calendars/{pid}") => {
+            "BusinessCalendarPayload"
+        }
+        ("put", "/api/sla-policies/{pid}/calendar") => "PolicyCalendarPayload",
         ("put", "/api/custom-fields/{pid}") => "CustomFieldChange",
         (
             "put",
@@ -344,6 +351,8 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/email-templates/{pid}") => "EmailTemplate",
         ("post", "/api/email-templates/preview") => "EmailTemplatePreview",
         ("get", "/api/workflows/{pid}") => "Workflow",
+        ("get", "/api/business-calendars/{pid}") => "BusinessCalendar",
+        ("put", "/api/sla-policies/{pid}/calendar") => "SlaPolicy",
         (
             "post",
             "/api/contacts/{pid}/attachments"
@@ -458,6 +467,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/email-templates/tokens" => "MergeToken",
         "/api/workflows" => "Workflow",
         "/api/custom-fields" => "CustomField",
+        "/api/business-calendars" => "BusinessCalendar",
         "/api/contacts/{pid}/attachments"
         | "/api/accounts/{pid}/attachments"
         | "/api/leads/{pid}/attachments"
