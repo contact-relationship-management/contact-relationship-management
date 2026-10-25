@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — reports (CRM-R48)
+
+`/reports`: build, run, save and reopen reports; a bar for each row.
+
 ### Added — tags (CRM-R47)
 
 A tags panel on the contact, account, lead and deal pages, and a tag selector on the contact, account and lead lists.

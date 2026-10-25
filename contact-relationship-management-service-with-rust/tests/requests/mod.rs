@@ -30,6 +30,7 @@ mod pagination;
 mod privacy;
 mod record_imports;
 mod relationships;
+mod reports;
 mod sales;
 mod search;
 mod streaming;

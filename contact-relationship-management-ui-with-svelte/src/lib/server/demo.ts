@@ -32,6 +32,9 @@ import type {
   CustomFieldValue,
   Attachment,
   Tag,
+  Report,
+  ReportResult,
+  ReportSpec,
   MergeToken,
   TemplatePreview,
   Stage,
@@ -135,6 +138,8 @@ interface State {
   /** Tag names by record pid, and the tags that exist (CRM-R47). */
   tagged: Record<string, string[]>;
   tags: Tag[];
+  /** The tour's saved reports (CRM-R48). */
+  reports: Report[];
   /** The demo user's saved views (CRM-R35). */
   views: SavedView[];
   /** The inbox of the one demo user (CRM-R32). */
@@ -770,6 +775,22 @@ function build(): State {
     ],
     tagged: { "con-1": ["Key account"], "acc-1": ["Key account"] },
     tags: [{ pid: "tag-1", name: "Key account", uses: 2 }],
+    reports: [
+      {
+        pid: "rep-1",
+        owner_ref: "worker:demo",
+        mine: true,
+        name: "Leads by source",
+        spec: {
+          kind: "lead",
+          group_by: "source",
+          measure: "count",
+          filter: {},
+        },
+        shared: false,
+        updated_at: "2026-10-25T09:00:00Z",
+      },
+    ],
     attachments: {
       "con-1": [
         {
@@ -2182,6 +2203,7 @@ export function demoHandle(
     return customFieldValues(head, id, method, body);
   if (tail === "attachments" && id) return attachmentList(id, method, query);
   if (head === "tags" && !id && method === "GET") return ok(demoTags());
+  if (head === "reports") return reports(method, id, tail, body);
   if (tail === "tags" && id) return recordTags(id, method, body);
   if (head === "attachments" && id && method === "DELETE")
     return attachmentDelete(id);
@@ -2608,6 +2630,147 @@ function workflows(
   }
   if (method === "DELETE") {
     state.workflows.splice(at, 1);
+    return ok({ pid: id });
+  }
+  return problem(405, "method not allowed");
+}
+
+/** The tour's reports: computed over the sample records, as the service computes them over its own. */
+function reportRows(spec: ReportSpec): ReportResult["rows"] | string {
+  type Rec = Record<string, unknown>;
+  const none = "(none)";
+  const text = (v: unknown, fallback = none) =>
+    v == null || v === "" ? fallback : String(v);
+  const tagsOf = (r: Rec) => state.tagged[String(r.pid)] ?? [];
+  const source: Rec[] = (
+    {
+      contact: state.contacts,
+      account: state.accounts,
+      lead: state.leads,
+      deal: state.deals,
+      ticket: state.tickets,
+    } as Record<string, unknown[]>
+  )[spec.kind] as Rec[];
+  if (!source) return "kind is not a kind of record";
+  const stageName = (pid: unknown) =>
+    state.stages.find((x) => x.pid === pid)?.name ?? "(unknown)";
+  const tierOf = (r: Rec) =>
+    text(
+      state.accounts.find((a) => a.pid === r.account_pid)?.tier,
+      "(no account)",
+    );
+  const pick: Record<string, (r: Rec) => string> = {
+    status: (r) => text(r.status),
+    marketing_consent: (r) => text(r.marketing_consent),
+    account_tier: tierOf,
+    owner: (r) => text(r.owner_ref),
+    created_month: () => "2026-10",
+    tier: (r) => text(r.tier),
+    industry: (r) => text(r.industry),
+    source: (r) => text(r.source),
+    stage: (r) => stageName(r.stage_pid),
+    state: (r) => (r.closed_at ? (r.won ? "won" : "lost") : "open"),
+    currency: (r) => text(r.currency),
+    pipeline: () => PIPELINE.name,
+    closed_month: (r) =>
+      r.closed_at ? String(r.closed_at).slice(0, 7) : "(open)",
+    priority: (r) => text(r.priority),
+    channel: (r) => text(r.channel),
+    assignee: (r) => text(r.assignee_ref),
+    opened_month: () => "2026-10",
+  };
+  const group = (r: Rec): string[] =>
+    spec.group_by === "tag"
+      ? tagsOf(r).length
+        ? tagsOf(r)
+        : ["(no tag)"]
+      : [pick[spec.group_by]?.(r) ?? none];
+  const kept = source.filter((r) =>
+    Object.entries(spec.filter).every(([field, values]) => {
+      const held = field === "tag" ? tagsOf(r) : [pick[field]?.(r) ?? none];
+      return held.some((h) =>
+        values.some((v) => v.toLowerCase() === h.toLowerCase()),
+      );
+    }),
+  );
+  const sums = new Map<string, number>();
+  for (const r of kept) {
+    for (const g of group(r)) {
+      const money = spec.measure === "sum_amount";
+      const key = money ? `${g}\u0000${text(r.currency)}` : g;
+      sums.set(
+        key,
+        (sums.get(key) ?? 0) + (money ? Number(r.amount_minor ?? 0) : 1),
+      );
+    }
+  }
+  return [...sums.entries()]
+    .map(([key, value]) => {
+      const [g, currency] = key.split("\u0000");
+      return { group: g!, currency: currency ?? null, value };
+    })
+    .sort((a, b) => b.value - a.value || a.group.localeCompare(b.group));
+}
+
+function reportResult(spec: ReportSpec): DemoReply {
+  const kinds = ["contact", "account", "lead", "deal", "ticket"];
+  if (!kinds.includes(spec.kind))
+    return problem(422, "kind is not a kind of record");
+  if (spec.measure === "sum_amount" && spec.kind !== "deal")
+    return problem(422, "only a deal report can sum amounts");
+  const rows = reportRows(spec);
+  if (typeof rows === "string") return problem(422, rows);
+  return ok({
+    spec,
+    as_of: new Date().toISOString(),
+    rows: rows.slice(0, 200),
+    truncated: rows.length > 200,
+    note: "counted over the records that exist now; sums are per currency and never added across currencies",
+  } satisfies ReportResult);
+}
+
+function reports(
+  method: string,
+  id: string | undefined,
+  tail: string | undefined,
+  body: unknown,
+) {
+  if (method === "POST" && id === "run")
+    return reportResult(bodyOf(body) as unknown as ReportSpec);
+  if (method === "GET" && !id) return ok(state.reports);
+  if (method === "POST" && !id) {
+    const input = bodyOf(body) as {
+      name?: string;
+      spec?: ReportSpec;
+      shared?: boolean;
+    };
+    if (!input.name?.trim()) return problem(422, "name is required");
+    if (
+      state.reports.some(
+        (r) => r.name.toLowerCase() === input.name!.trim().toLowerCase(),
+      )
+    )
+      return problem(422, "you already have a report with that name");
+    const check = reportResult(input.spec as ReportSpec);
+    if (check.status !== 200) return check;
+    const made: Report = {
+      pid: `rep-${state.reports.length + 1}-${Date.now()}`,
+      owner_ref: "worker:demo",
+      mine: true,
+      name: input.name.trim(),
+      spec: input.spec as ReportSpec,
+      shared: input.shared ?? false,
+      updated_at: new Date().toISOString(),
+    };
+    state.reports.push(made);
+    return ok({ pid: made.pid });
+  }
+  const at = state.reports.findIndex((r) => r.pid === id);
+  if (at < 0) return problem(404, "report not found");
+  if (method === "GET" && tail === "run")
+    return reportResult(state.reports[at]!.spec);
+  if (method === "DELETE") {
+    state.reports.splice(at, 1);
     return ok({ pid: id });
   }
   return problem(405, "method not allowed");

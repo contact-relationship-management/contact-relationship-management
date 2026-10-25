@@ -144,6 +144,13 @@ pub fn derive_action(method: &Method, path: &str) -> Action {
         {
             Action::Read
         }
+        // A report is a read; your own saved reports are not CRM data (CRM-R48).
+        Method::POST if path == "/api/reports/run" => Action::Read,
+        Method::POST | Method::PUT | Method::DELETE
+            if path == "/api/reports" || path.starts_with("/api/reports/") =>
+        {
+            Action::Read
+        }
         // A preview renders a draft for a made-up contact and stores nothing (CRM-R36).
         Method::POST if path == "/api/email-templates/preview" => Action::Read,
         Method::GET | Method::HEAD | Method::OPTIONS if is_privileged_read(path) => {

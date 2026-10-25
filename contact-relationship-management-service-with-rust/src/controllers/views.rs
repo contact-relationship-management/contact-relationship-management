@@ -83,7 +83,7 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
-fn owner_of(caller: &MaybeAuthUser) -> Result<String> {
+pub(super) fn owner_of(caller: &MaybeAuthUser) -> Result<String> {
     match caller.actor() {
         Some(sub) => Ok(format!("worker:{sub}")),
         None if auth::require_auth() => Err(Error::CustomError(

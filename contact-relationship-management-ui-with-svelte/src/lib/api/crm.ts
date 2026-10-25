@@ -1561,3 +1561,73 @@ export function setRecordTags(
 ): Promise<string[]> {
   return api(`/${kind}/${pid}/tags`, { method: "PUT", body: { tags } });
 }
+
+/** What a report asks (CRM-R48). */
+export interface ReportSpec {
+  kind: "contact" | "account" | "lead" | "deal" | "ticket";
+  group_by: string;
+  measure: "count" | "sum_amount";
+  filter: Record<string, string[]>;
+  from?: string | null;
+  to?: string | null;
+}
+
+/** One row of a report's answer. */
+export interface ReportRow {
+  group: string;
+  /** For a sum of amounts: sums are never added across currencies. */
+  currency: string | null;
+  value: number;
+}
+
+/** What a report found. */
+export interface ReportResult {
+  spec: ReportSpec;
+  as_of: string;
+  rows: ReportRow[];
+  truncated: boolean;
+  note: string;
+}
+
+/** A saved report. */
+export interface Report {
+  pid: string;
+  owner_ref: string;
+  mine: boolean;
+  name: string;
+  spec: ReportSpec;
+  shared: boolean;
+  updated_at: string;
+}
+
+/** Answer a report specification now; saves nothing. */
+export function runReport(spec: ReportSpec): Promise<ReportResult> {
+  return api("/reports/run", { method: "POST", body: spec });
+}
+
+/** Your saved reports and everyone's shared ones. */
+export function listReports(init?: FetchLike): Promise<Report[]> {
+  return api("/reports", init);
+}
+
+/** Save a report. */
+export function saveReport(input: {
+  name: string;
+  spec: ReportSpec;
+  shared: boolean;
+}): Promise<{ pid: string }> {
+  return api("/reports", { method: "POST", body: input });
+}
+
+/** Delete a report you own. */
+export function deleteReport(pid: string): Promise<{ pid: string }> {
+  return api(`/reports/${pid}`, { method: "DELETE" });
+}
+
+/** Run a saved report. */
+export function runSavedReport(
+  pid: string,
+  init?: FetchLike,
+): Promise<ReportResult> {
+  return api(`/reports/${pid}/run`, init);
+}

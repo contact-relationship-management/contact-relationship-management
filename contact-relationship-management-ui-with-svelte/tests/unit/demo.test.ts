@@ -94,6 +94,7 @@ const SAMPLE_ID: Record<string, string> = {
   leads: "lead-1",
   campaigns: "camp-1",
   workflows: "wf-1",
+  reports: "rep-1",
   deals: "deal-1",
   tickets: "tkt-1",
   articles: "kb-1",

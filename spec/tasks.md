@@ -1519,5 +1519,12 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** `Tags` panel on four record pages, `TagFilter` on three lists; 7 keys in 8 locales; tour data; Playwright test.
       - **Tests:** 4 request tests (labels; a record's set and the list filter; a segment selecting by tag; export and erasure) and 1 under sign-in (a masked reader).
       - **Not built:** the task also said saved views. A saved view filters rows already in the browser, and list rows do not carry tags, so a tag in a view is not built; the list's own tag selector does the job, with the service filtering. Also not built: tags in workflow conditions, and bulk tagging.
-- [ ] CRM-T112 *(edge)* **A report builder.** Pick a record kind, filters (the saved-view and segment language), a grouping and a measure (count, sum of an amount), and see a table or chart that is saved like a view; every number is computed on the service and masked like the lists. *Source:* `twentyhq/twenty` (`modules/dashboard`), `espocrm/espocrm` (reports in the admin guide). (L)
+- [x] CRM-T112 *(edge)* **A report builder.** Pick a record kind, filters (the saved-view and segment language), a grouping and a measure (count, sum of an amount), and see a table or chart that is saved like a view; every number is computed on the service and masked like the lists. *Source:* `twentyhq/twenty` (`modules/dashboard`), `espocrm/espocrm` (reports in the admin guide). (L)
+      **Done (2026-10-25, not released):** requirement CRM-R48 first, then:
+      - **Model:** `reports` (migration `000037`). `rules::reports` (`Spec`, the per-kind field table, `plan` building the SQL from fixed text with bound values), 6 tests including one that a hostile tag value never reaches the SQL text.
+      - **API:** `POST /api/reports/run`, `GET/POST /api/reports`, `PUT/DELETE /api/reports/{pid}`, `GET /api/reports/{pid}/run`; a reader may run and save (they derive `read`); the saved ones follow the saved-view rules (`owner_of` shared with `views.rs`).
+      - **Honesty:** sums per currency, never merged; `as_of`; `truncated`; a masked collection read may count but not sum or use tags.
+      - **UI:** `/reports` (builder, bars, save, reopen), in the navigation; 46 keys in 8 locales; tour data computed over the sample records; Playwright test.
+      - **Tests:** 4 request tests (counts by field, tag and date; per-currency sums; refusals with the member; saved reports) and 1 under sign-in (a masked reader counts but cannot sum or use tags; shared and private reports).
+      - **Not built:** see CRM-R48 (no joins across kinds, no second grouping, no average, no custom fields, no export, no schedule). **Not tested:** the 200-group cut, which needs more than 200 groups.
 

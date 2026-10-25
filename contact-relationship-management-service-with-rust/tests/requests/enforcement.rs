@@ -1505,3 +1505,96 @@ async fn a_masked_reader_cannot_see_tags_and_a_tag_filter_does_not_show_masked_r
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_masked_reader_may_count_but_not_sum_or_use_tags_and_shared_reports_stay_the_owners() {
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let service = sign_as(&kid, "reports-svc", &[("svc", &["true"])]);
+    let reader = sign_as(&kid, "reports-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let run = |token: String, spec: Value| {
+            let request = &request;
+            async move {
+                request
+                    .post("/api/reports/run")
+                    .add_header("authorization", bearer(&token))
+                    .json(&spec)
+                    .await
+                    .status_code()
+            }
+        };
+        let count = json!({ "kind": "contact", "group_by": "status" });
+        let sum = json!({ "kind": "deal", "group_by": "state", "measure": "sum_amount" });
+        let tagged = json!({ "kind": "contact", "group_by": "tag" });
+        assert_eq!(run(reader.clone(), count.clone()).await, 200);
+        assert_eq!(run(reader.clone(), sum.clone()).await, 403);
+        assert_eq!(run(reader.clone(), tagged.clone()).await, 403);
+        assert_eq!(run(service.clone(), sum).await, 200);
+        assert_eq!(run(service.clone(), tagged).await, 200);
+
+        // A reader may save a report (it is not CRM data), and a shared one is run but not changed
+        // by someone else; a private one is not even seen.
+        let shared = request
+            .post("/api/reports")
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "name": "Shared", "spec": count, "shared": true }))
+            .await;
+        shared.assert_status_ok();
+        let shared = shared.json::<Value>()["pid"].as_str().unwrap().to_string();
+        let private = request
+            .post("/api/reports")
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "name": "Private", "spec": count, "shared": false }))
+            .await
+            .json::<Value>()["pid"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let seen: Vec<Value> = request
+            .get("/api/reports")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert_eq!(seen.len(), 1);
+        assert_eq!(seen[0]["mine"], false);
+        request
+            .get(&format!("/api/reports/{shared}/run"))
+            .add_header("authorization", bearer(&reader))
+            .await
+            .assert_status_ok();
+        assert_eq!(
+            request
+                .get(&format!("/api/reports/{private}/run"))
+                .add_header("authorization", bearer(&reader))
+                .await
+                .status_code(),
+            404
+        );
+        assert_eq!(
+            request
+                .delete(&format!("/api/reports/{shared}"))
+                .add_header("authorization", bearer(&reader))
+                .await
+                .status_code(),
+            403
+        );
+        let own = request
+            .post("/api/reports")
+            .add_header("authorization", bearer(&reader))
+            .json(
+                &json!({ "name": "Mine", "spec": json!({ "kind": "lead", "group_by": "source" }) }),
+            )
+            .await;
+        own.assert_status_ok();
+    })
+    .await;
+}

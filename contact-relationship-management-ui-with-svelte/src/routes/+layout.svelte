@@ -103,6 +103,7 @@
     { href: "/articles", key: "nav.articles" },
     { href: "/followups", key: "nav.followups" },
     { href: "/notifications", key: "nav.notifications" },
+    { href: "/reports", key: "nav.reports" },
     { href: "/executive", key: "nav.executive" },
     { href: "/dpo", key: "nav.dpo" },
     { href: "/break-glass", key: "nav.breakGlass" },

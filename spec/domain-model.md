@@ -29,6 +29,7 @@ contact's own fields can be changed after creation with `PUT /api/contacts/{pid}
 An import of contacts or accounts (CRM-R43) is a row of `record_imports` (kind, source, obtained date, counts, and the pid of every record it made), like a lead import (CRM-R34).
 An attachment (CRM-R42) is a row of `attachments` (record kind and pid, cleaned name, content type, size, SHA-256, uploader); the bytes are a file in `CRM_ATTACHMENT_DIR` named by the row's pid.
 A custom field (CRM-R41) is a row of `custom_field_defs` (entity, key, label, kind, choices, sensitivity); its values are rows of `custom_field_values` keyed by field and record pid, as text, sealed when the field is `sensitive`.
+A report (CRM-R48) is a row of `reports`: a name and a specification (kind, grouping, measure, filters, dates), owned by one worker and optionally shared; it holds no record data.
 A tag (CRM-R47) is a row of `tags` (a name, unique in any case); a `tagging` puts one on a contact, account, lead or deal. Tags are personal data when they are on a person: masked, exported and erased with the contact.
 A business calendar (CRM-R45) is a row of `business_calendars` (time zone, working windows per weekday, holidays); an SLA policy may name one (`calendar_pid`), and the deadlines it derives are then in working time.
 A lead (CRM-R44) may have an `owner_ref`, given by a `lead_created` workflow's `assign_owner` action, which keeps a counter (`assign_cursor`) for its round-robin.

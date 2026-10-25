@@ -1141,4 +1141,27 @@ test.describe("export, undo and search", () => {
       "Imogen Hartley",
     );
   });
+
+  test("a report counts leads by source, and is saved", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/reports");
+    await expect(page.getByTestId("report-list")).toContainText(
+      "Leads by source",
+    );
+    await page.getByTestId("report-kind").selectOption("deal");
+    await page.getByTestId("report-measure").selectOption("sum_amount");
+    await page.getByTestId("report-group").selectOption("state");
+    await page.getByTestId("report-run").click();
+    await expect(page.getByTestId("report-result")).toContainText("GBP");
+    await expect(page.getByTestId("report-row").first()).toBeVisible();
+    await page.getByTestId("report-name").fill("Pipeline value");
+    await page.getByTestId("report-save").click();
+    await expect(page.getByTestId("report-list")).toContainText(
+      "Pipeline value",
+    );
+    // Open the saved one again: it restores the form and answers.
+    await page.getByRole("button", { name: "Leads by source" }).click();
+    await expect(page.getByTestId("report-kind")).toHaveValue("lead");
+    await expect(page.getByTestId("report-result")).toContainText("referral");
+  });
 });

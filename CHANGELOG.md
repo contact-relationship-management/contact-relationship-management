@@ -16,6 +16,7 @@ subproject keeps a detailed changelog:
 
 ### Added
 
+- A report builder: count records, or add up deal amounts per currency, grouped by one field, with filters and a date range, saved and shared like a view (CRM-R48).
 - Tags on contacts, accounts, leads and deals: find records by tag, select a segment by tag, and have tags exported and erased with the person (CRM-R47).
 - Business calendars: an SLA policy can count its targets in working time (windows per weekday, a time zone, holidays) instead of round the clock (CRM-R45).
 - Lead assignment: a `lead_created` workflow trigger, a lead source condition and an `assign_owner` action that gives each new lead to a worker in turn or by load, with a notification, a run log and a dry run (CRM-R44).

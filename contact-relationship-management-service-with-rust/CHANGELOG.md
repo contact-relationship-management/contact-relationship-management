@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — report builder (CRM-T112, CRM-R48)
+
+`reports` (migration `000037`); `POST /api/reports/run` and saved reports under `/api/reports`. `rules::reports` plans the query from a closed vocabulary
+with every value bound. A reader may run and save reports (they derive `read`).
+
 ### Added — tags (CRM-T111, CRM-R47)
 
 `tags` and `taggings` (migration `000036`); `/api/tags`, `/api/{contacts,accounts,leads,deals}/{pid}/tags`, and `?tag=` on the four lists. A segment filter has `tags`
