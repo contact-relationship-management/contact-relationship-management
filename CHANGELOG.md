@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — dependencies (2026-10-25)
+
+Cargo lockfiles brought to the latest compatible versions (service and matcher); `jsonschema` 0.58 to 0.60; the two GitHub Actions that were behind (`Swatinem/rust-cache` 2.9.3, `taiki-e/install-action` 2.87.30, still pinned by SHA); the Stalwart mail image digest in `compose.email.yaml`. The UI's Lily Design System packages and `vite` are at their latest. Not taken: TypeScript 7 (`svelte-check` does not run on it yet).
+
 ### Fixed
 
 - Tests for the limits and the fixed filter values of the new rules (calendar, reports), found by mutation testing; a weekly mutation-testing workflow (CRM-T94).

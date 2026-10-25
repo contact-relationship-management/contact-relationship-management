@@ -125,7 +125,7 @@ serial_test = { version = "4.0.1" }
 # the auth path is verified without the auth service or a network.
 ed25519-dalek = { version = "3.0.0" }
 rusty_paseto = { version = "0.10", default-features = false, features = ["v4_public", "serde_json"] }
-jsonschema = { version = "0.58", default-features = false }
+jsonschema = { version = "0.60", default-features = false }
 # loco's `tests_cfg::app::get_app_context` opens an in-memory SQLite
 # connection, so the driver is needed by tests only, never in the binary.
 sea-orm = { version = "2.0", features = ["sqlx-sqlite"] }

@@ -39,8 +39,8 @@ SECTIONS = [
         ("Regulatory position", "spec/regulatory.md", "Why this is demo software and what that means."),
     ]),
     ("Specification", [
-        ("Requirements", "spec/requirements.md", "Numbered requirements (CRM-R1 to CRM-R22) with acceptance criteria."),
-        ("Tasks", "spec/tasks.md", "The delivery checklist (CRM-T1 onward) with resolutions, verification and stated limits."),
+        ("Requirements", "spec/requirements.md", "Numbered requirements (CRM-R1 to CRM-R48) with acceptance criteria."),
+        ("Tasks", "spec/tasks.md", "The delivery checklist (CRM-T1 to CRM-T112) with resolutions, verification and stated limits."),
         ("Architecture", "spec/architecture.md", "Components and data flow."),
         ("Domain model", "spec/domain-model.md", "Entities and relationships, held as relationship wrappers over upstream URNs."),
         ("Design decisions", "spec/design.md", "Numbered design decisions (CRM-D)."),
@@ -53,6 +53,7 @@ SECTIONS = [
         ("Integrations", "spec/integrations.md", "The upstream services CRM consumes (it holds EntityRef URNs and never duplicates upstream records) and how."),
         ("Testing", "spec/testing.md", "Test strategy."),
         ("Roadmap", "spec/roadmap.md", "What comes beyond the v1 task queue."),
+        ("Production-readiness plan", "spec/plan.md", "Engineering assessment of what stands between this demo and use by medical or governmental organisations (not a legal opinion)."),
         ("Glossary", "spec/glossary.md", "Terms."),
     ]),
     ("Rust service", [
@@ -72,6 +73,10 @@ SECTIONS = [
         ("Penetration test scope", "spec/compliance/penetration-test-scope.md", "Brief for an independent tester (no test has been done)."),
         ("Accessibility audit brief", "spec/compliance/accessibility-audit-brief.md", "Test plan for a manual audit (none has been done)."),
         ("First release checklist", "spec/compliance/first-release-checklist.md", "The dry run that proves release signing."),
+        ("Control mapping", "spec/compliance/control-mapping.md", "Controls mapped to NIST, HIPAA, ISO and GDPR references, each marked Implemented, Partial, Deployer or Gap; not a certification."),
+        ("DPIA template", "spec/compliance/dpia-template.md", "A pre-filled data protection impact assessment for the deploying organisation to complete."),
+        ("API lifecycle", "spec/compliance/api-lifecycle.md", "API errors, what counts as a breaking change, and how an endpoint, field or version is retired."),
+        ("Email provider brief", "spec/compliance/email-provider-brief.md", "What to hand a prospective email provider and the people who sign for it (CRM-T39); picks no vendor."),
         ("AI statement", "AI_STATEMENT.md", "How AI was used in this project."),
     ]),
     ("Contributing", [

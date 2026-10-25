@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Lily Design System and tooling
+
+`@lilydesignsystem/svelte-headless` 0.6.1, `svelte-locale-picker` 0.3.1, `svelte-locale-translations` 0.3.0, `themes` 0.6.0 and `vite` 8.3.5. The new themes draw the sort glyph (⇅ ▲ ▼) after a sortable header as generated content, which put it into the header's accessible name ("Due ⇅"); `app.css` now gives it empty alternative text, so it still shows and is no longer read out. TypeScript stays on 6 (7.0.2 breaks `svelte-check`).
+
 ### Added — ESLint (CRM-T94)
 
 `eslint.config.js` (recommended rules for JavaScript, TypeScript and Svelte); `pnpm lint` runs it after prettier. Fixed what it found: unused imports, a `let` that never changes, and `{#each}` blocks without a key on the splash and tour pages.

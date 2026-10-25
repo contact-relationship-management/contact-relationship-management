@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — dependencies
+
+`Cargo.lock` updated (`tokio` 1.54.1, `redis` 1.8, `uuid` 1.29 and others); `jsonschema` 0.58 to 0.60. Clippy (both feature sets) and the full request suite pass.
+
 ### Added — report builder (CRM-T112, CRM-R48)
 
 `reports` (migration `000037`); `POST /api/reports/run` and saved reports under `/api/reports`. `rules::reports` plans the query from a closed vocabulary

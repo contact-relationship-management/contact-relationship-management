@@ -706,3 +706,16 @@ mark.kanban-board-match {
   background: color-mix(in srgb, var(--accent) 25%, transparent);
   color: inherit;
 }
+
+/* The sort glyph Lily draws after a sortable header is decoration: `aria-sort` already says the
+   state. Left as plain generated content it becomes part of the header's accessible name
+   ("Due ⇅"), so give it empty alternative text; it still shows, and is not read out. */
+.app-grid [aria-sort="none"] .data-grid-sort-button::after {
+  content: " \21C5" / "";
+}
+.app-grid [aria-sort="ascending"] .data-grid-sort-button::after {
+  content: " \25B2" / "";
+}
+.app-grid [aria-sort="descending"] .data-grid-sort-button::after {
+  content: " \25BC" / "";
+}

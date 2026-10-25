@@ -63,13 +63,13 @@
           "title": "Requirements",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/requirements.md",
           "path": "spec/requirements.md",
-          "description": "Numbered requirements (CRM-R1 to CRM-R22) with acceptance criteria."
+          "description": "Numbered requirements (CRM-R1 to CRM-R48) with acceptance criteria."
         },
         {
           "title": "Tasks",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/tasks.md",
           "path": "spec/tasks.md",
-          "description": "The delivery checklist (CRM-T1 onward) with resolutions, verification and stated limits."
+          "description": "The delivery checklist (CRM-T1 to CRM-T112) with resolutions, verification and stated limits."
         },
         {
           "title": "Architecture",
@@ -142,6 +142,12 @@
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/roadmap.md",
           "path": "spec/roadmap.md",
           "description": "What comes beyond the v1 task queue."
+        },
+        {
+          "title": "Production-readiness plan",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/plan.md",
+          "path": "spec/plan.md",
+          "description": "Engineering assessment of what stands between this demo and use by medical or governmental organisations (not a legal opinion)."
         },
         {
           "title": "Glossary",
@@ -235,6 +241,30 @@
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/first-release-checklist.md",
           "path": "spec/compliance/first-release-checklist.md",
           "description": "The dry run that proves release signing."
+        },
+        {
+          "title": "Control mapping",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/control-mapping.md",
+          "path": "spec/compliance/control-mapping.md",
+          "description": "Controls mapped to NIST, HIPAA, ISO and GDPR references, each marked Implemented, Partial, Deployer or Gap; not a certification."
+        },
+        {
+          "title": "DPIA template",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/dpia-template.md",
+          "path": "spec/compliance/dpia-template.md",
+          "description": "A pre-filled data protection impact assessment for the deploying organisation to complete."
+        },
+        {
+          "title": "API lifecycle",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/api-lifecycle.md",
+          "path": "spec/compliance/api-lifecycle.md",
+          "description": "API errors, what counts as a breaking change, and how an endpoint, field or version is retired."
+        },
+        {
+          "title": "Email provider brief",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/email-provider-brief.md",
+          "path": "spec/compliance/email-provider-brief.md",
+          "description": "What to hand a prospective email provider and the people who sign for it (CRM-T39); picks no vendor."
         },
         {
           "title": "AI statement",
