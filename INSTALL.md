@@ -139,7 +139,7 @@ GitHub Actions and Woodpecker run the same stages, so a local pass is the CI pas
 | `test`, `test-db` | unit tests; the request tests against PostgreSQL |
 | `front-end` | `svelte-check`, unit tests with coverage, the build, then `pnpm lint` (Prettier and ESLint) |
 | `e2e` | Playwright in a browser, including the guided tour |
-| `lint` | spelling (`typos`) and GitHub workflow security (`zizmor`) |
+| `lint` | spelling (`typos`), GitHub workflow security (`zizmor`) and Markdown (`rumdl`) |
 | `mutants` | `cargo mutants` over `src/rules`: it changes each rule a little, and a change no test notices is reported as missed. Slow (hours), so GitHub runs it weekly; run it on one file with `scripts/ci-check.sh mutants --no-config -f src/rules/<file>.rs -- --lib` |
 | `api-types` | the UI's generated API types match the service's OpenAPI document |
 | `supply-chain` | known vulnerabilities, licences and sources for Rust and the UI, and the SBOMs written to `sbom/` |
@@ -147,6 +147,6 @@ GitHub Actions and Woodpecker run the same stages, so a local pass is the CI pas
 | `scripts` | `shellcheck` on `scripts/*.sh` |
 | `coverage` | a Rust line-coverage report from the unit tests (a report, not a gate) |
 
-`typos` and `zizmor` are installed with `cargo install typos-cli zizmor`.
+`typos`, `zizmor` and `rumdl` are installed with `cargo install typos-cli zizmor rumdl`.
 
 This is demo software; use synthetic data only.

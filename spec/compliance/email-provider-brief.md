@@ -152,7 +152,7 @@ model are the vendor's):
    sweep of up to 500 enrolments, with the sender called under each
    enrolment's row lock).
 3. Agree the address contract with the person service and test it.
-5. Run the funnel and scoring tests against both senders.
+4. Run the funnel and scoring tests against both senders.
 
 ## Decisions for the business
 

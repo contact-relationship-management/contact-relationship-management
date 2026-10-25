@@ -101,7 +101,8 @@ code + tests in one PR.
 > request tests (sales journey incl. forecast-follows-stage +
 > closed-immutability + reasoned reopen, 404/pipeline-membership
 > pins, consent-gated marketing journey incl. withdraw-exits-nurture
-> + send-time re-check, ticket SLA journey incl. assignee-only
+>
+> - send-time re-check, ticket SLA journey incl. assignee-only
 > first-response + priority re-derivation + sweep idempotency, KB
 > versioning), 1 enforcement binary — all green against Postgres 18;
 > clippy-pedantic clean; live smoke verified (seed → forecast → ETag
@@ -145,6 +146,7 @@ code + tests in one PR.
   wiring limits. The remaining act — setting the flag and attributes
   on a real deployment, and extending the enforcement matrix beyond
   the shipped reader/writer pins — is operational by design.
+
 - [~] CRM-G2 GDPR/PECR review of the real send path (ESP adapter,
   lawful basis, unsubscribe in-message), retention schedules,
   subject-access/erasure flows ([regulatory.md](regulatory.md)).
@@ -374,10 +376,10 @@ code + tests in one PR.
       the wrong-type branch for at least `Worker` and `Organization`
       too; `cargo test` green; clippy pedantic clean. (CRM-D11)
       - **Resolved.** New `ref_rules_wrong_type_worker_and_organization`
-        test in `src/validation.rs` exercises both the wrong-type
-        rejection (a `person:` ref where `Worker`/`Organization` is
-        expected) and the matching-type acceptance for each, alongside
-        the pre-existing `Person`-only `ref_rules` test.
+      test in `src/validation.rs` exercises both the wrong-type
+      rejection (a `person:` ref where `Worker`/`Organization` is
+      expected) and the matching-type acceptance for each, alongside
+      the pre-existing `Person`-only `ref_rules` test.
 
 - [x] CRM-T26 **Front-end sign-in gate.** No `+layout.server.ts`
       exists and `hooks.server.ts` only populates `locals.sessionId`
@@ -471,7 +473,6 @@ parties outside the repository.
       `get_contact`; extend `tests/enforcement.rs` with the full persona
       matrix. (plan gap 3; auth.md known limits)
       **Resolution:** `auth::aggregate_masked` decides a collection-level read with no `resource.*` attributes, so only rules that need no record (service, admin, manager in the reference policy) read unmasked. Applied to `GET /api/forecast` (`totals_minor`), `GET /api/dashboards/sales` (per-stage `totals_minor`), `GET /api/campaigns` (`cost_minor`), the campaign funnel (revenue, ROI, cost), and the activities, deals and tickets bundled in `get_contact` (`summary`, `amount_minor`, `description`). Masked amounts are `null`, never zero; counts stay. The UI treats null totals, revenue and ROI as dashes (Playwright pin). `tests/enforcement.rs` proves a masked reader gets null forecast and dashboard totals while a service credential gets the numbers. **Follow-up (2026-10-10):** the executive pack, forecast trends, stale-deals (per deal, owner sees own unmasked) and the forecast-snapshot response are masked too, pinned in `tests/enforcement.rs`; `reference_policy_persona_matrix` (unit) evaluates the shipped reference policy for service, admin, manager, rep, marketing, support, plain reader, record owner and break-glass across read, write and destructive. **Still not done:** the other `/api/insights/*` views carry no amounts so are unchanged; an end-to-end persona run through HTTP for manager, marketing and support (the unit matrix covers the policy, not the wiring per persona).
-
 - [x] CRM-T33 *(resolved 2026-10-10.)* **Security headers and CORS.** Service: secure-headers
       middleware and a deny-by-default CORS origin list in production
       config. UI: CSP, `X-Content-Type-Options`, `Referrer-Policy`,
@@ -496,7 +497,7 @@ parties outside the repository.
 - [x] CRM-T38 *(resolved 2026-10-10.)* **Admin-only operational reads.** `/api/audits*`,
       `/api/events/recent`, `/api/retention` classified above the plain read
       gate; `/metrics.prom` and OpenAPI optionally authenticated. (plan gap 9)
-     
+
       **Resolution:** `PRIVILEGED_READ_PREFIXES` (`/api/audits`, `/api/events`, `/api/retention`) derive the admin/service tier for `GET`, matched on whole path segments; 2 unit pins; enforcement test shows reader and writer get 403 and a service credential 200 on four endpoints. `CRM_PROTECT_OPERATIONAL=1` additionally puts `/metrics.prom` and the OpenAPI/Swagger paths behind authentication (off by default so an in-network scraper keeps working). **Note:** the tier reuses the engine's `destructive` action, because the shared engine has no privileged-read action; policies must grant `destructive` to whoever may read audits.
 
 - [ ] CRM-T39 **Real ESP adapter** with
@@ -590,7 +591,6 @@ parties outside the repository.
       activity reads write an audit row (actor, record, masked or not);
       bulk list reads write one summarizing row. (plan gap 11)
       **Resolution:** `Audit::record_read` writes a read audit row in its own short transaction (it joins the hash chain). Audited: single reads of contacts (with `masked` flag), leads and tickets; list reads of contacts, leads, tickets and activities as one summary row with the returned count. A failed audit write fails the read. DB test `personal_data_reads_are_audited`. **Later:** account reads (T47), deal list reads and all insights views (`deal_list_read`, `insight_read` via a middleware that fails closed; DB test `deal_and_insight_reads_are_audited`) are now audited too. The bundled UI does not poll, but any client that does will grow the audit table quickly; size retention for it.
-
 - [x] CRM-T41 *(resolved 2026-10-10, local keys.)* **Field-level encryption and KMS.** Envelope encryption for
       contact channel details and activity content, key rotation, KMS
       adapter. (plan gap 12) *Open.*
@@ -601,7 +601,6 @@ parties outside the repository.
       service; UI idle-session timeout and re-authentication before
       destructive actions. (plan gap 14) *Open.*
       **Resolution:** Service: `src/rate_limit.rs` (8 pins) and an outermost abuse-guard middleware: a per-client fixed-window request limit (default 600 a minute) and a lockout after repeated `401`s (default 10 in 5 minutes), answering `429` with `Retry-After`. On by default only in production; `CRM_RATE_LIMIT_PER_MIN`, `CRM_AUTH_FAIL_LIMIT`, `CRM_AUTH_FAIL_WINDOW_SECS` override and `0` disables. Probes (`/_health`, `/_ping`, `/_readiness`) are exempt so a lockout cannot restart a healthy pod. Verified live against a production boot (401, 401, then 429). UI: 15-minute idle sign-out (`src/lib/idle.ts`, `IDLE_TIMEOUT_MS`) revokes the session and returns to sign-in; polling does not count as activity; vitest (4) and a Playwright test that fails at 10 minutes and passes at 15. **Not done:** re-authentication before destructive actions (needs a step-up flow from the identity provider). **Limits:** counters are per process, so enforce a global limit at the ingress too; unauthenticated callers share one bucket unless `CRM_TRUST_FORWARDED_FOR=1` is set behind a proxy that overwrites `X-Forwarded-For`, which means an attacker can lock out other unauthenticated callers (not authenticated ones, and not probes); the idle timer is client-side, so a client that blocks JavaScript keeps its session until the server-side session lifetime ends.
-
 - [x] CRM-T44 *(resolved 2026-10-10.)* **Break-glass access.** Emergency elevation with mandatory
       reason, time limit, and after-the-fact review report. (plan gap 15)
       *Open.*
@@ -627,21 +626,25 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       The axe gate caught a real violation on the new page (links in running
       text relied on colour) which is fixed. **Still needed:** the manual audit
       the statement says is missing; update the statement when it is done.
+
 - [x] CRM-T46 *(resolved 2026-10-10.)* **DTAC supporting statements.**
       [spec/compliance/dtac-supporting.md](compliance/dtac-supporting.md): the
       C1.2.1 scope justification, the MFA plan (C3.5), the logging statement with
       exclusions (C3.6), a threat-model summary, and the C3.4 and C4.1.2 gaps.
       Drafts for the manufacturer to adopt; the threat model is a summary, not a
       structured exercise.
+
 - [x] CRM-T47 *(resolved 2026-10-10.)* **Close the account-detail masking leak
       and audit account reads.** `GET /api/accounts/{pid}` bundled the account's
       contacts and deals with no record-level decision, so a masked caller saw
       real channel detail and deal amounts. Contacts now go through
       `readable_contacts` and deals through the per-deal decision; account single
       and list reads are audited. The enforcement test fails without the fix.
+
 - [ ] CRM-T48 **Manual accessibility audit** (keyboard, NVDA/JAWS/VoiceOver,
       400% zoom) of data-bearing pages and the boards, fixes, and an updated
       statement. *Open: needs people and assistive technology.* **Brief written 2026-10-18:** `compliance/accessibility-audit-brief.md` is the test plan. No audit has been done.
+
 - [ ] CRM-T49 **GDS API checklist review and build signing.** Review the API
       against the GDS standards, and sign release builds and pin image digests
       (Software Security Code of Practice). *Open.*
@@ -706,6 +709,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       count (it would include rows a record-level policy hides); the contact
       timeline (latest 200), group feed (50) and the nurture sweep (500 per
       run) are bounded by design and not paginated; insights are not paginated.
+
 - [x] CRM-T52 **Idempotency keys for creates.** A retried `POST` after a
       timeout makes a duplicate. Accept an `Idempotency-Key` header on create
       endpoints and replay the first result (store it in Redis or the
@@ -796,6 +800,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       enumerations (statuses, kinds, channels) are plain strings, not
       enumerated; a mutating route added with no schema must be listed as
       bodyless to pass, which is a prompt, not a proof.
+
 - [x] CRM-T54 **RFC 9457 errors and a deprecation policy.** The API review
       found error bodies were Loco's `{error, description}`, produced in
       several places with different shapes (plain text from the auth and
@@ -1064,12 +1069,16 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 - [x] CRM-T68 **Undo a merge from the UI.** *Done 2026-10-20: `GET /api/contacts/{pid}/merges` (what can be undone, newest first), a "Recently merged" list and an Undo panel on the contact page (preview, reason, confirm), the tour layer, 13 strings in 8 locales (unreviewed), 2 e2e tests; the service test covers the list.* Traces to CRM-R26. Limits: no live (real-service) UI test for undo yet; only the survivor's page offers it, because a merged contact has no page.
 
 - [x] CRM-T69 **Release v0.1.3.** *Done 2026-10-20 (commit `edb2d9b`): service 0.1.3 on crates.io (the matcher stays at 0.1.1; its pending `const fn` change is unreleased); `v0.1.3` tag pushed; the release workflow succeeded (both images, SBOMs); cosign 3 verifies both signatures and the provenance (service `sha256:01dc7452…`, ui `sha256:ed81123f…`); the GitHub release is not a pre-release and has 4 assets. Carries merge undo (CRM-R26), links to external systems (CRM-R27), the erasure fix, the UI for both, and the module splits. Migrations 18 and 19 are new, and `auto_migrate` is off in the image, so run `db migrate` before starting 0.1.3 (runbook section 6). The images were verified, not run.*
-- [x] CRM-T70 **Link panels on accounts, deals and leads; live test for undo.** *Done 2026-10-20: `LinksPanel` component shared with the contact page; record pages `/accounts/{pid}`, `/deals/{pid}` (read from the deal list, since there is no single-deal read), `/leads/{pid}`; the tour layer gained `GET /accounts/{pid}` and links for all four kinds; 3 e2e tests and 3 live tests for the pages, and a live test that merges and then undoes through the UI against the real service. Two older live tests that assumed data were fixed. Limits: the deal page cannot edit the deal; the account page lists contacts and deals but the tour account has no deals.* Traces to CRM-R27, CRM-R26
-- [x] CRM-T71 **More chaos cases; matcher 0.1.2 prepared.** *Done 2026-10-20: `scripts/chaos-proxy.py` (drop, reset, delay, and kill-after-COMMIT) sits between the service and PostgreSQL; `scripts/chaos.sh` gained network partitions (dropped and reset), a slow database, a service killed just after COMMIT (merge and idempotent create), and a primary-to-replica failover; 71 checks pass. The run uses `CRM_EVENT_TRANSPORT=outbox`, since only that transport writes the event in the mutation's transaction. Not covered: full disk, clock jumps, long replica lag, real failover tooling, TLS, several service replicas; the two-minute idempotency takeover window is described, not waited out. Matcher 0.1.2 (the `const fn` change) was published to crates.io on 2026-10-20 at the maintainer's word (no git tag; the service does not need it).* Traces to CRM-R25
-- [x] CRM-T72 **Run the released image; fix what that found.** *Done 2026-10-20: `scripts/image-smoke.sh` and `examples/mint_token.rs`; the v0.1.3 image runs hardened in production mode with signed tokens (no token and a forged token 401, reader 403 on write, rep 403 on merge and unmerge, admin merge and unmerge and link work, audit chain verifies, a `--worker` container stays up). Phase 2 found a real bug: a `--worker`-only process never ran `mail::init`, so it sent campaigns with the simulated sender and marked them delivered. Fixed by `init_sending` called from `connect_workers` as well as `after_routes`; the script passes 27 of 27 on a local build with the fix; the released v0.1.3 image passes 24 of 27. Released as v0.1.4 (2026-10-21 image smoke: 27 of 27), with a DB-backed regression test (`a_worker_only_process_sets_up_the_real_sender`) that fails without the fix. Limits: the release image is amd64 only; phase 2 runs in development mode because production refuses unverified SMTP certificates.* Traces to CRM-T39
-- [x] CRM-T73 **Edit and reopen a deal on its own page.** *Done 2026-10-21: `/deals/{pid}` has an Edit form (name, amount, expected close) that sends only what changed; a masked amount is disabled and a closed deal shows why it cannot be edited. A closed deal can be reopened from the same page with a reason (`POST /deals/{pid}/reopen`). Tests: three demo-data Playwright, two live; nine new strings in eight locales.*
-- [x] CRM-T74 **Multi-arch release images.** *Done 2026-10-21, proven by the pre-release `v0.1.5-rc.1`: `.github/workflows/release.yml` builds each image on a native runner per architecture (`ubuntu-latest`, `ubuntu-24.04-arm`), pushes `-amd64` and `-arm64` tags, and a `manifest` job joins them into one image under the version tag and signs and attests the index digest. Both published images are OCI indexes with linux/amd64 and linux/arm64; the service's arm64 image passes `scripts/image-smoke.sh` 27 of 27 natively, and `gh attestation verify` on the tag exits 0. Then verified for the stable `v0.1.5` (2026-10-21): `cosign verify` (cosign 3.1.3, keyless, the release workflow identity) passes for both images at the index digests (service `sha256:8579252e…`, ui `sha256:6d20ba20…`), `gh attestation verify` exits 0, and the smoke script passes 27 of 27 on the arm64 half. The UI image now has `scripts/ui-image-smoke.sh` (23 checks: hardened flags, non-root, version label, every security header, a static file, a 404, the tour off and on, a demo edit that sticks); it passes on the pulled v0.1.5 UI image (arm64). Not checked: the amd64 half of either pulled image. Limits: the `-amd64` / `-arm64` tags stay visible in the registry; the UI smoke script does not run the UI against the service.*
 
+- [x] CRM-T70 **Link panels on accounts, deals and leads; live test for undo.** *Done 2026-10-20: `LinksPanel` component shared with the contact page; record pages `/accounts/{pid}`, `/deals/{pid}` (read from the deal list, since there is no single-deal read), `/leads/{pid}`; the tour layer gained `GET /accounts/{pid}` and links for all four kinds; 3 e2e tests and 3 live tests for the pages, and a live test that merges and then undoes through the UI against the real service. Two older live tests that assumed data were fixed. Limits: the deal page cannot edit the deal; the account page lists contacts and deals but the tour account has no deals.* Traces to CRM-R27, CRM-R26
+
+- [x] CRM-T71 **More chaos cases; matcher 0.1.2 prepared.** *Done 2026-10-20: `scripts/chaos-proxy.py` (drop, reset, delay, and kill-after-COMMIT) sits between the service and PostgreSQL; `scripts/chaos.sh` gained network partitions (dropped and reset), a slow database, a service killed just after COMMIT (merge and idempotent create), and a primary-to-replica failover; 71 checks pass. The run uses `CRM_EVENT_TRANSPORT=outbox`, since only that transport writes the event in the mutation's transaction. Not covered: full disk, clock jumps, long replica lag, real failover tooling, TLS, several service replicas; the two-minute idempotency takeover window is described, not waited out. Matcher 0.1.2 (the `const fn` change) was published to crates.io on 2026-10-20 at the maintainer's word (no git tag; the service does not need it).* Traces to CRM-R25
+
+- [x] CRM-T72 **Run the released image; fix what that found.** *Done 2026-10-20: `scripts/image-smoke.sh` and `examples/mint_token.rs`; the v0.1.3 image runs hardened in production mode with signed tokens (no token and a forged token 401, reader 403 on write, rep 403 on merge and unmerge, admin merge and unmerge and link work, audit chain verifies, a `--worker` container stays up). Phase 2 found a real bug: a `--worker`-only process never ran `mail::init`, so it sent campaigns with the simulated sender and marked them delivered. Fixed by `init_sending` called from `connect_workers` as well as `after_routes`; the script passes 27 of 27 on a local build with the fix; the released v0.1.3 image passes 24 of 27. Released as v0.1.4 (2026-10-21 image smoke: 27 of 27), with a DB-backed regression test (`a_worker_only_process_sets_up_the_real_sender`) that fails without the fix. Limits: the release image is amd64 only; phase 2 runs in development mode because production refuses unverified SMTP certificates.* Traces to CRM-T39
+
+- [x] CRM-T73 **Edit and reopen a deal on its own page.** *Done 2026-10-21: `/deals/{pid}` has an Edit form (name, amount, expected close) that sends only what changed; a masked amount is disabled and a closed deal shows why it cannot be edited. A closed deal can be reopened from the same page with a reason (`POST /deals/{pid}/reopen`). Tests: three demo-data Playwright, two live; nine new strings in eight locales.*
+
+- [x] CRM-T74 **Multi-arch release images.** *Done 2026-10-21, proven by the pre-release `v0.1.5-rc.1`: `.github/workflows/release.yml` builds each image on a native runner per architecture (`ubuntu-latest`, `ubuntu-24.04-arm`), pushes `-amd64` and `-arm64` tags, and a `manifest` job joins them into one image under the version tag and signs and attests the index digest. Both published images are OCI indexes with linux/amd64 and linux/arm64; the service's arm64 image passes `scripts/image-smoke.sh` 27 of 27 natively, and `gh attestation verify` on the tag exits 0. Then verified for the stable `v0.1.5` (2026-10-21): `cosign verify` (cosign 3.1.3, keyless, the release workflow identity) passes for both images at the index digests (service `sha256:8579252e…`, ui `sha256:6d20ba20…`), `gh attestation verify` exits 0, and the smoke script passes 27 of 27 on the arm64 half. The UI image now has `scripts/ui-image-smoke.sh` (23 checks: hardened flags, non-root, version label, every security header, a static file, a 404, the tour off and on, a demo edit that sticks); it passes on the pulled v0.1.5 UI image (arm64). Not checked: the amd64 half of either pulled image. Limits: the `-amd64` / `-arm64` tags stay visible in the registry; the UI smoke script does not run the UI against the service.*
 
 ## Code quality (from the 2026-10-21 research, [plan.md](plan.md) Q1 to Q20)
 
@@ -1230,7 +1239,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 
       **Done:** `MIGRATION_TASKS.md` deleted. Checks: `svelte-check` 0 errors and 0 warnings, vitest 114, build, prettier, Playwright 105.
 - [~] CRM-T92 **Make the demo tour opt-in and per visitor.** `CRM_DEMO_TOUR=on` turns it on (it is on today unless set to `off`). Use a random demo session per sign-in in place of the constant `DEMO_SESSION`, and cap the demo state. Update the image smoke test (it checks the tour off and on) and the runbook. This is a behaviour change, so record it in the changelog. (Q18, S)
-      **Per visitor, done 2026-10-21 (not released):**
+  **Per visitor, done 2026-10-21 (not released):**
       - **Sessions:** each tour sign-in gets `demo-tour-<random uuid>` and its own copy of the data (`startDemoSession`, `demoHandleFor` in `src/lib/server/demo.ts`). At most `MAX_DEMO_SESSIONS` (200) copies are kept; the least recently used goes first. Sign-out forgets the copy.
       - **Tests:** 4 vitest tests (ids differ, one visitor's write does not reach another, the cap, sign-out).
       - **Docs:** the UI changelog and INSTALL.
@@ -1275,7 +1284,8 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       - **Coverage** already has a report-only `coverage` job.
       - **Mutation testing, added 2026-10-25:** `.cargo/mutants.toml` limits `cargo mutants` to `src/rules` and the unit tests (about 780 mutants); `scripts/ci-check.sh mutants` and a weekly `mutants.yml` workflow (also by hand) run it and keep the report. Not yet run by GitHub; the full run was not done here (about three hours), but the two newest rule files were: `calendar.rs` and `reports.rs`, 102 mutants. **It found 21 untested behaviours** (the boundaries of the limits, one match arm per fixed filter set, the default measure, and a test loop that tested nothing when a kind had no fields). Tests were added for each, and a second run left one survivor (two filters each keeping their own expression), which a further test closed (checked on that mutant alone). `tags.rs` (13 mutants) had none missed.
       - **ESLint, added 2026-10-25:** `eslint.config.js` with the recommended rules of ESLint, `typescript-eslint` and `eslint-plugin-svelte` (dev dependencies; `pnpm lint` now runs it after prettier, and the CI `front-end` stage already runs `pnpm lint`). It found 58 problems; clean now. **Fixed:** 8 unused imports, a `let` that never changes, 5 `{#each}` without a key (on the splash and tour pages), a useless `{" "}`. **Switched off, with the reason in the file:** `svelte/no-navigation-without-resolve` (40 links; the app is served from the root, so a plain absolute link is right; turn it on if a base path is ever set), `no-empty-object-type` for SvelteKit's own `app.d.ts`, and one `prefer-svelte-reactivity` line for a map of loads in flight that nothing renders.
-      - **Still not done:** a full run over every rule file (its survivors are the list of rules no test pins), markdown lint, and `actionlint` (not installable here without changing Homebrew's permissions; zizmor covers the security half of what it checks, not the syntax half). Woodpecker has no `lint` step.
+      - **Markdown lint and Woodpecker, added 2026-10-25:** `rumdl` 0.3.0 checks every Markdown file (`.rumdl.toml`) in the `lint` stage, which Woodpecker now runs too (it had no lint step). Its first run found 1,852 findings: 1,701 were line length (the prose is one paragraph per line, so that rule is off), 37 inline HTML (used on purpose, off) and 28 links to sibling projects outside this repository (off: this check cannot see them, so **those links are unchecked**). The other 86 were formatting and were fixed. `spec/special-files-for-public-repos` is left out because it is copied as it is. GitHub's `install-action` has no `rumdl`, so that job installs the pinned wheel from PyPI; the Woodpecker step compiles it. Neither job has run `rumdl` yet.
+      - **Still not done:** a full run over every rule file (its survivors are the list of rules no test pins), and `actionlint` (not installable here without changing Homebrew's permissions; zizmor covers the security half of what it checks, not the syntax half). Woodpecker has no `lint` step.
 
       **Not done, and why:**
       - **Coverage** (`cargo llvm-cov`, vitest `--coverage`): the tool is not installed here, and a report-only job is best added when its output can be seen.
@@ -1298,7 +1308,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Delivery:** retries with backoff, a dead-letter state, a delivery log, and a 410 that disables the subscription.
   - **Audit and erasure:** every subscription change is audited. An erasure cancels queued deliveries for that contact.
   - **Tests:** signing, retry and dead-letter, the SSRF refusals, and erasure.
-  - **Sources:** https://docs.espocrm.com/administration/webhooks/ and https://www.svix.com/resources/glossary/webhook-signature/
+  - **Sources:** <https://docs.espocrm.com/administration/webhooks/> and <https://www.svix.com/resources/glossary/webhook-signature/>
   - **Limits to state:** at-least-once delivery, so receivers must dedupe on the event id.
 
   (C1, M)
@@ -1317,7 +1327,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Merge and unmerge:** the stricter-side rule (CRM-R24) applies per purpose.
   - **Migration:** existing rows become one default purpose with their history kept.
   - **Tests:** the send gate for each state, the merge cases per purpose, and the migration against populated data (`scripts/migrate-with-data.sh`).
-  - **Source:** https://knowledge.hubspot.com/marketing-email/manage-your-marketing-hub-starter-email-account-settings
+  - **Source:** <https://knowledge.hubspot.com/marketing-email/manage-your-marketing-hub-starter-email-account-settings>
 
   (C2, M)
       **Done (2026-10-24, not released):** requirement CRM-R29 first (and a line in CRM-R6), then:
@@ -1336,7 +1346,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Audit:** every call is audited with an `agent` marker.
   - **Prompt injection:** record text returned to the agent is marked as data, not instructions.
   - **Tests:** a reader cannot write through MCP; a masked caller gets masked values; the audit rows.
-  - **Sources:** https://docs.twenty.com/user-guide/ai/capabilities/mcp and https://developers.hubspot.com/changelog/remote-hubspot-mcp-server-is-now-generally-available
+  - **Sources:** <https://docs.twenty.com/user-guide/ai/capabilities/mcp> and <https://developers.hubspot.com/changelog/remote-hubspot-mcp-server-is-now-generally-available>
   - **Limits to state:** MCP spec versions move quickly; name the version supported.
 
   (C3, M)
@@ -1354,7 +1364,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Person record:** created or resolved through the person service, since the CRM stores no email.
   - **Optional nurture enrolment:** starts only after opt-in is confirmed.
   - **Tests:** abuse limits, no send before confirmation, and the audit row.
-  - **Source:** https://www.pipedrive.com/features/web-forms
+  - **Source:** <https://www.pipedrive.com/features/web-forms>
 
   (C4, M)
       **Done (2026-10-24, not released):** requirement CRM-R31 first, then:
@@ -1370,7 +1380,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Notifications:** a `bg_pg` job writes notification rows for due reminders and SLA breaches. The UI gets an unread inbox, with mark-read.
   - **Access:** a notification is created only if the recipient can read the record (ABAC is checked at write time and again at read time).
   - **Tests:** reminders fire once, notifications for unreadable records are suppressed, and the labels exist in 8 locales.
-  - **Source:** https://knowledge.hubspot.com/sequences/complete-your-sequence-tasks
+  - **Source:** <https://knowledge.hubspot.com/sequences/complete-your-sequence-tasks>
 
   (C5, M)
       **Done (2026-10-24, not released):** requirement CRM-R32 first, then:
@@ -1384,7 +1394,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Endpoint:** `GET /api/search?q=` over contacts, accounts, deals, leads, tickets and articles, using `tsvector` with `unaccent` and `pg_trgm` for fuzzy matches. Results are filtered by ABAC and masking, and the query is audited as a count, not as text.
   - **UI:** the CRM-R22 search uses it when the service is present.
   - **Tests:** accents, typos, a masked caller, and paging.
-  - **Source:** https://www.postgresql.org/docs/current/pgtrgm.html
+  - **Source:** <https://www.postgresql.org/docs/current/pgtrgm.html>
   - **Limits to state:** encrypted columns (`activities.summary`, `contacts.preferred_channel`) cannot be indexed.
 
   (C6, M)
@@ -1400,7 +1410,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Consent:** imported only with its source and date, and never inferred.
   - **Scope:** contacts are not imported, because they come from the person service.
   - **Tests:** mapping, a bad row, duplicate advice, undo, and the audit chain.
-  - **Source:** https://docs.twenty.com/user-guide/data-migration/overview
+  - **Source:** <https://docs.twenty.com/user-guide/data-migration/overview>
 
   (C7, M/L)
       **Done (2026-10-25, not released):** requirement CRM-R34 first, then:
@@ -1415,7 +1425,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Model:** per-user and shared views on the contacts, accounts, deals, leads and tickets lists, stored on the server. Each view is a filter in the segment language (CRM-R7) plus sort order and columns.
   - **Sharing:** sharing a view never shares access; rows are still decided per caller.
   - **Tests:** a view written by one user and read by another (shared), and a masked reader.
-  - **Source:** https://attio.com/help/reference/managing-your-data/views/filter-and-sort-views.md
+  - **Source:** <https://attio.com/help/reference/managing-your-data/views/filter-and-sort-views.md>
 
   (C8, S/M)
       **Done (2026-10-25, not released):** requirement CRM-R35 first, then:
@@ -1431,7 +1441,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Unsubscribe:** every marketing template carries the unsubscribe link, and saving one without it is refused.
   - **Use:** nurture steps and campaigns refer to a template.
   - **Tests:** escaping, a missing value, and the missing-link refusal.
-  - **Source:** https://knowledge.hubspot.com/sequences/create-and-edit-sequences
+  - **Source:** <https://knowledge.hubspot.com/sequences/create-and-edit-sequences>
 
   (C9, S/M)
       **Done (2026-10-25, not released):** requirement CRM-R36 first, then:
@@ -1445,7 +1455,6 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** `/templates` (linked from Campaigns): list, editor with token buttons and fallbacks, live preview of the plain text with a switch to show each token as missing; 15 keys in all 8 locales; one sample template in the tour. The campaigns page also has a creation form (name, segment, template or own message; 6 more keys in 8 locales; Playwright test). The token `first_name` was renamed `given_name`; there is no family-name token because the CRM keeps one display name.
       - **Tests:** 9 rules unit tests (escaping, a missing value, header injection, the missing-link refusal, fallback checks); 2 request tests (save, refusals, preview, replace, delete; a campaign and a nurture step really mailed from a template, one link and no footer, edit reaches the next send, 409 while in use); 1 under sign-in (a reader previews and reads but cannot save); Playwright for the page. Service: 272 unit, 107 request, 7 enforcement; UI: 143 unit and 111 Playwright; clippy clean; types regenerated.
       - **Limits:** plain text only (no HTML-bodied mail, attachments or per-language templates); no template versions; a template deleted between the in-use check and a send fails that delivery.
-
 - [x] CRM-T104 **Explainable workflow rules.**
   - **Triggers:** record created or updated, a stage change, or a schedule.
   - **Conditions:** written in the segment filter language.
@@ -1453,7 +1462,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Safety:** a dry run against current data, a loop guard (depth and rate), and consent re-checked inside any action that leads to a send.
   - **Run log:** every run records why it fired and what it did, and is audited.
   - **Tests:** each action, the loop guard, and the consent re-check.
-  - **Source:** https://docs.twenty.com/user-guide/workflows/overview
+  - **Source:** <https://docs.twenty.com/user-guide/workflows/overview>
 
   (C10, L; after T95 and T99)
       **Done (2026-10-25, not released):** requirement CRM-R40 first, then:
@@ -1465,7 +1474,6 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** `/workflows` (nav): list, editor (trigger, condition checkboxes, action editor), dry run and run log; 39 keys in 8 locales; sample workflow and run in the tour; Playwright test.
       - **Tests:** 9 rules unit tests; 8 request tests (a task made only for matching contacts with the run's reason, notify/set_field/send_webhook, the consent re-check, the loop cut and the rate hold, the dry run changing nothing, the schedule interval, a deal stage move, the closed set refused, a failing action undone) and 1 under sign-in. Service: see the changelog; UI: 146 unit and 115 Playwright; clippy clean both feature sets.
       - **Limits:** see CRM-R40 "Not built". A workflow edit restarts a schedule's scan from the first contact. Rollback of a failed run is tested by renaming a table; other failure modes use the same path.
-
 - [x] CRM-T105 **Typed custom fields.** An admin declares a field on contacts, accounts, leads or deals (text, number, date, choice); each field declares its sensitivity so masking, encryption, subject access and erasure treat it like a built-in one. Shown on the record page, usable in saved views and segments. *Source:* `twentyhq/twenty` (`engine/metadata-modules/field-metadata`), `espocrm/espocrm` (`Tools/FieldManager`), `frappe/crm` (`fcrm/doctype/crm_fields_layout`). From the 2026-10-25 sota-scan. (L)
       **Done (2026-10-25, not released):** requirement CRM-R41 first, then:
       - **Model:** `custom_field_defs` and `custom_field_values` (migration `000031`), values keyed by field and record pid with no foreign key. Rules in `rules::custom_fields` (key, kinds, choices, `check_value`), DB-free, 6 tests.
@@ -1529,4 +1537,3 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** `/reports` (builder, bars, save, reopen), in the navigation; 46 keys in 8 locales; tour data computed over the sample records; Playwright test.
       - **Tests:** 4 request tests (counts by field, tag and date; per-currency sums; refusals with the member; saved reports) and 1 under sign-in (a masked reader counts but cannot sum or use tags; shared and private reports).
       - **Not built:** see CRM-R48 (no joins across kinds, no second grouping, no average, no custom fields, no export, no schedule). **Not tested:** the 200-group cut, which needs more than 200 groups.
-

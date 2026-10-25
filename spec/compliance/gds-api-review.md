@@ -40,7 +40,6 @@ after this review. What remains is a reviewer's check of this draft against
 the standards' published text, and building the `Deprecation` and `Sunset`
 headers when something is first deprecated.
 
-
 ## Check against the published standard (2026-10-21)
 
 Read from [GDS API technical and data standards](https://www.gov.uk/guidance/gds-api-technical-and-data-standards)

@@ -23,4 +23,4 @@ run CRM systems.
 
 ## How to send it
 
-Open an issue titled `RFC: <topic>`, or email joel@joelparkerhenderson.com.
+Open an issue titled `RFC: <topic>`, or email <joel@joelparkerhenderson.com>.

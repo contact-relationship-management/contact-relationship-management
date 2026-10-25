@@ -76,6 +76,12 @@ steps:
       - apt-get update && apt-get install -y --no-install-recommends shellcheck
       - scripts/ci-check.sh scripts
 
+  - name: lint
+    image: *rust_image
+    commands:
+      - cargo install --locked typos-cli zizmor rumdl
+      - scripts/ci-check.sh lint
+
   - name: supply-chain
     image: *rust_image
     commands:

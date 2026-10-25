@@ -11,4 +11,4 @@ For details see [CHANGELOG.md](CHANGELOG.md) and the subproject changelogs.
 
 ## Press and contact
 
-Joel Parker Henderson, joel@joelparkerhenderson.com
+Joel Parker Henderson, <joel@joelparkerhenderson.com>

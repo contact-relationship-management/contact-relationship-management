@@ -313,7 +313,6 @@ that two contact records are the same person, and why.*
   that score, then have their addresses fetched from the person service and
   are scored again; each says whether that happened (`email_checked`).
 
-
 ## CRM-R24 — Merge two contacts into one
 
 *Status: built (CRM-T64).*
@@ -379,7 +378,6 @@ freezes or returns, and when the service itself is killed mid-write.*
   several merges racing for one contact, exactly one wins.
 - `scripts/chaos.sh` injects each of those faults against a throwaway
   PostgreSQL and Redis and checks them. It is run on purpose, not on every push.
-
 
 ## CRM-R26 — Undo a merge
 

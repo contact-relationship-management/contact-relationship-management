@@ -109,6 +109,8 @@ case "${stage}" in
     # workspace, caches in jobs that publish. Offline, so it needs no token.
     typos
     zizmor --offline .github
+    # Markdown (`.rumdl.toml`: line length and the links to sibling projects are not checked).
+    rumdl check .
     ;;
   mutants)
     # CRM-T94: change each pure rule a little and check that a unit test notices. A mutant that

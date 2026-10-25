@@ -29,7 +29,7 @@ honest. See [AI_STATEMENT.md](AI_STATEMENT.md).
 
 ## Money
 
-If you want to support the work financially, email joel@joelparkerhenderson.com.
+If you want to support the work financially, email <joel@joelparkerhenderson.com>.
 
 ## Conduct
 

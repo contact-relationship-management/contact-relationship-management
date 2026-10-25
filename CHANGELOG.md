@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — Markdown lint (CRM-T94)
+
+`rumdl` runs in the `lint` stage (`.rumdl.toml`), and Woodpecker gains the `lint` step it lacked. Formatting findings fixed in 16 files.
+
 ### Changed — dependencies (2026-10-25)
 
 Cargo lockfiles brought to the latest compatible versions (service and matcher); `jsonschema` 0.58 to 0.60; the two GitHub Actions that were behind (`Swatinem/rust-cache` 2.9.3, `taiki-e/install-action` 2.87.30, still pinned by SHA); the Stalwart mail image digest in `compose.email.yaml`. The UI's Lily Design System packages and `vite` are at their latest. Not taken: TypeScript 7 (`svelte-check` does not run on it yet).
@@ -33,25 +37,18 @@ Cargo lockfiles brought to the latest compatible versions (service and matcher);
 - `PUT /api/accounts/{pid}` to edit an account after creation (audited by field name), with an edit form on the account page (CRM-R39).
 - A contact's optional `given_name`, and `PUT /api/contacts/{pid}` to edit a contact after creation (audited by field name), with an edit form on the contact page (CRM-R38).
 - Email templates with merge tokens, a live preview for a made-up contact, and the unsubscribe link required in every body; campaigns and nurture steps can use one (CRM-R36).
-
 - Saved views of the five main lists, per user or shared, in a view bar above each (CRM-R35).
-
 - CSV import of leads with a per-row report, duplicate advice and undo (CRM-R34).
-
 - Server-side search across the main records: accent-blind, typo-tolerant, respecting what the caller may read (CRM-R33).
-
 - Task reminders and a notifications inbox: assigned tasks and SLA breaches notify the assignee once, only for records they may
   read (CRM-R32).
-
 - Web form lead capture (`POST /forms/{slug}`): a sign-up form on a website makes a lead and asks the visitor to confirm
   before anything is mailed; origin check, rate limits and a honeypot protect it (CRM-R31).
-
 - Production-readiness assessment ([spec/plan.md](spec/plan.md)), compliance
   evidence pack ([spec/compliance](spec/compliance/index.md)), tamper-evident
   audit chain, fail-closed production boot, security headers and CSP,
   supply-chain CI stage with SBOMs, hardened Containerfiles, and an axe
   accessibility gate.
-
 - Special files for a public repository: README, LICENSE, CITATION.cff,
   CODEOWNERS, MAINTAINERS, GOVERNANCE, SECURITY, CONTRIBUTING, RFC, INSTALL,
   NEWS, COMPARISONS, BENCHMARKS, AI_STATEMENT.

@@ -7,7 +7,7 @@ are closed.
 
 ## Reporting a vulnerability
 
-Please report privately by email to joel@joelparkerhenderson.com, or by a
+Please report privately by email to <joel@joelparkerhenderson.com>, or by a
 GitHub private security advisory if the repository has them enabled. Do not
 open a public issue for a vulnerability.
 

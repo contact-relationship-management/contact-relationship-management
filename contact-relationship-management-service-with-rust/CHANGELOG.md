@@ -156,6 +156,7 @@ marked possibly absent, which made generated clients treat `null` and missing al
 optional member may be left out). `cargo run --example openapi` prints the document.
 
 ### Changed — the OpenAPI document is generated from the code (CRM-T83)
+
 - Every schema in `/api-docs/openapi.json` except `Error` now comes from the Rust type that is sent or received (the
   request payloads, the database models, and typed response structs) instead of a hand-written table, and the paths
   and verbs come from the mounted router. The wire format is unchanged. The document changed in these ways only:
@@ -166,10 +167,12 @@ optional member may be left out). `cargo run --example openapi` prints the docum
 - The campaign, ticket, article and partnership-stage status bodies are one shared type (`StatusPayload`).
 
 ### Added — tests for the middlewares and the request paths (CRM-T82)
+
 - The six middlewares moved out of `app.rs` into `src/middleware/`, with unit tests for the rate limit, `no-store` and
   idempotency answers, and request tests for contacts, accounts, activities, events (both transports) and the rate limit.
 
 ### Changed — GDS API standards (CRM-T49)
+
 - **Unknown request members are refused.** Every JSON request body (the `*Payload` structs) now answers `422` for a
   member it does not know, so a misspelt field is no longer silently dropped. Under `api-lifecycle.md` this narrows what
   an endpoint accepts: a client that sends extra members will now fail. The webhook body and query parameters are not
@@ -180,6 +183,7 @@ optional member may be left out). `cargo run --example openapi` prints the docum
   (always in production), so a client sees its budget before it gets a `429`; the `429` carries them too.
 
 ### Changed — insights are computed in the database (CRM-T80)
+
 - The cadence, engagement, members, stakeholders, pipeline-hygiene, DPO and consent-by-account views no longer load
   every activity or consent event into memory; the database returns one row per subject or group. The answers are
   the same. Pipeline hygiene was quadratic in the number of deals and now is not, and the sales dashboard no longer
@@ -188,6 +192,7 @@ optional member may be left out). `cargo run --example openapi` prints the docum
   cut in a new `truncated` member. Deals and tickets were unbounded; activities were cut at 200 without saying so.
 
 ### Added — validation errors name their member (CRM-T79)
+
 - A `422` validation error now has an `errors` list, `[{ "pointer": "/display_name", "detail": "…" }]`, beside the
   unchanged `error`, `description` and `detail`. `pointer` is a JSON Pointer to the request member and is left out
   when the problem is about the request as a whole. For a body the parser refused, it follows the parser's path
@@ -196,21 +201,25 @@ optional member may be left out). `cargo run --example openapi` prints the docum
   clients read are the same.
 
 ### Changed — settings in one place (CRM-T78)
+
 - The `CRM_*` settings that were read lazily from the environment (authentication switches, key and policy sources,
   the event transport, the webhook and Mailgun secrets, the mail batch, the retention horizon, the Redis URL and
   others) are parsed once into `settings::Settings`. Values and defaults are unchanged. The webhook secret, Mailgun
   key, retention days and mail batch were read on every call and are now read once per process.
 
 ### Removed — unused JWT configuration (CRM-T85)
+
 - The `auth.jwt` blocks in `config/*.yaml` are gone. Nothing read them (loco's JWT support is not compiled in), and the
   production one made the service refuse to start without `JWT_SECRET`. Once this is released, `JWT_SECRET` is no
   longer needed; releases up to 0.1.5 still need it. The development and test files no longer hold literal secrets.
 
 ### Changed — the display-name cache is bounded (CRM-T81)
+
 - Looked-up display names are kept for 10 minutes and at most 10,000 at a time (the oldest goes first). They were
   kept, unbounded, for the life of the process. A rename or erasure upstream now shows within 10 minutes.
 
 ### Changed — dependencies (CRM-T84)
+
 - **reqwest 0.13** (was 0.12) for the email-provider and upstream clients. Certificates are now checked against the
   operating system's trust store instead of bundled webpki roots, the same as the token verifier's key fetch already did.
 - **Matcher 0.1.2** (was 0.1.1): the `const fn` change only, no behaviour change.
@@ -224,6 +233,7 @@ and published as one multi-arch image (CRM-T74); proven by the pre-release `v0.1
 ## [0.1.4] — 2026-10-21
 
 ### Security — `rustls-webpki` 0.103.16 (RUSTSEC-2026-0382)
+
 A certificate-verification advisory published on 2026-10-20; `Cargo.lock` now pins the fixed version.
 
 ### Fixed — a `--worker` container sent campaigns with the simulated sender (2026-10-20)
@@ -239,12 +249,14 @@ simulated default, nothing changes. A DB-backed test (`a_worker_only_process_set
 calls the worker hook after resetting what `after_routes` set, and fails without the fix.
 
 ### Added — `examples/mint_token.rs`
+
 Mints a PASETO `v4.public` token and the matching key set from a fixed, public seed, for trying the
 service with authentication on. Used by `scripts/image-smoke.sh`. Never trust that key anywhere real.
 
 ## [0.1.3] — 2026-10-20
 
 ### Added — links to records in other systems (CRM-R27)
+
 A contact, account, deal or lead can carry up to 50 links to the same record in HubSpot,
 Salesforce, Attio, Pipedrive, Dynamics or elsewhere: `GET` and `POST
 /api/{contacts,accounts,deals,leads}/{pid}/external-links`, `DELETE
@@ -254,6 +266,7 @@ with a merge, come back with an unmerge, appear in the subject-access export and
 deleted by erasure. Migration `m20261020_000019_external_links`.
 
 ### Added — `POST /api/contacts/{pid}/unmerge` (CRM-R26)
+
 Also `GET /api/contacts/{pid}/merges`, the contacts merged into this one that can still be undone.
 Undoes a merge from its ledger: rows still on the survivor move back (anything since
 moved on is left behind and counted), the dropped nurture enrolments and group seats are
@@ -265,22 +278,26 @@ gains `before`, `unmerged_at`, `unmerged_actor`, and the unique index on `merged
 now partial so a contact can be merged again. Merges made before it cannot be undone.
 
 ### Fixed — erasing a survivor now scrubs the contacts merged into it
+
 `/erase` left a merged-away duplicate's display name and job title in its soft-deleted
 row until the retention sweep, and the merge ledger kept its `person_ref`. Both are
 scrubbed with the survivor.
 
 ### Changed — `controllers/insights.rs` split into `controllers/insights/` (2026-10-20)
+
 The 1,221-line file is now `mod.rs` (routes, the `live!` macro and the shared query helpers),
 `sales.rs`, `support.rs`, `compliance.rs`, `outreach.rs` and `relationships.rs`. No behaviour
 change; `controllers::insights::routes` is unchanged.
 
 ### Changed — `controllers/marketing.rs` split into `controllers/marketing/` (2026-10-20)
+
 The 1,659-line file is now `mod.rs` (routes and the shared `{pid}` response), `consent.rs`,
 `segment.rs`, `campaign.rs`, `nurture.rs` and `public.rs` (unsubscribe and the email
 webhooks). No behaviour change; paths such as `controllers::marketing::routes` and
 `CampaignSendWorker` are unchanged.
 
 ### Changed — `src/auth.rs` split into `src/auth/` (2026-10-20)
+
 The 1,955-line file is now `mod.rs` (the guide and re-exports), `verifier.rs`,
 `policy.rs`, `records.rs`, `extract.rs` and `tests.rs`. No behaviour change and every
 `crate::auth::...` path is unchanged. Builds and lints clean with and without the
@@ -297,6 +314,7 @@ cosign-installer 4 (cosign 3) and attest-build-provenance 4: `v0.1.2-rc.1` ran i
 verify with cosign 3 (cosign 2 clients cannot verify the new signatures).
 
 ### Fixed — a write no longer waits on a dead Redis (CRM-R25)
+
 With Redis stopped or frozen, a successful write waited for the Redis pool's own
 timeout (over 20 seconds) before answering, because the insight cache's
 generation bump after every write had no limit. Every insight-cache call is now
@@ -304,6 +322,7 @@ bounded to 750 ms and its failure only skips the cache. Found by the new
 `scripts/chaos.sh`.
 
 ### Added — `POST /api/contacts/{pid}/merge` (CRM-R24)
+
 Merges the contact in the path into `into_pid`, which survives. One transaction;
 `dry_run` does the work and rolls it back, so its counts are exact. Activities,
 leads, deals (as primary contact), tickets, email deliveries, consent events,

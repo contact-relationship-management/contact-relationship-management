@@ -77,14 +77,14 @@ is written to the stricter reading.
 
 ---
 
-# Plan — new capabilities and code quality
+## Plan — new capabilities and code quality
 
 Researched 2026-10-21 against commit `331478a`. Companion to the CRM-T75 to
 CRM-T104 rows in [tasks.md](tasks.md). Nothing here is built yet. Each
 capability needs a new requirement (proposed ids CRM-R28 onward) written with
 its code and tests, under the three-part rule.
 
-## How this was researched
+### How this was researched
 
 - **Code quality:** a read-only pass over the service, matcher and UI.
   Clippy at the default level is clean on both crates, including the
@@ -100,7 +100,7 @@ its code and tests, under the three-part rule.
   marked; check them against the vendor's own docs before quoting them in the
   spec.
 
-## Baseline: already good
+### Baseline: already good
 
 - **Rust:** no `unwrap`, `panic!`, `todo!` or TODO comments outside tests.
 - **UI:** no legacy Svelte (`$:`, `export let`, stores, `on:`, `<slot>`), no
@@ -109,7 +109,7 @@ its code and tests, under the three-part rule.
   is defined.
 - **Dependabot** covers Cargo, npm, both images and the Actions.
 
-## Code quality findings
+### Code quality findings
 
 | # | Finding | Evidence | Size | Task |
 |---|---|---|---|---|
@@ -139,7 +139,7 @@ T92, T94) so that later changes cannot regress. Then the service structure
 (T76, T78, T79, T82), then the larger rewrites (T77, T80, T83) and the UI
 (T89, T90, T93).
 
-## New capability candidates
+### New capability candidates
 
 These are ranked by value and by how much they reuse what already exists.
 **Conflict** means the item clashes with [scope.md](scope.md) or with the
@@ -183,7 +183,7 @@ are simulated, so report both arms with no declared winner).
 consent machinery and none depends on another. C4 needs C2. C10 needs C1 and
 C5.
 
-## Limits of this research
+### Limits of this research
 
 The code findings are counts and line references from one read-only pass, not
 a review of every function. Sizes are guesses. The capability survey reads

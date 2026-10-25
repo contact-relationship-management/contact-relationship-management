@@ -131,6 +131,8 @@ jobs:
       - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2
         with:
           tool: typos,zizmor
+      # rumdl is not in install-action; its wheel on PyPI is pinned to the version checked here.
+      - run: pip install --require-virtualenv=false rumdl==0.3.0
       - run: scripts/ci-check.sh lint
 
   # A breaking change to the published matcher API must come with a new version (CRM-T87).

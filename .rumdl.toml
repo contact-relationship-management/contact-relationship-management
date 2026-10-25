@@ -1,0 +1,7 @@
+# Markdown lint (CRM-T94). The prose is written as one paragraph per line, so line length is
+# not checked; inline HTML is used on purpose in a few pages. Relative links that leave the
+# repository point at sibling projects of the author's workspace, which this check cannot see.
+# The templates under spec/special-files-for-public-repos are copied from elsewhere as they are.
+[global]
+disable = ["MD013", "MD033", "MD057"]
+exclude = ["spec/special-files-for-public-repos"]

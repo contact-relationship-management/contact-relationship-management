@@ -1,6 +1,6 @@
 # Architecture
 
-```
+```text
  rep / manager / marketing / support browser
         │  (cookie session; no token in JS)
         ▼
@@ -17,7 +17,7 @@
 
 Loco-idiomatic layout (the patient-flow / WPM shape):
 
-```
+```text
 src/
 ├── app.rs                loco Hooks (+ bg_pg workers: nurture
 │                         scheduler, SLA sweep, campaign send)

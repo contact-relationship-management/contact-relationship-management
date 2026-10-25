@@ -18,6 +18,7 @@ configuration in this repository enforces it and a test or check pins it;
 **Deployer** when the organization running the software must supply it;
 **Gap** when neither is true today (each gap names its task in
 [../tasks.md](../tasks.md)).
+
 - [dtac-supporting.md](dtac-supporting.md) — draft statements for the NHS DTAC form.
 - [gds-api-review.md](gds-api-review.md) — self-review against UK government API standards (a draft).
 - [api-lifecycle.md](api-lifecycle.md) — error format (RFC 9457), versioning, and the deprecation policy.
