@@ -277,6 +277,9 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
         let mut pids = Vec::new();
         for (name, family) in [("Ada Lovelace", Some("Lovelace")), ("Grace Hopper", None)] {
             let mut body = json!({ "person_ref": super::a_person(), "display_name": name });
+            if family.is_some() {
+                body["given_name"] = json!("Addie");
+            }
             if let Some(family) = family {
                 body["family_name"] = json!(family);
             }
@@ -302,7 +305,7 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
         let made: Value = request
             .post("/api/email-templates")
             .json(
-                &json!({ "name": "Formal", "subject": "Dear {{family_name}}",
+                &json!({ "name": "Formal", "subject": "Dear {{given_name}} {{family_name}}",
                            "body": "Dear {{family_name}}\n{{unsubscribe_url}}" }),
             )
             .await
@@ -330,8 +333,9 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
             .assert_status_ok();
         let mut subjects: Vec<String> = recorder.sent().iter().map(|m| m.subject.clone()).collect();
         subjects.sort();
-        // Grace has none recorded, and it is not guessed from "Hopper".
-        assert_eq!(subjects, ["Dear Lovelace", "Dear customer"]);
+        // Ada's given name on file wins over the first word of her display name. Grace has none
+        // recorded: her given name is the first word, and her family name is not guessed.
+        assert_eq!(subjects, ["Dear Addie Lovelace", "Dear Grace customer"]);
 
         // Erasure clears it.
         request
@@ -342,11 +346,18 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
             .db
             .query_one_raw(sea_orm::Statement::from_string(
                 sea_orm::DatabaseBackend::Postgres,
-                format!("SELECT family_name FROM contacts WHERE pid = '{}'", pids[0]),
+                format!(
+                    "SELECT given_name, family_name FROM contacts WHERE pid = '{}'",
+                    pids[0]
+                ),
             ))
             .await
             .unwrap()
             .unwrap();
+        assert_eq!(
+            row.try_get::<Option<String>>("", "given_name").unwrap(),
+            None
+        );
         assert_eq!(
             row.try_get::<Option<String>>("", "family_name").unwrap(),
             None

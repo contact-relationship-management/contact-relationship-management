@@ -122,3 +122,73 @@ async fn only_a_task_can_be_marked_done() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_contact_is_edited_by_the_members_sent_and_nothing_else() {
+    request::<App, _, _>(|request, ctx| async move {
+        use sea_orm::ConnectionTrait;
+        let created: Value = request
+            .post("/api/contacts")
+            .json(
+                &json!({ "person_ref": a_person(), "display_name": "Ada Lovelace",
+                           "given_name": "Ada", "job_title": "Analyst" }),
+            )
+            .await
+            .json();
+        let pid = created["pid"].as_str().unwrap().to_string();
+        let url = format!("/api/contacts/{pid}");
+
+        // Only what is sent changes; null clears.
+        let edited: Value = request
+            .put(&url)
+            .json(&json!({ "family_name": "Lovelace", "job_title": null }))
+            .await
+            .json();
+        assert_eq!(edited["family_name"], "Lovelace");
+        assert_eq!(edited["job_title"], Value::Null);
+        assert_eq!(edited["given_name"], "Ada");
+        assert_eq!(edited["display_name"], "Ada Lovelace");
+
+        // Refused: nothing to change, a blank name, a bad channel, an unknown member, an unknown
+        // account, an unknown contact.
+        for body in [
+            json!({}),
+            json!({ "display_name": " " }),
+            json!({ "preferred_channel": "pigeon" }),
+            json!({ "person_ref": a_person() }),
+            json!({ "account_pid": uuid::Uuid::new_v4() }),
+        ] {
+            let r = request.put(&url).json(&body).await;
+            assert!(
+                r.status_code().is_client_error(),
+                "{body}: {}",
+                r.status_code()
+            );
+        }
+        request
+            .put(&format!("/api/contacts/{}", uuid::Uuid::new_v4()))
+            .json(&json!({ "given_name": "X" }))
+            .await
+            .assert_status(StatusCode::NOT_FOUND);
+
+        // The audit row names the field, not the value.
+        let row = ctx
+            .db
+            .query_one_raw(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Postgres,
+                format!(
+                    "SELECT snapshot::text AS d FROM audit_logs WHERE entity_pid = '{pid}' \
+                     AND action = 'updated'"
+                ),
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        let details = row.try_get::<String>("", "d").unwrap();
+        assert!(details.contains("family_name"), "{details}");
+        assert!(!details.contains("Lovelace"), "{details}");
+    })
+    .await;
+}

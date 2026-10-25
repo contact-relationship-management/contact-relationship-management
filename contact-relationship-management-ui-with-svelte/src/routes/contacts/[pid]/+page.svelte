@@ -6,6 +6,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import {
+    editContact,
     eraseContact,
     getContact,
     getContactDuplicates,
@@ -22,6 +23,43 @@
   import { i18n, t } from "#lib/i18n.svelte.js";
 
   let actionError = $state<string | null>(null);
+
+  // Editing the contact's own details (CRM-R38). An emptied optional box clears it.
+  let editing = $state(false);
+  let saved = $state(false);
+  let form = $state({ display_name: "", given_name: "", family_name: "", job_title: "" });
+
+  function startEdit() {
+    const c = detail?.contact;
+    if (!c) return;
+    form = {
+      display_name: c.display_name,
+      given_name: c.given_name ?? "",
+      family_name: c.family_name ?? "",
+      job_title: c.job_title ?? "",
+    };
+    saved = false;
+    actionError = null;
+    editing = true;
+  }
+
+  async function saveEdit() {
+    actionError = null;
+    const orNull = (v: string) => (v.trim() ? v.trim() : null);
+    try {
+      await editContact(pid, {
+        display_name: form.display_name,
+        given_name: orNull(form.given_name),
+        family_name: orNull(form.family_name),
+        job_title: orNull(form.job_title),
+      });
+      editing = false;
+      saved = true;
+      await record.reload();
+    } catch (cause) {
+      actionError = errorMessage(cause);
+    }
+  }
   let erasing = $state(false);
   // Likely duplicates (CRM-R23). Secondary: a failure here leaves the page as
   // it was, so it is not an error state.
@@ -274,6 +312,32 @@
     {/if}
     {#if actionError}
       <p class="error" data-testid="action-error">{actionError}</p>
+    {/if}
+  </div>
+
+  <div class="panel">
+    {#if editing}
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          void saveEdit();
+        }}
+        data-testid="contact-form"
+      >
+        <label>{t("common.name")} <input bind:value={form.display_name} required /></label>
+        <label>{t("contact.dupField.given_name")} <input bind:value={form.given_name} /></label>
+        <label>{t("contact.dupField.family_name")} <input bind:value={form.family_name} /></label>
+        <label>{t("contact.dupField.job_title")} <input bind:value={form.job_title} /></label>
+        <button type="submit" data-testid="contact-save">{t("contact.editSave")}</button>
+        <button type="button" onclick={() => (editing = false)}>{t("contact.editCancel")}</button>
+      </form>
+    {:else}
+      <p class="muted" data-testid="contact-names">
+        {t("contact.dupField.given_name")}: {detail.contact.given_name ?? "—"} ·
+        {t("contact.dupField.family_name")}: {detail.contact.family_name ?? "—"}
+      </p>
+      <button onclick={startEdit} data-testid="contact-edit">{t("contact.edit")}</button>
+      {#if saved}<span data-testid="contact-saved">{t("contact.saved")}</span>{/if}
     {/if}
   </div>
 

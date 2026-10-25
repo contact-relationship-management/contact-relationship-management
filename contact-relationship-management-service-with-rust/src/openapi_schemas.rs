@@ -56,6 +56,7 @@ fn generated() -> serde_json::Map<String, Value> {
     document!(
         requests:
         relationships::ContactPayload,
+        relationships::ContactChange,
         relationships::AccountPayload,
         relationships::RepointPayload,
         relationships::ActivityPayload,
@@ -233,6 +234,7 @@ fn base_schemas() -> Value {
 pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
     Some(match (method, path) {
         ("post", "/api/contacts") => "ContactPayload",
+        ("put", "/api/contacts/{pid}") => "ContactChange",
         ("post", "/api/contacts/{pid}/repoint") => "RepointPayload",
         ("post", "/api/contacts/{pid}/consent") => "ConsentPayload",
         ("post", "/api/contacts/{pid}/consent/request") => "ConsentRequestPayload",

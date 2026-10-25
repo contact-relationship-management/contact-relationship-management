@@ -22,6 +22,7 @@ pub struct Model {
     pub owner_ref: Option<String>,
     pub display_name: String,
     /// Optional; never derived from `display_name` (CRM-R37).
+    pub given_name: Option<String>,
     pub family_name: Option<String>,
     pub status: String,
     pub job_title: Option<String>,

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a contact's given name, and editing a contact (CRM-R38)
+
+`contacts.given_name` (optional, migration `000029`), set on `POST /api/contacts`, filled by a merge, cleared by an unmerge and erased with the
+contact. The `given_name` merge token uses it, else the first word of the display name. New `PUT /api/contacts/{pid}` changes the contact's own
+fields (only the members sent; `null` clears); the audit row lists the field names, never the values.
+
 ### Added — a contact's family name (CRM-R37)
 
 `contacts.family_name` (optional, migration `000028`), set on `POST /api/contacts`, filled by a merge and cleared by an unmerge, erased with the

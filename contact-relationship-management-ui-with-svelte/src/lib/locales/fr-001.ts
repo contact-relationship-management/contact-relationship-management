@@ -475,4 +475,8 @@ export default {
   "campaign.template": "Modèle d’e-mail",
   "campaign.ownMessage": "Écrire le message ici",
   "campaign.create": "Créer la campagne",
+  "contact.edit": "Modifier les détails",
+  "contact.editSave": "Enregistrer",
+  "contact.editCancel": "Annuler",
+  "contact.saved": "Enregistré",
 } satisfies Record<StringKey, string>;

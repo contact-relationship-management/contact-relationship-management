@@ -24,7 +24,8 @@ makes each fire once, `suppressed`, `read_at`); it holds no record text and eras
 A lead import (CRM-R34) is a row of `lead_imports`: who, where the list came from (`source_note`), the date it was obtained, counts,
 status (`running | completed | undone`) and the pid of every lead it made. Imported leads have `source=import`, no contact and no consent.
 A contact (CRM-R37) may carry an optional `family_name`, set when the contact is made. It is never derived from `display_name`, is filled by a
-merge when the survivor has none (and cleared again by an unmerge), and is erased with the contact.
+merge when the survivor has none (and cleared again by an unmerge), and is erased with the contact. The same holds for the optional `given_name` (CRM-R38); a
+contact's own fields can be changed after creation with `PUT /api/contacts/{pid}`.
 An email template (CRM-R36) is a row of `email_templates`: a name (unique, any case), a subject, a plain-text body that holds merge tokens and
 must contain `{{unsubscribe_url}}`, and the template's own fallbacks (token to text). A campaign or nurture step may carry its `template_pid`
 instead of a subject and body.

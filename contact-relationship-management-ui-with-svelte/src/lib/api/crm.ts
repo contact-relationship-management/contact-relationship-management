@@ -13,6 +13,8 @@ export interface Contact {
   account_pid: string | null;
   owner_ref: string | null;
   display_name: string;
+  given_name: string | null;
+  family_name: string | null;
   status: string;
   job_title: string | null;
   preferred_channel: string;
@@ -339,6 +341,22 @@ export function recordConsent(
     method: "POST",
     body: { action, source: "operator ui" },
   });
+}
+
+/**
+ * Change a contact's own fields (CRM-R38). Only the members sent change;
+ * `null` clears an optional one.
+ */
+export function editContact(
+  pid: string,
+  fields: {
+    display_name?: string;
+    given_name?: string | null;
+    family_name?: string | null;
+    job_title?: string | null;
+  },
+): Promise<Contact> {
+  return api(`/contacts/${pid}`, { method: "PUT", body: fields });
 }
 
 /**

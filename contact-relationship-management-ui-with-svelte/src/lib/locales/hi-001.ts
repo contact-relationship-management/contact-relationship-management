@@ -465,4 +465,8 @@ export default {
   "campaign.template": "ईमेल टेम्पलेट",
   "campaign.ownMessage": "संदेश यहाँ लिखें",
   "campaign.create": "अभियान बनाएँ",
+  "contact.edit": "विवरण संपादित करें",
+  "contact.editSave": "सहेजें",
+  "contact.editCancel": "रद्द करें",
+  "contact.saved": "सहेजा गया",
 } satisfies Record<StringKey, string>;

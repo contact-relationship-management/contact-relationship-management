@@ -471,4 +471,8 @@ export default {
   "campaign.template": "Plantilla de correo",
   "campaign.ownMessage": "Escribir el mensaje aquí",
   "campaign.create": "Crear campaña",
+  "contact.edit": "Editar detalles",
+  "contact.editSave": "Guardar",
+  "contact.editCancel": "Cancelar",
+  "contact.saved": "Guardado",
 } satisfies Record<StringKey, string>;

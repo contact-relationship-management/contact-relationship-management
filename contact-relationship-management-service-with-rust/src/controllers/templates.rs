@@ -364,8 +364,13 @@ pub(crate) async fn contact_values(
     contact: &contacts::Model,
 ) -> Result<BTreeMap<String, String>> {
     let mut values = BTreeMap::new();
-    if let Some(first) = rules::first_word(&contact.display_name) {
-        values.insert("given_name".to_string(), first);
+    // The given name is the one on file, else the first word of the display name.
+    let given = contact
+        .given_name
+        .clone()
+        .or_else(|| rules::first_word(&contact.display_name));
+    if let Some(given) = given {
+        values.insert("given_name".to_string(), given);
     }
     values.insert("name".to_string(), contact.display_name.clone());
     if let Some(family) = &contact.family_name {

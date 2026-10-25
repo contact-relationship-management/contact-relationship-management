@@ -30,6 +30,9 @@ use crate::validation::Problems;
 pub(crate) struct ContactPayload {
     person_ref: String,
     display_name: String,
+    /// Optional; used by the `given_name` merge token (CRM-R38).
+    #[serde(default)]
+    given_name: Option<String>,
     /// Optional; used by the `family_name` merge token (CRM-R37).
     #[serde(default)]
     family_name: Option<String>,
@@ -41,6 +44,73 @@ pub(crate) struct ContactPayload {
     job_title: Option<String>,
     #[serde(default = "default_channel")]
     preferred_channel: String,
+}
+
+/// A member of a `PUT` body: left out (unchanged), `null` (cleared) or set.
+#[derive(Debug, Default)]
+pub(crate) enum Patch<T> {
+    /// Not in the body.
+    #[default]
+    Keep,
+    /// `null`.
+    Clear,
+    /// A value.
+    Set(T),
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for Patch<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
+        Ok(Option::<T>::deserialize(d)?.map_or(Self::Clear, Self::Set))
+    }
+}
+
+impl<T> Patch<T> {
+    /// Whether the body names this member at all.
+    fn is_sent(&self) -> bool {
+        !matches!(self, Self::Keep)
+    }
+
+    /// The value to store: the one set, or nothing for a cleared member.
+    fn into_value(self) -> Option<T> {
+        match self {
+            Self::Set(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// The text being set, for validation.
+    fn set(&self) -> Option<&T> {
+        match self {
+            Self::Set(v) => Some(v),
+            _ => None,
+        }
+    }
+}
+
+/// `PUT /api/contacts/{pid}` body (CRM-R38): only the members present change; `null` clears an
+/// optional one. The `person_ref` has `repoint`, and consent has its own endpoint.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ContactChange {
+    #[serde(default)]
+    display_name: Option<String>,
+    #[serde(default)]
+    #[schemars(with = "Option<String>")]
+    given_name: Patch<String>,
+    #[serde(default)]
+    #[schemars(with = "Option<String>")]
+    family_name: Patch<String>,
+    #[serde(default)]
+    #[schemars(with = "Option<String>")]
+    job_title: Patch<String>,
+    #[serde(default)]
+    #[schemars(with = "Option<String>")]
+    owner_ref: Patch<String>,
+    #[serde(default)]
+    #[schemars(with = "Option<Uuid>")]
+    account_pid: Patch<Uuid>,
+    #[serde(default)]
+    preferred_channel: Option<String>,
 }
 
 /// `POST /api/accounts` body.
@@ -123,6 +193,7 @@ async fn create_contact(
         &payload.preferred_channel,
     );
     problems.cap_opt("job_title", payload.job_title.as_deref());
+    problems.cap_opt("given_name", payload.given_name.as_deref());
     problems.cap_opt("family_name", payload.family_name.as_deref());
     problems.finish()?;
     if let Some(account) = payload.account_pid {
@@ -137,6 +208,7 @@ async fn create_contact(
         display_name: ActiveValue::set(payload.display_name.clone()),
         status: ActiveValue::set("active".to_string()),
         job_title: ActiveValue::set(payload.job_title.clone()),
+        given_name: ActiveValue::set(payload.given_name.clone()),
         family_name: ActiveValue::set(payload.family_name.clone()),
         preferred_channel: ActiveValue::set(payload.preferred_channel.clone().into()),
         marketing_consent: ActiveValue::set("never".to_string()),
@@ -169,6 +241,103 @@ async fn create_contact(
     format::json(PidRef {
         pid: row.pid.to_string(),
     })
+}
+
+/// `PUT /api/contacts/{pid}` — change a contact's own fields (CRM-R38). The audit row names the
+/// fields that changed, never their values, so an erasure leaves no personal data behind.
+#[debug_handler]
+async fn update_contact(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+    Json(change): Json<ContactChange>,
+) -> Result<Response> {
+    let contact = records::find_contact(&ctx.db, pid).await?;
+    auth::authorize_record(
+        &caller,
+        authentication_verifier::Action::Write,
+        &auth::contact_resource_attrs(&contact),
+    )
+    .map_err(record_rejection)?;
+    let mut problems = Problems::new();
+    if let Some(name) = &change.display_name {
+        problems.require_text("display_name", name);
+    }
+    for (field, value) in [
+        ("given_name", &change.given_name),
+        ("family_name", &change.family_name),
+        ("job_title", &change.job_title),
+    ] {
+        problems.cap_opt(field, value.set().map(String::as_str));
+    }
+    problems.ref_opt(
+        "owner_ref",
+        entity_ref::EntityType::Worker,
+        change.owner_ref.set().map(String::as_str),
+    );
+    if let Some(channel) = &change.preferred_channel {
+        problems.require_token("preferred_channel", tokens::CHANNELS, channel);
+    }
+    problems.finish()?;
+    if let Some(&account) = change.account_pid.set() {
+        records::find_account(&ctx.db, account).await?;
+    }
+    let mut changed = Vec::new();
+    let mut active: contacts::ActiveModel = contact.into();
+    if let Some(name) = change.display_name {
+        active.display_name = ActiveValue::set(name);
+        changed.push("display_name");
+    }
+    if change.given_name.is_sent() {
+        active.given_name = ActiveValue::set(change.given_name.into_value());
+        changed.push("given_name");
+    }
+    if change.family_name.is_sent() {
+        active.family_name = ActiveValue::set(change.family_name.into_value());
+        changed.push("family_name");
+    }
+    if change.job_title.is_sent() {
+        active.job_title = ActiveValue::set(change.job_title.into_value());
+        changed.push("job_title");
+    }
+    if change.owner_ref.is_sent() {
+        active.owner_ref = ActiveValue::set(change.owner_ref.into_value());
+        changed.push("owner_ref");
+    }
+    if change.account_pid.is_sent() {
+        active.account_pid = ActiveValue::set(change.account_pid.into_value());
+        changed.push("account_pid");
+    }
+    if let Some(v) = change.preferred_channel {
+        active.preferred_channel = ActiveValue::set(v.into());
+        changed.push("preferred_channel");
+    }
+    if changed.is_empty() {
+        return Err(unprocessable("nothing to change"));
+    }
+    let txn = ctx.db.begin().await?;
+    let row = active.update(&txn).await?;
+    Audit::record(
+        &txn,
+        "contact",
+        row.pid,
+        "updated",
+        caller.actor(),
+        Some(serde_json::json!({ "fields": changed })),
+    )
+    .await?;
+    streaming::emit_on(
+        &txn,
+        "contact",
+        "updated",
+        &row.pid.to_string(),
+        &row.display_name,
+        caller.actor(),
+        None,
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(row)
 }
 
 /// `GET /api/contacts` — active contacts.
@@ -978,6 +1147,7 @@ pub fn routes() -> Routes {
         .add("/contacts", post(create_contact))
         .add("/contacts", get(list_contacts))
         .add("/contacts/{pid}", get(get_contact))
+        .add("/contacts/{pid}", put(update_contact))
         .add("/contacts/{pid}/duplicates", get(contact_duplicates))
         .add("/contacts/{pid}/repoint", post(repoint_contact))
         .add("/accounts", post(create_account))

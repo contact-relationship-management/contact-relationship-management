@@ -478,4 +478,8 @@ export default {
   "campaign.template": "E-Mail-Vorlage",
   "campaign.ownMessage": "Nachricht hier schreiben",
   "campaign.create": "Kampagne anlegen",
+  "contact.edit": "Details bearbeiten",
+  "contact.editSave": "Speichern",
+  "contact.editCancel": "Abbrechen",
+  "contact.saved": "Gespeichert",
 } satisfies Record<StringKey, string>;

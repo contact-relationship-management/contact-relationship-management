@@ -207,6 +207,8 @@ function build(): State {
       account_pid: account,
       owner_ref: i % 2 === 0 ? "owner-ayo" : "owner-bea",
       display_name: name,
+      given_name: null,
+      family_name: null,
       status: "active",
       job_title: title,
       preferred_channel: i % 3 === 0 ? "phone" : "email",
@@ -1314,6 +1316,31 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
   }
 }
 
+function editContact(pid: string, body: unknown): DemoReply {
+  const contact = state.contacts.find((c) => c.pid === pid);
+  if (!contact) return problem(404, "contact not found");
+  const input = bodyOf(body);
+  const names = [
+    "display_name",
+    "given_name",
+    "family_name",
+    "job_title",
+  ] as const;
+  if (!names.some((n) => input[n] !== undefined))
+    return problem(422, "nothing to change");
+  if (input.display_name !== undefined) {
+    if (typeof input.display_name !== "string" || !input.display_name.trim())
+      return problem(422, "display_name is required");
+    contact.display_name = input.display_name.trim();
+  }
+  for (const n of ["given_name", "family_name", "job_title"] as const) {
+    const v = input[n];
+    if (v === null) contact[n] = null;
+    else if (typeof v === "string") contact[n] = v.trim() || null;
+  }
+  return ok(contact);
+}
+
 function contactDetail(pid: string): DemoReply {
   const contact = state.contacts.find((c) => c.pid === pid);
   if (!contact) return problem(404, "contact not found");
@@ -1997,6 +2024,7 @@ export function demoHandle(
         contact.marketing_consent;
       return ok(contact);
     }
+    if (seg.length === 2 && method === "PUT") return editContact(id!, body);
     if (tail === "erase" && post) return eraseContact(id!);
     if (tail === "merge" && post) return mergeContact(id!, body);
     if (tail === "merges" && get) return contactMerges(id!);

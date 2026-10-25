@@ -920,4 +920,24 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("campaigns")).toContainText("Autumn push");
     await expect(page.getByTestId("campaign-form")).toHaveCount(0);
   });
+
+  test("a contact's names are edited, and an emptied box clears it", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/contacts/con-1");
+    await expect(page.getByTestId("contact-names")).toContainText("—");
+    await page.getByTestId("contact-edit").click();
+    const form = page.getByTestId("contact-form");
+    await form.getByRole("textbox").nth(1).fill("Imo");
+    await form.getByRole("textbox").nth(2).fill("Hartley");
+    await page.getByTestId("contact-save").click();
+    await expect(page.getByTestId("contact-saved")).toBeVisible();
+    await expect(page.getByTestId("contact-names")).toContainText("Imo");
+    await expect(page.getByTestId("contact-names")).toContainText("Hartley");
+    await page.getByTestId("contact-edit").click();
+    await form.getByRole("textbox").nth(1).fill("");
+    await page.getByTestId("contact-save").click();
+    await expect(page.getByTestId("contact-names")).not.toContainText("Imo");
+  });
 });

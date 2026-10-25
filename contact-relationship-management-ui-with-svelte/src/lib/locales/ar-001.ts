@@ -465,4 +465,8 @@ export default {
   "campaign.template": "قالب البريد الإلكتروني",
   "campaign.ownMessage": "اكتب الرسالة هنا",
   "campaign.create": "إنشاء الحملة",
+  "contact.edit": "تعديل التفاصيل",
+  "contact.editSave": "حفظ",
+  "contact.editCancel": "إلغاء",
+  "contact.saved": "تم الحفظ",
 } satisfies Record<StringKey, string>;

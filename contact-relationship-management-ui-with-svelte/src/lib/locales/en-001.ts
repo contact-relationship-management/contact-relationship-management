@@ -463,4 +463,8 @@ export default {
   "campaign.template": "Email template",
   "campaign.ownMessage": "Write the message here",
   "campaign.create": "Create campaign",
+  "contact.edit": "Edit details",
+  "contact.editSave": "Save",
+  "contact.editCancel": "Cancel",
+  "contact.saved": "Saved",
 } as const;

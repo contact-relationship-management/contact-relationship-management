@@ -469,4 +469,8 @@ export default {
   "campaign.template": "Templed e-bost",
   "campaign.ownMessage": "Ysgrifennu’r neges yma",
   "campaign.create": "Creu ymgyrch",
+  "contact.edit": "Golygu'r manylion",
+  "contact.editSave": "Cadw",
+  "contact.editCancel": "Diddymu",
+  "contact.saved": "Wedi'i gadw",
 } satisfies Record<StringKey, string>;

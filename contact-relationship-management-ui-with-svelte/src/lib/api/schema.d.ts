@@ -2618,7 +2618,65 @@ export interface paths {
                 };
             };
         };
-        put?: never;
+        /** Change a contact's own fields (only the members sent change; null clears an optional one; audited by field name, never value) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ContactChange"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -11726,8 +11784,9 @@ export interface components {
             /** Format: date-time */
             deleted_at: string | null;
             display_name: string;
-            /** @description Optional; never derived from `display_name` (CRM-R37). */
             family_name: string | null;
+            /** @description Optional; never derived from `display_name` (CRM-R37). */
+            given_name: string | null;
             /** Format: int32 */
             id: number;
             /** Format: int32 */
@@ -11747,6 +11806,22 @@ export interface components {
             status: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /**
+         * @description `PUT /api/contacts/{pid}` body (CRM-R38): only the members present change; `null` clears an
+         *     optional one. The `person_ref` has `repoint`, and consent has its own endpoint.
+         */
+        ContactChange: {
+            /** Format: uuid */
+            account_pid?: string | null;
+            /** @default null */
+            display_name: string | null;
+            family_name?: string | null;
+            given_name?: string | null;
+            job_title?: string | null;
+            owner_ref?: string | null;
+            /** @default null */
+            preferred_channel: string | null;
         };
         /**
          * @description `GET /api/contacts/{pid}`: the contact and its timeline. The rows are JSON
@@ -11860,6 +11935,11 @@ export interface components {
              * @default null
              */
             family_name: string | null;
+            /**
+             * @description Optional; used by the `given_name` merge token (CRM-R38).
+             * @default null
+             */
+            given_name: string | null;
             /** @default null */
             job_title: string | null;
             /** @default null */

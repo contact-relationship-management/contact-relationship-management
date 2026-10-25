@@ -11,6 +11,7 @@ subproject keeps a detailed changelog:
 
 ### Added
 
+- A contact's optional `given_name`, and `PUT /api/contacts/{pid}` to edit a contact after creation (audited by field name), with an edit form on the contact page (CRM-R38).
 - Email templates with merge tokens, a live preview for a made-up contact, and the unsubscribe link required in every body; campaigns and nurture steps can use one (CRM-R36).
 
 - Saved views of the five main lists, per user or shared, in a view bar above each (CRM-R35).

@@ -291,6 +291,11 @@ async fn combine(
         merged.job_title.is_some(),
     );
     note(
+        "given_name",
+        survivor.given_name.is_none(),
+        merged.given_name.is_some(),
+    );
+    note(
         "family_name",
         survivor.family_name.is_none(),
         merged.family_name.is_some(),
@@ -319,6 +324,8 @@ async fn combine(
     active.account_pid = ActiveValue::set(rules::fill(survivor.account_pid, merged.account_pid));
     active.owner_ref = ActiveValue::set(rules::fill(survivor.owner_ref, merged.owner_ref.clone()));
     active.job_title = ActiveValue::set(rules::fill(survivor.job_title, merged.job_title.clone()));
+    active.given_name =
+        ActiveValue::set(rules::fill(survivor.given_name, merged.given_name.clone()));
     active.family_name = ActiveValue::set(rules::fill(
         survivor.family_name,
         merged.family_name.clone(),

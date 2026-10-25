@@ -40,6 +40,7 @@ mod m20261025_000025_lead_imports;
 mod m20261025_000026_views;
 mod m20261025_000027_email_templates;
 mod m20261025_000028_contact_family_name;
+mod m20261025_000029_contact_given_name;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -78,6 +79,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261025_000026_views::Migration),
             Box::new(m20261025_000027_email_templates::Migration),
             Box::new(m20261025_000028_contact_family_name::Migration),
+            Box::new(m20261025_000029_contact_given_name::Migration),
             // inject-above (do not remove this comment)
         ]
     }

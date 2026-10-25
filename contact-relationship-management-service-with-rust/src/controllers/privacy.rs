@@ -166,6 +166,19 @@ async fn has_active_nurture<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Re
         .is_some())
 }
 
+/// The contact with its identity fields cleared and the row soft-deleted.
+fn scrub(contact: contacts::Model) -> contacts::ActiveModel {
+    let mut scrubbed: contacts::ActiveModel = contact.into();
+    scrubbed.display_name = ActiveValue::set(ERASED.to_string());
+    scrubbed.person_ref = ActiveValue::set(TOMBSTONE_PERSON.to_string());
+    scrubbed.job_title = ActiveValue::set(None);
+    scrubbed.given_name = ActiveValue::set(None);
+    scrubbed.family_name = ActiveValue::set(None);
+    scrubbed.marketing_consent = ActiveValue::set("withdrawn".to_string());
+    scrubbed.deleted_at = ActiveValue::set(Some(chrono::Utc::now().into()));
+    scrubbed
+}
+
 /// `POST /api/contacts/{pid}/erase` — anonymise (CRM-D14): scrub the
 /// contact's identity fields to a tombstone and soft-delete the row,
 /// scrub the personal free text linked to it (activity summaries
@@ -206,13 +219,7 @@ async fn erase(
     }
     let txn = ctx.db.begin().await?;
     // Identity fields scrubbed in place; the row soft-deleted.
-    let mut scrubbed: contacts::ActiveModel = contact.into();
-    scrubbed.display_name = ActiveValue::set(ERASED.to_string());
-    scrubbed.person_ref = ActiveValue::set(TOMBSTONE_PERSON.to_string());
-    scrubbed.job_title = ActiveValue::set(None);
-    scrubbed.family_name = ActiveValue::set(None);
-    scrubbed.marketing_consent = ActiveValue::set("withdrawn".to_string());
-    scrubbed.deleted_at = ActiveValue::set(Some(chrono::Utc::now().into()));
+    let scrubbed = scrub(contact);
     scrubbed.update(&txn).await?;
     // Free text linked to this contact, and rows that are about it only.
     let statements = [
@@ -248,7 +255,7 @@ async fn erase(
         ),
         format!(
             "UPDATE contacts SET display_name = '{ERASED}', person_ref = '{TOMBSTONE_PERSON}', \
-             job_title = NULL, family_name = NULL, marketing_consent = 'withdrawn' WHERE merged_into_pid = '{cpid}'"
+             job_title = NULL, given_name = NULL, family_name = NULL, marketing_consent = 'withdrawn' WHERE merged_into_pid = '{cpid}'"
         ),
         format!(
             "UPDATE contact_merges SET merged_person_ref = '{TOMBSTONE_PERSON}' \

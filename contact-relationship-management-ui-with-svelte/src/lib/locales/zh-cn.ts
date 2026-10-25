@@ -443,4 +443,8 @@ export default {
   "campaign.template": "邮件模板",
   "campaign.ownMessage": "在此撰写消息",
   "campaign.create": "创建活动",
+  "contact.edit": "编辑详情",
+  "contact.editSave": "保存",
+  "contact.editCancel": "取消",
+  "contact.saved": "已保存",
 } satisfies Record<StringKey, string>;

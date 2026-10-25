@@ -782,5 +782,19 @@ recipient would get before anything is sent, and be certain every message carrie
 - The merge token `family_name` (CRM-R36) fills from it. A contact without one gets the token's fallback ("customer", or the template's own).
 - A merge fills it on the survivor when the survivor has none, and an unmerge clears it again, like the other fillable fields (CRM-R24, CRM-R26).
 - Erasing a contact (CRM-R20) clears it, on the contact and on contacts merged into it.
-- Not built: a `given_name` column (the `given_name` token is still the first word of the display name), editing it after creation, and
-  showing it in the UI.
+- Editing it after creation, and a stored `given_name`, are CRM-R38.
+
+## CRM-R38 — A contact's given name, and editing a contact
+
+*As someone who keeps contact details, I can store a contact's given name and correct a contact's details after creating it.*
+
+- A contact has an optional `given_name`, given on `POST /api/contacts` and returned with the contact. The `given_name` merge token (CRM-R36) fills
+  from it; a contact without one still gets the first word of the display name, as before.
+- `PUT /api/contacts/{pid}` changes a contact's own fields: `display_name`, `given_name`, `family_name`, `job_title`, `owner_ref`, `account_pid` and
+  `preferred_channel`. Only the members sent change; `null` clears an optional one; a blank `display_name`, an unknown member, an unknown account
+  or an empty body is refused `422`. The `person_ref` still changes only by `repoint`, and consent only by its own endpoint. A caller needs write
+  access to the contact (record-level policy applies).
+- The change and its audit row commit together, and the audit row names the fields that changed, never their values, so an erasure leaves no
+  personal data in it. A `contact` `updated` event is emitted.
+- A merge fills `given_name` on the survivor when it has none, an unmerge clears it again, and erasure clears it (CRM-R24, CRM-R26, CRM-R20).
+- The contact page shows both names and an edit form.
