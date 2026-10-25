@@ -5,14 +5,13 @@
   Cards badge priority and live SLA-breach flags.
 -->
 <script lang="ts">
-  import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import Board from "#lib/components/Board.svelte";
   import type {
     KanbanCard,
     KanbanLane,
   } from "@lilydesignsystem/svelte-kanban-board";
-  import { editTicket, listTickets, placeCard, ticketStatus, type Ticket } from "#lib/api/crm.js";
+  import { editTicket, listTickets, placeCard, ticketStatus } from "#lib/api/crm.js";
   import { slaBreached } from "#lib/format.js";
   import { t } from "#lib/i18n.svelte.js";
 

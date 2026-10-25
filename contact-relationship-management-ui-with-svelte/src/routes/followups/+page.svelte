@@ -12,7 +12,7 @@
     type CalendarEvent,
     type CalendarViewMode,
   } from "@lilydesignsystem/svelte-calendar";
-  import { editFollowup, followups, type Followup } from "#lib/api/crm.js";
+  import { editFollowup, followups } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
   let kindFilter = $state("");

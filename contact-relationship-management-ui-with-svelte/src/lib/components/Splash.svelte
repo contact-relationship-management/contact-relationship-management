@@ -32,11 +32,11 @@
     </div>
   </section>
 
-  {#each AREAS as area}
+  {#each AREAS as area (area.id)}
     <section class="area" id={area.id} aria-labelledby={`${area.id}-title`}>
       <h2 id={`${area.id}-title`}>{t(area.title as StringKey)}</h2>
       <ul class="tiles">
-        {#each TILES as n}
+        {#each TILES as n (n)}
           <li class="tile">
             <span class="badge" aria-hidden="true">{n}</span>
             <h3>

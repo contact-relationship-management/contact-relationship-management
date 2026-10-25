@@ -8,7 +8,6 @@
   import { breachedCount, slaBreached } from "#lib/format.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
-  import type { Ticket } from "#lib/api/crm.js";
 
   /** The forward move(s) a ticket offers per status. */
   const NEXT: Record<string, string[]> = {

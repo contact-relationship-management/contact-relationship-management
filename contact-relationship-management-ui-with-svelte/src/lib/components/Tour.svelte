@@ -44,7 +44,7 @@
     <nav class="toc" aria-label={t("tour.toc")}>
       <h2>{t("tour.toc")}</h2>
       <ol>
-        {#each all as s, i}
+        {#each all as s, i (s.id)}
           <li>
             <a href={`#${s.id}`}>
               <span class="num" aria-hidden="true">{i + 1}</span>
@@ -56,7 +56,7 @@
     </nav>
 
     <div class="sections">
-      {#each all as s, i}
+      {#each all as s, i (s.id)}
         <section id={s.id} aria-labelledby={`${s.id}-title`}>
           <h2 id={`${s.id}-title`}>
             <span class="num" aria-hidden="true">{i + 1}</span>
@@ -64,7 +64,7 @@
           </h2>
           <p class="summary">{t(key(`${s.prefix}.summary`))}</p>
           <ol class="steps">
-            {#each STEPS as n}
+            {#each STEPS as n (n)}
               <li>{t(key(`${s.prefix}.step.${n}`))}</li>
             {/each}
           </ol>

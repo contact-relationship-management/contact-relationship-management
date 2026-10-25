@@ -6,7 +6,6 @@
   import DataTable from "#lib/components/DataTable.svelte";
   import TagFilter from "#lib/components/TagFilter.svelte";
   import { t } from "#lib/i18n.svelte.js";
-  import type { Contact } from "#lib/api/crm.js";
   import ViewBar from "#lib/components/ViewBar.svelte";
   import { applyFilter, applyShape } from "#lib/views.js";
   import type { SavedView } from "#lib/api/crm.js";

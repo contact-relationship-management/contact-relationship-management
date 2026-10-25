@@ -5,14 +5,13 @@
   restores the stored truth). Cards carry the rule-derived score.
 -->
 <script lang="ts">
-  import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import Board from "#lib/components/Board.svelte";
   import type {
     KanbanCard,
     KanbanLane,
   } from "@lilydesignsystem/svelte-kanban-board";
-  import { editLead, leadStatus, listLeads, placeCard, type Lead } from "#lib/api/crm.js";
+  import { editLead, leadStatus, listLeads, placeCard } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
 
   const list = resource(listLeads);

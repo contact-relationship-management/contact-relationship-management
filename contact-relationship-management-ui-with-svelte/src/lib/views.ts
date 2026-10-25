@@ -81,7 +81,7 @@ export function applyShape<
   columns: readonly C[],
   view: Pick<SavedView, "sort" | "columns"> | null,
 ): { rows: R[]; columns: C[] } {
-  let out = [...rows];
+  const out = [...rows];
   const sort = view?.sort;
   if (sort) {
     const sign = sort.direction === "desc" ? -1 : 1;

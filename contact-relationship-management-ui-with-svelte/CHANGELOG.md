@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — ESLint (CRM-T94)
+
+`eslint.config.js` (recommended rules for JavaScript, TypeScript and Svelte); `pnpm lint` runs it after prettier. Fixed what it found: unused imports, a `let` that never changes, and `{#each}` blocks without a key on the splash and tour pages.
+
 ### Added — reports (CRM-R48)
 
 `/reports`: build, run, save and reopen reports; a bar for each row.

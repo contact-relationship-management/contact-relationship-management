@@ -91,6 +91,8 @@ const LOADERS: Record<Locale, () => Promise<{ default: Table }>> = {
 // The locales loaded so far. Reactive, so a component that called `t(...)`
 // under a locale that was still loading re-renders when its table arrives.
 const loaded = $state<Partial<Record<Locale, Table>>>({ "en-001": en });
+// Not state: a plain record of the loads in flight, which nothing renders.
+// eslint-disable-next-line svelte/prefer-svelte-reactivity
 const loading = new Map<Locale, Promise<void>>();
 
 /**

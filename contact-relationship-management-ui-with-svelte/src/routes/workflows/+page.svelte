@@ -336,7 +336,7 @@
           {#each sample.steps as step, i (i)}
             {step.action}: <span class="chip">{step.result}</span>
             {#if step.detail}({step.detail}){/if}
-            {" "}
+            &ensp;
           {/each}
         </p>
       {/each}
