@@ -1414,7 +1414,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** `ViewBar` above the contacts, accounts, leads, tickets and deals (plain list) tables: pick a view, save the current filter, sort and columns, edit, share or delete your own; 17 keys in all 8 locales; the tour has one shared sample view. The tickets table gained a Channel column and the deals list gained amount, currency, status and close-date columns so views have something to show.
       - **Tests:** 2 rules unit tests; 1 request test (save, list, replace, closed sets, unique names, delete, audit with no name); 1 under sign-in (a shared view read by another user, a private one hidden, 403/404 for changes, a reader keeps their own views but cannot write data, and the reader's list stays masked); 5 UI unit tests and 1 Playwright test. Service: 261 unit, 103 request, 6 enforcement; UI: 141 unit and 110 Playwright; clippy clean; types regenerated.
       - **Limits:** the filter is applied in the browser to the list the page loaded, not on the server, so a view cannot make a list shorter to fetch; no views for campaigns, segments or articles; no filters on free text or dates; no default view; the deals board is not filtered by a view, only the plain deals list.
-- [ ] CRM-T103 **Email templates with merge tokens.**
+- [x] CRM-T103 **Email templates with merge tokens.**
   - **Tokens:** a closed set (first name, account name, rep name and similar), HTML-escaped, each with a declared fallback.
   - **Preview:** rendered against a synthetic contact.
   - **Unsubscribe:** every marketing template carries the unsubscribe link, and saving one without it is refused.
@@ -1423,6 +1423,18 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   - **Source:** https://knowledge.hubspot.com/sequences/create-and-edit-sequences
 
   (C9, S/M)
+      **Done (2026-10-25, not released):** requirement CRM-R36 first, then:
+      - **Model:** `email_templates` (migration `000027`) and a nullable `template_pid` on `campaigns` and `nurture_steps`. Rules in `rules::templates` (parse, check, render), DB-free.
+      - **Tokens:** a closed set: `first_name` (first word of the name; a heuristic, the CRM keeps one display name), `name`, `account_name`, `rep_name` (the contact's owner, else the account's, resolved best-effort through the person/worker service), `job_title`, `unsubscribe_url`. Unknown or unclosed marks are 422; there is no escape for a literal `{{`.
+      - **Fallbacks:** each token but the link has a declared default; a template may declare its own per token; a missing, empty or white-space value uses it, so no message carries a gap or a raw mark.
+      - **Escaping:** the mailed text keeps values as they are (the mail is plain text); the HTML form escapes every value and the template's own text, and the link is the only anchor. Control characters in a value become a space, so a value cannot add a header line to a subject. **Decision:** escaping applies to the HTML form, not the text, because escaping plain text would show `&amp;` to the reader.
+      - **Unsubscribe:** the body must contain `{{unsubscribe_url}}` (422 otherwise); the subject cannot. A message made from a template does not also get the generic footer.
+      - **API:** `GET/POST /api/email-templates`, `GET/PUT/DELETE /api/email-templates/{pid}` (409 while a campaign or step uses it), `GET /api/email-templates/tokens`, `POST /api/email-templates/preview` (a synthetic contact, `blank` to show fallbacks, `problems` for what would block a save; derives `read` so a reader may). Audit `email_template`, no text.
+      - **Use:** `template_pid` on `POST /api/campaigns` and on a nurture step, instead of a subject and body (both is 422). The template is read at send time; one gone at that time fails that delivery for good.
+      - **UI:** `/templates` (linked from Campaigns): list, editor with token buttons and fallbacks, live preview of the plain text with a switch to show each token as missing; 15 keys in all 8 locales; one sample template in the tour.
+      - **Tests:** 9 rules unit tests (escaping, a missing value, header injection, the missing-link refusal, fallback checks); 2 request tests (save, refusals, preview, replace, delete; a campaign and a nurture step really mailed from a template, one link and no footer, edit reaches the next send, 409 while in use); 1 under sign-in (a reader previews and reads but cannot save); Playwright for the page. Service: 272 unit, 107 request, 7 enforcement; UI: 143 unit and 111 Playwright; clippy clean; types regenerated.
+      - **Limits:** plain text only (no HTML-bodied mail, attachments or per-language templates); no template versions; the UI does not yet pick a template when creating a campaign (the page for that does not exist yet); a template deleted between the in-use check and a send fails that delivery.
+
 - [ ] CRM-T104 **Explainable workflow rules.**
   - **Triggers:** record created or updated, a stage change, or a schedule.
   - **Conditions:** written in the segment filter language.

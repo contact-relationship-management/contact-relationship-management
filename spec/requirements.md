@@ -738,3 +738,37 @@ under a name, and share it with colleagues without sharing anything they could n
 - The UI shows a view bar above each of the five lists: choose a view, save the current filter, sort and columns, share or
   delete your own.
 - Not built: views for campaigns, segments or articles; filters on free text or dates; grouping; a default view per user.
+
+## CRM-R36 — Email templates with merge tokens
+
+*As someone who writes marketing email, I can write a message once with the recipient's own details in it, see exactly what a
+recipient would get before anything is sent, and be certain every message carries the way to unsubscribe.*
+
+- **What a template is.** A name (unique, ignoring case), a subject, a plain-text body and optional fallbacks, stored on the
+  server. `GET/POST /api/email-templates`, `GET/PUT/DELETE /api/email-templates/{pid}`. A template that a campaign or a
+  nurture step still refers to cannot be deleted (`409`).
+- **Merge tokens** are written `{{name}}` (spaces inside the braces are ignored) from a closed set: `first_name` (the first word
+  of the contact's name), `name`, `account_name`, `rep_name` (the contact's owner, or the account's when the contact has none),
+  `job_title`, and `unsubscribe_url`. Anything else, or a `{{` that is never closed, is `422`; there is no escape for a literal
+  `{{`. `GET /api/email-templates/tokens` lists the set with each token's default fallback.
+- **Fallbacks.** Every token except `unsubscribe_url` has a declared fallback (`first_name` and `name`: "there"; `account_name`:
+  "your organisation"; `rep_name`: "the team"; `job_title`: "your role"). A template may declare its own text per token. A value
+  that is missing, empty or only white space renders as the fallback, so a message never carries an empty gap or a raw `{{token}}`.
+  `unsubscribe_url` has no fallback and cannot be given one.
+- **Escaping.** A value is data, never markup. Rendering produces the plain text that is mailed (values as they are) and an HTML
+  form in which every value and every piece of the template's own text is HTML-escaped, line breaks become `<br>` and the
+  unsubscribe link is the only anchor. Control characters in a value become a space, so a value cannot add a header line or
+  a line break to a subject.
+- **Unsubscribe.** The body of every template must contain `{{unsubscribe_url}}`; saving one without it is `422`. The token is
+  replaced by the contact's signed link (CRM-R8). A message made from a template does not get the generic footer added, because
+  the template carries the link where its author put it. The subject cannot contain the token.
+- **Preview.** `POST /api/email-templates/preview` takes a draft (subject, body, fallbacks, and optionally `blank`, the tokens to
+  treat as missing) and renders it against a *synthetic* contact, never a real one. It answers the rendered subject, text and
+  HTML, the tokens that fell back, and `problems`: what would stop the draft being saved. A draft that cannot be parsed is `422`.
+  Previewing changes nothing, so a reader may do it.
+- **Use.** A campaign (`POST /api/campaigns`) and a nurture step may carry `template_pid` instead of a subject and body; giving
+  both is `422`. The template is read when each message is made, so changing it changes the messages not yet sent. A message that
+  has already gone out is not changed, and a template missing at send time fails that delivery.
+- **Audit.** `created`, `updated` and `deleted` on the entity `email_template`, never the subject or body.
+- The UI has a templates page: a list, an editor with the token set, and a live preview that can blank each token.
+- Not built: HTML-bodied email, attachments, per-recipient-language templates, template versions, and tokens from custom fields.

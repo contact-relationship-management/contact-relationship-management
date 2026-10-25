@@ -501,6 +501,83 @@ export function deleteView(pid: string): Promise<{ pid: string }> {
   return api(`/views/${pid}`, { method: "DELETE" });
 }
 
+/** An email template with merge tokens (CRM-R36). */
+export interface EmailTemplate {
+  pid: string;
+  name: string;
+  subject: string;
+  body: string;
+  fallbacks: Record<string, string>;
+  /** Campaigns and nurture steps that use it. */
+  in_use: number;
+  updated_at: string;
+}
+
+/** What is sent to save or replace a template. */
+export type EmailTemplateInput = Pick<
+  EmailTemplate,
+  "name" | "subject" | "body" | "fallbacks"
+>;
+
+/** One merge token; `unsubscribe_url` is required in every body and has no fallback. */
+export interface MergeToken {
+  name: string;
+  description: string;
+  fallback: string | null;
+  required: boolean;
+}
+
+/** A draft rendered for a made-up contact. */
+export interface TemplatePreview {
+  subject: string;
+  text: string;
+  html: string;
+  fell_back: string[];
+  /** What would stop the draft being saved. */
+  problems: string[];
+}
+
+/** Email templates. */
+export function listTemplates(init?: FetchLike): Promise<EmailTemplate[]> {
+  return api("/email-templates", init);
+}
+
+/** The merge tokens and their default fallbacks. */
+export function mergeTokens(init?: FetchLike): Promise<MergeToken[]> {
+  return api("/email-templates/tokens", init);
+}
+
+/** Save a new template. */
+export function saveTemplate(
+  template: EmailTemplateInput,
+): Promise<{ pid: string }> {
+  return api("/email-templates", { method: "POST", body: template });
+}
+
+/** Replace a template. */
+export function replaceTemplate(
+  pid: string,
+  template: EmailTemplateInput,
+): Promise<{ pid: string }> {
+  return api(`/email-templates/${pid}`, { method: "PUT", body: template });
+}
+
+/** Delete a template; refused while a campaign or step uses it. */
+export function deleteTemplate(pid: string): Promise<{ pid: string }> {
+  return api(`/email-templates/${pid}`, { method: "DELETE" });
+}
+
+/** Render a draft for a made-up contact; `blank` lists tokens to treat as missing. */
+export function previewTemplate(
+  draft: Omit<EmailTemplateInput, "name">,
+  blank: string[],
+): Promise<TemplatePreview> {
+  return api("/email-templates/preview", {
+    method: "POST",
+    body: { ...draft, blank },
+  });
+}
+
 /** Which CSV column holds what (CRM-R34). */
 export interface LeadImportMapping {
   display_name?: string | null;

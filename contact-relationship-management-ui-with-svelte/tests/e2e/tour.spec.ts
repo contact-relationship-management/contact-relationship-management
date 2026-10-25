@@ -868,4 +868,40 @@ test.describe("export, undo and search", () => {
     await page.goto("/de-de/contacts/con-1");
     await expect(page.getByTestId("link-add")).toHaveText("Link hinzufügen");
   });
+
+  test("a template previews for a made-up contact, shows fallbacks, and needs the unsubscribe link", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/templates");
+    await expect(page.getByTestId("template-list")).toContainText(
+      "Autumn news",
+    );
+    await page.getByTestId("template-new").click();
+    await page.getByTestId("template-name").fill("Welcome");
+    await page.getByTestId("template-subject").fill("Hello {{first_name}}");
+    await page.getByTestId("template-body").fill("Hi {{account_name}}");
+    // No unsubscribe link yet: the preview still renders, and says what is missing.
+    await expect(page.getByTestId("preview-subject")).toHaveText("Hello Alex");
+    await expect(page.getByTestId("preview-text")).toHaveText("Hi Example Ltd");
+    await expect(page.getByTestId("preview-problems")).toContainText(
+      "unsubscribe_url",
+    );
+    await page.getByTestId("insert-unsubscribe_url").click();
+    await expect(page.getByTestId("preview-problems")).toHaveCount(0);
+    // A value that is missing shows the fallback, and the template's own wins.
+    await page.getByTestId("blank-account_name").check();
+    await expect(page.getByTestId("preview-text")).toContainText(
+      "Hi your organisation",
+    );
+    await page.getByTestId("fallback-account_name").fill("your team");
+    await expect(page.getByTestId("preview-text")).toContainText(
+      "Hi your team",
+    );
+    await expect(page.getByTestId("preview-fell-back")).toContainText(
+      "account_name",
+    );
+    await page.getByTestId("template-save").click();
+    await expect(page.getByTestId("template-list")).toContainText("Welcome");
+  });
 });

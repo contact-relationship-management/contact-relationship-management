@@ -144,6 +144,8 @@ pub fn derive_action(method: &Method, path: &str) -> Action {
         {
             Action::Read
         }
+        // A preview renders a draft for a made-up contact and stores nothing (CRM-R36).
+        Method::POST if path == "/api/email-templates/preview" => Action::Read,
         Method::GET | Method::HEAD | Method::OPTIONS if is_privileged_read(path) => {
             Action::Destructive
         }

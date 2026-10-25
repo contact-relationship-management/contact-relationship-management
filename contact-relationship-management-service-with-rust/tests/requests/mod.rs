@@ -8,6 +8,7 @@ mod board;
 mod consent_purposes;
 mod duplicates;
 mod email_delivery;
+mod email_templates;
 mod engagement;
 mod external_links;
 mod field_encryption;

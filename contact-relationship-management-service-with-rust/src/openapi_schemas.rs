@@ -39,8 +39,8 @@ fn reference(name: &str) -> Value {
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         audits, board, break_glass, dashboards, engagement, external_links, insights, lead_imports,
-        marketing, merge, notifications, privacy, relationships, sales, search, support, unmerge,
-        views, webhooks,
+        marketing, merge, notifications, privacy, relationships, sales, search, support, templates,
+        unmerge, views, webhooks,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -155,6 +155,11 @@ fn generated() -> serde_json::Map<String, Value> {
         support::SlaSweep,
         notifications::Notification,
         search::SearchHit,
+        templates::TemplateView,
+        templates::TemplatePayload,
+        templates::PreviewPayload,
+        templates::Preview,
+        templates::TokenInfo,
         views::View,
         views::ViewPayload,
         views::SortSpec,
@@ -266,6 +271,10 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ) => "PositionPayload",
         ("put", "/api/activities/{pid}") => "ActivityEditPayload",
         ("post", "/api/views") | ("put", "/api/views/{pid}") => "ViewPayload",
+        ("post", "/api/email-templates") | ("put", "/api/email-templates/{pid}") => {
+            "EmailTemplatePayload"
+        }
+        ("post", "/api/email-templates/preview") => "EmailTemplatePreviewPayload",
         ("post", "/api/lead-imports/preview") => "LeadImportPreviewPayload",
         ("post", "/api/lead-imports") => "LeadImportCommitPayload",
         ("post", "/api/articles") | ("put", "/api/articles/{pid}") => "ArticlePayload",
@@ -294,6 +303,8 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
 pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
     Some(match (method, path) {
         ("get", "/api/contacts/{pid}") => "ContactDetail",
+        ("get", "/api/email-templates/{pid}") => "EmailTemplate",
+        ("post", "/api/email-templates/preview") => "EmailTemplatePreview",
         ("get", "/api/contacts/{pid}/duplicates") => "ContactDuplicates",
         ("post", "/api/contacts/{pid}/merge") => "ContactMerge",
         ("post", "/api/contacts/{pid}/unmerge") => "ContactUnmerge",
@@ -388,6 +399,8 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/notifications" => "Notification",
         "/api/search" => "SearchHit",
         "/api/views" => "View",
+        "/api/email-templates" => "EmailTemplate",
+        "/api/email-templates/tokens" => "MergeToken",
         "/api/lead-imports" => "LeadImport",
         "/api/webhook-subscriptions" => "WebhookSubscription",
         "/api/webhook-subscriptions/{pid}/deliveries" => "WebhookDelivery",

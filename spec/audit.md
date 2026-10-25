@@ -41,6 +41,8 @@ Lead imports (CRM-R34) audit under the entity `lead_import`: `lead_import_previe
 the source note and the date obtained) and `lead_import_undone` (removed and kept), plus the usual `lead_captured` for each lead made and
 `import_undone` on each removed. Never a name or an address.
 
+Email templates (CRM-R36) audit under the entity `email_template`: `created`, `updated`, `deleted`; never the subject or body.
+
 Saved views (CRM-R35) audit under the entity `view`: `created`, `updated`, `deleted`, with the list and whether it is shared; never the
 name or the filter.
 

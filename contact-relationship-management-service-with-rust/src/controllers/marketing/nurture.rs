@@ -8,6 +8,7 @@ use super::{
     streaming, tokens, unprocessable, with_unsubscribe,
 };
 use crate::controllers::PidPath;
+use crate::controllers::templates;
 use crate::json::Json;
 use crate::models::live::FindLive;
 
@@ -27,9 +28,14 @@ pub(crate) struct SequencePayload {
 #[serde(deny_unknown_fields)]
 pub(crate) struct StepPayload {
     delay_hours: i32,
+    /// A label for the step; the email template's id when `template_pid` is given and this is absent.
+    #[serde(default)]
     template_ref: String,
     subject: Option<String>,
     body: Option<String>,
+    /// An email template (CRM-R36) to make the message from instead of `subject` and `body`.
+    #[serde(default)]
+    template_pid: Option<Uuid>,
 }
 
 /// `POST /api/nurture-sequences/{pid}/enrollments` body.
@@ -53,7 +59,12 @@ pub(super) async fn create_sequence(
         problems.push("a sequence needs 1-32 steps".to_string());
     }
     for step in &payload.steps {
-        problems.require_text("steps[].template_ref", &step.template_ref);
+        if step.template_pid.is_none() {
+            problems.require_text("steps[].template_ref", &step.template_ref);
+        } else if step.subject.is_some() || step.body.is_some() {
+            problems
+                .push("steps[].template_pid cannot be given with a subject or body".to_string());
+        }
         if step.delay_hours < 0 {
             problems.push("delay_hours must be non-negative".to_string());
         }
@@ -67,14 +78,22 @@ pub(super) async fn create_sequence(
         }
     }
     if mail::current().needs_address()
-        && payload
-            .steps
-            .iter()
-            .any(|s| s.body.as_deref().is_none_or(|b| b.trim().is_empty()))
+        && payload.steps.iter().any(|s| {
+            s.template_pid.is_none() && s.body.as_deref().is_none_or(|b| b.trim().is_empty())
+        })
     {
         problems.push("every step needs a body when real mail is on".to_string());
     }
     problems.finish()?;
+    for step in &payload.steps {
+        if let Some(template) = step.template_pid
+            && !templates::exists(&ctx.db, template).await?
+        {
+            return Err(unprocessable(
+                "steps[].template_pid is not an email template",
+            ));
+        }
+    }
     let txn = ctx.db.begin().await?;
     let sequence = nurture_sequences::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
@@ -96,9 +115,14 @@ pub(super) async fn create_sequence(
             sequence_pid: ActiveValue::set(sequence.pid),
             position: ActiveValue::set(i32::try_from(position).unwrap_or(i32::MAX)),
             delay_hours: ActiveValue::set(step.delay_hours),
-            template_ref: ActiveValue::set(step.template_ref.clone()),
+            template_ref: ActiveValue::set(if step.template_ref.trim().is_empty() {
+                step.template_pid.map(|p| p.to_string()).unwrap_or_default()
+            } else {
+                step.template_ref.clone()
+            }),
             subject: ActiveValue::set(step.subject.clone()),
             body: ActiveValue::set(step.body.clone()),
+            template_pid: ActiveValue::set(step.template_pid),
             deleted_at: ActiveValue::set(None),
             ..Default::default()
         }
@@ -210,7 +234,28 @@ pub(super) async fn send_step(
         deliveries::settle(txn, row_id, "suppressed", None, Some("mailbox suppressed")).await?;
         return Ok(StepSend::Exit);
     }
-    let Some(body) = step.body.as_deref().filter(|b| !b.trim().is_empty()) else {
+    let Some(address) = clients::email_address(&contact.person_ref).await else {
+        deliveries::settle(txn, row_id, "no_address", None, Some("no address on file")).await?;
+        return Ok(StepSend::Retry("no address"));
+    };
+    // The unsubscribe token names the step where a campaign would be named.
+    let unsubscribe_url = crate::unsubscribe::current().map(|u| u.url(contact.pid, step.pid));
+    let content = if let Some(template) = step.template_pid {
+        let made = templates::content_for(txn, template, contact, unsubscribe_url.as_deref());
+        let Some(content) = made.await? else {
+            let why = "permanent: the email template is gone";
+            deliveries::settle(txn, row_id, "failed", None, Some(why)).await?;
+            return Ok(StepSend::Exit);
+        };
+        content
+    } else if let Some(body) = step.body.as_deref().filter(|b| !b.trim().is_empty()) {
+        (
+            step.subject
+                .clone()
+                .unwrap_or_else(|| step.template_ref.clone()),
+            with_unsubscribe(body.to_string(), unsubscribe_url.as_deref()),
+        )
+    } else {
         deliveries::settle(
             txn,
             row_id,
@@ -221,20 +266,11 @@ pub(super) async fn send_step(
         .await?;
         return Ok(StepSend::Retry("step has no body"));
     };
-    let Some(address) = clients::email_address(&contact.person_ref).await else {
-        deliveries::settle(txn, row_id, "no_address", None, Some("no address on file")).await?;
-        return Ok(StepSend::Retry("no address"));
-    };
-    // The unsubscribe token names the step where a campaign would be named.
-    let unsubscribe_url = crate::unsubscribe::current().map(|u| u.url(contact.pid, step.pid));
     let message = mail::Message {
         to: address,
         to_name: contact.display_name.clone(),
-        subject: step
-            .subject
-            .clone()
-            .unwrap_or_else(|| step.template_ref.clone()),
-        text: with_unsubscribe(body.to_string(), unsubscribe_url.as_deref()),
+        subject: content.0,
+        text: content.1,
         unsubscribe_url,
         message_id: sender.new_message_id(),
     };

@@ -24,6 +24,9 @@ import type {
   Lead,
   Notification,
   SavedView,
+  EmailTemplate,
+  MergeToken,
+  TemplatePreview,
   Stage,
   Ticket,
 } from "#lib/api/crm.js";
@@ -111,6 +114,8 @@ interface ExternalLinkRow {
 }
 
 interface State {
+  /** The demo email templates (CRM-R36). */
+  templates: EmailTemplate[];
   /** The demo user's saved views (CRM-R35). */
   views: SavedView[];
   /** The inbox of the one demo user (CRM-R32). */
@@ -691,6 +696,17 @@ function build(): State {
     },
   ];
   return {
+    templates: [
+      {
+        pid: "template-1",
+        name: "Autumn news",
+        subject: "News for {{first_name}}",
+        body: "Hi {{first_name}} at {{account_name}},\n\nFrom {{rep_name}}.\n\nStop: {{unsubscribe_url}}",
+        fallbacks: { account_name: "your team" },
+        in_use: 0,
+        updated_at: "2026-10-25T09:00:00Z",
+      },
+    ],
     views: [
       {
         pid: "view-1",
@@ -1985,6 +2001,7 @@ export function demoHandle(
     if (tail === "external-links" && (get || post))
       return recordLinks("contact", id!, method, body);
   }
+  if (head === "email-templates") return emailTemplates(method, id, body);
   if (head === "views") {
     if (get)
       return ok(
@@ -2210,4 +2227,116 @@ export function demoHandle(
     404,
     "This endpoint is not part of the guided tour's sample data.",
   );
+}
+
+const MERGE_TOKENS: MergeToken[] = [
+  ["first_name", "The first word of the contact's name", "there"],
+  ["name", "The contact's full name", "there"],
+  ["account_name", "The name of the contact's account", "your organisation"],
+  ["rep_name", "The name of the contact's owner, or the account's", "the team"],
+  ["job_title", "The contact's job title", "your role"],
+].map(([name, description, fallback]) => ({
+  name: name!,
+  description: description!,
+  fallback: fallback!,
+  required: false,
+}));
+MERGE_TOKENS.push({
+  name: "unsubscribe_url",
+  description:
+    "The contact's signed unsubscribe link; every body must contain it",
+  fallback: null,
+  required: true,
+});
+
+const SYNTHETIC: Record<string, string> = {
+  first_name: "Alex",
+  name: "Alex Example",
+  account_name: "Example Ltd",
+  rep_name: "Sam Rep",
+  job_title: "Operations Lead",
+};
+
+/** Render a draft the way the service does, for the made-up contact (text only). */
+function renderDraft(
+  draft: { subject: string; body: string; fallbacks: Record<string, string> },
+  blank: string[],
+): TemplatePreview | { unknown: string } {
+  const fell: string[] = [];
+  let unknown: string | null = null;
+  const fill = (source: string) =>
+    source.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_all, name: string) => {
+      if (name === "unsubscribe_url")
+        return "https://example.invalid/unsubscribe/preview";
+      const token = MERGE_TOKENS.find((t) => t.name === name);
+      if (!token) {
+        unknown = name;
+        return "";
+      }
+      const value = blank.includes(name) ? undefined : SYNTHETIC[name];
+      if (value) return value;
+      if (!fell.includes(name)) fell.push(name);
+      return draft.fallbacks[name] || token.fallback!;
+    });
+  const subject = fill(draft.subject);
+  const text = fill(draft.body);
+  if (unknown) return { unknown };
+  const problems: string[] = [];
+  if (!/\{\{\s*unsubscribe_url\s*\}\}/.test(draft.body))
+    problems.push(
+      "body must contain {{unsubscribe_url}}, the link a recipient uses to unsubscribe",
+    );
+  return { subject, text, html: text, fell_back: fell, problems };
+}
+
+function emailTemplates(method: string, id: string | undefined, body: unknown) {
+  const input = (body ?? {}) as Partial<EmailTemplate> & { blank?: string[] };
+  if (method === "GET" && id === "tokens") return ok(MERGE_TOKENS);
+  if (method === "GET" && !id) return ok(state.templates);
+  if (method === "POST" && id === "preview") {
+    const out = renderDraft(
+      {
+        subject: input.subject ?? "",
+        body: input.body ?? "",
+        fallbacks: input.fallbacks ?? {},
+      },
+      input.blank ?? [],
+    );
+    return "unknown" in out
+      ? problem(422, `{{${out.unknown}}} is not a merge token`)
+      : ok(out);
+  }
+  if (method === "POST" && !id) {
+    const problems = renderDraft(
+      { subject: input.subject ?? "", body: input.body ?? "", fallbacks: {} },
+      [],
+    );
+    if (!input.name?.trim()) return problem(422, "name is required");
+    if ("unknown" in problems)
+      return problem(422, `{{${problems.unknown}}} is not a merge token`);
+    if (problems.problems.length) return problem(422, problems.problems[0]!);
+    const made: EmailTemplate = {
+      pid: `template-${state.templates.length + 1}-${Date.now()}`,
+      name: input.name.trim(),
+      subject: input.subject ?? "",
+      body: input.body ?? "",
+      fallbacks: input.fallbacks ?? {},
+      in_use: 0,
+      updated_at: new Date().toISOString(),
+    };
+    state.templates.push(made);
+    return ok({ pid: made.pid });
+  }
+  const at = state.templates.findIndex((x) => x.pid === id);
+  if (at < 0) return problem(404, "template not found");
+  if (method === "GET") return ok(state.templates[at]);
+  if (method === "PUT") {
+    state.templates[at] = { ...state.templates[at]!, ...input, pid: id! };
+    return ok({ pid: id });
+  }
+  if (method === "DELETE") {
+    state.templates.splice(at, 1);
+    return ok({ pid: id });
+  }
+  return problem(405, "method not allowed");
 }

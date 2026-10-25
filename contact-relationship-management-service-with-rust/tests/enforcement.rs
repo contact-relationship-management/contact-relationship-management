@@ -1165,3 +1165,59 @@ async fn views_are_shared_without_sharing_access() {
     })
     .await;
 }
+
+/// CRM-R36: writing a template is a write; previewing a draft stores nothing, so a reader may.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_reader_may_preview_a_template_but_not_save_one() {
+    let (keys, kid) = keys_and_kid();
+    settings::update(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let writer = sign_as(&kid, "templates-writer", &[("access", &["write"])]);
+    let reader = sign_as(&kid, "templates-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let draft = json!({ "name": "Autumn", "subject": "Hi {{first_name}}",
+                            "body": "Hello\n{{unsubscribe_url}}" });
+        assert_eq!(request.get("/api/email-templates").await.status_code(), 401);
+        assert_eq!(
+            request
+                .post("/api/email-templates")
+                .add_header("authorization", bearer(&reader))
+                .json(&draft)
+                .await
+                .status_code(),
+            403
+        );
+        let preview = request
+            .post("/api/email-templates/preview")
+            .add_header("authorization", bearer(&reader))
+            .json(&draft_without_name(&draft))
+            .await;
+        preview.assert_status_ok();
+        assert_eq!(preview.json::<Value>()["subject"], "Hi Alex");
+        request
+            .post("/api/email-templates")
+            .add_header("authorization", bearer(&writer))
+            .json(&draft)
+            .await
+            .assert_status_ok();
+        // A reader can read what the writer saved.
+        let listed: Vec<Value> = request
+            .get("/api/email-templates")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        assert_eq!(listed.len(), 1);
+    })
+    .await;
+}
+
+fn draft_without_name(draft: &Value) -> Value {
+    json!({ "subject": draft["subject"], "body": draft["body"] })
+}

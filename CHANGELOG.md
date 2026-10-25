@@ -11,6 +11,8 @@ subproject keeps a detailed changelog:
 
 ### Added
 
+- Email templates with merge tokens, a live preview for a made-up contact, and the unsubscribe link required in every body; campaigns and nurture steps can use one (CRM-R36).
+
 - Saved views of the five main lists, per user or shared, in a view bar above each (CRM-R35).
 
 - CSV import of leads with a per-row report, duplicate advice and undo (CRM-R34).

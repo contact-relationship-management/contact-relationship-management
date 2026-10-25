@@ -23,6 +23,8 @@ pub struct Model {
     pub template_ref: String,
     pub subject: Option<String>,
     pub body: Option<String>,
+    /// The email template the message is made from (CRM-R36); then `subject` and `body` are absent.
+    pub template_pid: Option<Uuid>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

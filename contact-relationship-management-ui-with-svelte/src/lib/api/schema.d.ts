@@ -4781,6 +4781,521 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/email-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Email templates with how many campaigns and nurture steps use each (CRM-R36) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EmailTemplate"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Save an email template; the body must contain {{unsubscribe_url}} and tokens come from a closed set, else 422 */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailTemplatePayload"];
+                };
+            };
+            responses: {
+                /** @description Created: {pid} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Created"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Validation failure */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/email-templates/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Render a draft for a synthetic contact (stores nothing; a reader may); problems lists what would stop it being saved */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailTemplatePreviewPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EmailTemplatePreview"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/email-templates/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The merge tokens with their default fallbacks */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MergeToken"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/email-templates/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One email template */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EmailTemplate"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Replace an email template; messages not yet sent change with it */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailTemplatePayload"];
+                };
+            };
+            responses: {
+                /** @description Created: {pid} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Validation failure */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete an email template; 409 while a campaign or nurture step uses it */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Created: {pid} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Validation failure */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events/recent": {
         parameters: {
             query?: never;
@@ -11011,6 +11526,11 @@ export interface components {
             status: string;
             /** @description Message subject; the campaign name when absent. */
             subject: string | null;
+            /**
+             * Format: uuid
+             * @description The email template the message is made from (CRM-R36); then `subject` and `body` are absent.
+             */
+            template_pid: string | null;
             /** Format: int32 */
             unsubscribed: number;
             /** Format: date-time */
@@ -11068,6 +11588,12 @@ export interface components {
              * @default null
              */
             subject: string | null;
+            /**
+             * Format: uuid
+             * @description An email template (CRM-R36) to make the message from instead of `subject` and `body`.
+             * @default null
+             */
+            template_pid: string | null;
         };
         /** @description The first row where the hash chain breaks. */
         ChainBreak: {
@@ -11551,6 +12077,66 @@ export interface components {
             state: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /** @description One template. */
+        EmailTemplate: {
+            body: string;
+            fallbacks: {
+                [key: string]: string;
+            };
+            /**
+             * Format: int64
+             * @description How many live campaigns and nurture steps refer to it.
+             */
+            in_use: number;
+            name: string;
+            /** Format: uuid */
+            pid: string;
+            subject: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description `POST /api/email-templates` and `PUT /api/email-templates/{pid}` body (a `PUT` replaces it). */
+        EmailTemplatePayload: {
+            /** @description Plain text; may hold merge tokens and must hold `{{unsubscribe_url}}`. */
+            body: string;
+            /**
+             * @description The template's own text for a token with no value, by token name.
+             * @default {}
+             */
+            fallbacks: {
+                [key: string]: string;
+            };
+            /** @description Unique, ignoring case. */
+            name: string;
+            /** @description One line; may hold merge tokens except `{{unsubscribe_url}}`. */
+            subject: string;
+        };
+        /** @description A template rendered for the synthetic contact. */
+        EmailTemplatePreview: {
+            /** @description The tokens that fell back to their fallback text. */
+            fell_back: string[];
+            /** @description The body as HTML, every value escaped. */
+            html: string;
+            /** @description What would stop this draft being saved; empty when it can be. */
+            problems: string[];
+            subject: string;
+            /** @description The plain text that would be mailed. */
+            text: string;
+        };
+        /** @description `POST /api/email-templates/preview` body: a draft, not yet saved. */
+        EmailTemplatePreviewPayload: {
+            /**
+             * @description Tokens to treat as having no value, to see their fallbacks.
+             * @default []
+             */
+            blank: string[];
+            body: string;
+            /** @default {} */
+            fallbacks: {
+                [key: string]: string;
+            };
+            subject: string;
         };
         /** @description `GET /api/insights/engagement`. */
         EngagementView: {
@@ -12148,6 +12734,15 @@ export interface components {
             /** @description Why, in the operator's words. Recorded in the audit entry. */
             reason: string;
         };
+        /** @description One merge token. */
+        MergeToken: {
+            description: string;
+            /** @description The text used when the contact has no value; absent for `unsubscribe_url`. */
+            fallback: string | null;
+            name: string;
+            /** @description Whether every template body must contain it. */
+            required: boolean;
+        };
         /** @description One inbox entry. */
         Notification: {
             /** Format: date-time */
@@ -12229,6 +12824,11 @@ export interface components {
             /** Format: uuid */
             sequence_pid: string;
             subject: string | null;
+            /**
+             * Format: uuid
+             * @description The email template the message is made from (CRM-R36); then `subject` and `body` are absent.
+             */
+            template_pid: string | null;
             template_ref: string;
             /** Format: date-time */
             updated_at: string;
@@ -12704,6 +13304,16 @@ export interface components {
             /** Format: int32 */
             delay_hours: number;
             subject?: string | null;
+            /**
+             * Format: uuid
+             * @description An email template (CRM-R36) to make the message from instead of `subject` and `body`.
+             * @default null
+             */
+            template_pid: string | null;
+            /**
+             * @description A label for the step; the email template's id when `template_pid` is given and this is absent.
+             * @default
+             */
             template_ref: string;
         };
         /** @description `GET /api/contacts/{pid}/subject-access`: everything CRM holds keyed to the contact. */

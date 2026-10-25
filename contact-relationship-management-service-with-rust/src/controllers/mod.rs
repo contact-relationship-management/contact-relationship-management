@@ -27,6 +27,7 @@ pub mod relationships;
 pub mod sales;
 pub mod search;
 pub mod support;
+pub mod templates;
 pub mod unmerge;
 pub mod views;
 pub mod webhooks;

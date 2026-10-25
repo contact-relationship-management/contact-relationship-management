@@ -8,6 +8,7 @@ use super::{
     records, streaming, tokens, unprocessable,
 };
 use crate::controllers::PidPath;
+use crate::controllers::templates;
 use crate::json::Json;
 use crate::models::live::FindLive;
 
@@ -30,6 +31,9 @@ pub(crate) struct CampaignPayload {
     /// Plain-text message body. Required before a campaign can really send.
     #[serde(default)]
     body: Option<String>,
+    /// An email template (CRM-R36) to make the message from instead of `subject` and `body`.
+    #[serde(default)]
+    template_pid: Option<Uuid>,
     /// The consent purpose it is sent under (`marketing` when absent): only contacts who
     /// granted *that* purpose are sent to (CRM-R29).
     #[serde(default)]
@@ -77,9 +81,20 @@ pub(super) async fn create_campaign(
     {
         problems.push(format!("body exceeds {MAX_BODY_LEN} characters"));
     }
+    if payload.template_pid.is_some() && (payload.subject.is_some() || payload.body.is_some()) {
+        problems.push_field(
+            "template_pid",
+            "cannot be given together with a subject or body",
+        );
+    }
     problems.finish()?;
     if let Some(segment) = payload.segment_pid {
         records::find_segment(&ctx.db, segment).await?;
+    }
+    if let Some(template) = payload.template_pid
+        && !templates::exists(&ctx.db, template).await?
+    {
+        return Err(unprocessable("template_pid is not an email template"));
     }
     let txn = ctx.db.begin().await?;
     let row = campaigns::ActiveModel {
@@ -103,6 +118,7 @@ pub(super) async fn create_campaign(
         unsubscribed: ActiveValue::set(0),
         subject: ActiveValue::set(payload.subject.clone()),
         body: ActiveValue::set(payload.body.clone()),
+        template_pid: ActiveValue::set(payload.template_pid),
         deleted_at: ActiveValue::set(None),
         ..Default::default()
     }
@@ -215,6 +231,27 @@ pub(super) fn with_unsubscribe(body: String, url: Option<&str>) -> String {
     }
 }
 
+/// The subject and text of a campaign's message for one contact: from its email template when it
+/// has one (which carries its own unsubscribe link), else its own subject and body with the
+/// generic unsubscribe footer. `None` when the template is gone.
+async fn campaign_content(
+    db: &sea_orm::DatabaseConnection,
+    campaign: &campaigns::Model,
+    contact: &contacts::Model,
+    unsubscribe_url: Option<&str>,
+) -> Result<Option<(String, String)>> {
+    if let Some(template) = campaign.template_pid {
+        return templates::content_for(db, template, contact, unsubscribe_url).await;
+    }
+    Ok(Some((
+        campaign
+            .subject
+            .clone()
+            .unwrap_or_else(|| campaign.name.clone()),
+        with_unsubscribe(campaign.body.clone().unwrap_or_default(), unsubscribe_url),
+    )))
+}
+
 /// Why a consented contact is still not mailed this time, if so.
 pub(super) async fn skip_reason(
     db: &sea_orm::DatabaseConnection,
@@ -283,17 +320,19 @@ pub(super) async fn deliver_one(
         };
         let unsubscribe_url =
             crate::unsubscribe::current().map(|u| u.url(contact.pid, campaign.pid));
+        let Some((subject, text)) =
+            campaign_content(&ctx.db, campaign, &contact, unsubscribe_url.as_deref()).await?
+        else {
+            let why = "permanent: the email template is gone";
+            deliveries::settle(&ctx.db, item.id, "failed", None, Some(why)).await?;
+            outcome.failed += 1;
+            return Ok(());
+        };
         let message = mail::Message {
             to: address,
             to_name: contact.display_name.clone(),
-            subject: campaign
-                .subject
-                .clone()
-                .unwrap_or_else(|| campaign.name.clone()),
-            text: with_unsubscribe(
-                campaign.body.clone().unwrap_or_default(),
-                unsubscribe_url.as_deref(),
-            ),
+            subject,
+            text,
             unsubscribe_url,
             message_id: sender.new_message_id(),
         };
@@ -348,6 +387,7 @@ pub(super) fn check_runnable(campaign: &campaigns::Model, sender: &mail::Sender)
         return Err(unprocessable("campaign has no segment"));
     }
     if sender.needs_address()
+        && campaign.template_pid.is_none()
         && campaign
             .body
             .as_deref()
