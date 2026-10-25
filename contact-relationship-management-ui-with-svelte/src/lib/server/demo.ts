@@ -23,6 +23,7 @@ import type {
   Deal,
   Lead,
   Notification,
+  SavedView,
   Stage,
   Ticket,
 } from "#lib/api/crm.js";
@@ -110,6 +111,8 @@ interface ExternalLinkRow {
 }
 
 interface State {
+  /** The demo user's saved views (CRM-R35). */
+  views: SavedView[];
   /** The inbox of the one demo user (CRM-R32). */
   notifications: Notification[];
   followups: FollowupSeed[];
@@ -688,6 +691,19 @@ function build(): State {
     },
   ];
   return {
+    views: [
+      {
+        pid: "view-1",
+        owner_ref: "worker:demo",
+        mine: false,
+        kind: "ticket",
+        name: "Urgent and open",
+        filter: { priority: ["urgent", "high"], status: ["open"] },
+        sort: { field: "priority", direction: "desc" },
+        columns: null,
+        shared: true,
+      },
+    ],
     notifications,
     followups,
     accounts,
@@ -1968,6 +1984,41 @@ export function demoHandle(
     if (tail === "unmerge" && post) return unmergeContact(id!, body);
     if (tail === "external-links" && (get || post))
       return recordLinks("contact", id!, method, body);
+  }
+  if (head === "views") {
+    if (get)
+      return ok(
+        state.views.filter((v) => v.kind === (query.get("kind") ?? v.kind)),
+      );
+    const input = (body ?? {}) as Partial<SavedView>;
+    if (post) {
+      if (!input.name?.trim()) return problem(422, "name is required");
+      const made: SavedView = {
+        pid: `view-${state.views.length + 1}-${Date.now()}`,
+        owner_ref: "worker:demo",
+        mine: true,
+        kind: input.kind ?? "contact",
+        name: input.name.trim(),
+        filter: input.filter ?? {},
+        sort: input.sort ?? null,
+        columns: input.columns ?? null,
+        shared: input.shared ?? false,
+      };
+      state.views.push(made);
+      return ok({ pid: made.pid });
+    }
+    const at = state.views.findIndex((v) => v.pid === id);
+    if (at < 0) return problem(404, "view not found");
+    if (!state.views[at]!.mine)
+      return problem(403, "only the owner can change a view");
+    if (method === "PUT") {
+      state.views[at] = { ...state.views[at]!, ...input, mine: true, pid: id! };
+      return ok({ pid: id });
+    }
+    if (method === "DELETE") {
+      state.views.splice(at, 1);
+      return ok({ pid: id });
+    }
   }
   if (head === "lead-imports") return leadImports(method, id, tail, body);
   if (head === "search" && get) {

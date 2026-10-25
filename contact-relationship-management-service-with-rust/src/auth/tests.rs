@@ -247,6 +247,19 @@ fn marking_your_own_notifications_read_is_a_read_but_the_sweep_is_an_admin_actio
     );
 }
 
+#[test]
+fn your_own_saved_views_are_not_data_writes() {
+    for method in [Method::POST, Method::PUT, Method::DELETE] {
+        let path = if method == Method::POST {
+            "/api/views"
+        } else {
+            "/api/views/abc"
+        };
+        assert_eq!(derive_action(&method, path), Action::Read, "{method}");
+    }
+    assert_eq!(derive_action(&Method::POST, "/api/viewsx"), Action::Write);
+}
+
 /// Enforcement on ⇒ the public paths (health/ping, `OpenAPI`,
 /// Swagger UI, Prometheus metrics) still pass without a token.
 #[test]

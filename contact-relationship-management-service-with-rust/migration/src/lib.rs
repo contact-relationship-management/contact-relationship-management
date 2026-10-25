@@ -37,6 +37,7 @@ mod m20261024_000022_web_forms;
 mod m20261024_000023_notifications;
 mod m20261024_000024_search;
 mod m20261025_000025_lead_imports;
+mod m20261025_000026_views;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -72,6 +73,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261024_000023_notifications::Migration),
             Box::new(m20261024_000024_search::Migration),
             Box::new(m20261025_000025_lead_imports::Migration),
+            Box::new(m20261025_000026_views::Migration),
             // inject-above (do not remove this comment)
         ]
     }

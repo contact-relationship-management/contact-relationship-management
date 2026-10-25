@@ -710,3 +710,31 @@ and undo the whole import if it was a mistake.*
   address), each created lead's `lead_captured`, `lead_import_undone`, and `import_undone` on each removed lead.
 - Not built: contacts and accounts import, files over 500 rows, other delimiters or encodings, a column for the lead's source or
   score, updating existing leads, and a background import.
+
+## CRM-R35 — Saved views of the lists
+
+*As someone who works the same slice of the CRM every day, I can save a filtered, sorted view of a list
+under a name, and share it with colleagues without sharing anything they could not already see.*
+
+- **What a view is.** A name, the list it is for (`contact`, `account`, `deal`, `lead` or `ticket`), a *filter*, an
+  optional *sort* and an optional list of *columns*, stored on the server. A view holds no record data: only the
+  names of fields and the values to keep.
+- **The filter** has the shape of the segment language (CRM-R7) — a field maps to the values to keep; values of one
+  field are alternatives, fields are combined with AND, an empty filter keeps everything — but over a closed set of fields
+  per list: contacts `status`, `marketing_consent`; accounts `tier`; deals `currency`, `state` (`open`, `won`,
+  `lost`); leads `source`, `status`; tickets `priority`, `status`, `channel`. Each value must be a token the field can
+  hold. The segment evaluator itself is not used: it is built to keep only consented contacts, which is right for sending and
+  wrong for looking at a list. The sort is one field of the list and a direction. Columns are chosen from the list's
+  columns. Anything outside these sets is `422`.
+- **Per user and shared.** `POST /api/views` makes a view owned by the caller (a name is unique per owner and list, at most 50
+  per owner). `shared: true` lets every signed-in user list and use it. `GET /api/views?kind=` returns the caller's own views and
+  everyone's shared ones. Only the owner can change or delete a view (`403` for a shared one, `404` for someone else's private
+  one). Making, changing and deleting your own views are not data writes, so a reader may do them.
+- **Sharing a view never shares access.** The view says what to ask for; the list it is applied to is still the caller's own
+  read, so the rows are decided per caller (record-level policy, masking) exactly as without a view. A masked reader who opens a
+  shared view sees masked values, and filtering on a field they cannot see matches nothing rather than revealing it.
+- With sign-in off there is no caller; every view belongs to one anonymous owner.
+- **Audit.** `created`, `updated` and `deleted` on the entity `view`, with the list and whether it is shared, never the name.
+- The UI shows a view bar above each of the five lists: choose a view, save the current filter, sort and columns, share or
+  delete your own.
+- Not built: views for campaigns, segments or articles; filters on free text or dates; grouping; a default view per user.

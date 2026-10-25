@@ -1026,3 +1026,142 @@ async fn lead_import_needs_write_and_advice_hides_unreadable_contacts() {
     })
     .await;
 }
+
+/// CRM-R35: a shared view is read by another user, a private one is not, only the owner changes
+/// a view, a reader may keep views of their own, and applying a shared view gives a masked reader
+/// nothing the list would not.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn views_are_shared_without_sharing_access() {
+    let (keys, kid) = keys_and_kid();
+    settings::update(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let writer = sign_as(&kid, "views-writer", &[("access", &["write"])]);
+    let reader = sign_as(&kid, "views-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let view = |name: &str, shared: bool| {
+            json!({ "kind": "contact", "name": name, "filter": { "status": ["active"] },
+                    "columns": ["display_name", "status"], "shared": shared })
+        };
+        assert_eq!(request.get("/api/views").await.status_code(), 401);
+        let shared: Value = request
+            .post("/api/views")
+            .add_header("authorization", bearer(&writer))
+            .json(&view("Team contacts", true))
+            .await
+            .json();
+        let private: Value = request
+            .post("/api/views")
+            .add_header("authorization", bearer(&writer))
+            .json(&view("Mine only", false))
+            .await
+            .json();
+        let (shared, private) = (
+            shared["pid"].as_str().unwrap().to_string(),
+            private["pid"].as_str().unwrap().to_string(),
+        );
+
+        // The reader sees the shared view, marked as not theirs, and not the private one.
+        let seen: Vec<Value> = request
+            .get("/api/views?kind=contact")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        let pids: Vec<&str> = seen.iter().map(|v| v["pid"].as_str().unwrap()).collect();
+        assert!(pids.contains(&shared.as_str()) && !pids.contains(&private.as_str()));
+        assert_eq!(
+            seen.iter().find(|v| v["pid"] == shared.as_str()).unwrap()["mine"],
+            false
+        );
+
+        // Not theirs to change: 403 for the shared one, 404 for the private one.
+        let attempt = view("Hijacked", true);
+        assert_eq!(
+            request
+                .put(&format!("/api/views/{shared}"))
+                .add_header("authorization", bearer(&reader))
+                .json(&attempt)
+                .await
+                .status_code(),
+            403
+        );
+        assert_eq!(
+            request
+                .delete(&format!("/api/views/{private}"))
+                .add_header("authorization", bearer(&reader))
+                .await
+                .status_code(),
+            404
+        );
+        assert_eq!(
+            request
+                .delete(&format!("/api/views/{shared}"))
+                .add_header("authorization", bearer(&reader))
+                .await
+                .status_code(),
+            403
+        );
+
+        // A reader may keep views of their own, even though they cannot write data.
+        request
+            .post("/api/views")
+            .add_header("authorization", bearer(&reader))
+            .json(&view("Mine only", false))
+            .await
+            .assert_status_ok();
+        assert_eq!(
+            request
+                .post("/api/contacts")
+                .add_header("authorization", bearer(&reader))
+                .json(
+                    &json!({ "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                               "display_name": "Nope" })
+                )
+                .await
+                .status_code(),
+            403
+        );
+
+        // The view carries no record data, and the list the reader applies it to is still masked.
+        assert!(!seen.iter().any(|v| v.to_string().contains("phone")));
+        let created: Value = request
+            .post("/api/contacts")
+            .add_header("authorization", bearer(&writer))
+            .json(
+                &json!({ "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
+                           "display_name": "View Subject", "preferred_channel": "phone" }),
+            )
+            .await
+            .json();
+        let listed: Vec<Value> = request
+            .get("/api/contacts")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json();
+        let row = listed
+            .iter()
+            .find(|c| c["pid"] == created["pid"])
+            .expect("the reader lists the contact");
+        assert_ne!(row["preferred_channel"], "phone", "still masked: {row}");
+
+        // The owner changes and deletes their own.
+        request
+            .put(&format!("/api/views/{shared}"))
+            .add_header("authorization", bearer(&writer))
+            .json(&view("Team contacts", false))
+            .await
+            .assert_status_ok();
+        request
+            .delete(&format!("/api/views/{shared}"))
+            .add_header("authorization", bearer(&writer))
+            .await
+            .assert_status_ok();
+    })
+    .await;
+}

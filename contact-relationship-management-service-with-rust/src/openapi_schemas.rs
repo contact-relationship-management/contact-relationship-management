@@ -40,7 +40,7 @@ fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         audits, board, break_glass, dashboards, engagement, external_links, insights, lead_imports,
         marketing, merge, notifications, privacy, relationships, sales, search, support, unmerge,
-        webhooks,
+        views, webhooks,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -155,6 +155,9 @@ fn generated() -> serde_json::Map<String, Value> {
         support::SlaSweep,
         notifications::Notification,
         search::SearchHit,
+        views::View,
+        views::ViewPayload,
+        views::SortSpec,
         lead_imports::Preview,
         lead_imports::ImportRecord,
         lead_imports::Undone,
@@ -262,6 +265,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
             | "/api/tickets/{pid}/position",
         ) => "PositionPayload",
         ("put", "/api/activities/{pid}") => "ActivityEditPayload",
+        ("post", "/api/views") | ("put", "/api/views/{pid}") => "ViewPayload",
         ("post", "/api/lead-imports/preview") => "LeadImportPreviewPayload",
         ("post", "/api/lead-imports") => "LeadImportCommitPayload",
         ("post", "/api/articles") | ("put", "/api/articles/{pid}") => "ArticlePayload",
@@ -383,6 +387,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/events/recent" => "Event",
         "/api/notifications" => "Notification",
         "/api/search" => "SearchHit",
+        "/api/views" => "View",
         "/api/lead-imports" => "LeadImport",
         "/api/webhook-subscriptions" => "WebhookSubscription",
         "/api/webhook-subscriptions/{pid}/deliveries" => "WebhookDelivery",

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import ViewBar from "#lib/components/ViewBar.svelte";
+  import { applyFilter, applyShape } from "#lib/views.js";
+  import type { SavedView } from "#lib/api/crm.js";
   import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import { listTickets, ticketStatus } from "#lib/api/crm.js";
@@ -28,16 +31,19 @@
     { id: "title", header: t("common.name") },
     { id: "priority", kind: "chip", header: t("ticket.priority") },
     { id: "status", kind: "chip", header: t("common.status") },
+    { id: "channel", header: "Channel" },
     { id: "due", header: t("ticket.due") },
     { id: "breach", kind: "flag", header: t("ticket.breached") },
   ]);
 
+  let view = $state<SavedView | null>(null);
   const rows = $derived(
-    (tickets ?? []).map((x) => ({
+    applyFilter(tickets ?? [], view).map((x) => ({
       id: x.pid,
       title: x.title,
       priority: x.priority,
       status: x.status,
+      channel: x.channel ?? "",
       due: x.first_response_due_at
         ? new Date(x.first_response_due_at).toLocaleString()
         : "",
@@ -45,6 +51,8 @@
     })),
   );
 
+  const shaped = $derived(applyShape(rows, columns, view));
+  const headings = $derived(Object.fromEntries(columns.map((c) => [c.id, c.header])));
 
   async function move(pid: string, to: string) {
     actionError = null;
@@ -59,6 +67,7 @@
 
 <h1>{t("nav.tickets")}</h1>
 <p><a class="button" href="/tickets/board">{t("common.board")}</a></p>
+<ViewBar kind="ticket" bind:active={view} labels={headings} />
 
 {#if error}
   <p class="error" data-testid="error">{t("common.error")}: {error}</p>
@@ -70,8 +79,8 @@
   {/if}
   <DataTable
     label={t("nav.tickets")}
-    {columns}
-    {rows}
+    columns={shaped.columns}
+    rows={shaped.rows}
     onselect={(pid) => (selectedPid = pid)}
     testid="ticket-queue"
   />

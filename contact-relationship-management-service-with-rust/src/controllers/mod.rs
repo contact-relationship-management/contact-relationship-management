@@ -28,6 +28,7 @@ pub mod sales;
 pub mod search;
 pub mod support;
 pub mod unmerge;
+pub mod views;
 pub mod webhooks;
 
 /// A `{pid}` reference response: the record a `POST` created.

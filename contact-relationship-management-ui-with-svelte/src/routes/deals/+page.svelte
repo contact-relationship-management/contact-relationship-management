@@ -21,6 +21,9 @@
   import { i18n, t } from "#lib/i18n.svelte.js";
   import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
+  import ViewBar from "#lib/components/ViewBar.svelte";
+  import { applyFilter, applyShape } from "#lib/views.js";
+  import type { SavedView } from "#lib/api/crm.js";
 
   /** The pipeline the visitor picked; empty means the first. */
   let chosen = $state("");
@@ -119,6 +122,33 @@
     await board.reload();
   }
 
+  // The plain list of deals can be viewed through a saved view (CRM-R35). A masked amount is
+  // absent, so a view cannot be used to find out what it hides.
+  let view = $state<SavedView | null>(null);
+  const dealColumns = $derived([
+    {
+      id: "name",
+      header: t("common.name"),
+      href: (row: Record<string, unknown>) => `/deals/${row.id}`,
+    },
+    { id: "amount_minor", kind: "number", header: t("kanban.amount") },
+    { id: "currency", header: "Currency" },
+    { id: "state", kind: "chip", header: t("common.status") },
+    { id: "expected_close_on", kind: "date", header: t("kanban.closeOn") },
+  ]);
+  const dealRows = $derived(
+    applyFilter(deals ?? [], view).map((deal) => ({
+      id: deal.pid,
+      name: deal.name,
+      amount_minor: deal.amount_minor === null ? "" : deal.amount_minor / 100,
+      currency: deal.currency,
+      state: deal.closed_at === null ? "open" : deal.won ? "won" : "lost",
+      expected_close_on: deal.expected_close_on ?? "",
+    })),
+  );
+  const shaped = $derived(applyShape(dealRows, dealColumns, view));
+  const headings = $derived(Object.fromEntries(dealColumns.map((c) => [c.id, c.header])));
+
   const funnelColumns = [
     { id: "stage", header: "Stage" },
     { id: "entered", kind: "number", header: "Entered" },
@@ -184,16 +214,11 @@
 
 {#if deals !== null && deals.length > 0}
   <h2>{t("nav.deals")}</h2>
+  <ViewBar kind="deal" bind:active={view} labels={headings} />
   <DataTable
     label={t("nav.deals")}
-    columns={[
-      {
-        id: "name",
-        header: t("common.name"),
-        href: (row: Record<string, unknown>) => `/deals/${row.id}`,
-      },
-    ]}
-    rows={deals.map((deal) => ({ id: deal.pid, name: deal.name }))}
+    columns={shaped.columns}
+    rows={shaped.rows}
     testid="deal-list"
   />
 {/if}

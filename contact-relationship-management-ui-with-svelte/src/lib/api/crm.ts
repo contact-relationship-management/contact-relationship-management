@@ -108,6 +108,7 @@ export interface Ticket {
   title: string;
   priority: string;
   status: string;
+  channel?: string;
   first_response_due_at: string | null;
   live_first_response_breached?: boolean;
   live_resolution_breached?: boolean;
@@ -452,6 +453,52 @@ export function editFollowup(
   fields: { due_on?: string; summary?: string },
 ): Promise<unknown> {
   return api(`/activities/${pid}`, { method: "PUT", body: fields });
+}
+
+/** A saved view of a list (CRM-R35): a filter, a sort and columns, no record data. */
+export interface SavedView {
+  pid: string;
+  owner_ref: string;
+  /** Whether the caller owns it. */
+  mine: boolean;
+  kind: string;
+  name: string;
+  filter: Record<string, string[]>;
+  sort: { field: string; direction: "asc" | "desc" } | null;
+  columns: string[] | null;
+  shared: boolean;
+}
+
+/** What is sent to save or replace a view. */
+export type SavedViewInput = Pick<
+  SavedView,
+  "kind" | "name" | "filter" | "sort" | "columns" | "shared"
+>;
+
+/** The caller's views of one list, and everyone's shared ones. */
+export function listViews(
+  kind: string,
+  init?: FetchLike,
+): Promise<SavedView[]> {
+  return api(`/views?kind=${encodeURIComponent(kind)}`, init);
+}
+
+/** Save a new view. */
+export function saveView(view: SavedViewInput): Promise<{ pid: string }> {
+  return api("/views", { method: "POST", body: view });
+}
+
+/** Replace a view you own. */
+export function replaceView(
+  pid: string,
+  view: SavedViewInput,
+): Promise<{ pid: string }> {
+  return api(`/views/${pid}`, { method: "PUT", body: view });
+}
+
+/** Delete a view you own. */
+export function deleteView(pid: string): Promise<{ pid: string }> {
+  return api(`/views/${pid}`, { method: "DELETE" });
 }
 
 /** Which CSV column holds what (CRM-R34). */

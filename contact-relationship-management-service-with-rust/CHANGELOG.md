@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — saved views (CRM-T102, CRM-R35)
+
+`/api/views` stores per-user and shared views (a filter, a sort and columns) of the contacts, accounts, deals, leads and tickets lists. A filter
+is checked against a closed set of fields and values per list. A view holds no record data and sharing one shares no access: the list it is
+applied to is still the caller's own read. Making, changing and deleting your own views is open to readers. Migration `000026`.
+
 ### Added — CSV import of leads (CRM-T101, CRM-R34)
 
 `POST /api/lead-imports/preview` reads a CSV (sent as text, up to 500 rows) and reports each row as valid or invalid with the reason, with

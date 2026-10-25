@@ -11,6 +11,8 @@ subproject keeps a detailed changelog:
 
 ### Added
 
+- Saved views of the five main lists, per user or shared, in a view bar above each (CRM-R35).
+
 - CSV import of leads with a per-row report, duplicate advice and undo (CRM-R34).
 
 - Server-side search across the main records: accent-blind, typo-tolerant, respecting what the caller may read (CRM-R33).

@@ -234,6 +234,31 @@ test.describe("data tables", () => {
     await expect(page.getByTestId("undone")).toBeVisible();
   });
 
+  test("a saved view narrows a list, can be saved, and a shared one is offered", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/tickets");
+    const rows = page.getByTestId("ticket-queue").locator("tbody tr");
+    await expect(rows.first()).toBeVisible();
+    const all = await rows.count();
+    await page.getByTestId("view-select").selectOption("view-1");
+    await expect.poll(async () => rows.count()).toBeLessThan(all);
+    await page.getByTestId("view-select").selectOption("");
+    await expect.poll(async () => rows.count()).toBe(all);
+
+    await page.getByTestId("view-new").click();
+    await page.getByTestId("view-name").fill("Closed ones");
+    await page.getByTestId("view-editor").getByLabel("closed").check();
+    await page.getByTestId("view-create").click();
+    await expect(page.getByTestId("view-select")).toContainText("Closed ones");
+    await expect(page.getByTestId("view-delete")).toBeVisible();
+    await page.getByTestId("view-delete").click();
+    await expect(page.getByTestId("view-select")).not.toContainText(
+      "Closed ones",
+    );
+  });
+
   test("the Board links are readable (label colour differs from the background)", async ({
     page,
   }) => {

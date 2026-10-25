@@ -138,6 +138,12 @@ pub fn derive_action(method: &Method, path: &str) -> Action {
             Action::Read
         }
         Method::POST if path == "/api/notifications/read-all" => Action::Read,
+        // Your own saved views are not CRM data (CRM-R35): a reader may make, change and delete them.
+        Method::POST | Method::PUT | Method::DELETE
+            if path == "/api/views" || path.starts_with("/api/views/") =>
+        {
+            Action::Read
+        }
         Method::GET | Method::HEAD | Method::OPTIONS if is_privileged_read(path) => {
             Action::Destructive
         }

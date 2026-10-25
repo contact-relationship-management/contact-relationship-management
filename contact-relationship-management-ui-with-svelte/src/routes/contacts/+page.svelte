@@ -6,6 +6,9 @@
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { Contact } from "#lib/api/crm.js";
+  import ViewBar from "#lib/components/ViewBar.svelte";
+  import { applyFilter, applyShape } from "#lib/views.js";
+  import type { SavedView } from "#lib/api/crm.js";
 
   const list = resource(listContacts);
   const contacts = $derived(list.value);
@@ -22,8 +25,9 @@
     { id: "marketing_consent", kind: "chip", header: t("contact.consent") },
   ]);
 
+  let view = $state<SavedView | null>(null);
   const rows = $derived(
-    (contacts ?? []).map((c) => ({
+    applyFilter(contacts ?? [], view).map((c) => ({
       id: c.pid,
       display_name: c.display_name,
       job_title: c.job_title ?? "",
@@ -47,9 +51,12 @@
           ),
         ),
   );
+  const shaped = $derived(applyShape(searched, columns, view));
+  const headings = $derived(Object.fromEntries(columns.map((c) => [c.id, c.header])));
 </script>
 
 <h1>{t("nav.contacts")}</h1>
+<ViewBar kind="contact" bind:active={view} labels={headings} />
 
 {#if error}
   <p class="error" data-testid="error">{t("common.error")}: {error}</p>
@@ -58,8 +65,8 @@
 {:else}
   <DataTable
     label={t("nav.contacts")}
-    {columns}
-    rows={searched}
+    columns={shaped.columns}
+    rows={shaped.rows}
     onselect={(pid) => void goto(`/contacts/${pid}`)}
     testid="contact-table"
   />

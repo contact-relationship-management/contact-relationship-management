@@ -23,6 +23,8 @@ A task activity may carry `assignee_ref` (`worker:` URN) and `remind_at` (CRM-R3
 makes each fire once, `suppressed`, `read_at`); it holds no record text and erasure of the contact deletes it.
 A lead import (CRM-R34) is a row of `lead_imports`: who, where the list came from (`source_note`), the date it was obtained, counts,
 status (`running | completed | undone`) and the pid of every lead it made. Imported leads have `source=import`, no contact and no consent.
+A saved view (CRM-R35) is a row of `saved_views`: owner (`worker:` URN), the list it is for, a name (unique per owner and list), a filter
+(field to values), an optional sort and columns, and whether it is shared. It holds no record data.
 
 **Account** — an organization relationship.
 `organization_ref` (`organization:` URN, required), `owner_ref`,

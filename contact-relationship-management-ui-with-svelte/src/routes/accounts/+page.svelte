@@ -4,6 +4,9 @@
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
   import type { Account } from "#lib/api/crm.js";
+  import ViewBar from "#lib/components/ViewBar.svelte";
+  import { applyFilter, applyShape } from "#lib/views.js";
+  import type { SavedView } from "#lib/api/crm.js";
 
   const list = resource(listAccounts);
   const accounts = $derived(list.value);
@@ -20,8 +23,9 @@
     { id: "pid", header: "pid" },
   ]);
 
+  let view = $state<SavedView | null>(null);
   const rows = $derived(
-    (accounts ?? []).map((a) => ({
+    applyFilter(accounts ?? [], view).map((a) => ({
       id: a.pid,
       display_name: a.display_name,
       tier: a.tier,
@@ -30,15 +34,23 @@
     })),
   );
 
+  const shaped = $derived(applyShape(rows, columns, view));
+  const headings = $derived(Object.fromEntries(columns.map((c) => [c.id, c.header])));
 </script>
 
 <h1>{t("nav.accounts")}</h1>
+<ViewBar kind="account" bind:active={view} labels={headings} />
 
 {#if error}
   <p class="error" data-testid="error">{t("common.error")}: {error}</p>
 {:else if accounts === null}
   <p>{t("common.loading")}</p>
 {:else}
-  <DataTable label={t("nav.accounts")} {columns} {rows} testid="account-table" />
+  <DataTable
+    label={t("nav.accounts")}
+    columns={shaped.columns}
+    rows={shaped.rows}
+    testid="account-table"
+  />
 {/if}
 

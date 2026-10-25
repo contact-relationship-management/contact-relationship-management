@@ -28,6 +28,7 @@ mod search;
 mod streaming;
 mod support;
 mod unmerge;
+mod views;
 mod web_forms;
 mod webhooks;
 

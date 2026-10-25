@@ -19,4 +19,5 @@ pub mod search;
 pub mod segment;
 pub mod sla;
 pub mod tokens;
+pub mod views;
 pub mod webhooks;
