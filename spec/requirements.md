@@ -681,7 +681,7 @@ allowed to see.*
 with each row and which rows look like people we already have before anything is saved,
 and undo the whole import if it was a mistake.*
 
-- **Scope.** Only leads. Contacts are not imported, because they come from the person service. At most 500 rows
+- **Scope.** Leads. Contacts and accounts have their own import (CRM-R43). At most 500 rows
   and 1 MB of text per import; a larger list is imported in pieces.
 - **Upload and map.** The file is sent as text in a JSON body (`csv`): a header row, comma separated, quoted fields
   allowed. `POST /api/lead-imports/preview` with no `mapping` answers with the columns, how many rows there are, and a
@@ -855,3 +855,17 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Subject access and erasure:** the export lists the files of the contact, of contacts merged into it and of its leads (name, type, size, digest). Erasing the contact deletes those rows in the transaction and the files once it has committed; a file that cannot be removed is logged.
 - The four record pages show the files with upload, download and delete.
 - Not built: object storage (S3 and similar; the store is one directory, on local disk or a mounted volume), encryption of the files at rest, virus-scan signatures of our own, thumbnails or previews, versions, a file on a ticket or an activity, and a retention sweep of orphan files left by a crash between disk and database.
+
+## CRM-R43 — Bring in contacts and accounts from a spreadsheet
+
+*As someone moving from another system, I can load a list of contacts or accounts, see what is wrong with each row and which rows look like records we already have before anything is saved, and undo the whole import.*
+
+- It works as the lead import does (CRM-R34): the file is sent as text (`csv`), at most 500 rows and 1 MB; `POST /api/{contact|account}-imports/preview` with no `mapping` answers with the columns and a suggested mapping, and with a `mapping` one report line per row; `POST /api/{contact|account}-imports` saves in batches (50 per transaction) and needs `source_note` and `obtained_on`; `GET` lists and reads import records; `POST .../{pid}/undo` takes one back. A preview saves nothing.
+- **Contacts.** Mapped columns: `display_name` and `email` (both required), `given_name`, `family_name`, `job_title`. A contact is a reference to a person, so each valid row's name and address are sent to the person service (`clients::resolve_person`), which finds or makes the person; the CRM keeps the `person:` reference and never the address. A row whose person is already a contact here is left out and counted; a row the service cannot answer for is counted as failed and the rest go on. A new contact is `active`, prefers email, and has **no consent** (`never`). An import does **not** start workflows (CRM-R40), so a list of thousands cannot flood them.
+- **Accounts.** Mapped columns: `display_name` (required), `organization_ref` (an `organization:` reference), `tier` (`prospect`, `customer`, `partner`, `former`; default `prospect`), `industry`. With no reference in the file, the organization service is asked to find or make the organization by name (`clients::resolve_organization`); an organization already an account here is left out and counted.
+- **Duplicate advice** never blocks a row. For contacts it is the matcher's, as for leads (existing contacts the caller may read, leads, and earlier rows, on name; the address contributes its domain only). For accounts it is an exact match on the name, ignoring case and spacing, against existing accounts and earlier rows. `skip_likely_duplicates` leaves such rows out.
+- **Record.** `record_imports` is written first and keeps the pid of every record as each batch commits, so an import that stops half way can be undone. Counts: rows, invalid, skipped (duplicates left out, and people or organizations already here), failed (lookups that failed), created.
+- **Undo** removes the records the import made that nobody has used since. A contact is kept once it has consent, an activity, a deal, a ticket, a lead, an enrolment, a consent event, an attachment or a custom field value, or has had another contact merged into it. An account is kept once it has a contact, a deal, a ticket, a partnership, a membership, an activity, an attachment or a custom field value. The kept ones are counted.
+- **Audit.** The preview (counts only), the commit (counts, source and date), each record created (with the import pid) and the undo.
+- The Contacts and Accounts pages link to an import page.
+- Not built: linking an imported contact to an account by a company column; an owner column; consent columns (a consent decision needs its own evidence, CRM-R6); updating existing records from a file; more than 500 rows in one import; and a confirmed contract for the person and organization services (the same assumption as the web form's, `spec/integrations.md`: `POST /api/persons` and `POST /api/organizations` answer a `pid` or `id`).

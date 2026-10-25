@@ -553,4 +553,18 @@ export default {
   "att.deleteConfirm": "Diese Datei löschen?",
   "att.hint":
     "Nur Dokumente, Bilder und Text; die Datei wird geprüft und, falls ein Scanner eingerichtet ist, gescannt.",
+  "import.contactsTitle": "Kontakte importieren",
+  "import.accountsTitle": "Konten importieren",
+  "import.contactsNote":
+    "Jede Adresse geht an den Personendienst und wird im CRM nirgends gespeichert. Neue Kontakte haben keine Einwilligung, und ein Import startet keine Workflows.",
+  "import.accountsNote":
+    "Jede Organisation wird im Organisationsdienst gesucht, sofern die Datei nicht ihre Referenz enthält. Ein bereits vorhandener Name wird als wahrscheinliches Duplikat markiert.",
+  "import.givenCol": "Spalte Vorname",
+  "import.familyCol": "Spalte Nachname",
+  "import.titleCol": "Spalte Position",
+  "import.orgRefCol": "Spalte Organisationsreferenz",
+  "import.tierCol": "Spalte Stufe",
+  "import.industryCol": "Spalte Branche",
+  "import.leftOut": "Ausgelassen oder schon vorhanden",
+  "import.lookupFailed": "Nicht nachschlagbar",
 } satisfies Record<StringKey, string>;

@@ -64,16 +64,16 @@ pub(crate) struct CommitPayload {
 #[derive(Debug, Clone, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "LeadImportDuplicate")]
 pub(crate) struct Likeness {
-    /// `contact`, `lead` or `row` (an earlier row of this file).
-    kind: &'static str,
-    /// The record's pid, for a contact or a lead.
-    pid: Option<Uuid>,
+    /// `contact`, `lead`, `account` or `row` (an earlier row of this file).
+    pub(super) kind: &'static str,
+    /// The record's pid, for a contact, a lead or an account.
+    pub(super) pid: Option<Uuid>,
     /// The file row, for `row` (1-based, after the header).
-    row: Option<usize>,
-    name: String,
-    probability: f64,
+    pub(super) row: Option<usize>,
+    pub(super) name: String,
+    pub(super) probability: f64,
     #[schemars(with = "String")]
-    verdict: Verdict,
+    pub(super) verdict: Verdict,
 }
 
 /// One row of the report.
@@ -81,14 +81,14 @@ pub(crate) struct Likeness {
 #[schemars(rename = "LeadImportRow")]
 pub(crate) struct RowReport {
     /// 1-based, after the header.
-    row: usize,
+    pub(super) row: usize,
     /// `valid` or `invalid`.
-    status: &'static str,
+    pub(super) status: &'static str,
     /// Why a row is invalid.
-    reason: Option<String>,
-    name: Option<String>,
+    pub(super) reason: Option<String>,
+    pub(super) name: Option<String>,
     /// Advice only: who this row looks like.
-    likely_duplicates: Vec<Likeness>,
+    pub(super) likely_duplicates: Vec<Likeness>,
 }
 
 /// `POST /api/lead-imports/preview` response.
@@ -183,12 +183,27 @@ async fn analyse(
     mapping: &Mapping,
 ) -> Result<(Vec<RowReport>, Vec<Option<rules::Row>>)> {
     let columns = rules::resolve(mapping, &table.headers).map_err(|m| unprocessable(&m))?;
+    let judged = table
+        .rows
+        .iter()
+        .map(|cells| rules::judge(cells, &columns, table.headers.len()))
+        .collect();
+    advise(ctx, caller, judged).await
+}
+
+/// For each judged row that is valid, the contacts, leads and earlier rows it looks like (advice
+/// only). The contact and account imports (CRM-R43) use it too.
+pub(super) async fn advise(
+    ctx: &AppContext,
+    caller: &MaybeAuthUser,
+    rows: Vec<std::result::Result<rules::Row, String>>,
+) -> Result<(Vec<RowReport>, Vec<Option<rules::Row>>)> {
     let (mut pool, mut by_word) = load_pool(ctx, caller).await?;
-    let mut reports = Vec::with_capacity(table.rows.len());
-    let mut judged = Vec::with_capacity(table.rows.len());
-    for (offset, cells) in table.rows.iter().enumerate() {
+    let mut reports = Vec::with_capacity(rows.len());
+    let mut judged = Vec::with_capacity(rows.len());
+    for (offset, judgement) in rows.into_iter().enumerate() {
         let number = offset + 1;
-        let row = match rules::judge(cells, &columns, table.headers.len()) {
+        let row = match judgement {
             Ok(row) => row,
             Err(reason) => {
                 reports.push(RowReport {

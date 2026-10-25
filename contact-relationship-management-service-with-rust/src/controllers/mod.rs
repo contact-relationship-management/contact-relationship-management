@@ -25,6 +25,7 @@ pub mod metrics;
 pub mod notifications;
 pub mod paging;
 pub mod privacy;
+pub mod record_imports;
 pub mod relationships;
 pub mod sales;
 pub mod search;

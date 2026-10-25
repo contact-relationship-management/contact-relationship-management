@@ -540,4 +540,18 @@ export default {
   "att.deleteConfirm": "هل تحذف هذا الملف؟",
   "att.hint":
     "مستندات وصور ونصوص فقط؛ يُفحص الملف، ويُمسح ضوئياً عند توفر ماسح.",
+  "import.contactsTitle": "استيراد جهات الاتصال",
+  "import.accountsTitle": "استيراد الحسابات",
+  "import.contactsNote":
+    "يُرسل كل عنوان إلى خدمة الأشخاص ولا يُحفظ في أي مكان في النظام. جهات الاتصال الجديدة بلا موافقة، ولا يشغّل الاستيراد أي سير عمل.",
+  "import.accountsNote":
+    "يُبحث عن كل منظمة في خدمة المنظمات ما لم يوفّر الملف مرجعها. يُشار إلى الاسم الموجود مسبقاً بوصفه تكراراً محتملاً.",
+  "import.givenCol": "عمود الاسم الأول",
+  "import.familyCol": "عمود اسم العائلة",
+  "import.titleCol": "عمود المسمى الوظيفي",
+  "import.orgRefCol": "عمود مرجع المنظمة",
+  "import.tierCol": "عمود المستوى",
+  "import.industryCol": "عمود القطاع",
+  "import.leftOut": "مستبعد أو موجود",
+  "import.lookupFailed": "تعذّر البحث عنها",
 } satisfies Record<StringKey, string>;

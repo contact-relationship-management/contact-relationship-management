@@ -544,4 +544,18 @@ export default {
   "att.deleteConfirm": "Dileu'r ffeil hon?",
   "att.hint":
     "Dogfennau, delweddau a thestun yn unig; caiff y ffeil ei gwirio a'i sganio os oes sganiwr gan y gwasanaeth.",
+  "import.contactsTitle": "Mewnforio cysylltiadau",
+  "import.accountsTitle": "Mewnforio cyfrifon",
+  "import.contactsNote":
+    "Mae pob cyfeiriad yn mynd i'r gwasanaeth personau ac nid yw'n cael ei gadw yn y CRM. Nid oes caniatâd gan gysylltiadau newydd, ac nid yw mewnforio yn cychwyn llifoedd gwaith.",
+  "import.accountsNote":
+    "Mae pob sefydliad yn cael ei chwilio yn y gwasanaeth sefydliadau oni bai bod y ffeil yn rhoi ei gyfeirnod. Caiff enw sydd eisoes yn y CRM ei nodi fel dyblyg tebygol.",
+  "import.givenCol": "Colofn enw cyntaf",
+  "import.familyCol": "Colofn cyfenw",
+  "import.titleCol": "Colofn teitl swydd",
+  "import.orgRefCol": "Colofn cyfeirnod y sefydliad",
+  "import.tierCol": "Colofn haen",
+  "import.industryCol": "Colofn diwydiant",
+  "import.leftOut": "Wedi'u gadael allan neu eisoes yma",
+  "import.lookupFailed": "Methu cael eu chwilio",
 } satisfies Record<StringKey, string>;

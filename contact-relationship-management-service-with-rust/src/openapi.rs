@@ -253,7 +253,9 @@ mod tests {
     ];
 
     /// `POST`/`PUT` operations that deliberately take no body.
-    const BODYLESS: [&str; 17] = [
+    const BODYLESS: [&str; 19] = [
+        "post /api/contact-imports/{}/undo",
+        "post /api/account-imports/{}/undo",
         "post /api/workflows/{}/dry-run",
         "post /api/workflows/run-due",
         "post /unsubscribe/{}",

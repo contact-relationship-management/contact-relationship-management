@@ -546,4 +546,18 @@ export default {
   "att.deleteConfirm": "¿Eliminar este archivo?",
   "att.hint":
     "Solo documentos, imágenes y texto; el archivo se comprueba y se analiza si el servicio tiene un analizador.",
+  "import.contactsTitle": "Importar contactos",
+  "import.accountsTitle": "Importar cuentas",
+  "import.contactsNote":
+    "Cada dirección va al servicio de personas y no se guarda en ningún lugar del CRM. Los contactos nuevos no tienen consentimiento y una importación no inicia flujos de trabajo.",
+  "import.accountsNote":
+    "Cada organización se busca en el servicio de organizaciones salvo que el archivo dé su referencia. Un nombre ya existente se marca como posible duplicado.",
+  "import.givenCol": "Columna del nombre",
+  "import.familyCol": "Columna del apellido",
+  "import.titleCol": "Columna del cargo",
+  "import.orgRefCol": "Columna de referencia de la organización",
+  "import.tierCol": "Columna del nivel",
+  "import.industryCol": "Columna del sector",
+  "import.leftOut": "Omitidos o ya existentes",
+  "import.lookupFailed": "No se pudieron buscar",
 } satisfies Record<StringKey, string>;

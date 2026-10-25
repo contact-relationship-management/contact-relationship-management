@@ -237,6 +237,63 @@ pub async fn resolve_person(name: &str, email: &str) -> Result<String, String> {
     Ok(urn)
 }
 
+/// Find or create the organization called `name` and return the `organization:` reference
+/// (CRM-R43), like [`resolve_person`]: in `http` mode `POST {CRM_ORGANIZATION_SERVICE_URL}/api/organizations`
+/// with `{"name"}`, expected to find or make one and answer `{"pid"}` (or `{"id"}`); in `stub`
+/// mode a process-local organization is made, one for the same name (any case) being reused.
+/// The organization service's contract is not confirmed (`spec/integrations.md`); this is the
+/// same assumption made for persons.
+///
+/// # Errors
+///
+/// A short reason when the service is unconfigured, unreachable or answers something that is not
+/// an organization reference.
+pub async fn resolve_organization(name: &str) -> Result<String, String> {
+    if mode() != Mode::Http {
+        static KNOWN: std::sync::OnceLock<Mutex<HashMap<String, String>>> =
+            std::sync::OnceLock::new();
+        let mut known = KNOWN
+            .get_or_init(|| Mutex::new(HashMap::new()))
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let urn = known
+            .entry(name.trim().to_lowercase())
+            .or_insert_with(|| format!("organization:{}", uuid::Uuid::new_v4()));
+        return Ok(urn.clone());
+    }
+    let base = std::env::var("CRM_ORGANIZATION_SERVICE_URL")
+        .map_err(|_| "CRM_ORGANIZATION_SERVICE_URL is not set".to_string())?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|_| "no http client".to_string())?;
+    let response = client
+        .post(format!("{}/api/organizations", base.trim_end_matches('/')))
+        .json(&serde_json::json!({ "name": name }))
+        .send()
+        .await
+        .map_err(|_| "the organization service could not be reached".to_string())?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "the organization service answered {}",
+            response.status().as_u16()
+        ));
+    }
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|_| "the organization service answer was not JSON".to_string())?;
+    let id = ["pid", "id"]
+        .iter()
+        .find_map(|k| body.get(k).and_then(serde_json::Value::as_str))
+        .ok_or_else(|| "the organization service gave no id".to_string())?;
+    let urn = format!("organization:{id}");
+    <EntityRef as std::str::FromStr>::from_str(&urn)
+        .map_err(|_| "the organization service gave an id that is not a reference".to_string())?;
+    Ok(urn)
+}
+
 /// The mailbox in a person record. The accepted shapes are `{"email": "a@b"}`
 /// and `{"emails": [...]}` where each entry is a string or an object with an
 /// `address`, `email` or `value` member; an entry marked `primary` (or

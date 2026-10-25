@@ -518,4 +518,18 @@ export default {
   "att.deleteConfirm": "删除此文件？",
   "att.hint":
     "仅限文档、图片和文本；文件会被检查，若服务配有扫描器还会被扫描。",
+  "import.contactsTitle": "导入联系人",
+  "import.accountsTitle": "导入账户",
+  "import.contactsNote":
+    "每个地址都发送到人员服务，不在 CRM 中保存。新联系人没有同意记录，导入也不会启动任何工作流。",
+  "import.accountsNote":
+    "除非文件提供了引用，否则每个组织都会在组织服务中查找。CRM 中已有的名称会被标记为可能重复。",
+  "import.givenCol": "名字列",
+  "import.familyCol": "姓氏列",
+  "import.titleCol": "职位列",
+  "import.orgRefCol": "组织引用列",
+  "import.tierCol": "层级列",
+  "import.industryCol": "行业列",
+  "import.leftOut": "已跳过或已存在",
+  "import.lookupFailed": "无法查询",
 } satisfies Record<StringKey, string>;

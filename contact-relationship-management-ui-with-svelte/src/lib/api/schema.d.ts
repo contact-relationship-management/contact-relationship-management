@@ -4,6 +4,394 @@
  */
 
 export interface paths {
+    "/api/account-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List account imports, newest first */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordImport"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Import the valid rows of a CSV as accounts in batches: each row is looked up in the organization service first; the organization reference comes from the file or the organization service; up to 500 rows */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AccountImportCommitPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordImport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account-imports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a CSV (text in the body) and report each row as valid or invalid with a reason, with likely duplicates as advice only (CRM-R43); with no mapping, answers the columns and a suggested mapping; saves nothing */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AccountImportPreviewPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccountImportPreview"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account-imports/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One account import: counts, source, who, when, undone */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordImport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account-imports/{pid}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove the accounts this import made that have not been used since; the rest are kept and counted */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordImportUndone"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts": {
         parameters: {
             query?: never;
@@ -2854,6 +3242,394 @@ export interface paths {
                 };
                 /** @description Illegal transition (names the current state) */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contact-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List contact imports, newest first */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordImport"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Import the valid rows of a CSV as contacts in batches: each row is looked up in the person service first; a new contact has no consent and an import starts no workflows; up to 500 rows */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ContactImportCommitPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordImport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contact-imports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a CSV (text in the body) and report each row as valid or invalid with a reason, with likely duplicates as advice only (CRM-R43); with no mapping, answers the columns and a suggested mapping; saves nothing */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ContactImportPreviewPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ContactImportPreview"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contact-imports/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One contact import: counts, source, who, when, undone */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordImport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contact-imports/{pid}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove the contacts this import made that have not been used since; the rest are kept and counted */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordImportUndone"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13585,6 +14361,60 @@ export interface components {
             contacts: components["schemas"]["Contact"][];
             deals: components["schemas"]["Deal"][];
         };
+        /** @description `POST /api/account-imports` body. */
+        AccountImportCommitPayload: {
+            csv: string;
+            mapping: components["schemas"]["AccountImportMapping"];
+            /** Format: date */
+            obtained_on: string;
+            /** @default false */
+            skip_likely_duplicates: boolean;
+            source_note: string;
+        };
+        /** @description Which column holds what for an account import. */
+        AccountImportMapping: {
+            /**
+             * @description The column with the organization's name (required).
+             * @default null
+             */
+            display_name: string | null;
+            /**
+             * @description The column with the industry.
+             * @default null
+             */
+            industry: string | null;
+            /**
+             * @description A column holding an `organization:` reference; without one the organization service is
+             *     asked to find or make the organization by name.
+             * @default null
+             */
+            organization_ref: string | null;
+            /**
+             * @description The column with the tier (`prospect`, `customer`, `partner`, `former`); default `prospect`.
+             * @default null
+             */
+            tier: string | null;
+        };
+        /** @description The preview of an account import. */
+        AccountImportPreview: {
+            columns: string[];
+            /** Format: uint */
+            invalid: number;
+            /** Format: uint */
+            likely_duplicates: number;
+            report: components["schemas"]["LeadImportRow"][] | null;
+            /** Format: uint */
+            rows: number;
+            suggested_mapping: components["schemas"]["AccountImportMapping"];
+            /** Format: uint */
+            valid: number;
+        };
+        /** @description `POST /api/account-imports/preview` body. */
+        AccountImportPreviewPayload: {
+            csv: string;
+            /** @default null */
+            mapping: components["schemas"]["AccountImportMapping"] | (null);
+        };
         /** @description `POST /api/accounts` body. */
         AccountPayload: {
             display_name: string;
@@ -14114,6 +14944,76 @@ export interface components {
             contact_pid: string;
             duplicates: components["schemas"]["ContactDuplicate"][];
             truncated: boolean;
+        };
+        /** @description `POST /api/contact-imports` body. */
+        ContactImportCommitPayload: {
+            csv: string;
+            mapping: components["schemas"]["ContactImportMapping"];
+            /**
+             * Format: date
+             * @description The day the list was obtained.
+             */
+            obtained_on: string;
+            /**
+             * @description Leave out rows that look like someone already known.
+             * @default false
+             */
+            skip_likely_duplicates: boolean;
+            /** @description Where the list came from. */
+            source_note: string;
+        };
+        /** @description Which column holds what for a contact import. Each value is a header from the file. */
+        ContactImportMapping: {
+            /**
+             * @description The column with the contact's name (required).
+             * @default null
+             */
+            display_name: string | null;
+            /**
+             * @description The column with the address (required): it goes to the person service, never into the CRM.
+             * @default null
+             */
+            email: string | null;
+            /**
+             * @description The column with the family name.
+             * @default null
+             */
+            family_name: string | null;
+            /**
+             * @description The column with the given name.
+             * @default null
+             */
+            given_name: string | null;
+            /**
+             * @description The column with the job title.
+             * @default null
+             */
+            job_title: string | null;
+        };
+        /** @description The preview of a contact import. */
+        ContactImportPreview: {
+            columns: string[];
+            /** Format: uint */
+            invalid: number;
+            /** Format: uint */
+            likely_duplicates: number;
+            /** @description Present when a mapping was given. */
+            report: components["schemas"]["LeadImportRow"][] | null;
+            /** Format: uint */
+            rows: number;
+            suggested_mapping: components["schemas"]["ContactImportMapping"];
+            /** Format: uint */
+            valid: number;
+        };
+        /** @description `POST /api/contact-imports/preview` body. */
+        ContactImportPreviewPayload: {
+            /** @description The file's text: a header row, then one contact per row. */
+            csv: string;
+            /**
+             * @description Which column holds what; leave out to get the columns and a suggestion.
+             * @default null
+             */
+            mapping: components["schemas"]["ContactImportMapping"] | (null);
         };
         /** @description `POST /api/contacts/{pid}/merge`: what moved, what was dropped, what was filled. */
         ContactMerge: {
@@ -14905,12 +15805,12 @@ export interface components {
         };
         /** @description Something a row looks like. */
         LeadImportDuplicate: {
-            /** @description `contact`, `lead` or `row` (an earlier row of this file). */
+            /** @description `contact`, `lead`, `account` or `row` (an earlier row of this file). */
             kind: string;
             name: string;
             /**
              * Format: uuid
-             * @description The record's pid, for a contact or a lead.
+             * @description The record's pid, for a contact, a lead or an account.
              */
             pid: string | null;
             /** Format: double */
@@ -15339,6 +16239,57 @@ export interface components {
              * @description `numerator / denominator`, or `None` on a zero denominator.
              */
             value: number | null;
+        };
+        /** @description One import. */
+        RecordImport: {
+            /** Format: date-time */
+            created_at: string;
+            created_by: string | null;
+            /**
+             * Format: uint
+             * @description Records this import made.
+             */
+            created_count: number;
+            /**
+             * Format: int32
+             * @description Rows the person or organization service could not answer for.
+             */
+            failed_count: number;
+            /** Format: int32 */
+            invalid_count: number;
+            /** @description `contact` or `account`. */
+            kind: string;
+            /** Format: date */
+            obtained_on: string;
+            /** Format: uuid */
+            pid: string;
+            /** Format: int32 */
+            row_count: number;
+            /**
+             * Format: int32
+             * @description Left out as likely duplicates, or because the person or organization was already here.
+             */
+            skipped_count: number;
+            source_note: string;
+            /** @description `running`, `completed` or `undone`. */
+            status: string;
+            /** Format: date-time */
+            undone_at: string | null;
+            /** Format: int32 */
+            undone_count: number | null;
+        };
+        /** @description `POST .../undo` response. */
+        RecordImportUndone: {
+            /**
+             * Format: uint
+             * @description Records kept because they have been used since.
+             */
+            kept: number;
+            /**
+             * Format: uint
+             * @description Records removed.
+             */
+            removed: number;
         };
         /** @description `POST /api/deals/{pid}/reopen` body. */
         ReopenPayload: {

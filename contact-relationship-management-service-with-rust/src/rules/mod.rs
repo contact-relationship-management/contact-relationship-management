@@ -16,6 +16,7 @@ pub mod imports;
 pub mod lifecycle;
 pub mod merge;
 pub mod privacy;
+pub mod record_imports;
 pub mod scoring;
 pub mod search;
 pub mod segment;

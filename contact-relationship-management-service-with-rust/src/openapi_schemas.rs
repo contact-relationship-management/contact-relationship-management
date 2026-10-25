@@ -40,7 +40,8 @@ fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         attachments, audits, board, break_glass, custom_fields, dashboards, engagement,
         external_links, insights, lead_imports, marketing, merge, notifications, privacy,
-        relationships, sales, search, support, templates, unmerge, views, webhooks, workflows,
+        record_imports, relationships, sales, search, support, templates, unmerge, views, webhooks,
+        workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -177,9 +178,17 @@ fn generated() -> serde_json::Map<String, Value> {
         views::ViewPayload,
         views::SortSpec,
         lead_imports::Preview,
+        record_imports::ContactPreview,
+        record_imports::AccountPreview,
+        record_imports::ImportRecord,
+        record_imports::Undone,
         lead_imports::ImportRecord,
         lead_imports::Undone,
         lead_imports::PreviewPayload,
+        record_imports::ContactPreviewPayload,
+        record_imports::AccountPreviewPayload,
+        record_imports::ContactCommitPayload,
+        record_imports::AccountCommitPayload,
         lead_imports::CommitPayload,
         notifications::UnreadCount,
         notifications::MarkedRead,
@@ -301,6 +310,10 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
             | "/api/deals/{pid}/custom-fields",
         ) => "CustomFieldValuesPayload",
         ("post", "/api/lead-imports/preview") => "LeadImportPreviewPayload",
+        ("post", "/api/contact-imports/preview") => "ContactImportPreviewPayload",
+        ("post", "/api/account-imports/preview") => "AccountImportPreviewPayload",
+        ("post", "/api/contact-imports") => "ContactImportCommitPayload",
+        ("post", "/api/account-imports") => "AccountImportCommitPayload",
         ("post", "/api/lead-imports") => "LeadImportCommitPayload",
         ("post", "/api/articles") | ("put", "/api/articles/{pid}") => "ArticlePayload",
         ("post", "/api/break-glass") => "GrantPayload",
@@ -375,6 +388,13 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("post", "/api/sla/sweep") => "SlaSweep",
         ("post", "/api/notifications/sweep") => "NotificationSweep",
         ("post", "/api/lead-imports/preview") => "LeadImportPreview",
+        ("post", "/api/contact-imports/preview") => "ContactImportPreview",
+        ("post", "/api/account-imports/preview") => "AccountImportPreview",
+        ("post", "/api/contact-imports" | "/api/account-imports")
+        | ("get", "/api/contact-imports/{pid}" | "/api/account-imports/{pid}") => "RecordImport",
+        ("post", "/api/contact-imports/{pid}/undo" | "/api/account-imports/{pid}/undo") => {
+            "RecordImportUndone"
+        }
         ("post", "/api/lead-imports") | ("get", "/api/lead-imports/{pid}") => "LeadImport",
         ("post", "/api/lead-imports/{pid}/undo") => "LeadImportUndone",
         ("get", "/api/notifications/unread-count") => "UnreadCount",
@@ -448,6 +468,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         | "/api/deals/{pid}/custom-fields" => "CustomFieldValue",
         "/api/workflows/{pid}/runs" => "WorkflowRun",
         "/api/lead-imports" => "LeadImport",
+        "/api/contact-imports" | "/api/account-imports" => "RecordImport",
         "/api/webhook-subscriptions" => "WebhookSubscription",
         "/api/webhook-subscriptions/{pid}/deliveries" => "WebhookDelivery",
         _ => return None,

@@ -45,6 +45,8 @@ A contact edited with `PUT /api/contacts/{pid}` (CRM-R38) audits as `contact` `u
 
 An account edited with `PUT /api/accounts/{pid}` (CRM-R39) audits as `account` `updated`, with the field names only.
 
+Contact and account imports (CRM-R43) audit under the entity `record_import`: `contact_import_previewed` and `account_import_previewed` (counts), `..._committed` (counts, source note, date) and `..._undone` (removed, kept). Each record made has its own `created` row carrying the import pid, and an undone one an `import_undone` row.
+
 Attachments (CRM-R42) audit under the entity `attachment`: `uploaded` (subject, type, size, digest; never the name), `downloaded` (an audited disclosure), `deleted` and `refused_infected`. Erasing a contact records how many files went.
 
 Custom fields (CRM-R41) audit under the entity `custom_field` (`created` with entity, key, kind and sensitivity; `updated`; `deleted` with the count of values removed). Setting values audits as the record's own entity with `custom_fields_updated` and the keys, never the values.

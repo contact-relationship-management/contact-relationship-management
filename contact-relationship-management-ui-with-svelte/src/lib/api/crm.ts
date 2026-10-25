@@ -1428,3 +1428,80 @@ export function deleteAttachment(pid: string): Promise<{ pid: string }> {
 export function attachmentUrl(pid: string): string {
   return `/api/proxy/attachments/${pid}/content`;
 }
+
+/** Which CSV column holds what for a contact import (CRM-R43). */
+export interface ContactImportMapping {
+  display_name?: string | null;
+  email?: string | null;
+  given_name?: string | null;
+  family_name?: string | null;
+  job_title?: string | null;
+}
+
+/** Which CSV column holds what for an account import. */
+export interface AccountImportMapping {
+  display_name?: string | null;
+  organization_ref?: string | null;
+  tier?: string | null;
+  industry?: string | null;
+}
+
+/** The kinds of record that can be imported besides leads. */
+export type ImportKind = "contacts" | "accounts";
+
+/** The mapping for a kind of import. */
+export type RecordImportMapping = ContactImportMapping & AccountImportMapping;
+
+/** The answer to a preview of a contact or account import. */
+export interface RecordImportPreview {
+  columns: string[];
+  rows: number;
+  suggested_mapping: RecordImportMapping;
+  report: LeadImportRow[] | null;
+  valid: number;
+  invalid: number;
+  likely_duplicates: number;
+}
+
+/** One contact or account import record. */
+export interface RecordImport extends LeadImport {
+  kind: "contact" | "account";
+  failed_count: number;
+}
+
+const importPath = (kind: ImportKind) =>
+  kind === "contacts" ? "/contact-imports" : "/account-imports";
+
+/** Read a CSV and report each row; saves nothing. */
+export function previewRecordImport(
+  kind: ImportKind,
+  csv: string,
+  mapping?: RecordImportMapping,
+): Promise<RecordImportPreview> {
+  return api(`${importPath(kind)}/preview`, {
+    method: "POST",
+    body: mapping ? { csv, mapping } : { csv },
+  });
+}
+
+/** Save the valid rows as contacts or accounts. */
+export function commitRecordImport(
+  kind: ImportKind,
+  fields: {
+    csv: string;
+    mapping: RecordImportMapping;
+    source_note: string;
+    obtained_on: string;
+    skip_likely_duplicates: boolean;
+  },
+): Promise<RecordImport> {
+  return api(importPath(kind), { method: "POST", body: fields });
+}
+
+/** Take an import back: records nobody has used since are removed, the rest kept. */
+export function undoRecordImport(
+  kind: ImportKind,
+  pid: string,
+): Promise<{ removed: number; kept: number }> {
+  return api(`${importPath(kind)}/${pid}/undo`, { method: "POST" });
+}

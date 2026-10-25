@@ -540,4 +540,18 @@ export default {
   "att.deleteConfirm": "यह फ़ाइल हटाएँ?",
   "att.hint":
     "केवल दस्तावेज़, चित्र और पाठ; फ़ाइल की जाँच होती है और स्कैनर होने पर स्कैन भी।",
+  "import.contactsTitle": "संपर्क आयात करें",
+  "import.accountsTitle": "खाते आयात करें",
+  "import.contactsNote":
+    "हर पता व्यक्ति सेवा को जाता है और CRM में कहीं नहीं रखा जाता। नए संपर्कों की कोई सहमति नहीं होती, और आयात कोई वर्कफ़्लो शुरू नहीं करता।",
+  "import.accountsNote":
+    "फ़ाइल में संदर्भ न हो तो हर संगठन को संगठन सेवा में खोजा जाता है। CRM में पहले से मौजूद नाम को संभावित डुप्लिकेट चिह्नित किया जाता है।",
+  "import.givenCol": "पहला नाम स्तंभ",
+  "import.familyCol": "कुलनाम स्तंभ",
+  "import.titleCol": "पदनाम स्तंभ",
+  "import.orgRefCol": "संगठन संदर्भ स्तंभ",
+  "import.tierCol": "स्तर स्तंभ",
+  "import.industryCol": "उद्योग स्तंभ",
+  "import.leftOut": "छोड़े गए या पहले से मौजूद",
+  "import.lookupFailed": "खोजे नहीं जा सके",
 } satisfies Record<StringKey, string>;

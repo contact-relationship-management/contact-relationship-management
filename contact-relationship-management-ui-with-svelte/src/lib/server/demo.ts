@@ -1999,6 +1999,40 @@ function breakGlass(
 }
 
 /** The tour's lead import (CRM-R34): a plain comma split, no quoting, nothing is saved. */
+/** The tour's contact and account imports: the lead import's answers, with this kind's mapping. */
+function recordImports(
+  contacts: boolean,
+  method: string,
+  id: string | undefined,
+  tail: string | undefined,
+  body: unknown,
+): DemoReply {
+  const reply = leadImports(method, id, tail, body);
+  if (reply.status !== 200) return reply;
+  const out = reply.body as Record<string, unknown>;
+  if (method === "POST" && id === "preview") {
+    const base = out.suggested_mapping as Record<string, string | null>;
+    out.suggested_mapping = contacts
+      ? {
+          display_name: base.display_name,
+          email: base.email,
+          given_name: null,
+          family_name: null,
+          job_title: null,
+        }
+      : {
+          display_name: base.display_name ?? base.company,
+          organization_ref: null,
+          tier: null,
+          industry: null,
+        };
+  } else if (method === "POST" && id === undefined) {
+    out.kind = contacts ? "contact" : "account";
+    out.failed_count = 0;
+  }
+  return reply;
+}
+
 function leadImports(
   method: string,
   id: string | undefined,
@@ -2167,6 +2201,8 @@ export function demoHandle(
     }
   }
   if (head === "lead-imports") return leadImports(method, id, tail, body);
+  if (head === "contact-imports" || head === "account-imports")
+    return recordImports(head === "contact-imports", method, id, tail, body);
   if (head === "search" && get) {
     const q = query.get("q") ?? "";
     if (q.trim().length < 2) return ok([]);

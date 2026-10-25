@@ -56,6 +56,7 @@
 </script>
 
 <h1>{t("nav.contacts")}</h1>
+<p><a class="button" href="/contacts/import" data-testid="import-link">{t("import.contactsTitle")}</a></p>
 <ViewBar kind="contact" bind:active={view} labels={headings} />
 
 {#if error}

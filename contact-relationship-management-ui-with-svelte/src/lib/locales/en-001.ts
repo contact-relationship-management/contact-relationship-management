@@ -538,4 +538,18 @@ export default {
   "att.deleteConfirm": "Delete this file?",
   "att.hint":
     "Documents, images and text only; the file is checked, and scanned when the service has a scanner.",
+  "import.contactsTitle": "Import contacts",
+  "import.accountsTitle": "Import accounts",
+  "import.contactsNote":
+    "Each address goes to the person service and is kept nowhere in the CRM. New contacts have no consent, and an import starts no workflows.",
+  "import.accountsNote":
+    "Each organization is looked up in the organization service unless the file gives its reference. A name already in the CRM is flagged as a likely duplicate.",
+  "import.givenCol": "Given name column",
+  "import.familyCol": "Family name column",
+  "import.titleCol": "Job title column",
+  "import.orgRefCol": "Organization reference column",
+  "import.tierCol": "Tier column",
+  "import.industryCol": "Industry column",
+  "import.leftOut": "Left out or already here",
+  "import.lookupFailed": "Could not be looked up",
 } as const;

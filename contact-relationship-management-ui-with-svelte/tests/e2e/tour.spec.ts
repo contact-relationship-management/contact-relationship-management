@@ -1031,4 +1031,31 @@ test.describe("export, undo and search", () => {
     });
     await expect(page.getByTestId("att-error")).toBeVisible();
   });
+
+  test("contacts are imported from a CSV, with the address kept out of the report", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/contacts");
+    await page.getByTestId("import-link").click();
+    await page.getByTestId("file").setInputFiles({
+      name: "people.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        "Name,Email\nAda Lovelace,ada@x.test\n,nobody@x.test\n",
+      ),
+    });
+    await expect(page.getByTestId("map-email")).toHaveValue("Email");
+    await page.getByTestId("check").click();
+    await expect(page.getByTestId("summary")).toContainText("1");
+    await expect(page.getByTestId("import-report")).toContainText(
+      "has no name",
+    );
+    await page.getByTestId("source").fill("Trade show");
+    await page.getByTestId("commit").click();
+    await expect(page.getByTestId("done")).toBeVisible();
+    await expect(page.getByTestId("done-detail")).toBeVisible();
+    await page.getByTestId("undo").click();
+    await expect(page.getByTestId("undone")).toBeVisible();
+  });
 });

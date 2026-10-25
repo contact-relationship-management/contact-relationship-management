@@ -39,6 +39,7 @@
 </script>
 
 <h1>{t("nav.accounts")}</h1>
+<p><a class="button" href="/accounts/import" data-testid="import-link">{t("import.accountsTitle")}</a></p>
 <ViewBar kind="account" bind:active={view} labels={headings} />
 
 {#if error}

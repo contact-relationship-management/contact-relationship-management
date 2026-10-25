@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — contact and account import (CRM-T107, CRM-R43)
+
+`record_imports` (migration `000033`); `/api/contact-imports` and `/api/account-imports` (preview, commit, list, read, undo). `clients::resolve_organization` is the
+organization-service counterpart of `resolve_person`. `lead_imports::advise` is now shared.
+
 ### Added — file attachments (CRM-T106, CRM-R42)
 
 `attachments` (migration `000032`); `/api/{contacts,accounts,leads,deals}/{pid}/attachments`, `/api/attachments/{pid}/content` and `DELETE /api/attachments/{pid}`.
