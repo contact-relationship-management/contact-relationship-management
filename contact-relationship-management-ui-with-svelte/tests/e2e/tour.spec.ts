@@ -879,7 +879,7 @@ test.describe("export, undo and search", () => {
     );
     await page.getByTestId("template-new").click();
     await page.getByTestId("template-name").fill("Welcome");
-    await page.getByTestId("template-subject").fill("Hello {{first_name}}");
+    await page.getByTestId("template-subject").fill("Hello {{given_name}}");
     await page.getByTestId("template-body").fill("Hi {{account_name}}");
     // No unsubscribe link yet: the preview still renders, and says what is missing.
     await expect(page.getByTestId("preview-subject")).toHaveText("Hello Alex");

@@ -700,8 +700,8 @@ function build(): State {
       {
         pid: "template-1",
         name: "Autumn news",
-        subject: "News for {{first_name}}",
-        body: "Hi {{first_name}} at {{account_name}},\n\nFrom {{rep_name}}.\n\nStop: {{unsubscribe_url}}",
+        subject: "News for {{given_name}}",
+        body: "Hi {{given_name}} at {{account_name}},\n\nFrom {{rep_name}}.\n\nStop: {{unsubscribe_url}}",
         fallbacks: { account_name: "your team" },
         in_use: 0,
         updated_at: "2026-10-25T09:00:00Z",
@@ -2230,7 +2230,7 @@ export function demoHandle(
 }
 
 const MERGE_TOKENS: MergeToken[] = [
-  ["first_name", "The first word of the contact's name", "there"],
+  ["given_name", "The first word of the contact's name", "there"],
   ["name", "The contact's full name", "there"],
   ["account_name", "The name of the contact's account", "your organisation"],
   ["rep_name", "The name of the contact's owner, or the account's", "the team"],
@@ -2250,7 +2250,7 @@ MERGE_TOKENS.push({
 });
 
 const SYNTHETIC: Record<string, string> = {
-  first_name: "Alex",
+  given_name: "Alex",
   name: "Alex Example",
   account_name: "Example Ltd",
   rep_name: "Sam Rep",

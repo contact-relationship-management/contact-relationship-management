@@ -34,8 +34,8 @@ fn recording() -> (Recorder, RestoreSender) {
 fn template(name: &str) -> Value {
     json!({
         "name": name,
-        "subject": "News for {{first_name}}",
-        "body": "Hi {{first_name}} at {{account_name}},\n\nFrom {{rep_name}}.\n\nStop: {{unsubscribe_url}}",
+        "subject": "News for {{given_name}}",
+        "body": "Hi {{given_name}} at {{account_name}},\n\nFrom {{rep_name}}.\n\nStop: {{unsubscribe_url}}",
         "fallbacks": { "account_name": "your team" },
     })
 }
@@ -56,7 +56,7 @@ async fn a_template_is_saved_checked_previewed_and_deleted() {
         for (field, body) in [
             ("body", "Buy now"),
             ("body", "Hi {{nickname}} {{unsubscribe_url}}"),
-            ("body", "Hi {{first_name {{unsubscribe_url}}"),
+            ("body", "Hi {{given_name {{unsubscribe_url}}"),
         ] {
             let mut bad = template("Other");
             bad["body"] = json!(body);
@@ -91,7 +91,7 @@ async fn a_template_is_saved_checked_previewed_and_deleted() {
 
         let tokens: Vec<Value> = request.get("/api/email-templates/tokens").await.json();
         let names: Vec<&str> = tokens.iter().map(|t| t["name"].as_str().unwrap()).collect();
-        assert!(names.contains(&"first_name") && names.contains(&"unsubscribe_url"));
+        assert!(names.contains(&"given_name") && names.contains(&"unsubscribe_url"));
         let link = tokens
             .iter()
             .find(|t| t["name"] == "unsubscribe_url")
@@ -101,7 +101,7 @@ async fn a_template_is_saved_checked_previewed_and_deleted() {
 
         // A preview uses a made-up contact, escapes, and shows the fallbacks when asked.
         let draft = json!({
-            "subject": "Hi {{first_name}}",
+            "subject": "Hi {{given_name}}",
             "body": "<b>{{account_name}}</b> by {{rep_name}}\n{{unsubscribe_url}}",
             "fallbacks": { "account_name": "<your team>" },
             "blank": ["account_name"],

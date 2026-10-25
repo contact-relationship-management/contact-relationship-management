@@ -24,7 +24,7 @@ pub struct Token {
 /// The closed set of tokens that take a value from the contact.
 pub const TOKENS: &[Token] = &[
     Token {
-        name: "first_name",
+        name: "given_name",
         description: "The first word of the contact's name",
         fallback: "there",
     },
@@ -301,7 +301,7 @@ pub fn render(subject: &str, body: &str, with: &Fill<'_>) -> Rendered {
     }
 }
 
-/// The first word of a name, for `first_name`.
+/// The first word of a name, for `given_name`.
 #[must_use]
 pub fn first_word(name: &str) -> Option<String> {
     name.split_whitespace().next().map(ToString::to_string)
@@ -311,7 +311,7 @@ pub fn first_word(name: &str) -> Option<String> {
 #[must_use]
 pub fn synthetic_values() -> BTreeMap<String, String> {
     [
-        ("first_name", "Alex"),
+        ("given_name", "Alex"),
         ("name", "Alex Example"),
         ("account_name", "Example Ltd"),
         ("rep_name", "Sam Rep"),
@@ -350,12 +350,12 @@ mod tests {
 
     #[test]
     fn tokens_are_found_with_or_without_spaces() {
-        let parsed = parse("Hi {{first_name}}, {{ account_name }}!").unwrap();
+        let parsed = parse("Hi {{given_name}}, {{ account_name }}!").unwrap();
         assert_eq!(
             parsed,
             vec![
                 Segment::Text("Hi ".into()),
-                Segment::Token("first_name".into()),
+                Segment::Token("given_name".into()),
                 Segment::Text(", ".into()),
                 Segment::Token("account_name".into()),
                 Segment::Text("!".into()),
@@ -369,16 +369,16 @@ mod tests {
             parse("Hi {{nickname}}"),
             Err(ParseError::Unknown("nickname".into()))
         );
-        assert_eq!(parse("Hi {{first_name"), Err(ParseError::Unclosed));
+        assert_eq!(parse("Hi {{given_name"), Err(ParseError::Unclosed));
         assert!(parse("a single { brace } is text").is_ok());
     }
 
     #[test]
     fn a_value_is_html_escaped_in_the_html_and_left_alone_in_the_text() {
-        let v = values(&[("first_name", "<script>alert(1)</script> & \"Co\"")]);
+        let v = values(&[("given_name", "<script>alert(1)</script> & \"Co\"")]);
         let out = render(
-            "Hi {{first_name}}",
-            "Dear {{first_name}}\n{{unsubscribe_url}}",
+            "Hi {{given_name}}",
+            "Dear {{given_name}}\n{{unsubscribe_url}}",
             &fill_with(&v, &none()),
         );
         assert!(out.text.contains("<script>alert(1)</script> & \"Co\""));
@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn a_missing_value_falls_back_to_the_declared_text() {
         let out = render(
-            "Hello {{first_name}}",
+            "Hello {{given_name}}",
             "From {{rep_name}} at {{account_name}} {{unsubscribe_url}}",
             &fill_with(
                 &values(&[("account_name", "   ")]),
@@ -417,15 +417,15 @@ mod tests {
         assert!(out.text.starts_with("From Pat at your organisation "));
         assert_eq!(
             out.fell_back,
-            vec!["first_name", "rep_name", "account_name"]
+            vec!["given_name", "rep_name", "account_name"]
         );
     }
 
     #[test]
     fn a_value_cannot_add_a_line_to_the_subject() {
-        let v = values(&[("first_name", "Eve\r\nBcc: x@example.org")]);
+        let v = values(&[("given_name", "Eve\r\nBcc: x@example.org")]);
         let out = render(
-            "Hi {{first_name}}",
+            "Hi {{given_name}}",
             "{{unsubscribe_url}}",
             &fill_with(&v, &none()),
         );
@@ -446,14 +446,14 @@ mod tests {
     fn the_subject_cannot_carry_the_link_and_fallbacks_are_checked() {
         let bad = values(&[
             ("unsubscribe_url", "x"),
-            ("first_name", " "),
+            ("given_name", " "),
             ("name", "a\nb"),
         ]);
         let problems = check("Out {{unsubscribe_url}}", "{{unsubscribe_url}}", &bad);
         let fields: Vec<&str> = problems.iter().map(|(f, _)| f.as_str()).collect();
         assert!(fields.contains(&"subject"));
         assert!(fields.contains(&"fallbacks/unsubscribe_url"));
-        assert!(fields.contains(&"fallbacks/first_name"));
+        assert!(fields.contains(&"fallbacks/given_name"));
         assert!(fields.contains(&"fallbacks/name"));
     }
 

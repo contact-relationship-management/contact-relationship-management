@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — email templates with merge tokens (CRM-T103, CRM-R36)
 
-`/api/email-templates` stores templates (name, subject, plain-text body, fallbacks). Merge tokens come from a closed set (`first_name`, `name`,
+`/api/email-templates` stores templates (name, subject, plain-text body, fallbacks). Merge tokens come from a closed set (`given_name`, `name`,
 `account_name`, `rep_name`, `job_title`, `unsubscribe_url`); each but the link has a declared fallback, which a template may override. Values are
 HTML-escaped in the HTML form and cleaned of control characters, so a value cannot add a header line. Every body must contain
 `{{unsubscribe_url}}` or the save is refused. `POST /api/email-templates/preview` renders a draft for a synthetic contact and lists what would

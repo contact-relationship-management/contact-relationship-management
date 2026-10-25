@@ -365,7 +365,7 @@ pub(crate) async fn contact_values(
 ) -> Result<BTreeMap<String, String>> {
     let mut values = BTreeMap::new();
     if let Some(first) = rules::first_word(&contact.display_name) {
-        values.insert("first_name".to_string(), first);
+        values.insert("given_name".to_string(), first);
     }
     values.insert("name".to_string(), contact.display_name.clone());
     if let Some(title) = &contact.job_title {

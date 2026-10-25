@@ -1182,7 +1182,7 @@ async fn a_reader_may_preview_a_template_but_not_save_one() {
 
     request::<App, _, _>(|request, _ctx| async move {
         let bearer = |token: &str| format!("Bearer {token}");
-        let draft = json!({ "name": "Autumn", "subject": "Hi {{first_name}}",
+        let draft = json!({ "name": "Autumn", "subject": "Hi {{given_name}}",
                             "body": "Hello\n{{unsubscribe_url}}" });
         assert_eq!(request.get("/api/email-templates").await.status_code(), 401);
         assert_eq!(

@@ -747,11 +747,11 @@ recipient would get before anything is sent, and be certain every message carrie
 - **What a template is.** A name (unique, ignoring case), a subject, a plain-text body and optional fallbacks, stored on the
   server. `GET/POST /api/email-templates`, `GET/PUT/DELETE /api/email-templates/{pid}`. A template that a campaign or a
   nurture step still refers to cannot be deleted (`409`).
-- **Merge tokens** are written `{{name}}` (spaces inside the braces are ignored) from a closed set: `first_name` (the first word
+- **Merge tokens** are written `{{name}}` (spaces inside the braces are ignored) from a closed set: `given_name` (the first word
   of the contact's name), `name`, `account_name`, `rep_name` (the contact's owner, or the account's when the contact has none),
   `job_title`, and `unsubscribe_url`. Anything else, or a `{{` that is never closed, is `422`; there is no escape for a literal
   `{{`. `GET /api/email-templates/tokens` lists the set with each token's default fallback.
-- **Fallbacks.** Every token except `unsubscribe_url` has a declared fallback (`first_name` and `name`: "there"; `account_name`:
+- **Fallbacks.** Every token except `unsubscribe_url` has a declared fallback (`given_name` and `name`: "there"; `account_name`:
   "your organisation"; `rep_name`: "the team"; `job_title`: "your role"). A template may declare its own text per token. A value
   that is missing, empty or only white space renders as the fallback, so a message never carries an empty gap or a raw `{{token}}`.
   `unsubscribe_url` has no fallback and cannot be given one.
