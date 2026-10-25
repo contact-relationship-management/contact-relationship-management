@@ -1,12 +1,12 @@
 # Localex X for roles
 
-Generate documention for specific roles.
+Generate documentation for specific roles.
 
 | File                                                     | Role                       |
 | -------------------------------------------------------- | -------------------------- |
 | locales/<locale>/for/chief-executive-officer/index.md    | Chief Executive Officer    |
 | locales/<locale>/for/chief-operating-officer/index.md    | Chief Operating Officer    |
-| locales/<locale>/for/chief-technology-officer/index.md   | Chief Techology Officer    |
+| locales/<locale>/for/chief-technology-officer/index.md   | Chief Technology Officer    |
 | locales/<locale>/for/chief-information-officer/index.md  | Chief Information Officer  |
 | locales/<locale>/for/chief-risk-officer/index.md         | Chief Risk Officer         |
 | locales/<locale>/for/chief-legal-officer/index.md        | Chief Legal Officer        |

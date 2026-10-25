@@ -1268,6 +1268,12 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       - **`permissions: contents: read`** at the top of `ci.yml`.
       - **Woodpecker supply-chain step:** Node 26 (was 24) and pnpm from npm, since Node 25+ has no corepack. The nodesource `setup_26.x` URL answers 200; the step itself has not run.
       - **`semver` stage** from CRM-T87 exists in the script but is in neither workflow: it fails by design until the matcher version is bumped.
+      **Added 2026-10-25 (not yet run by GitHub Actions):**
+      - **`semver` job** is now in `ci.yml` (the matcher is 0.2.0 in the tree, so it passes: a major change against the published 0.1.2).
+      - **`lint` stage and job:** `typos` (spelling; `_typos.toml` leaves the translations out and lists names and test data that look like misspellings, and two real typos in `spec/locales-x-for-roles` were fixed) and `zizmor --offline .github` (a security audit of the workflows). Both pass locally (typos 1.51.1, zizmor 1.31.1, installed with `cargo install`).
+      - **What zizmor found, and was fixed:** 14 template-injection errors (a tag name, the actor, matrix values and step outputs were expanded into shell text in `release.yml`; they now arrive as environment variables), 11 `actions/checkout` steps that left the token in the workspace (`persist-credentials: false`), 2 build caches in the release job that signs and publishes (removed), and 7 Dependabot entries without a cooldown (7 days). The release workflow was edited but **has not run**: the next tag will be its first test, so tag a release candidate first.
+      - **Coverage** already has a report-only `coverage` job.
+      - **Still not done:** mutation testing (a scheduled `cargo mutants` run over `rules/`), ESLint with `eslint-plugin-svelte`, markdown lint, and `actionlint` (not installable here without changing Homebrew's permissions; zizmor covers the security half of what it checks, not the syntax half). Woodpecker has no `lint` step.
 
       **Not done, and why:**
       - **Coverage** (`cargo llvm-cov`, vitest `--coverage`): the tool is not installed here, and a report-only job is best added when its output can be seen.

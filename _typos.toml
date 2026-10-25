@@ -1,0 +1,28 @@
+# Spell check (CRM-T94): `typos` in CI. The translations are in other languages, so they are
+# left out; the words below are names, identifiers and test data that look like misspellings.
+[files]
+extend-exclude = [
+  "locales/**",
+  "contact-relationship-management-ui-with-svelte/src/lib/locales/**",
+  "contact-relationship-management-ui-with-svelte/src/lib/api/schema.d.ts",
+  "**/Cargo.lock",
+  "**/pnpm-lock.yaml",
+]
+
+[default.extend-words]
+# A deliberately misspelt request member (tests/requests/api_standards.rs, src/json.rs).
+dispaly = "dispaly"
+# `ANDed` (consent is ANDed), `-yse` British verb endings, nickname tables, test fixtures.
+ded = "ded"
+yse = "yse"
+ned = "ned"
+cmo = "cmo"
+toi = "toi"
+fo = "fo"
+ba = "ba"
+pn = "pn"
+alikes = "alikes"
+# Spanish ("Contactos"), the openEHR and WRK work-directory names.
+contactos = "contactos"
+ehr = "ehr"
+wrk = "wrk"

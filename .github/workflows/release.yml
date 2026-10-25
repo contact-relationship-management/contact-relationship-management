@@ -31,11 +31,21 @@ jobs:
           - { name: ui, context: contact-relationship-management-ui-with-svelte, arch: arm64, runner: ubuntu-24.04-arm }
     env:
       IMAGE: ghcr.io/${{ github.repository }}/${{ matrix.name }}
+      # Values the steps use inside shell scripts come in as variables, never expanded into the
+      # script text (a tag name is typed by whoever pushes it).
+      ACTOR: ${{ github.actor }}
+      REF_NAME: ${{ github.ref_name }}
+      SHA: ${{ github.sha }}
+      MATRIX_NAME: ${{ matrix.name }}
+      CONTEXT: ${{ matrix.context }}
+      ARCH: ${{ matrix.arch }}
       # One credentials file for podman, cosign and the attestation action
       # (cosign and the action read the Docker-style path, not podman's own).
       REGISTRY_AUTH_FILE: /home/runner/.docker/config.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       # Podman, not Docker: it is on the runner image and builds the same
       # Containerfiles that developers build. The base images are pinned by
@@ -46,31 +56,37 @@ jobs:
         run: |
           mkdir -p "$(dirname "${REGISTRY_AUTH_FILE}")"
           printf '%s' "${REGISTRY_TOKEN}" \
-            | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
+            | podman login ghcr.io --username "${ACTOR}" --password-stdin
       - id: version
         name: Check that the tag, the manifest and the image agree
-        run: echo "version=$(scripts/release-version.sh "${{ matrix.name }}" "${{ github.ref_name }}")" >> "${GITHUB_OUTPUT}"
+        run: echo "version=$(scripts/release-version.sh "${MATRIX_NAME}" "${REF_NAME}")" >> "${GITHUB_OUTPUT}"
       - name: Build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           podman build \
-            --build-arg "VERSION=${{ steps.version.outputs.version }}" \
-            --build-arg "REVISION=${{ github.sha }}" \
-            --file "${{ matrix.context }}/Containerfile" \
-            --tag "${IMAGE}:${{ github.ref_name }}-${{ matrix.arch }}" \
-            "${{ matrix.context }}"
+            --build-arg "VERSION=${VERSION}" \
+            --build-arg "REVISION=${SHA}" \
+            --file "${CONTEXT}/Containerfile" \
+            --tag "${IMAGE}:${REF_NAME}-${ARCH}" \
+            "${CONTEXT}"
       - name: Check the image's own version label
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          label="$(podman inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE}:${{ github.ref_name }}-${{ matrix.arch }}")"
-          test "${label}" = "${{ steps.version.outputs.version }}" \
-            || { echo "image label '${label}' is not ${{ steps.version.outputs.version }}" >&2; exit 1; }
+          label="$(podman inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE}:${REF_NAME}-${ARCH}")"
+          test "${label}" = "${VERSION}" \
+            || { echo "image label '${label}' is not ${VERSION}" >&2; exit 1; }
       - id: build
         name: Push, and read the pushed digest
         run: |
           # Pushed under an architecture tag; the `manifest` job joins the two.
-          podman push --digestfile "${RUNNER_TEMP}/digest" "${IMAGE}:${{ github.ref_name }}-${{ matrix.arch }}"
+          podman push --digestfile "${RUNNER_TEMP}/digest" "${IMAGE}:${REF_NAME}-${ARCH}"
           echo "digest=$(cat "${RUNNER_TEMP}/digest")" >> "${GITHUB_OUTPUT}"
       - name: Sign the image by digest
-        run: cosign sign --yes "${IMAGE}@${{ steps.build.outputs.digest }}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ env.IMAGE }}
@@ -91,6 +107,8 @@ jobs:
         name: [service, ui]
     env:
       IMAGE: ghcr.io/${{ github.repository }}/${{ matrix.name }}
+      ACTOR: ${{ github.actor }}
+      REF_NAME: ${{ github.ref_name }}
       REGISTRY_AUTH_FILE: /home/runner/.docker/config.json
     steps:
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
@@ -100,21 +118,23 @@ jobs:
         run: |
           mkdir -p "$(dirname "${REGISTRY_AUTH_FILE}")"
           printf '%s' "${REGISTRY_TOKEN}" \
-            | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
+            | podman login ghcr.io --username "${ACTOR}" --password-stdin
       - name: Join the two architectures into one image
         run: |
-          podman manifest create "${IMAGE}:${{ github.ref_name }}"
+          podman manifest create "${IMAGE}:${REF_NAME}"
           for arch in amd64 arm64; do
-            podman manifest add "${IMAGE}:${{ github.ref_name }}" "docker://${IMAGE}:${{ github.ref_name }}-${arch}"
+            podman manifest add "${IMAGE}:${REF_NAME}" "docker://${IMAGE}:${REF_NAME}-${arch}"
           done
       - id: build
         name: Push, and read the pushed digest
         run: |
           podman manifest push --all --digestfile "${RUNNER_TEMP}/digest" \
-            "${IMAGE}:${{ github.ref_name }}" "docker://${IMAGE}:${{ github.ref_name }}"
+            "${IMAGE}:${REF_NAME}" "docker://${IMAGE}:${REF_NAME}"
           echo "digest=$(cat "${RUNNER_TEMP}/digest")" >> "${GITHUB_OUTPUT}"
       - name: Sign the multi-arch image by digest
-        run: cosign sign --yes "${IMAGE}@${{ steps.build.outputs.digest }}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ env.IMAGE }}
@@ -129,9 +149,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
-          workspaces: contact-relationship-management-service-with-rust
+          persist-credentials: false
       - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2
         with:
           tool: cargo-audit,cargo-deny,cargo-cyclonedx
@@ -141,6 +160,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
+          package-manager-cache: false
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - run: scripts/ci-check.sh supply-chain
       - name: Sign the SBOMs
@@ -151,9 +171,10 @@ jobs:
       - name: Attach to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           # A tag with a hyphen (v1.2.3-rc.1) is a pre-release.
           flags=""
-          case "${{ github.ref_name }}" in *-*) flags="--prerelease" ;; esac
-          gh release create "${{ github.ref_name }}" --generate-notes $flags sbom/* \
-            || gh release upload "${{ github.ref_name }}" sbom/* --clobber
+          case "${REF_NAME}" in *-*) flags="--prerelease" ;; esac
+          gh release create "${REF_NAME}" --generate-notes $flags sbom/* \
+            || gh release upload "${REF_NAME}" sbom/* --clobber

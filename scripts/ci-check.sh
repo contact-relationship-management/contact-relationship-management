@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | e2e | scripts | supply-chain | semver | api-types | coverage
+#   fmt | clippy | test | test-db | front-end | e2e | scripts | lint | supply-chain | semver | api-types | coverage
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -12,7 +12,7 @@ MATCHER=contact-relationship-management-matcher-with-rust
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|scripts|supply-chain|semver|api-types|coverage>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|scripts|lint|supply-chain|semver|api-types|coverage>}"
 
 case "${stage}" in
   fmt)
@@ -102,6 +102,13 @@ case "${stage}" in
   scripts)
     # Warnings and errors only; the style and info notes are not gated.
     shellcheck -S warning scripts/*.sh
+    ;;
+  lint)
+    # Spelling (`_typos.toml` lists what is not a typo and leaves the translations out), and the
+    # security audit of the GitHub workflows: template injection, credentials left in the
+    # workspace, caches in jobs that publish. Offline, so it needs no token.
+    typos
+    zizmor --offline .github
     ;;
   supply-chain)
     # CRM-T34: known-vulnerability, licence, and source gates, plus SBOMs
