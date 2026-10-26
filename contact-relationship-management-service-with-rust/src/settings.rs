@@ -86,6 +86,12 @@ pub struct Settings {
     pub web_form_client_limit: u32,
     /// `CRM_WEB_FORM_LIMIT`: submissions per form per hour, all clients (default 300).
     pub web_form_limit: u32,
+    /// `CRM_PUBLIC_KB`: serve the published knowledge-base articles to anyone, without a token,
+    /// under `/kb/` (CRM-R57). Off by default: nothing is public until it is turned on.
+    pub public_kb: bool,
+    /// `CRM_PUBLIC_KB_CLIENT_LIMIT`: public knowledge-base requests per client per minute
+    /// (default 120; `0` turns the limit off).
+    pub public_kb_client_limit: u32,
     /// `CRM_ATTACHMENT_DIR`: where attached files are kept. Unset, attachments are off.
     pub attachment_dir: Option<String>,
     /// `CRM_ATTACHMENT_MAX_BYTES`: the largest file (default 10 MiB, at most 100 MiB).
@@ -215,6 +221,10 @@ impl Settings {
             web_form_limit: get("CRM_WEB_FORM_LIMIT")
                 .and_then(|v| v.trim().parse().ok())
                 .unwrap_or(300),
+            public_kb: flag("CRM_PUBLIC_KB"),
+            public_kb_client_limit: get("CRM_PUBLIC_KB_CLIENT_LIMIT")
+                .and_then(|v| v.trim().parse().ok())
+                .unwrap_or(120),
             attachment_dir: text("CRM_ATTACHMENT_DIR").map(|v| v.trim().to_string()),
             attachment_max_bytes: get("CRM_ATTACHMENT_MAX_BYTES")
                 .and_then(|v| v.trim().parse::<u64>().ok())
@@ -346,6 +356,15 @@ mod tests {
         assert!(s.web_forms[0].allows("HTTPS://A.example"));
         assert!(!s.web_forms[0].allows("https://a.example.evil.test"));
         assert_eq!((s.web_form_client_limit, s.web_form_limit), (5, 300));
+        // The public knowledge base is off until asked for, with a limit of 120 a minute.
+        assert!(!s.public_kb);
+        assert_eq!(s.public_kb_client_limit, 120);
+        let on = Settings::from_lookup(&lookup(&[
+            ("CRM_PUBLIC_KB", "yes"),
+            ("CRM_PUBLIC_KB_CLIENT_LIMIT", "7"),
+        ]));
+        assert!(on.public_kb);
+        assert_eq!(on.public_kb_client_limit, 7);
         // Not JSON: no forms, rather than a failed start.
         let broken = Settings::from_lookup(&lookup(&[("CRM_WEB_FORMS", "news=https://a")]));
         assert!(broken.web_forms.is_empty());

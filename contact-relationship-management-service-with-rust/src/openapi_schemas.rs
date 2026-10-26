@@ -39,7 +39,7 @@ fn reference(name: &str) -> Value {
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         attachments, attribution, audits, board, break_glass, calendars, custom_fields, dashboards,
-        engagement, external_links, fx_rates, insights, lead_imports, marketing, merge,
+        engagement, external_links, fx_rates, insights, kb, lead_imports, marketing, merge,
         notifications, privacy, record_imports, relationships, reports, sales, search, support,
         tags, templates, unmerge, views, webhooks, workflows,
     };
@@ -183,6 +183,11 @@ fn generated() -> serde_json::Map<String, Value> {
         attribution::Attribution,
         attribution::CampaignCredit,
         attribution::Amount,
+        kb::Listing,
+        kb::PublicArticle,
+        kb::ArticleStats,
+        kb::Deflection,
+        kb::FeedbackPayload,
         fx_rates::RatePayload,
         fx_rates::RateView,
         fx_rates::RateUsed,
@@ -455,6 +460,7 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/insights/followups") => "Followups",
         ("get", "/api/insights/pipeline-hygiene") => "HygieneFindings",
         ("get", "/api/insights/executive") => "ExecutivePack",
+        ("get", "/api/insights/kb-deflection") => "KbDeflection",
         ("get", "/api/insights/forecast-trends") => "ForecastTrends",
         ("get", "/api/insights/sla") => "SlaRegister",
         ("get", "/api/insights/dpo") => "DpoView",

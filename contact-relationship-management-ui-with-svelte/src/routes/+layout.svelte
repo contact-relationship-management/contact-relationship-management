@@ -154,6 +154,7 @@
         }))
       : [
           { href: "/", label: t("nav.dashboard") },
+          { href: "/help", label: t("help.title") },
           { href: "/accessibility", label: t("footer.accessibility") },
         ]
     ).map((link) => ({ ...link, current: page.url.pathname === link.href })),
@@ -278,6 +279,7 @@
     {@render children()}
   </main>
   <footer class="site-footer">
+    <a href="/help">{t("help.title")}</a>
     <a href="/accessibility">{t("footer.accessibility")}</a>
   </footer>
 </div>

@@ -20,6 +20,7 @@ const SCREENS = [
   "/tickets",
   "/tickets/board",
   "/articles",
+  "/help",
   "/followups",
   "/notifications",
   "/leads/import",
@@ -1278,6 +1279,45 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("attribution-unconverted")).toContainText(
       "GBP",
     );
+  });
+
+  test("the help centre shows published articles to anyone, counts a helpful vote, and staff see the counts", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/help");
+    // Four published articles; the draft is not offered.
+    await expect(page.getByTestId("help-result")).toHaveCount(4);
+    await expect(page.getByTestId("help-results")).not.toContainText(
+      "awaiting review",
+    );
+    await page.getByTestId("help-query").fill("forecast");
+    await page.getByTestId("help-run").click();
+    await expect(page.getByTestId("help-result")).toHaveCount(1);
+    await page.getByTestId("help-query").fill("zzzz");
+    await page.getByTestId("help-run").click();
+    await expect(page.getByTestId("help-none")).toBeVisible();
+
+    await page.getByTestId("help-query").fill("forecast");
+    await page.getByTestId("help-run").click();
+    await page.getByTestId("help-result").getByRole("link").click();
+    await expect(page.getByTestId("help-article")).toContainText(
+      "multiplied by its stage probability",
+    );
+    await page.getByTestId("help-yes").click();
+    await expect(page.getByTestId("help-thanks")).toBeVisible();
+
+    // A draft is simply not there.
+    await page.goto("/help/kb-5");
+    await expect(page.getByTestId("help-missing")).toBeVisible();
+
+    // Staff see the counts: 80 views and 42 yes votes to begin with, plus this visit and vote,
+    // against the tour's eight tickets: 43 of 51.
+    await page.goto("/articles");
+    const panel = page.getByTestId("kb-deflection");
+    await expect(panel).toContainText("81");
+    await expect(panel).toContainText("84%");
+    await expect(panel).toContainText("43 / 51");
   });
 
   test("the forecast can also be shown in one currency, naming the rate it used", async ({

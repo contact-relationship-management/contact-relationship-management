@@ -36,6 +36,7 @@ import type {
   ReportResult,
   Attribution,
   AttributionAmount,
+  KbDeflection,
   FxRate,
   ReportRateUsed,
   ReportUnconverted,
@@ -166,6 +167,14 @@ interface State {
   campaigns: Campaign[];
   tickets: Ticket[];
   articles: Article[];
+  /** What the public help centre has counted (CRM-R57). */
+  kb: {
+    views: Record<string, number>;
+    yes: Record<string, number>;
+    no: Record<string, number>;
+    searches: number;
+    empty: number;
+  };
   grants: Grant[];
 }
 
@@ -895,6 +904,13 @@ function build(): State {
     campaigns,
     tickets,
     articles,
+    kb: {
+      views: { "kb-1": 41, "kb-3": 27, "kb-2": 12 },
+      yes: { "kb-1": 22, "kb-3": 15, "kb-2": 5 },
+      no: { "kb-1": 3, "kb-3": 6, "kb-2": 4 },
+      searches: 63,
+      empty: 9,
+    },
     grants,
   };
 }
@@ -1145,6 +1161,8 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
   const as_of = new Date().toISOString();
   const days = (fallback: number) => Number(q.get("days")) || fallback;
   switch (name) {
+    case "kb-deflection":
+      return ok(kbDeflectionAnswer(days(30)));
     case "stale-deals":
       return ok(staleDeals(days(30)));
     case "followups":
@@ -2244,6 +2262,7 @@ export function demoHandle(
     if (tail === "external-links" && (get || post))
       return recordLinks("contact", id!, method, body);
   }
+  if (head === "kb") return kbPublic(method, seg, query, body);
   if (head === "email-templates") return emailTemplates(method, id, body);
   if (head === "custom-fields") return customFieldDefs(method, id, body);
   if (tail === "custom-fields" && id)
@@ -3052,6 +3071,100 @@ function shareAmount(
     }
   });
   return out;
+}
+
+/** The published articles the public help centre may show. */
+const publishedArticles = () =>
+  state.articles.filter((a) => a.status === "published");
+
+/** The public help centre as the service answers it (CRM-R57), counting what it is asked. */
+function kbPublic(
+  method: string,
+  seg: string[],
+  query: URLSearchParams,
+  body: unknown,
+): DemoReply {
+  const [, what, pid, tail] = seg;
+  if (what !== "articles") return problem(404, "not found");
+  if (!pid && method === "GET") {
+    const q = (query.get("q") ?? "").trim().toLowerCase();
+    const found = publishedArticles()
+      .filter((a) => !q || `${a.title} ${a.body}`.toLowerCase().includes(q))
+      .sort((a, b) => a.title.localeCompare(b.title));
+    if (q) {
+      state.kb.searches += 1;
+      if (found.length === 0) state.kb.empty += 1;
+    }
+    return ok(
+      found.map((a) => ({
+        pid: a.pid,
+        title: a.title,
+        snippet:
+          a.body.length > 200 ? `${a.body.slice(0, 200).trimEnd()}…` : a.body,
+        keywords: null,
+        version: a.version,
+        updated_at: new Date().toISOString(),
+      })),
+    );
+  }
+  const article = publishedArticles().find((a) => a.pid === pid);
+  if (!article) return problem(404, "not found");
+  if (!tail && method === "GET") {
+    state.kb.views[pid!] = (state.kb.views[pid!] ?? 0) + 1;
+    return ok({
+      pid: article.pid,
+      title: article.title,
+      body: article.body,
+      keywords: null,
+      version: article.version,
+      updated_at: new Date().toISOString(),
+    });
+  }
+  if (tail === "feedback" && method === "POST") {
+    const helpful = (body as { helpful?: unknown } | null)?.helpful;
+    if (typeof helpful !== "boolean")
+      return problem(422, "helpful is true or false");
+    const counts = helpful ? state.kb.yes : state.kb.no;
+    counts[pid!] = (counts[pid!] ?? 0) + 1;
+    return { status: 202, body: { status: "received" } } as DemoReply;
+  }
+  return problem(404, "not found");
+}
+
+/** The tour's deflection report, from what the help centre has counted and the tour's tickets. */
+function kbDeflectionAnswer(days: number) {
+  const sum = (m: Record<string, number>) =>
+    Object.values(m).reduce((a, b) => a + b, 0);
+  const yes = sum(state.kb.yes);
+  const tickets = state.tickets.length;
+  const to = new Date();
+  const from = new Date(to.getTime() - (days - 1) * 86_400_000);
+  const day = (d: Date) => d.toISOString().slice(0, 10);
+  return {
+    from: day(from),
+    to: day(to),
+    days,
+    views: sum(state.kb.views),
+    searches: state.kb.searches,
+    searches_without_result: state.kb.empty,
+    helpful_yes: yes,
+    helpful_no: sum(state.kb.no),
+    tickets_opened: tickets,
+    deflection: ratio(yes, yes + tickets),
+    top_articles: Object.entries(state.kb.views)
+      .map(([pid, views]) => ({
+        pid,
+        title:
+          state.articles.find((a) => a.pid === pid)?.title ??
+          "(deleted article)",
+        views,
+        helpful_yes: state.kb.yes[pid] ?? 0,
+        helpful_no: state.kb.no[pid] ?? 0,
+      }))
+      .sort((a, b) => b.views - a.views || a.title.localeCompare(b.title))
+      .slice(0, 10),
+    note: "counts only, kept per day; a visitor is not identified, so a vote is a visitor's own word and a ticket is not tied to a visit; deflection is an estimate, not a measure",
+  } satisfies KbDeflection;
 }
 
 /** The tour's attribution (CRM-R49), computed over its won deals as the service does over its own. */

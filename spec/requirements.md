@@ -142,7 +142,8 @@ tickets.*
 
 - Article CRUD `draft → published → archived`; published edits bump
   `version` (priors retained read-only); ILIKE keyword search;
-  ticket-link logs a note activity.
+  ticket-link logs a note activity. Published articles may also be shown
+  to anyone, with a deflection report (CRM-R57).
 
 ## CRM-R13 — Dashboards
 
@@ -1020,3 +1021,15 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Exact.** Both give a deal's shares **to the minor unit**: each touch gets the floor of its proportion and the leftover minor units go one each to the largest remainders, the earliest touch first on a tie. The method is the one `linear` always used, so `first`, `last` and `linear` give the answers they gave before. The same campaign touching twice earns both shares, as under `linear`.
 - Windows, conversion (CRM-R51), masking and audit are unchanged. The Attribution page offers the two models.
 - Not built: a half-life or position weights the caller can set; a "W-shaped" model with a mid-journey peak; models that use the kind or the cost of a touch.
+
+## CRM-R57 — Public help centre and deflection report
+
+*As a support lead, I can let customers read our published articles without signing in, and see how many questions they answered for themselves, so that fewer of them become tickets.*
+
+- **Off until asked for.** `CRM_PUBLIC_KB` (off by default) turns on three routes that need no token and answer `404` while it is off, so a deployment publishes nothing by accident: `GET /kb/articles`, `GET /kb/articles/{pid}` and `POST /kb/articles/{pid}/feedback`. They are public paths when `CRM_REQUIRE_AUTH` is on. Each client is limited to `CRM_PUBLIC_KB_CLIENT_LIMIT` requests a minute (default 120, `0` for no limit), counted as the web forms are (the trusted forwarded address when `CRM_TRUST_FORWARDED_FOR` is set); over it is `429` with `Retry-After`.
+- **Published only.** A draft, an archived or a deleted article is `404`, the same answer as one that never existed, so nothing is given away. `GET /kb/articles?q=` lists published articles (at most 50, by title; each with the first 200 characters of its text), or those whose title, keywords or text contain `q` (case-insensitive; `%` and `_` are plain characters). `GET /kb/articles/{pid}` returns title, text, keywords, version and last update. The text is **plain**: a client shows it as text, never as markup.
+- **Feedback.** `POST /kb/articles/{pid}/feedback` takes `{"helpful": true|false}` and nothing else (an unknown member is `422`); it answers `202`. It is anonymous: nothing identifies who voted.
+- **What is kept.** Only counts, per day and per article (and for the portal as a whole): views, "this helped" and "this did not" votes, searches with words in them, and of those the searches that found nothing. **No address, no visitor and no text a visitor typed is stored**, because people type their own names and problems into a search box. The cost is that a search that finds nothing cannot say what was wanted; the count says only that the content has gaps.
+- **Report.** `GET /api/insights/kb-deflection?days=` (1 to 365, default 30; anything else `422` naming `/days`; a read, audited as `kb_deflection_read`) answers: the period, views, searches, searches without a result, helpful and not-helpful votes, the tickets opened in the period, the ten most viewed articles with their votes, and `deflection` = `helpful_yes ÷ (helpful_yes + tickets_opened)` as a ratio with its numerator and denominator (`null` value when both are zero). **It is an estimate, not a measure**: a visitor is not identified, so a vote is a visitor's own word, a ticket is not tied to a visit, and a vote can be given by anyone (the rate limit slows that, it does not stop it). The answer says so.
+- The UI has `/help` and `/help/{pid}`, open to a signed-out visitor and linked from the footer, and a "Public help centre" panel on the Articles page with the counts.
+- Not built: a vote or a count per language; a search that suggests articles as a ticket is typed; counting a ticket as deflected when it was opened after a visit; showing the portal under a customer's own domain or theme; per-article feedback comments; a limit on all clients together (the limit is per client, so many clients can add up); rate-limit state shared between service instances (it is kept in each instance's memory, as for the web forms).

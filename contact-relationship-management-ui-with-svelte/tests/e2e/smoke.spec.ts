@@ -121,6 +121,43 @@ test.describe("sign-in gate (CRM-T26)", () => {
     expect(response?.status()).toBe(200);
     await expect(page).toHaveURL(/\/signin$/);
   });
+
+  test("the help centre is open to a signed-out visitor, who reads an article and says it helped", async ({
+    page,
+  }) => {
+    const article = {
+      pid: "00000000-0000-0000-0000-0000000000a1",
+      title: "Reset your password",
+      snippet: "Open Settings, then Security.",
+      keywords: null,
+      version: 1,
+      updated_at: "2026-10-26T09:00:00Z",
+    };
+    let vote: unknown = null;
+    await page.route("**/api/proxy/kb/articles**", (route) => {
+      const url = route.request().url();
+      if (route.request().method() === "POST") {
+        vote = route.request().postDataJSON();
+        return route.fulfill({ status: 202, json: { status: "received" } });
+      }
+      return route.fulfill({
+        json: url.includes(article.pid)
+          ? { ...article, body: "<b>Open</b> Settings, then Security." }
+          : [article],
+      });
+    });
+    await page.goto("/help");
+    await expect(page).toHaveURL(/\/help$/);
+    await page.getByTestId("help-result").getByRole("link").click();
+    // The text is shown as text, never as markup.
+    await expect(page.getByTestId("help-article")).toContainText(
+      "<b>Open</b> Settings",
+    );
+    await expect(page.getByTestId("help-article").locator("b")).toHaveCount(0);
+    await page.getByTestId("help-yes").click();
+    await expect(page.getByTestId("help-thanks")).toBeVisible();
+    expect(vote).toEqual({ helpful: true });
+  });
 });
 
 // Every test below exercises a gated page, so it needs a session

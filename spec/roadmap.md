@@ -16,7 +16,7 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   (CRM-R45) and a clock that pauses while a ticket waits on the
   customer (CRM-R55) are built; a limit on how long a ticket may wait,
   and pausing on a customer reply, are not.
-- **Public KB portal** + ticket deflection metrics.
+- **Help centre refinements** — a public help centre and a deflection estimate are built (CRM-R57); suggesting articles as a ticket is typed, deflection tied to visits, and a limit shared by all clients are not.
 - **Quotas & territories; commission views.**
 - **CLV refinement** — margin, discounting, churn-adjusted models
   over the v1 revenue sum.

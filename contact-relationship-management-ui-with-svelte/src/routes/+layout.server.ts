@@ -23,7 +23,7 @@ import { isDemoSession } from "#lib/server/demo.js";
 import { splitLocale } from "../params";
 
 /** Routes reachable with no session (prefix match). */
-const PUBLIC_PATHS = ["/signin", "/verify", "/tour", "/accessibility"];
+const PUBLIC_PATHS = ["/signin", "/verify", "/tour", "/accessibility", "/help"];
 
 /**
  * The home page is public too (exact match, since "/" is a prefix of

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a public help centre (CRM-T123)
+
+`/help` and `/help/{pid}`, open to a signed-out visitor; a Public help centre panel on `/articles`; 19 keys in 8 locales (machine drafts); the tour's help centre; two tests.
+
 ### Added — time-decay and position-based attribution (CRM-T122)
 
 Two more models on `/attribution` (2 keys in 8 locales, machine drafts), the tour's integer sharing, and one Playwright test.

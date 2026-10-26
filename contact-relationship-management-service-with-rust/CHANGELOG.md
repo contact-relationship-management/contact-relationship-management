@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a public help centre and a deflection report (CRM-T123, CRM-R57)
+
+`CRM_PUBLIC_KB` and `CRM_PUBLIC_KB_CLIENT_LIMIT`; `GET /kb/articles`, `GET /kb/articles/{pid}`, `POST /kb/articles/{pid}/feedback` (public paths, `404` while off); migration `000040` (`kb_daily`, counts only); `GET /api/insights/kb-deflection`.
+
 ### Added — time-decay and position-based attribution (CRM-T122, CRM-R56)
 
 `rules::attribution::credit` takes the close time and shares by integer weights through one apportioning rule; `model=time_decay` and `model=position` are accepted. `first`, `last` and `linear` are unchanged.

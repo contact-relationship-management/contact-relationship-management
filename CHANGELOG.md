@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a public help centre and a deflection report (CRM-T123, CRM-R57)
+
+Published knowledge-base articles open to anyone under `/kb/` (off until `CRM_PUBLIC_KB` is set, rate limited, plain text, counted without identifying anyone), the `/help` pages, and `GET /api/insights/kb-deflection` with a Public help centre panel on the Articles page.
+
 ### Added — time-decay and position-based attribution (CRM-T122, CRM-R56)
 
 Two more models for `GET /api/attribution` and the Attribution page, exact to the minor unit: `time_decay` (a touch's weight halves every 7 days before the deal closed) and `position` (40% first, 40% last, 20% between).

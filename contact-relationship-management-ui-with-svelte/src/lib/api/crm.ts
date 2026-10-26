@@ -1777,3 +1777,77 @@ export function setFxRate(input: {
 export function deleteFxRate(pid: string): Promise<{ pid: string }> {
   return api(`/fx-rates/${pid}`, { method: "DELETE" });
 }
+
+/** An article in a public search (CRM-R57). */
+export interface KbListing {
+  pid: string;
+  title: string;
+  /** The start of the article's text. */
+  snippet: string;
+  keywords: string | null;
+  version: number;
+  updated_at: string;
+}
+
+/** A published article as the public reads it: plain text, to be shown as text. */
+export interface KbArticle {
+  pid: string;
+  title: string;
+  body: string;
+  keywords: string | null;
+  version: number;
+  updated_at: string;
+}
+
+/** Published articles, or those matching `q`. No sign-in needed. */
+export function kbSearch(q?: string, init?: FetchLike): Promise<KbListing[]> {
+  const query = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
+  return api(`/kb/articles${query}`, init);
+}
+
+/** One published article. No sign-in needed. */
+export function kbArticle(pid: string, init?: FetchLike): Promise<KbArticle> {
+  return api(`/kb/articles/${pid}`, init);
+}
+
+/** "This helped" or "this did not" for a published article; anonymous. */
+export function kbFeedback(pid: string, helpful: boolean): Promise<unknown> {
+  return api(`/kb/articles/${pid}/feedback`, {
+    method: "POST",
+    body: { helpful },
+  });
+}
+
+/** One article's counts in the deflection report. */
+export interface KbArticleStats {
+  pid: string;
+  title: string;
+  views: number;
+  helpful_yes: number;
+  helpful_no: number;
+}
+
+/** What the public knowledge base did, beside the tickets raised (CRM-R57). */
+export interface KbDeflection {
+  from: string;
+  to: string;
+  days: number;
+  views: number;
+  searches: number;
+  searches_without_result: number;
+  helpful_yes: number;
+  helpful_no: number;
+  tickets_opened: number;
+  /** `value` is null when there was nothing to compare. */
+  deflection: Ratio;
+  top_articles: KbArticleStats[];
+  note: string;
+}
+
+/** The public knowledge base's counts over the last `days` days. */
+export function kbDeflection(
+  days = 30,
+  init?: FetchLike,
+): Promise<KbDeflection> {
+  return api(`/insights/kb-deflection?days=${days}`, init);
+}

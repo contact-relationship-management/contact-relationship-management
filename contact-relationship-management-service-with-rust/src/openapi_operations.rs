@@ -1212,6 +1212,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
     ),
     (
         "get",
+        "/api/insights/kb-deflection",
+        "insights",
+        "The public knowledge base's counts beside the tickets raised over ?days= (1 to 365, default 30): views, searches (and those that found nothing), \"this helped\" votes, and an estimated deflection ratio (CRM-R57). Counts only; no visitor is identified. An audited read",
+        Kind::Ok,
+    ),
+    (
+        "get",
         "/api/insights/executive",
         "insights",
         "Executive pack (ETag conditional)",

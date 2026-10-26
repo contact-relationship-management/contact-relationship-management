@@ -276,6 +276,7 @@ fn enforce_on_allows_public_paths() {
         "/metrics.prom",
         "/unsubscribe/sometoken",
         "/forms/newsletter",
+        "/kb/articles",
     ] {
         assert!(
             enforce(

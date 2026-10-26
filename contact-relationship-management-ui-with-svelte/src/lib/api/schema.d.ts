@@ -2391,7 +2391,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear (default linear), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=GBP shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate. A caller with a masked collection read gets 403 */
+        /** Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear|time_decay|position (default linear; time_decay halves a touch's weight every 7 days before the deal closed, position gives 40% to the first touch, 40% to the last and 20% shared among the rest), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=GBP shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate. A caller with a masked collection read gets 403 */
         get: {
             parameters: {
                 query?: never;
@@ -9678,6 +9678,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/insights/kb-deflection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The public knowledge base's counts beside the tickets raised over ?days= (1 to 365, default 30): views, searches (and those that found nothing), "this helped" votes, and an estimated deflection ratio (CRM-R57). Counts only; no visitor is identified. An audited read */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["KbDeflection"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/insights/members": {
         parameters: {
             query?: never;
@@ -16075,6 +16147,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/kb/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public (CRM_PUBLIC_KB, CRM-R57): the published knowledge-base articles, or those whose title, keywords or text contain ?q= (at most 50, by title; each with the start of its text). A search with words is counted, and one that found nothing is counted as such. 404 while the public knowledge base is off, 429 over the per-client rate limit (Retry-After) */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description KbListing[] */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["KbListing"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kb/articles/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public (CRM_PUBLIC_KB, CRM-R57): one published article, counted as a view. The text is plain: show it as text. 404 for a draft, an archived or a missing article, and while the public knowledge base is off */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    pid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description KbArticle */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["KbArticle"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kb/articles/{pid}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Public (CRM_PUBLIC_KB, CRM-R57): "this helped" or "this did not" for a published article; anonymous and counted only. Answers 202. 404 for an article that is not published, 422 for an unknown member */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    pid: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FeedbackPayload"];
+                };
+            };
+            responses: {
+                /** @description Received */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/metrics.prom": {
         parameters: {
             query?: never;
@@ -17665,6 +17853,11 @@ export interface components {
             /** @description The systems a link may name. */
             systems: string[];
         };
+        /** @description `POST /kb/articles/{pid}/feedback` body. */
+        FeedbackPayload: {
+            /** @description Whether the article solved the visitor's problem. */
+            helpful: boolean;
+        };
         /** @description An activity with a due day, in the follow-ups view. */
         Followup: {
             actor_ref: string | null;
@@ -17872,6 +18065,90 @@ export interface components {
             findings: components["schemas"]["HygieneFinding"][];
             /** Format: int64 */
             threshold_days: number;
+        };
+        /** @description A published article, as the public reads it. */
+        KbArticle: {
+            /** @description Plain text: show it as text, never as markup. */
+            body: string;
+            keywords: string | null;
+            /** Format: uuid */
+            pid: string;
+            title: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: int32 */
+            version: number;
+        };
+        /** @description One article's counts over the period. */
+        KbArticleStats: {
+            /** Format: int64 */
+            helpful_no: number;
+            /** Format: int64 */
+            helpful_yes: number;
+            /** Format: uuid */
+            pid: string;
+            /** @description The article's title; `(deleted article)` when it is gone. */
+            title: string;
+            /** Format: int64 */
+            views: number;
+        };
+        /** @description What the public knowledge base did over a period, beside the tickets raised. */
+        KbDeflection: {
+            /** Format: int64 */
+            days: number;
+            /**
+             * @description `helpful_yes / (helpful_yes + tickets_opened)`: of the people who either said an article
+             *     solved their problem or went on to raise a ticket, the share who did not need one. An
+             *     estimate; see `note`. `value` is `null` when both are zero.
+             */
+            deflection: components["schemas"]["Ratio"];
+            /**
+             * Format: date
+             * @description First day counted.
+             */
+            from: string;
+            /** Format: int64 */
+            helpful_no: number;
+            /** Format: int64 */
+            helpful_yes: number;
+            note: string;
+            /**
+             * Format: int64
+             * @description Searches with words in them.
+             */
+            searches: number;
+            /**
+             * Format: int64
+             * @description Of those, searches that found no article.
+             */
+            searches_without_result: number;
+            /**
+             * Format: int64
+             * @description Tickets opened in the period, by anyone.
+             */
+            tickets_opened: number;
+            /**
+             * Format: date
+             * @description Last day counted (today).
+             */
+            to: string;
+            /** @description The articles viewed most, at most ten. */
+            top_articles: components["schemas"]["KbArticleStats"][];
+            /** Format: int64 */
+            views: number;
+        };
+        /** @description An article in a search: enough to choose one. */
+        KbListing: {
+            keywords: string | null;
+            /** Format: uuid */
+            pid: string;
+            /** @description The start of the article. */
+            snippet: string;
+            title: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: int32 */
+            version: number;
         };
         Lead: {
             /** Format: int32 */

@@ -95,6 +95,7 @@ pub(super) fn is_public_path(path: &str) -> bool {
         || path.starts_with("/confirm/")
         || path.starts_with("/preferences/")
         || path.starts_with("/forms/")
+        || path.starts_with("/kb/")
         || path == "/webhooks/email"
         || path.starts_with("/webhooks/email/")
         || (!protect_operational() && is_operational_path(path))
