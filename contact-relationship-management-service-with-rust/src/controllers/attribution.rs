@@ -1,0 +1,339 @@
+//! Multi-touch attribution (CRM-R49): `GET /api/attribution`.
+//!
+//! Which campaigns touched the people who bought, and how the revenue of the won deals is shared
+//! among them under a model the caller chooses. The sharing itself is [`crate::rules::attribution`];
+//! this reads the touches and adds the shares up, per campaign and per currency.
+
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+
+use chrono::{DateTime, NaiveDate, Utc};
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use loco_rs::prelude::*;
+
+use super::record_rejection;
+use crate::auth::{self, MaybeAuthUser};
+use crate::models::audit_logs::Model as Audit;
+use crate::rules::attribution::{self as rules, Model, Touch};
+use crate::validation::Problems;
+
+/// Most won deals read in one ask.
+const MAX_DEALS: usize = 5000;
+
+/// What `GET /api/attribution` may be asked.
+#[derive(Debug, Deserialize)]
+struct AttributionQuery {
+    /// `first`, `last` or `linear` (default).
+    model: Option<String>,
+    /// How far back from the day a deal closed a touch still counts, 1 to 365 (default 90).
+    window_days: Option<i64>,
+    /// First day a deal may have closed on.
+    from: Option<NaiveDate>,
+    /// Last day a deal may have closed on.
+    to: Option<NaiveDate>,
+}
+
+/// An amount in one currency.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "AttributionAmount")]
+pub(crate) struct Amount {
+    currency: String,
+    /// Minor units.
+    amount_minor: i64,
+}
+
+/// What one campaign earns.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "AttributionCampaign")]
+pub(crate) struct CampaignCredit {
+    #[schemars(with = "uuid::Uuid")]
+    campaign_pid: String,
+    /// The campaign's name; `(deleted campaign)` when it is gone.
+    name: String,
+    /// Its touches on the deals considered.
+    touches: usize,
+    /// The deals it touched.
+    deals: usize,
+    /// Its credit, per currency; currencies are never added together.
+    credit: Vec<Amount>,
+}
+
+/// The answer.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "Attribution")]
+pub(crate) struct Attribution {
+    /// The model used.
+    model: String,
+    /// The window used, in days.
+    window_days: i64,
+    as_of: DateTime<Utc>,
+    /// Won deals considered.
+    deals: usize,
+    /// Deals with no touch at all, and what they were worth: kept apart, never dropped.
+    unattributed_deals: usize,
+    unattributed: Vec<Amount>,
+    /// Most deals touched first.
+    campaigns: Vec<CampaignCredit>,
+    /// More deals matched than are read.
+    truncated: bool,
+    /// What the figures mean, in a line.
+    note: &'static str,
+}
+
+/// A won deal, as far as attribution needs it.
+struct Won {
+    pid: Uuid,
+    amount_minor: i64,
+    currency: String,
+    source_campaign: Option<Uuid>,
+    created_at: DateTime<Utc>,
+}
+
+fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
+    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
+}
+
+/// The model and the window, or a `422` naming each wrong member.
+fn validate(query: &AttributionQuery) -> Result<(Model, i64)> {
+    let mut problems = Problems::new();
+    let model = match query.model.as_deref() {
+        None => Some(Model::Linear),
+        Some(name) => Model::parse(name)
+            .map_err(|why| problems.push_field("model", why))
+            .ok(),
+    };
+    let days = rules::window_days(query.window_days)
+        .map_err(|why| problems.push_field("window_days", why))
+        .ok();
+    if let (Some(from), Some(to)) = (query.from, query.to)
+        && from > to
+    {
+        problems.push_field("from", "from is after to");
+    }
+    problems.finish()?;
+    match (model, days) {
+        (Some(model), Some(days)) => Ok((model, days)),
+        _ => Err(super::unprocessable("the request cannot be answered")),
+    }
+}
+
+/// The won deals closed in the range, newest first, one more than the cap so a cut is seen.
+async fn won_deals(ctx: &AppContext, query: &AttributionQuery) -> Result<Vec<Won>> {
+    let rows = ctx
+        .db
+        .query_all_raw(stmt(
+            "SELECT pid, amount_minor, currency, source_campaign_pid, created_at FROM deals \
+             WHERE won AND deleted_at IS NULL AND closed_at IS NOT NULL \
+               AND ($1::date IS NULL OR closed_at::date >= $1::date) \
+               AND ($2::date IS NULL OR closed_at::date <= $2::date) \
+             ORDER BY closed_at DESC, id LIMIT $3",
+            [
+                query.from.into(),
+                query.to.into(),
+                i64::try_from(MAX_DEALS + 1).unwrap_or(i64::MAX).into(),
+            ],
+        ))
+        .await?;
+    rows.iter()
+        .map(|row| {
+            Ok(Won {
+                pid: row.try_get("", "pid")?,
+                amount_minor: row.try_get("", "amount_minor")?,
+                currency: row.try_get("", "currency")?,
+                source_campaign: row.try_get("", "source_campaign_pid")?,
+                created_at: row.try_get("", "created_at")?,
+            })
+        })
+        .collect()
+}
+
+/// The touches on those deals: e-mails sent to the deal's primary contact, and campaign leads of
+/// that contact, from `days` before the deal closed up to the moment it closed.
+async fn touches_of(
+    ctx: &AppContext,
+    deals: &[Won],
+    days: i64,
+) -> Result<HashMap<Uuid, Vec<Touch>>> {
+    let pids: Vec<String> = deals.iter().map(|d| d.pid.to_string()).collect();
+    let rows = ctx
+        .db
+        .query_all_raw(stmt(
+            "SELECT d.pid AS deal_pid, e.campaign_pid, e.sent_at AS at \
+               FROM deals d JOIN email_deliveries e ON e.contact_pid = d.primary_contact_pid \
+              WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
+                AND e.state = 'sent' AND e.sent_at IS NOT NULL \
+                AND e.sent_at <= d.closed_at \
+                AND e.sent_at >= d.closed_at - make_interval(days => $2::int) \
+             UNION ALL \
+             SELECT d.pid, l.campaign_pid, l.created_at \
+               FROM deals d JOIN leads l ON l.contact_pid = d.primary_contact_pid \
+              WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
+                AND l.campaign_pid IS NOT NULL AND l.deleted_at IS NULL \
+                AND l.created_at <= d.closed_at \
+                AND l.created_at >= d.closed_at - make_interval(days => $2::int)",
+            [
+                serde_json::json!(pids).into(),
+                i32::try_from(days).unwrap_or(i32::MAX).into(),
+            ],
+        ))
+        .await?;
+    let mut by_deal: HashMap<Uuid, Vec<Touch>> = HashMap::new();
+    for row in &rows {
+        by_deal
+            .entry(row.try_get("", "deal_pid")?)
+            .or_default()
+            .push(Touch {
+                campaign: row.try_get("", "campaign_pid")?,
+                at: row.try_get("", "at")?,
+            });
+    }
+    Ok(by_deal)
+}
+
+/// Names of the campaigns, by id.
+async fn names_of(ctx: &AppContext, ids: &BTreeSet<Uuid>) -> Result<HashMap<Uuid, String>> {
+    let list: Vec<String> = ids.iter().map(ToString::to_string).collect();
+    let rows = ctx
+        .db
+        .query_all_raw(stmt(
+            "SELECT pid, name FROM campaigns \
+             WHERE pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid)",
+            [serde_json::json!(list).into()],
+        ))
+        .await?;
+    rows.iter()
+        .map(|row| Ok((row.try_get("", "pid")?, row.try_get("", "name")?)))
+        .collect()
+}
+
+/// Add `amount` to a currency's total.
+fn add(totals: &mut BTreeMap<String, i64>, currency: &str, amount: i64) {
+    let total = totals.entry(currency.to_string()).or_default();
+    *total = total.saturating_add(amount);
+}
+
+fn amounts(totals: BTreeMap<String, i64>) -> Vec<Amount> {
+    totals
+        .into_iter()
+        .map(|(currency, amount_minor)| Amount {
+            currency,
+            amount_minor,
+        })
+        .collect()
+}
+
+/// What one campaign has earned so far.
+#[derive(Default)]
+struct Tally {
+    touches: usize,
+    deals: usize,
+    credit: BTreeMap<String, i64>,
+}
+
+/// `GET /api/attribution?model=&window_days=&from=&to=` — share the revenue of won deals among
+/// the campaigns that touched the buyer.
+#[debug_handler]
+async fn run(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    axum::extract::Query(query): axum::extract::Query<AttributionQuery>,
+) -> Result<Response> {
+    let (model, days) = validate(&query)?;
+    // The answer is money, so a masked collection read may not have it.
+    if auth::aggregate_masked(&caller).map_err(record_rejection)? {
+        return Err(record_rejection((
+            axum::http::StatusCode::FORBIDDEN,
+            "attribution is about amounts and needs an unmasked read".to_string(),
+        )));
+    }
+    let mut deals = won_deals(&ctx, &query).await?;
+    let truncated = deals.len() > MAX_DEALS;
+    deals.truncate(MAX_DEALS);
+    let mut touches = touches_of(&ctx, &deals, days).await?;
+
+    let mut tallies: BTreeMap<Uuid, Tally> = BTreeMap::new();
+    let mut unattributed: BTreeMap<String, i64> = BTreeMap::new();
+    let mut unattributed_deals = 0;
+    for deal in &deals {
+        let mut list = touches.remove(&deal.pid).unwrap_or_default();
+        // The recorded source campaign is always a touch, at the deal's creation (CRM-R49).
+        if let Some(campaign) = deal.source_campaign {
+            list.push(Touch {
+                campaign,
+                at: deal.created_at,
+            });
+        }
+        if list.is_empty() {
+            unattributed_deals += 1;
+            add(&mut unattributed, &deal.currency, deal.amount_minor);
+            continue;
+        }
+        for touch in &list {
+            tallies.entry(touch.campaign).or_default().touches += 1;
+        }
+        for campaign in list.iter().map(|t| t.campaign).collect::<BTreeSet<_>>() {
+            tallies.entry(campaign).or_default().deals += 1;
+        }
+        for (campaign, share) in rules::credit(model, deal.amount_minor, &list) {
+            add(
+                &mut tallies.entry(campaign).or_default().credit,
+                &deal.currency,
+                share,
+            );
+        }
+    }
+
+    let names = names_of(&ctx, &tallies.keys().copied().collect()).await?;
+    let mut campaigns: Vec<CampaignCredit> = tallies
+        .into_iter()
+        .map(|(pid, tally)| CampaignCredit {
+            campaign_pid: pid.to_string(),
+            name: names
+                .get(&pid)
+                .cloned()
+                .unwrap_or_else(|| "(deleted campaign)".to_string()),
+            touches: tally.touches,
+            deals: tally.deals,
+            credit: amounts(tally.credit),
+        })
+        .collect();
+    campaigns.sort_by(|a, b| {
+        b.deals
+            .cmp(&a.deals)
+            .then(b.touches.cmp(&a.touches))
+            .then_with(|| a.name.cmp(&b.name))
+    });
+
+    Audit::record_read(
+        &ctx.db,
+        "attribution",
+        Uuid::nil(),
+        "attribution_run",
+        caller.actor(),
+        Some(serde_json::json!({
+            "model": model.name(), "window_days": days, "deals": deals.len(),
+        })),
+    )
+    .await?;
+    format::json(Attribution {
+        model: model.name().to_string(),
+        window_days: days,
+        as_of: Utc::now(),
+        deals: deals.len(),
+        unattributed_deals,
+        unattributed: amounts(unattributed),
+        campaigns,
+        truncated,
+        note: "each won deal's amount is shared among the campaigns that touched its primary \
+               contact (e-mails sent, campaign leads) in the window before it closed, and its \
+               recorded source campaign; shares add up to the amount; per currency, never \
+               added across currencies",
+    })
+}
+
+/// The routes of this module.
+pub fn routes() -> Routes {
+    Routes::new().prefix("/api").add("/attribution", get(run))
+}

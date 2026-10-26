@@ -1598,3 +1598,37 @@ async fn a_masked_reader_may_count_but_not_sum_or_use_tags_and_shared_reports_st
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn attribution_is_money_so_a_masked_reader_is_refused_and_an_unmasked_one_is_answered() {
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let service = sign_as(&kid, "attribution-svc", &[("svc", &["true"])]);
+    let reader = sign_as(&kid, "attribution-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let status = |token: String| {
+            let request = &request;
+            async move {
+                request
+                    .get("/api/attribution")
+                    .add_header("authorization", format!("Bearer {token}"))
+                    .await
+                    .status_code()
+            }
+        };
+        assert_eq!(status(reader).await, 403);
+        assert_eq!(status(service).await, 200);
+        request
+            .get("/api/attribution")
+            .await
+            .assert_status(axum::http::StatusCode::UNAUTHORIZED);
+    })
+    .await;
+}

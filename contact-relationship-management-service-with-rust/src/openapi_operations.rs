@@ -727,6 +727,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
     ),
     (
         "get",
+        "/api/attribution",
+        "marketing",
+        "Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear (default linear), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. A caller with a masked collection read gets 403",
+        Kind::Ok,
+    ),
+    (
+        "get",
         "/api/reports/{pid}/run",
         "insights",
         "Run a saved report, yours or shared, as the caller",

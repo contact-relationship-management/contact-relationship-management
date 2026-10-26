@@ -1631,3 +1631,51 @@ export function runSavedReport(
 ): Promise<ReportResult> {
   return api(`/reports/${pid}/run`, init);
 }
+
+/** An amount in one currency, in minor units. */
+export interface AttributionAmount {
+  currency: string;
+  amount_minor: number;
+}
+
+/** What one campaign earns of the won revenue. */
+export interface AttributionCampaign {
+  campaign_pid: string;
+  name: string;
+  touches: number;
+  deals: number;
+  /** Per currency: currencies are never added together. */
+  credit: AttributionAmount[];
+}
+
+/** How the revenue of won deals is shared among the campaigns that touched the buyer. */
+export interface Attribution {
+  model: string;
+  window_days: number;
+  as_of: string;
+  deals: number;
+  unattributed_deals: number;
+  unattributed: AttributionAmount[];
+  campaigns: AttributionCampaign[];
+  truncated: boolean;
+  note: string;
+}
+
+/** Share the won revenue among campaigns under `model` (CRM-R49). */
+export function attribution(
+  params: {
+    model: "first" | "last" | "linear";
+    windowDays: number;
+    from?: string;
+    to?: string;
+  },
+  init?: FetchLike,
+): Promise<Attribution> {
+  const query = new URLSearchParams({
+    model: params.model,
+    window_days: String(params.windowDays),
+  });
+  if (params.from) query.set("from", params.from);
+  if (params.to) query.set("to", params.to);
+  return api(`/attribution?${query}`, init);
+}

@@ -34,6 +34,8 @@ import type {
   Tag,
   Report,
   ReportResult,
+  Attribution,
+  AttributionAmount,
   ReportSpec,
   MergeToken,
   TemplatePreview,
@@ -2204,6 +2206,7 @@ export function demoHandle(
   if (tail === "attachments" && id) return attachmentList(id, method, query);
   if (head === "tags" && !id && method === "GET") return ok(demoTags());
   if (head === "reports") return reports(method, id, tail, body);
+  if (head === "attribution" && get) return attributionAnswer(query);
   if (tail === "tags" && id) return recordTags(id, method, body);
   if (head === "attachments" && id && method === "DELETE")
     return attachmentDelete(id);
@@ -2727,6 +2730,124 @@ function reportResult(spec: ReportSpec): DemoReply {
     truncated: rows.length > 200,
     note: "counted over the records that exist now; sums are per currency and never added across currencies",
   } satisfies ReportResult);
+}
+
+/**
+ * The campaigns that touched each won deal's buyer in the tour, as days before the deal closed.
+ * (The service reads these from the e-mails it sent and the leads campaigns brought in.)
+ */
+const TOUCHED: Record<string, { campaign: string; daysBefore: number }[]> = {
+  "deal-9": [
+    { campaign: "camp-1", daysBefore: 40 },
+    { campaign: "camp-2", daysBefore: 9 },
+  ],
+  "deal-10": [{ campaign: "camp-1", daysBefore: 20 }],
+};
+
+/** Share `amount` among touches in time order, the leftover minor units to the earliest. */
+function shareAmount(
+  model: string,
+  amount: number,
+  touches: { campaign: string; daysBefore: number }[],
+): Map<string, number> {
+  const ordered = [...touches].sort(
+    (a, b) =>
+      b.daysBefore - a.daysBefore || a.campaign.localeCompare(b.campaign),
+  );
+  const out = new Map<string, number>();
+  const give = (campaign: string, value: number) =>
+    out.set(campaign, (out.get(campaign) ?? 0) + value);
+  if (model === "first") give(ordered[0]!.campaign, amount);
+  else if (model === "last")
+    give(ordered[ordered.length - 1]!.campaign, amount);
+  else {
+    const each = Math.floor(amount / ordered.length);
+    const left = amount % ordered.length;
+    ordered.forEach((t, i) => give(t.campaign, each + (i < left ? 1 : 0)));
+  }
+  return out;
+}
+
+/** The tour's attribution (CRM-R49), computed over its won deals as the service does over its own. */
+function attributionAnswer(query: URLSearchParams): DemoReply {
+  const model = query.get("model") ?? "linear";
+  if (!["first", "last", "linear"].includes(model))
+    return problem(422, "the model is one of first, last, linear");
+  const windowDays = Number(query.get("window_days") ?? 90);
+  if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 365)
+    return problem(422, "the window is 1 to 365 days");
+  const from = query.get("from");
+  const to = query.get("to");
+  const won = state.deals.filter((d) => {
+    const day = d.closed_at?.slice(0, 10);
+    return d.won && day && (!from || day >= from) && (!to || day <= to);
+  });
+  const tally = new Map<
+    string,
+    { touches: number; deals: number; credit: Map<string, number> }
+  >();
+  const unattributed = new Map<string, number>();
+  let unattributedDeals = 0;
+  for (const deal of won) {
+    const amount = Number(deal.amount_minor ?? 0);
+    const touches = (TOUCHED[deal.pid] ?? []).filter(
+      (t) => t.daysBefore <= windowDays,
+    );
+    if (touches.length === 0) {
+      unattributedDeals += 1;
+      unattributed.set(
+        deal.currency,
+        (unattributed.get(deal.currency) ?? 0) + amount,
+      );
+      continue;
+    }
+    for (const t of touches) {
+      const row = tally.get(t.campaign) ?? {
+        touches: 0,
+        deals: 0,
+        credit: new Map(),
+      };
+      row.touches += 1;
+      tally.set(t.campaign, row);
+    }
+    for (const campaign of new Set(touches.map((t) => t.campaign)))
+      tally.get(campaign)!.deals += 1;
+    for (const [campaign, share] of shareAmount(model, amount, touches)) {
+      const credit = tally.get(campaign)!.credit;
+      credit.set(deal.currency, (credit.get(deal.currency) ?? 0) + share);
+    }
+  }
+  const amounts = (m: Map<string, number>): AttributionAmount[] =>
+    [...m.entries()].map(([currency, amount_minor]) => ({
+      currency,
+      amount_minor,
+    }));
+  return ok({
+    model,
+    window_days: windowDays,
+    as_of: new Date().toISOString(),
+    deals: won.length,
+    unattributed_deals: unattributedDeals,
+    unattributed: amounts(unattributed),
+    campaigns: [...tally.entries()]
+      .map(([pid, row]) => ({
+        campaign_pid: pid,
+        name:
+          state.campaigns.find((c) => c.pid === pid)?.name ??
+          "(deleted campaign)",
+        touches: row.touches,
+        deals: row.deals,
+        credit: amounts(row.credit),
+      }))
+      .sort(
+        (a, b) =>
+          b.deals - a.deals ||
+          b.touches - a.touches ||
+          a.name.localeCompare(b.name),
+      ),
+    truncated: false,
+    note: "each won deal's amount is shared among the campaigns that touched its buyer in the window before it closed; shares add up to the amount; per currency, never added across currencies",
+  } satisfies Attribution);
 }
 
 function reports(

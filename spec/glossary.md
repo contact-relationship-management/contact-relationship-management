@@ -3,7 +3,7 @@
 | Term | Meaning |
 |---|---|
 | **Account** | The relationship wrapper over an `organization:` record |
-| **Attribution** | Crediting a lead/deal's revenue to a campaign (`source_campaign_pid`; v1 = source attribution) |
+| **Attribution** | Crediting a lead/deal's revenue to a campaign (`source_campaign_pid`; v1 = source attribution; CRM-R49 adds first, last and linear multi-touch models over e-mails sent, campaign leads and the source) |
 | **CLV** | Customer Lifetime Value; v1: Σ won-deal amounts per account, per currency |
 | **Consent** | Recorded permission to market to a contact; append-only history; send-path enforced |
 | **Contact** | The relationship wrapper over a `person:` record |

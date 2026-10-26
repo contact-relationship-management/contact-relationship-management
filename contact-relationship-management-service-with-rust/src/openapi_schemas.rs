@@ -38,10 +38,10 @@ fn reference(name: &str) -> Value {
 #[allow(clippy::too_many_lines)] // one list of the documented types
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
-        attachments, audits, board, break_glass, calendars, custom_fields, dashboards, engagement,
-        external_links, insights, lead_imports, marketing, merge, notifications, privacy,
-        record_imports, relationships, reports, sales, search, support, tags, templates, unmerge,
-        views, webhooks, workflows,
+        attachments, attribution, audits, board, break_glass, calendars, custom_fields, dashboards,
+        engagement, external_links, insights, lead_imports, marketing, merge, notifications,
+        privacy, record_imports, relationships, reports, sales, search, support, tags, templates,
+        unmerge, views, webhooks, workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -180,6 +180,9 @@ fn generated() -> serde_json::Map<String, Value> {
         tags::TagView,
         reports::ReportView,
         reports::ReportResult,
+        attribution::Attribution,
+        attribution::CampaignCredit,
+        attribution::Amount,
         custom_fields::ValueView,
         workflows::RunView,
         workflows::Sweep,
@@ -370,6 +373,7 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("get", "/api/workflows/{pid}") => "Workflow",
         ("get", "/api/business-calendars/{pid}") => "BusinessCalendar",
         ("post", "/api/reports/run") | ("get", "/api/reports/{pid}/run") => "ReportResult",
+        ("get", "/api/attribution") => "Attribution",
         ("put", "/api/sla-policies/{pid}/calendar") => "SlaPolicy",
         (
             "post",

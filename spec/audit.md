@@ -53,6 +53,8 @@ Custom fields (CRM-R41) audit under the entity `custom_field` (`created` with en
 
 Reports (CRM-R48) audit under the entity `report`: `created`, `updated`, `deleted` (with the kind and whether shared), and `report_run` (an audited read: the kind, the grouping, the measure and the number of groups, never the figures).
 
+Attribution (CRM-R49) audits an ask as `attribution_run` under the entity `attribution` (an audited read: the model, the window and the number of deals; no amounts and no campaign names).
+
 Tags (CRM-R47) audit under the entity `tag` (`created`, `renamed`, `deleted` with how many taggings went). Setting a record's tags audits as the record's own entity, `tags_set`, with the count and no names; erasing a contact records how many taggings went.
 
 Business calendars (CRM-R45) audit under the entity `business_calendar` (`created`, `updated`, `deleted`); a policy changing calendar audits as `sla_policy` `calendar_set`.

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — attribution page (CRM-T113)
+
+`/attribution`: choose the model, the window and the dates; each campaign's credit per currency with a bar, and the deals no campaign touched apart. 20 keys in 8 locales (machine drafts), tour data and a Playwright test.
+
 ### Changed — Lily Design System and tooling
 
 `@lilydesignsystem/svelte-headless` 0.6.1, `svelte-locale-picker` 0.3.1, `svelte-locale-translations` 0.3.0, `themes` 0.6.0 and `vite` 8.3.5. The new themes draw the sort glyph (⇅ ▲ ▼) after a sortable header as generated content, which put it into the header's accessible name ("Due ⇅"); `app.css` now gives it empty alternative text, so it still shows and is no longer read out. TypeScript stays on 6 (7.0.2 breaks `svelte-check`).

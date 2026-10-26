@@ -4,6 +4,7 @@
 
 mod api_standards;
 mod attachments;
+mod attribution;
 mod audit_chain;
 mod board;
 mod business_calendars;

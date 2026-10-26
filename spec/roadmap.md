@@ -8,10 +8,12 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
 - **Event-driven merge repointing** — consume upstream `merged`
   events on the durable bus to repoint contact/account wrappers
   automatically (manual endpoint in v1).
-- **Multi-touch attribution** — first/last/linear models beyond v1
-  source attribution.
-- **Business-hours SLA clocks** — pause-on-pending, holiday
-  calendars.
+- **More attribution models** — time-decay and position-based, and
+  per-person open and click touches (CRM-R49 has first, last and linear
+  over e-mails sent, campaign leads and the recorded source).
+- **Pause-on-pending SLA clocks** — business-hours calendars and
+  holidays are built (CRM-R45); a clock that pauses while a ticket waits
+  on the customer is not.
 - **Public KB portal** + ticket deflection metrics.
 - **Quotas & territories; commission views.**
 - **CLV refinement** — margin, discounting, churn-adjusted models

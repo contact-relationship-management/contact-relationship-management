@@ -8,6 +8,7 @@ use loco_rs::prelude::*;
 use crate::validation::FieldProblem;
 
 pub mod attachments;
+pub mod attribution;
 pub mod audits;
 pub mod board;
 pub mod break_glass;

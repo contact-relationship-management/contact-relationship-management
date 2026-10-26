@@ -7,6 +7,7 @@
 
 pub mod analytics;
 pub mod attachments;
+pub mod attribution;
 pub mod audit_chain;
 pub mod calendar;
 pub mod custom_fields;

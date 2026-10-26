@@ -2384,6 +2384,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/attribution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear (default linear), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. A caller with a masked collection read gets 403 */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Attribution"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audits": {
         parameters: {
             query?: never;
@@ -16274,6 +16346,63 @@ export interface components {
             /** Format: int64 */
             size_bytes: number;
             uploaded_by: string | null;
+        };
+        /** @description The answer. */
+        Attribution: {
+            /** Format: date-time */
+            as_of: string;
+            /** @description Most deals touched first. */
+            campaigns: components["schemas"]["AttributionCampaign"][];
+            /**
+             * Format: uint
+             * @description Won deals considered.
+             */
+            deals: number;
+            /** @description The model used. */
+            model: string;
+            /** @description What the figures mean, in a line. */
+            note: string;
+            /** @description More deals matched than are read. */
+            truncated: boolean;
+            unattributed: components["schemas"]["AttributionAmount"][];
+            /**
+             * Format: uint
+             * @description Deals with no touch at all, and what they were worth: kept apart, never dropped.
+             */
+            unattributed_deals: number;
+            /**
+             * Format: int64
+             * @description The window used, in days.
+             */
+            window_days: number;
+        };
+        /** @description An amount in one currency. */
+        AttributionAmount: {
+            /**
+             * Format: int64
+             * @description Minor units.
+             */
+            amount_minor: number;
+            currency: string;
+        };
+        /** @description What one campaign earns. */
+        AttributionCampaign: {
+            /** Format: uuid */
+            campaign_pid: string;
+            /** @description Its credit, per currency; currencies are never added together. */
+            credit: components["schemas"]["AttributionAmount"][];
+            /**
+             * Format: uint
+             * @description The deals it touched.
+             */
+            deals: number;
+            /** @description The campaign's name; `(deleted campaign)` when it is gone. */
+            name: string;
+            /**
+             * Format: uint
+             * @description Its touches on the deals considered.
+             */
+            touches: number;
         };
         AuditEntry: {
             action: string;

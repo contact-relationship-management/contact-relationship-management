@@ -1164,4 +1164,45 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("report-kind")).toHaveValue("lead");
     await expect(page.getByTestId("report-result")).toContainText("referral");
   });
+
+  test("won revenue is shared among the campaigns that touched the buyer, per model and window", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/attribution");
+    await page.getByTestId("attribution-run").click();
+    // Linear over the three won deals: the campaign that touched two of them earns the most, and
+    // the deal nobody touched is kept apart.
+    await expect(page.getByTestId("attribution-row")).toHaveCount(2);
+    const first = page.getByTestId("attribution-row").first();
+    await expect(first).toContainText("Spring product update");
+    await expect(first).toContainText("£114,000.00");
+    await expect(page.getByTestId("attribution-row").nth(1)).toContainText(
+      "£26,000.00",
+    );
+    await expect(page.getByTestId("attribution-unattributed")).toContainText(
+      "£27,500.00",
+    );
+    // First touch gives each deal wholly to its earliest campaign; the other still shows that it
+    // touched a deal, with nothing credited.
+    await page.getByTestId("attribution-model").selectOption("first");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row")).toHaveCount(2);
+    await expect(page.getByTestId("attribution-row").first()).toContainText(
+      "£140,000.00",
+    );
+    await expect(page.getByTestId("attribution-row").nth(1)).not.toContainText(
+      "£",
+    );
+    // A short window drops the older touches, so more of the revenue is unattributed.
+    await page.getByTestId("attribution-window").fill("15");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row")).toHaveCount(1);
+    await expect(page.getByTestId("attribution-row")).toContainText(
+      "Customer webinar series",
+    );
+    await expect(page.getByTestId("attribution-unattributed")).toContainText(
+      "2",
+    );
+  });
 });

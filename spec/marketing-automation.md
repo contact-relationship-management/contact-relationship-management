@@ -43,6 +43,18 @@ is idempotent per (enrolment, step) — reruns never double-send.
 Attribution v1 is **source attribution**: a lead or deal carries
 `source_campaign_pid`; won-deal revenue rolls up to the campaign.
 
+**Multi-touch attribution** (CRM-R49) shares a won deal's amount among
+every campaign that touched its primary contact: an e-mail the campaign
+sent (one per campaign and contact), a lead it brought in, and the deal's
+recorded source campaign. `GET /api/attribution` applies `first`, `last`
+or `linear` (equal shares; leftover minor units to the earliest touches, so
+a deal's shares add up exactly) inside a window of 1 to 365 days before the
+deal closed (default 90; the recorded source is exempt). Credit is per
+campaign and per currency, deals no campaign touched are listed apart, and
+the answer is money, so a masked collection read gets `403`. The sharing is
+the pure `rules::attribution`. Opens and clicks are campaign counters, not
+per-person records, so they are not touches.
+
 `ROI = (attributed_won_revenue_minor − cost_minor) / cost_minor`
 — per currency, pure-core, division-by-zero (free campaigns)
 reported as `null` with the absolute figures alongside. The
