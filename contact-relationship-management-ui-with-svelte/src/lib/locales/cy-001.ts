@@ -628,6 +628,9 @@ export default {
   "attr.model.first": "Cyffyrddiad cyntaf",
   "attr.model.last": "Cyffyrddiad olaf",
   "attr.model.linear": "Llinol (cyfrannau cyfartal)",
+  "attr.model.timeDecay":
+    "Pylu amser (mae cyffyrddiadau diweddar yn ennill mwy)",
+  "attr.model.position": "Safle (40% y cyntaf, 40% yr olaf, 20% rhyngddynt)",
   "attr.window": "Ffenestr (dyddiau cyn i'r fargen gau)",
   "attr.from": "Caewyd o",
   "attr.to": "Caewyd tan",

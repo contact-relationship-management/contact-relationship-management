@@ -30,7 +30,7 @@ const MAX_DEALS: usize = 5000;
 /// What `GET /api/attribution` may be asked.
 #[derive(Debug, Deserialize)]
 struct AttributionQuery {
-    /// `first`, `last` or `linear` (default).
+    /// `first`, `last`, `linear` (default), `time_decay` or `position`.
     model: Option<String>,
     /// How far back from the day a deal closed a touch still counts, 1 to 365 (default 90).
     window_days: Option<i64>,
@@ -107,6 +107,7 @@ struct Won {
     currency: String,
     source_campaign: Option<Uuid>,
     created_at: DateTime<Utc>,
+    closed_at: DateTime<Utc>,
 }
 
 fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
@@ -149,7 +150,7 @@ async fn won_deals(ctx: &AppContext, query: &AttributionQuery) -> Result<Vec<Won
     let rows = ctx
         .db
         .query_all_raw(stmt(
-            "SELECT pid, amount_minor, currency, source_campaign_pid, created_at FROM deals \
+            "SELECT pid, amount_minor, currency, source_campaign_pid, created_at, closed_at FROM deals \
              WHERE won AND deleted_at IS NULL AND closed_at IS NOT NULL \
                AND ($1::date IS NULL OR closed_at::date >= $1::date) \
                AND ($2::date IS NULL OR closed_at::date <= $2::date) \
@@ -169,6 +170,7 @@ async fn won_deals(ctx: &AppContext, query: &AttributionQuery) -> Result<Vec<Won
                 currency: row.try_get("", "currency")?,
                 source_campaign: row.try_get("", "source_campaign_pid")?,
                 created_at: row.try_get("", "created_at")?,
+                closed_at: row.try_get("", "closed_at")?,
             })
         })
         .collect()
@@ -286,7 +288,7 @@ fn share_out(
         for campaign in list.iter().map(|t| t.campaign).collect::<BTreeSet<_>>() {
             tallies.entry(campaign).or_default().deals += 1;
         }
-        for (campaign, share) in rules::credit(model, deal.amount_minor, &list) {
+        for (campaign, share) in rules::credit(model, deal.amount_minor, &list, deal.closed_at) {
             add(
                 &mut tallies.entry(campaign).or_default().credit,
                 &deal.currency,

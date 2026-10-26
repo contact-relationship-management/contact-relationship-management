@@ -227,10 +227,66 @@ async fn won_revenue_is_shared_among_the_campaigns_that_touched_the_buyer() {
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn time_decay_favours_the_recent_touch_and_position_splits_the_ends_evenly() {
+    request::<App, _, _>(|request, ctx| async move {
+        let segment = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json::<Value>()["pid"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let early = campaign!(&request, segment, "Early");
+        let middle = campaign!(&request, segment, "Middle");
+        let late = campaign!(&request, segment, "Late");
+        let buyer = seed_contact!(&request, "Decay Buyer").await;
+        sent(&ctx.db, &early, &buyer, "sent", 40).await;
+        sent(&ctx.db, &middle, &buyer, "sent", 20).await;
+        sent(&ctx.db, &late, &buyer, "sent", 1).await;
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        won_deal!(
+            &request,
+            pipeline,
+            stages,
+            json!({ "name": "Bought", "amount_minor": 100_000, "currency": "GBP",
+                    "primary_contact_pid": buyer })
+        );
+
+        let ask = |model: &'static str| {
+            let request = &request;
+            async move {
+                request
+                    .get(&format!("/api/attribution?model={model}"))
+                    .await
+                    .json::<Value>()
+            }
+        };
+        let position = ask("position").await;
+        assert_eq!(position["model"], "position");
+        assert_eq!(earned(&position, "Early", "GBP"), 40_000, "{position}");
+        assert_eq!(earned(&position, "Middle", "GBP"), 20_000, "{position}");
+        assert_eq!(earned(&position, "Late", "GBP"), 40_000, "{position}");
+
+        let decay = ask("time_decay").await;
+        let (e, m, l) = (
+            earned(&decay, "Early", "GBP"),
+            earned(&decay, "Middle", "GBP"),
+            earned(&decay, "Late", "GBP"),
+        );
+        assert!(l > m && m > e && e > 0, "recent earns more: {decay}");
+        assert_eq!(e + m + l, 100_000, "every pound is accounted for: {decay}");
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn an_attribution_that_cannot_be_asked_is_refused_naming_the_member() {
     request::<App, _, _>(|request, _ctx| async move {
         for (query, pointer) in [
-            ("model=time_decay", "/model"),
+            ("model=u_shaped", "/model"),
             ("window_days=0", "/window_days"),
             ("window_days=366", "/window_days"),
             ("from=2026-06-02&to=2026-06-01", "/from"),

@@ -637,6 +637,9 @@ export default {
   "attr.model.first": "Erster Kontakt",
   "attr.model.last": "Letzter Kontakt",
   "attr.model.linear": "Linear (gleiche Anteile)",
+  "attr.model.timeDecay": "Zeitverfall (jüngere Kontakte erhalten mehr)",
+  "attr.model.position":
+    "Position (40 % erster, 40 % letzter, 20 % dazwischen)",
   "attr.window": "Zeitfenster (Tage vor Abschluss)",
   "attr.from": "Abgeschlossen ab",
   "attr.to": "Abgeschlossen bis",

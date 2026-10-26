@@ -602,6 +602,8 @@ export default {
   "attr.model.first": "首次触达",
   "attr.model.last": "末次触达",
   "attr.model.linear": "线性（均分）",
+  "attr.model.timeDecay": "时间衰减（越近的触点贡献越多）",
+  "attr.model.position": "位置（首次 40%，末次 40%，中间 20%）",
   "attr.window": "时间窗口（成交前的天数）",
   "attr.from": "成交起始日",
   "attr.to": "成交截止日",

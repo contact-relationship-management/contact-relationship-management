@@ -1723,7 +1723,7 @@ export interface Attribution {
 /** Share the won revenue among campaigns under `model` (CRM-R49). */
 export function attribution(
   params: {
-    model: "first" | "last" | "linear";
+    model: "first" | "last" | "linear" | "time_decay" | "position";
     windowDays: number;
     from?: string;
     to?: string;

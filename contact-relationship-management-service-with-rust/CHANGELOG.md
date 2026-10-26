@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — time-decay and position-based attribution (CRM-T122, CRM-R56)
+
+`rules::attribution::credit` takes the close time and shares by integer weights through one apportioning rule; `model=time_decay` and `model=position` are accepted. `first`, `last` and `linear` are unchanged.
+
 ### Added — SLA clocks that stop while a ticket waits (CRM-T121, CRM-R55)
 
 Migration `000039` (`tickets.paused_at` and the two paused-seconds columns); `rules::sla` and `rules::calendar` gain the arithmetic; the status change, the priority change, the list, the sweep, the SLA dashboard and the support insights use it.

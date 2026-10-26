@@ -1223,6 +1223,32 @@ test.describe("export, undo and search", () => {
     );
   });
 
+  test("time decay favours the recent touch and position splits the ends evenly", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/attribution");
+    // The older campaign touched the £52,000 deal 40 days before it closed, the newer one 9 days
+    // before: the newer earns almost all of it, and every pound is still accounted for.
+    await page.getByTestId("attribution-model").selectOption("time_decay");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row").first()).toContainText(
+      "£90,328.36",
+    );
+    await expect(page.getByTestId("attribution-row").nth(1)).toContainText(
+      "£49,671.64",
+    );
+    // With two touches, position gives each end half.
+    await page.getByTestId("attribution-model").selectOption("position");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row").first()).toContainText(
+      "£114,000.00",
+    );
+    await expect(page.getByTestId("attribution-row").nth(1)).toContainText(
+      "£26,000.00",
+    );
+  });
+
   test("attribution is shown in one currency, with the rates it used and what it could not convert", async ({
     page,
   }) => {

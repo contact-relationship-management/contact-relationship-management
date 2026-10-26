@@ -624,6 +624,8 @@ export default {
   "attr.model.first": "أول تواصل",
   "attr.model.last": "آخر تواصل",
   "attr.model.linear": "خطي (حصص متساوية)",
+  "attr.model.timeDecay": "تناقص زمني (اللمسات الأحدث تكسب أكثر)",
+  "attr.model.position": "حسب الموضع (40٪ الأولى، 40٪ الأخيرة، 20٪ بينهما)",
   "attr.window": "النافذة (أيام قبل إغلاق الصفقة)",
   "attr.from": "أُغلقت من",
   "attr.to": "أُغلقت حتى",

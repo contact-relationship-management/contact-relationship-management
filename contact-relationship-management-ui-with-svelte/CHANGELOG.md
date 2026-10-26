@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — time-decay and position-based attribution (CRM-T122)
+
+Two more models on `/attribution` (2 keys in 8 locales, machine drafts), the tour's integer sharing, and one Playwright test.
+
 ### Added — SLA clock stopped marker (CRM-T121)
 
 The tickets page marks a ticket waiting for the customer "SLA clock stopped" (`ticket.paused`, 8 locales, machine drafts); one Playwright test.

@@ -8,7 +8,7 @@
   import { attribution, type Attribution, type AttributionAmount } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
-  let model = $state<"first" | "last" | "linear">("linear");
+  let model = $state<"first" | "last" | "linear" | "time_decay" | "position">("linear");
   let windowDays = $state(90);
   let from = $state("");
   let to = $state("");
@@ -66,6 +66,8 @@
       <option value="first">{t("attr.model.first")}</option>
       <option value="last">{t("attr.model.last")}</option>
       <option value="linear">{t("attr.model.linear")}</option>
+      <option value="time_decay">{t("attr.model.timeDecay")}</option>
+      <option value="position">{t("attr.model.position")}</option>
     </select>
   </label>
   <label>

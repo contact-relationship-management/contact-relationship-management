@@ -624,6 +624,8 @@ export default {
   "attr.model.first": "पहला संपर्क",
   "attr.model.last": "आखिरी संपर्क",
   "attr.model.linear": "रैखिक (बराबर हिस्से)",
+  "attr.model.timeDecay": "समय क्षय (हाल के संपर्कों को अधिक)",
+  "attr.model.position": "स्थिति (40% पहला, 40% अंतिम, 20% बीच के)",
   "attr.window": "विंडो (सौदा बंद होने से पहले के दिन)",
   "attr.from": "बंद होने की शुरुआत",
   "attr.to": "बंद होने की अंतिम तिथि",

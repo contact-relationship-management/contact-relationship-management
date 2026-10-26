@@ -2985,7 +2985,40 @@ const TOUCHED: Record<string, { campaign: string; daysBefore: number }[]> = {
   "deal-10": [{ campaign: "camp-1", daysBefore: 20 }],
 };
 
-/** Share `amount` among touches in time order, the leftover minor units to the earliest. */
+/** Share `amount` among `weights` in proportion, exactly: floors, then the leftover units to the
+ * largest remainders, the earliest first on a tie (as the service does, in integers). */
+function apportion(amount: number, weights: bigint[]): number[] {
+  const total = weights.reduce((a, b) => a + b, 0n);
+  if (total <= 0n)
+    return apportion(
+      amount,
+      weights.map(() => 1n),
+    );
+  const sum = BigInt(amount);
+  const shares = weights.map((w) => (sum * w) / total);
+  let left = sum - shares.reduce((a, b) => a + b, 0n);
+  const order = weights
+    .map((w, i) => ({ i, rest: (sum * w) % total }))
+    .sort((a, b) => (a.rest === b.rest ? a.i - b.i : a.rest < b.rest ? 1 : -1));
+  for (const { i } of order) {
+    if (left === 0n) break;
+    shares[i]! += 1n;
+    left -= 1n;
+  }
+  return shares.map(Number);
+}
+
+/** A touch's weight under time decay: halves every seven days, straight between (integers). */
+function decayWeight(daysBefore: number): bigint {
+  const half = 7n * 86_400n;
+  const age = BigInt(Math.max(0, daysBefore)) * 86_400n;
+  const whole = age / half;
+  const part = age % half;
+  const start = (1n << 100n) >> (whole > 100n ? 100n : whole);
+  return (start * (2n * half - part)) / (2n * half);
+}
+
+/** Share `amount` among touches in time order, as the service does (CRM-R49, CRM-R56). */
 function shareAmount(
   model: string,
   amount: number,
@@ -2995,25 +3028,40 @@ function shareAmount(
     (a, b) =>
       b.daysBefore - a.daysBefore || a.campaign.localeCompare(b.campaign),
   );
+  const n = ordered.length;
+  const middle = BigInt(Math.max(n - 2, 1));
+  const weights = ordered.map((t, i): bigint => {
+    switch (model) {
+      case "first":
+        return i === 0 ? 1n : 0n;
+      case "last":
+        return i === n - 1 ? 1n : 0n;
+      case "time_decay":
+        return decayWeight(t.daysBefore);
+      case "position":
+        return n <= 2 ? 1n : i === 0 || i === n - 1 ? 40n * middle : 20n;
+      default:
+        return 1n;
+    }
+  });
   const out = new Map<string, number>();
-  const give = (campaign: string, value: number) =>
-    out.set(campaign, (out.get(campaign) ?? 0) + value);
-  if (model === "first") give(ordered[0]!.campaign, amount);
-  else if (model === "last")
-    give(ordered[ordered.length - 1]!.campaign, amount);
-  else {
-    const each = Math.floor(amount / ordered.length);
-    const left = amount % ordered.length;
-    ordered.forEach((t, i) => give(t.campaign, each + (i < left ? 1 : 0)));
-  }
+  apportion(amount, weights).forEach((share, i) => {
+    if (weights[i]! > 0n) {
+      const campaign = ordered[i]!.campaign;
+      out.set(campaign, (out.get(campaign) ?? 0) + share);
+    }
+  });
   return out;
 }
 
 /** The tour's attribution (CRM-R49), computed over its won deals as the service does over its own. */
 function attributionAnswer(query: URLSearchParams): DemoReply {
   const model = query.get("model") ?? "linear";
-  if (!["first", "last", "linear"].includes(model))
-    return problem(422, "the model is one of first, last, linear");
+  if (!["first", "last", "linear", "time_decay", "position"].includes(model))
+    return problem(
+      422,
+      "the model is one of first, last, linear, time_decay, position",
+    );
   const windowDays = Number(query.get("window_days") ?? 90);
   if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 365)
     return problem(422, "the window is 1 to 365 days");

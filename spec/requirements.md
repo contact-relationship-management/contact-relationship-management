@@ -943,7 +943,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - `GET /api/attribution?model=&window_days=&from=&to=` answers for won deals closed in the date range (inclusive days; all when absent). `model` is `first`, `last` or `linear` (default `linear`); `window_days` is 1 to 365 (default 90). Anything else is `422` naming the member. The answer holds the model, the window, `as_of`, the number of deals considered, the unattributed deals (count and amount per currency), and for each campaign its name, its touches, the deals it touched and its credit per currency, largest first. At most 5000 deals are read (`truncated` says there were more).
 - **Masking.** The answer is money, so a caller whose collection read is masked (CRM-T32) gets `403`, as for a report on amounts. It is a read: a reader may ask. Asking audits `attribution_run` (the model, the window and the number of deals).
 - The Campaigns area has an Attribution page: pick the model, the window and the dates, and see each campaign's credit with a bar, and the unattributed amount beside it.
-- Not built: time-decay or position-based models; touches other than e-mail sends and campaign leads (opens and clicks are kept only as campaign counters, not per person, so they cannot be touches); touches by the deal's account's other contacts; cost per attributed pound; a stored result (every ask is computed from the records as they are now).
+- Not built: touches other than e-mail sends and campaign leads (opens and clicks are kept only as campaign counters, not per person, so they cannot be touches); touches by the deal's account's other contacts; cost per attributed pound; a stored result (every ask is computed from the records as they are now).
 
 ## CRM-R50 — Exchange rates and converted reports
 
@@ -1009,3 +1009,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - Breach facts already stored (`first_response_breached`, `resolution_breached`) stay as they are: a breach is not cleared by pausing.
 - The tickets page marks a waiting ticket "SLA clock stopped" where it would otherwise show nothing.
 - Not built: pausing on other states or on a customer reply (a reply does not move a ticket out of `pending` by itself); a limit on how long a ticket may wait (a ticket left `pending` never breaches); showing the time the clock has been stopped; re-deriving the deadlines when a policy or a calendar changes.
+
+## CRM-R56 — Time-decay and position-based attribution
+
+*As a marketer, I can share the revenue of a won deal by how recent each touch was, or by its place in the journey, so that the first and last campaigns, or the campaigns nearest the sale, are rewarded as my team believes they should be.*
+
+- `GET /api/attribution` accepts two more values of `model`: `time_decay` and `position` (the answer's `model` echoes it). Anything else is `422` naming `/model`, and the message lists all five.
+- **`time_decay`**: a touch's weight halves for every **7 days** between the touch and the moment the deal closed, so a touch 0, 7 and 14 days before the close weigh 4 : 2 : 1. Between whole half-lives the weight falls in a straight line, so the arithmetic is exact in integers (within about 6% of the true curve); a touch from after the close counts as having just happened. The half-life is fixed, not asked for.
+- **`position`**: 40% to the first touch, 40% to the last, 20% shared equally among those between; one touch takes everything and two take half each.
+- **Exact.** Both give a deal's shares **to the minor unit**: each touch gets the floor of its proportion and the leftover minor units go one each to the largest remainders, the earliest touch first on a tie. The method is the one `linear` always used, so `first`, `last` and `linear` give the answers they gave before. The same campaign touching twice earns both shares, as under `linear`.
+- Windows, conversion (CRM-R51), masking and audit are unchanged. The Attribution page offers the two models.
+- Not built: a half-life or position weights the caller can set; a "W-shaped" model with a mid-journey peak; models that use the kind or the cost of a touch.

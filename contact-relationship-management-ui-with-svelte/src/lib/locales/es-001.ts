@@ -630,6 +630,10 @@ export default {
   "attr.model.first": "Primer contacto",
   "attr.model.last": "Último contacto",
   "attr.model.linear": "Lineal (partes iguales)",
+  "attr.model.timeDecay":
+    "Decaimiento temporal (los contactos recientes ganan más)",
+  "attr.model.position":
+    "Posición (40 % el primero, 40 % el último, 20 % entre medias)",
   "attr.window": "Ventana (días antes del cierre)",
   "attr.from": "Cerrado desde",
   "attr.to": "Cerrado hasta",
