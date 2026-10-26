@@ -317,3 +317,73 @@ async fn the_forecast_adds_a_total_in_one_currency_and_names_what_it_left_out() 
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn an_accounts_clv_adds_a_total_in_one_currency_and_names_what_it_left_out() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let account: Value = request
+            .post("/api/accounts")
+            .json(
+                &json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Mixed Money Ltd" }),
+            )
+            .await
+            .json();
+        let account = account["pid"].as_str().unwrap().to_string();
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        for (name, amount, currency) in
+            [("A", 10_000, "GBP"), ("B", 5_000, "USD"), ("C", 700, "JPY")]
+        {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(
+                    &json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": amount,
+                               "currency": currency, "account_pid": account }),
+                )
+                .await
+                .json();
+            request
+                .post(&format!(
+                    "/api/deals/{}/stage",
+                    deal["pid"].as_str().unwrap()
+                ))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+        }
+        let _ = set_rate!(&request, "USD", "GBP", "0.80", "2026-01-01");
+
+        let plain: Value = request
+            .get(&format!("/api/accounts/{account}/clv"))
+            .await
+            .json();
+        assert_eq!(plain["clv_minor"]["USD"], 5_000, "{plain}");
+        assert!(
+            plain["converted_minor"].is_null() && plain["rates"].as_array().unwrap().is_empty()
+        );
+
+        let done: Value = request
+            .get(&format!("/api/accounts/{account}/clv?convert_to=GBP"))
+            .await
+            .json();
+        assert_eq!(done["clv_minor"], plain["clv_minor"], "{done}");
+        assert_eq!(done["converted_minor"], 14_000, "{done}");
+        assert_eq!(done["rates"][0]["from"], "USD", "{done}");
+        assert_eq!(done["unconverted"][0]["currency"], "JPY", "{done}");
+        assert_eq!(done["unconverted"][0]["amount_minor"], 700, "{done}");
+
+        for query in [
+            "convert_to=gbp",
+            "rate_date=2026-01-01",
+            "convert_to=GBP&rate_date=2999-01-01",
+        ] {
+            request
+                .get(&format!("/api/accounts/{account}/clv?{query}"))
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    })
+    .await;
+}

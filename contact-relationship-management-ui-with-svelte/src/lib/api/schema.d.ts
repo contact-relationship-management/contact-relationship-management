@@ -838,7 +838,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** CLV per currency over won deals */
+        /** CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54) */
         get: {
             parameters: {
                 query?: never;
@@ -16835,6 +16835,23 @@ export interface components {
             clv_minor: {
                 [key: string]: number;
             };
+            /** @description With `convert_to`: the currency of `converted_minor` (CRM-R54). */
+            convert_to: string | null;
+            /**
+             * Format: int64
+             * @description With `convert_to`: every currency's CLV converted and added, in minor units of
+             *     `convert_to`; what had no rate is left out (see `unconverted`).
+             */
+            converted_minor: number | null;
+            /**
+             * Format: date
+             * @description With `convert_to`: the day whose exchange rates were used.
+             */
+            rate_date: string | null;
+            /** @description With `convert_to`: the rate used for each currency that was converted. */
+            rates: components["schemas"]["ReportRateUsed"][];
+            /** @description With `convert_to`: CLV that had no rate in force, left out and never taken at 1.0. */
+            unconverted: components["schemas"]["ReportUnconverted"][];
             /** Format: uint */
             won_deals: number;
         };

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — converted CLV (CRM-T118, CRM-R54)
+
+`GET /api/accounts/{pid}/clv` takes `convert_to` and `rate_date`; the answer adds `converted_minor`, `rates` and `unconverted` beside the unchanged per-currency CLV.
+
 ### Added — converted forecast (CRM-T117, CRM-R53)
 
 `GET /api/forecast` takes `convert_to` and `rate_date`; the answer adds `converted_minor`, `rates` and `unconverted` beside the unchanged per-currency totals.

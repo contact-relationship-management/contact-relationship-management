@@ -137,6 +137,26 @@ pub(crate) struct Clv {
     /// Minor units per ISO 4217 code, never summed across currencies.
     clv_minor: std::collections::BTreeMap<String, i64>,
     as_of: chrono::DateTime<chrono::Utc>,
+    /// With `convert_to`: the currency of `converted_minor` (CRM-R54).
+    convert_to: Option<String>,
+    /// With `convert_to`: every currency's CLV converted and added, in minor units of
+    /// `convert_to`; what had no rate is left out (see `unconverted`).
+    converted_minor: Option<i64>,
+    /// With `convert_to`: the day whose exchange rates were used.
+    rate_date: Option<chrono::NaiveDate>,
+    /// With `convert_to`: the rate used for each currency that was converted.
+    rates: Vec<super::fx_rates::RateUsed>,
+    /// With `convert_to`: CLV that had no rate in force, left out and never taken at 1.0.
+    unconverted: Vec<super::fx_rates::Unconverted>,
+}
+
+/// What `GET /api/accounts/{pid}/clv` may be asked.
+#[derive(Debug, Deserialize)]
+struct ClvQuery {
+    /// Also show the CLV in this currency, three capital letters (CRM-R54).
+    convert_to: Option<String>,
+    /// The day whose exchange rates are used (today when absent); only with `convert_to`.
+    rate_date: Option<chrono::NaiveDate>,
 }
 
 /// `GET /api/dashboards/sales` — win rate + pipeline value by stage
@@ -230,7 +250,20 @@ async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Res
 /// `GET /api/accounts/{pid}/clv` — CLV per currency over won deals
 /// (CRM-R13; the v1 revenue-sum definition).
 #[debug_handler]
-async fn account_clv(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
+async fn account_clv(
+    State(ctx): State<AppContext>,
+    PidPath(pid): PidPath,
+    axum::extract::Query(query): axum::extract::Query<ClvQuery>,
+) -> Result<Response> {
+    let mut problems = crate::validation::Problems::new();
+    if let Some(target) = &query.convert_to {
+        if let Err(why) = crate::rules::fx::currency(target) {
+            problems.push_field("convert_to", why);
+        }
+    } else if query.rate_date.is_some() {
+        problems.push_field("rate_date", "needs convert_to");
+    }
+    problems.finish()?;
     let account = records::find_account(&ctx.db, pid).await?;
     let won = deals::Entity::find_live()
         .filter(deals::Column::AccountPid.eq(account.pid))
@@ -242,11 +275,37 @@ async fn account_clv(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Re
         .map(|deal| (deal.amount_minor, deal.currency.clone()))
         .collect();
     let totals = analytics::clv_by_currency(&inputs).map_err(|e| super::unprocessable(&e))?;
+    // With `convert_to`, each currency's CLV is converted once and the results added.
+    let mut conversion = None;
+    if let Some(target) = &query.convert_to {
+        let sums: Vec<(String, String, i64)> = totals
+            .iter()
+            .map(|(currency, total)| ("clv".to_string(), currency.clone(), *total))
+            .collect();
+        conversion = Some(
+            super::fx_rates::convert_sums(&ctx, target, query.rate_date, "rate_date", &sums)
+                .await?,
+        );
+    }
+    let (converted_minor, rate_date, rates, unconverted) = match conversion {
+        Some(done) => (
+            Some(done.rows.first().map_or(0, |row| row.1)),
+            Some(done.rate_date),
+            done.rates,
+            done.unconverted,
+        ),
+        None => (None, None, Vec::new(), Vec::new()),
+    };
     format::json(Clv {
         account_pid: account.pid,
         won_deals: won.len(),
         clv_minor: totals,
         as_of: chrono::Utc::now(),
+        convert_to: query.convert_to.clone(),
+        converted_minor,
+        rate_date,
+        rates,
+        unconverted,
     })
 }
 
