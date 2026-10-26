@@ -307,12 +307,14 @@ async fn list_tickets(
     let rows: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|ticket| {
+            // A ticket waiting for the customer has a stopped clock (CRM-R55).
+            let clock = sla::clock_now(now, ticket.paused_at);
             let live_first = ticket.first_response_due_at.is_some_and(|due| {
-                sla::first_response_breached(now, due, ticket.first_responded_at)
+                sla::first_response_breached(clock, due, ticket.first_responded_at)
             });
             let live_resolution = ticket
                 .resolution_due_at
-                .is_some_and(|due| sla::resolution_breached(now, due, ticket.resolved_at));
+                .is_some_and(|due| sla::resolution_breached(clock, due, ticket.resolved_at));
             let mut value = serde_json::to_value(&ticket).unwrap_or_default();
             if let Some(object) = value.as_object_mut() {
                 object.insert("live_first_response_breached".into(), live_first.into());
@@ -376,6 +378,48 @@ async fn get_ticket(
     })
 }
 
+/// What leaving `pending` does to a ticket's clock.
+struct Resumed {
+    /// The waiting that now counts against each deadline, the earlier waiting included.
+    paused: sla::Paused,
+    /// The deadlines derived again with it; `None` when no policy covers the ticket any more.
+    deadlines: Option<sla::Deadlines>,
+}
+
+/// Work out what resuming a ticket that was paused at `paused_at` does at `now`: each deadline moves
+/// by the waiting that counted against it, in working time on the policy's calendar.
+async fn resume_clock<C: sea_orm::ConnectionTrait>(
+    db: &C,
+    ticket: &tickets::Model,
+    paused_at: chrono::DateTime<chrono::FixedOffset>,
+    now: chrono::DateTime<chrono::FixedOffset>,
+) -> Result<Resumed> {
+    let policy = targets_for(db, &ticket.priority).await?;
+    let calendar = policy.as_ref().and_then(|(_, calendar)| calendar.as_ref());
+    let paused = sla::Paused {
+        first_response_seconds: ticket.first_response_paused_seconds
+            + sla::pause_counted(
+                calendar,
+                paused_at,
+                now,
+                ticket.first_response_due_at,
+                ticket.first_responded_at.is_some(),
+            ),
+        resolution_seconds: ticket.resolution_paused_seconds
+            + sla::pause_counted(
+                calendar,
+                paused_at,
+                now,
+                ticket.resolution_due_at,
+                ticket.resolved_at.is_some(),
+            ),
+    };
+    let deadlines = policy.as_ref().map(|(targets, calendar)| {
+        sla::deadlines_paused(ticket.opened_at, *targets, calendar.as_ref(), paused)
+    });
+    Ok(Resumed { paused, deadlines })
+}
+
 /// `POST /api/tickets/{pid}/status` — one lifecycle transition;
 /// `resolved` stamps `resolved_at`.
 #[debug_handler]
@@ -391,11 +435,32 @@ async fn ticket_status(
     let ticket = records::find_ticket(&ctx.db, pid).await?;
     lifecycle::check("ticket", lifecycle::TICKET, &ticket.status, &payload.to)
         .map_err(|e| unprocessable(&e.to_string()))?;
+    // The SLA clock stops while the ticket waits for the customer and starts again when it leaves
+    // `pending`, moving each deadline by the waiting that counted against it (CRM-R55).
+    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let resumed = match ticket.paused_at {
+        Some(paused_at) if ticket.status == "pending" => {
+            Some(resume_clock(&ctx.db, &ticket, paused_at, now).await?)
+        }
+        _ => None,
+    };
     let txn = ctx.db.begin().await?;
     let from = ticket.status.clone();
     let title = ticket.title.clone();
     let mut active: tickets::ActiveModel = ticket.into();
     active.status = ActiveValue::set(payload.to.clone());
+    if payload.to == "pending" {
+        active.paused_at = ActiveValue::set(Some(now));
+    } else if let Some(resumed) = resumed {
+        active.paused_at = ActiveValue::set(None);
+        active.first_response_paused_seconds =
+            ActiveValue::set(resumed.paused.first_response_seconds);
+        active.resolution_paused_seconds = ActiveValue::set(resumed.paused.resolution_seconds);
+        if let Some(deadlines) = resumed.deadlines {
+            active.first_response_due_at = ActiveValue::set(Some(deadlines.first_response_due_at));
+            active.resolution_due_at = ActiveValue::set(Some(deadlines.resolution_due_at));
+        }
+    }
     if payload.to == "resolved" {
         active.resolved_at = ActiveValue::set(Some(chrono::Utc::now().into()));
     } else if payload.to == "open" && from == "resolved" {
@@ -444,9 +509,16 @@ async fn ticket_priority(
     problems.require_text("reason", &payload.reason);
     problems.finish()?;
     let ticket = records::find_ticket(&ctx.db, pid).await?;
+    // Waiting for the customer already counted stays counted (CRM-R55).
+    let paused = sla::Paused {
+        first_response_seconds: ticket.first_response_paused_seconds,
+        resolution_seconds: ticket.resolution_paused_seconds,
+    };
     let deadlines = targets_for(&ctx.db, &payload.priority)
         .await?
-        .map(|(targets, calendar)| sla::deadlines_on(ticket.opened_at, targets, calendar.as_ref()));
+        .map(|(targets, calendar)| {
+            sla::deadlines_paused(ticket.opened_at, targets, calendar.as_ref(), paused)
+        });
     let txn = ctx.db.begin().await?;
     let from = ticket.priority.clone();
     let mut active: tickets::ActiveModel = ticket.into();
@@ -480,12 +552,13 @@ async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Resu
         .await?;
     let mut breaches = 0_u64;
     for ticket in open {
+        let clock = sla::clock_now(now, ticket.paused_at);
         let first = ticket
             .first_response_due_at
-            .is_some_and(|due| sla::first_response_breached(now, due, ticket.first_responded_at));
+            .is_some_and(|due| sla::first_response_breached(clock, due, ticket.first_responded_at));
         let resolution = ticket
             .resolution_due_at
-            .is_some_and(|due| sla::resolution_breached(now, due, ticket.resolved_at));
+            .is_some_and(|due| sla::resolution_breached(clock, due, ticket.resolved_at));
         let new_first = first && !ticket.first_response_breached;
         let new_resolution = resolution && !ticket.resolution_breached;
         if !new_first && !new_resolution {

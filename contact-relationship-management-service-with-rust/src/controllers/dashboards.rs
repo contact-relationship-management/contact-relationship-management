@@ -214,12 +214,13 @@ async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Res
     let mut by_priority: std::collections::BTreeMap<String, (i64, i64)> =
         std::collections::BTreeMap::new();
     for ticket in &open {
+        let clock = sla::clock_now(now, ticket.paused_at);
         let breached = ticket
             .first_response_due_at
-            .is_some_and(|due| sla::first_response_breached(now, due, ticket.first_responded_at))
+            .is_some_and(|due| sla::first_response_breached(clock, due, ticket.first_responded_at))
             || ticket
                 .resolution_due_at
-                .is_some_and(|due| sla::resolution_breached(now, due, ticket.resolved_at));
+                .is_some_and(|due| sla::resolution_breached(clock, due, ticket.resolved_at));
         let slot = by_priority.entry(ticket.priority.clone()).or_default();
         slot.0 += 1;
         if breached {

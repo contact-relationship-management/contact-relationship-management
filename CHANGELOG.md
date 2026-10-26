@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — SLA clocks that stop while a ticket waits for the customer (CRM-T121, CRM-R55)
+
+A ticket moved to `pending` stops its SLA clock and does not breach while it waits; leaving `pending` moves each deadline by the waiting that counted against it, in working time on a business calendar.
+
 ### Added — a sweep for money that skips masking (CRM-T120)
 
 A test asks every `GET` endpoint as a masked reader, after the service has seeded one distinctive amount, and fails if the amount appears in any answer.

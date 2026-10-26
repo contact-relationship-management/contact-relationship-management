@@ -292,6 +292,7 @@ export default {
   "ticket.priority": "Priorité",
   "ticket.due": "Réponse due",
   "ticket.breached": "Dépassé",
+  "ticket.paused": "Horloge SLA arrêtée",
   "article.version": "Version",
   "article.publish": "Publier",
   "article.search": "Rechercher des articles",

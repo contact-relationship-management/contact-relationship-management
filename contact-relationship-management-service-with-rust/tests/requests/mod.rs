@@ -38,6 +38,7 @@ mod search;
 mod streaming;
 mod support;
 mod tags;
+mod ticket_pauses;
 mod unmerge;
 mod views;
 mod web_forms;

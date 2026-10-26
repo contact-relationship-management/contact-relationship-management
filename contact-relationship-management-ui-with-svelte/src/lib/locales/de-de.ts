@@ -295,6 +295,7 @@ export default {
   "ticket.priority": "Priorität",
   "ticket.due": "Antwort fällig",
   "ticket.breached": "Verletzt",
+  "ticket.paused": "SLA-Uhr angehalten",
   "article.version": "Version",
   "article.publish": "Veröffentlichen",
   "article.search": "Artikel suchen",

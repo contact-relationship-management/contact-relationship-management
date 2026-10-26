@@ -282,6 +282,7 @@ export default {
   "ticket.priority": "优先级",
   "ticket.due": "应答期限",
   "ticket.breached": "已超时",
+  "ticket.paused": "SLA 计时已暂停",
   "article.version": "版本",
   "article.publish": "发布",
   "article.search": "搜索文章",

@@ -192,6 +192,23 @@ test.describe("data tables", () => {
     ).toBeVisible();
   });
 
+  test("a ticket waiting for the customer shows that its SLA clock is stopped", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/tickets");
+    const queue = page.getByTestId("ticket-queue");
+    const row = queue.locator("tbody tr", { hasText: "Licence seats" });
+    await expect(row).not.toContainText("SLA clock stopped");
+    await row.click();
+    await page.getByRole("button", { name: "→ pending" }).click();
+    await expect(row).toContainText("SLA clock stopped");
+    // Leaving `pending` starts it again.
+    await row.click();
+    await page.getByRole("button", { name: "→ open" }).click();
+    await expect(row).not.toContainText("SLA clock stopped");
+  });
+
   test("the inbox lists notifications, marks one read, then all", async ({
     page,
   }) => {

@@ -11,9 +11,10 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
 - **More attribution models** — time-decay and position-based, and
   per-person open and click touches (CRM-R49 has first, last and linear
   over e-mails sent, campaign leads and the recorded source).
-- **Pause-on-pending SLA clocks** — business-hours calendars and
-  holidays are built (CRM-R45); a clock that pauses while a ticket waits
-  on the customer is not.
+- **SLA clock refinements** — business-hours calendars and holidays
+  (CRM-R45) and a clock that pauses while a ticket waits on the
+  customer (CRM-R55) are built; a limit on how long a ticket may wait,
+  and pausing on a customer reply, are not.
 - **Public KB portal** + ticket deflection metrics.
 - **Quotas & territories; commission views.**
 - **CLV refinement** — margin, discounting, churn-adjusted models

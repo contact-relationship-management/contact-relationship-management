@@ -286,6 +286,7 @@ export default {
   "ticket.priority": "الأولوية",
   "ticket.due": "الرد المستحق",
   "ticket.breached": "تم الخرق",
+  "ticket.paused": "تم إيقاف ساعة اتفاقية مستوى الخدمة",
   "article.version": "الإصدار",
   "article.publish": "نشر",
   "article.search": "بحث المقالات",

@@ -161,7 +161,17 @@ impl Calendar {
         start: DateTime<FixedOffset>,
         minutes: i64,
     ) -> Option<DateTime<FixedOffset>> {
-        let mut remaining = minutes.checked_mul(60)?;
+        self.add_working_seconds(start, minutes.checked_mul(60)?)
+    }
+
+    /// The instant `seconds` of working time after `start` (see [`Self::add_working_minutes`]).
+    #[must_use]
+    pub fn add_working_seconds(
+        &self,
+        start: DateTime<FixedOffset>,
+        seconds: i64,
+    ) -> Option<DateTime<FixedOffset>> {
+        let mut remaining = seconds;
         let mut cursor = start.with_timezone(&Utc);
         let mut date = start.with_timezone(&self.tz).date_naive();
         for _ in 0..HORIZON_DAYS {
@@ -189,6 +199,42 @@ impl Calendar {
             cursor = cursor.max(self.instant(date, NaiveTime::MIN).unwrap_or(cursor));
         }
         None
+    }
+
+    /// The seconds of working time between two instants (zero when `to` is not after `from`).
+    /// Counted over at most the search horizon, so a longer span is cut short rather than refused.
+    #[must_use]
+    pub fn working_seconds_between(
+        &self,
+        from: DateTime<FixedOffset>,
+        to: DateTime<FixedOffset>,
+    ) -> i64 {
+        let (from, to) = (from.with_timezone(&Utc), to.with_timezone(&Utc));
+        let mut total = 0;
+        let mut date = from.with_timezone(&self.tz).date_naive();
+        let last = to.with_timezone(&self.tz).date_naive();
+        for _ in 0..HORIZON_DAYS {
+            if date > last {
+                break;
+            }
+            if !self.holidays.contains(&date) {
+                for (opens, closes) in &self.windows[date.weekday().num_days_from_monday() as usize]
+                {
+                    let (Some(opens), Some(closes)) =
+                        (self.instant(date, *opens), self.instant(date, *closes))
+                    else {
+                        continue;
+                    };
+                    let (begin, end) = (opens.max(from), closes.min(to));
+                    if end > begin {
+                        total += (end - begin).num_seconds();
+                    }
+                }
+            }
+            let Some(next) = date.succ_opt() else { break };
+            date = next;
+        }
+        total
     }
 
     fn instant(&self, date: NaiveDate, time: NaiveTime) -> Option<DateTime<Utc>> {
@@ -391,5 +437,44 @@ mod tests {
             ..Week::default()
         };
         assert!(Calendar::build("UTC", &touching, &[]).is_ok());
+    }
+
+    #[test]
+    fn working_time_between_two_instants_skips_nights_weekends_and_holidays() {
+        let c = office("UTC", &["2026-07-08"]);
+        let between = |a, b| c.working_seconds_between(utc(a), utc(b));
+        // Inside one day.
+        assert_eq!(
+            between("2026-07-06T10:00:00Z", "2026-07-06T11:30:00Z"),
+            90 * 60
+        );
+        // Monday 16:00 to Tuesday 10:00: one hour and one hour.
+        assert_eq!(
+            between("2026-07-06T16:00:00Z", "2026-07-07T10:00:00Z"),
+            2 * 3600
+        );
+        // Across Wednesday's holiday: Tuesday 16:00 to Thursday 10:00 is 1h + 0 + 1h.
+        assert_eq!(
+            between("2026-07-07T16:00:00Z", "2026-07-09T10:00:00Z"),
+            2 * 3600
+        );
+        // Friday 16:00 to Monday 10:00 skips the weekend.
+        assert_eq!(
+            between("2026-07-10T16:00:00Z", "2026-07-13T10:00:00Z"),
+            2 * 3600
+        );
+        // Backwards or empty is zero.
+        assert_eq!(between("2026-07-06T11:00:00Z", "2026-07-06T10:00:00Z"), 0);
+        assert_eq!(between("2026-07-06T11:00:00Z", "2026-07-06T11:00:00Z"), 0);
+    }
+
+    #[test]
+    fn adding_and_measuring_working_time_agree() {
+        let c = office("Europe/London", &["2026-07-08"]);
+        let start = utc("2026-07-06T15:00:00Z");
+        for seconds in [60, 3600, 5 * 3600, 20 * 3600, 33 * 3600 + 17] {
+            let end = c.add_working_seconds(start, seconds).unwrap();
+            assert_eq!(c.working_seconds_between(start, end), seconds, "{seconds}");
+        }
     }
 }

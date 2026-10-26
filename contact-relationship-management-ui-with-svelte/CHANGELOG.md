@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — SLA clock stopped marker (CRM-T121)
+
+The tickets page marks a ticket waiting for the customer "SLA clock stopped" (`ticket.paused`, 8 locales, machine drafts); one Playwright test.
+
 ### Added — converted forecast (CRM-T117)
 
 A "Show in" box on the deal board's forecast strip, with the converted total, the rates used and the totals left out; one Playwright test.

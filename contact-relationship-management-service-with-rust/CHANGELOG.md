@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — SLA clocks that stop while a ticket waits (CRM-T121, CRM-R55)
+
+Migration `000039` (`tickets.paused_at` and the two paused-seconds columns); `rules::sla` and `rules::calendar` gain the arithmetic; the status change, the priority change, the list, the sweep, the SLA dashboard and the support insights use it.
+
 ### Added — a sweep for money that skips masking (CRM-T120)
 
 `no_read_a_masked_caller_may_make_returns_the_seeded_amount` walks every `GET` path of the OpenAPI document as the service and as a masked reader.

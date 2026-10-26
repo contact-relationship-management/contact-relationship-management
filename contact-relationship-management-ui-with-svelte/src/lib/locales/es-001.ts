@@ -288,6 +288,7 @@ export default {
   "ticket.priority": "Prioridad",
   "ticket.due": "Respuesta antes de",
   "ticket.breached": "Incumplido",
+  "ticket.paused": "Reloj SLA detenido",
   "article.version": "Versión",
   "article.publish": "Publicar",
   "article.search": "Buscar artículos",

@@ -513,6 +513,7 @@ function build(): State {
     priority,
     status,
     first_response_due_at: iso(dueDays, 12),
+    paused_at: status === "pending" ? iso(dueDays, 12) : null,
     live_first_response_breached: first,
     live_resolution_breached: resolution,
   });
@@ -2490,6 +2491,9 @@ export function demoHandle(
     if (tail === "status" && post) {
       const reply = transition(state.tickets, id!, body, "ticket");
       const t = state.tickets.find((x) => x.pid === id);
+      // The SLA clock stops while a ticket waits for the customer (CRM-R55).
+      if (t)
+        t.paused_at = t.status === "pending" ? new Date().toISOString() : null;
       if (t && !open(t.status)) {
         t.live_first_response_breached = false;
         t.live_resolution_breached = false;

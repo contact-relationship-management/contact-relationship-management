@@ -70,6 +70,10 @@ pub(super) async fn sla_register(
         let entry = workload.entry(key).or_default();
         entry.0 += 1;
         let mut worst_overdue: Option<(&str, i64)> = None;
+        // A ticket waiting for the customer has a stopped clock, so it is not running toward a
+        // deadline (CRM-R55); one that was already late when paused stays late.
+        let paused = ticket.paused_at.map(|at| at.to_utc());
+        let now = paused.map_or(now, |at| at.min(now));
         for (which, due) in [
             ("first_response", ticket.first_response_due_at),
             ("resolution", ticket.resolution_due_at),
@@ -81,7 +85,7 @@ pub(super) async fn sla_register(
                 if worst_overdue.is_none_or(|(_, worst)| hours > worst) {
                     worst_overdue = Some((which, hours));
                 }
-            } else if due <= at_risk_horizon {
+            } else if paused.is_none() && due <= at_risk_horizon {
                 entry.2 += 1;
             }
         }

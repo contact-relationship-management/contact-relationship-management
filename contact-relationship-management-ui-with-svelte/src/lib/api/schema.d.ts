@@ -19017,16 +19017,31 @@ export interface components {
             first_response_breached: boolean;
             /** Format: date-time */
             first_response_due_at: string | null;
+            /**
+             * Format: int64
+             * @description Seconds of waiting that counted against the first-response deadline.
+             */
+            first_response_paused_seconds: number;
             /** Format: int32 */
             id: number;
             /** Format: date-time */
             opened_at: string;
+            /**
+             * Format: date-time
+             * @description When the ticket went `pending` (waiting for the customer); the SLA clock is stopped until it leaves `pending`.
+             */
+            paused_at: string | null;
             /** Format: uuid */
             pid: string;
             priority: string;
             resolution_breached: boolean;
             /** Format: date-time */
             resolution_due_at: string | null;
+            /**
+             * Format: int64
+             * @description Seconds of waiting that counted against the resolution deadline.
+             */
+            resolution_paused_seconds: number;
             /** Format: date-time */
             resolved_at: string | null;
             status: string;

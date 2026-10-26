@@ -32,6 +32,12 @@ pub struct Model {
     pub resolved_at: Option<DateTimeWithTimeZone>,
     pub first_response_breached: bool,
     pub resolution_breached: bool,
+    /// When the ticket went `pending` (waiting for the customer); the SLA clock is stopped until it leaves `pending`.
+    pub paused_at: Option<DateTimeWithTimeZone>,
+    /// Seconds of waiting that counted against the first-response deadline.
+    pub first_response_paused_seconds: i64,
+    /// Seconds of waiting that counted against the resolution deadline.
+    pub resolution_paused_seconds: i64,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

@@ -893,7 +893,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Deadlines** of a ticket opened under such a policy are counted in working time from the moment it opens: time outside the windows and the days on the holiday list do not count, and the deadline falls on the instant the target's working minutes have run out. A ticket opened outside working hours starts counting when work next starts. Windows are local to the zone, so they follow its clock changes (summer time). A target the calendar cannot place within about ten years of days falls back to round-the-clock, so a ticket never loses its deadline.
 - Deadlines are still **stored on the ticket** (CRM-R11), so breach flags, the sweep, dashboards and notifications are unchanged. They are derived when a ticket is opened and again on an audited priority change; replacing a calendar, or changing which one a policy uses, does **not** move the deadlines of tickets already open.
 - Audited as `business_calendar` (`created`, `updated`, `deleted`) and `sla_policy` `calendar_set`.
-- Not built: a screen for SLA policies and calendars (they are managed through the API); pausing the clock while a ticket waits for the customer; different calendars per account or per channel; re-deriving the deadlines of open tickets when a calendar changes; and showing the remaining time in working hours (the countdown is still to the stored deadline).
+- Not built: a screen for SLA policies and calendars (they are managed through the API); pausing the clock while a ticket waits for the customer (CRM-R55); different calendars per account or per channel; re-deriving the deadlines of open tickets when a calendar changes; and showing the remaining time in working hours (the countdown is still to the stored deadline).
 
 ## CRM-R46 — The screens fit a phone
 
@@ -997,3 +997,15 @@ recipient would get before anything is sent, and be certain every message carrie
 - A live read of the won deals now, valued at one date; it says nothing of what the money was worth when each deal closed.
 - No page shows CLV yet, so there is no UI.
 - Not built: the rate on each deal's close day; margin, discounting or churn (see the roadmap's CLV refinement).
+
+## CRM-R55 — SLA clocks that stop while a ticket waits for the customer
+
+*As a support lead, I want the clock to stop while we are waiting for the customer, so that a ticket is not breached for time we could do nothing with.*
+
+- A ticket moving to `pending` (waiting for the customer) **stops its SLA clock**: `paused_at` records the moment. While it is set, breach is judged at that moment, not at the present, so a deadline that falls while the ticket waits is **not** a breach (the ticket list, the sweep, the SLA dashboard and the support insights all read it so, and a paused ticket is not counted as at risk). A ticket that was already late when it was paused stays late.
+- Leaving `pending` (to `open` or `resolved`) **starts it again** and moves each deadline by the waiting that counted against it: in elapsed time on a policy without a calendar, in **working time** on a policy with one (CRM-R45), so a ticket paused on Friday evening and resumed on Monday morning gets back only the working time it waited.
+- The waiting counts **only up to the deadline** it counts against, and not at all for a metric already met (a first response given, a ticket resolved). So pausing after a deadline has passed does not undo the breach.
+- Each ticket keeps `first_response_paused_seconds` and `resolution_paused_seconds`. Deadlines are always the open time plus the target plus that waiting, so an audited **priority change** (which derives them again from the open time) keeps the waiting already counted. Waiting that is still in progress is counted when the ticket resumes.
+- Breach facts already stored (`first_response_breached`, `resolution_breached`) stay as they are: a breach is not cleared by pausing.
+- The tickets page marks a waiting ticket "SLA clock stopped" where it would otherwise show nothing.
+- Not built: pausing on other states or on a customer reply (a reply does not move a ticket out of `pending` by itself); a limit on how long a ticket may wait (a ticket left `pending` never breaches); showing the time the clock has been stopped; re-deriving the deadlines when a policy or a calendar changes.

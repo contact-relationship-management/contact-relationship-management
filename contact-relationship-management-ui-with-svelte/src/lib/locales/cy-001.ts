@@ -286,6 +286,7 @@ export default {
   "ticket.priority": "Blaenoriaeth",
   "ticket.due": "Ymateb erbyn",
   "ticket.breached": "Torrwyd",
+  "ticket.paused": "Cloc SLA wedi'i stopio",
   "article.version": "Fersiwn",
   "article.publish": "Cyhoeddi",
   "article.search": "Chwilio erthyglau",

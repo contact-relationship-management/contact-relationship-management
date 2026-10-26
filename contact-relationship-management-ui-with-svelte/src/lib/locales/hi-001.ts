@@ -283,6 +283,7 @@ export default {
   "ticket.priority": "प्राथमिकता",
   "ticket.due": "प्रतिक्रिया देय",
   "ticket.breached": "उल्लंघन",
+  "ticket.paused": "SLA घड़ी रुकी हुई",
   "article.version": "संस्करण",
   "article.publish": "प्रकाशित करें",
   "article.search": "लेख खोजें",

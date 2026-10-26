@@ -46,7 +46,7 @@
       due: x.first_response_due_at
         ? new Date(x.first_response_due_at).toLocaleString()
         : "",
-      breach: slaBreached(x) ? t("ticket.breached") : "",
+      breach: slaBreached(x) ? t("ticket.breached") : x.paused_at ? t("ticket.paused") : "",
     })),
   );
 

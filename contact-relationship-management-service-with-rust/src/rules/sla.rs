@@ -45,17 +45,75 @@ pub fn deadlines_on(
     targets: Targets,
     calendar: Option<&Calendar>,
 ) -> Deadlines {
-    let round_the_clock = deadlines(opened_at, targets);
-    let Some(calendar) = calendar else {
-        return round_the_clock;
+    deadlines_paused(opened_at, targets, calendar, Paused::default())
+}
+
+/// Time a ticket spent waiting for the customer that counted against each deadline, in seconds
+/// (in working time on a calendar, in elapsed time without one).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Paused {
+    /// Counted against the first-response deadline.
+    pub first_response_seconds: i64,
+    /// Counted against the resolution deadline.
+    pub resolution_seconds: i64,
+}
+
+/// Like [`deadlines_on`], with the time spent waiting for the customer added to each target, so a
+/// deadline can always be derived again from the open time (CRM-R55).
+#[must_use]
+pub fn deadlines_paused(
+    opened_at: DateTime<FixedOffset>,
+    targets: Targets,
+    calendar: Option<&Calendar>,
+    paused: Paused,
+) -> Deadlines {
+    let place = |minutes: i32, extra: i64| {
+        let seconds = i64::from(minutes) * 60 + extra.max(0);
+        let round_the_clock = opened_at + Duration::seconds(seconds);
+        calendar
+            .and_then(|c| c.add_working_seconds(opened_at, seconds))
+            .unwrap_or(round_the_clock)
     };
     Deadlines {
-        first_response_due_at: calendar
-            .add_working_minutes(opened_at, i64::from(targets.first_response_minutes))
-            .unwrap_or(round_the_clock.first_response_due_at),
-        resolution_due_at: calendar
-            .add_working_minutes(opened_at, i64::from(targets.resolution_minutes))
-            .unwrap_or(round_the_clock.resolution_due_at),
+        first_response_due_at: place(
+            targets.first_response_minutes,
+            paused.first_response_seconds,
+        ),
+        resolution_due_at: place(targets.resolution_minutes, paused.resolution_seconds),
+    }
+}
+
+/// The moment the SLA clock reads: `now`, or the moment the ticket was paused while it waits for
+/// the customer (the clock is stopped, so a paused ticket does not run into a deadline).
+#[must_use]
+pub fn clock_now(
+    now: DateTime<FixedOffset>,
+    paused_at: Option<DateTime<FixedOffset>>,
+) -> DateTime<FixedOffset> {
+    paused_at.map_or(now, |paused| paused.min(now))
+}
+
+/// How much of a pause from `paused_at` to `resumed_at` counts against one deadline: none when the
+/// metric is already met or has no deadline, and a pause only counts up to the deadline, so waiting
+/// after a breach never undoes it. Working time on a calendar, elapsed time without one.
+#[must_use]
+pub fn pause_counted(
+    calendar: Option<&Calendar>,
+    paused_at: DateTime<FixedOffset>,
+    resumed_at: DateTime<FixedOffset>,
+    due: Option<DateTime<FixedOffset>>,
+    met: bool,
+) -> i64 {
+    let Some(due) = due.filter(|_| !met) else {
+        return 0;
+    };
+    let end = resumed_at.min(due);
+    if end <= paused_at {
+        return 0;
+    }
+    match calendar {
+        Some(calendar) => calendar.working_seconds_between(paused_at, end),
+        None => (end - paused_at).num_seconds(),
     }
 }
 
@@ -159,5 +217,94 @@ mod tests {
         // Resolution mirrors it.
         assert!(resolution_breached(at(23, 0), due, None));
         assert!(!resolution_breached(at(23, 0), due, Some(at(9, 0))));
+    }
+
+    fn office() -> Calendar {
+        use crate::rules::calendar::{Hours, Week};
+        let day = vec![Hours {
+            start: "09:00".into(),
+            end: "17:00".into(),
+        }];
+        let week = Week {
+            mon: day.clone(),
+            tue: day,
+            ..Week::default()
+        };
+        Calendar::build("UTC", &week, &[]).unwrap()
+    }
+
+    /// A paused ticket's clock reads the moment it was paused.
+    #[test]
+    fn a_paused_clock_stands_still() {
+        assert_eq!(clock_now(at(12, 0), None), at(12, 0));
+        assert_eq!(clock_now(at(12, 0), Some(at(10, 0))), at(10, 0));
+        assert_eq!(clock_now(at(12, 0), Some(at(13, 0))), at(12, 0));
+        // So a deadline that falls while it waits is not a breach.
+        let due = at(11, 0);
+        let clock = clock_now(at(15, 0), Some(at(10, 0)));
+        assert!(!resolution_breached(clock, due, None));
+    }
+
+    /// Waiting counts only until the deadline, and not at all once the metric is met.
+    #[test]
+    fn a_pause_counts_up_to_the_deadline_only() {
+        let due = Some(at(11, 0));
+        // Paused 09:00 to 09:30, deadline 11:00: the whole half hour.
+        assert_eq!(pause_counted(None, at(9, 0), at(9, 30), due, false), 1800);
+        // Paused 10:30 to 13:00: only the half hour before the deadline.
+        assert_eq!(pause_counted(None, at(10, 30), at(13, 0), due, false), 1800);
+        // Paused after the deadline (already breached): nothing, so it is not undone.
+        assert_eq!(pause_counted(None, at(11, 30), at(13, 0), due, false), 0);
+        // Metric met, or no deadline: nothing.
+        assert_eq!(pause_counted(None, at(9, 0), at(9, 30), due, true), 0);
+        assert_eq!(pause_counted(None, at(9, 0), at(9, 30), None, false), 0);
+    }
+
+    /// On a calendar only working time spent waiting counts.
+    #[test]
+    fn on_a_calendar_only_working_time_spent_waiting_counts() {
+        let calendar = office();
+        // Paused Monday 16:00, resumed Tuesday 10:00; the deadline is far off. One hour on Monday
+        // and one on Tuesday: two working hours, not eighteen elapsed ones.
+        let due = Some(at(9, 0) + Duration::days(7));
+        let resumed = at(10, 0) + Duration::days(1);
+        assert_eq!(
+            pause_counted(Some(&calendar), at(16, 0), resumed, due, false),
+            2 * 3600
+        );
+    }
+
+    /// Deriving again with the waiting added moves the deadline by exactly the waiting, and a
+    /// priority change that re-derives keeps it.
+    #[test]
+    fn a_deadline_moves_by_the_time_spent_waiting() {
+        let targets = Targets {
+            first_response_minutes: 60,
+            resolution_minutes: 240,
+        };
+        let waited = Paused {
+            first_response_seconds: 1800,
+            resolution_seconds: 3600,
+        };
+        let d = deadlines_paused(at(9, 0), targets, None, waited);
+        assert_eq!(d.first_response_due_at, at(10, 30));
+        assert_eq!(d.resolution_due_at, at(14, 0));
+        assert_eq!(
+            deadlines_paused(at(9, 0), targets, None, Paused::default()),
+            deadlines(at(9, 0), targets)
+        );
+        // On a calendar the extra is working time too: opened Monday 16:00 with a 60 minute target
+        // and 60 minutes waited is two working hours, which runs into Tuesday.
+        let calendar = office();
+        let d = deadlines_paused(
+            at(16, 0),
+            targets,
+            Some(&calendar),
+            Paused {
+                first_response_seconds: 3600,
+                resolution_seconds: 0,
+            },
+        );
+        assert_eq!(d.first_response_due_at, at(10, 0) + Duration::days(1));
     }
 }
