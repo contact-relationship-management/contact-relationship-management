@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — opens and clicks as attribution touches (CRM-T124, CRM-R58)
+
+Mail-provider open and click events are recorded once per message, only while the person still consents (the service never turns tracking on), and `GET /api/attribution?touches=sent,opened,clicked` can count them as touches.
+
 ### Added — a public help centre and a deflection report (CRM-T123, CRM-R57)
 
 Published knowledge-base articles open to anyone under `/kb/` (off until `CRM_PUBLIC_KB` is set, rate limited, plain text, counted without identifying anyone), the `/help` pages, and `GET /api/insights/kb-deflection` with a Public help centre panel on the Articles page.

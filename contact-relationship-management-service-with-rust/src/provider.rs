@@ -532,13 +532,13 @@ pub fn interpret_mailjet(status: u16, body: &str) -> Result<(), SendError> {
     Err(classify(status, &detail))
 }
 
-/// One outcome read from a webhook, in the generic vocabulary
-/// (`delivered`, `bounce_hard`, `bounce_soft`, `complaint`).
+/// One outcome read from a webhook, in the generic vocabulary (`delivered`, `bounce_hard`,
+/// `bounce_soft`, `complaint`, and the engagement events `opened` and `clicked`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Outcome {
     /// Our `Message-ID`, with angle brackets.
     pub message_id: String,
-    /// `delivered`, `bounce_hard`, `bounce_soft` or `complaint`.
+    /// `delivered`, `bounce_hard`, `bounce_soft`, `complaint`, `opened` or `clicked`.
     pub event: &'static str,
 }
 
@@ -548,8 +548,8 @@ fn text<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
 
 /// Brevo transactional events. `delivered`, `soft_bounce`, `hard_bounce` and
 /// `spam` map across; `invalid_email` and `blocked` count as hard bounces
-/// (the address cannot be mailed); `request`, `opened`, `click`, `deferred`,
-/// `unsubscribed` and the rest are ignored.
+/// (the address cannot be mailed); `opened` and `click` are engagement (CRM-R58); `request`,
+/// `deferred`, `unsubscribed` and the rest are ignored.
 #[must_use]
 pub fn brevo_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
     let value: Value = serde_json::from_slice(body).ok()?;
@@ -564,6 +564,8 @@ pub fn brevo_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
             "soft_bounce" => "bounce_soft",
             "hard_bounce" | "invalid_email" | "blocked" => "bounce_hard",
             "spam" => "complaint",
+            "opened" => "opened",
+            "click" => "clicked",
             _ => continue,
         };
         // Our id travels as a tag; the vendor's own `message-id` is the
@@ -588,7 +590,7 @@ pub fn brevo_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
 /// for accepted by the recipient's server) counts as delivered; `bounce`
 /// splits on `hard_bounce`; `blocked` (Mailjet did not send) is a soft
 /// bounce, so it is recorded without suppressing the mailbox; `spam` is a
-/// complaint. `open`, `click` and `unsub` are ignored.
+/// complaint. `open` and `click` are engagement (CRM-R58); `unsub` is ignored.
 #[must_use]
 pub fn mailjet_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
     let value: Value = serde_json::from_slice(body).ok()?;
@@ -613,6 +615,8 @@ pub fn mailjet_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
             }
             "blocked" => "bounce_soft",
             "spam" => "complaint",
+            "open" => "opened",
+            "click" => "clicked",
             _ => continue,
         };
         if let Some(id) = text(item, "CustomID").filter(|c| !c.is_empty()) {
@@ -778,7 +782,10 @@ mod tests {
         assert_eq!(one("soft_bounce")[0].event, "bounce_soft");
         assert_eq!(one("spam")[0].event, "complaint");
         assert_eq!(one("invalid_email")[0].event, "bounce_hard");
-        assert!(one("opened").is_empty());
+        assert_eq!(one("opened")[0].event, "opened");
+        assert_eq!(one("click")[0].event, "clicked");
+        // What is not engagement or an outcome is left out.
+        assert!(one("request").is_empty());
         assert!(brevo_outcomes(b"nope").is_none());
     }
 
@@ -798,12 +805,21 @@ mod tests {
         let batch = json!([hard, soft, {"event": "sent", "CustomID": "abc@example.test"},
             {"event": "spam", "CustomID": "abc@example.test"},
             {"event": "open", "CustomID": "abc@example.test"},
+            {"event": "click", "CustomID": "abc@example.test"},
+            {"event": "unsub", "CustomID": "abc@example.test"},
             {"event": "sent", "CustomID": ""}]);
         let got = mailjet_outcomes(batch.to_string().as_bytes()).unwrap();
         let events: Vec<_> = got.iter().map(|o| o.event).collect();
         assert_eq!(
             events,
-            ["bounce_hard", "bounce_soft", "delivered", "complaint"]
+            [
+                "bounce_hard",
+                "bounce_soft",
+                "delivered",
+                "complaint",
+                "opened",
+                "clicked"
+            ]
         );
         assert_eq!(got[0].message_id, "<abc@example.test>");
         let single = mailjet_outcomes(hard.to_string().as_bytes()).unwrap();

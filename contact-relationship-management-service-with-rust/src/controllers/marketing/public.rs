@@ -134,9 +134,19 @@ pub(super) async fn unsubscribe_post(
 pub(super) struct EmailEvent {
     /// The `Message-ID` we assigned (with angle brackets).
     message_id: String,
-    /// `delivered`, `bounce_hard`, `bounce_soft` or `complaint`.
+    /// `delivered`, `bounce_hard`, `bounce_soft`, `complaint`, `opened` or `clicked`.
     event: String,
 }
+
+/// The events a provider may report.
+const EVENTS: [&str; 6] = [
+    "delivered",
+    "bounce_hard",
+    "bounce_soft",
+    "complaint",
+    "opened",
+    "clicked",
+];
 
 /// `POST /webhooks/email` — an outcome from the mail provider. Authenticated by
 /// an HMAC signature, not a bearer token (see [`crate::webhook`]). A hard
@@ -174,7 +184,7 @@ pub(super) async fn email_webhook(
     let Ok(event) = serde_json::from_slice::<EmailEvent>(&body) else {
         return Ok(StatusCode::BAD_REQUEST.into_response());
     };
-    if !["delivered", "bounce_hard", "bounce_soft", "complaint"].contains(&event.event.as_str()) {
+    if !EVENTS.contains(&event.event.as_str()) {
         return Ok(StatusCode::BAD_REQUEST.into_response());
     }
     let txn = ctx.db.begin().await?;
@@ -183,12 +193,50 @@ pub(super) async fn email_webhook(
     format::json(serde_json::json!({ "result": result }))
 }
 
+/// Whether an open or click on this message may be recorded: the contact's consent for the
+/// campaign's purpose is still `granted`, and their mailbox is not suppressed. A message that is not
+/// ours is let through so the caller reports it as unknown.
+async fn engagement_allowed(txn: &sea_orm::DatabaseTransaction, message_id: &str) -> Result<bool> {
+    use sea_orm::ConnectionTrait;
+    let Some((contact_pid, campaign_pid)) = deliveries::find_message(txn, message_id).await? else {
+        return Ok(true);
+    };
+    let Some(contact) = contacts::Entity::find()
+        .filter(contacts::Column::Pid.eq(contact_pid))
+        .filter(contacts::Column::DeletedAt.is_null())
+        .one(txn)
+        .await?
+    else {
+        return Ok(false);
+    };
+    let purpose = txn
+        .query_one_raw(sea_orm::Statement::from_sql_and_values(
+            sea_orm::DatabaseBackend::Postgres,
+            "SELECT purpose FROM campaigns WHERE pid = $1",
+            [campaign_pid.into()],
+        ))
+        .await?
+        .map_or_else(
+            || Ok(crate::rules::tokens::DEFAULT_PURPOSE.to_string()),
+            |row| row.try_get::<String>("", "purpose"),
+        )?;
+    Ok(
+        crate::consents::state_of(txn, &contact, &purpose).await? == "granted"
+            && deliveries::suppression(txn, contact_pid).await?.is_none(),
+    )
+}
+
 /// Apply one provider outcome inside `txn`; returns what happened.
 pub(super) async fn apply_event(
     txn: &sea_orm::DatabaseTransaction,
     message_id: &str,
     event_name: &str,
 ) -> Result<&'static str> {
+    // Engagement is recorded only while the contact still consents to what the campaign was sent
+    // for: a person who has withdrawn is not profiled by what they open or click (CRM-R58).
+    if matches!(event_name, "opened" | "clicked") && !engagement_allowed(txn, message_id).await? {
+        return Ok("ignored");
+    }
     let effect = deliveries::record_event(txn, message_id, event_name).await?;
     Ok(match effect {
         deliveries::EventEffect::UnknownMessage => "unknown_message",
@@ -199,6 +247,9 @@ pub(super) async fn apply_event(
         } => {
             match event_name {
                 "delivered" => deliveries::count_delivered(txn, campaign_pid).await?,
+                "opened" | "clicked" => {
+                    deliveries::count_engagement(txn, campaign_pid, event_name).await?;
+                }
                 "bounce_hard" | "complaint" => {
                     deliveries::suppress(txn, contact_pid, event_name).await?;
                     Audit::record(

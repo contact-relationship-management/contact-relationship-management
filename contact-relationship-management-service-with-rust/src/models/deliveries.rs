@@ -323,6 +323,59 @@ pub async fn suppress<C: ConnectionTrait>(db: &C, contact_pid: Uuid, reason: &st
     Ok(())
 }
 
+/// The contact and the campaign (or nurture step) a message was sent for, by our message id or the
+/// provider's.
+///
+/// # Errors
+///
+/// When the statement fails.
+pub async fn find_message<C: ConnectionTrait>(
+    db: &C,
+    message_id: &str,
+) -> Result<Option<(Uuid, Uuid)>> {
+    let found = db
+        .query_one_raw(Statement::from_sql_and_values(
+            DatabaseBackend::Postgres,
+            "SELECT contact_pid, campaign_pid FROM email_deliveries \
+             WHERE message_id = $1 OR provider_id = $1 LIMIT 1",
+            [message_id.into()],
+        ))
+        .await?;
+    found
+        .map(|row| {
+            Ok((
+                row.try_get("", "contact_pid")?,
+                row.try_get("", "campaign_pid")?,
+            ))
+        })
+        .transpose()
+}
+
+/// Count one first open or click on the campaign (a nurture step has no counter, so nothing
+/// changes for one).
+///
+/// # Errors
+///
+/// When the statement fails.
+pub async fn count_engagement<C: ConnectionTrait>(
+    db: &C,
+    campaign_pid: Uuid,
+    event: &str,
+) -> Result<()> {
+    let column = if event == "opened" {
+        "opened"
+    } else {
+        "clicked"
+    };
+    db.execute_raw(Statement::from_sql_and_values(
+        DatabaseBackend::Postgres,
+        format!("UPDATE campaigns SET {column} = {column} + 1 WHERE pid = $1"),
+        [campaign_pid.into()],
+    ))
+    .await?;
+    Ok(())
+}
+
 /// Count one confirmed delivery on the campaign.
 ///
 /// # Errors

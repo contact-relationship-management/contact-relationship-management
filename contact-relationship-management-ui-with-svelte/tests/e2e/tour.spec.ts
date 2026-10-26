@@ -1224,6 +1224,36 @@ test.describe("export, undo and search", () => {
     );
   });
 
+  test("opens and clicks a mail provider reported can be chosen as touches", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/attribution");
+    // Clicks alone: only the £88,000 deal has one, so its campaign takes it all and the rest is
+    // unattributed (the £52,000 deal and the £27,500 one nobody touched).
+    await page.getByTestId("attribution-touch-sent").uncheck();
+    await page.getByTestId("attribution-touch-clicked").check();
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row")).toHaveCount(1);
+    await expect(page.getByTestId("attribution-row")).toContainText(
+      "£88,000.00",
+    );
+    await expect(page.getByTestId("attribution-unattributed")).toContainText(
+      "£79,500.00",
+    );
+    // Opens alone: the £52,000 deal's newer campaign opened its e-mail.
+    await page.getByTestId("attribution-touch-clicked").uncheck();
+    await page.getByTestId("attribution-touch-opened").check();
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row")).toHaveCount(1);
+    await expect(page.getByTestId("attribution-row")).toContainText(
+      "£52,000.00",
+    );
+    // With no kind chosen there is nothing to ask for.
+    await page.getByTestId("attribution-touch-opened").uncheck();
+    await expect(page.getByTestId("attribution-run")).toBeDisabled();
+  });
+
   test("time decay favours the recent touch and position splits the ends evenly", async ({
     page,
   }) => {

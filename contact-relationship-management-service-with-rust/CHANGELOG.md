@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — opens and clicks as attribution touches (CRM-T124, CRM-R58)
+
+Migration `000041` (`email_events` accepts `opened` and `clicked`); the Brevo, Mailjet, Mailgun, `SendGrid` and SES parsers and `POST /webhooks/email` read them; `apply_event` records them only while consent for the campaign's purpose is granted; `GET /api/attribution` takes `touches` and names it in the answer.
+
 ### Added — a public help centre and a deflection report (CRM-T123, CRM-R57)
 
 `CRM_PUBLIC_KB` and `CRM_PUBLIC_KB_CLIENT_LIMIT`; `GET /kb/articles`, `GET /kb/articles/{pid}`, `POST /kb/articles/{pid}/feedback` (public paths, `404` while off); migration `000040` (`kb_daily`, counts only); `GET /api/insights/kb-deflection`.

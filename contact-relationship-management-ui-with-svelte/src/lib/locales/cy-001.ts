@@ -652,6 +652,12 @@ export default {
   "attr.model.timeDecay":
     "Pylu amser (mae cyffyrddiadau diweddar yn ennill mwy)",
   "attr.model.position": "Safle (40% y cyntaf, 40% yr olaf, 20% rhyngddynt)",
+  "attr.emailTouches": "Cyffyrddiadau e-bost",
+  "attr.touch.sent": "Anfonwyd",
+  "attr.touch.opened": "Agorwyd",
+  "attr.touch.clicked": "Clicio",
+  "attr.touchesHint":
+    "Agoriadau a chlicio yw'r hyn y mae'r darparwr post yn ei adrodd, ac dim ond ar gyfer pobl sy'n dal i gydsynio. Mae rhaglenni post sy'n llwytho delweddau ymlaen llaw, a sganwyr dolenni, yn peri iddynt gael eu gorgyfrif.",
   "attr.window": "Ffenestr (dyddiau cyn i'r fargen gau)",
   "attr.from": "Caewyd o",
   "attr.to": "Caewyd tan",

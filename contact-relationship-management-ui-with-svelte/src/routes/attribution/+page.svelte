@@ -13,6 +13,20 @@
   let from = $state("");
   let to = $state("");
   let convertTo = $state("");
+  let sent = $state(true);
+  let opened = $state(false);
+  let clicked = $state(false);
+  const kinds = $derived(
+    (
+      [
+        [sent, "sent"],
+        [opened, "opened"],
+        [clicked, "clicked"],
+      ] as const
+    )
+      .filter(([on]) => on)
+      .map(([, name]) => name),
+  );
   let rateDate = $state("");
   let result = $state<Attribution | null>(null);
   let error = $state<string | null>(null);
@@ -25,6 +39,7 @@
         windowDays,
         from,
         to,
+        touches: kinds,
         convertTo: convertTo.trim().toUpperCase(),
         rateDate,
       });
@@ -92,7 +107,25 @@
       <input type="date" bind:value={rateDate} data-testid="attribution-rate-date" />
     </label>
   {/if}
-  <button type="submit" data-testid="attribution-run">{t("attr.run")}</button>
+  <fieldset class="touches">
+    <legend>{t("attr.emailTouches")}</legend>
+    <label
+      ><input type="checkbox" bind:checked={sent} data-testid="attribution-touch-sent" />
+      {t("attr.touch.sent")}</label
+    >
+    <label
+      ><input type="checkbox" bind:checked={opened} data-testid="attribution-touch-opened" />
+      {t("attr.touch.opened")}</label
+    >
+    <label
+      ><input type="checkbox" bind:checked={clicked} data-testid="attribution-touch-clicked" />
+      {t("attr.touch.clicked")}</label
+    >
+  </fieldset>
+  <p class="muted small">{t("attr.touchesHint")}</p>
+  <button type="submit" data-testid="attribution-run" disabled={kinds.length === 0}>
+    {t("attr.run")}
+  </button>
 </form>
 
 {#if error}<p class="error" role="alert" data-testid="attribution-error">{error}</p>{/if}

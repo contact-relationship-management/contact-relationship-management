@@ -661,6 +661,12 @@ export default {
   "attr.model.timeDecay": "Zeitverfall (jüngere Kontakte erhalten mehr)",
   "attr.model.position":
     "Position (40 % erster, 40 % letzter, 20 % dazwischen)",
+  "attr.emailTouches": "E-Mail-Kontakte",
+  "attr.touch.sent": "Gesendet",
+  "attr.touch.opened": "Geöffnet",
+  "attr.touch.clicked": "Angeklickt",
+  "attr.touchesHint":
+    "Öffnungen und Klicks sind das, was der Mailanbieter meldet, und nur für Personen, die weiterhin zustimmen. Mailprogramme, die Bilder vorab laden, und Link-Scanner lassen sie zu hoch ausfallen.",
   "attr.window": "Zeitfenster (Tage vor Abschluss)",
   "attr.from": "Abgeschlossen ab",
   "attr.to": "Abgeschlossen bis",

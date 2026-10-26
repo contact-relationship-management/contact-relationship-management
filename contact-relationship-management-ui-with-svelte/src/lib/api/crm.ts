@@ -1706,6 +1706,8 @@ export interface AttributionCampaign {
 export interface Attribution {
   model: string;
   window_days: number;
+  /** The e-mail touches counted: sent, opened, clicked (CRM-R58). */
+  touches: string[];
   as_of: string;
   deals: number;
   unattributed_deals: number;
@@ -1729,6 +1731,8 @@ export function attribution(
     to?: string;
     convertTo?: string;
     rateDate?: string;
+    /** Which e-mail touches count; the service's default is `sent` alone. */
+    touches?: ("sent" | "opened" | "clicked")[];
   },
   init?: FetchLike,
 ): Promise<Attribution> {
@@ -1736,6 +1740,7 @@ export function attribution(
     model: params.model,
     window_days: String(params.windowDays),
   });
+  if (params.touches?.length) query.set("touches", params.touches.join(","));
   if (params.from) query.set("from", params.from);
   if (params.to) query.set("to", params.to);
   if (params.convertTo) {

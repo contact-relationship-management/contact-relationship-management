@@ -2996,12 +2996,22 @@ function fxRates(method: string, id: string | undefined, body: unknown) {
  * The campaigns that touched each won deal's buyer in the tour, as days before the deal closed.
  * (The service reads these from the e-mails it sent and the leads campaigns brought in.)
  */
-const TOUCHED: Record<string, { campaign: string; daysBefore: number }[]> = {
+type Touched = {
+  campaign: string;
+  daysBefore: number;
+  kind: "sent" | "opened" | "clicked";
+};
+const TOUCHED: Record<string, Touched[]> = {
   "deal-9": [
-    { campaign: "camp-1", daysBefore: 40 },
-    { campaign: "camp-2", daysBefore: 9 },
+    { campaign: "camp-1", daysBefore: 40, kind: "sent" },
+    { campaign: "camp-2", daysBefore: 9, kind: "sent" },
+    // What the mail provider reported (CRM-R58): the newer campaign's e-mail was opened.
+    { campaign: "camp-2", daysBefore: 8, kind: "opened" },
   ],
-  "deal-10": [{ campaign: "camp-1", daysBefore: 20 }],
+  "deal-10": [
+    { campaign: "camp-1", daysBefore: 20, kind: "sent" },
+    { campaign: "camp-2", daysBefore: 5, kind: "clicked" },
+  ],
 };
 
 /** Share `amount` among `weights` in proportion, exactly: floors, then the leftover units to the
@@ -3180,6 +3190,11 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
     return problem(422, "the window is 1 to 365 days");
   const from = query.get("from");
   const to = query.get("to");
+  const kinds = (query.get("touches") ?? "sent")
+    .split(",")
+    .map((k) => k.trim());
+  if (kinds.some((k) => !["sent", "opened", "clicked"].includes(k)))
+    return problem(422, "touches is a list of sent, opened, clicked");
   const convertTo = query.get("convert_to");
   const rateDate = query.get("rate_date");
   if (!convertTo && rateDate) return problem(422, "rate_date needs convert_to");
@@ -3196,7 +3211,7 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
   for (const deal of won) {
     const amount = Number(deal.amount_minor ?? 0);
     const touches = (TOUCHED[deal.pid] ?? []).filter(
-      (t) => t.daysBefore <= windowDays,
+      (t) => t.daysBefore <= windowDays && kinds.includes(t.kind),
     );
     if (touches.length === 0) {
       unattributedDeals += 1;
@@ -3247,6 +3262,7 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
   return ok({
     model,
     window_days: windowDays,
+    touches: ["sent", "opened", "clicked"].filter((k) => kinds.includes(k)),
     as_of: new Date().toISOString(),
     deals: won.length,
     unattributed_deals: unattributedDeals,

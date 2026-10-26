@@ -623,6 +623,12 @@ export default {
   "attr.model.linear": "线性（均分）",
   "attr.model.timeDecay": "时间衰减（越近的触点贡献越多）",
   "attr.model.position": "位置（首次 40%，末次 40%，中间 20%）",
+  "attr.emailTouches": "邮件触点",
+  "attr.touch.sent": "已发送",
+  "attr.touch.opened": "已打开",
+  "attr.touch.clicked": "已点击",
+  "attr.touchesHint":
+    "打开和点击是邮件服务商报告的数据，且仅限仍表示同意的人。提前加载图片的邮件程序和链接扫描器会使其被高估。",
   "attr.window": "时间窗口（成交前的天数）",
   "attr.from": "成交起始日",
   "attr.to": "成交截止日",

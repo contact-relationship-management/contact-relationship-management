@@ -268,6 +268,8 @@ fn ses_event(event: &Value) -> Vec<Outcome> {
     let outcome = match kind {
         "Delivery" => "delivered",
         "Complaint" => "complaint",
+        "Open" => "opened",
+        "Click" => "clicked",
         "Bounce" => {
             if event.pointer("/bounce/bounceType").and_then(Value::as_str) == Some("Permanent") {
                 "bounce_hard"
@@ -595,7 +597,19 @@ mod tests {
         );
         let open =
             json!({ "eventType": "Open", "mail": { "tags": { "crm_message_id": ["x_at_y"] } } });
-        assert!(outcomes(ses_inbound(open.to_string().as_bytes())).is_empty());
+        assert_eq!(
+            outcomes(ses_inbound(open.to_string().as_bytes()))[0].event,
+            "opened"
+        );
+        let click =
+            json!({ "eventType": "Click", "mail": { "tags": { "crm_message_id": ["x_at_y"] } } });
+        assert_eq!(
+            outcomes(ses_inbound(click.to_string().as_bytes()))[0].event,
+            "clicked"
+        );
+        let send =
+            json!({ "eventType": "Send", "mail": { "tags": { "crm_message_id": ["x_at_y"] } } });
+        assert!(outcomes(ses_inbound(send.to_string().as_bytes())).is_empty());
     }
 
     #[test]

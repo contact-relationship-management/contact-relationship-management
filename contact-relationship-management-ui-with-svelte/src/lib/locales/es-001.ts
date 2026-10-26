@@ -654,6 +654,12 @@ export default {
     "Decaimiento temporal (los contactos recientes ganan más)",
   "attr.model.position":
     "Posición (40 % el primero, 40 % el último, 20 % entre medias)",
+  "attr.emailTouches": "Contactos por correo",
+  "attr.touch.sent": "Enviado",
+  "attr.touch.opened": "Abierto",
+  "attr.touch.clicked": "Clic",
+  "attr.touchesHint":
+    "Las aperturas y los clics son lo que informa el proveedor de correo, y solo de personas que siguen consintiendo. Los programas de correo que cargan imágenes por adelantado y los escáneres de enlaces hacen que se cuenten de más.",
   "attr.window": "Ventana (días antes del cierre)",
   "attr.from": "Cerrado desde",
   "attr.to": "Cerrado hasta",

@@ -111,8 +111,8 @@ pub fn mailgun_signing_key() -> Option<String> {
 }
 
 /// Mailgun events: `delivered`; `failed` split on `severity` (`permanent` is
-/// a hard bounce, anything else soft); `complained`. Opens, clicks and
-/// unsubscribes are ignored.
+/// a hard bounce, anything else soft); `complained`; `opened` and `clicked` are engagement
+/// (CRM-R58). Unsubscribes are ignored.
 #[must_use]
 pub fn mailgun_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
     let value: Value = serde_json::from_slice(body).ok()?;
@@ -127,6 +127,8 @@ pub fn mailgun_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
             }
         }
         "complained" => "complaint",
+        "opened" => "opened",
+        "clicked" => "clicked",
         _ => return Some(Vec::new()),
     };
     let tag = data
@@ -199,7 +201,8 @@ pub fn interpret_sendgrid(status: u16, body: &str) -> Result<Option<String>, Sen
 /// `SendGrid` Event Webhook events (an array). `delivered`; `bounce` (type
 /// `bounce` is hard, `blocked` is soft); `dropped` (`SendGrid` refused to send:
 /// an invalid, previously bounced, complained or unsubscribed address) is hard;
-/// `spamreport` is a complaint. The rest are ignored.
+/// `spamreport` is a complaint; `open` and `click` are engagement (CRM-R58). The rest are
+/// ignored.
 #[must_use]
 pub fn sendgrid_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
     let value: Value = serde_json::from_slice(body).ok()?;
@@ -220,6 +223,8 @@ pub fn sendgrid_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
             }
             "dropped" => "bounce_hard",
             "spamreport" => "complaint",
+            "open" => "opened",
+            "click" => "clicked",
             _ => continue,
         };
         if let Some(tag) = item
@@ -352,7 +357,9 @@ mod tests {
         assert_eq!(one("failed", "permanent")[0].event, "bounce_hard");
         assert_eq!(one("failed", "temporary")[0].event, "bounce_soft");
         assert_eq!(one("complained", "")[0].event, "complaint");
-        assert!(one("opened", "").is_empty());
+        assert_eq!(one("opened", "")[0].event, "opened");
+        assert_eq!(one("clicked", "")[0].event, "clicked");
+        assert!(one("unsubscribed", "").is_empty());
         let unmatched = json!({ "event-data": { "event": "delivered" } }).to_string();
         assert!(mailgun_outcomes(unmatched.as_bytes()).unwrap().is_empty());
     }
@@ -393,6 +400,8 @@ mod tests {
             { "event": "dropped", "crm_message_id": "abc@example.test" },
             { "event": "spamreport", "crm_message_id": "abc@example.test" },
             { "event": "open", "crm_message_id": "abc@example.test" },
+            { "event": "click", "crm_message_id": "abc@example.test" },
+            { "event": "processed", "crm_message_id": "abc@example.test" },
             { "event": "delivered" }
         ]);
         let got = sendgrid_outcomes(batch.to_string().as_bytes()).unwrap();
@@ -404,7 +413,9 @@ mod tests {
                 "bounce_hard",
                 "bounce_soft",
                 "bounce_hard",
-                "complaint"
+                "complaint",
+                "opened",
+                "clicked"
             ]
         );
         assert!(sendgrid_outcomes(b"nope").is_none());

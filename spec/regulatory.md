@@ -15,6 +15,14 @@
 - **Access control** — ABAC personas + amount/channel masking;
   the `CRM_REQUIRE_AUTH` activation gate must be on before real
   exposure.
+- **No tracking switched on by the CRM** — the service never asks a mail
+  provider to track opens or clicks (the SendGrid request turns both off
+  so links stay as written). If an operator turns tracking on at the
+  provider, the service records an open or a click only while the
+  contact's consent for the campaign's purpose is `granted` and the
+  mailbox is not suppressed (CRM-R58). A tracking pixel is a PECR/GDPR
+  matter of its own (lawful basis, disclosure in the privacy notice) and
+  is the operator's to settle before turning it on.
 - **Auditability** — mutations + consent history + sensitive reads.
 - **Synthetic data only** in seeds and tests.
 

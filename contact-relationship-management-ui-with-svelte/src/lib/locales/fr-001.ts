@@ -659,6 +659,12 @@ export default {
     "Décroissance temporelle (les contacts récents comptent plus)",
   "attr.model.position":
     "Position (40 % le premier, 40 % le dernier, 20 % entre les deux)",
+  "attr.emailTouches": "Contacts par e-mail",
+  "attr.touch.sent": "Envoyé",
+  "attr.touch.opened": "Ouvert",
+  "attr.touch.clicked": "Cliqué",
+  "attr.touchesHint":
+    "Les ouvertures et les clics sont ce que signale le fournisseur de messagerie, et seulement pour les personnes qui consentent encore. Les logiciels qui chargent les images à l'avance et les analyseurs de liens les font surcompter.",
   "attr.window": "Fenêtre (jours avant la clôture)",
   "attr.from": "Clôturées depuis",
   "attr.to": "Clôturées jusqu'à",

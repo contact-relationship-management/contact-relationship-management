@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — opens and clicks as attribution touches (CRM-T124)
+
+Sent, opened and clicked checkboxes on `/attribution` (5 keys in 8 locales, machine drafts); the tour's provider-reported open and click; one Playwright test.
+
 ### Added — a public help centre (CRM-T123)
 
 `/help` and `/help/{pid}`, open to a signed-out visitor; a Public help centre panel on `/articles`; 19 keys in 8 locales (machine drafts); the tour's help centre; two tests.

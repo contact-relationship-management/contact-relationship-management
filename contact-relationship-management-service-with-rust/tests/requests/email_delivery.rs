@@ -15,7 +15,7 @@ use serde_json::{Value, json};
 use serial_test::serial;
 use uuid::Uuid;
 
-use super::seed_contact;
+use super::{seed_contact, seed_pipeline};
 
 const SECRET: &str = "0123456789abcdef0123456789abcdef";
 
@@ -589,7 +589,8 @@ async fn brevo_and_mailjet_callbacks_are_authenticated_and_applied() {
             .json();
         assert_eq!(state["suppressed"], true, "{state}");
 
-        // Mailjet, basic auth, an array: a complaint withdraws consent; open is ignored.
+        // Mailjet, basic auth, an array: a complaint withdraws consent, and the open that follows it is
+        // engagement from someone who no longer consents, so it is read but not recorded.
         let basic =
             base64::engine::general_purpose::STANDARD.encode(format!("crm:{WEBHOOK_SECRET}"));
         let batch = json!([
@@ -602,8 +603,8 @@ async fn brevo_and_mailjet_callbacks_are_authenticated_and_applied() {
             .json(&batch)
             .await
             .json();
-        assert_eq!(done["received"], 1, "{done}");
-        assert_eq!(done["recorded"], 1);
+        assert_eq!(done["received"], 2, "{done}");
+        assert_eq!(done["recorded"], 1, "{done}");
         let grace_now: Value = request.get(&format!("/api/contacts/{grace}")).await.json();
         assert_eq!(grace_now["contact"]["marketing_consent"], "withdrawn");
     })
@@ -994,4 +995,146 @@ async fn a_worker_only_process_sets_up_the_real_sender() {
     let (simulated, has_unsubscriber) = outcome;
     assert!(!simulated, "the worker kept the simulated sender");
     assert!(has_unsubscriber, "the worker has no unsubscribe links");
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn opens_and_clicks_a_provider_reports_become_attribution_touches_while_the_contact_consents()
+{
+    settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));
+    request::<App, _, _>(|request, _ctx| async move {
+        let (recorder, _restore) = recording();
+        let ada = seed_contact!(&request, "Ada Lovelace").await;
+        let grace = seed_contact!(&request, "Grace Hopper").await;
+        give_address!(&request, ada, "ada@example.test");
+        give_address!(&request, grace, "grace@example.test");
+        let id_of = |to: &str| {
+            recorder
+                .sent()
+                .into_iter()
+                .find(|m| m.to == to)
+                .unwrap()
+                .message_id
+        };
+        // Two campaigns each mail both people.
+        let first = scheduled_campaign!(&request, Some("Hello"));
+        request
+            .post(&format!("/api/campaigns/{first}/run"))
+            .await
+            .assert_status_ok();
+        let (ada_first, grace_first) = (id_of("ada@example.test"), id_of("grace@example.test"));
+        recorder.clear();
+        let second = scheduled_campaign!(&request, Some("Again"));
+        request
+            .post(&format!("/api/campaigns/{second}/run"))
+            .await
+            .assert_status_ok();
+        let ada_second = id_of("ada@example.test");
+
+        // Ada opened the first and clicked the second; a repeat is the same open.
+        let opened: Value = provider_event!(&request, &ada_first, "opened").json();
+        assert_eq!(opened["result"], "recorded");
+        let again: Value = provider_event!(&request, &ada_first, "opened").json();
+        assert_eq!(again["result"], "duplicate");
+        let clicked: Value = provider_event!(&request, &ada_second, "clicked").json();
+        assert_eq!(clicked["result"], "recorded");
+        // Grace withdraws, and then her open is not recorded.
+        request
+            .post(&format!("/api/contacts/{grace}/consent"))
+            .json(&json!({ "action": "withdrawn", "source": "unsubscribe link" }))
+            .await
+            .assert_status_ok();
+        let ignored: Value = provider_event!(&request, &grace_first, "opened").json();
+        assert_eq!(ignored["result"], "ignored");
+        let campaigns_after: Value = request.get("/api/campaigns").await.json();
+        let row = |pid: &str, member: &str| {
+            campaigns_after
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|c| c["pid"] == pid)
+                .unwrap()[member]
+                .as_i64()
+                .unwrap()
+        };
+        assert_eq!(
+            row(&first, "opened"),
+            1,
+            "Ada's open counts once, Grace's not at all"
+        );
+        assert_eq!(row(&second, "clicked"), 1);
+
+        // Ada buys.
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        let deal: Value = request
+            .post("/api/deals")
+            .json(
+                &json!({ "name": "Bought", "pipeline_pid": pipeline, "amount_minor": 10_000,
+                           "currency": "GBP", "primary_contact_pid": ada }),
+            )
+            .await
+            .json();
+        request
+            .post(&format!(
+                "/api/deals/{}/stage",
+                deal["pid"].as_str().unwrap()
+            ))
+            .json(&json!({ "stage_pid": stages[2] }))
+            .await
+            .assert_status_ok();
+
+        let credit = |answer: &Value, campaign: &str| -> i64 {
+            answer["campaigns"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|c| c["campaign_pid"] == campaign)
+                .map_or(0, |c| c["credit"][0]["amount_minor"].as_i64().unwrap_or(0))
+        };
+        let ask = |touches: &'static str| {
+            let request = &request;
+            async move {
+                request
+                    .get(&format!("/api/attribution?touches={touches}"))
+                    .await
+                    .json::<Value>()
+            }
+        };
+        // By default only sends count, as before: the two campaigns share equally.
+        let sent: Value = request.get("/api/attribution").await.json();
+        assert_eq!(sent["touches"], json!(["sent"]), "{sent}");
+        assert_eq!(
+            (credit(&sent, &first), credit(&sent, &second)),
+            (5_000, 5_000)
+        );
+        // Opens alone credit the first campaign; clicks alone, the second.
+        let opens = ask("opened").await;
+        assert_eq!(
+            (credit(&opens, &first), credit(&opens, &second)),
+            (10_000, 0),
+            "{opens}"
+        );
+        let clicks = ask("clicked").await;
+        assert_eq!(
+            (credit(&clicks, &first), credit(&clicks, &second)),
+            (0, 10_000),
+            "{clicks}"
+        );
+        // Sends, opens and clicks together: the first campaign has a send and an open, the second
+        // a send and a click, so they still share equally, and every pound is accounted for.
+        let all = ask("sent,opened,clicked").await;
+        assert_eq!(all["touches"], json!(["sent", "opened", "clicked"]));
+        assert_eq!(
+            credit(&all, &first) + credit(&all, &second),
+            10_000,
+            "{all}"
+        );
+        // A name that is not a kind is refused naming the member.
+        let refused = request.get("/api/attribution?touches=seen").await;
+        refused.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(refused.json::<Value>()["errors"][0]["pointer"], "/touches");
+    })
+    .await;
+    settings::update(|s| s.webhook_secret = None);
 }

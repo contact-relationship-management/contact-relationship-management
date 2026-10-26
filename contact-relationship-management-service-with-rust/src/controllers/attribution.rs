@@ -32,6 +32,9 @@ const MAX_DEALS: usize = 5000;
 struct AttributionQuery {
     /// `first`, `last`, `linear` (default), `time_decay` or `position`.
     model: Option<String>,
+    /// Which e-mail touches count, a comma-separated list of `sent` (default), `opened` and
+    /// `clicked` (CRM-R58). Campaign leads and the recorded source always count.
+    touches: Option<String>,
     /// How far back from the day a deal closed a touch still counts, 1 to 365 (default 90).
     window_days: Option<i64>,
     /// First day a deal may have closed on.
@@ -77,6 +80,8 @@ pub(crate) struct Attribution {
     model: String,
     /// The window used, in days.
     window_days: i64,
+    /// The e-mail touches counted: `sent`, `opened`, `clicked`.
+    touches: Vec<String>,
     as_of: DateTime<Utc>,
     /// Won deals considered.
     deals: usize,
@@ -114,8 +119,56 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
-/// The model and the window, or a `422` naming each wrong member.
-fn validate(query: &AttributionQuery) -> Result<(Model, i64)> {
+/// The kinds of e-mail touch that count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Kinds {
+    sent: bool,
+    opened: bool,
+    clicked: bool,
+}
+
+impl Kinds {
+    /// The kinds asked for (`sent` alone when none is asked), or the reason a name is wrong.
+    fn parse(asked: Option<&str>) -> std::result::Result<Self, String> {
+        let Some(text) = asked else {
+            return Ok(Self {
+                sent: true,
+                opened: false,
+                clicked: false,
+            });
+        };
+        let mut kinds = Self {
+            sent: false,
+            opened: false,
+            clicked: false,
+        };
+        for name in text.split(',').map(str::trim) {
+            match name {
+                "sent" => kinds.sent = true,
+                "opened" => kinds.opened = true,
+                "clicked" => kinds.clicked = true,
+                _ => return Err("touches is a list of sent, opened, clicked".to_string()),
+            }
+        }
+        Ok(kinds)
+    }
+
+    /// The names, in the order they are listed in an answer.
+    fn names(self) -> Vec<String> {
+        [
+            (self.sent, "sent"),
+            (self.opened, "opened"),
+            (self.clicked, "clicked"),
+        ]
+        .into_iter()
+        .filter(|(on, _)| *on)
+        .map(|(_, name)| name.to_string())
+        .collect()
+    }
+}
+
+/// The model, the window and the e-mail touches, or a `422` naming each wrong member.
+fn validate(query: &AttributionQuery) -> Result<(Model, i64, Kinds)> {
     let mut problems = Problems::new();
     let model = match query.model.as_deref() {
         None => Some(Model::Linear),
@@ -123,6 +176,9 @@ fn validate(query: &AttributionQuery) -> Result<(Model, i64)> {
             .map_err(|why| problems.push_field("model", why))
             .ok(),
     };
+    let kinds = Kinds::parse(query.touches.as_deref())
+        .map_err(|why| problems.push_field("touches", why))
+        .ok();
     let days = rules::window_days(query.window_days)
         .map_err(|why| problems.push_field("window_days", why))
         .ok();
@@ -139,8 +195,8 @@ fn validate(query: &AttributionQuery) -> Result<(Model, i64)> {
         problems.push_field("rate_date", "needs convert_to");
     }
     problems.finish()?;
-    match (model, days) {
-        (Some(model), Some(days)) => Ok((model, days)),
+    match (model, days, kinds) {
+        (Some(model), Some(days), Some(kinds)) => Ok((model, days, kinds)),
         _ => Err(super::unprocessable("the request cannot be answered")),
     }
 }
@@ -182,7 +238,15 @@ async fn touches_of(
     ctx: &AppContext,
     deals: &[Won],
     days: i64,
+    kinds: Kinds,
 ) -> Result<HashMap<Uuid, Vec<Touch>>> {
+    // The engagement events asked for: an open or a click the provider reported, at the moment it
+    // was reported (CRM-R58).
+    let engagement: Vec<&str> = [(kinds.opened, "opened"), (kinds.clicked, "clicked")]
+        .into_iter()
+        .filter(|(on, _)| *on)
+        .map(|(_, name)| name)
+        .collect();
     let pids: Vec<String> = deals.iter().map(|d| d.pid.to_string()).collect();
     let rows = ctx
         .db
@@ -190,9 +254,17 @@ async fn touches_of(
             "SELECT d.pid AS deal_pid, e.campaign_pid, e.sent_at AS at \
                FROM deals d JOIN email_deliveries e ON e.contact_pid = d.primary_contact_pid \
               WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
-                AND e.state = 'sent' AND e.sent_at IS NOT NULL \
+                AND $3::bool AND e.state = 'sent' AND e.sent_at IS NOT NULL \
                 AND e.sent_at <= d.closed_at \
                 AND e.sent_at >= d.closed_at - make_interval(days => $2::int) \
+             UNION ALL \
+             SELECT d.pid, e.campaign_pid, ev.received_at \
+               FROM deals d JOIN email_deliveries e ON e.contact_pid = d.primary_contact_pid \
+               JOIN email_events ev ON ev.message_id = e.message_id \
+              WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
+                AND ev.event IN (SELECT jsonb_array_elements_text($4::jsonb)) \
+                AND ev.received_at <= d.closed_at \
+                AND ev.received_at >= d.closed_at - make_interval(days => $2::int) \
              UNION ALL \
              SELECT d.pid, l.campaign_pid, l.created_at \
                FROM deals d JOIN leads l ON l.contact_pid = d.primary_contact_pid \
@@ -203,6 +275,8 @@ async fn touches_of(
             [
                 serde_json::json!(pids).into(),
                 i32::try_from(days).unwrap_or(i32::MAX).into(),
+                kinds.sent.into(),
+                serde_json::json!(engagement).into(),
             ],
         ))
         .await?;
@@ -331,7 +405,7 @@ async fn run(
     caller: MaybeAuthUser,
     axum::extract::Query(query): axum::extract::Query<AttributionQuery>,
 ) -> Result<Response> {
-    let (model, days) = validate(&query)?;
+    let (model, days, kinds) = validate(&query)?;
     // The answer is money, so a masked collection read may not have it.
     if auth::aggregate_masked(&caller).map_err(record_rejection)? {
         return Err(record_rejection((
@@ -342,7 +416,7 @@ async fn run(
     let mut deals = won_deals(&ctx, &query).await?;
     let truncated = deals.len() > MAX_DEALS;
     deals.truncate(MAX_DEALS);
-    let mut touches = touches_of(&ctx, &deals, days).await?;
+    let mut touches = touches_of(&ctx, &deals, days, kinds).await?;
 
     let (tallies, unattributed, unattributed_deals) = share_out(model, &deals, &mut touches);
 
@@ -403,6 +477,7 @@ async fn run(
     format::json(Attribution {
         model: model.name().to_string(),
         window_days: days,
+        touches: kinds.names(),
         as_of: Utc::now(),
         deals: deals.len(),
         unattributed_deals,

@@ -645,6 +645,12 @@ export default {
   "attr.model.linear": "Linear (equal shares)",
   "attr.model.timeDecay": "Time decay (recent touches earn more)",
   "attr.model.position": "Position (40% first, 40% last, 20% between)",
+  "attr.emailTouches": "E-mail touches",
+  "attr.touch.sent": "Sent",
+  "attr.touch.opened": "Opened",
+  "attr.touch.clicked": "Clicked",
+  "attr.touchesHint":
+    "Opens and clicks are what the mail provider reports, and only for people who still consent. Mail programs that load images in advance, and link scanners, make them overcount.",
   "attr.window": "Window (days before the deal closed)",
   "attr.from": "Closed from",
   "attr.to": "Closed to",
