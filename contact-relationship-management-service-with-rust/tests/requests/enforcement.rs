@@ -1728,3 +1728,145 @@ async fn an_accounts_clv_is_money_so_a_masked_reader_sees_null_and_an_unmasked_o
     })
     .await;
 }
+
+/// Money must not leave through any read a masked caller may make. The service seeds records
+/// that carry a distinctive amount; a masked reader then asks **every** `GET` path in the
+/// OpenAPI document (`{pid}` filled with a record of the right kind), and the amount must appear
+/// in none of the answers. A new endpoint that returns money without masking fails here.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn no_read_a_masked_caller_may_make_returns_the_seeded_amount() {
+    const MARKER: i64 = 7_654_321;
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let service = sign_as(&kid, "sweep-svc", &[("svc", &["true"])]);
+    let reader = sign_as(&kid, "sweep-reader", &[]);
+
+    request::<App, _, _>(|mut request, _ctx| async move {
+        request.add_header("authorization", format!("Bearer {service}"));
+        // Seed, as the service, records that carry the amount.
+        let (pipeline, stages) = super::seed_pipeline!(&request).await;
+        let contact = super::seed_contact!(&request, "Sweep Buyer").await;
+        let account: Value = request
+            .post("/api/accounts")
+            .json(&json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Sweep Org" }))
+            .await
+            .json();
+        let account = account["pid"].as_str().unwrap().to_string();
+        let segment: Value = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json();
+        let campaign: Value = request
+            .post("/api/campaigns")
+            .json(&json!({ "name": "Sweep Push", "cost_minor": MARKER, "currency": "GBP",
+                           "segment_pid": segment["pid"] }))
+            .await
+            .json();
+        let campaign = campaign["pid"].as_str().unwrap().to_string();
+        let mut deal = String::new();
+        for (name, to_won) in [("Open", false), ("Won", true)] {
+            let made: Value = request
+                .post("/api/deals")
+                .json(&json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": MARKER,
+                               "currency": "GBP", "account_pid": account,
+                               "primary_contact_pid": contact, "source_campaign_pid": campaign }))
+                .await
+                .json();
+            if to_won {
+                request
+                    .post(&format!("/api/deals/{}/stage", made["pid"].as_str().unwrap()))
+                    .json(&json!({ "stage_pid": stages[2] }))
+                    .await
+                    .assert_status_ok();
+            } else {
+                deal = made["pid"].as_str().unwrap().to_string();
+            }
+        }
+        let lead: Value = request
+            .post("/api/leads")
+            .json(&json!({ "contact_pid": contact, "source": "sweep" }))
+            .await
+            .json();
+        let report: Value = request
+            .post("/api/reports")
+            .json(&json!({ "name": "Sweep sums", "spec": { "kind": "deal", "group_by": "state",
+                           "measure": "sum_amount" } }))
+            .await
+            .json();
+        let for_segment = |first: &str| -> Option<String> {
+            Some(match first {
+                "accounts" | "account-imports" => account.clone(),
+                "contacts" | "contact-imports" => contact.clone(),
+                "deals" => deal.clone(),
+                "campaigns" => campaign.clone(),
+                "leads" | "lead-imports" => lead["pid"].as_str()?.to_string(),
+                "reports" => report["pid"].as_str()?.to_string(),
+                "segments" => segment["pid"].as_str()?.to_string(),
+                _ => return None,
+            })
+        };
+        let document: Value = request.get("/api-docs/openapi.json").await.json();
+        let mut paths = Vec::new();
+        for (path, item) in document["paths"].as_object().unwrap() {
+            if item.get("get").is_none()
+                || ["/confirm", "/preferences", "/unsubscribe", "/metrics", "/api/audits"]
+                    .iter()
+                    .any(|skip| path.starts_with(skip))
+                || path.ends_with("/content")
+            {
+                continue;
+            }
+            let filled = if path.contains("{pid}") {
+                let first = path.trim_start_matches("/api/").split('/').next().unwrap_or("");
+                match for_segment(first) {
+                    Some(pid) => path.replace("{pid}", &pid),
+                    None => continue,
+                }
+            } else {
+                path.clone()
+            };
+            paths.push(filled);
+        }
+
+        let marker = MARKER.to_string();
+        let mut seen_by_service = 0;
+        for path in &paths {
+            let body = request.get(path).await.text();
+            if body.contains(&marker) {
+                seen_by_service += 1;
+            }
+        }
+        assert!(
+            seen_by_service >= 6,
+            "the sweep is vacuous: only {seen_by_service} of {} answers show the amount to the service",
+            paths.len()
+        );
+
+        request.clear_headers();
+        let mut leaks = Vec::new();
+        for path in &paths {
+            let answer = request
+                .get(path)
+                .add_header("authorization", format!("Bearer {reader}"))
+                .await;
+            assert!(
+                answer.status_code().as_u16() < 500,
+                "{path}: {}",
+                answer.status_code()
+            );
+            if answer.text().contains(&marker) {
+                leaks.push(path.clone());
+            }
+        }
+        assert!(leaks.is_empty(), "masked reader sees the amount on: {leaks:#?}");
+    })
+    .await;
+}

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a sweep for money that skips masking (CRM-T120)
+
+`no_read_a_masked_caller_may_make_returns_the_seeded_amount` walks every `GET` path of the OpenAPI document as the service and as a masked reader.
+
 ### Fixed — CLV is masked (CRM-T119)
 
 `clv_minor` and `converted_minor` are `null` for a masked caller (the schema marks `clv_minor` nullable); the count of won deals stays.
