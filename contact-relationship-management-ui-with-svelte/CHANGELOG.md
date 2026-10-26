@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — exchange rates (CRM-T114)
+
+`/fx-rates` to list, set and delete rates; "Show in" and "Rates as of" on the Reports page, with the rates used and the sums left out shown. 18 keys in 8 locales (machine drafts), tour rates and two Playwright tests.
+
 ### Added — attribution page (CRM-T113)
 
 `/attribution`: choose the model, the window and the dates; each campaign's credit per currency with a bar, and the deals no campaign touched apart. 20 keys in 8 locales (machine drafts), tour data and a Playwright test.

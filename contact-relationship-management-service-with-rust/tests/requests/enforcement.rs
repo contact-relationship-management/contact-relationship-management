@@ -1632,3 +1632,49 @@ async fn attribution_is_money_so_a_masked_reader_is_refused_and_an_unmasked_one_
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_reader_may_see_exchange_rates_but_only_a_writer_may_change_them() {
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let service = sign_as(&kid, "fx-svc", &[("svc", &["true"])]);
+    let reader = sign_as(&kid, "fx-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let body = json!({ "from": "USD", "to": "GBP", "rate": "0.8",
+                           "effective_on": "2026-01-01", "source": "test table" });
+        let put = |token: String| {
+            let request = &request;
+            let body = body.clone();
+            async move {
+                request
+                    .put("/api/fx-rates")
+                    .add_header("authorization", format!("Bearer {token}"))
+                    .json(&body)
+                    .await
+            }
+        };
+        assert_eq!(put(reader.clone()).await.status_code(), 403);
+        let made = put(service.clone()).await;
+        assert_eq!(made.status_code(), 200);
+        let pid = made.json::<Value>()["pid"].as_str().unwrap().to_string();
+        let listed = request
+            .get("/api/fx-rates")
+            .add_header("authorization", format!("Bearer {reader}"))
+            .await;
+        assert_eq!(listed.status_code(), 200);
+        assert_eq!(listed.json::<Vec<Value>>().len(), 1);
+        let removed = request
+            .delete(&format!("/api/fx-rates/{pid}"))
+            .add_header("authorization", format!("Bearer {reader}"))
+            .await;
+        assert_eq!(removed.status_code(), 403);
+    })
+    .await;
+}

@@ -8582,6 +8582,208 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/fx-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The recorded exchange rates, newest first, at most 1000 (CRM-R50): a pair, a decimal rate, the day it takes effect and its source */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FxRate"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Set the rate of a pair on a day, replacing one already there; a source in words is required; 422 names the member; a write, audited */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FxRatePayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FxRate"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/fx-rates/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a recorded rate; audited; 404 when there is none */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups": {
         parameters: {
             query?: never;
@@ -17496,6 +17698,36 @@ export interface components {
             position: number;
             stage: string;
         };
+        /** @description One recorded rate. */
+        FxRate: {
+            /** Format: date */
+            effective_on: string;
+            from: string;
+            /** Format: uuid */
+            pid: string;
+            /** @description A decimal text, trailing zeros dropped. */
+            rate: string;
+            /** @description Who set it. */
+            set_by: string;
+            source: string;
+            to: string;
+        };
+        /** @description `PUT /api/fx-rates` body: sets the rate of one pair on one day, replacing any already there. */
+        FxRatePayload: {
+            /**
+             * Format: date
+             * @description The day the rate takes effect.
+             */
+            effective_on: string;
+            /** @description The currency being bought with, three capital letters. */
+            from: string;
+            /** @description How many `to` one `from` buys, as a decimal text such as `"1.27"` (at most 9 places). */
+            rate: string;
+            /** @description Where it came from, in words. */
+            source: string;
+            /** @description The currency it buys. */
+            to: string;
+        };
         /** @description `POST /api/break-glass`: the grant that was taken. */
         Grant: {
             /** Format: date-time */
@@ -18216,6 +18448,18 @@ export interface components {
             /** @description What the report asks. */
             spec: components["schemas"]["ReportSpec"];
         };
+        /** @description An exchange rate a conversion used (CRM-R50). */
+        ReportRateUsed: {
+            /** Format: date */
+            effective_on: string;
+            from: string;
+            /** @description The recorded rate is for the reverse pair, so the amount was divided by it. */
+            inverted: boolean;
+            /** @description How many `to` one `from` buys, as recorded. */
+            rate: string;
+            source: string;
+            to: string;
+        };
         /** @description What a report found. */
         ReportResult: {
             /**
@@ -18225,11 +18469,20 @@ export interface components {
             as_of: string;
             /** @description What the figures mean, in a line. */
             note: string;
+            /**
+             * Format: date
+             * @description With `convert_to`: the day whose exchange rates were used.
+             */
+            rate_date: string | null;
+            /** @description With `convert_to`: the rate used for each currency that was converted. */
+            rates: components["schemas"]["ReportRateUsed"][];
             /** @description The groups, largest first. */
             rows: components["schemas"]["ReportRow"][];
             spec: components["schemas"]["ReportSpec"];
             /** @description There were more groups than are returned. */
             truncated: boolean;
+            /** @description With `convert_to`: sums that had no rate in force and were left out, never taken at 1.0. */
+            unconverted: components["schemas"]["ReportUnconverted"][];
         };
         /** @description One row of an answer. */
         ReportRow: {
@@ -18245,6 +18498,11 @@ export interface components {
         };
         /** @description What a report asks. */
         ReportSpec: {
+            /**
+             * @description Show a sum of amounts in this currency (CRM-R50); only with `sum_amount`.
+             * @default null
+             */
+            convert_to: string | null;
             /**
              * @description Field to the values to keep: alternatives within a field, AND across fields.
              * @default {}
@@ -18269,10 +18527,30 @@ export interface components {
             measure: string;
             /**
              * Format: date
+             * @description The day whose exchange rates are used (today when absent); only with `convert_to`.
+             * @default null
+             */
+            rate_date: string | null;
+            /**
+             * Format: date
              * @description Only records created (tickets: opened) on or before this day.
              * @default null
              */
             to: string | null;
+        };
+        /** @description Sums in one currency that could not be converted. */
+        ReportUnconverted: {
+            /**
+             * Format: int64
+             * @description Their total, in that currency's minor units.
+             */
+            amount_minor: number;
+            currency: string;
+            /**
+             * Format: uint
+             * @description How many group sums were left out.
+             */
+            groups: number;
         };
         /** @description `GET /api/retention`: what the sweep would delete, and what needs an operator. */
         RetentionReport: {

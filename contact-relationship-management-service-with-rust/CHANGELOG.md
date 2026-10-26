@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — exchange rates (CRM-T114, CRM-R50)
+
+`fx_rates` (migration `000038`), `GET/PUT /api/fx-rates` and `DELETE /api/fx-rates/{pid}`, audited. `rules::fx` reads rates as integers, picks the latest in force on a day (a pair's own, or the reverse inverted), and converts half to even. A report spec may carry `convert_to` and `rate_date`; the answer names `rates` and `unconverted`.
+
 ### Added — multi-touch attribution (CRM-T113, CRM-R49)
 
 `GET /api/attribution?model=&window_days=&from=&to=`: each won deal's amount shared among the campaigns that sent its primary contact an e-mail, brought in a lead of theirs, or are the recorded source. `rules::attribution` does the sharing (shares add up to the amount; leftover minor units to the earliest touches); credit is per campaign and per currency, untouched deals are listed apart, a masked read gets `403`, and asking audits `attribution_run`.

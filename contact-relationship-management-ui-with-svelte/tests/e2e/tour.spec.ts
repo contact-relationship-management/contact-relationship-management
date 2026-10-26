@@ -1205,4 +1205,72 @@ test.describe("export, undo and search", () => {
       "2",
     );
   });
+
+  test("a deal report is shown in one currency, with the rates it used and what it could not convert", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/reports");
+    await page.getByTestId("report-kind").selectOption("deal");
+    await page.getByTestId("report-measure").selectOption("sum_amount");
+    await page.getByTestId("report-group").selectOption("state");
+    await page.getByTestId("report-convert").fill("USD");
+    await page.getByTestId("report-run").click();
+    // The latest pound-to-dollar rate: 859,200 of open deals at 1.30.
+    await expect(page.getByTestId("report-result")).toContainText(
+      "1,116,960.00",
+    );
+    await expect(page.getByTestId("report-rates")).toContainText(
+      "1 GBP = 1.3 USD",
+    );
+    // An earlier date picks the earlier rate.
+    const earlier = new Date(Date.now() - 100 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    await page.getByTestId("report-rate-date").fill(earlier);
+    await page.getByTestId("report-run").click();
+    await expect(page.getByTestId("report-result")).toContainText(
+      "1,091,184.00",
+    );
+    await expect(page.getByTestId("report-rates")).toContainText(
+      "1 GBP = 1.27 USD",
+    );
+    // No pound-to-yen rate: nothing is converted, and the pounds are listed as left out.
+    await page.getByTestId("report-convert").fill("JPY");
+    await page.getByTestId("report-run").click();
+    await expect(page.getByTestId("report-none")).toBeVisible();
+    await expect(page.getByTestId("report-unconverted")).toContainText("GBP");
+  });
+
+  test("exchange rates are listed, set, replaced and deleted, and a bad rate is refused", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/fx-rates");
+    await expect(page.getByTestId("fx-row")).toHaveCount(3);
+    await page.getByTestId("fx-from").fill("EUR");
+    await page.getByTestId("fx-to").fill("GBP");
+    await page.getByTestId("fx-rate").fill("0.8600");
+    await page.getByTestId("fx-source").fill("Board budget rate");
+    await page.getByTestId("fx-set").click();
+    await expect(page.getByTestId("fx-row")).toHaveCount(4);
+    await expect(page.getByTestId("fx-list")).toContainText("0.86");
+    await expect(page.getByTestId("fx-list")).toContainText(
+      "Board budget rate",
+    );
+    // The same pair and day replaces.
+    await page.getByTestId("fx-rate").fill("0.87");
+    await page.getByTestId("fx-set").click();
+    await expect(page.getByTestId("fx-row")).toHaveCount(4);
+    await expect(page.getByTestId("fx-list")).toContainText("0.87");
+    await page.getByTestId("fx-rate").fill("abc");
+    await page.getByTestId("fx-set").click();
+    await expect(page.getByTestId("fx-error")).toBeVisible();
+    await page
+      .getByTestId("fx-row")
+      .filter({ hasText: "Board budget rate" })
+      .getByRole("button")
+      .click();
+    await expect(page.getByTestId("fx-row")).toHaveCount(3);
+  });
 });

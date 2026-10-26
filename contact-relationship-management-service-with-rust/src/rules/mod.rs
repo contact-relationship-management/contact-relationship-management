@@ -14,6 +14,7 @@ pub mod custom_fields;
 pub mod engagement;
 pub mod external_links;
 pub mod forms;
+pub mod fx;
 pub mod imports;
 pub mod lifecycle;
 pub mod merge;

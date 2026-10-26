@@ -57,6 +57,7 @@ pub fn app_routes() -> AppRoutes {
         .add_route(controllers::tags::routes())
         .add_route(controllers::reports::routes())
         .add_route(controllers::attribution::routes())
+        .add_route(controllers::fx_rates::routes())
         .add_route(controllers::record_imports::routes())
         .add_route(controllers::docs::routes())
         .add_route(controllers::metrics::routes())
@@ -265,7 +266,7 @@ impl Hooks for App {
             use sea_orm::ConnectionTrait;
             ctx.db
                 .execute_unprepared(
-                    "TRUNCATE reports, taggings, tags, record_imports, attachments, custom_field_values, custom_field_defs, workflow_runs, workflows, email_templates, saved_views, lead_imports, notifications, form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
+                    "TRUNCATE fx_rates, reports, taggings, tags, record_imports, attachments, custom_field_values, custom_field_defs, workflow_runs, workflows, email_templates, saved_views, lead_imports, notifications, form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
                      email_deliveries, email_events, email_suppressions",
                 )
                 .await?;

@@ -53,7 +53,8 @@ board.
 
 The live forecast is pure arithmetic over open deals:
 `Σ amount_minor × probability_percent / 100`, grouped by
-`expected_close_on` period and owner, per currency (no FX in v1 —
+`expected_close_on` period and owner, per currency (no FX in the
+forecast —
 mixed-currency groups report per-currency lines). Month-end
 snapshots persist the roll-up for later comparison
 (`ForecastSnapshot`). No hand-edited forecast numbers exist

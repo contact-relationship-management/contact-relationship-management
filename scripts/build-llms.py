@@ -39,8 +39,8 @@ SECTIONS = [
         ("Regulatory position", "spec/regulatory.md", "Why this is demo software and what that means."),
     ]),
     ("Specification", [
-        ("Requirements", "spec/requirements.md", "Numbered requirements (CRM-R1 to CRM-R49) with acceptance criteria."),
-        ("Tasks", "spec/tasks.md", "The delivery checklist (CRM-T1 to CRM-T113) with resolutions, verification and stated limits."),
+        ("Requirements", "spec/requirements.md", "Numbered requirements (CRM-R1 to CRM-R50) with acceptance criteria."),
+        ("Tasks", "spec/tasks.md", "The delivery checklist (CRM-T1 to CRM-T114) with resolutions, verification and stated limits."),
         ("Architecture", "spec/architecture.md", "Components and data flow."),
         ("Domain model", "spec/domain-model.md", "Entities and relationships, held as relationship wrappers over upstream URNs."),
         ("Design decisions", "spec/design.md", "Numbered design decisions (CRM-D)."),

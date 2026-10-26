@@ -1570,6 +1570,28 @@ export interface ReportSpec {
   filter: Record<string, string[]>;
   from?: string | null;
   to?: string | null;
+  /** Show a sum of amounts in this currency (CRM-R50). */
+  convert_to?: string | null;
+  /** The day whose exchange rates are used; today when absent. */
+  rate_date?: string | null;
+}
+
+/** An exchange rate a converted report used. */
+export interface ReportRateUsed {
+  from: string;
+  to: string;
+  rate: string;
+  effective_on: string;
+  source: string;
+  /** The recorded rate is for the reverse pair, so the amount was divided by it. */
+  inverted: boolean;
+}
+
+/** Sums in one currency that had no rate and were left out of a converted report. */
+export interface ReportUnconverted {
+  currency: string;
+  groups: number;
+  amount_minor: number;
 }
 
 /** One row of a report's answer. */
@@ -1586,6 +1608,9 @@ export interface ReportResult {
   as_of: string;
   rows: ReportRow[];
   truncated: boolean;
+  rate_date: string | null;
+  rates: ReportRateUsed[];
+  unconverted: ReportUnconverted[];
   note: string;
 }
 
@@ -1678,4 +1703,37 @@ export function attribution(
   if (params.from) query.set("from", params.from);
   if (params.to) query.set("to", params.to);
   return api(`/attribution?${query}`, init);
+}
+
+/** A recorded exchange rate (CRM-R50). */
+export interface FxRate {
+  pid: string;
+  from: string;
+  to: string;
+  /** How many `to` one `from` buys, as a decimal text. */
+  rate: string;
+  effective_on: string;
+  source: string;
+  set_by: string;
+}
+
+/** The recorded exchange rates, newest first. */
+export function listFxRates(init?: FetchLike): Promise<FxRate[]> {
+  return api("/fx-rates", init);
+}
+
+/** Set the rate of a pair on a day, replacing any already there. */
+export function setFxRate(input: {
+  from: string;
+  to: string;
+  rate: string;
+  effective_on: string;
+  source: string;
+}): Promise<FxRate> {
+  return api("/fx-rates", { method: "PUT", body: input });
+}
+
+/** Remove a recorded rate. */
+export function deleteFxRate(pid: string): Promise<{ pid: string }> {
+  return api(`/fx-rates/${pid}`, { method: "DELETE" });
 }

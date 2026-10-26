@@ -36,6 +36,9 @@ import type {
   ReportResult,
   Attribution,
   AttributionAmount,
+  FxRate,
+  ReportRateUsed,
+  ReportUnconverted,
   ReportSpec,
   MergeToken,
   TemplatePreview,
@@ -142,6 +145,8 @@ interface State {
   tags: Tag[];
   /** The tour's saved reports (CRM-R48). */
   reports: Report[];
+  /** The tour's exchange rates (CRM-R50). */
+  fxRates: FxRate[];
   /** The demo user's saved views (CRM-R35). */
   views: SavedView[];
   /** The inbox of the one demo user (CRM-R32). */
@@ -777,6 +782,11 @@ function build(): State {
     ],
     tagged: { "con-1": ["Key account"], "acc-1": ["Key account"] },
     tags: [{ pid: "tag-1", name: "Key account", uses: 2 }],
+    fxRates: [
+      fxRate("fx-1", "GBP", "USD", "1.27", -300),
+      fxRate("fx-2", "GBP", "EUR", "1.17", -300),
+      fxRate("fx-3", "GBP", "USD", "1.3", -20),
+    ],
     reports: [
       {
         pid: "rep-1",
@@ -2206,6 +2216,7 @@ export function demoHandle(
   if (tail === "attachments" && id) return attachmentList(id, method, query);
   if (head === "tags" && !id && method === "GET") return ok(demoTags());
   if (head === "reports") return reports(method, id, tail, body);
+  if (head === "fx-rates") return fxRates(method, id, body);
   if (head === "attribution" && get) return attributionAnswer(query);
   if (tail === "tags" && id) return recordTags(id, method, body);
   if (head === "attachments" && id && method === "DELETE")
@@ -2723,13 +2734,200 @@ function reportResult(spec: ReportSpec): DemoReply {
     return problem(422, "only a deal report can sum amounts");
   const rows = reportRows(spec);
   if (typeof rows === "string") return problem(422, rows);
+  const converting = spec.convert_to
+    ? convertReport(spec, rows)
+    : { rows, rateDate: null, rates: [], unconverted: [] };
+  if (typeof converting === "string") return problem(422, converting);
   return ok({
     spec,
     as_of: new Date().toISOString(),
-    rows: rows.slice(0, 200),
-    truncated: rows.length > 200,
+    rows: converting.rows.slice(0, 200),
+    truncated: converting.rows.length > 200,
+    rate_date: converting.rateDate,
+    rates: converting.rates,
+    unconverted: converting.unconverted,
     note: "counted over the records that exist now; sums are per currency and never added across currencies",
   } satisfies ReportResult);
+}
+
+const ONE = 1_000_000_000n;
+
+/** A rate such as `1.27` as billionths, or null when it is not a positive decimal below 1,000,000. */
+function ppbOf(text: string): bigint | null {
+  if (!/^\d{1,6}(\.\d{1,9})?$/.test(text)) return null;
+  const [whole, fraction = ""] = text.split(".");
+  const ppb = BigInt(whole!) * ONE + BigInt(fraction.padEnd(9, "0"));
+  return ppb > 0n && BigInt(whole!) < 1_000_000n ? ppb : null;
+}
+
+/** `n / d` rounded half to even. */
+function divideRound(n: bigint, d: bigint): bigint {
+  const q = n / d;
+  const twice = (n % d < 0n ? -(n % d) : n % d) * 2n;
+  const step = n < 0n ? -1n : 1n;
+  return twice > d || (twice === d && q % 2n !== 0n) ? q + step : q;
+}
+
+/** The latest rate for the pair on or before `day`, its own or the reverse inverted. */
+function pickRate(from: string, to: string, day: string) {
+  const latest = (a: string, b: string) =>
+    state.fxRates
+      .filter((r) => r.from === a && r.to === b && r.effective_on <= day)
+      .sort((x, y) => y.effective_on.localeCompare(x.effective_on))[0];
+  const own = latest(from, to);
+  const reverse = latest(to, from);
+  if (own && !(reverse && reverse.effective_on > own.effective_on))
+    return { rate: own, inverted: false };
+  return reverse ? { rate: reverse, inverted: true } : null;
+}
+
+/** Convert a deal report's sums as the service does: once per group and currency, then merge. */
+function convertReport(
+  spec: ReportSpec,
+  rows: ReportResult["rows"],
+):
+  | string
+  | {
+      rows: ReportResult["rows"];
+      rateDate: string;
+      rates: ReportRateUsed[];
+      unconverted: ReportUnconverted[];
+    } {
+  const target = spec.convert_to!;
+  if (!/^[A-Z]{3}$/.test(target))
+    return "convert_to is three capital letters, such as GBP";
+  if (spec.measure !== "sum_amount")
+    return "only a sum of amounts can be converted";
+  const today = new Date().toISOString().slice(0, 10);
+  const day = spec.rate_date ?? today;
+  if (day > today) return "rate_date is in the future";
+  const merged = new Map<string, number>();
+  const used = new Map<string, ReturnType<typeof pickRate>>();
+  const left = new Map<string, { groups: number; amount_minor: number }>();
+  for (const row of rows) {
+    const currency = row.currency ?? target;
+    let value = row.value;
+    if (currency !== target) {
+      if (!used.has(currency))
+        used.set(currency, pickRate(currency, target, day));
+      const picked = used.get(currency);
+      if (!picked) {
+        const entry = left.get(currency) ?? { groups: 0, amount_minor: 0 };
+        entry.groups += 1;
+        entry.amount_minor += row.value;
+        left.set(currency, entry);
+        continue;
+      }
+      const ppb = ppbOf(picked.rate.rate)!;
+      const amount = BigInt(row.value);
+      value = Number(
+        picked.inverted
+          ? divideRound(amount * ONE, ppb)
+          : divideRound(amount * ppb, ONE),
+      );
+    }
+    merged.set(row.group, (merged.get(row.group) ?? 0) + value);
+  }
+  return {
+    rows: [...merged.entries()]
+      .map(([group, value]) => ({ group, currency: target, value }))
+      .sort((a, b) => b.value - a.value || a.group.localeCompare(b.group)),
+    rateDate: day,
+    rates: [...used.entries()]
+      .filter(([, picked]) => picked)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([from, picked]) => ({
+        from,
+        to: target,
+        rate: picked!.rate.rate,
+        effective_on: picked!.rate.effective_on,
+        source: picked!.rate.source,
+        inverted: picked!.inverted,
+      })),
+    unconverted: [...left.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([currency, entry]) => ({ currency, ...entry })),
+  };
+}
+
+function fxRate(
+  pid: string,
+  from: string,
+  to: string,
+  rate: string,
+  daysAgo: number,
+): FxRate {
+  return {
+    pid,
+    from,
+    to,
+    rate,
+    effective_on: day(daysAgo),
+    source: "Tour sample rate",
+    set_by: "worker:demo",
+  };
+}
+
+/** The tour's exchange rates (CRM-R50): list, set (replacing a pair and day), delete. */
+function fxRates(method: string, id: string | undefined, body: unknown) {
+  if (method === "GET" && !id)
+    return ok(
+      [...state.fxRates].sort((a, b) =>
+        b.effective_on.localeCompare(a.effective_on),
+      ),
+    );
+  if (method === "PUT" && !id) {
+    const input = bodyOf(body) as Partial<Record<string, string>>;
+    const from = input.from ?? "";
+    const to = input.to ?? "";
+    if (!/^[A-Z]{3}$/.test(from))
+      return problem(422, "from is three capital letters");
+    if (!/^[A-Z]{3}$/.test(to) || to === from)
+      return problem(422, "to is a different currency, three capital letters");
+    if (!ppbOf(input.rate ?? ""))
+      return problem(
+        422,
+        "a rate is a positive decimal below 1000000 with at most 9 decimal places",
+      );
+    if (!input.effective_on) return problem(422, "effective_on is a day");
+    const source = (input.source ?? "").trim();
+    if (!source || source.length > 80)
+      return problem(
+        422,
+        "a rate needs a source in words, up to 80 characters",
+      );
+    // Trailing zeros are not kept, as the service writes a rate.
+    const entered = input.rate!;
+    const rate = entered.includes(".")
+      ? entered.replace(/0+$/, "").replace(/\.$/, "")
+      : entered;
+    const at = state.fxRates.findIndex(
+      (r) =>
+        r.from === from && r.to === to && r.effective_on === input.effective_on,
+    );
+    const made: FxRate = {
+      pid:
+        at >= 0
+          ? state.fxRates[at]!.pid
+          : `fx-${state.fxRates.length + 1}-${Date.now()}`,
+      from,
+      to,
+      rate,
+      effective_on: input.effective_on,
+      source,
+      set_by: "worker:demo",
+    };
+    if (at >= 0) state.fxRates[at] = made;
+    else state.fxRates.push(made);
+    return ok(made);
+  }
+  if (method === "DELETE" && id) {
+    const at = state.fxRates.findIndex((r) => r.pid === id);
+    if (at < 0) return problem(404, "no such rate");
+    state.fxRates.splice(at, 1);
+    return ok({ pid: id });
+  }
+  return problem(405, "method not allowed");
 }
 
 /**

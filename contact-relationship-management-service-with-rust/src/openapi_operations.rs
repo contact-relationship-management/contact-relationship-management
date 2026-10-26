@@ -727,6 +727,27 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
     ),
     (
         "get",
+        "/api/fx-rates",
+        "insights",
+        "The recorded exchange rates, newest first, at most 1000 (CRM-R50): a pair, a decimal rate, the day it takes effect and its source",
+        Kind::Ok,
+    ),
+    (
+        "put",
+        "/api/fx-rates",
+        "insights",
+        "Set the rate of a pair on a day, replacing one already there; a source in words is required; 422 names the member; a write, audited",
+        Kind::Ok,
+    ),
+    (
+        "delete",
+        "/api/fx-rates/{pid}",
+        "insights",
+        "Remove a recorded rate; audited; 404 when there is none",
+        Kind::Ok,
+    ),
+    (
+        "get",
         "/api/attribution",
         "marketing",
         "Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear (default linear), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. A caller with a masked collection read gets 403",

@@ -39,7 +39,9 @@ follow the same honesty rules below. Full list in
 
 ## Honesty rules
 
-- Mixed currencies never silently sum — per-currency lines always.
+- Mixed currencies never silently sum — per-currency lines always. The one exception is a
+  report that asks to be converted (CRM-R50): it names the day and the hand-entered rates it
+  used, converts each group sum once, and lists what had no rate, never taking it at 1.0.
 - Every ratio reports its numerator/denominator; zero denominators
   render as `null` + the absolute figures, not as 0% or 100%.
 - Dashboards carry `as_of` and the filter that produced them.

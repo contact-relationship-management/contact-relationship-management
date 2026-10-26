@@ -17,6 +17,7 @@ mod enforcement;
 mod engagement;
 mod external_links;
 mod field_encryption;
+mod fx_rates;
 mod idempotency;
 mod insight_rollups;
 mod insights;

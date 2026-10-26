@@ -46,7 +46,8 @@ exits everything immediately.
 ## CRM-D7 — Money in minor units, per-currency honesty
 
 `i64` minor units + ISO-4217; overflow refused; mixed currencies
-report per-currency lines, never a silent sum; no FX in v1.
+report per-currency lines, never a silent sum; no FX in v1 (the report builder
+alone can convert a deal sum, from hand-entered rates, naming them: CRM-R50).
 
 ## CRM-D8 — Jobs on `bg_pg`, idempotent by key
 

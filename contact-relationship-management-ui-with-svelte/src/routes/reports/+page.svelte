@@ -41,6 +41,8 @@
   let filterValues = $state("");
   let from = $state("");
   let to = $state("");
+  let convertTo = $state("");
+  let rateDate = $state("");
   let name = $state("");
   let shared = $state(false);
   let result = $state<ReportResult | null>(null);
@@ -68,6 +70,8 @@
       filter: filterField && values.length ? { [filterField]: values } : {},
       from: from || null,
       to: to || null,
+      convert_to: measure === "sum_amount" && convertTo ? convertTo.trim().toUpperCase() : null,
+      rate_date: measure === "sum_amount" && convertTo && rateDate ? rateDate : null,
     };
   }
 
@@ -80,6 +84,8 @@
     filterValues = first?.[1].join(", ") ?? "";
     from = s.from ?? "";
     to = s.to ?? "";
+    convertTo = s.convert_to ?? "";
+    rateDate = s.rate_date ?? "";
   }
 
   async function run() {
@@ -183,6 +189,18 @@
       <input bind:value={filterValues} data-testid="report-filter-values" />
     </label>
   {/if}
+  {#if kind === "deal" && measure === "sum_amount"}
+    <label>
+      {t("rpt.convertTo")}
+      <input bind:value={convertTo} maxlength="3" size="4" data-testid="report-convert" />
+    </label>
+    {#if convertTo}
+      <label>
+        {t("rpt.rateDate")}
+        <input type="date" bind:value={rateDate} data-testid="report-rate-date" />
+      </label>
+    {/if}
+  {/if}
   <label>{t("rpt.from")} <input type="date" bind:value={from} /></label>
   <label>{t("rpt.to")} <input type="date" bind:value={to} /></label>
   <button type="submit" data-testid="report-run">{t("rpt.run")}</button>
@@ -224,6 +242,26 @@
       </table>
     {/if}
     {#if result.truncated}<p class="muted">{t("rpt.truncated")}</p>{/if}
+    {#if result.rates.length > 0}
+      <p class="muted small" data-testid="report-rates">
+        {t("rpt.ratesUsed")} ({result.rate_date}):
+        {#each result.rates as used (used.from)}
+          <span class="chip">
+            1 {used.from} = {used.rate} {used.to}, {used.effective_on}, {used.source}
+            {#if used.inverted}({t("rpt.inverted")}){/if}
+          </span>
+        {/each}
+      </p>
+    {/if}
+    {#if result.unconverted.length > 0}
+      <p data-testid="report-unconverted">
+        {t("rpt.unconverted")}:
+        {#each result.unconverted as left (left.currency)}
+          <span class="chip">{left.currency}: {amount(left.amount_minor, left.currency)}</span>
+        {/each}
+        <span class="muted small">{t("rpt.unconvertedHint")}</span>
+      </p>
+    {/if}
     <p class="muted small">{result.note}</p>
   </div>
 

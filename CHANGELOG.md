@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — exchange rates and converted reports (CRM-T114, CRM-R50)
+
+Hand-entered exchange rates (a pair, a day, a source) and a deal report that shows its sums in one currency using the latest rate on or before a date, naming the rates and listing what it could not convert.
+
 ### Added — multi-touch attribution (CRM-T113, CRM-R49)
 
 Won-deal revenue shared among the campaigns that touched the buyer, under a first-touch, last-touch or linear model, exact to the minor unit and per currency (`GET /api/attribution`), and an Attribution page.

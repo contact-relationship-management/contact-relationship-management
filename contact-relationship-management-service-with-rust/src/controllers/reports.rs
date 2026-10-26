@@ -16,6 +16,7 @@ use super::{PidPath, PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
+use crate::rules::fx;
 use crate::rules::reports::{self as rules, Bind, MAX_GROUPS, Spec};
 use crate::validation::Problems;
 
@@ -71,8 +72,118 @@ pub(crate) struct ReportResult {
     rows: Vec<ReportRow>,
     /// There were more groups than are returned.
     truncated: bool,
+    /// With `convert_to`: the day whose exchange rates were used.
+    rate_date: Option<chrono::NaiveDate>,
+    /// With `convert_to`: the rate used for each currency that was converted.
+    rates: Vec<RateUsed>,
+    /// With `convert_to`: sums that had no rate in force and were left out, never taken at 1.0.
+    unconverted: Vec<Unconverted>,
     /// What the figures mean, in a line.
     note: &'static str,
+}
+
+/// An exchange rate a conversion used (CRM-R50).
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ReportRateUsed")]
+pub(crate) struct RateUsed {
+    from: String,
+    to: String,
+    /// How many `to` one `from` buys, as recorded.
+    rate: String,
+    effective_on: chrono::NaiveDate,
+    source: String,
+    /// The recorded rate is for the reverse pair, so the amount was divided by it.
+    inverted: bool,
+}
+
+/// Sums in one currency that could not be converted.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ReportUnconverted")]
+pub(crate) struct Unconverted {
+    currency: String,
+    /// How many group sums were left out.
+    groups: usize,
+    /// Their total, in that currency's minor units.
+    amount_minor: i64,
+}
+
+/// What a conversion made of the rows of a report.
+struct Conversion {
+    rows: Vec<ReportRow>,
+    rate_date: Option<chrono::NaiveDate>,
+    rates: Vec<RateUsed>,
+    unconverted: Vec<Unconverted>,
+}
+
+/// The rows as the database gave them, or converted to `convert_to` with the rates in force on
+/// the rate date (CRM-R50).
+async fn converted(
+    ctx: &AppContext,
+    spec: &Spec,
+    raw: Vec<(String, Option<String>, i64)>,
+) -> Result<Conversion> {
+    let Some(target) = &spec.convert_to else {
+        return Ok(Conversion {
+            rows: raw
+                .into_iter()
+                .map(|(group, currency, value)| ReportRow {
+                    group,
+                    currency,
+                    value,
+                })
+                .collect(),
+            rate_date: None,
+            rates: Vec::new(),
+            unconverted: Vec::new(),
+        });
+    };
+    let today = chrono::Utc::now().date_naive();
+    let day = spec.rate_date.unwrap_or(today);
+    if day > today {
+        problems_of(vec![(
+            "rate_date".to_string(),
+            "is in the future".to_string(),
+        )])?;
+    }
+    let rates = super::fx_rates::rates_involving(&ctx.db, target).await?;
+    let sums: Vec<(String, String, i64)> = raw
+        .into_iter()
+        .map(|(group, currency, value)| (group, currency.unwrap_or_default(), value))
+        .collect();
+    let done = fx::convert_rows(&sums, target, day, &rates);
+    Ok(Conversion {
+        rows: done
+            .rows
+            .into_iter()
+            .map(|(group, value)| ReportRow {
+                group,
+                currency: Some(target.clone()),
+                value,
+            })
+            .collect(),
+        rate_date: Some(day),
+        rates: done
+            .used
+            .into_iter()
+            .map(|(from, picked)| RateUsed {
+                from,
+                to: target.clone(),
+                rate: fx::format_rate(picked.rate.ppb),
+                effective_on: picked.rate.effective_on,
+                source: picked.rate.source,
+                inverted: picked.inverted,
+            })
+            .collect(),
+        unconverted: done
+            .left_out
+            .into_iter()
+            .map(|l| Unconverted {
+                currency: l.currency,
+                groups: l.groups,
+                amount_minor: l.amount_minor,
+            })
+            .collect(),
+    })
 }
 
 fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
@@ -110,18 +221,24 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
         })
         .collect();
     let found = ctx.db.query_all_raw(stmt(&plan.sql, values)).await?;
-    let mut rows = Vec::with_capacity(found.len());
+    let mut raw = Vec::with_capacity(found.len());
     for row in &found {
-        rows.push(ReportRow {
-            group: row.try_get("", "grp")?,
-            currency: if plan.per_currency {
+        raw.push((
+            row.try_get::<String>("", "grp")?,
+            if plan.per_currency {
                 row.try_get("", "currency")?
             } else {
                 None
             },
-            value: row.try_get("", "value")?,
-        });
+            row.try_get::<i64>("", "value")?,
+        ));
     }
+    let Conversion {
+        mut rows,
+        rate_date,
+        rates,
+        unconverted,
+    } = converted(ctx, &spec, raw).await?;
     let truncated = rows.len() > MAX_GROUPS;
     rows.truncate(MAX_GROUPS);
     Audit::record_read(
@@ -141,6 +258,9 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
         as_of: chrono::Utc::now(),
         rows,
         truncated,
+        rate_date,
+        rates,
+        unconverted,
         note: "counted over the records that exist now; a record with several tags is in each \
                tag's group; sums are per currency and never added across currencies",
     })

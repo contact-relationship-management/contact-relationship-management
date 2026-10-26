@@ -23,6 +23,7 @@ export type Checks = [
   Serves<ui.Deal, Sent["Deal"]>,
   Serves<ui.Campaign, Sent["Campaign"]>,
   Serves<ui.Attribution, Sent["Attribution"]>,
+  Serves<ui.FxRate, Sent["FxRate"]>,
   Serves<ui.Ticket, Sent["Ticket"]>,
   Serves<ui.Article, Sent["Article"]>,
   // The service stores `system` as free text it validates on write; the UI narrows it to the

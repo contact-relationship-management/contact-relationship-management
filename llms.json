@@ -63,13 +63,13 @@
           "title": "Requirements",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/requirements.md",
           "path": "spec/requirements.md",
-          "description": "Numbered requirements (CRM-R1 to CRM-R49) with acceptance criteria."
+          "description": "Numbered requirements (CRM-R1 to CRM-R50) with acceptance criteria."
         },
         {
           "title": "Tasks",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/tasks.md",
           "path": "spec/tasks.md",
-          "description": "The delivery checklist (CRM-T1 to CRM-T113) with resolutions, verification and stated limits."
+          "description": "The delivery checklist (CRM-T1 to CRM-T114) with resolutions, verification and stated limits."
         },
         {
           "title": "Architecture",

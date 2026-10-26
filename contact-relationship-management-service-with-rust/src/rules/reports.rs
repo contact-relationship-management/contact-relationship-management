@@ -46,6 +46,12 @@ pub struct Spec {
     /// Only records created (tickets: opened) on or before this day.
     #[serde(default)]
     pub to: Option<NaiveDate>,
+    /// Show a sum of amounts in this currency (CRM-R50); only with `sum_amount`.
+    #[serde(default)]
+    pub convert_to: Option<String>,
+    /// The day whose exchange rates are used (today when absent); only with `convert_to`.
+    #[serde(default)]
+    pub rate_date: Option<NaiveDate>,
 }
 
 fn count() -> String {
@@ -291,6 +297,18 @@ fn check(spec: &Spec, table: &Table) -> Vec<(String, String)> {
     {
         add("from", "is after the end of the range".to_string());
     }
+    if let Some(target) = &spec.convert_to {
+        if let Err(why) = super::fx::currency(target) {
+            add("convert_to", why);
+        } else if spec.measure != "sum_amount" {
+            add(
+                "convert_to",
+                "only a sum of amounts can be converted".to_string(),
+            );
+        }
+    } else if spec.rate_date.is_some() {
+        add("rate_date", "needs convert_to".to_string());
+    }
     problems
 }
 
@@ -399,7 +417,39 @@ mod tests {
             filter: BTreeMap::new(),
             from: None,
             to: None,
+            convert_to: None,
+            rate_date: None,
         }
+    }
+
+    #[test]
+    fn a_conversion_needs_a_sum_a_real_currency_and_a_target_for_the_date() {
+        let mut s = spec("deal", "state");
+        s.measure = "sum_amount".to_string();
+        s.convert_to = Some("GBP".to_string());
+        s.rate_date = NaiveDate::from_ymd_opt(2026, 6, 1);
+        assert!(plan(&s).is_ok());
+        let members = |s: &Spec| -> Vec<String> {
+            plan(s)
+                .err()
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(m, _)| m)
+                .collect()
+        };
+        s.convert_to = Some("gbp".to_string());
+        assert_eq!(members(&s), ["convert_to"]);
+        s.convert_to = Some("GBP".to_string());
+        s.measure = "count".to_string();
+        assert_eq!(
+            members(&s),
+            ["convert_to"],
+            "a count has no currency to convert"
+        );
+        s.convert_to = None;
+        assert_eq!(members(&s), ["rate_date"], "a date for nothing");
+        s.rate_date = None;
+        assert!(plan(&s).is_ok());
     }
 
     #[test]

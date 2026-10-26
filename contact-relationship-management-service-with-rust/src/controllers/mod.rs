@@ -19,6 +19,7 @@ pub mod docs;
 pub mod engagement;
 pub mod external_links;
 pub mod forms;
+pub mod fx_rates;
 pub mod insights;
 pub mod lead_imports;
 pub mod marketing;
