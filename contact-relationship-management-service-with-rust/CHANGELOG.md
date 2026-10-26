@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — CLV is masked (CRM-T119)
+
+`clv_minor` and `converted_minor` are `null` for a masked caller (the schema marks `clv_minor` nullable); the count of won deals stays.
+
 ### Added — converted CLV (CRM-T118, CRM-R54)
 
 `GET /api/accounts/{pid}/clv` takes `convert_to` and `rate_date`; the answer adds `converted_minor`, `rates` and `unconverted` beside the unchanged per-currency CLV.

@@ -993,6 +993,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 - `GET /api/accounts/{pid}/clv` may carry `convert_to` (three capital letters) and `rate_date` (a day, today when absent; a day in the future is `422`; `rate_date` without `convert_to` is `422`). Without them the answer is as in CRM-R13.
 - The per-currency `clv_minor` stays exactly as it was. With `convert_to` the answer adds `converted_minor`: each currency's CLV converted **once** with the rates and rounding of CRM-R50, and the results added; and `convert_to`, `rate_date`, the `rates` used and `unconverted` (each currency with no usable rate, and the amount left out). **Nothing is dropped silently and nothing is taken at 1.0.**
+- **Masking** (CRM-T119): CLV is money, so a caller whose collection read is masked gets the number of won deals and `null` for `clv_minor` and `converted_minor`, as for the forecast; an unmasked caller gets the figures.
 - A live read of the won deals now, valued at one date; it says nothing of what the money was worth when each deal closed.
 - No page shows CLV yet, so there is no UI.
 - Not built: the rate on each deal's close day; margin, discounting or churn (see the roadmap's CLV refinement).

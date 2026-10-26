@@ -134,13 +134,13 @@ pub(crate) struct SlaDashboard {
 pub(crate) struct Clv {
     account_pid: Uuid,
     won_deals: usize,
-    /// Minor units per ISO 4217 code, never summed across currencies.
-    clv_minor: std::collections::BTreeMap<String, i64>,
+    /// Minor units per ISO 4217 code, never summed across currencies; `null` when masked.
+    clv_minor: Option<std::collections::BTreeMap<String, i64>>,
     as_of: chrono::DateTime<chrono::Utc>,
     /// With `convert_to`: the currency of `converted_minor` (CRM-R54).
     convert_to: Option<String>,
     /// With `convert_to`: every currency's CLV converted and added, in minor units of
-    /// `convert_to`; what had no rate is left out (see `unconverted`).
+    /// `convert_to`; what had no rate is left out (see `unconverted`). `null` when masked.
     converted_minor: Option<i64>,
     /// With `convert_to`: the day whose exchange rates were used.
     rate_date: Option<chrono::NaiveDate>,
@@ -252,6 +252,7 @@ async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Res
 #[debug_handler]
 async fn account_clv(
     State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
     PidPath(pid): PidPath,
     axum::extract::Query(query): axum::extract::Query<ClvQuery>,
 ) -> Result<Response> {
@@ -264,6 +265,8 @@ async fn account_clv(
         problems.push_field("rate_date", "needs convert_to");
     }
     problems.finish()?;
+    // CLV is money: a masked collection read gets the count of won deals, not the figures.
+    let masked = crate::auth::aggregate_masked(&caller).map_err(super::record_rejection)?;
     let account = records::find_account(&ctx.db, pid).await?;
     let won = deals::Entity::find_live()
         .filter(deals::Column::AccountPid.eq(account.pid))
@@ -277,7 +280,7 @@ async fn account_clv(
     let totals = analytics::clv_by_currency(&inputs).map_err(|e| super::unprocessable(&e))?;
     // With `convert_to`, each currency's CLV is converted once and the results added.
     let mut conversion = None;
-    if let Some(target) = &query.convert_to {
+    if let (Some(target), false) = (&query.convert_to, masked) {
         let sums: Vec<(String, String, i64)> = totals
             .iter()
             .map(|(currency, total)| ("clv".to_string(), currency.clone(), *total))
@@ -299,7 +302,7 @@ async fn account_clv(
     format::json(Clv {
         account_pid: account.pid,
         won_deals: won.len(),
-        clv_minor: totals,
+        clv_minor: (!masked).then_some(totals),
         as_of: chrono::Utc::now(),
         convert_to: query.convert_to.clone(),
         converted_minor,

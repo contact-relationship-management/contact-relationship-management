@@ -1678,3 +1678,53 @@ async fn a_reader_may_see_exchange_rates_but_only_a_writer_may_change_them() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn an_accounts_clv_is_money_so_a_masked_reader_sees_null_and_an_unmasked_one_the_figures() {
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let service = sign_as(&kid, "clv-svc", &[("svc", &["true"])]);
+    let reader = sign_as(&kid, "clv-reader", &[]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let made: Value = request
+            .post("/api/accounts")
+            .add_header("authorization", format!("Bearer {service}"))
+            .json(
+                &json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Masked Money Ltd" }),
+            )
+            .await
+            .json();
+        let url = format!("/api/accounts/{}/clv", made["pid"].as_str().unwrap());
+        let read = |token: String| {
+            let request = &request;
+            let url = url.clone();
+            async move {
+                request
+                    .get(&url)
+                    .add_header("authorization", format!("Bearer {token}"))
+                    .await
+            }
+        };
+        let masked = read(reader).await;
+        masked.assert_status_ok();
+        let masked: Value = masked.json();
+        assert!(masked["clv_minor"].is_null(), "{masked}");
+        assert!(masked["converted_minor"].is_null(), "{masked}");
+        assert!(masked["won_deals"].is_number(), "counts stay: {masked}");
+        let open: Value = read(service).await.json();
+        assert!(open["clv_minor"].is_object(), "{open}");
+        request
+            .get(&url)
+            .await
+            .assert_status(axum::http::StatusCode::UNAUTHORIZED);
+    })
+    .await;
+}

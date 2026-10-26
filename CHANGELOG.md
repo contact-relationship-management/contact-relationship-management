@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — CLV is masked (CRM-T119)
+
+`GET /api/accounts/{pid}/clv` returned an account's money to a caller whose collection read is masked. It now returns the count of won deals and `null` for the figures, as the forecast does.
+
 ### Added — converted CLV (CRM-T118, CRM-R54)
 
 `GET /api/accounts/{pid}/clv` can show the lifetime value as one total in a chosen currency, naming the rates used and the amounts left out for want of a rate.

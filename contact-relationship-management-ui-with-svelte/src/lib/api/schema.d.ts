@@ -16831,16 +16831,16 @@ export interface components {
             account_pid: string;
             /** Format: date-time */
             as_of: string;
-            /** @description Minor units per ISO 4217 code, never summed across currencies. */
+            /** @description Minor units per ISO 4217 code, never summed across currencies; `null` when masked. */
             clv_minor: {
                 [key: string]: number;
-            };
+            } | null;
             /** @description With `convert_to`: the currency of `converted_minor` (CRM-R54). */
             convert_to: string | null;
             /**
              * Format: int64
              * @description With `convert_to`: every currency's CLV converted and added, in minor units of
-             *     `convert_to`; what had no rate is left out (see `unconverted`).
+             *     `convert_to`; what had no rate is left out (see `unconverted`). `null` when masked.
              */
             converted_minor: number | null;
             /**
