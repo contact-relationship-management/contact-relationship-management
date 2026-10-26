@@ -277,6 +277,7 @@ export default {
   "deal.lost": "हारी",
   "campaign.funnel": "फ़नल",
   "campaign.roi": "आरओआई",
+  "campaign.convert": "अन्य मुद्राओं को प्रचलित दर पर गिनें",
   "campaign.recipients": "प्राप्तकर्ता",
   "campaign.run": "चलाएं (नकली)",
   "ticket.priority": "प्राथमिकता",

@@ -790,9 +790,10 @@ export function listCampaigns(init?: FetchLike): Promise<Campaign[]> {
   return api("/campaigns", init);
 }
 
-/** One campaign's funnel + ROI. */
+/** One campaign's funnel + ROI; `convert` counts other currencies at the rate in force (CRM-R52). */
 export function campaignFunnel(
   pid: string,
+  options: { convert?: boolean; rateDate?: string } = {},
   init?: FetchLike,
 ): Promise<{
   campaign: Campaign;
@@ -801,8 +802,19 @@ export function campaignFunnel(
   /** `null` when the caller's policy masks amounts. */
   won_revenue_minor: number | null;
   roi: Ratio | null;
+  /** Won revenue in other currencies: with `convert`, only what had no rate. */
+  won_revenue_other_currencies: Record<string, number> | null;
+  rate_date: string | null;
+  rates: ReportRateUsed[];
+  unconverted: ReportUnconverted[];
 }> {
-  return api(`/campaigns/${pid}/funnel`, init);
+  const query = new URLSearchParams();
+  if (options.convert) {
+    query.set("convert", "true");
+    if (options.rateDate) query.set("rate_date", options.rateDate);
+  }
+  const suffix = query.size > 0 ? `?${query}` : "";
+  return api(`/campaigns/${pid}/funnel${suffix}`, init);
 }
 
 /** Run (simulated send). */

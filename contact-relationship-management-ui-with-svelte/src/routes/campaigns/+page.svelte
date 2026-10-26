@@ -15,7 +15,7 @@
   } from "#lib/api/crm.js";
   import { ratioPercent } from "#lib/format.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
-  import type { Campaign, Ratio } from "#lib/api/crm.js";
+  import type { Campaign, Ratio, ReportRateUsed, ReportUnconverted } from "#lib/api/crm.js";
 
   const list = resource(listCampaigns);
   const campaigns = $derived(list.value);
@@ -25,7 +25,11 @@
     leads: number;
     won_revenue_minor: number | null;
     roi: Ratio | null;
+    rate_date: string | null;
+    rates: ReportRateUsed[];
+    unconverted: ReportUnconverted[];
   } | null>(null);
+  let convert = $state(false);
   let actionError = $state<string | null>(null);
 
   async function run(campaign: Campaign) {
@@ -42,12 +46,15 @@
   }
 
   async function showFunnel(campaign: Campaign) {
-    const data = await campaignFunnel(campaign.pid);
+    const data = await campaignFunnel(campaign.pid, { convert });
     funnel = {
       pid: campaign.pid,
       leads: data.leads,
       won_revenue_minor: data.won_revenue_minor,
       roi: data.roi,
+      rate_date: data.rate_date,
+      rates: data.rates,
+      unconverted: data.unconverted,
     };
   }
 
@@ -173,6 +180,15 @@
         <button onclick={() => void run(selected)}>{t("campaign.run")}</button>
       {/if}
       <button onclick={() => void showFunnel(selected)}>{t("campaign.funnel")}</button>
+      <label>
+        <input
+          type="checkbox"
+          bind:checked={convert}
+          onchange={() => void showFunnel(selected)}
+          data-testid="funnel-convert"
+        />
+        {t("campaign.convert")}
+      </label>
       {#if funnel?.pid === selected.pid}
         <p data-testid="funnel">
           {t("nav.leads")}: {funnel.leads} ·
@@ -184,6 +200,29 @@
             </span>
           {/if}
         </p>
+        {#if funnel.rates.length > 0}
+          <p class="muted small" data-testid="funnel-rates">
+            {t("rpt.ratesUsed")} ({funnel.rate_date}):
+            {#each funnel.rates as used (used.from)}
+              <span class="chip">
+                1 {used.from} = {used.rate}
+                {used.to}, {used.effective_on}, {used.source}
+                {#if used.inverted}({t("rpt.inverted")}){/if}
+              </span>
+            {/each}
+          </p>
+        {/if}
+        {#if funnel.unconverted.length > 0}
+          <p data-testid="funnel-unconverted">
+            {t("rpt.unconverted")}:
+            {#each funnel.unconverted as left (left.currency)}
+              <span class="chip">
+                {left.currency}: {money(left.amount_minor, left.currency, i18n.locale)}
+              </span>
+            {/each}
+            <span class="muted small">{t("rpt.unconvertedHint")}</span>
+          </p>
+        {/if}
       {/if}
     </div>
   {/if}

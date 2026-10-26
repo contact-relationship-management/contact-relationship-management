@@ -973,6 +973,10 @@ test.describe("masked amounts (CRM-T32)", () => {
           won_deals: 1,
           won_revenue_minor: null,
           roi: null,
+          won_revenue_other_currencies: null,
+          rate_date: null,
+          rates: [],
+          unconverted: [],
         },
       }),
     );
@@ -982,6 +986,73 @@ test.describe("masked amounts (CRM-T32)", () => {
     const funnel = page.getByTestId("funnel");
     await expect(funnel).toContainText("—");
     await expect(funnel).not.toContainText("0%");
+  });
+
+  test("campaign funnel can count other currencies, naming the rates and what had none", async ({
+    page,
+  }) => {
+    const campaign = {
+      pid: "k1",
+      name: "Spring push",
+      status: "completed",
+      recipients: 10,
+      delivered: 9,
+      opened: 5,
+      clicked: 2,
+      currency: "GBP",
+      cost_minor: 50_000,
+    };
+    const asked: string[] = [];
+    await page.route("**/api/proxy/campaigns", (route) =>
+      route.fulfill({ json: [campaign] }),
+    );
+    await page.route("**/api/proxy/campaigns/k1/funnel**", (route) => {
+      const converted = route.request().url().includes("convert=true");
+      asked.push(route.request().url());
+      return route.fulfill({
+        json: {
+          campaign,
+          leads: 3,
+          won_deals: 3,
+          won_revenue_minor: converted ? 116_000 : 100_000,
+          roi: {
+            numerator: converted ? 66_000 : 50_000,
+            denominator: 50_000,
+            value: 1,
+          },
+          won_revenue_other_currencies: converted
+            ? { JPY: 700 }
+            : { USD: 20_000, JPY: 700 },
+          rate_date: converted ? "2026-10-26" : null,
+          rates: converted
+            ? [
+                {
+                  from: "USD",
+                  to: "GBP",
+                  rate: "0.8",
+                  effective_on: "2026-01-01",
+                  source: "test table",
+                  inverted: false,
+                },
+              ]
+            : [],
+          unconverted: converted
+            ? [{ currency: "JPY", groups: 1, amount_minor: 700 }]
+            : [],
+        },
+      });
+    });
+    await page.goto("/campaigns");
+    await page.getByRole("rowheader", { name: "Spring push" }).first().click();
+    await page.getByRole("button", { name: "Funnel" }).click();
+    await expect(page.getByTestId("funnel-rates")).toHaveCount(0);
+    await page.getByTestId("funnel-convert").check();
+    await expect(page.getByTestId("funnel-rates")).toContainText(
+      "1 USD = 0.8 GBP",
+    );
+    await expect(page.getByTestId("funnel-unconverted")).toContainText("JPY");
+    await expect(page.getByTestId("funnel")).toContainText("£1,160.00");
+    expect(asked.at(-1)).toContain("convert=true");
   });
 });
 

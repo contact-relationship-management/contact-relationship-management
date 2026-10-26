@@ -125,11 +125,11 @@ pub(crate) struct RateUsed {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "ReportUnconverted")]
 pub(crate) struct Unconverted {
-    currency: String,
+    pub currency: String,
     /// How many group sums were left out.
-    groups: usize,
+    pub groups: usize,
     /// Their total, in that currency's minor units.
-    amount_minor: i64,
+    pub amount_minor: i64,
 }
 
 /// Sums converted into one currency, and what the conversion used and left out.

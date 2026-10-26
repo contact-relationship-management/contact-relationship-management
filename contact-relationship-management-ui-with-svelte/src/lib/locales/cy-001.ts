@@ -280,6 +280,7 @@ export default {
   "deal.lost": "Collwyd",
   "campaign.funnel": "Twndis",
   "campaign.roi": "ROI",
+  "campaign.convert": "Cyfrif arian cyfred eraill ar y gyfradd gyfredol",
   "campaign.recipients": "Derbynwyr",
   "campaign.run": "Rhedeg (efelychiad)",
   "ticket.priority": "Blaenoriaeth",

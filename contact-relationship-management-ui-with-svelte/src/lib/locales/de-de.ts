@@ -289,6 +289,7 @@ export default {
   "deal.lost": "Verloren",
   "campaign.funnel": "Trichter",
   "campaign.roi": "ROI",
+  "campaign.convert": "Andere Währungen zum gültigen Kurs zählen",
   "campaign.recipients": "Empfänger",
   "campaign.run": "Ausführen (simuliert)",
   "ticket.priority": "Priorität",

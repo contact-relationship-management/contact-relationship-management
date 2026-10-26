@@ -276,6 +276,7 @@ export default {
   "deal.lost": "已失",
   "campaign.funnel": "漏斗",
   "campaign.roi": "投资回报率",
+  "campaign.convert": "按现行汇率计入其他币种",
   "campaign.recipients": "收件人",
   "campaign.run": "运行（模拟）",
   "ticket.priority": "优先级",

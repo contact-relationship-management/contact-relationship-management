@@ -275,6 +275,7 @@ export default {
   "deal.lost": "Lost",
   "campaign.funnel": "Funnel",
   "campaign.roi": "ROI",
+  "campaign.convert": "Count other currencies at the rate in force",
   "campaign.recipients": "Recipients",
   "campaign.run": "Run (simulated)",
   "ticket.priority": "Priority",

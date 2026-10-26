@@ -897,7 +897,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/campaigns/{pid}/funnel",
         "marketing",
-        "Funnel + ROI (null on zero cost; per-currency honesty)",
+        "Funnel + ROI (null on zero cost; per-currency honesty). ?convert=true with ?rate_date= (today when absent) converts revenue won in other currencies into the campaign's currency, naming the rates used and the revenue left out for want of a rate (CRM-R52)",
         Kind::Ok,
     ),
     (

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — converted campaign ROI (CRM-T116, CRM-R52)
+
+`GET /api/campaigns/{pid}/funnel` takes `convert` and `rate_date`; the answer names `rates` and `unconverted`.
+
 ### Added — converted attribution (CRM-T115, CRM-R51)
 
 `GET /api/attribution` takes `convert_to` and `rate_date`; the answer names `rates` and `unconverted`. The conversion mapping now lives in `controllers::fx_rates`, shared with reports.

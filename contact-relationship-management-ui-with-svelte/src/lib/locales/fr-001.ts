@@ -286,6 +286,7 @@ export default {
   "deal.lost": "Perdue",
   "campaign.funnel": "Entonnoir",
   "campaign.roi": "ROI",
+  "campaign.convert": "Compter les autres devises au taux en vigueur",
   "campaign.recipients": "Destinataires",
   "campaign.run": "Lancer (simulé)",
   "ticket.priority": "Priorité",

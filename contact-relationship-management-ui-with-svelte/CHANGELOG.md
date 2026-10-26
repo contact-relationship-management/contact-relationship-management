@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — converted campaign ROI (CRM-T116)
+
+A "Count other currencies at the rate in force" checkbox on the funnel (one key in 8 locales, machine drafts), with the rates and left-out amounts shown; one smoke test.
+
 ### Added — converted attribution (CRM-T115)
 
 "Show in" and "Rates as of" on `/attribution`, with the rates used and the credit left out; tour arithmetic shared with the Reports page and one Playwright test.

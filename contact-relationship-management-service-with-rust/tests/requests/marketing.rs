@@ -135,3 +135,94 @@ async fn consent_gates_campaign_and_nurture() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_funnel_can_count_revenue_won_in_other_currencies_at_the_rate_in_force() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let segment: Value = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json();
+        let campaign: Value = request
+            .post("/api/campaigns")
+            .json(
+                &json!({ "name": "Converted", "cost_minor": 50_000, "currency": "GBP",
+                           "segment_pid": segment["pid"] }),
+            )
+            .await
+            .json();
+        let pid = campaign["pid"].as_str().unwrap().to_string();
+        let (pipeline, stages) = super::seed_pipeline!(&request).await;
+        for (name, amount, currency) in [
+            ("G", 100_000, "GBP"),
+            ("D", 20_000, "USD"),
+            ("Y", 700, "JPY"),
+        ] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(
+                    &json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": amount,
+                               "currency": currency, "source_campaign_pid": pid }),
+                )
+                .await
+                .json();
+            request
+                .post(&format!(
+                    "/api/deals/{}/stage",
+                    deal["pid"].as_str().unwrap()
+                ))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+        }
+        request
+            .put("/api/fx-rates")
+            .json(&json!({ "from": "USD", "to": "GBP", "rate": "0.80",
+                           "effective_on": "2026-01-01", "source": "test table" }))
+            .await
+            .assert_status_ok();
+
+        // As before: the campaign's own currency only, the others listed apart.
+        let plain: Value = request
+            .get(&format!("/api/campaigns/{pid}/funnel"))
+            .await
+            .json();
+        assert_eq!(plain["won_revenue_minor"], 100_000, "{plain}");
+        assert_eq!(
+            plain["won_revenue_other_currencies"]["USD"], 20_000,
+            "{plain}"
+        );
+        assert!(plain["rate_date"].is_null() && plain["rates"].as_array().unwrap().is_empty());
+
+        // Converted: the dollars count at 0.80; the yen have no rate and stay apart, counted.
+        let done: Value = request
+            .get(&format!("/api/campaigns/{pid}/funnel?convert=true"))
+            .await
+            .json();
+        assert_eq!(done["won_revenue_minor"], 116_000, "{done}");
+        assert_eq!(done["roi"]["numerator"], 66_000, "{done}");
+        assert_eq!(done["won_revenue_other_currencies"]["JPY"], 700, "{done}");
+        assert!(
+            done["won_revenue_other_currencies"]["USD"].is_null(),
+            "{done}"
+        );
+        assert_eq!(done["rates"][0]["from"], "USD", "{done}");
+        assert_eq!(done["unconverted"][0]["currency"], "JPY", "{done}");
+
+        for query in ["rate_date=2026-01-01", "convert=true&rate_date=2999-01-01"] {
+            let r = request
+                .get(&format!("/api/campaigns/{pid}/funnel?{query}"))
+                .await;
+            r.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            let refused: Value = r.json();
+            assert_eq!(
+                refused["errors"][0]["pointer"], "/rate_date",
+                "{query}: {refused}"
+            );
+        }
+    })
+    .await;
+}

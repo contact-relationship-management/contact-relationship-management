@@ -1994,6 +1994,11 @@ function campaignFunnel(pid: string): DemoReply {
     roi: campaign.cost_minor
       ? ratio(revenue - campaign.cost_minor, campaign.cost_minor)
       : null,
+    // The tour's won revenue is all in the campaign's currency, so there is nothing to convert.
+    won_revenue_other_currencies: {},
+    rate_date: null,
+    rates: [],
+    unconverted: [],
   });
 }
 

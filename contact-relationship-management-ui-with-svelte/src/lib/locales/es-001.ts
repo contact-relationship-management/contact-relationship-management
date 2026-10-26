@@ -282,6 +282,7 @@ export default {
   "deal.lost": "Perdida",
   "campaign.funnel": "Embudo",
   "campaign.roi": "ROI",
+  "campaign.convert": "Contar otras monedas al tipo vigente",
   "campaign.recipients": "Destinatarios",
   "campaign.run": "Ejecutar (simulado)",
   "ticket.priority": "Prioridad",

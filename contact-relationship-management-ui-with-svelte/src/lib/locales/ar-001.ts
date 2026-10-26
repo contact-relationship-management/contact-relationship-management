@@ -280,6 +280,7 @@ export default {
   "deal.lost": "خسرت",
   "campaign.funnel": "القمع",
   "campaign.roi": "العائد على الاستثمار",
+  "campaign.convert": "احتسب العملات الأخرى بسعر الصرف السائد",
   "campaign.recipients": "المستلمون",
   "campaign.run": "تشغيل (محاكاة)",
   "ticket.priority": "الأولوية",

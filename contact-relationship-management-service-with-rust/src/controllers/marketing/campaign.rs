@@ -598,6 +598,21 @@ pub(crate) struct CampaignFunnel {
     /// Won revenue in other currencies, never summed in.
     won_revenue_other_currencies: Option<std::collections::BTreeMap<String, i64>>,
     roi: Option<analytics::Ratio>,
+    /// With `convert=true`: the day whose exchange rates were used (CRM-R52).
+    rate_date: Option<chrono::NaiveDate>,
+    /// With `convert=true`: the rate used for each currency that was converted.
+    rates: Vec<crate::controllers::fx_rates::RateUsed>,
+    /// With `convert=true`: revenue that had no rate in force and stays out of the figures.
+    unconverted: Vec<crate::controllers::fx_rates::Unconverted>,
+}
+
+/// What `GET /api/campaigns/{pid}/funnel` may be asked.
+#[derive(Debug, Deserialize)]
+pub(super) struct FunnelQuery {
+    /// Convert revenue won in other currencies into the campaign's currency (CRM-R52).
+    convert: Option<bool>,
+    /// The day whose exchange rates are used (today when absent); only with `convert=true`.
+    rate_date: Option<chrono::NaiveDate>,
 }
 
 /// `GET /api/campaigns/{pid}/deliveries` — how a send is going: rows per state
@@ -682,7 +697,14 @@ pub(super) async fn campaign_funnel(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
+    axum::extract::Query(query): axum::extract::Query<FunnelQuery>,
 ) -> Result<Response> {
+    let convert = query.convert.unwrap_or(false);
+    if !convert && query.rate_date.is_some() {
+        let mut problems = Problems::new();
+        problems.push_field("rate_date", "needs convert=true");
+        problems.finish()?;
+    }
     let masked =
         crate::auth::aggregate_masked(&caller).map_err(crate::controllers::record_rejection)?;
     let campaign = records::find_campaign(&ctx.db, pid).await?;
@@ -709,6 +731,45 @@ pub(super) async fn campaign_funnel(
             *other_currency.entry(deal.currency.clone()).or_insert(0) += deal.amount_minor;
         }
     }
+    // With `convert=true`, revenue in other currencies is converted into the campaign's currency
+    // (once per currency) and counts toward ROI; what has no rate stays listed apart.
+    let mut conversion = None;
+    if convert && !other_currency.is_empty() {
+        let sums: Vec<(String, String, i64)> = other_currency
+            .iter()
+            .map(|(currency, amount)| ("revenue".to_string(), currency.clone(), *amount))
+            .collect();
+        let done = crate::controllers::fx_rates::convert_sums(
+            &ctx,
+            &campaign.currency,
+            query.rate_date,
+            "rate_date",
+            &sums,
+        )
+        .await?;
+        let converted = done.rows.first().map_or(0, |row| row.1);
+        same_currency_revenue = same_currency_revenue.saturating_add(converted);
+        let left: std::collections::BTreeSet<&str> = done
+            .unconverted
+            .iter()
+            .map(|u| u.currency.as_str())
+            .collect();
+        other_currency.retain(|currency, _| left.contains(currency.as_str()));
+        conversion = Some(done);
+    }
+    let (rate_date, rates, unconverted) = match conversion {
+        Some(done) => (Some(done.rate_date), done.rates, done.unconverted),
+        None if convert => (
+            Some(
+                query
+                    .rate_date
+                    .unwrap_or_else(|| chrono::Utc::now().date_naive()),
+            ),
+            Vec::new(),
+            Vec::new(),
+        ),
+        None => (None, Vec::new(), Vec::new()),
+    };
     let roi = analytics::roi(same_currency_revenue, campaign.cost_minor);
     // Cost, revenue and ROI are commercial and masked; counts and structure stay.
     let mut campaign = serde_json::json!(campaign);
@@ -722,5 +783,8 @@ pub(super) async fn campaign_funnel(
         won_revenue_minor: (!masked).then_some(same_currency_revenue),
         won_revenue_other_currencies: (!masked).then_some(other_currency),
         roi: (!masked).then_some(roi),
+        rate_date,
+        rates: if masked { Vec::new() } else { rates },
+        unconverted: if masked { Vec::new() } else { unconverted },
     })
 }
