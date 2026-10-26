@@ -1237,6 +1237,23 @@ test.describe("export, undo and search", () => {
     );
   });
 
+  test("the forecast can also be shown in one currency, naming the rate it used", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/deals");
+    await expect(page.getByTestId("forecast-converted")).toHaveCount(0);
+    await page.getByTestId("forecast-convert").fill("USD");
+    await expect(page.getByTestId("forecast-converted")).toContainText("$");
+    await expect(page.getByTestId("forecast-converted")).toContainText(
+      "1 GBP = 1.3 USD",
+    );
+    // No pound-to-yen rate: no total, and the pounds are listed as left out.
+    await page.getByTestId("forecast-convert").fill("JPY");
+    await expect(page.getByTestId("forecast-converted")).toContainText("GBP");
+    await expect(page.getByTestId("forecast-converted")).toContainText("¥0");
+  });
+
   test("a deal report is shown in one currency, with the rates it used and what it could not convert", async ({
     page,
   }) => {

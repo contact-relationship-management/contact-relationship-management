@@ -981,7 +981,36 @@ function openDeals(): Deal[] {
   return state.deals.filter((d) => !final.has(d.stage_pid));
 }
 
-function forecastNow() {
+function forecastNow(query?: URLSearchParams): DemoReply {
+  const now = forecastTotals();
+  const convertTo = query?.get("convert_to") ?? null;
+  const rateDate = query?.get("rate_date") ?? null;
+  if (!convertTo && rateDate) return problem(422, "rate_date needs convert_to");
+  let converted: Exclude<ReturnType<typeof convertSums>, string> | null = null;
+  if (convertTo) {
+    const done = convertSums(
+      convertTo,
+      rateDate,
+      Object.entries(now.totals_minor).map(([currency, value]) => ({
+        group: "forecast",
+        currency,
+        value,
+      })),
+    );
+    if (typeof done === "string") return problem(422, done);
+    converted = done;
+  }
+  return ok({
+    ...now,
+    convert_to: convertTo,
+    converted_minor: converted ? (converted.rows[0]?.value ?? 0) : null,
+    rate_date: converted?.rateDate ?? null,
+    rates: converted?.rates ?? [],
+    unconverted: converted?.unconverted ?? [],
+  });
+}
+
+function forecastTotals() {
   const prob = new Map(state.stages.map((s) => [s.pid, s.probability_percent]));
   const open_ = openDeals();
   const total = open_.reduce(
@@ -1159,7 +1188,7 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         note: NOTE,
       });
     case "forecast-trends": {
-      const base = forecastNow().totals_minor.GBP ?? 0;
+      const base = forecastTotals().totals_minor.GBP ?? 0;
       return ok({
         as_of,
         note: NOTE,
@@ -2410,7 +2439,7 @@ export function demoHandle(
   }
   if (head === "activities" && method === "PUT" && seg.length === 2)
     return editFollowup(id!, body);
-  if (head === "forecast" && get) return ok(forecastNow());
+  if (head === "forecast" && get) return forecastNow(query);
   if (head === "segments" && get) return ok(state.segments);
   if (head === "campaigns") {
     if (seg.length === 1 && get) return ok(state.campaigns);

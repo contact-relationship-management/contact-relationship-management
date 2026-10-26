@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — converted forecast (CRM-T117)
+
+A "Show in" box on the deal board's forecast strip, with the converted total, the rates used and the totals left out; one Playwright test.
+
 ### Added — converted campaign ROI (CRM-T116)
 
 A "Count other currencies at the rate in force" checkbox on the funnel (one key in 8 locales, machine drafts), with the rates and left-out amounts shown; one smoke test.

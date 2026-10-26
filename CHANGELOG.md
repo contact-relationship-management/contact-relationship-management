@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — converted forecast (CRM-T117, CRM-R53)
+
+`GET /api/forecast` and the deal board can show the forecast as one total in a chosen currency, naming the rates used and the totals left out for want of a rate.
+
 ### Added — converted campaign ROI (CRM-T116, CRM-R52)
 
 The campaign funnel can count revenue won in other currencies at the exchange rate in force, so ROI is not understated, naming the rates used and the revenue left out for want of a rate.

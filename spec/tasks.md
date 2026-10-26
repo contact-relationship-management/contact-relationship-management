@@ -1565,3 +1565,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a checkbox on the Campaigns page that asks again with `convert=true`, with the rates and left-out amounts shown (the Reports page's wording; one new key, `campaign.convert`, in 8 locales, machine drafts); the client's `campaignFunnel` takes options; the smoke mock now carries the new members; a new smoke test.
       - **Tests:** 1 request test (dollars counted at 0.80 so revenue and ROI change; yen with no rate kept apart and counted; the plain answer unchanged; two refusals naming `/rate_date`).
       - **Not built:** see CRM-R52. **Not tested:** the converted funnel under a masked read (the masking code path is unchanged and returns early values as before).
+- [x] CRM-T117 *(edge)* **Converted forecast.** `GET /api/forecast` can add one total in a chosen currency at the rate in force, naming the rates and what had none; the third slice of "FX beyond reports". (S)
+      **Done (2026-10-26, not released):** requirement CRM-R53 first, then:
+      - **Service:** `convert_to` and `rate_date` on the query, through the shared `fx_rates::convert_sums`; the answer gains `convert_to`, `converted_minor`, `rate_date`, `rates`, `unconverted`; `totals_minor` is untouched.
+      - **UI:** a "Show in" box on the deal board's forecast strip (the Reports page's wording, so no new locale keys); `forecast()` takes options; the tour converts with the shared `convertSums`; one Playwright test. The full smoke and tour files pass (116).
+      - **Tests:** 1 request test (per-currency totals unchanged; the dollars added at 0.80; yen counted as left out; the plain answer unchanged; three refusals).
+      - **Not built:** see CRM-R53. **Not tested:** the converted forecast under a masked read.

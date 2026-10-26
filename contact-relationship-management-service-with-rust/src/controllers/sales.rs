@@ -294,6 +294,26 @@ pub(crate) struct Forecast {
     /// Minor units per currency, never summed across currencies; `null` when masked.
     #[schemars(with = "Option<std::collections::BTreeMap<String, i64>>")]
     totals_minor: serde_json::Value,
+    /// With `convert_to`: the currency of `converted_minor` (CRM-R53).
+    convert_to: Option<String>,
+    /// With `convert_to`: every currency's total converted and added, in minor units of
+    /// `convert_to`; what had no rate is left out (see `unconverted`). `null` when masked.
+    converted_minor: Option<i64>,
+    /// With `convert_to`: the day whose exchange rates were used.
+    rate_date: Option<chrono::NaiveDate>,
+    /// With `convert_to`: the rate used for each currency that was converted.
+    rates: Vec<super::fx_rates::RateUsed>,
+    /// With `convert_to`: totals that had no rate in force, left out and never taken at 1.0.
+    unconverted: Vec<super::fx_rates::Unconverted>,
+}
+
+/// What `GET /api/forecast` may be asked.
+#[derive(Debug, Deserialize)]
+struct ForecastQuery {
+    /// Also show the forecast in this currency, three capital letters (CRM-R53).
+    convert_to: Option<String>,
+    /// The day whose exchange rates are used (today when absent); only with `convert_to`.
+    rate_date: Option<chrono::NaiveDate>,
 }
 
 /// `GET /api/leads/{pid}` — the lead + its live score breakdown.
@@ -863,7 +883,20 @@ async fn reopen_deal(
 /// `GET /api/forecast` — the live stage-weighted forecast per
 /// currency over open deals (CRM-R5); stamped `as_of`.
 #[debug_handler]
-async fn forecast(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
+async fn forecast(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    axum::extract::Query(query): axum::extract::Query<ForecastQuery>,
+) -> Result<Response> {
+    let mut problems = Problems::new();
+    if let Some(target) = &query.convert_to {
+        if let Err(why) = crate::rules::fx::currency(target) {
+            problems.push_field("convert_to", why);
+        }
+    } else if query.rate_date.is_some() {
+        problems.push_field("rate_date", "needs convert_to");
+    }
+    problems.finish()?;
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
     let open = deals::Entity::find_live()
         .filter(deals::Column::ClosedAt.is_null())
@@ -882,7 +915,33 @@ async fn forecast(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Resul
     Metrics::global()
         .deals_open
         .set(i64::try_from(open.len()).unwrap_or(i64::MAX));
+    // With `convert_to`, each currency's total is converted once and the results added.
+    let mut conversion = None;
+    if let (Some(target), false) = (&query.convert_to, masked) {
+        let sums: Vec<(String, String, i64)> = totals
+            .iter()
+            .map(|(currency, total)| ("forecast".to_string(), currency.clone(), *total))
+            .collect();
+        conversion = Some(
+            super::fx_rates::convert_sums(&ctx, target, query.rate_date, "rate_date", &sums)
+                .await?,
+        );
+    }
+    let (converted_minor, rate_date, rates, unconverted) = match conversion {
+        Some(done) => (
+            Some(done.rows.first().map_or(0, |row| row.1)),
+            Some(done.rate_date),
+            done.rates,
+            done.unconverted,
+        ),
+        None => (None, None, Vec::new(), Vec::new()),
+    };
     format::json(Forecast {
+        convert_to: query.convert_to.clone(),
+        converted_minor,
+        rate_date,
+        rates,
+        unconverted,
         as_of: chrono::Utc::now(),
         open_deals: open.len(),
         totals_minor: if masked {

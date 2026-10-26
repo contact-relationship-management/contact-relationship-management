@@ -1150,7 +1150,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/forecast",
         "sales",
-        "Live stage-weighted forecast per currency (derived, never typed)",
+        "Live stage-weighted forecast per currency (derived, never typed). ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the totals left out for want of a rate (CRM-R53)",
         Kind::Ok,
     ),
     (

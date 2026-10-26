@@ -954,7 +954,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Converting.** An amount is multiplied by the rate (or divided by the inverse's) and rounded half to even to a minor unit; as everywhere in the CRM, a minor unit is taken as a hundredth.
 - **Reports.** A deal report with `measure = sum_amount` may carry `convert_to` (a currency) and `rate_date` (a day, today when absent; a day in the future is `422`; both are refused on any other measure). Each group's sum in each currency is converted **once**, not deal by deal, so the rounding is at most half a minor unit per group and currency; sums already in the target currency are left as they are. Groups then merge, so a row is one group in the target currency. The answer adds `rate_date`, the `rates` used (pair, rate, day, source, whether inverted) and `unconverted`: for every currency with no usable rate, how many groups and how much was left out. **Nothing is dropped silently and nothing is taken at 1.0.** Saved reports keep `convert_to` and `rate_date` (an absent date means the day the report is run).
 - The FX rates page lists, adds and deletes rates. The Reports page offers "Show in" and "Rates as of", and shows the rates used and what could not be converted.
-- Not built: fetching rates from a provider or a bank feed; converting through a third currency; the rate on the day each deal closed (a report uses one date for all its rows); currencies whose minor unit is not a hundredth; converting the forecast or CLV (attribution: CRM-R51; the campaign funnel and ROI: CRM-R52); importing rates in bulk; rate history charts.
+- Not built: fetching rates from a provider or a bank feed; converting through a third currency; the rate on the day each deal closed (a report uses one date for all its rows); currencies whose minor unit is not a hundredth; converting CLV (attribution: CRM-R51; the campaign funnel and ROI: CRM-R52; the forecast: CRM-R53); importing rates in bulk; rate history charts.
 
 ## CRM-R51 — Converted attribution
 
@@ -964,7 +964,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - Each campaign's credit in each currency is converted **once** and merged, so the rounding is at most half a minor unit per campaign and currency; the unattributed deals are converted the same way. The shares of a deal are still shared exactly in its own currency first: conversion never touches the sharing.
 - With `convert_to`, every `credit` and `unattributed` list holds one amount in the target currency (none for a campaign whose credit had no usable rate). The answer adds `convert_to`, `rate_date`, the `rates` used and `unconverted`: for every currency with no usable rate, how many campaign (or unattributed) sums and how much was left out. **Nothing is dropped silently and nothing is taken at 1.0.** Without `convert_to` the answer is as in CRM-R49, with empty `rates` and `unconverted`.
 - The Attribution page offers "Show in" and "Rates as of", and shows the rates used and what could not be converted.
-- Not built: converting the forecast or CLV (campaign ROI: CRM-R52); the rate on each deal's close day (one date serves the whole answer); a campaign's credit converted before it is merged across deals.
+- Not built: converting CLV (campaign ROI: CRM-R52; the forecast: CRM-R53); the rate on each deal's close day (one date serves the whole answer); a campaign's credit converted before it is merged across deals.
 
 ## CRM-R52 — Converted campaign ROI
 
@@ -975,3 +975,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Masking** is unchanged: a masked caller gets `null` revenue and ROI, and no rates or unconverted amounts.
 - The Campaigns page has a checkbox "Count other currencies at the rate in force" beside the funnel, and shows the rates used and what could not be converted.
 - Not built: converting the cost (it is already in the campaign's currency); choosing another target currency; the rate on each deal's close day.
+
+## CRM-R53 — Converted forecast
+
+*As a sales lead, I can see the stage-weighted forecast as one total in a currency of my choice, with the rates used and what could not be converted, so that a mixed-currency pipeline has one number.*
+
+- `GET /api/forecast` may carry `convert_to` (three capital letters) and `rate_date` (a day, today when absent; a day in the future is `422`; `rate_date` without `convert_to` is `422`). Without them the answer is as in CRM-R5.
+- The per-currency `totals_minor` stay exactly as they were. With `convert_to` the answer adds `converted_minor`: each currency's weighted total converted **once** with the rates and rounding of CRM-R50, and the results added. It also adds `convert_to`, `rate_date`, the `rates` used and `unconverted`: for each currency with no usable rate, the total left out. **Nothing is dropped silently and nothing is taken at 1.0**, so the converted figure is at worst short by exactly what `unconverted` lists.
+- **Masking** is unchanged: a masked caller gets `null` totals and `null` `converted_minor`, and no rates.
+- The converted figure is a live read, like the forecast itself; the stored snapshots (`POST /api/forecast/snapshot`) and the trend series stay per currency.
+- The deal board's forecast strip has a "Show in" box that adds the converted total, the rates used and what was left out.
+- Not built: converting the snapshots or the trend; the rate on each deal's expected close day; CLV (still per currency).

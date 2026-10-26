@@ -750,14 +750,29 @@ export function markAllNotificationsRead(): Promise<{ marked: number }> {
   return api("/notifications/read-all", { method: "POST" });
 }
 
-/** The live forecast. */
-export function forecast(init?: FetchLike): Promise<{
+/** The live forecast; `convertTo` adds one total in a currency at the rate in force (CRM-R53). */
+export function forecast(
+  options: { convertTo?: string; rateDate?: string } = {},
+  init?: FetchLike,
+): Promise<{
   as_of: string;
   open_deals: number;
   /** `null` when the caller's policy masks amounts. */
   totals_minor: Record<string, number> | null;
+  convert_to: string | null;
+  /** Every currency's total converted and added; `null` when not asked for or masked. */
+  converted_minor: number | null;
+  rate_date: string | null;
+  rates: ReportRateUsed[];
+  unconverted: ReportUnconverted[];
 }> {
-  return api("/forecast", init);
+  const query = new URLSearchParams();
+  if (options.convertTo) {
+    query.set("convert_to", options.convertTo);
+    if (options.rateDate) query.set("rate_date", options.rateDate);
+  }
+  const suffix = query.size > 0 ? `?${query}` : "";
+  return api(`/forecast${suffix}`, init);
 }
 
 /** A saved audience (CRM-R7). */

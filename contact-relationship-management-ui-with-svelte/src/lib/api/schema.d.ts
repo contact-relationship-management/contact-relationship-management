@@ -8433,7 +8433,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Live stage-weighted forecast per currency (derived, never typed) */
+        /** Live stage-weighted forecast per currency (derived, never typed). ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the totals left out for want of a rate (CRM-R53) */
         get: {
             parameters: {
                 query?: never;
@@ -17681,12 +17681,29 @@ export interface components {
         Forecast: {
             /** Format: date-time */
             as_of: string;
+            /** @description With `convert_to`: the currency of `converted_minor` (CRM-R53). */
+            convert_to: string | null;
+            /**
+             * Format: int64
+             * @description With `convert_to`: every currency's total converted and added, in minor units of
+             *     `convert_to`; what had no rate is left out (see `unconverted`). `null` when masked.
+             */
+            converted_minor: number | null;
             /** Format: uint */
             open_deals: number;
+            /**
+             * Format: date
+             * @description With `convert_to`: the day whose exchange rates were used.
+             */
+            rate_date: string | null;
+            /** @description With `convert_to`: the rate used for each currency that was converted. */
+            rates: components["schemas"]["ReportRateUsed"][];
             /** @description Minor units per currency, never summed across currencies; `null` when masked. */
             totals_minor: {
                 [key: string]: number;
             } | null;
+            /** @description With `convert_to`: totals that had no rate in force, left out and never taken at 1.0. */
+            unconverted: components["schemas"]["ReportUnconverted"][];
         };
         /** @description One stored forecast snapshot. Totals are `null` when masked. */
         ForecastTrendPoint: {

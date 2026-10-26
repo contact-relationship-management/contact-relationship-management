@@ -25,6 +25,13 @@
   import { applyFilter, applyShape } from "#lib/views.js";
   import type { SavedView } from "#lib/api/crm.js";
 
+  /** A currency to show the forecast in too (CRM-R53); empty shows per-currency totals only. */
+  let showIn = $state("");
+  const converted = resource(async () => {
+    const to = showIn.trim().toUpperCase();
+    return /^[A-Z]{3}$/.test(to) ? await forecast({ convertTo: to }) : null;
+  });
+
   /** The pipeline the visitor picked; empty means the first. */
   let chosen = $state("");
   const board = resource(
@@ -191,7 +198,30 @@
   {:else}
     <span class="muted">{t("dash.noData")}</span>
   {/each}
+  <label>
+    {t("rpt.convertTo")}
+    <input bind:value={showIn} maxlength="3" size="4" data-testid="forecast-convert" />
+  </label>
 </p>
+{#if converted.value?.converted_minor != null}
+  <p data-testid="forecast-converted">
+    {t("dash.forecast")} ({converted.value.convert_to}):
+    <strong>{money(converted.value.converted_minor, converted.value.convert_to!, i18n.locale)}</strong>
+    {#each converted.value.rates as used (used.from)}
+      <span class="chip muted small">
+        1 {used.from} = {used.rate}
+        {used.to}, {used.effective_on}, {used.source}
+        {#if used.inverted}({t("rpt.inverted")}){/if}
+      </span>
+    {/each}
+    {#each converted.value.unconverted as left (left.currency)}
+      <span class="chip">
+        {t("rpt.unconverted")}: {left.currency}
+        {money(left.amount_minor, left.currency, i18n.locale)}
+      </span>
+    {/each}
+  </p>
+{/if}
 
 {#if error}
   <p class="error" data-testid="error">{t("common.error")}: {error}</p>

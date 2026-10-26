@@ -267,3 +267,53 @@ async fn a_saved_report_keeps_its_conversion() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn the_forecast_adds_a_total_in_one_currency_and_names_what_it_left_out() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let (pipeline, _stages) = seed_pipeline!(&request).await;
+        for (name, amount, currency) in [
+            ("A", 1_000_000, "GBP"),
+            ("B", 500_000, "USD"),
+            ("C", 70_000, "JPY"),
+        ] {
+            request
+                .post("/api/deals")
+                .json(&json!({ "name": name, "pipeline_pid": pipeline,
+                               "amount_minor": amount, "currency": currency }))
+                .await
+                .assert_status_ok();
+        }
+        let _ = set_rate!(&request, "USD", "GBP", "0.80", "2026-01-01");
+
+        let plain: Value = request.get("/api/forecast").await.json();
+        let gbp = plain["totals_minor"]["GBP"].as_i64().unwrap();
+        let usd = plain["totals_minor"]["USD"].as_i64().unwrap();
+        assert!(
+            gbp > 0 && usd > 0,
+            "the first stage must weigh something: {plain}"
+        );
+        assert!(
+            plain["converted_minor"].is_null() && plain["rates"].as_array().unwrap().is_empty()
+        );
+
+        let done: Value = request.get("/api/forecast?convert_to=GBP").await.json();
+        // Per-currency totals are still there; the converted total adds the dollars at 0.80.
+        assert_eq!(done["totals_minor"], plain["totals_minor"], "{done}");
+        assert_eq!(done["converted_minor"], gbp + usd * 80 / 100, "{done}");
+        assert_eq!(done["rates"][0]["from"], "USD", "{done}");
+        assert_eq!(done["unconverted"][0]["currency"], "JPY", "{done}");
+
+        for query in [
+            "convert_to=gbp",
+            "rate_date=2026-01-01",
+            "convert_to=GBP&rate_date=2999-01-01",
+        ] {
+            let r = request.get(&format!("/api/forecast?{query}")).await;
+            r.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    })
+    .await;
+}
