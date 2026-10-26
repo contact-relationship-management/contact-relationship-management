@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — converted attribution (CRM-T115, CRM-R51)
+
+`GET /api/attribution` takes `convert_to` and `rate_date`; the answer names `rates` and `unconverted`. The conversion mapping now lives in `controllers::fx_rates`, shared with reports.
+
 ### Added — exchange rates (CRM-T114, CRM-R50)
 
 `fx_rates` (migration `000038`), `GET/PUT /api/fx-rates` and `DELETE /api/fx-rates/{pid}`, audited. `rules::fx` reads rates as integers, picks the latest in force on a day (a pair's own, or the reverse inverted), and converts half to even. A report spec may carry `convert_to` and `rate_date`; the answer names `rates` and `unconverted`.

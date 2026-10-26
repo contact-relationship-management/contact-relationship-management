@@ -2391,7 +2391,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear (default linear), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. A caller with a masked collection read gets 403 */
+        /** Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear (default linear), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=GBP shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate. A caller with a masked collection read gets 403 */
         get: {
             parameters: {
                 query?: never;
@@ -16555,6 +16555,8 @@ export interface components {
             as_of: string;
             /** @description Most deals touched first. */
             campaigns: components["schemas"]["AttributionCampaign"][];
+            /** @description With `convert_to`: the currency every figure is in. */
+            convert_to: string | null;
             /**
              * Format: uint
              * @description Won deals considered.
@@ -16564,6 +16566,13 @@ export interface components {
             model: string;
             /** @description What the figures mean, in a line. */
             note: string;
+            /**
+             * Format: date
+             * @description With `convert_to`: the day whose exchange rates were used.
+             */
+            rate_date: string | null;
+            /** @description With `convert_to`: the rate used for each currency that was converted. */
+            rates: components["schemas"]["ReportRateUsed"][];
             /** @description More deals matched than are read. */
             truncated: boolean;
             unattributed: components["schemas"]["AttributionAmount"][];
@@ -16572,6 +16581,11 @@ export interface components {
              * @description Deals with no touch at all, and what they were worth: kept apart, never dropped.
              */
             unattributed_deals: number;
+            /**
+             * @description With `convert_to`: credit that had no rate in force and was left out, never taken at 1.0.
+             *     Each entry counts a campaign's credit in one currency (or the unattributed deals').
+             */
+            unconverted: components["schemas"]["ReportUnconverted"][];
             /**
              * Format: int64
              * @description The window used, in days.

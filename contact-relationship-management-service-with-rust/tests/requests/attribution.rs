@@ -247,3 +247,85 @@ async fn an_attribution_that_cannot_be_asked_is_refused_naming_the_member() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn attribution_shows_its_credit_in_one_currency_naming_the_rates_and_what_it_left_out() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let segment = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json::<Value>()["pid"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let alpha = campaign!(&request, segment, "Alpha");
+        let beta = campaign!(&request, segment, "Beta");
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        // Alpha's source brings in pounds and dollars, Beta's yen (no rate), and one deal has
+        // no touch at all.
+        for (name, amount, currency, source) in [
+            ("A1", 10_000, "GBP", Some(&alpha)),
+            ("A2", 5_000, "USD", Some(&alpha)),
+            ("B1", 700, "JPY", Some(&beta)),
+            ("W1", 2_000, "USD", None),
+        ] {
+            let mut body = json!({ "name": name, "amount_minor": amount, "currency": currency });
+            if let Some(campaign) = source {
+                body["source_campaign_pid"] = json!(campaign);
+            }
+            won_deal!(&request, pipeline, stages, body);
+        }
+        request
+            .put("/api/fx-rates")
+            .json(&json!({ "from": "USD", "to": "GBP", "rate": "0.80",
+                           "effective_on": "2026-01-01", "source": "test table" }))
+            .await
+            .assert_status_ok();
+
+        let answer: Value = request.get("/api/attribution?convert_to=GBP").await.json();
+        assert_eq!(answer["convert_to"], "GBP", "{answer}");
+        assert_eq!(earned(&answer, "Alpha", "GBP"), 10_000 + 4_000, "{answer}");
+        let beta_credit = answer["campaigns"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["name"] == "Beta")
+            .unwrap()["credit"]
+            .as_array()
+            .unwrap()
+            .len();
+        assert_eq!(
+            beta_credit, 0,
+            "yen has no rate and is not taken at 1.0: {answer}"
+        );
+        assert_eq!(answer["unattributed"][0]["currency"], "GBP", "{answer}");
+        assert_eq!(answer["unattributed"][0]["amount_minor"], 1_600, "{answer}");
+        assert_eq!(answer["rates"].as_array().unwrap().len(), 1, "{answer}");
+        assert_eq!(answer["rates"][0]["from"], "USD", "{answer}");
+        assert_eq!(answer["unconverted"][0]["currency"], "JPY", "{answer}");
+        assert_eq!(answer["unconverted"][0]["amount_minor"], 700, "{answer}");
+
+        // Without it nothing changes: per currency, no rates.
+        let plain: Value = request.get("/api/attribution").await.json();
+        assert!(plain["convert_to"].is_null() && plain["rates"].as_array().unwrap().is_empty());
+        assert_eq!(earned(&plain, "Alpha", "USD"), 5_000, "{plain}");
+
+        for (query, pointer) in [
+            ("convert_to=gbp", "/convert_to"),
+            ("rate_date=2026-01-01", "/rate_date"),
+            ("convert_to=GBP&rate_date=2999-01-01", "/rate_date"),
+        ] {
+            let r = request.get(&format!("/api/attribution?{query}")).await;
+            r.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            let refused: Value = r.json();
+            assert_eq!(
+                refused["errors"][0]["pointer"], pointer,
+                "{query}: {refused}"
+            );
+        }
+    })
+    .await;
+}

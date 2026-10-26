@@ -12,13 +12,22 @@
   let windowDays = $state(90);
   let from = $state("");
   let to = $state("");
+  let convertTo = $state("");
+  let rateDate = $state("");
   let result = $state<Attribution | null>(null);
   let error = $state<string | null>(null);
 
   async function run() {
     error = null;
     try {
-      result = await attribution({ model, windowDays, from, to });
+      result = await attribution({
+        model,
+        windowDays,
+        from,
+        to,
+        convertTo: convertTo.trim().toUpperCase(),
+        rateDate,
+      });
     } catch (cause) {
       result = null;
       error = errorMessage(cause);
@@ -71,6 +80,16 @@
   </label>
   <label>{t("attr.from")} <input type="date" bind:value={from} /></label>
   <label>{t("attr.to")} <input type="date" bind:value={to} /></label>
+  <label>
+    {t("rpt.convertTo")}
+    <input bind:value={convertTo} maxlength="3" size="4" data-testid="attribution-convert" />
+  </label>
+  {#if convertTo}
+    <label>
+      {t("rpt.rateDate")}
+      <input type="date" bind:value={rateDate} data-testid="attribution-rate-date" />
+    </label>
+  {/if}
   <button type="submit" data-testid="attribution-run">{t("attr.run")}</button>
 </form>
 
@@ -124,6 +143,26 @@
       </p>
     {/if}
     {#if result.truncated}<p class="muted">{t("attr.truncated")}</p>{/if}
+    {#if result.rates.length > 0}
+      <p class="muted small" data-testid="attribution-rates">
+        {t("rpt.ratesUsed")} ({result.rate_date}):
+        {#each result.rates as used (used.from)}
+          <span class="chip">
+            1 {used.from} = {used.rate} {used.to}, {used.effective_on}, {used.source}
+            {#if used.inverted}({t("rpt.inverted")}){/if}
+          </span>
+        {/each}
+      </p>
+    {/if}
+    {#if result.unconverted.length > 0}
+      <p data-testid="attribution-unconverted">
+        {t("rpt.unconverted")}:
+        {#each result.unconverted as left (left.currency)}
+          <span class="chip">{left.currency}: {money({ currency: left.currency, amount_minor: left.amount_minor })}</span>
+        {/each}
+        <span class="muted small">{t("rpt.unconvertedHint")}</span>
+      </p>
+    {/if}
     <p class="muted small">{result.note}</p>
   </div>
 {/if}

@@ -1683,6 +1683,11 @@ export interface Attribution {
   unattributed: AttributionAmount[];
   campaigns: AttributionCampaign[];
   truncated: boolean;
+  /** With `convert_to`: the currency every figure is in (CRM-R51). */
+  convert_to: string | null;
+  rate_date: string | null;
+  rates: ReportRateUsed[];
+  unconverted: ReportUnconverted[];
   note: string;
 }
 
@@ -1693,6 +1698,8 @@ export function attribution(
     windowDays: number;
     from?: string;
     to?: string;
+    convertTo?: string;
+    rateDate?: string;
   },
   init?: FetchLike,
 ): Promise<Attribution> {
@@ -1702,6 +1709,10 @@ export function attribution(
   });
   if (params.from) query.set("from", params.from);
   if (params.to) query.set("to", params.to);
+  if (params.convertTo) {
+    query.set("convert_to", params.convertTo);
+    if (params.rateDate) query.set("rate_date", params.rateDate);
+  }
   return api(`/attribution?${query}`, init);
 }
 

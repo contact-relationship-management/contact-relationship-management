@@ -13,11 +13,16 @@ use uuid::Uuid;
 
 use loco_rs::prelude::*;
 
+use super::fx_rates::{self, RateUsed, Unconverted};
 use super::record_rejection;
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::attribution::{self as rules, Model, Touch};
+use crate::rules::fx;
 use crate::validation::Problems;
+
+/// The group key of the deals no campaign touched, in a conversion.
+const UNATTRIBUTED: &str = "unattributed";
 
 /// Most won deals read in one ask.
 const MAX_DEALS: usize = 5000;
@@ -33,6 +38,10 @@ struct AttributionQuery {
     from: Option<NaiveDate>,
     /// Last day a deal may have closed on.
     to: Option<NaiveDate>,
+    /// Show every figure in this currency (CRM-R51), three capital letters.
+    convert_to: Option<String>,
+    /// The day whose exchange rates are used (today when absent); only with `convert_to`.
+    rate_date: Option<NaiveDate>,
 }
 
 /// An amount in one currency.
@@ -78,6 +87,15 @@ pub(crate) struct Attribution {
     campaigns: Vec<CampaignCredit>,
     /// More deals matched than are read.
     truncated: bool,
+    /// With `convert_to`: the currency every figure is in.
+    convert_to: Option<String>,
+    /// With `convert_to`: the day whose exchange rates were used.
+    rate_date: Option<NaiveDate>,
+    /// With `convert_to`: the rate used for each currency that was converted.
+    rates: Vec<RateUsed>,
+    /// With `convert_to`: credit that had no rate in force and was left out, never taken at 1.0.
+    /// Each entry counts a campaign's credit in one currency (or the unattributed deals').
+    unconverted: Vec<Unconverted>,
     /// What the figures mean, in a line.
     note: &'static str,
 }
@@ -111,6 +129,13 @@ fn validate(query: &AttributionQuery) -> Result<(Model, i64)> {
         && from > to
     {
         problems.push_field("from", "from is after to");
+    }
+    if let Some(target) = &query.convert_to {
+        if let Err(why) = fx::currency(target) {
+            problems.push_field("convert_to", why);
+        }
+    } else if query.rate_date.is_some() {
+        problems.push_field("rate_date", "needs convert_to");
     }
     problems.finish()?;
     match (model, days) {
@@ -232,31 +257,16 @@ struct Tally {
     credit: BTreeMap<String, i64>,
 }
 
-/// `GET /api/attribution?model=&window_days=&from=&to=` — share the revenue of won deals among
-/// the campaigns that touched the buyer.
-#[debug_handler]
-async fn run(
-    State(ctx): State<AppContext>,
-    caller: MaybeAuthUser,
-    axum::extract::Query(query): axum::extract::Query<AttributionQuery>,
-) -> Result<Response> {
-    let (model, days) = validate(&query)?;
-    // The answer is money, so a masked collection read may not have it.
-    if auth::aggregate_masked(&caller).map_err(record_rejection)? {
-        return Err(record_rejection((
-            axum::http::StatusCode::FORBIDDEN,
-            "attribution is about amounts and needs an unmasked read".to_string(),
-        )));
-    }
-    let mut deals = won_deals(&ctx, &query).await?;
-    let truncated = deals.len() > MAX_DEALS;
-    deals.truncate(MAX_DEALS);
-    let mut touches = touches_of(&ctx, &deals, days).await?;
-
+/// Share every deal among its touches: each campaign's tally, and what no campaign touched.
+fn share_out(
+    model: Model,
+    deals: &[Won],
+    touches: &mut HashMap<Uuid, Vec<Touch>>,
+) -> (BTreeMap<Uuid, Tally>, BTreeMap<String, i64>, usize) {
     let mut tallies: BTreeMap<Uuid, Tally> = BTreeMap::new();
     let mut unattributed: BTreeMap<String, i64> = BTreeMap::new();
     let mut unattributed_deals = 0;
-    for deal in &deals {
+    for deal in deals {
         let mut list = touches.remove(&deal.pid).unwrap_or_default();
         // The recorded source campaign is always a touch, at the deal's creation (CRM-R49).
         if let Some(campaign) = deal.source_campaign {
@@ -284,8 +294,75 @@ async fn run(
             );
         }
     }
+    (tallies, unattributed, unattributed_deals)
+}
+
+/// With `convert_to`, each campaign's credit in each currency is converted once and merged.
+async fn convert_credit(
+    ctx: &AppContext,
+    query: &AttributionQuery,
+    tallies: &BTreeMap<Uuid, Tally>,
+    unattributed: &BTreeMap<String, i64>,
+) -> Result<Option<fx_rates::Done>> {
+    let Some(target) = &query.convert_to else {
+        return Ok(None);
+    };
+    let mut sums: Vec<(String, String, i64)> = Vec::new();
+    for (pid, tally) in tallies {
+        for (currency, amount) in &tally.credit {
+            sums.push((pid.to_string(), currency.clone(), *amount));
+        }
+    }
+    for (currency, amount) in unattributed {
+        sums.push((UNATTRIBUTED.to_string(), currency.clone(), *amount));
+    }
+    fx_rates::convert_sums(ctx, target, query.rate_date, "rate_date", &sums)
+        .await
+        .map(Some)
+}
+
+/// `GET /api/attribution?model=&window_days=&from=&to=` — share the revenue of won deals among
+/// the campaigns that touched the buyer.
+#[debug_handler]
+async fn run(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    axum::extract::Query(query): axum::extract::Query<AttributionQuery>,
+) -> Result<Response> {
+    let (model, days) = validate(&query)?;
+    // The answer is money, so a masked collection read may not have it.
+    if auth::aggregate_masked(&caller).map_err(record_rejection)? {
+        return Err(record_rejection((
+            axum::http::StatusCode::FORBIDDEN,
+            "attribution is about amounts and needs an unmasked read".to_string(),
+        )));
+    }
+    let mut deals = won_deals(&ctx, &query).await?;
+    let truncated = deals.len() > MAX_DEALS;
+    deals.truncate(MAX_DEALS);
+    let mut touches = touches_of(&ctx, &deals, days).await?;
+
+    let (tallies, unattributed, unattributed_deals) = share_out(model, &deals, &mut touches);
+
+    let mut conversion = convert_credit(&ctx, &query, &tallies, &unattributed).await?;
 
     let names = names_of(&ctx, &tallies.keys().copied().collect()).await?;
+    let converted: BTreeMap<String, i64> = conversion
+        .as_ref()
+        .map(|done| done.rows.iter().cloned().collect())
+        .unwrap_or_default();
+    let in_target = |key: &str| {
+        let target = query.convert_to.clone().unwrap_or_default();
+        converted
+            .get(key)
+            .map(|amount_minor| {
+                vec![Amount {
+                    currency: target,
+                    amount_minor: *amount_minor,
+                }]
+            })
+            .unwrap_or_default()
+    };
     let mut campaigns: Vec<CampaignCredit> = tallies
         .into_iter()
         .map(|(pid, tally)| CampaignCredit {
@@ -296,7 +373,11 @@ async fn run(
                 .unwrap_or_else(|| "(deleted campaign)".to_string()),
             touches: tally.touches,
             deals: tally.deals,
-            credit: amounts(tally.credit),
+            credit: if conversion.is_some() {
+                in_target(&pid.to_string())
+            } else {
+                amounts(tally.credit)
+            },
         })
         .collect();
     campaigns.sort_by(|a, b| {
@@ -323,9 +404,23 @@ async fn run(
         as_of: Utc::now(),
         deals: deals.len(),
         unattributed_deals,
-        unattributed: amounts(unattributed),
+        unattributed: if conversion.is_some() {
+            in_target(UNATTRIBUTED)
+        } else {
+            amounts(unattributed)
+        },
         campaigns,
         truncated,
+        convert_to: query.convert_to.clone(),
+        rate_date: conversion.as_ref().map(|d| d.rate_date),
+        rates: conversion
+            .as_mut()
+            .map(|d| std::mem::take(&mut d.rates))
+            .unwrap_or_default(),
+        unconverted: conversion
+            .as_mut()
+            .map(|d| std::mem::take(&mut d.unconverted))
+            .unwrap_or_default(),
         note: "each won deal's amount is shared among the campaigns that touched its primary \
                contact (e-mails sent, campaign leads) in the window before it closed, and its \
                recorded source campaign; shares add up to the amount; per currency, never \

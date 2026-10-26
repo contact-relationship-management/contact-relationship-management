@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — converted attribution (CRM-T115)
+
+"Show in" and "Rates as of" on `/attribution`, with the rates used and the credit left out; tour arithmetic shared with the Reports page and one Playwright test.
+
 ### Added — exchange rates (CRM-T114)
 
 `/fx-rates` to list, set and delete rates; "Show in" and "Rates as of" on the Reports page, with the rates used and the sums left out shown. 18 keys in 8 locales (machine drafts), tour rates and two Playwright tests.

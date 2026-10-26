@@ -21,7 +21,7 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
 - **Cross-app bridges** — WPM (rep identity/teams from employee
   records), PPM (post-sale delivery projects opened from won
   deals).
-- **FX beyond reports** — the report builder converts deal sums from
-  hand-entered rates (CRM-R50); the forecast, campaign ROI, CLV and
-  attribution still report per currency, and rates are not fetched
+- **FX beyond reports** — the report builder and attribution convert
+  from hand-entered rates (CRM-R50, CRM-R51); the forecast, campaign
+  ROI and CLV still report per currency, and rates are not fetched
   from a provider or applied at each deal's close day.

@@ -1206,6 +1206,37 @@ test.describe("export, undo and search", () => {
     );
   });
 
+  test("attribution is shown in one currency, with the rates it used and what it could not convert", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/attribution");
+    await page.getByTestId("attribution-convert").fill("USD");
+    await page.getByTestId("attribution-run").click();
+    // The latest pound-to-dollar rate is 1.30.
+    await expect(page.getByTestId("attribution-row").first()).toContainText(
+      "$148,200.00",
+    );
+    await expect(page.getByTestId("attribution-row").nth(1)).toContainText(
+      "$33,800.00",
+    );
+    await expect(page.getByTestId("attribution-unattributed")).toContainText(
+      "$35,750.00",
+    );
+    await expect(page.getByTestId("attribution-rates")).toContainText(
+      "1 GBP = 1.3 USD",
+    );
+    // No pound-to-yen rate: nothing is credited, and the pounds are listed as left out.
+    await page.getByTestId("attribution-convert").fill("JPY");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row").first()).not.toContainText(
+      "¥",
+    );
+    await expect(page.getByTestId("attribution-unconverted")).toContainText(
+      "GBP",
+    );
+  });
+
   test("a deal report is shown in one currency, with the rates it used and what it could not convert", async ({
     page,
   }) => {

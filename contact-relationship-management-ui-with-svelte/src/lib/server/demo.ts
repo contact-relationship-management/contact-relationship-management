@@ -2782,8 +2782,16 @@ function pickRate(from: string, to: string, day: string) {
 }
 
 /** Convert a deal report's sums as the service does: once per group and currency, then merge. */
-function convertReport(
-  spec: ReportSpec,
+function convertReport(spec: ReportSpec, rows: ReportResult["rows"]) {
+  if (spec.measure !== "sum_amount" && spec.convert_to)
+    return "only a sum of amounts can be converted";
+  return convertSums(spec.convert_to!, spec.rate_date ?? null, rows);
+}
+
+/** Convert `(group, currency, value)` sums into `target`: once per group and currency, then merge. */
+function convertSums(
+  target: string,
+  rateDate: string | null,
   rows: ReportResult["rows"],
 ):
   | string
@@ -2793,13 +2801,10 @@ function convertReport(
       rates: ReportRateUsed[];
       unconverted: ReportUnconverted[];
     } {
-  const target = spec.convert_to!;
   if (!/^[A-Z]{3}$/.test(target))
     return "convert_to is three capital letters, such as GBP";
-  if (spec.measure !== "sum_amount")
-    return "only a sum of amounts can be converted";
   const today = new Date().toISOString().slice(0, 10);
-  const day = spec.rate_date ?? today;
+  const day = rateDate ?? today;
   if (day > today) return "rate_date is in the future";
   const merged = new Map<string, number>();
   const used = new Map<string, ReturnType<typeof pickRate>>();
@@ -2976,6 +2981,9 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
     return problem(422, "the window is 1 to 365 days");
   const from = query.get("from");
   const to = query.get("to");
+  const convertTo = query.get("convert_to");
+  const rateDate = query.get("rate_date");
+  if (!convertTo && rateDate) return problem(422, "rate_date needs convert_to");
   const won = state.deals.filter((d) => {
     const day = d.closed_at?.slice(0, 10);
     return d.won && day && (!from || day >= from) && (!to || day <= to);
@@ -3020,13 +3028,34 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
       currency,
       amount_minor,
     }));
+  // With `convert_to`, each campaign's credit in each currency is converted once and merged.
+  let converted: Exclude<ReturnType<typeof convertSums>, string> | null = null;
+  if (convertTo) {
+    const sums: ReportResult["rows"] = [];
+    for (const [pid, row] of tally)
+      for (const [currency, value] of row.credit)
+        sums.push({ group: pid, currency, value });
+    for (const [currency, value] of unattributed)
+      sums.push({ group: "unattributed", currency, value });
+    const done = convertSums(convertTo, rateDate, sums);
+    if (typeof done === "string") return problem(422, done);
+    converted = done;
+  }
+  const inTarget = (group: string): AttributionAmount[] => {
+    const row = converted?.rows.find((r) => r.group === group);
+    return row ? [{ currency: convertTo!, amount_minor: row.value }] : [];
+  };
   return ok({
     model,
     window_days: windowDays,
     as_of: new Date().toISOString(),
     deals: won.length,
     unattributed_deals: unattributedDeals,
-    unattributed: amounts(unattributed),
+    unattributed: converted ? inTarget("unattributed") : amounts(unattributed),
+    convert_to: convertTo,
+    rate_date: converted?.rateDate ?? null,
+    rates: converted?.rates ?? [],
+    unconverted: converted?.unconverted ?? [],
     campaigns: [...tally.entries()]
       .map(([pid, row]) => ({
         campaign_pid: pid,
@@ -3035,7 +3064,7 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
           "(deleted campaign)",
         touches: row.touches,
         deals: row.deals,
-        credit: amounts(row.credit),
+        credit: converted ? inTarget(pid) : amounts(row.credit),
       }))
       .sort(
         (a, b) =>

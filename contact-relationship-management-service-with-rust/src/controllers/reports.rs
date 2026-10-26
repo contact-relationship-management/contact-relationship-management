@@ -11,12 +11,12 @@ use uuid::Uuid;
 
 use loco_rs::prelude::*;
 
+use super::fx_rates::{RateUsed, Unconverted};
 use super::views::owner_of;
 use super::{PidPath, PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
-use crate::rules::fx;
 use crate::rules::reports::{self as rules, Bind, MAX_GROUPS, Spec};
 use crate::validation::Problems;
 
@@ -82,31 +82,6 @@ pub(crate) struct ReportResult {
     note: &'static str,
 }
 
-/// An exchange rate a conversion used (CRM-R50).
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-#[schemars(rename = "ReportRateUsed")]
-pub(crate) struct RateUsed {
-    from: String,
-    to: String,
-    /// How many `to` one `from` buys, as recorded.
-    rate: String,
-    effective_on: chrono::NaiveDate,
-    source: String,
-    /// The recorded rate is for the reverse pair, so the amount was divided by it.
-    inverted: bool,
-}
-
-/// Sums in one currency that could not be converted.
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-#[schemars(rename = "ReportUnconverted")]
-pub(crate) struct Unconverted {
-    currency: String,
-    /// How many group sums were left out.
-    groups: usize,
-    /// Their total, in that currency's minor units.
-    amount_minor: i64,
-}
-
 /// What a conversion made of the rows of a report.
 struct Conversion {
     rows: Vec<ReportRow>,
@@ -137,20 +112,12 @@ async fn converted(
             unconverted: Vec::new(),
         });
     };
-    let today = chrono::Utc::now().date_naive();
-    let day = spec.rate_date.unwrap_or(today);
-    if day > today {
-        problems_of(vec![(
-            "rate_date".to_string(),
-            "is in the future".to_string(),
-        )])?;
-    }
-    let rates = super::fx_rates::rates_involving(&ctx.db, target).await?;
     let sums: Vec<(String, String, i64)> = raw
         .into_iter()
         .map(|(group, currency, value)| (group, currency.unwrap_or_default(), value))
         .collect();
-    let done = fx::convert_rows(&sums, target, day, &rates);
+    let done =
+        super::fx_rates::convert_sums(ctx, target, spec.rate_date, "spec.rate_date", &sums).await?;
     Ok(Conversion {
         rows: done
             .rows
@@ -161,28 +128,9 @@ async fn converted(
                 value,
             })
             .collect(),
-        rate_date: Some(day),
-        rates: done
-            .used
-            .into_iter()
-            .map(|(from, picked)| RateUsed {
-                from,
-                to: target.clone(),
-                rate: fx::format_rate(picked.rate.ppb),
-                effective_on: picked.rate.effective_on,
-                source: picked.rate.source,
-                inverted: picked.inverted,
-            })
-            .collect(),
-        unconverted: done
-            .left_out
-            .into_iter()
-            .map(|l| Unconverted {
-                currency: l.currency,
-                groups: l.groups,
-                amount_minor: l.amount_minor,
-            })
-            .collect(),
+        rate_date: Some(done.rate_date),
+        rates: done.rates,
+        unconverted: done.unconverted,
     })
 }
 

@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — converted attribution (CRM-T115, CRM-R51)
+
+`GET /api/attribution` and the Attribution page can show every figure in one currency, naming the rates used and the credit left out for want of a rate.
+
 ### Added — exchange rates and converted reports (CRM-T114, CRM-R50)
 
 Hand-entered exchange rates (a pair, a day, a source) and a deal report that shows its sums in one currency using the latest rate on or before a date, naming the rates and listing what it could not convert.

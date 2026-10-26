@@ -107,6 +107,90 @@ pub(crate) async fn rates_involving<C: ConnectionTrait>(
         .collect()
 }
 
+/// An exchange rate a conversion used (CRM-R50).
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ReportRateUsed")]
+pub(crate) struct RateUsed {
+    from: String,
+    to: String,
+    /// How many `to` one `from` buys, as recorded.
+    rate: String,
+    effective_on: NaiveDate,
+    source: String,
+    /// The recorded rate is for the reverse pair, so the amount was divided by it.
+    inverted: bool,
+}
+
+/// Sums in one currency that could not be converted.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ReportUnconverted")]
+pub(crate) struct Unconverted {
+    currency: String,
+    /// How many group sums were left out.
+    groups: usize,
+    /// Their total, in that currency's minor units.
+    amount_minor: i64,
+}
+
+/// Sums converted into one currency, and what the conversion used and left out.
+pub(crate) struct Done {
+    /// `(group, value in the target currency)`, largest first.
+    pub rows: Vec<(String, i64)>,
+    /// The day whose rates were used.
+    pub rate_date: NaiveDate,
+    pub rates: Vec<RateUsed>,
+    pub unconverted: Vec<Unconverted>,
+}
+
+/// Convert `(group, currency, sum)` rows into `target` with the rates in force on `rate_date`
+/// (today when absent). A date in the future is a `422` naming `member`.
+///
+/// # Errors
+///
+/// A `422` for a future date, or when the rates cannot be read.
+pub(crate) async fn convert_sums(
+    ctx: &AppContext,
+    target: &str,
+    rate_date: Option<NaiveDate>,
+    member: &str,
+    sums: &[(String, String, i64)],
+) -> Result<Done> {
+    let today = chrono::Utc::now().date_naive();
+    let day = rate_date.unwrap_or(today);
+    if day > today {
+        let mut problems = Problems::new();
+        problems.push_field(member, "is in the future");
+        problems.finish()?;
+    }
+    let rates = rates_involving(&ctx.db, target).await?;
+    let done = fx::convert_rows(sums, target, day, &rates);
+    Ok(Done {
+        rows: done.rows,
+        rate_date: day,
+        rates: done
+            .used
+            .into_iter()
+            .map(|(from, picked)| RateUsed {
+                from,
+                to: target.to_string(),
+                rate: fx::format_rate(picked.rate.ppb),
+                effective_on: picked.rate.effective_on,
+                source: picked.rate.source,
+                inverted: picked.inverted,
+            })
+            .collect(),
+        unconverted: done
+            .left_out
+            .into_iter()
+            .map(|l| Unconverted {
+                currency: l.currency,
+                groups: l.groups,
+                amount_minor: l.amount_minor,
+            })
+            .collect(),
+    })
+}
+
 /// `GET /api/fx-rates` — the recorded rates, newest first (at most 1000).
 #[debug_handler]
 async fn list(State(ctx): State<AppContext>) -> Result<Response> {

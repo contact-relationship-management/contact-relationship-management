@@ -750,7 +750,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/attribution",
         "marketing",
-        "Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear (default linear), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. A caller with a masked collection read gets 403",
+        "Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear (default linear), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=GBP shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate. A caller with a masked collection read gets 403",
         Kind::Ok,
     ),
     (
