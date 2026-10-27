@@ -401,15 +401,50 @@ fn clv_outlook(
     Ok((margin_minor, projection))
 }
 
-/// `GET /api/accounts/{pid}/clv` — CLV per currency over won deals
-/// (CRM-R13; the v1 revenue-sum definition).
-#[debug_handler]
-async fn account_clv(
-    State(ctx): State<AppContext>,
-    caller: MaybeAuthUser,
-    PidPath(pid): PidPath,
-    axum::extract::Query(query): axum::extract::Query<ClvQuery>,
-) -> Result<Response> {
+/// Convert the margin and the look-ahead at the same rates as the CLV: the same currencies, so
+/// the same ones are left out (CRM-R62). Returns the converted margin and fills
+/// `projection.converted`.
+async fn convert_outlook(
+    ctx: &AppContext,
+    target: &str,
+    rate_date: Option<chrono::NaiveDate>,
+    margin: Option<&std::collections::BTreeMap<String, i64>>,
+    mut projection: Option<&mut ClvProjection>,
+) -> Result<Option<i64>> {
+    let mut sums = Vec::new();
+    let shown = projection.as_deref();
+    for (group, amounts) in [
+        ("margin", margin),
+        ("base", shown.map(|p| &p.annual_base_minor)),
+        ("projected", shown.map(|p| &p.projected_minor)),
+        ("total", shown.map(|p| &p.total_minor)),
+    ] {
+        for (currency, amount) in amounts.into_iter().flatten() {
+            sums.push((group.to_string(), currency.clone(), *amount));
+        }
+    }
+    if sums.is_empty() {
+        return Ok(None);
+    }
+    let done = super::fx_rates::convert_sums(ctx, target, rate_date, "rate_date", &sums).await?;
+    let of = |group: &str| {
+        done.rows
+            .iter()
+            .find(|row| row.0 == group)
+            .map_or(0, |row| row.1)
+    };
+    if let Some(p) = projection.as_deref_mut() {
+        p.converted = Some(ClvProjectionConverted {
+            annual_base_minor: of("base"),
+            projected_minor: of("projected"),
+            total_minor: of("total"),
+        });
+    }
+    Ok(margin.is_some().then(|| of("margin")))
+}
+
+/// Refuse a CLV question that is malformed, naming the member (CRM-R54, CRM-R60, CRM-R61).
+fn check_clv_query(query: &ClvQuery) -> Result<()> {
     let mut problems = crate::validation::Problems::new();
     if let Some(target) = &query.convert_to {
         if let Err(why) = crate::rules::fx::currency(target) {
@@ -452,6 +487,19 @@ async fn account_clv(
         problems.push_field("discount_bps", "needs retention_bps and years");
     }
     problems.finish()?;
+    Ok(())
+}
+
+/// `GET /api/accounts/{pid}/clv` — CLV per currency over won deals
+/// (CRM-R13; the v1 revenue-sum definition).
+#[debug_handler]
+async fn account_clv(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+    axum::extract::Query(query): axum::extract::Query<ClvQuery>,
+) -> Result<Response> {
+    check_clv_query(&query)?;
     // CLV is money: a masked collection read gets the count of won deals, not the figures.
     let masked = crate::auth::aggregate_masked(&caller).map_err(super::record_rejection)?;
     let account = records::find_account(&ctx.db, pid).await?;
@@ -492,40 +540,16 @@ async fn account_clv(
     } else {
         clv_outlook(&query, &totals, &won, now)?
     };
-    // The margin and the look-ahead are converted at the same rates as the CLV: the same
-    // currencies, so the same ones are left out (CRM-R62).
     let mut margin_converted_minor = None;
     if let (Some(target), false) = (&query.convert_to, masked) {
-        let mut sums = Vec::new();
-        for (group, amounts) in [
-            ("margin", margin_minor.as_ref()),
-            ("base", projection.as_ref().map(|p| &p.annual_base_minor)),
-            ("projected", projection.as_ref().map(|p| &p.projected_minor)),
-            ("total", projection.as_ref().map(|p| &p.total_minor)),
-        ] {
-            for (currency, amount) in amounts.into_iter().flatten() {
-                sums.push((group.to_string(), currency.clone(), *amount));
-            }
-        }
-        if !sums.is_empty() {
-            let done =
-                super::fx_rates::convert_sums(&ctx, target, query.rate_date, "rate_date", &sums)
-                    .await?;
-            let of = |group: &str| {
-                done.rows
-                    .iter()
-                    .find(|row| row.0 == group)
-                    .map_or(0, |row| row.1)
-            };
-            margin_converted_minor = margin_minor.is_some().then(|| of("margin"));
-            if let Some(p) = projection.as_mut() {
-                p.converted = Some(ClvProjectionConverted {
-                    annual_base_minor: of("base"),
-                    projected_minor: of("projected"),
-                    total_minor: of("total"),
-                });
-            }
-        }
+        margin_converted_minor = convert_outlook(
+            &ctx,
+            target,
+            query.rate_date,
+            margin_minor.as_ref(),
+            projection.as_mut(),
+        )
+        .await?;
     }
     format::json(Clv {
         account_pid: account.pid,

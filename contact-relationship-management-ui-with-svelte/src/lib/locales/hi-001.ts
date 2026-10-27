@@ -729,4 +729,5 @@ export default {
   "clv.fromHistory": "प्रतिधारण पिछले वर्ष से लें",
   "clv.historyRetention": "पिछले वर्ष में मिला प्रतिधारण",
   "clv.inOne": "एक मुद्रा में जोड़ा गया",
+  "ticket.replied": "ग्राहक ने उत्तर दिया",
 } satisfies Record<StringKey, string>;

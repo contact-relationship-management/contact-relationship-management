@@ -1009,7 +1009,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - Each ticket keeps `first_response_paused_seconds` and `resolution_paused_seconds`. Deadlines are always the open time plus the target plus that waiting, so an audited **priority change** (which derives them again from the open time) keeps the waiting already counted. Waiting that is still in progress is counted when the ticket resumes.
 - Breach facts already stored (`first_response_breached`, `resolution_breached`) stay as they are: a breach is not cleared by pausing.
 - The tickets page marks a waiting ticket "SLA clock stopped" where it would otherwise show nothing.
-- Not built: pausing on other states or on a customer reply (a reply does not move a ticket out of `pending` by itself); a limit on how long a ticket may wait (a ticket left `pending` never breaches); showing the time the clock has been stopped; re-deriving the deadlines when a policy or a calendar changes.
+- Not built: pausing on other states; a customer reply resuming the clock (built in CRM-R63); a limit on how long a ticket may wait (a ticket left `pending` never breaches); showing the time the clock has been stopped; re-deriving the deadlines when a policy or a calendar changes.
 
 ## CRM-R56 — Time-decay and position-based attribution
 
@@ -1089,4 +1089,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - Without `convert_to` the new members are `null`; a masked caller gets `null`.
 - The CLV panel on the account page has a "Show in" field.
 - Not built: converting at each deal's close day; converting before the margin is taken.
+
+## CRM-R63 — A customer reply resumes a waiting ticket
+
+*As a support agent, I can record that the customer has answered, so that a ticket stops waiting and its SLA clock runs again without my choosing a status by hand.*
+
+- `POST /api/tickets/{pid}/customer-reply` (no body). A ticket in `pending` goes to `open`, and the clock starts again exactly as for `POST /api/tickets/{pid}/status` (CRM-R55): the waiting is added to each deadline it counted against, working time on a calendar.
+- A ticket already `open` is returned as it is and nothing is audited. A ticket that is `resolved` or `closed` is `422`: a reply does not reopen it. An unknown ticket is `404`.
+- The audit entry is the ordinary status change with `via: customer_reply` beside `from`; the same event is emitted.
+- The tickets page shows "Customer replied" on a waiting ticket.
+- Not built: recognising a reply from an inbound e-mail or a channel (the caller says so); reopening a resolved ticket on a reply; a limit on how long a ticket may wait.
 

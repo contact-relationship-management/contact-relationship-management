@@ -734,4 +734,5 @@ export default {
   "clv.fromHistory": "Cymryd cadw o'r flwyddyn flaenorol",
   "clv.historyRetention": "Cadw a gafwyd yn y flwyddyn flaenorol",
   "clv.inOne": "Wedi'u hadio mewn un arian",
+  "ticket.replied": "Atebodd y cwsmer",
 } satisfies Record<StringKey, string>;

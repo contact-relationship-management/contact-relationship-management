@@ -862,6 +862,11 @@ export function ticketStatus(pid: string, to: string): Promise<Ticket> {
   return api(`/tickets/${pid}/status`, { method: "POST", body: { to } });
 }
 
+/** The customer answered: a waiting ticket goes back to open and its SLA clock runs again (CRM-R63). */
+export function ticketCustomerReply(pid: string): Promise<Ticket> {
+  return api(`/tickets/${pid}/customer-reply`, { method: "POST" });
+}
+
 /** Articles (searchable). */
 export function listArticles(q?: string, init?: FetchLike): Promise<Article[]> {
   return apiAll(`/articles${q ? `?q=${encodeURIComponent(q)}` : ""}`, init);

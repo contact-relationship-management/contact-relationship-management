@@ -14906,6 +14906,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tickets/{pid}/customer-reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The customer replied: a pending ticket goes back to open and its SLA clock starts again (CRM-R63); an open one is returned as it is; a resolved or closed one is refused */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The updated record */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Illegal transition (names the current state) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tickets/{pid}/position": {
         parameters: {
             query?: never;

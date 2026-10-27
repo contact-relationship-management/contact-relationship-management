@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — customer reply on a ticket (CRM-T130, CRM-R63)
+
+`POST /api/tickets/{pid}/customer-reply`; the status change is now one `transition` shared with `/status`, and the audit entry names `via: customer_reply`; 1 request test.
+
 ### Added — CLV margin and look-ahead converted (CRM-T129, CRM-R62)
 
 `margin_converted_minor` and `projection.converted` (`ClvProjectionConverted`) on the CLV read with `convert_to`; 1 request test.

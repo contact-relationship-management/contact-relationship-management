@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — "Customer replied" on the tickets page (CRM-T130)
+
+`ticketCustomerReply`, a button on a waiting ticket, the tour's route, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; the Playwright test extended.
+
 ### Added — convert the CLV in the panel (CRM-T129)
 
 A "Show in" field on `ClvPanel` with the converted line and what was left out, the tour's conversion, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; the Playwright test extended.

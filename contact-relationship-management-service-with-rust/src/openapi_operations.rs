@@ -1553,4 +1553,11 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "Ticket transition (resolved stamps resolved_at; reopen clears it)",
         Kind::Transition,
     ),
+    (
+        "post",
+        "/api/tickets/{pid}/customer-reply",
+        "support",
+        "The customer replied: a pending ticket goes back to open and its SLA clock starts again (CRM-R63); an open one is returned as it is; a resolved or closed one is refused",
+        Kind::Transition,
+    ),
 ];

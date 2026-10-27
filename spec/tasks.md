@@ -1636,3 +1636,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a "Show in" field and the converted line in `ClvPanel`, the tour's conversion (also giving the CLV's own `converted_minor`), 1 key in 8 locales (machine drafts); the Playwright test extended.
       - **Tests:** 1 request test (GBP, USD at 0.80 and an unconverted JPY: margin 7,000, base 7,000, projected 5,250, total 12,250; per-currency figures kept; nothing converted without `convert_to`; the margin alone).
       - **Not tested:** that margin and base are not swapped (both are 7,000 in the test; projected and total differ); the masked caller (the `convert_to` path is skipped when masked, as for the CLV).
+- [x] CRM-T130 *(edge)* **A customer reply resumes a waiting ticket.** `POST /api/tickets/{pid}/customer-reply`; part of the roadmap item "SLA clock refinements". (S)
+      **Done (2026-10-27, not released):** requirement CRM-R63 first, then:
+      - **API:** the body of the status change became one `transition` shared with the new route, so the clock arithmetic is not duplicated; `via: customer_reply` in the audit snapshot; operation described; `schema.d.ts` regenerated.
+      - **UI:** a "Customer replied" button on a waiting ticket, `ticketCustomerReply`, the tour's route, 1 key in 8 locales (machine drafts); the Playwright test for the stopped clock extended.
+      - **Tests:** 1 request test (an open ticket is unchanged; after 30 minutes pending the reply opens it, clears `paused_at` and moves the resolution deadline by 30 minutes; the audit names the reply; a resolved ticket is `422`). The existing status and pause tests pass unchanged.
+      - **Not tested:** `404` for an unknown ticket; the masked/permission path for the new route (it is a write, like `/status`).

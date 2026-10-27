@@ -15,8 +15,9 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   leads and the recorded source).
 - **SLA clock refinements** — business-hours calendars and holidays
   (CRM-R45) and a clock that pauses while a ticket waits on the
-  customer (CRM-R55) are built; a limit on how long a ticket may wait,
-  and pausing on a customer reply, are not.
+  customer (CRM-R55) are built, with a customer reply resuming it
+  (CRM-R63); a limit on how long a ticket may wait, and recognising a
+  reply from inbound mail, are not.
 - **Help centre refinements** — a public help centre and a deflection estimate are built (CRM-R57); suggesting articles as a ticket is typed, deflection tied to visits, and a limit shared by all clients are not.
 - **Territories; quota refinements** — quotas, tiered commission plans and attainment are built (CRM-R59); territories, team roll-ups, splitting a deal and clawbacks are not.
 - **CLV refinement** — margin and a discounted, retention-based look-ahead

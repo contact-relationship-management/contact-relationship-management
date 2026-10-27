@@ -208,6 +208,15 @@ test.describe("data tables", () => {
     await row.click();
     await page.getByRole("button", { name: "→ open" }).click();
     await expect(row).not.toContainText("SLA clock stopped");
+    // A customer reply does the same, in one step.
+    await row.click();
+    await page.getByRole("button", { name: "→ pending" }).click();
+    await expect(row).toContainText("SLA clock stopped");
+    await row.click();
+    await page.getByTestId("ticket-replied").click();
+    await expect(row).not.toContainText("SLA clock stopped");
+    await row.click();
+    await expect(page.getByTestId("ticket-replied")).toHaveCount(0);
   });
 
   test("the inbox lists notifications, marks one read, then all", async ({

@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a customer reply resumes a waiting ticket (CRM-T130, CRM-R63)
+
+`POST /api/tickets/{pid}/customer-reply` sends a `pending` ticket back to `open` and starts its SLA clock again.
+
 ### Added — the CLV margin and look-ahead converted (CRM-T129, CRM-R62)
 
 `GET /api/accounts/{pid}/clv?convert_to=` also adds `margin_converted_minor` and `projection.converted`, at the same rates as the CLV.

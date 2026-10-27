@@ -2553,6 +2553,20 @@ export function demoHandle(
         (t) => t.status,
       );
     }
+    if (tail === "customer-reply" && post) {
+      // A waiting ticket goes back to open and its clock runs again (CRM-R63).
+      const t = state.tickets.find((x) => x.pid === id);
+      if (!t) return problem(404, "ticket not found");
+      if (t.status === "pending") {
+        t.status = "open";
+        t.paused_at = null;
+      } else if (t.status !== "open")
+        return problem(
+          422,
+          `a customer reply does not reopen a ${t.status} ticket`,
+        );
+      return ok(t);
+    }
     if (tail === "status" && post) {
       const reply = transition(state.tickets, id!, body, "ticket");
       const t = state.tickets.find((x) => x.pid === id);

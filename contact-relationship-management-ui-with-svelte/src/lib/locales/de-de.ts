@@ -743,4 +743,5 @@ export default {
   "clv.fromHistory": "Bindung aus dem Vorjahr nehmen",
   "clv.historyRetention": "Im Vorjahr ermittelte Bindung",
   "clv.inOne": "In einer Währung addiert",
+  "ticket.replied": "Kunde hat geantwortet",
 } satisfies Record<StringKey, string>;

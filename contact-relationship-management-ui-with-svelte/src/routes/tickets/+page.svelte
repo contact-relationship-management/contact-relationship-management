@@ -4,7 +4,7 @@
   import type { SavedView } from "#lib/api/crm.js";
   import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
-  import { listTickets, ticketStatus } from "#lib/api/crm.js";
+  import { listTickets, ticketCustomerReply, ticketStatus } from "#lib/api/crm.js";
   import { breachedCount, slaBreached } from "#lib/format.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
@@ -53,6 +53,16 @@
   const shaped = $derived(applyShape(rows, columns, view));
   const headings = $derived(Object.fromEntries(columns.map((c) => [c.id, c.header])));
 
+  async function replied(pid: string) {
+    actionError = null;
+    try {
+      await ticketCustomerReply(pid);
+      await list.reload();
+    } catch (cause) {
+      actionError = errorMessage(cause);
+    }
+  }
+
   async function move(pid: string, to: string) {
     actionError = null;
     try {
@@ -89,6 +99,9 @@
       {#each NEXT[selected.status] ?? [] as to (to)}
         <button onclick={() => void move(selected.pid, to)}>→ {to}</button>
       {/each}
+      {#if selected.status === "pending"}
+        <button onclick={() => void replied(selected.pid)} data-testid="ticket-replied">{t("ticket.replied")}</button>
+      {/if}
       {#if actionError}
         <p class="error" data-testid="action-error">{actionError}</p>
       {/if}

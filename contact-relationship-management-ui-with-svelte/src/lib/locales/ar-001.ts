@@ -728,4 +728,5 @@ export default {
   "clv.fromHistory": "أخذ الاحتفاظ من السنة السابقة",
   "clv.historyRetention": "الاحتفاظ المستخلص من السنة السابقة",
   "clv.inOne": "مجموعة بعملة واحدة",
+  "ticket.replied": "ردّ العميل",
 } satisfies Record<StringKey, string>;

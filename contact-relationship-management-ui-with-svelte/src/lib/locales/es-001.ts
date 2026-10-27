@@ -736,4 +736,5 @@ export default {
   "clv.fromHistory": "Tomar la retención del año anterior",
   "clv.historyRetention": "Retención hallada en el año anterior",
   "clv.inOne": "Sumado en una moneda",
+  "ticket.replied": "El cliente respondió",
 } satisfies Record<StringKey, string>;

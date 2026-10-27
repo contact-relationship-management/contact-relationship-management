@@ -433,6 +433,38 @@ async fn ticket_status(
     problems.require_token("to", tokens::TICKET_STATUSES, &payload.to);
     problems.finish()?;
     let ticket = records::find_ticket(&ctx.db, pid).await?;
+    transition(&ctx, &caller, ticket, &payload.to, None).await
+}
+
+/// `POST /api/tickets/{pid}/customer-reply` — the customer has answered (CRM-R63): a ticket
+/// waiting for them goes back to `open` and its SLA clock starts again, exactly as a status
+/// change would. A ticket already `open` is returned as it is; one that is resolved or closed is
+/// refused, because a reply does not reopen it.
+#[debug_handler]
+async fn ticket_customer_reply(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+) -> Result<Response> {
+    let ticket = records::find_ticket(&ctx.db, pid).await?;
+    match ticket.status.as_str() {
+        "pending" => transition(&ctx, &caller, ticket, "open", Some("customer_reply")).await,
+        "open" => format::json(ticket),
+        other => Err(unprocessable(&format!(
+            "a customer reply does not reopen a {other} ticket"
+        ))),
+    }
+}
+
+/// Move `ticket` to `to`, resuming or stopping its SLA clock (CRM-R55); `via` names what caused it.
+async fn transition(
+    ctx: &AppContext,
+    caller: &MaybeAuthUser,
+    ticket: tickets::Model,
+    to: &str,
+    via: Option<&str>,
+) -> Result<Response> {
+    let payload = StatusPayload { to: to.to_string() };
     lifecycle::check("ticket", lifecycle::TICKET, &ticket.status, &payload.to)
         .map_err(|e| unprocessable(&e.to_string()))?;
     // The SLA clock stops while the ticket waits for the customer and starts again when it leaves
@@ -478,7 +510,10 @@ async fn ticket_status(
         row.pid,
         kind,
         caller.actor(),
-        Some(serde_json::json!({ "from": from })),
+        Some(match via {
+            Some(via) => serde_json::json!({ "from": from, "via": via }),
+            None => serde_json::json!({ "from": from }),
+        }),
     )
     .await?;
     streaming::emit_on(
@@ -747,6 +782,7 @@ pub fn routes() -> Routes {
         .add("/tickets", get(list_tickets))
         .add("/tickets/{pid}", get(get_ticket))
         .add("/tickets/{pid}/status", post(ticket_status))
+        .add("/tickets/{pid}/customer-reply", post(ticket_customer_reply))
         .add("/tickets/{pid}/priority", put(ticket_priority))
         .add("/sla/sweep", post(sla_sweep))
         .add("/articles", post(create_article))

@@ -174,3 +174,84 @@ async fn a_ticket_waiting_for_the_customer_stops_its_clock_and_gets_the_time_bac
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_customer_reply_resumes_a_waiting_ticket_and_leaves_the_others_alone() {
+    request::<App, _, _>(|request, ctx| async move {
+        request
+            .post("/api/sla-policies")
+            .json(&json!({ "priority": "normal", "first_response_minutes": 60,
+                           "resolution_minutes": 240 }))
+            .await
+            .assert_status_ok();
+        let made: Value = request
+            .post("/api/tickets")
+            .json(&json!({ "title": "Answered", "priority": "normal" }))
+            .await
+            .json();
+        let ticket = made["pid"].as_str().unwrap().to_string();
+        let reply = format!("/api/tickets/{ticket}/customer-reply");
+        let detail: Value = request.get(&format!("/api/tickets/{ticket}")).await.json();
+        let made = detail["ticket"].clone();
+
+        // Already open: returned as it is, nothing changes.
+        let same: Value = request.post(&reply).await.json();
+        assert_eq!(same["status"], "open", "{same}");
+        assert_eq!(
+            same["resolution_due_at"], made["resolution_due_at"],
+            "{same}"
+        );
+
+        // Waiting for 30 minutes, then the customer answers: open again, the clock running,
+        // the deadlines moved by the waiting.
+        request
+            .post(&format!("/api/tickets/{ticket}/status"))
+            .json(&json!({ "to": "pending" }))
+            .await
+            .assert_status_ok();
+        sql(
+            &ctx.db,
+            "UPDATE tickets SET paused_at = now() - interval '30 minutes' WHERE pid = $1::uuid",
+            &ticket,
+        )
+        .await;
+        let answered: Value = request.post(&reply).await.json();
+        assert_eq!(answered["status"], "open", "{answered}");
+        assert!(answered["paused_at"].is_null(), "{answered}");
+        let moved = seconds_between(&made["resolution_due_at"], &answered["resolution_due_at"]);
+        assert!(
+            (1795..=1805).contains(&moved),
+            "resolution moved {moved}s: {answered}"
+        );
+
+        // The audit says the customer's reply did it.
+        let via: i64 = ctx
+            .db
+            .query_one_raw(Statement::from_sql_and_values(
+                DatabaseBackend::Postgres,
+                "SELECT count(*) AS n FROM audit_logs WHERE entity = 'ticket' \
+                 AND snapshot->>'via' = 'customer_reply' AND entity_pid = $1::uuid",
+                [ticket.clone().into()],
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get("", "n")
+            .unwrap();
+        assert_eq!(via, 1);
+
+        // A resolved ticket is not reopened by a reply.
+        request
+            .post(&format!("/api/tickets/{ticket}/status"))
+            .json(&json!({ "to": "resolved" }))
+            .await
+            .assert_status_ok();
+        request
+            .post(&reply)
+            .await
+            .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+    })
+    .await;
+}
