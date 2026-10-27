@@ -1790,6 +1790,19 @@ async fn no_read_a_masked_caller_may_make_returns_the_seeded_amount() {
                 deal = made["pid"].as_str().unwrap().to_string();
             }
         }
+        // What a worker is paid: a quota and a plan, also carrying the amount.
+        let plan: Value = request
+            .put("/api/commission-plans")
+            .json(&json!({ "name": "Sweep plan", "tiers": [{ "from_percent": 0, "rate_bps": 500 }] }))
+            .await
+            .json();
+        request
+            .put("/api/quotas")
+            .json(&json!({ "owner_ref": "worker:00000000-0000-0000-0000-0000000000aa",
+                           "period_from": "2026-01-01", "period_to": "2026-12-31",
+                           "currency": "GBP", "amount_minor": MARKER, "plan_pid": plan["pid"] }))
+            .await
+            .assert_status_ok();
         let lead: Value = request
             .post("/api/leads")
             .json(&json!({ "contact_pid": contact, "source": "sweep" }))
@@ -1867,6 +1880,71 @@ async fn no_read_a_masked_caller_may_make_returns_the_seeded_amount() {
             }
         }
         assert!(leaks.is_empty(), "masked reader sees the amount on: {leaks:#?}");
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn quotas_and_commission_plans_are_for_admin_and_service_callers_only() {
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+    });
+    let service = sign_as(&kid, "quota-svc", &[("svc", &["true"])]);
+    let reader = sign_as(&kid, "quota-reader", &[]);
+    let writer = sign_as(&kid, "quota-writer", &[("access", &["write"])]);
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let call = |method: &'static str, path: &'static str, token: String| {
+            let request = &request;
+            async move {
+                let body = json!({ "owner_ref": "worker:00000000-0000-0000-0000-000000000009",
+                                   "period_from": "2026-01-01", "period_to": "2026-03-31",
+                                   "currency": "GBP", "amount_minor": 1 });
+                let plan = json!({ "name": "P", "tiers": [{ "from_percent": 0, "rate_bps": 1 }] });
+                let builder = match method {
+                    "GET" => request.get(path),
+                    "PUT" if path == "/api/quotas" => request.put(path).json(&body),
+                    _ => request.put(path).json(&plan),
+                };
+                builder
+                    .add_header("authorization", format!("Bearer {token}"))
+                    .await
+                    .status_code()
+            }
+        };
+        for (method, path) in [
+            ("GET", "/api/quotas"),
+            ("GET", "/api/quotas/attainment"),
+            ("GET", "/api/commission-plans"),
+            ("PUT", "/api/quotas"),
+            ("PUT", "/api/commission-plans"),
+        ] {
+            // A reader cannot read what people are paid, and a writer cannot set it.
+            assert_eq!(
+                call(method, path, reader.clone()).await,
+                403,
+                "reader {method} {path}"
+            );
+            assert_eq!(
+                call(method, path, writer.clone()).await,
+                403,
+                "writer {method} {path}"
+            );
+            assert_eq!(
+                call(method, path, service.clone()).await,
+                200,
+                "service {method} {path}"
+            );
+        }
+        request
+            .get("/api/quotas")
+            .await
+            .assert_status(axum::http::StatusCode::UNAUTHORIZED);
     })
     .await;
 }

@@ -1856,3 +1856,116 @@ export function kbDeflection(
 ): Promise<KbDeflection> {
   return api(`/insights/kb-deflection?days=${days}`, init);
 }
+
+/** One tier of a commission plan (CRM-R59). */
+export interface CommissionTier {
+  /** Where it starts, as a percentage of the quota. */
+  from_percent: number;
+  /** What it pays on the revenue in its band, in basis points (500 is 5%). */
+  rate_bps: number;
+}
+
+/** A commission plan. */
+export interface CommissionPlan {
+  pid: string;
+  name: string;
+  tiers: CommissionTier[];
+  /** How many quotas are paid under it. */
+  quotas: number;
+  set_by: string;
+}
+
+/** A quota: what a worker is to win in a period, in one currency. */
+export interface Quota {
+  pid: string;
+  owner_ref: string;
+  period_from: string;
+  period_to: string;
+  currency: string;
+  amount_minor: number;
+  plan_pid: string | null;
+  set_by: string;
+}
+
+/** What one tier of a plan paid. */
+export interface CommissionBand {
+  from_percent: number;
+  to_percent: number | null;
+  revenue_minor: number;
+  rate_bps: number;
+  commission_minor: number;
+}
+
+/** A worker's attainment of one quota. */
+export interface QuotaAttainment {
+  quota_pid: string;
+  owner_ref: string;
+  period_from: string;
+  period_to: string;
+  currency: string;
+  quota_minor: number;
+  revenue_minor: number;
+  won_deals: number;
+  attainment: Ratio;
+  remaining_minor: number;
+  /** Won revenue in other currencies, never converted. */
+  other_currencies: Record<string, number>;
+  plan: string | null;
+  commission_minor: number | null;
+  bands: CommissionBand[];
+}
+
+/** The commission plans. Admin only. */
+export function listCommissionPlans(
+  init?: FetchLike,
+): Promise<CommissionPlan[]> {
+  return api("/commission-plans", init);
+}
+
+/** Set the plan of that name, replacing its tiers. */
+export function setCommissionPlan(input: {
+  name: string;
+  tiers: CommissionTier[];
+}): Promise<CommissionPlan> {
+  return api("/commission-plans", { method: "PUT", body: input });
+}
+
+/** Remove a plan no quota is paid under. */
+export function deleteCommissionPlan(pid: string): Promise<{ pid: string }> {
+  return api(`/commission-plans/${pid}`, { method: "DELETE" });
+}
+
+/** The quotas, latest period first. */
+export function listQuotas(init?: FetchLike): Promise<Quota[]> {
+  return api("/quotas", init);
+}
+
+/** Set a worker's quota for a period in a currency. */
+export function setQuota(input: {
+  owner_ref: string;
+  period_from: string;
+  period_to: string;
+  currency: string;
+  amount_minor: number;
+  plan_pid?: string | null;
+}): Promise<Quota> {
+  return api("/quotas", { method: "PUT", body: input });
+}
+
+/** Remove a quota. */
+export function deleteQuota(pid: string): Promise<{ pid: string }> {
+  return api(`/quotas/${pid}`, { method: "DELETE" });
+}
+
+/** Each quota whose period contains `at` (today when absent), with the revenue reached. */
+export function quotaAttainment(
+  at?: string,
+  init?: FetchLike,
+): Promise<{
+  as_of: string;
+  at: string;
+  rows: QuotaAttainment[];
+  note: string;
+}> {
+  return api(`/quotas/attainment${at ? `?at=${at}` : ""}`, init);
+}

@@ -37,6 +37,11 @@ import type {
   Attribution,
   AttributionAmount,
   KbDeflection,
+  CommissionPlan,
+  Quota,
+  QuotaAttainment,
+  CommissionBand,
+  CommissionTier,
   FxRate,
   ReportRateUsed,
   ReportUnconverted,
@@ -167,6 +172,9 @@ interface State {
   campaigns: Campaign[];
   tickets: Ticket[];
   articles: Article[];
+  /** The tour's commission plans and quotas (CRM-R59). */
+  plans: CommissionPlan[];
+  quotas: Quota[];
   /** What the public help centre has counted (CRM-R57). */
   kb: {
     views: Record<string, number>;
@@ -904,6 +912,40 @@ function build(): State {
     campaigns,
     tickets,
     articles,
+    plans: [
+      {
+        pid: "plan-1",
+        name: "Standard",
+        tiers: [
+          { from_percent: 0, rate_bps: 500 },
+          { from_percent: 100, rate_bps: 800 },
+        ],
+        quotas: 2,
+        set_by: "worker:demo",
+      },
+    ],
+    quotas: [
+      {
+        pid: "quota-1",
+        owner_ref: "owner-ayo",
+        period_from: day(-90),
+        period_to: day(30),
+        currency: "GBP",
+        amount_minor: 5_000_000,
+        plan_pid: "plan-1",
+        set_by: "worker:demo",
+      },
+      {
+        pid: "quota-2",
+        owner_ref: "owner-bea",
+        period_from: day(-90),
+        period_to: day(30),
+        currency: "GBP",
+        amount_minor: 10_000_000,
+        plan_pid: "plan-1",
+        set_by: "worker:demo",
+      },
+    ],
     kb: {
       views: { "kb-1": 41, "kb-3": 27, "kb-2": 12 },
       yes: { "kb-1": 22, "kb-3": 15, "kb-2": 5 },
@@ -2263,6 +2305,8 @@ export function demoHandle(
       return recordLinks("contact", id!, method, body);
   }
   if (head === "kb") return kbPublic(method, seg, query, body);
+  if (head === "commission-plans") return commissionPlans(method, id, body);
+  if (head === "quotas") return quotaRoutes(method, seg, query, body);
   if (head === "email-templates") return emailTemplates(method, id, body);
   if (head === "custom-fields") return customFieldDefs(method, id, body);
   if (tail === "custom-fields" && id)
@@ -3081,6 +3125,223 @@ function shareAmount(
     }
   });
   return out;
+}
+
+/** The tour's commission plans (CRM-R59): list, set by name, delete one no quota uses. */
+function commissionPlans(
+  method: string,
+  id: string | undefined,
+  body: unknown,
+) {
+  if (method === "GET" && !id) {
+    for (const p of state.plans)
+      p.quotas = state.quotas.filter((q) => q.plan_pid === p.pid).length;
+    return ok(state.plans);
+  }
+  if (method === "PUT" && !id) {
+    const input = (body ?? {}) as { name?: string; tiers?: CommissionTier[] };
+    const name = (input.name ?? "").trim().replace(/\s+/g, " ");
+    const tiers = input.tiers ?? [];
+    if (!name) return problem(422, "a plan needs a name");
+    if (
+      tiers.length < 1 ||
+      tiers.length > 8 ||
+      tiers[0]!.from_percent !== 0 ||
+      tiers.some(
+        (t, i) => i > 0 && t.from_percent <= tiers[i - 1]!.from_percent,
+      ) ||
+      tiers.some((t) => t.rate_bps < 0 || t.rate_bps > 10_000)
+    )
+      return problem(
+        422,
+        "tiers are 1 to 8, the first at 0, each above the one before",
+      );
+    const found = state.plans.find(
+      (p) => p.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (found) {
+      found.name = name;
+      found.tiers = tiers;
+      return ok(found);
+    }
+    const made: CommissionPlan = {
+      pid: `plan-${state.plans.length + 1}`,
+      name,
+      tiers,
+      quotas: 0,
+      set_by: "worker:demo",
+    };
+    state.plans.push(made);
+    return ok(made);
+  }
+  if (method === "DELETE" && id) {
+    const at = state.plans.findIndex((p) => p.pid === id);
+    if (at < 0) return problem(404, "no such plan");
+    if (state.quotas.some((q) => q.plan_pid === id))
+      return problem(409, "a quota is still paid under this plan");
+    state.plans.splice(at, 1);
+    return ok({ pid: id });
+  }
+  return problem(405, "method not allowed");
+}
+
+/** The bands of a plan over a quota and the revenue reached, in integers (as the service does). */
+function commissionBands(
+  quota: number,
+  revenue: number,
+  tiers: CommissionTier[],
+): CommissionBand[] {
+  const start = (percent: number) => (BigInt(quota) * BigInt(percent)) / 100n;
+  return tiers.map((tier, i) => {
+    const next = tiers[i + 1];
+    const low = start(tier.from_percent);
+    const rev = BigInt(Math.max(revenue, 0));
+    let inBand =
+      (next
+        ? rev < start(next.from_percent)
+          ? rev
+          : start(next.from_percent)
+        : rev) - low;
+    if (inBand < 0n) inBand = 0n;
+    return {
+      from_percent: tier.from_percent,
+      to_percent: next ? next.from_percent : null,
+      revenue_minor: Number(inBand),
+      rate_bps: tier.rate_bps,
+      commission_minor: Number(
+        divideRound(inBand * BigInt(tier.rate_bps), 10_000n),
+      ),
+    };
+  });
+}
+
+/** The tour's quotas (CRM-R59) and their attainment, computed from the tour's won deals. */
+function quotaRoutes(
+  method: string,
+  seg: string[],
+  query: URLSearchParams,
+  body: unknown,
+) {
+  const [, id] = seg;
+  if (method === "GET" && id === "attainment") {
+    const at = query.get("at") ?? new Date().toISOString().slice(0, 10);
+    const rows: QuotaAttainment[] = state.quotas
+      .filter((q) => q.period_from <= at && q.period_to >= at)
+      .filter(
+        (q) =>
+          !query.get("owner_ref") || q.owner_ref === query.get("owner_ref"),
+      )
+      .map((q) => {
+        const won = state.deals.filter(
+          (d) =>
+            d.won &&
+            d.owner_ref === q.owner_ref &&
+            d.closed_at &&
+            d.closed_at.slice(0, 10) >= q.period_from &&
+            d.closed_at.slice(0, 10) <= q.period_to,
+        );
+        const mine = won.filter((d) => d.currency === q.currency);
+        const revenue = mine.reduce((s, d) => s + (d.amount_minor ?? 0), 0);
+        const other: Record<string, number> = {};
+        for (const d of won.filter((d) => d.currency !== q.currency))
+          other[d.currency] = (other[d.currency] ?? 0) + (d.amount_minor ?? 0);
+        const plan = state.plans.find((p) => p.pid === q.plan_pid) ?? null;
+        const bands = plan
+          ? commissionBands(q.amount_minor, revenue, plan.tiers)
+          : [];
+        return {
+          quota_pid: q.pid,
+          owner_ref: q.owner_ref,
+          period_from: q.period_from,
+          period_to: q.period_to,
+          currency: q.currency,
+          quota_minor: q.amount_minor,
+          revenue_minor: revenue,
+          won_deals: mine.length,
+          attainment: ratio(revenue, q.amount_minor),
+          remaining_minor: Math.max(q.amount_minor - revenue, 0),
+          other_currencies: other,
+          plan: plan?.name ?? null,
+          commission_minor: plan
+            ? bands.reduce((s, b) => s + b.commission_minor, 0)
+            : null,
+          bands,
+        };
+      });
+    return ok({
+      as_of: new Date().toISOString(),
+      at,
+      rows,
+      note: "a statement of what the plan pays, not a payment",
+    });
+  }
+  if (method === "GET" && !id) return ok(state.quotas);
+  if (method === "PUT" && !id) {
+    const input = (body ?? {}) as Partial<Quota>;
+    if (
+      !input.owner_ref ||
+      !input.currency ||
+      !(input.amount_minor && input.amount_minor > 0)
+    )
+      return problem(
+        422,
+        "owner_ref, currency and an amount above zero are needed",
+      );
+    if (
+      !input.period_from ||
+      !input.period_to ||
+      input.period_to < input.period_from
+    )
+      return problem(422, "the period ends before it starts");
+    if (input.plan_pid && !state.plans.some((p) => p.pid === input.plan_pid))
+      return problem(422, "there is no such plan");
+    const overlap = state.quotas.some(
+      (q) =>
+        q.owner_ref === input.owner_ref &&
+        q.currency === input.currency &&
+        q.period_from <= input.period_to! &&
+        q.period_to >= input.period_from! &&
+        !(
+          q.period_from === input.period_from && q.period_to === input.period_to
+        ),
+    );
+    if (overlap)
+      return problem(
+        422,
+        "overlaps another quota of this worker in this currency",
+      );
+    const same = state.quotas.find(
+      (q) =>
+        q.owner_ref === input.owner_ref &&
+        q.currency === input.currency &&
+        q.period_from === input.period_from &&
+        q.period_to === input.period_to,
+    );
+    if (same) {
+      same.amount_minor = input.amount_minor;
+      same.plan_pid = input.plan_pid ?? null;
+      return ok(same);
+    }
+    const made: Quota = {
+      pid: `quota-${state.quotas.length + 1}-${Date.now() % 100000}`,
+      owner_ref: input.owner_ref,
+      period_from: input.period_from,
+      period_to: input.period_to,
+      currency: input.currency,
+      amount_minor: input.amount_minor,
+      plan_pid: input.plan_pid ?? null,
+      set_by: "worker:demo",
+    };
+    state.quotas.push(made);
+    return ok(made);
+  }
+  if (method === "DELETE" && id) {
+    const at = state.quotas.findIndex((q) => q.pid === id);
+    if (at < 0) return problem(404, "no such quota");
+    state.quotas.splice(at, 1);
+    return ok({ pid: id });
+  }
+  return problem(405, "method not allowed");
 }
 
 /** The published articles the public help centre may show. */

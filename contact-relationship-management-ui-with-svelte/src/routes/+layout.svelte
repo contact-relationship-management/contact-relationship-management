@@ -106,6 +106,7 @@
     { href: "/reports", key: "nav.reports" },
     { href: "/attribution", key: "nav.attribution" },
     { href: "/fx-rates", key: "nav.fxRates" },
+    { href: "/quotas", key: "nav.quotas" },
     { href: "/executive", key: "nav.executive" },
     { href: "/dpo", key: "nav.dpo" },
     { href: "/break-glass", key: "nav.breakGlass" },

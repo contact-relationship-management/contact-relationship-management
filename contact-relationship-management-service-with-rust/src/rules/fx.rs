@@ -139,7 +139,7 @@ pub fn pick(rates: &[Rate], from: &str, to: &str, day: NaiveDate) -> Option<Pick
 }
 
 /// `numerator / denominator` rounded half to even.
-fn divide(numerator: i128, denominator: i128) -> i128 {
+pub(crate) fn divide(numerator: i128, denominator: i128) -> i128 {
     let (quotient, remainder) = (numerator / denominator, numerator % denominator);
     let twice = remainder.abs() * 2;
     let step = if numerator < 0 { -1 } else { 1 };

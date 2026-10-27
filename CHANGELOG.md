@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — quotas and commission plans (CRM-T125, CRM-R59)
+
+`/api/commission-plans`, `/api/quotas` and `GET /api/quotas/attainment` (admin only): what each worker is to win in a period, a tiered plan that pays on it, and where each worker stands, with the `/quotas` page.
+
 ### Added — opens and clicks as attribution touches (CRM-T124, CRM-R58)
 
 Mail-provider open and click events are recorded once per message, only while the person still consents (the service never turns tracking on), and `GET /api/attribution?touches=sent,opened,clicked` can count them as touches.

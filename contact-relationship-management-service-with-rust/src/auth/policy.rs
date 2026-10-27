@@ -43,9 +43,14 @@ pub const PRIVILEGED_READ_PREFIXES: [&str; 4] = [
 ];
 
 /// Path prefixes that only an admin or service caller may use with *any* method
-/// (outbound webhook subscriptions, CRM-R28: they decide where change notifications go). Every
+/// (outbound webhook subscriptions, CRM-R28: they decide where change notifications go; quotas and
+/// commission plans, CRM-R59: what a person is paid is neither theirs to set nor everyone's to read). Every
 /// request under one derives [`Action::Destructive`].
-pub const ADMIN_ONLY_PREFIXES: [&str; 1] = ["/api/webhook-subscriptions"];
+pub const ADMIN_ONLY_PREFIXES: [&str; 3] = [
+    "/api/webhook-subscriptions",
+    "/api/quotas",
+    "/api/commission-plans",
+];
 
 /// Whether `path` is under an [`ADMIN_ONLY_PREFIXES`] entry, on whole path segments.
 pub(super) fn is_admin_only(path: &str) -> bool {

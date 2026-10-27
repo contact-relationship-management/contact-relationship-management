@@ -53,6 +53,7 @@ mod m20261026_000038_fx_rates;
 mod m20261026_000039_ticket_pauses;
 mod m20261026_000040_kb_daily;
 mod m20261026_000041_email_engagement;
+mod m20261026_000042_quotas;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -104,6 +105,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261026_000039_ticket_pauses::Migration),
             Box::new(m20261026_000040_kb_daily::Migration),
             Box::new(m20261026_000041_email_engagement::Migration),
+            Box::new(m20261026_000042_quotas::Migration),
             // inject-above (do not remove this comment)
         ]
     }

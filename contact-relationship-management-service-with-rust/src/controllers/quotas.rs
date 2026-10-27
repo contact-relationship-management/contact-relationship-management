@@ -1,0 +1,576 @@
+//! Quotas, commission plans and attainment (CRM-R59).
+//!
+//! `/api/commission-plans` and `/api/quotas` are kept by hand and audited; `GET
+//! /api/quotas/attainment` reads the won deals against them. All three are admin-only (see
+//! [`crate::auth::policy::ADMIN_ONLY_PREFIXES`]): what a person is paid is neither theirs to set
+//! nor everyone's to read.
+
+use std::collections::BTreeMap;
+
+use chrono::NaiveDate;
+use loco_rs::prelude::*;
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use super::merge::conflict;
+use super::views::owner_of;
+use super::{PidPath, PidRef};
+use crate::auth::MaybeAuthUser;
+use crate::json::Json;
+use crate::models::audit_logs::Model as Audit;
+use crate::rules::analytics::Ratio;
+use crate::rules::fx;
+use crate::rules::quota::{self, Band, Tier};
+use crate::validation::Problems;
+
+/// Most rows listed.
+const MAX_LISTED: i64 = 1000;
+/// Longest period a quota may cover, in days.
+const MAX_PERIOD_DAYS: i64 = 366;
+
+fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
+    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
+}
+
+// ------------------------------------------------------------------ plans
+
+/// `PUT /api/commission-plans` body: sets the plan of that name (any case), replacing its tiers.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[schemars(rename = "CommissionPlanPayload")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct PlanPayload {
+    /// Its name, unique in any case.
+    name: String,
+    /// The tiers, marginal: the first starts at `0` and each starts above the one before.
+    tiers: Vec<Tier>,
+}
+
+/// A commission plan.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "CommissionPlan")]
+pub(crate) struct PlanView {
+    #[schemars(with = "uuid::Uuid")]
+    pid: String,
+    name: String,
+    tiers: Vec<Tier>,
+    /// How many quotas are paid under it.
+    quotas: i64,
+    /// Who set it.
+    set_by: String,
+}
+
+const PLAN_COLUMNS: &str = "p.pid, p.name, p.tiers, p.set_by, \
+     (SELECT count(*) FROM quotas q WHERE q.plan_pid = p.pid)::bigint AS in_use";
+
+fn plan_view(row: &sea_orm::QueryResult) -> Result<PlanView> {
+    let tiers: serde_json::Value = row.try_get("", "tiers")?;
+    Ok(PlanView {
+        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
+        name: row.try_get("", "name")?,
+        tiers: serde_json::from_value(tiers).map_err(|e| Error::string(&e.to_string()))?,
+        quotas: row.try_get("", "in_use")?,
+        set_by: row.try_get("", "set_by")?,
+    })
+}
+
+/// `GET /api/commission-plans` — the plans, by name.
+#[debug_handler]
+async fn list_plans(State(ctx): State<AppContext>) -> Result<Response> {
+    let rows = ctx
+        .db
+        .query_all_raw(stmt(
+            &format!(
+                "SELECT {PLAN_COLUMNS} FROM commission_plans p ORDER BY lower(p.name) LIMIT $1"
+            ),
+            [MAX_LISTED.into()],
+        ))
+        .await?;
+    format::json(rows.iter().map(plan_view).collect::<Result<Vec<_>>>()?)
+}
+
+/// `PUT /api/commission-plans` — set a plan; audited.
+#[debug_handler]
+async fn set_plan(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Json(payload): Json<PlanPayload>,
+) -> Result<Response> {
+    let mut problems = Problems::new();
+    let name = quota::name(&payload.name)
+        .map_err(|why| problems.push_field("name", why))
+        .ok();
+    if let Err(why) = quota::check_tiers(&payload.tiers) {
+        problems.push_field("tiers", why);
+    }
+    problems.finish()?;
+    let Some(name) = name else {
+        return Err(super::unprocessable("the plan cannot be set"));
+    };
+    let who = owner_of(&caller)?;
+    let tiers = serde_json::to_value(&payload.tiers).map_err(|e| Error::string(&e.to_string()))?;
+    let txn = ctx.db.begin().await?;
+    let row = txn
+        .query_one_raw(stmt(
+            &format!(
+                "WITH p AS ( \
+                   INSERT INTO commission_plans (pid, name, tiers, set_by) \
+                   VALUES ($1, $2, $3::jsonb, $4) \
+                   ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, \
+                     tiers = EXCLUDED.tiers, set_by = EXCLUDED.set_by, updated_at = now() \
+                   RETURNING * ) \
+                 SELECT {PLAN_COLUMNS} FROM p"
+            ),
+            [
+                Uuid::new_v4().into(),
+                name.as_str().into(),
+                tiers.into(),
+                who.into(),
+            ],
+        ))
+        .await?
+        .ok_or(Error::NotFound)?;
+    let made = plan_view(&row)?;
+    let pid: Uuid = row.try_get("", "pid")?;
+    Audit::record(
+        &txn,
+        "commission_plan",
+        pid,
+        "set",
+        caller.actor(),
+        Some(serde_json::json!({ "name": made.name, "tiers": made.tiers })),
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(made)
+}
+
+/// `DELETE /api/commission-plans/{pid}` — remove a plan no quota uses; audited. `404` when there is
+/// none, `409` when a quota is paid under it.
+#[debug_handler]
+async fn remove_plan(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+) -> Result<Response> {
+    let txn = ctx.db.begin().await?;
+    let row = txn
+        .query_one_raw(stmt(
+            &format!(
+                "SELECT {PLAN_COLUMNS} FROM commission_plans p WHERE p.pid = $1 FOR UPDATE OF p"
+            ),
+            [pid.into()],
+        ))
+        .await?
+        .ok_or(Error::NotFound)?;
+    let plan = plan_view(&row)?;
+    if plan.quotas > 0 {
+        return Err(conflict("a quota is still paid under this plan"));
+    }
+    txn.execute_raw(stmt(
+        "DELETE FROM commission_plans WHERE pid = $1",
+        [pid.into()],
+    ))
+    .await?;
+    Audit::record(
+        &txn,
+        "commission_plan",
+        pid,
+        "deleted",
+        caller.actor(),
+        Some(serde_json::json!({ "name": plan.name })),
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(PidRef {
+        pid: pid.to_string(),
+    })
+}
+
+// ----------------------------------------------------------------- quotas
+
+/// `PUT /api/quotas` body: sets the quota of a worker for a period in a currency, replacing any
+/// already there for exactly that period.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[schemars(rename = "QuotaPayload")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct QuotaPayload {
+    /// The worker, `worker:<id>`.
+    owner_ref: String,
+    /// First day of the period.
+    period_from: NaiveDate,
+    /// Last day of the period, inclusive; at most 366 days after the first.
+    period_to: NaiveDate,
+    /// Three capital letters.
+    currency: String,
+    /// What is to be won, in minor units; above zero.
+    amount_minor: i64,
+    /// The commission plan it is paid under, if any.
+    #[schemars(with = "Option<uuid::Uuid>")]
+    plan_pid: Option<Uuid>,
+}
+
+/// A quota.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "Quota")]
+pub(crate) struct QuotaView {
+    #[schemars(with = "uuid::Uuid")]
+    pid: String,
+    owner_ref: String,
+    period_from: NaiveDate,
+    period_to: NaiveDate,
+    currency: String,
+    amount_minor: i64,
+    #[schemars(with = "Option<uuid::Uuid>")]
+    plan_pid: Option<String>,
+    set_by: String,
+}
+
+const QUOTA_COLUMNS: &str =
+    "pid, owner_ref, period_from, period_to, currency, amount_minor, plan_pid, set_by";
+
+fn quota_view(row: &sea_orm::QueryResult) -> Result<QuotaView> {
+    Ok(QuotaView {
+        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
+        owner_ref: row.try_get("", "owner_ref")?,
+        period_from: row.try_get("", "period_from")?,
+        period_to: row.try_get("", "period_to")?,
+        currency: row.try_get::<String>("", "currency")?.trim().to_string(),
+        amount_minor: row.try_get("", "amount_minor")?,
+        plan_pid: row
+            .try_get::<Option<Uuid>>("", "plan_pid")?
+            .map(|p| p.to_string()),
+        set_by: row.try_get("", "set_by")?,
+    })
+}
+
+/// What `GET /api/quotas` may be asked.
+#[derive(Debug, Deserialize)]
+struct QuotaQuery {
+    /// Only this worker's quotas.
+    owner_ref: Option<String>,
+}
+
+/// `GET /api/quotas?owner_ref=` — the quotas, latest period first.
+#[debug_handler]
+async fn list_quotas(
+    State(ctx): State<AppContext>,
+    axum::extract::Query(query): axum::extract::Query<QuotaQuery>,
+) -> Result<Response> {
+    let rows = ctx
+        .db
+        .query_all_raw(stmt(
+            &format!(
+                "SELECT {QUOTA_COLUMNS} FROM quotas WHERE ($1::text IS NULL OR owner_ref = $1) \
+                 ORDER BY period_from DESC, owner_ref, currency LIMIT $2"
+            ),
+            [query.owner_ref.into(), MAX_LISTED.into()],
+        ))
+        .await?;
+    format::json(rows.iter().map(quota_view).collect::<Result<Vec<_>>>()?)
+}
+
+/// `PUT /api/quotas` — set a quota; audited.
+#[debug_handler]
+async fn set_quota(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    Json(payload): Json<QuotaPayload>,
+) -> Result<Response> {
+    let mut problems = Problems::new();
+    problems.require_ref(
+        "owner_ref",
+        entity_ref::EntityType::Worker,
+        &payload.owner_ref,
+    );
+    let currency = fx::currency(&payload.currency)
+        .map_err(|why| problems.push_field("currency", why))
+        .ok();
+    if payload.amount_minor <= 0 {
+        problems.push_field("amount_minor", "a quota is more than zero");
+    }
+    if payload.period_to < payload.period_from {
+        problems.push_field("period_to", "the period ends before it starts");
+    } else if (payload.period_to - payload.period_from).num_days() >= MAX_PERIOD_DAYS {
+        problems.push_field(
+            "period_to",
+            format!("a period is at most {MAX_PERIOD_DAYS} days"),
+        );
+    }
+    problems.finish()?;
+    let Some(currency) = currency else {
+        return Err(super::unprocessable("the quota cannot be set"));
+    };
+
+    let who = owner_of(&caller)?;
+    let txn = ctx.db.begin().await?;
+    let mut later = Problems::new();
+    if let Some(plan) = payload.plan_pid
+        && txn
+            .query_one_raw(stmt(
+                "SELECT 1 FROM commission_plans WHERE pid = $1",
+                [plan.into()],
+            ))
+            .await?
+            .is_none()
+    {
+        later.push_field("plan_pid", "there is no such plan");
+    }
+    // One quota covers a day for a worker and currency, so attainment is never ambiguous.
+    if txn
+        .query_one_raw(stmt(
+            "SELECT 1 FROM quotas WHERE owner_ref = $1 AND currency = $2 \
+               AND period_from <= $4 AND period_to >= $3 \
+               AND NOT (period_from = $3 AND period_to = $4)",
+            [
+                payload.owner_ref.as_str().into(),
+                currency.as_str().into(),
+                payload.period_from.into(),
+                payload.period_to.into(),
+            ],
+        ))
+        .await?
+        .is_some()
+    {
+        later.push_field(
+            "period_from",
+            "overlaps another quota of this worker in this currency",
+        );
+    }
+    later.finish()?;
+    let row = txn
+        .query_one_raw(stmt(
+            &format!(
+                "INSERT INTO quotas (pid, owner_ref, period_from, period_to, currency, \
+                                     amount_minor, plan_pid, set_by) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
+                 ON CONFLICT (owner_ref, period_from, period_to, currency) DO UPDATE SET \
+                   amount_minor = EXCLUDED.amount_minor, plan_pid = EXCLUDED.plan_pid, \
+                   set_by = EXCLUDED.set_by, updated_at = now() \
+                 RETURNING {QUOTA_COLUMNS}"
+            ),
+            [
+                Uuid::new_v4().into(),
+                payload.owner_ref.as_str().into(),
+                payload.period_from.into(),
+                payload.period_to.into(),
+                currency.as_str().into(),
+                payload.amount_minor.into(),
+                payload.plan_pid.into(),
+                who.into(),
+            ],
+        ))
+        .await?
+        .ok_or(Error::NotFound)?;
+    let made = quota_view(&row)?;
+    Audit::record(
+        &txn,
+        "quota",
+        row.try_get("", "pid")?,
+        "set",
+        caller.actor(),
+        Some(serde_json::json!({
+            "owner_ref": made.owner_ref, "period_from": made.period_from,
+            "period_to": made.period_to, "currency": made.currency,
+            "amount_minor": made.amount_minor, "plan_pid": made.plan_pid,
+        })),
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(made)
+}
+
+/// `DELETE /api/quotas/{pid}` — remove a quota; audited. `404` when there is none.
+#[debug_handler]
+async fn remove_quota(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+) -> Result<Response> {
+    let txn = ctx.db.begin().await?;
+    let row = txn
+        .query_one_raw(stmt(
+            &format!("DELETE FROM quotas WHERE pid = $1 RETURNING {QUOTA_COLUMNS}"),
+            [pid.into()],
+        ))
+        .await?
+        .ok_or(Error::NotFound)?;
+    let gone = quota_view(&row)?;
+    Audit::record(
+        &txn,
+        "quota",
+        pid,
+        "deleted",
+        caller.actor(),
+        Some(serde_json::json!({
+            "owner_ref": gone.owner_ref, "period_from": gone.period_from,
+            "period_to": gone.period_to, "currency": gone.currency,
+        })),
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(PidRef {
+        pid: pid.to_string(),
+    })
+}
+
+// ------------------------------------------------------------- attainment
+
+/// What `GET /api/quotas/attainment` may be asked.
+#[derive(Debug, Deserialize)]
+struct AttainmentQuery {
+    /// Only this worker.
+    owner_ref: Option<String>,
+    /// The day the quota's period must contain (today when absent).
+    at: Option<NaiveDate>,
+}
+
+/// One worker's attainment of one quota.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "QuotaAttainment")]
+pub(crate) struct Attainment {
+    #[schemars(with = "uuid::Uuid")]
+    quota_pid: String,
+    owner_ref: String,
+    period_from: NaiveDate,
+    period_to: NaiveDate,
+    currency: String,
+    quota_minor: i64,
+    /// Won revenue of the worker's deals closed in the period, in the quota's currency.
+    revenue_minor: i64,
+    /// How many deals made it.
+    won_deals: i64,
+    /// `revenue ÷ quota`, with both numbers.
+    attainment: Ratio,
+    /// What is still to win; zero once the quota is met.
+    remaining_minor: i64,
+    /// Won revenue in other currencies, never added in or converted.
+    other_currencies: BTreeMap<String, i64>,
+    /// The plan the quota is paid under, when it has one.
+    plan: Option<String>,
+    /// What the plan pays on `revenue_minor`; `null` without a plan.
+    commission_minor: Option<i64>,
+    /// Revenue and commission band by band; empty without a plan.
+    bands: Vec<Band>,
+}
+
+/// The answer.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "QuotaAttainmentReport")]
+pub(crate) struct AttainmentReport {
+    as_of: chrono::DateTime<chrono::Utc>,
+    /// The day the periods contain.
+    at: NaiveDate,
+    rows: Vec<Attainment>,
+    note: &'static str,
+}
+
+/// `GET /api/quotas/attainment?owner_ref=&at=` — each quota whose period contains `at`, with the
+/// revenue the worker's won deals reached in it and the commission its plan pays. An audited read.
+#[debug_handler]
+async fn attainment(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    axum::extract::Query(query): axum::extract::Query<AttainmentQuery>,
+) -> Result<Response> {
+    let at = query.at.unwrap_or_else(|| chrono::Utc::now().date_naive());
+    let quotas = ctx
+        .db
+        .query_all_raw(stmt(
+            "SELECT q.pid, q.owner_ref, q.period_from, q.period_to, q.currency, q.amount_minor, \
+                    p.name AS plan_name, p.tiers AS plan_tiers \
+             FROM quotas q LEFT JOIN commission_plans p ON p.pid = q.plan_pid \
+             WHERE q.period_from <= $1 AND q.period_to >= $1 \
+               AND ($2::text IS NULL OR q.owner_ref = $2) \
+             ORDER BY q.owner_ref, q.currency LIMIT $3",
+            [at.into(), query.owner_ref.into(), MAX_LISTED.into()],
+        ))
+        .await?;
+    let mut rows = Vec::with_capacity(quotas.len());
+    for q in &quotas {
+        let owner: String = q.try_get("", "owner_ref")?;
+        let (from, to): (NaiveDate, NaiveDate) =
+            (q.try_get("", "period_from")?, q.try_get("", "period_to")?);
+        let currency = q.try_get::<String>("", "currency")?.trim().to_string();
+        let quota_minor: i64 = q.try_get("", "amount_minor")?;
+        let won = ctx
+            .db
+            .query_all_raw(stmt(
+                "SELECT trim(currency) AS currency, COALESCE(SUM(amount_minor), 0)::bigint AS total, \
+                        count(*)::bigint AS n \
+                 FROM deals WHERE won AND deleted_at IS NULL AND owner_ref = $1 \
+                   AND closed_at IS NOT NULL AND closed_at::date BETWEEN $2 AND $3 \
+                 GROUP BY trim(currency)",
+                [owner.as_str().into(), from.into(), to.into()],
+            ))
+            .await?;
+        let (mut revenue, mut deals, mut other) = (0_i64, 0_i64, BTreeMap::new());
+        for w in &won {
+            let (c, total, n): (String, i64, i64) = (
+                w.try_get("", "currency")?,
+                w.try_get("", "total")?,
+                w.try_get("", "n")?,
+            );
+            if c == currency {
+                (revenue, deals) = (total, n);
+            } else {
+                other.insert(c, total);
+            }
+        }
+        let tiers: Option<Vec<Tier>> = q
+            .try_get::<Option<serde_json::Value>>("", "plan_tiers")?
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(|e| Error::string(&e.to_string()))?;
+        let bands = tiers
+            .as_deref()
+            .map(|t| quota::bands(quota_minor, revenue, t))
+            .unwrap_or_default();
+        rows.push(Attainment {
+            quota_pid: q.try_get::<Uuid>("", "pid")?.to_string(),
+            owner_ref: owner,
+            period_from: from,
+            period_to: to,
+            currency,
+            quota_minor,
+            revenue_minor: revenue,
+            won_deals: deals,
+            attainment: quota::attainment(quota_minor, revenue),
+            remaining_minor: quota::remaining(quota_minor, revenue),
+            other_currencies: other,
+            plan: q.try_get("", "plan_name")?,
+            commission_minor: tiers.as_ref().map(|_| quota::commission(&bands)),
+            bands,
+        });
+    }
+    Audit::record_read(
+        &ctx.db,
+        "quota",
+        Uuid::nil(),
+        "attainment_read",
+        caller.actor(),
+        Some(serde_json::json!({ "at": at, "quotas": rows.len() })),
+    )
+    .await?;
+    format::json(AttainmentReport {
+        as_of: chrono::Utc::now(),
+        at,
+        rows,
+        note: "revenue is the amount of the worker's won, live deals closed in the period, in the \
+               quota's currency only (other currencies are listed, never added or converted); \
+               commission is a statement of what the plan pays, not a payment",
+    })
+}
+
+/// The routes.
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("/api")
+        .add("/commission-plans", get(list_plans))
+        .add("/commission-plans", put(set_plan))
+        .add("/commission-plans/{pid}", delete(remove_plan))
+        .add("/quotas", get(list_quotas))
+        .add("/quotas", put(set_quota))
+        .add("/quotas/attainment", get(attainment))
+        .add("/quotas/{pid}", delete(remove_quota))
+}

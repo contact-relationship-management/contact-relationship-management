@@ -3823,6 +3823,208 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/commission-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The commission plans (CRM-R59): a name and marginal tiers (a start as a percentage of quota and a rate in basis points on the revenue in the band), and how many quotas are paid under each. Admin only */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommissionPlan"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Set the plan of that name (any case), replacing its tiers; 1 to 8 tiers, the first at 0, each starting above the one before; 422 names the member; a write, audited. Admin only */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CommissionPlanPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommissionPlan"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commission-plans/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a plan no quota is paid under; audited; 404 when there is none, 409 while a quota uses it. Admin only */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/contact-imports": {
         parameters: {
             query?: never;
@@ -12616,6 +12818,280 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The quotas, latest period first, at most 1000, optionally ?owner_ref= (CRM-R59). Admin only */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Quota"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Set the quota of a worker for a period in a currency, replacing one for exactly that period; an overlap with another of the worker's in that currency, a period over 366 days and an unknown plan are 422 naming the member; a write, audited. Admin only */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["QuotaPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Quota"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotas/attainment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Each quota whose period contains ?at= (today when absent), optionally ?owner_ref=: the revenue of the worker's won deals closed in the period in the quota's currency (other currencies listed apart, never converted), attainment as a ratio, what remains, and the commission its plan pays band by band; a statement, not a payment. An audited read. Admin only */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QuotaAttainmentReport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotas/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a quota; audited; 404 when there is none. Admin only */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reports": {
         parameters: {
             query?: never;
@@ -17045,6 +17521,68 @@ export interface components {
             /** Format: uint */
             won_deals: number;
         };
+        /** @description What one tier paid. */
+        CommissionBand: {
+            /**
+             * Format: int64
+             * @description What it paid, in minor units, rounded half to even.
+             */
+            commission_minor: number;
+            /**
+             * Format: uint32
+             * @description Where the band starts, as a percentage of the quota.
+             */
+            from_percent: number;
+            /**
+             * Format: uint32
+             * @description Its rate, in basis points.
+             */
+            rate_bps: number;
+            /**
+             * Format: int64
+             * @description The revenue that fell in it, in minor units.
+             */
+            revenue_minor: number;
+            /**
+             * Format: uint32
+             * @description Where it ends; `null` for the last, which has no end.
+             */
+            to_percent: number | null;
+        };
+        /** @description A commission plan. */
+        CommissionPlan: {
+            name: string;
+            /** Format: uuid */
+            pid: string;
+            /**
+             * Format: int64
+             * @description How many quotas are paid under it.
+             */
+            quotas: number;
+            /** @description Who set it. */
+            set_by: string;
+            tiers: components["schemas"]["CommissionTier"][];
+        };
+        /** @description `PUT /api/commission-plans` body: sets the plan of that name (any case), replacing its tiers. */
+        CommissionPlanPayload: {
+            /** @description Its name, unique in any case. */
+            name: string;
+            /** @description The tiers, marginal: the first starts at `0` and each starts above the one before. */
+            tiers: components["schemas"]["CommissionTier"][];
+        };
+        /** @description One tier of a plan. */
+        CommissionTier: {
+            /**
+             * Format: uint32
+             * @description Where the tier starts, as a percentage of the quota (the first is `0`).
+             */
+            from_percent: number;
+            /**
+             * Format: uint32
+             * @description What it pays on the revenue in its band, in basis points (`500` is 5%).
+             */
+            rate_bps: number;
+        };
         /** @description One account's consent picture. */
         ConsentAccount: {
             consent_coverage: {
@@ -18669,6 +19207,107 @@ export interface components {
         PriorityPayload: {
             priority: string;
             reason: string;
+        };
+        /** @description A quota. */
+        Quota: {
+            /** Format: int64 */
+            amount_minor: number;
+            currency: string;
+            owner_ref: string;
+            /** Format: date */
+            period_from: string;
+            /** Format: date */
+            period_to: string;
+            /** Format: uuid */
+            pid: string;
+            /** Format: uuid */
+            plan_pid: string | null;
+            set_by: string;
+        };
+        /** @description One worker's attainment of one quota. */
+        QuotaAttainment: {
+            /** @description `revenue ÷ quota`, with both numbers. */
+            attainment: components["schemas"]["Ratio"];
+            /** @description Revenue and commission band by band; empty without a plan. */
+            bands: components["schemas"]["CommissionBand"][];
+            /**
+             * Format: int64
+             * @description What the plan pays on `revenue_minor`; `null` without a plan.
+             */
+            commission_minor: number | null;
+            currency: string;
+            /** @description Won revenue in other currencies, never added in or converted. */
+            other_currencies: {
+                [key: string]: number;
+            };
+            owner_ref: string;
+            /** Format: date */
+            period_from: string;
+            /** Format: date */
+            period_to: string;
+            /** @description The plan the quota is paid under, when it has one. */
+            plan: string | null;
+            /** Format: int64 */
+            quota_minor: number;
+            /** Format: uuid */
+            quota_pid: string;
+            /**
+             * Format: int64
+             * @description What is still to win; zero once the quota is met.
+             */
+            remaining_minor: number;
+            /**
+             * Format: int64
+             * @description Won revenue of the worker's deals closed in the period, in the quota's currency.
+             */
+            revenue_minor: number;
+            /**
+             * Format: int64
+             * @description How many deals made it.
+             */
+            won_deals: number;
+        };
+        /** @description The answer. */
+        QuotaAttainmentReport: {
+            /** Format: date-time */
+            as_of: string;
+            /**
+             * Format: date
+             * @description The day the periods contain.
+             */
+            at: string;
+            note: string;
+            rows: components["schemas"]["QuotaAttainment"][];
+        };
+        /**
+         * @description `PUT /api/quotas` body: sets the quota of a worker for a period in a currency, replacing any
+         *     already there for exactly that period.
+         */
+        QuotaPayload: {
+            /**
+             * Format: int64
+             * @description What is to be won, in minor units; above zero.
+             */
+            amount_minor: number;
+            /** @description Three capital letters. */
+            currency: string;
+            /** @description The worker, `worker:<id>`. */
+            owner_ref: string;
+            /**
+             * Format: date
+             * @description First day of the period.
+             */
+            period_from: string;
+            /**
+             * Format: date
+             * @description Last day of the period, inclusive; at most 366 days after the first.
+             */
+            period_to: string;
+            /**
+             * Format: uuid
+             * @description The commission plan it is paid under, if any.
+             */
+            plan_pid: string | null;
         };
         /**
          * @description A ratio reported honestly: numerator, denominator, and the value

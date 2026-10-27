@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — quotas and commission plans (CRM-T125)
+
+`/quotas` (where everyone stands, quotas, plans; 26 keys in 8 locales, machine drafts), typed calls in `crm.ts`, the tour's quotas and plans, regenerated `schema.d.ts`; one Playwright test. Also fixed the demo-data unit test for `/kb/articles/x`.
+
 ### Added — opens and clicks as attribution touches (CRM-T124)
 
 Sent, opened and clicked checkboxes on `/attribution` (5 keys in 8 locales, machine drafts); the tour's provider-reported open and click; one Playwright test.

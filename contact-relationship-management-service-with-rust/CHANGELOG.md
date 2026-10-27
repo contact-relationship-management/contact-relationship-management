@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — quotas and commission plans (CRM-T125, CRM-R59)
+
+Migration `000042` (`commission_plans`, `quotas`); `rules::quota` (marginal tiers in whole minor units and basis points, no floating point); `controllers::quotas`; `/api/quotas` and `/api/commission-plans` join the admin-only prefixes.
+
 ### Added — opens and clicks as attribution touches (CRM-T124, CRM-R58)
 
 Migration `000041` (`email_events` accepts `opened` and `clicked`); the Brevo, Mailjet, Mailgun, `SendGrid` and SES parsers and `POST /webhooks/email` read them; `apply_event` records them only while consent for the campaign's purpose is granted; `GET /api/attribution` takes `touches` and names it in the answer.

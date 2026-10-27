@@ -119,6 +119,8 @@ describe("every read the UI makes has sample data", () => {
     .map((p) => p.replace(/^\//, ""))
     // The record kind is a parameter (links work on four kinds): try contacts.
     .map((p) => p.replace(/^x\/x\//, "contacts/x/"))
+    // The public help centre names an article one segment further in.
+    .map((p) => p.replace(/^kb\/articles\/x/, "kb/articles/kb-1"))
     .map((p) =>
       p.replace(
         /^(\w+)\/x/,

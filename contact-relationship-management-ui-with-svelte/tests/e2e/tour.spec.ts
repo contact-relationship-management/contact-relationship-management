@@ -1403,6 +1403,22 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("report-unconverted")).toContainText("GBP");
   });
 
+  test("quotas show where each worker stands, and a plan in use cannot be deleted", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/quotas");
+    await expect(page.getByTestId("quota-standing-row")).toHaveCount(2);
+    await expect(page.getByTestId("quota-row")).toHaveCount(2);
+    await page.getByTestId("quota-owner").fill("owner-cy");
+    await page.getByTestId("quota-amount").fill("1000.00");
+    await page.getByTestId("quota-set").click();
+    await expect(page.getByTestId("quota-row")).toHaveCount(3);
+    // A plan that quotas are paid under is refused.
+    await page.getByTestId("plan-row").getByRole("button").click();
+    await expect(page.getByTestId("quota-error")).toBeVisible();
+  });
+
   test("exchange rates are listed, set, replaced and deleted, and a bad rate is refused", async ({
     page,
   }) => {
