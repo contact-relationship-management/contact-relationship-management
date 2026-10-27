@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — suggested articles on the tickets page (CRM-T133)
+
+`ticketSuggestions`, a list under the selected ticket, the tour's suggestions and a sixth knowledge-base article, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; one Playwright test (and the help centre test now counts five).
+
 ### Added — split a won deal on `/quotas` (CRM-T132)
 
 A form to share a won deal between workers or credit its owner alone, `setDealSplit` and `deleteDealSplit`, the tour's splits and attainment, 6 keys in 8 locales (machine drafts), regenerated `schema.d.ts`; one Playwright test.

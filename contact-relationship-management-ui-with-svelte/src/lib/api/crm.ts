@@ -864,6 +864,22 @@ export function ticketStatus(pid: string, to: string): Promise<Ticket> {
   return api(`/tickets/${pid}/status`, { method: "POST", body: { to } });
 }
 
+/** A published article that may answer a ticket (CRM-R66). */
+export interface SuggestedArticle {
+  article_pid: string;
+  title: string;
+  score: number;
+  matched: string[];
+}
+
+/** The published articles that share words with the ticket's title, best first. */
+export function ticketSuggestions(
+  pid: string,
+  init?: FetchLike,
+): Promise<SuggestedArticle[]> {
+  return api(`/tickets/${pid}/suggested-articles`, init);
+}
+
 /** The customer answered: a waiting ticket goes back to open and its SLA clock runs again (CRM-R63). */
 export function ticketCustomerReply(pid: string): Promise<Ticket> {
   return api(`/tickets/${pid}/customer-reply`, { method: "POST" });

@@ -650,6 +650,13 @@ function build(): State {
       1,
     ),
     article(
+      "kb-6",
+      "Licence seats missing from the console",
+      "Seats appear in the console once the licence is synced. Ask the customer to sign out and in, then check the sync status on the licence page.",
+      "published",
+      1,
+    ),
+    article(
       "kb-5",
       "Draft: SLA policy for strategic accounts",
       "Strategic accounts get a one-hour first response on urgent tickets. This draft is awaiting review.",
@@ -2573,6 +2580,11 @@ export function demoHandle(
         );
       return ok(t);
     }
+    if (tail === "suggested-articles" && get) {
+      const t = state.tickets.find((x) => x.pid === id);
+      if (!t) return problem(404, "ticket not found");
+      return ok(suggestArticles(t.title));
+    }
     if (tail === "status" && post) {
       const reply = transition(state.tickets, id!, body, "ticket");
       const t = state.tickets.find((x) => x.pid === id);
@@ -3405,6 +3417,45 @@ function accountClv(accountPid: string, query: URLSearchParams) {
     projection,
     ...conversion,
   });
+}
+
+const STOP_WORDS = new Set(
+  "the and for are but not you can with has have this that from was our its when what how why does did into".split(
+    " ",
+  ),
+);
+
+/** The words of a text: lower case, letters and digits, three or more characters, not common. */
+function wordsOf(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((w) => [...w].length >= 3 && !STOP_WORDS.has(w)),
+  );
+}
+
+/** The published articles sharing words with a ticket's title, as the service ranks them (CRM-R66). */
+function suggestArticles(title: string) {
+  const wanted = wordsOf(title);
+  return state.articles
+    .filter((a) => a.status === "published")
+    .map((a, index) => {
+      const headline = wordsOf(a.title);
+      const text = wordsOf(a.body);
+      const matched = [...wanted].filter((w) => headline.has(w) || text.has(w));
+      const score = matched.reduce((s, w) => s + (headline.has(w) ? 2 : 1), 0);
+      return { index, article_pid: a.pid, title: a.title, score, matched };
+    })
+    .filter((m) => m.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, 5)
+    .map((m) => ({
+      article_pid: m.article_pid,
+      title: m.title,
+      score: m.score,
+      matched: m.matched,
+    }));
 }
 
 /** Share an amount by basis points to the minor unit, leftovers to the largest remainders (CRM-R65). */

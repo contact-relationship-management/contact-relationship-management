@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — articles suggested for a ticket (CRM-T133, CRM-R66)
+
+`GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
+
 ### Added — splitting a won deal between workers (CRM-T132, CRM-R65)
 
 `GET`, `PUT` and `DELETE /api/quotas/splits/{pid}` (admin only): a deal is credited to several workers in shares of 10000, shared to the minor unit, and quota attainment follows.

@@ -750,4 +750,5 @@ export default {
     "Une personne et un pourcentage par ligne, par exemple worker:ada:60 ; le total fait 100. Le montant est réparti à la plus petite unité.",
   "quota.splitSet": "Partager",
   "quota.splitRemove": "Créditer le propriétaire seul",
+  "ticket.suggested": "Articles qui peuvent aider",
 } satisfies Record<StringKey, string>;

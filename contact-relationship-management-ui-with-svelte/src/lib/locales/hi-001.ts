@@ -738,4 +738,5 @@ export default {
     "हर पंक्ति में एक कर्मचारी और प्रतिशत, जैसे worker:ada:60; कुल 100 होना चाहिए। राशि सबसे छोटी इकाई तक बाँटी जाती है।",
   "quota.splitSet": "बाँटें",
   "quota.splitRemove": "केवल स्वामी को श्रेय दें",
+  "ticket.suggested": "लेख जो मदद कर सकते हैं",
 } satisfies Record<StringKey, string>;

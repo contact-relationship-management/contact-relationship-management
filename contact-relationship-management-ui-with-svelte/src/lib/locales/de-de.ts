@@ -752,4 +752,5 @@ export default {
     "Pro Zeile eine Person und ein Prozentsatz, etwa worker:ada:60; zusammen 100. Der Betrag wird bis auf die kleinste Einheit verteilt.",
   "quota.splitSet": "Aufteilen",
   "quota.splitRemove": "Nur dem Eigentümer gutschreiben",
+  "ticket.suggested": "Artikel, die helfen könnten",
 } satisfies Record<StringKey, string>;

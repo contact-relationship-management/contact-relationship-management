@@ -836,6 +836,47 @@ async fn list_articles(
     page.respond(rows, more, &uri)
 }
 
+/// An article that may answer a ticket.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct SuggestedArticle {
+    #[schemars(with = "uuid::Uuid")]
+    article_pid: String,
+    title: String,
+    /// Words of the ticket's title the article shares; headline words count 2, text words 1.
+    score: u32,
+    matched: Vec<String>,
+}
+
+/// `GET /api/tickets/{pid}/suggested-articles` — the published articles that share words with the
+/// ticket's title, best first, at most 5 (CRM-R66).
+#[debug_handler]
+async fn suggested_articles(
+    State(ctx): State<AppContext>,
+    PidPath(pid): PidPath,
+) -> Result<Response> {
+    let ticket = records::find_ticket(&ctx.db, pid).await?;
+    let published = articles::Entity::find_live()
+        .filter(articles::Column::Status.eq("published"))
+        .order_by_asc(articles::Column::Id)
+        .all(&ctx.db)
+        .await?;
+    let texts: Vec<_> = published
+        .iter()
+        .map(|a| (a.title.clone(), a.keywords.clone(), a.body.clone()))
+        .collect();
+    format::json(
+        crate::rules::suggest::suggest(&ticket.title, &texts)
+            .into_iter()
+            .map(|m| SuggestedArticle {
+                article_pid: published[m.index].pid.to_string(),
+                title: published[m.index].title.clone(),
+                score: m.score,
+                matched: m.matched,
+            })
+            .collect::<Vec<_>>(),
+    )
+}
+
 /// The support routes.
 pub fn routes() -> Routes {
     Routes::new()
@@ -846,6 +887,7 @@ pub fn routes() -> Routes {
         .add("/tickets", post(create_ticket))
         .add("/tickets", get(list_tickets))
         .add("/tickets/{pid}", get(get_ticket))
+        .add("/tickets/{pid}/suggested-articles", get(suggested_articles))
         .add("/tickets/{pid}/status", post(ticket_status))
         .add("/tickets/{pid}/customer-reply", post(ticket_customer_reply))
         .add("/tickets/{pid}/priority", put(ticket_priority))

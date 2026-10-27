@@ -1575,6 +1575,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         Kind::Transition,
     ),
     (
+        "get",
+        "/api/tickets/{pid}/suggested-articles",
+        "support",
+        "Published articles that share words with the ticket's title, best first, at most 5 (CRM-R66): a word in an article's title or keywords counts 2, one in its text 1; each names the words it shares",
+        Kind::Ok,
+    ),
+    (
         "post",
         "/api/tickets/{pid}/customer-reply",
         "support",

@@ -4,7 +4,7 @@
   import type { SavedView } from "#lib/api/crm.js";
   import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
-  import { listTickets, ticketCustomerReply, ticketStatus } from "#lib/api/crm.js";
+  import { listTickets, ticketCustomerReply, ticketStatus, ticketSuggestions } from "#lib/api/crm.js";
   import { breachedCount, slaBreached } from "#lib/format.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
@@ -22,6 +22,9 @@
   const error = $derived(list.error);
   let selectedPid = $state<string | null>(null);
   let actionError = $state<string | null>(null);
+
+  const suggestions = resource(() => (selectedPid ? ticketSuggestions(selectedPid) : Promise.resolve([])));
+  const suggested = $derived(suggestions.value ?? []);
 
   const breachedTotal = $derived(breachedCount(tickets ?? []));
   const selected = $derived((tickets ?? []).find((x) => x.pid === selectedPid) ?? null);
@@ -109,6 +112,17 @@
       {/if}
       {#if actionError}
         <p class="error" data-testid="action-error">{actionError}</p>
+      {/if}
+      {#if suggested.length > 0}
+        <h2>{t("ticket.suggested")}</h2>
+        <ul data-testid="ticket-suggestions">
+          {#each suggested as s (s.article_pid)}
+            <li>
+              <a href="/articles">{s.title}</a>
+              <span class="muted">{s.matched.join(", ")}</span>
+            </li>
+          {/each}
+        </ul>
       {/if}
     </div>
   {/if}

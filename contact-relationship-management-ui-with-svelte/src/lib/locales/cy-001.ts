@@ -743,4 +743,5 @@ export default {
     "Un gweithiwr a chanran ar bob llinell, fel worker:ada:60; mae'r cyfrannau'n gwneud 100. Rhennir y swm i'r uned leiaf.",
   "quota.splitSet": "Hollti",
   "quota.splitRemove": "Credydu'r perchennog yn unig",
+  "ticket.suggested": "Erthyglau a allai helpu",
 } satisfies Record<StringKey, string>;

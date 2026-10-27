@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — suggested articles (CRM-T133, CRM-R66)
+
+`rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.
+
 ### Added — deal splits for quotas (CRM-T132, CRM-R65)
 
 Migration `000044` (`deal_splits`); `rules::quota::split`; the three routes; `credited_deals` behind attainment; 1 unit test, 1 request test and the enforcement test extended. Also two clippy fixes in `dashboards.rs`.

@@ -1122,3 +1122,13 @@ recipient would get before anything is sent, and be certain every message carrie
 - The `/quotas` page can split a won deal and remove the split.
 - Not built: splitting an open deal ahead of its close; splits by role or by percent of margin; shares that differ by line item; the deal record itself showing its split; clawing a share back; a split history beyond the audit trail.
 
+## CRM-R66 — Articles suggested for a ticket
+
+*As a support agent, I am shown the help articles that may answer the ticket I am looking at, so that I can point to one instead of writing the answer again.*
+
+- `GET /api/tickets/{pid}/suggested-articles` gives the **published** articles (never a draft or an archived one) that share words with the ticket's title, best first, at most 5. Each has `article_pid`, `title`, `score` and `matched` (the shared words, alphabetical). An unknown ticket is `404`; a ticket that shares nothing with any article gets `[]`.
+- **Words** are the title lower-cased and cut at anything that is not a letter or digit; words under three characters and a short list of common English words are dropped. Each word counts once. A word found in an article's title or keywords scores 2; one found only in its text scores 1. Ties go to the earlier article. Plain overlap, in integers: the same ticket and articles always give the same answer, and the score can be explained from `matched`.
+- Nothing is recorded: a suggestion is not a view, not a deflection (CRM-R57) and not an audit event.
+- The tickets page lists them under the selected ticket.
+- Not built: suggesting as a ticket is typed (there is no new-ticket form in the client); other languages or stemming; the ticket's description and replies (a ticket has only a title); learning which suggestions were used; suggestions on the public help centre.
+

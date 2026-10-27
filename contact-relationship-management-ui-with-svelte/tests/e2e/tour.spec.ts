@@ -1339,8 +1339,8 @@ test.describe("export, undo and search", () => {
   }) => {
     await startTour(page);
     await page.goto("/help");
-    // Four published articles; the draft is not offered.
-    await expect(page.getByTestId("help-result")).toHaveCount(4);
+    // Five published articles; the draft is not offered.
+    await expect(page.getByTestId("help-result")).toHaveCount(5);
     await expect(page.getByTestId("help-results")).not.toContainText(
       "awaiting review",
     );
@@ -1440,6 +1440,21 @@ test.describe("export, undo and search", () => {
     // A plan that quotas are paid under is refused.
     await page.getByTestId("plan-row").getByRole("button").click();
     await expect(page.getByTestId("quota-error")).toBeVisible();
+  });
+
+  test("a selected ticket is offered the articles that share its words", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/tickets");
+    const queue = page.getByTestId("ticket-queue");
+    await queue.locator("tbody tr", { hasText: "Licence seats" }).click();
+    await expect(page.getByTestId("ticket-suggestions")).toContainText(
+      "Licence seats missing from the console",
+    );
+    // A ticket sharing no words with any article is offered none.
+    await queue.locator("tbody tr", { hasText: "Route export" }).click();
+    await expect(page.getByTestId("ticket-suggestions")).toHaveCount(0);
   });
 
   test("a won deal can be split between workers, and the standing follows", async ({

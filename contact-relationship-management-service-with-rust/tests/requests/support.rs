@@ -174,3 +174,78 @@ async fn knowledge_base_versions() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_ticket_is_offered_the_published_articles_that_share_its_words() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let article =
+            |title: &'static str, keywords: &'static str, body: &'static str, publish: bool| {
+                let request = &request;
+                async move {
+                    let made: Value = request
+                        .post("/api/articles")
+                        .json(&json!({ "title": title, "body": body, "keywords": keywords }))
+                        .await
+                        .json();
+                    let pid = made["pid"].as_str().unwrap().to_string();
+                    if publish {
+                        request
+                            .post(&format!("/api/articles/{pid}/status"))
+                            .json(&json!({ "to": "published" }))
+                            .await
+                            .assert_status_ok();
+                    }
+                    pid
+                }
+            };
+        let seats = article("Licence seats", "console", "Open the admin console.", true).await;
+        let billing = article("Billing", "", "Licence seats are counted monthly.", true).await;
+        article("Licence seats draft", "console", "Not yet.", false).await;
+        article("Passwords", "login", "Reset it.", true).await;
+
+        let made: Value = request
+            .post("/api/tickets")
+            .json(&json!({ "title": "Licence seats not showing in console" }))
+            .await
+            .json();
+        let ticket = made["pid"].as_str().unwrap();
+        let offered: Value = request
+            .get(&format!("/api/tickets/{ticket}/suggested-articles"))
+            .await
+            .json();
+        let offered = offered.as_array().unwrap();
+        // The headline match first, the text match after, no draft, nothing unrelated.
+        assert_eq!(offered.len(), 2, "{offered:?}");
+        assert_eq!(offered[0]["article_pid"], seats.as_str());
+        assert_eq!(offered[0]["score"], 6);
+        assert_eq!(
+            offered[0]["matched"],
+            json!(["console", "licence", "seats"])
+        );
+        assert_eq!(offered[1]["article_pid"], billing.as_str());
+
+        let none: Value = request
+            .post("/api/tickets")
+            .json(&json!({ "title": "Quarterly forecast export" }))
+            .await
+            .json();
+        let empty: Value = request
+            .get(&format!(
+                "/api/tickets/{}/suggested-articles",
+                none["pid"].as_str().unwrap()
+            ))
+            .await
+            .json();
+        assert!(empty.as_array().unwrap().is_empty());
+        request
+            .get(&format!(
+                "/api/tickets/{}/suggested-articles",
+                uuid::Uuid::new_v4()
+            ))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+    })
+    .await;
+}

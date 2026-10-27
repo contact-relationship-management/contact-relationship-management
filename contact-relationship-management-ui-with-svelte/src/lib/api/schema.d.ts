@@ -15426,6 +15426,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tickets/{pid}/suggested-articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Published articles that share words with the ticket's title, best first, at most 5 (CRM-R66): a word in an article's title or keywords counts 2, one in its text 1; each names the words it shares */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuggestedArticle"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/views": {
         parameters: {
             query?: never;
@@ -20282,6 +20354,18 @@ export interface components {
             /** @description The names of the tags on the contact, on contacts merged into it and on its leads (CRM-R47). */
             tags: string[];
             tickets: components["schemas"]["Ticket"][];
+        };
+        /** @description An article that may answer a ticket. */
+        SuggestedArticle: {
+            /** Format: uuid */
+            article_pid: string;
+            matched: string[];
+            /**
+             * Format: uint32
+             * @description Words of the ticket's title the article shares; headline words count 2, text words 1.
+             */
+            score: number;
+            title: string;
         };
         /** @description One tag, with how many records carry it. */
         Tag: {

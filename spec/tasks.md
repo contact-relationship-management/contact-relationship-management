@@ -1654,3 +1654,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a split form on `/quotas`, `setDealSplit`, `deleteDealSplit`, the tour's splits and attainment, 6 keys in 8 locales (machine drafts); one Playwright test.
       - **Tests:** 1 unit test (sums, tie order, zero), 1 request test (an odd amount halved gives the extra minor unit to the earlier share; a deal handed wholly to another worker leaves the owner with nothing; refusals for empty, short, repeated, non-worker and zero shares; unknown deal `404`; removal restores the owner; a second removal `404`), the admin-only test extended. **Checked by breaking it:** with splits ignored the request test fails; restored.
       - **Not tested:** a split deal whose period straddles two quotas; masked callers (the paths are admin only); eight shares.
+- [x] CRM-T133 *(edge)* **Articles suggested for a ticket.** Published articles ranked by word overlap with a ticket's title; part of the roadmap item "help centre refinements". (S)
+      **Done (2026-10-27, not released):** requirement CRM-R66 first, then:
+      - **Service:** `rules::suggest` (`words`, `suggest`; integers, stable order); `GET /api/tickets/{pid}/suggested-articles`; operation, schema and list schema described; `schema.d.ts` regenerated.
+      - **UI:** the suggestions under the selected ticket, `ticketSuggestions`, the tour's version of the ranking, a sixth tour article (so the help centre test counts five), 1 key in 8 locales (machine drafts); one Playwright test.
+      - **Tests:** 3 unit tests (words, ranking and weights, the limit of five) and 1 request test (headline match before text match, a draft is never offered, an unrelated article is not, an empty answer, an unknown ticket `404`).
+      - **Not tested:** the ranking in a language other than English; a very large knowledge base (all published articles are read per request).
