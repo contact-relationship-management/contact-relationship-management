@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a CLV panel on the account page (CRM-T127, CRM-R60)
+
+The account page shows lifetime value per currency, with the margin and the discounted look-ahead when asked for.
+
 ### Added — margin and a discounted look-ahead on CLV (CRM-T126, CRM-R60)
 
 `GET /api/accounts/{pid}/clv` takes `margin_bps`, `retention_bps`, `years` and `discount_bps`, and answers with `margin_minor` and `projection` per currency.

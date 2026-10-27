@@ -1969,3 +1969,44 @@ export function quotaAttainment(
 }> {
   return api(`/quotas/attainment${at ? `?at=${at}` : ""}`, init);
 }
+
+/** An account's lifetime value, with the optional margin and look-ahead (CRM-R13, CRM-R60). */
+export interface Clv {
+  account_pid: string;
+  as_of: string;
+  won_deals: number;
+  clv_minor: Record<string, number> | null;
+  margin_minor: Record<string, number> | null;
+  projection: {
+    retention_bps: number;
+    discount_bps: number;
+    years: number;
+    annual_base_minor: Record<string, number>;
+    projected_minor: Record<string, number>;
+    total_minor: Record<string, number>;
+  } | null;
+}
+
+/** Read an account's CLV; `margin_bps` and `retention_bps` with `years` add the two refinements. */
+export function accountClv(
+  pid: string,
+  params: {
+    marginBps?: number;
+    retentionBps?: number;
+    years?: number;
+    discountBps?: number;
+  } = {},
+  init?: FetchLike,
+): Promise<Clv> {
+  const query = new URLSearchParams();
+  if (params.marginBps !== undefined)
+    query.set("margin_bps", String(params.marginBps));
+  if (params.retentionBps !== undefined && params.years !== undefined) {
+    query.set("retention_bps", String(params.retentionBps));
+    query.set("years", String(params.years));
+    if (params.discountBps)
+      query.set("discount_bps", String(params.discountBps));
+  }
+  const qs = query.toString();
+  return api(`/accounts/${pid}/clv${qs ? `?${qs}` : ""}`, init);
+}

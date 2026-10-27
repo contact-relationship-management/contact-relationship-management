@@ -714,4 +714,16 @@ export default {
   "rpt.unconverted": "छोड़ा गया: कोई दर लागू नहीं",
   "rpt.unconvertedHint":
     "ये योग ऊपर के कुल में नहीं हैं और एक-से-एक नहीं गिने गए।",
+  "clv.title": "ग्राहक का आजीवन मूल्य",
+  "clv.margin": "रखा गया मार्जिन (%)",
+  "clv.retention": "सालाना प्रतिधारण (%)",
+  "clv.years": "आगे के वर्ष",
+  "clv.discount": "सालाना छूट (%)",
+  "clv.run": "दिखाएँ",
+  "clv.won": "अब तक जीता",
+  "clv.marginResult": "उस पर मार्जिन",
+  "clv.base": "पिछले 365 दिनों में जीता",
+  "clv.projected": "अपेक्षित, छूट सहित",
+  "clv.total": "जीता हुआ और अपेक्षित",
+  "clv.masked": "आपकी भूमिका से छिपा",
 } satisfies Record<StringKey, string>;

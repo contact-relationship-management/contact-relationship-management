@@ -2,6 +2,7 @@
   import { resource } from "#lib/resource.svelte.js";
   import { page } from "$app/state";
   import { editAccount, getAccount, money } from "#lib/api/crm.js";
+  import ClvPanel from "#lib/components/ClvPanel.svelte";
   import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";
   import Tags from "#lib/components/Tags.svelte";
@@ -105,6 +106,7 @@
       {/each}
     </ul>
   {/if}
+  <ClvPanel {pid} />
   <Tags kind="accounts" {pid} />
   <CustomFields kind="accounts" {pid} />
   <Attachments kind="accounts" {pid} />

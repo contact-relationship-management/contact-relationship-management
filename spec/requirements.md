@@ -1066,5 +1066,5 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Margin.** With `margin_bps`, `margin_minor` gives each currency's `clv_minor × margin ÷ 10000`, rounded half to even. `clv_minor` is unchanged.
 - **Look-ahead.** With `retention_bps` and `years`, `projection` gives, per currency: `annual_base_minor` (revenue, or its margin when `margin_bps` is given, of deals won in the 365 days to `as_of`), `projected_minor` and `total_minor` (what has been won, as margin when given, plus `projected_minor`). Year `t` is year `t-1` × `retention ÷ (1 + discount)`, in integers with each year rounded half to even, and `projected_minor` is the sum of the years. Currencies are never added or converted.
 - **Masking** as before: a masked caller gets `null` for `margin_minor` and `projection`.
-- No UI; `convert_to` does not apply to `margin_minor` or `projection`.
+- The account page shows them in a panel (CRM-T127), typing percentages that become basis points; `convert_to` does not apply to `margin_minor` or `projection`.
 - Not built: converting the margin or projection; a retention taken from the account's own history (the caller supplies it); a margin per product or deal; the rate on each deal's close day; discounting the revenue already won back to its close day.

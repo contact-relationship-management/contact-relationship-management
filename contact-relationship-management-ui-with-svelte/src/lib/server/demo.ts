@@ -2439,6 +2439,8 @@ export function demoHandle(
       account.industry = input.industry.trim() || null;
     return ok(account);
   }
+  if (head === "accounts" && seg.length === 3 && tail === "clv" && get)
+    return accountClv(id!, query);
   if (head === "accounts" && seg.length === 2 && get) {
     const account = state.accounts.find((a) => a.pid === id);
     if (!account) return problem(404, "account not found");
@@ -3212,6 +3214,95 @@ function commissionBands(
         divideRound(inBand * BigInt(tier.rate_bps), 10_000n),
       ),
     };
+  });
+}
+
+/** The tour's CLV for an account (CRM-R13, CRM-R60): won deals per currency, margin, and the look-ahead. */
+function accountClv(accountPid: string, query: URLSearchParams) {
+  const account = state.accounts.find((a) => a.pid === accountPid);
+  if (!account) return problem(404, "account not found");
+  const people = state.contacts.filter((c) => c.account_pid === accountPid);
+  const dealPids = new Set(
+    people.flatMap((c) => state.links[c.pid]?.deals ?? []),
+  );
+  const won = state.deals.filter((d) => dealPids.has(d.pid) && d.won);
+  const asOf = new Date();
+  const yearAgo = asOf.getTime() - 365 * 86_400_000;
+  const total: Record<string, bigint> = {};
+  const recent: Record<string, bigint> = {};
+  for (const d of won) {
+    const amount = BigInt(d.amount_minor ?? 0);
+    total[d.currency] = (total[d.currency] ?? 0n) + amount;
+    if (d.closed_at && new Date(d.closed_at).getTime() >= yearAgo)
+      recent[d.currency] = (recent[d.currency] ?? 0n) + amount;
+  }
+  const bps = (name: string) => {
+    const raw = query.get(name);
+    if (raw === null) return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n <= 10_000 ? n : NaN;
+  };
+  const marginBps = bps("margin_bps");
+  const retentionBps = bps("retention_bps");
+  const discountBps = bps("discount_bps") ?? 0;
+  const years = query.get("years") === null ? null : Number(query.get("years"));
+  if (Number.isNaN(marginBps)) return problem(422, "/margin_bps: 0 to 10000");
+  if (Number.isNaN(retentionBps))
+    return problem(422, "/retention_bps: 0 to 10000");
+  if (Number.isNaN(discountBps))
+    return problem(422, "/discount_bps: 0 to 10000");
+  if ((retentionBps === null) !== (years === null))
+    return problem(422, "/years: retention_bps and years go together");
+  if (years !== null && !(Number.isInteger(years) && years >= 1 && years <= 20))
+    return problem(422, "/years: 1 to 20");
+  const keep = (m: Record<string, bigint>) =>
+    marginBps === null
+      ? m
+      : Object.fromEntries(
+          Object.entries(m).map(([c, v]) => [
+            c,
+            divideRound(v * BigInt(marginBps), 10_000n),
+          ]),
+        );
+  const plain = (m: Record<string, bigint>) =>
+    Object.fromEntries(Object.entries(m).map(([c, v]) => [c, Number(v)]));
+  let projection = null;
+  if (retentionBps !== null && years !== null) {
+    const base = keep(recent);
+    const baseWon = keep(total);
+    const projected: Record<string, bigint> = {};
+    for (const [c, b] of Object.entries(base)) {
+      let year = b;
+      let sum = 0n;
+      for (let i = 0; i < years; i++) {
+        year = divideRound(
+          year * BigInt(retentionBps),
+          BigInt(10_000 + discountBps),
+        );
+        // Year t is year t-1 x retention / (1 + discount).
+        sum += year;
+      }
+      projected[c] = sum;
+    }
+    const totals: Record<string, bigint> = { ...baseWon };
+    for (const [c, v] of Object.entries(projected))
+      totals[c] = (totals[c] ?? 0n) + v;
+    projection = {
+      retention_bps: retentionBps,
+      discount_bps: discountBps,
+      years,
+      annual_base_minor: plain(base),
+      projected_minor: plain(projected),
+      total_minor: plain(totals),
+    };
+  }
+  return ok({
+    account_pid: accountPid,
+    as_of: asOf.toISOString(),
+    won_deals: won.length,
+    clv_minor: plain(total),
+    margin_minor: marginBps === null ? null : plain(keep(total)),
+    projection,
   });
 }
 

@@ -719,4 +719,16 @@ export default {
   "rpt.unconverted": "Wedi'u gadael allan: dim cyfradd mewn grym",
   "rpt.unconvertedHint":
     "Nid yw'r symiau hyn yn y cyfansymiau uchod ac ni chânt eu cyfrif fel un i un.",
+  "clv.title": "Gwerth oes cwsmer",
+  "clv.margin": "Elw a gedwir (%)",
+  "clv.retention": "Cadw'r flwyddyn (%)",
+  "clv.years": "Blynyddoedd i ddod",
+  "clv.discount": "Gostyngiad y flwyddyn (%)",
+  "clv.run": "Dangos",
+  "clv.won": "Wedi'i ennill hyd yma",
+  "clv.marginResult": "Elw ar hynny",
+  "clv.base": "Enillwyd yn y 365 diwrnod diwethaf",
+  "clv.projected": "Disgwyl dod â, gostyngedig",
+  "clv.total": "Enillwyd a disgwyliedig",
+  "clv.masked": "Wedi'i guddio rhag eich rôl",
 } satisfies Record<StringKey, string>;

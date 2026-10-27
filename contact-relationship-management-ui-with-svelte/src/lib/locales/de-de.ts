@@ -728,4 +728,16 @@ export default {
   "rpt.unconverted": "Ausgelassen: kein Kurs gültig",
   "rpt.unconvertedHint":
     "Diese Summen sind nicht in den Summen oben enthalten und werden nicht eins zu eins gerechnet.",
+  "clv.title": "Kundenwert (CLV)",
+  "clv.margin": "Behaltene Marge (%)",
+  "clv.retention": "Bindung pro Jahr (%)",
+  "clv.years": "Jahre voraus",
+  "clv.discount": "Abzinsung pro Jahr (%)",
+  "clv.run": "Anzeigen",
+  "clv.won": "Bisher gewonnen",
+  "clv.marginResult": "Marge darauf",
+  "clv.base": "In den letzten 365 Tagen gewonnen",
+  "clv.projected": "Erwartet, abgezinst",
+  "clv.total": "Gewonnen plus erwartet",
+  "clv.masked": "Für Ihre Rolle ausgeblendet",
 } satisfies Record<StringKey, string>;

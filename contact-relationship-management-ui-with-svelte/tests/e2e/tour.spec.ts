@@ -1419,6 +1419,30 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("quota-error")).toBeVisible();
   });
 
+  test("an account shows its lifetime value, the margin on it and a discounted look-ahead", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/accounts/acc-2");
+    // One won deal of £88,000 closed 30 days ago.
+    await expect(page.getByTestId("clv-won")).toContainText("88,000.00");
+    await expect(page.getByTestId("clv-projected")).toHaveCount(0);
+    await page.getByTestId("clv-margin").fill("50");
+    await page.getByTestId("clv-retention").fill("80");
+    await page.getByTestId("clv-years").fill("3");
+    await page.getByTestId("clv-run").click();
+    // Margin £44,000; years 35,200 + 28,160 + 22,528 = 85,888; plus the margin won.
+    await expect(page.getByTestId("clv-margin-result")).toContainText(
+      "44,000.00",
+    );
+    await expect(page.getByTestId("clv-projected")).toContainText("85,888.00");
+    await expect(page.getByTestId("clv-total")).toContainText("129,888.00");
+    // A retention above 100% is refused, as the service refuses it.
+    await page.getByTestId("clv-retention").fill("120");
+    await page.getByTestId("clv-run").click();
+    await expect(page.getByTestId("clv-error")).toBeVisible();
+  });
+
   test("exchange rates are listed, set, replaced and deleted, and a bad rate is refused", async ({
     page,
   }) => {

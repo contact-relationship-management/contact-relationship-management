@@ -712,4 +712,16 @@ export default {
   "rpt.unconverted": "Left out: no rate in force",
   "rpt.unconvertedHint":
     "These sums are not in the totals above and are not counted as one-to-one.",
+  "clv.title": "Customer lifetime value",
+  "clv.margin": "Margin kept (%)",
+  "clv.retention": "Retention a year (%)",
+  "clv.years": "Years ahead",
+  "clv.discount": "Discount a year (%)",
+  "clv.run": "Show",
+  "clv.won": "Won so far",
+  "clv.marginResult": "Margin on that",
+  "clv.base": "Won in the last 365 days",
+  "clv.projected": "Expected to bring, discounted",
+  "clv.total": "Won plus expected",
+  "clv.masked": "Hidden from your role",
 } as const;

@@ -726,4 +726,16 @@ export default {
   "rpt.unconverted": "Exclu : aucun taux en vigueur",
   "rpt.unconvertedHint":
     "Ces sommes ne figurent pas dans les totaux ci-dessus et ne sont pas comptées un pour un.",
+  "clv.title": "Valeur vie client",
+  "clv.margin": "Marge conservée (%)",
+  "clv.retention": "Rétention par an (%)",
+  "clv.years": "Années à venir",
+  "clv.discount": "Actualisation par an (%)",
+  "clv.run": "Afficher",
+  "clv.won": "Gagné à ce jour",
+  "clv.marginResult": "Marge sur ce montant",
+  "clv.base": "Gagné sur les 365 derniers jours",
+  "clv.projected": "Attendu, actualisé",
+  "clv.total": "Gagné plus attendu",
+  "clv.masked": "Masqué pour votre rôle",
 } satisfies Record<StringKey, string>;

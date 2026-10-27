@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a CLV panel on the account page (CRM-T127)
+
+`ClvPanel` (margin, retention, years and discount in percent; 12 keys in 8 locales, machine drafts), `accountClv` and `Clv` in `crm.ts`, the tour's `/accounts/{pid}/clv`; one Playwright test.
+
 ### Added — quotas and commission plans (CRM-T125)
 
 `/quotas` (where everyone stands, quotas, plans; 26 keys in 8 locales, machine drafts), typed calls in `crm.ts`, the tour's quotas and plans, regenerated `schema.d.ts`; one Playwright test. Also fixed the demo-data unit test for `/kb/articles/x`.

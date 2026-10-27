@@ -721,4 +721,16 @@ export default {
   "rpt.unconverted": "Excluido: sin tipo vigente",
   "rpt.unconvertedHint":
     "Estas sumas no están en los totales de arriba y no se cuentan uno a uno.",
+  "clv.title": "Valor de vida del cliente",
+  "clv.margin": "Margen conservado (%)",
+  "clv.retention": "Retención anual (%)",
+  "clv.years": "Años por delante",
+  "clv.discount": "Descuento anual (%)",
+  "clv.run": "Mostrar",
+  "clv.won": "Ganado hasta ahora",
+  "clv.marginResult": "Margen sobre eso",
+  "clv.base": "Ganado en los últimos 365 días",
+  "clv.projected": "Previsto, descontado",
+  "clv.total": "Ganado más previsto",
+  "clv.masked": "Oculto para su rol",
 } satisfies Record<StringKey, string>;

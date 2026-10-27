@@ -713,4 +713,16 @@ export default {
   "rpt.unconverted": "مستبعد: لا سعر ساري",
   "rpt.unconvertedHint":
     "هذه المجاميع ليست ضمن الإجماليات أعلاه ولا تُحتسب واحدًا إلى واحد.",
+  "clv.title": "القيمة الدائمة للعميل",
+  "clv.margin": "الهامش المحتفظ به (%)",
+  "clv.retention": "الاحتفاظ سنويًا (%)",
+  "clv.years": "سنوات قادمة",
+  "clv.discount": "الخصم سنويًا (%)",
+  "clv.run": "عرض",
+  "clv.won": "ما تم كسبه حتى الآن",
+  "clv.marginResult": "الهامش على ذلك",
+  "clv.base": "ما تم كسبه في آخر 365 يومًا",
+  "clv.projected": "المتوقع، مخصومًا",
+  "clv.total": "المكسوب مع المتوقع",
+  "clv.masked": "مخفي عن دورك",
 } satisfies Record<StringKey, string>;
