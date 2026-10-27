@@ -387,3 +387,87 @@ async fn an_accounts_clv_adds_a_total_in_one_currency_and_names_what_it_left_out
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn an_accounts_clv_shows_its_margin_and_a_discounted_look_ahead_per_currency() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let account: Value = request
+            .post("/api/accounts")
+            .json(
+                &json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Margin Ltd" }),
+            )
+            .await
+            .json();
+        let account = account["pid"].as_str().unwrap().to_string();
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        for (name, amount, currency) in [("A", 10_000, "GBP"), ("B", 1_000, "USD")] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(
+                    &json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": amount,
+                               "currency": currency, "account_pid": account }),
+                )
+                .await
+                .json();
+            request
+                .post(&format!(
+                    "/api/deals/{}/stage",
+                    deal["pid"].as_str().unwrap()
+                ))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+        }
+        let url = format!("/api/accounts/{account}/clv");
+
+        let plain: Value = request.get(&url).await.json();
+        assert!(
+            plain["margin_minor"].is_null() && plain["projection"].is_null(),
+            "{plain}"
+        );
+
+        let margin: Value = request.get(&format!("{url}?margin_bps=2500")).await.json();
+        assert_eq!(margin["margin_minor"]["GBP"], 2_500, "{margin}");
+        assert_eq!(margin["margin_minor"]["USD"], 250, "{margin}");
+        assert_eq!(margin["clv_minor"], plain["clv_minor"], "{margin}");
+
+        // 50% retention over 3 years, no discount: 5000 + 2500 + 1250 on a 10000 year.
+        let ahead: Value = request
+            .get(&format!(
+                "{url}?margin_bps=10000&retention_bps=5000&years=3"
+            ))
+            .await
+            .json();
+        assert_eq!(
+            ahead["projection"]["annual_base_minor"]["GBP"], 10_000,
+            "{ahead}"
+        );
+        assert_eq!(
+            ahead["projection"]["projected_minor"]["GBP"], 8_750,
+            "{ahead}"
+        );
+        assert_eq!(ahead["projection"]["total_minor"]["GBP"], 18_750, "{ahead}");
+        assert_eq!(
+            ahead["projection"]["projected_minor"]["USD"], 875,
+            "{ahead}"
+        );
+
+        for query in [
+            "margin_bps=10001",
+            "years=3",
+            "retention_bps=5000",
+            "retention_bps=5000&years=21",
+            "retention_bps=5000&years=0",
+            "discount_bps=500",
+        ] {
+            request
+                .get(&format!("{url}?{query}"))
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    })
+    .await;
+}

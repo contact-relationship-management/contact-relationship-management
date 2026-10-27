@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — margin and a discounted look-ahead on CLV (CRM-T126, CRM-R60)
+
+`GET /api/accounts/{pid}/clv` takes `margin_bps`, `retention_bps`, `years` and `discount_bps`, and answers with `margin_minor` and `projection` per currency.
+
 ### Added — quotas and commission plans (CRM-T125, CRM-R59)
 
 `/api/commission-plans`, `/api/quotas` and `GET /api/quotas/attainment` (admin only): what each worker is to win in a period, a tiered plan that pays on it, and where each worker stands, with the `/quotas` page.

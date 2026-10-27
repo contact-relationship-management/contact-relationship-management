@@ -97,6 +97,43 @@ pub fn clv_by_currency(won: &[(i64, String)]) -> Result<BTreeMap<String, i64>, S
     Ok(totals)
 }
 
+/// Most years a projection may look ahead.
+pub const MAX_YEARS: u32 = 20;
+/// Highest margin, retention or discount, in basis points (100%).
+pub const MAX_BPS: u32 = 10_000;
+
+/// `amount × bps / 10000`, rounded half to even (CRM-R60).
+///
+/// # Errors
+///
+/// On arithmetic overflow.
+pub fn margin(amount_minor: i64, bps: u32) -> Result<i64, String> {
+    let scaled = super::fx::divide(i128::from(amount_minor) * i128::from(bps), 10_000);
+    i64::try_from(scaled).map_err(|_| "margin overflows".to_string())
+}
+
+/// What a year's revenue is still expected to bring over the next `years`, discounted
+/// (CRM-R60): year `t` is year `t-1` times `retention / (1 + discount)`, each year rounded half
+/// to even, and the years are added. Integer arithmetic, no floating point.
+///
+/// # Errors
+///
+/// On arithmetic overflow.
+pub fn projected(
+    annual_minor: i64,
+    retention_bps: u32,
+    discount_bps: u32,
+    years: u32,
+) -> Result<i64, String> {
+    let (mut year, mut total) = (i128::from(annual_minor), 0_i128);
+    let denominator = i128::from(MAX_BPS) + i128::from(discount_bps);
+    for _ in 0..years {
+        year = super::fx::divide(year * i128::from(retention_bps), denominator);
+        total += year;
+    }
+    i64::try_from(total).map_err(|_| "projection overflows".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -155,5 +192,21 @@ mod tests {
         assert_eq!(totals["GBP"], 300);
         assert_eq!(totals["EUR"], 5);
         assert!(clv_by_currency(&[(i64::MAX, "GBP".into()), (1, "GBP".into())]).is_err());
+    }
+
+    /// Margin and projection round half to even and discount exactly.
+    #[test]
+    fn margin_and_projection() {
+        assert_eq!(margin(10_000, 2_500), Ok(2_500));
+        assert_eq!(margin(1, 5_000), Ok(0)); // 0.5 -> 0
+        assert_eq!(margin(3, 5_000), Ok(2)); // 1.5 -> 2
+        // No discount and full retention: the year again, each year.
+        assert_eq!(projected(1_000, 10_000, 0, 3), Ok(3_000));
+        // 50% retention: 500 + 250 + 125.
+        assert_eq!(projected(1_000, 5_000, 0, 3), Ok(875));
+        // 10% discount on full retention: 1000/1.1 = 909, then 909/1.1 = 826.
+        assert_eq!(projected(1_000, 10_000, 1_000, 2), Ok(909 + 826));
+        assert_eq!(projected(1_000, 0, 0, 5), Ok(0));
+        assert!(projected(i64::MAX, 10_000, 0, 2).is_err());
     }
 }

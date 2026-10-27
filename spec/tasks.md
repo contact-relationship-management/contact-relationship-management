@@ -1612,3 +1612,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** `/quotas` (standing, quotas, plans), 26 keys in 8 locales (machine drafts), typed calls in `crm.ts`, the tour's plan and two quotas computed from its won deals, regenerated `schema.d.ts`; one Playwright test. Also repaired the demo-data unit test that CRM-T123 left failing on `/kb/articles/x`.
       - **Tests:** 3 request tests (a plan set, replaced, checked and kept while a quota uses it; refusals naming the member; attainment and commission) and 1 enforcement test (admin and service only, reads included).
       - **Not built:** see CRM-R59.
+- [x] CRM-T126 *(edge)* **Margin and a discounted look-ahead on CLV.** Two further ways to read `GET /api/accounts/{pid}/clv`; the roadmap item "CLV refinement". (S)
+      **Done (2026-10-27, not released):** requirement CRM-R60 first, then:
+      - **Rules:** `analytics::margin` and `analytics::projected` (integers, half to even, overflow refused); 1 unit test.
+      - **API:** `margin_bps`, `retention_bps`, `discount_bps`, `years` on the CLV read, `margin_minor` and `projection` in the answer, null when masked; operation and schema (`ClvProjection`) described; `schema.d.ts` regenerated.
+      - **Tests:** 1 request test (margin per currency, a three-year projection worked by hand, and six refusals).
+      - **Not built:** see CRM-R60; no UI.

@@ -19,8 +19,9 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   and pausing on a customer reply, are not.
 - **Help centre refinements** — a public help centre and a deflection estimate are built (CRM-R57); suggesting articles as a ticket is typed, deflection tied to visits, and a limit shared by all clients are not.
 - **Territories; quota refinements** — quotas, tiered commission plans and attainment are built (CRM-R59); territories, team roll-ups, splitting a deal and clawbacks are not.
-- **CLV refinement** — margin, discounting, churn-adjusted models
-  over the v1 revenue sum.
+- **CLV refinement** — margin and a discounted, retention-based look-ahead
+  are built (CRM-R60); a retention taken from history, converting them,
+  and a page to show them are not.
 - **Cross-app bridges** — WPM (rep identity/teams from employee
   records), PPM (post-sale delivery projects opened from won
   deals).

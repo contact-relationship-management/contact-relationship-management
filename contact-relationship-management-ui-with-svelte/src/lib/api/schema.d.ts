@@ -838,7 +838,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54) */
+        /** CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60) */
         get: {
             parameters: {
                 query?: never;
@@ -17510,6 +17510,15 @@ export interface components {
              */
             converted_minor: number | null;
             /**
+             * @description With `margin_bps`: the margin on each currency's CLV, minor units; `null` otherwise or
+             *     when masked (CRM-R60).
+             */
+            margin_minor: {
+                [key: string]: number;
+            } | null;
+            /** @description With `retention_bps` and `years`: the look-ahead (CRM-R60); `null` otherwise or when masked. */
+            projection: components["schemas"]["ClvProjection"] | (null);
+            /**
              * Format: date
              * @description With `convert_to`: the day whose exchange rates were used.
              */
@@ -17520,6 +17529,27 @@ export interface components {
             unconverted: components["schemas"]["ReportUnconverted"][];
             /** Format: uint */
             won_deals: number;
+        };
+        /** @description The look-ahead of `GET /api/accounts/{pid}/clv` (CRM-R60), per currency, never converted. */
+        ClvProjection: {
+            /** @description The revenue (or its margin, with `margin_bps`) of deals won in the 365 days to `as_of`. */
+            annual_base_minor: {
+                [key: string]: number;
+            };
+            /** Format: uint32 */
+            discount_bps: number;
+            /** @description What the base is expected to bring over `years`, discounted. */
+            projected_minor: {
+                [key: string]: number;
+            };
+            /** Format: uint32 */
+            retention_bps: number;
+            /** @description What has been won (its margin, with `margin_bps`) plus `projected_minor`. */
+            total_minor: {
+                [key: string]: number;
+            };
+            /** Format: uint32 */
+            years: number;
         };
         /** @description What one tier paid. */
         CommissionBand: {

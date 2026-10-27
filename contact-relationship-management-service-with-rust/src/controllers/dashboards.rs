@@ -148,6 +148,25 @@ pub(crate) struct Clv {
     rates: Vec<super::fx_rates::RateUsed>,
     /// With `convert_to`: CLV that had no rate in force, left out and never taken at 1.0.
     unconverted: Vec<super::fx_rates::Unconverted>,
+    /// With `margin_bps`: the margin on each currency's CLV, minor units; `null` otherwise or
+    /// when masked (CRM-R60).
+    margin_minor: Option<std::collections::BTreeMap<String, i64>>,
+    /// With `retention_bps` and `years`: the look-ahead (CRM-R60); `null` otherwise or when masked.
+    projection: Option<ClvProjection>,
+}
+
+/// The look-ahead of `GET /api/accounts/{pid}/clv` (CRM-R60), per currency, never converted.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ClvProjection {
+    years: u32,
+    retention_bps: u32,
+    discount_bps: u32,
+    /// The revenue (or its margin, with `margin_bps`) of deals won in the 365 days to `as_of`.
+    annual_base_minor: std::collections::BTreeMap<String, i64>,
+    /// What the base is expected to bring over `years`, discounted.
+    projected_minor: std::collections::BTreeMap<String, i64>,
+    /// What has been won (its margin, with `margin_bps`) plus `projected_minor`.
+    total_minor: std::collections::BTreeMap<String, i64>,
 }
 
 /// What `GET /api/accounts/{pid}/clv` may be asked.
@@ -157,6 +176,14 @@ struct ClvQuery {
     convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
     rate_date: Option<chrono::NaiveDate>,
+    /// Also show the margin on the CLV, in basis points of revenue, 0 to 10000 (CRM-R60).
+    margin_bps: Option<u32>,
+    /// With `years`: the share of a year's revenue expected again the next year, in basis points.
+    retention_bps: Option<u32>,
+    /// With `retention_bps` and `years`: the yearly discount rate, in basis points (0 when absent).
+    discount_bps: Option<u32>,
+    /// With `retention_bps`: how many years to look ahead, 1 to 20.
+    years: Option<u32>,
 }
 
 /// `GET /api/dashboards/sales` — win rate + pipeline value by stage
@@ -248,6 +275,78 @@ async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Res
     ))
 }
 
+/// What `margin_bps` and `retention_bps` with `years` add to the CLV (CRM-R60).
+type Outlook = (
+    Option<std::collections::BTreeMap<String, i64>>,
+    Option<ClvProjection>,
+);
+
+fn clv_outlook(
+    query: &ClvQuery,
+    totals: &std::collections::BTreeMap<String, i64>,
+    won: &[deals::Model],
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<Outlook> {
+    let (mut margin_minor, mut projection) = (None, None);
+    {
+        let overflow = |e: String| super::unprocessable(&e);
+        let kept = |amount: i64| match query.margin_bps {
+            Some(bps) => analytics::margin(amount, bps),
+            None => Ok(amount),
+        };
+        if query.margin_bps.is_some() {
+            let mut shown = std::collections::BTreeMap::new();
+            for (currency, total) in totals {
+                shown.insert(currency.clone(), kept(*total).map_err(overflow)?);
+            }
+            margin_minor = Some(shown);
+        }
+        if let (Some(retention), Some(years)) = (query.retention_bps, query.years) {
+            let discount = query.discount_bps.unwrap_or(0);
+            let since = now - chrono::Duration::days(365);
+            let mut recent: std::collections::BTreeMap<String, i64> =
+                std::collections::BTreeMap::new();
+            for deal in won
+                .iter()
+                .filter(|d| d.closed_at.is_some_and(|at| at > since))
+            {
+                let slot = recent.entry(deal.currency.clone()).or_insert(0);
+                *slot = slot
+                    .checked_add(deal.amount_minor)
+                    .ok_or_else(|| super::unprocessable("clv sum overflows"))?;
+            }
+            let (mut base, mut ahead, mut total) = (
+                std::collections::BTreeMap::new(),
+                std::collections::BTreeMap::new(),
+                std::collections::BTreeMap::new(),
+            );
+            for currency in totals.keys() {
+                let annual = kept(recent.get(currency).copied().unwrap_or(0)).map_err(overflow)?;
+                let coming =
+                    analytics::projected(annual, retention, discount, years).map_err(overflow)?;
+                let won_so_far = kept(totals[currency]).map_err(overflow)?;
+                base.insert(currency.clone(), annual);
+                total.insert(
+                    currency.clone(),
+                    won_so_far
+                        .checked_add(coming)
+                        .ok_or_else(|| super::unprocessable("clv sum overflows"))?,
+                );
+                ahead.insert(currency.clone(), coming);
+            }
+            projection = Some(ClvProjection {
+                years,
+                retention_bps: retention,
+                discount_bps: discount,
+                annual_base_minor: base,
+                projected_minor: ahead,
+                total_minor: total,
+            });
+        }
+    }
+    Ok((margin_minor, projection))
+}
+
 /// `GET /api/accounts/{pid}/clv` — CLV per currency over won deals
 /// (CRM-R13; the v1 revenue-sum definition).
 #[debug_handler]
@@ -264,6 +363,27 @@ async fn account_clv(
         }
     } else if query.rate_date.is_some() {
         problems.push_field("rate_date", "needs convert_to");
+    }
+    for (field, value) in [
+        ("margin_bps", query.margin_bps),
+        ("retention_bps", query.retention_bps),
+        ("discount_bps", query.discount_bps),
+    ] {
+        if value.is_some_and(|bps| bps > analytics::MAX_BPS) {
+            problems.push_field(field, "at most 10000");
+        }
+    }
+    if query
+        .years
+        .is_some_and(|y| !(1..=analytics::MAX_YEARS).contains(&y))
+    {
+        problems.push_field("years", "from 1 to 20");
+    }
+    if query.retention_bps.is_some() != query.years.is_some() {
+        problems.push_field("years", "retention_bps and years go together");
+    }
+    if query.discount_bps.is_some() && query.years.is_none() {
+        problems.push_field("discount_bps", "needs retention_bps and years");
     }
     problems.finish()?;
     // CLV is money: a masked collection read gets the count of won deals, not the figures.
@@ -300,16 +420,24 @@ async fn account_clv(
         ),
         None => (None, None, Vec::new(), Vec::new()),
     };
+    let now = chrono::Utc::now();
+    let (margin_minor, projection) = if masked {
+        (None, None)
+    } else {
+        clv_outlook(&query, &totals, &won, now)?
+    };
     format::json(Clv {
         account_pid: account.pid,
         won_deals: won.len(),
         clv_minor: (!masked).then_some(totals),
-        as_of: chrono::Utc::now(),
+        as_of: now,
         convert_to: query.convert_to.clone(),
         converted_minor,
         rate_date,
         rates,
         unconverted,
+        margin_minor,
+        projection,
     })
 }
 

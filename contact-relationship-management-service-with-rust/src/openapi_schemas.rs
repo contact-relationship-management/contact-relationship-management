@@ -158,6 +158,7 @@ fn generated() -> serde_json::Map<String, Value> {
         dashboards::SalesDashboard,
         dashboards::SlaDashboard,
         dashboards::Clv,
+        dashboards::ClvProjection,
         crate::models::_entities::audit_logs::Model,
         crate::rules::analytics::Ratio,
         support::TicketDetail,

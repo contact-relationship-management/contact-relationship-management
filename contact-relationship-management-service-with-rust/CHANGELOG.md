@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — margin and a discounted look-ahead on CLV (CRM-T126, CRM-R60)
+
+`analytics::margin` and `analytics::projected` (integer, half to even); the CLV read takes `margin_bps`, `retention_bps`, `years` and `discount_bps`.
+
 ### Added — quotas and commission plans (CRM-T125, CRM-R59)
 
 Migration `000042` (`commission_plans`, `quotas`); `rules::quota` (marginal tiers in whole minor units and basis points, no floating point); `controllers::quotas`; `/api/quotas` and `/api/commission-plans` join the admin-only prefixes.

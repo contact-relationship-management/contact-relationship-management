@@ -1057,3 +1057,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Exact.** Tier thresholds are whole minor units of the quota (rounded down) so the bands tile with no gap and no overlap; commission is integer arithmetic, rounded half to even once per band.
 - The UI has `/quotas` (admin) with the standing, the quotas and the plans.
 - Not built: territories; team and manager roll-ups; quotas by product or pipeline; accelerators that reach back to earlier revenue; clawbacks; splitting a deal between workers; a quota in one currency measured from another through the exchange rates.
+
+## CRM-R60 — Margin and a discounted look-ahead on customer lifetime value
+
+*As an account manager, I can see what an account's lifetime value is after the margin the business keeps, and what the account is still expected to bring if it stays, discounted to today, so that CLV is more than the revenue already won.*
+
+- `GET /api/accounts/{pid}/clv` takes `margin_bps` (0 to 10000), `retention_bps` (0 to 10000) with `years` (1 to 20), and `discount_bps` (0 to 10000, `0` when absent, only with those two). Anything else is `422` naming the member; `retention_bps` and `years` go together. Without them the answer is as in CRM-R13 and CRM-R54.
+- **Margin.** With `margin_bps`, `margin_minor` gives each currency's `clv_minor × margin ÷ 10000`, rounded half to even. `clv_minor` is unchanged.
+- **Look-ahead.** With `retention_bps` and `years`, `projection` gives, per currency: `annual_base_minor` (revenue, or its margin when `margin_bps` is given, of deals won in the 365 days to `as_of`), `projected_minor` and `total_minor` (what has been won, as margin when given, plus `projected_minor`). Year `t` is year `t-1` × `retention ÷ (1 + discount)`, in integers with each year rounded half to even, and `projected_minor` is the sum of the years. Currencies are never added or converted.
+- **Masking** as before: a masked caller gets `null` for `margin_minor` and `projection`.
+- No UI; `convert_to` does not apply to `margin_minor` or `projection`.
+- Not built: converting the margin or projection; a retention taken from the account's own history (the caller supplies it); a margin per product or deal; the rate on each deal's close day; discounting the revenue already won back to its close day.
