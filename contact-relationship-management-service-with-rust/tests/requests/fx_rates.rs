@@ -546,3 +546,79 @@ async fn an_accounts_clv_can_take_its_retention_from_the_year_before() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn an_accounts_clv_margin_and_look_ahead_are_converted_once_per_currency_at_the_same_rates() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let account: Value = request
+            .post("/api/accounts")
+            .json(
+                &json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Converted Ltd" }),
+            )
+            .await
+            .json();
+        let account = account["pid"].as_str().unwrap().to_string();
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        for (name, amount, currency) in
+            [("A", 10_000, "GBP"), ("B", 5_000, "USD"), ("C", 700, "JPY")]
+        {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(
+                    &json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": amount,
+                               "currency": currency, "account_pid": account }),
+                )
+                .await
+                .json();
+            request
+                .post(&format!(
+                    "/api/deals/{}/stage",
+                    deal["pid"].as_str().unwrap()
+                ))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+        }
+        let _ = set_rate!(&request, "USD", "GBP", "0.80", "2026-01-01");
+        let url = format!("/api/accounts/{account}/clv");
+
+        // Without `convert_to` nothing is converted.
+        let plain: Value = request
+            .get(&format!("{url}?margin_bps=5000&retention_bps=5000&years=2"))
+            .await
+            .json();
+        assert!(plain["margin_converted_minor"].is_null(), "{plain}");
+        assert!(plain["projection"]["converted"].is_null(), "{plain}");
+
+        // Margin 50%: GBP 5000 + USD 2500 (2000). Look-ahead at 50% over 2 years: GBP 3750 and
+        // USD 1875 (1500) projected; the JPY is left out, as it is for the CLV.
+        let done: Value = request
+            .get(&format!(
+                "{url}?convert_to=GBP&margin_bps=5000&retention_bps=5000&years=2"
+            ))
+            .await
+            .json();
+        assert_eq!(done["converted_minor"], 14_000, "{done}");
+        assert_eq!(done["margin_converted_minor"], 7_000, "{done}");
+        let converted = &done["projection"]["converted"];
+        assert_eq!(converted["annual_base_minor"], 7_000, "{done}");
+        assert_eq!(converted["projected_minor"], 5_250, "{done}");
+        assert_eq!(converted["total_minor"], 12_250, "{done}");
+        assert_eq!(done["unconverted"].as_array().unwrap().len(), 1, "{done}");
+        assert_eq!(done["unconverted"][0]["amount_minor"], 700, "{done}");
+        // Each currency's own figures are still shown, unconverted.
+        assert_eq!(done["projection"]["total_minor"]["USD"], 4_375, "{done}");
+
+        // Convert the margin alone; no look-ahead was asked for.
+        let margin: Value = request
+            .get(&format!("{url}?convert_to=GBP&margin_bps=5000"))
+            .await
+            .json();
+        assert_eq!(margin["margin_converted_minor"], 7_000, "{margin}");
+        assert!(margin["projection"].is_null(), "{margin}");
+    })
+    .await;
+}

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — CLV margin and look-ahead converted (CRM-T129, CRM-R62)
+
+`margin_converted_minor` and `projection.converted` (`ClvProjectionConverted`) on the CLV read with `convert_to`; 1 request test.
+
 ### Added — retention from history on CLV (CRM-T128, CRM-R61)
 
 `retention_from=history` on `GET /api/accounts/{pid}/clv`; `rules::analytics::retention_from_history`; `projection.retention_history_bps`, and `retention_bps` null when read from history; 1 unit test and 1 request test.

@@ -728,4 +728,5 @@ export default {
   "clv.masked": "आपकी भूमिका से छिपा",
   "clv.fromHistory": "प्रतिधारण पिछले वर्ष से लें",
   "clv.historyRetention": "पिछले वर्ष में मिला प्रतिधारण",
+  "clv.inOne": "एक मुद्रा में जोड़ा गया",
 } satisfies Record<StringKey, string>;

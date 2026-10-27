@@ -838,7 +838,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60); ?retention_from=history in place of retention_bps takes each currency's retention from the year before, held at 100% (CRM-R61) */
+        /** CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60); ?retention_from=history in place of retention_bps takes each currency's retention from the year before, held at 100% (CRM-R61); with ?convert_to= the margin and the look-ahead are also converted and added (CRM-R62) */
         get: {
             parameters: {
                 query?: never;
@@ -17510,6 +17510,12 @@ export interface components {
              */
             converted_minor: number | null;
             /**
+             * Format: int64
+             * @description With `convert_to` and `margin_bps`: the margin of every currency converted and added, minor
+             *     units of `convert_to`, at the rates named in `rates` (CRM-R62).
+             */
+            margin_converted_minor: number | null;
+            /**
              * @description With `margin_bps`: the margin on each currency's CLV, minor units; `null` otherwise or
              *     when masked (CRM-R60).
              */
@@ -17536,6 +17542,8 @@ export interface components {
             annual_base_minor: {
                 [key: string]: number;
             };
+            /** @description With `convert_to`: the three sums above, every currency converted and added (CRM-R62). */
+            converted: components["schemas"]["ClvProjectionConverted"] | (null);
             /** Format: uint32 */
             discount_bps: number;
             /** @description What the base is expected to bring over `years`, discounted. */
@@ -17560,6 +17568,18 @@ export interface components {
             };
             /** Format: uint32 */
             years: number;
+        };
+        /** @description The look-ahead in one currency: each currency's figure converted once, then added. */
+        ClvProjectionConverted: {
+            /**
+             * Format: int64
+             * @description Minor units of `convert_to`.
+             */
+            annual_base_minor: number;
+            /** Format: int64 */
+            projected_minor: number;
+            /** Format: int64 */
+            total_minor: number;
         };
         /** @description What one tier paid. */
         CommissionBand: {

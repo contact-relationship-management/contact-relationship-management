@@ -1448,6 +1448,15 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("clv-history-retention")).toContainText("—");
     await expect(page.getByTestId("clv-projected")).toContainText("0.00");
     await expect(page.getByTestId("clv-total")).toContainText("44,000.00");
+    // In one currency: the tour's GBP account in GBP is unchanged, and in a currency with no rate
+    // nothing is invented.
+    await page.getByTestId("clv-convert").fill("GBP");
+    await page.getByTestId("clv-run").click();
+    await expect(page.getByTestId("clv-converted")).toContainText("88,000.00");
+    await expect(page.getByTestId("clv-converted")).toContainText("44,000.00");
+    await page.getByTestId("clv-convert").fill("JPY");
+    await page.getByTestId("clv-run").click();
+    await expect(page.getByTestId("clv-unconverted")).toContainText("GBP");
   });
 
   test("exchange rates are listed, set, replaced and deleted, and a bad rate is refused", async ({

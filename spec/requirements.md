@@ -1067,7 +1067,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Look-ahead.** With `retention_bps` and `years`, `projection` gives, per currency: `annual_base_minor` (revenue, or its margin when `margin_bps` is given, of deals won in the 365 days to `as_of`), `projected_minor` and `total_minor` (what has been won, as margin when given, plus `projected_minor`). Year `t` is year `t-1` × `retention ÷ (1 + discount)`, in integers with each year rounded half to even, and `projected_minor` is the sum of the years. Currencies are never added or converted.
 - **Masking** as before: a masked caller gets `null` for `margin_minor` and `projection`.
 - The account page shows them in a panel (CRM-T127), typing percentages that become basis points; `convert_to` does not apply to `margin_minor` or `projection`.
-- Not built: converting the margin or projection; a retention taken from the account's own history (built in CRM-R61); a margin per product or deal; the rate on each deal's close day; discounting the revenue already won back to its close day.
+- Not built: converting the margin or projection (built in CRM-R62); a retention taken from the account's own history (built in CRM-R61); a margin per product or deal; the rate on each deal's close day; discounting the revenue already won back to its close day.
 
 ## CRM-R61 — Retention taken from an account's own history
 
@@ -1079,4 +1079,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - `projection.retention_bps` is `null` when the retention was read from history; `retention_history_bps` is `null` when it was supplied. Masking, margin and `convert_to` are as in CRM-R60.
 - The CLV panel on the account page has a checkbox for it.
 - Not built: a window other than the two years; weighting recent quarters; growth above 100%; retention by deal count or by customer.
+
+## CRM-R62 — Converting the CLV margin and look-ahead
+
+*As an account manager with deals in several currencies, I can see the margin and the look-ahead of an account's lifetime value in one currency, so that the whole account reads as one figure.*
+
+- With `convert_to` (and `rate_date`) as in CRM-R54, `GET /api/accounts/{pid}/clv` also gives `margin_converted_minor` (when `margin_bps` is given) and `projection.converted` with `annual_base_minor`, `projected_minor` and `total_minor` (when the look-ahead is). Each currency's figure is converted **once** at the rate in force on `rate_date` and the results added; the per-currency figures stay as they were.
+- The same rates and the same currencies as the CLV, so `rates` and `unconverted` describe all of them; a currency with no rate is left out of every converted figure and never taken at 1.0.
+- Without `convert_to` the new members are `null`; a masked caller gets `null`.
+- The CLV panel on the account page has a "Show in" field.
+- Not built: converting at each deal's close day; converting before the margin is taken.
 

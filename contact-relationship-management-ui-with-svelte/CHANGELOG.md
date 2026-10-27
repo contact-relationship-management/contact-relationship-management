@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — convert the CLV in the panel (CRM-T129)
+
+A "Show in" field on `ClvPanel` with the converted line and what was left out, the tour's conversion, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; the Playwright test extended.
+
 ### Added — retention from history in the CLV panel (CRM-T128)
 
 A checkbox on `ClvPanel`, `retentionFromHistory` in `accountClv`, the tour's stub, 2 keys in 8 locales (machine drafts), regenerated `schema.d.ts`; the Playwright test extended.

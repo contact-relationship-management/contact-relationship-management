@@ -15,6 +15,7 @@
   let years = $state("3");
   let discount = $state("");
   let fromHistory = $state(false);
+  let convertTo = $state("");
   let result = $state<Clv | null>(null);
   let error = $state<string | null>(null);
 
@@ -28,6 +29,7 @@
         marginBps: margin.trim() ? bps(margin) : undefined,
         retentionBps: !fromHistory && retention.trim() ? bps(retention) : undefined,
         retentionFromHistory: fromHistory,
+        convertTo: convertTo.trim().toUpperCase() || undefined,
         years: fromHistory || retention.trim() ? Number(years) : undefined,
         discountBps: discount.trim() ? bps(discount) : undefined,
       });
@@ -59,6 +61,7 @@
   >
     <label>{t("clv.margin")} <input bind:value={margin} inputmode="decimal" size="5" data-testid="clv-margin" /></label>
     <label>{t("clv.retention")} <input bind:value={retention} inputmode="decimal" size="5" data-testid="clv-retention" /></label>
+    <label>{t("rpt.convertTo")} <input bind:value={convertTo} maxlength="3" size="4" data-testid="clv-convert" /></label>
     <label>
       <input type="checkbox" bind:checked={fromHistory} data-testid="clv-history" />
       {t("clv.fromHistory")}
@@ -87,6 +90,24 @@
         {@render lines(t("clv.base"), result.projection.annual_base_minor, "clv-base")}
         {@render lines(t("clv.projected"), result.projection.projected_minor, "clv-projected")}
         {@render lines(t("clv.total"), result.projection.total_minor, "clv-total")}
+      {/if}
+    {/if}
+    {#if result.convert_to}
+      <p data-testid="clv-converted">
+        {t("clv.inOne")} ({result.convert_to}):
+        {t("clv.won")} {money(result.converted_minor, result.convert_to, i18n.locale)}
+        {#if result.margin_converted_minor != null}
+          · {t("clv.marginResult")} {money(result.margin_converted_minor, result.convert_to, i18n.locale)}
+        {/if}
+        {#if result.projection?.converted}
+          · {t("clv.projected")} {money(result.projection.converted.projected_minor, result.convert_to, i18n.locale)}
+          · {t("clv.total")} {money(result.projection.converted.total_minor, result.convert_to, i18n.locale)}
+        {/if}
+      </p>
+      {#if result.unconverted?.length}
+        <p class="muted small" data-testid="clv-unconverted">
+          {t("rpt.unconverted")}: {result.unconverted.map((u) => u.currency).join(", ")}
+        </p>
       {/if}
     {/if}
     <p class="muted small">{new Date(result.as_of).toLocaleString(i18n.locale)}</p>

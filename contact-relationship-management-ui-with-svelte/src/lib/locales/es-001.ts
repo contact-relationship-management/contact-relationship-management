@@ -735,4 +735,5 @@ export default {
   "clv.masked": "Oculto para su rol",
   "clv.fromHistory": "Tomar la retención del año anterior",
   "clv.historyRetention": "Retención hallada en el año anterior",
+  "clv.inOne": "Sumado en una moneda",
 } satisfies Record<StringKey, string>;

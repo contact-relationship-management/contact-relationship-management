@@ -21,7 +21,8 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
 - **Territories; quota refinements** — quotas, tiered commission plans and attainment are built (CRM-R59); territories, team roll-ups, splitting a deal and clawbacks are not.
 - **CLV refinement** — margin and a discounted, retention-based look-ahead
   are built (CRM-R60) and shown on the account page, with the retention
-  readable from the account's own history (CRM-R61); converting them is not.
+  readable from the account's own history (CRM-R61) and conversion to
+  one currency (CRM-R62); a rate on each deal's close day is not.
 - **Cross-app bridges** — WPM (rep identity/teams from employee
   records), PPM (post-sale delivery projects opened from won
   deals).

@@ -742,4 +742,5 @@ export default {
   "clv.masked": "Für Ihre Rolle ausgeblendet",
   "clv.fromHistory": "Bindung aus dem Vorjahr nehmen",
   "clv.historyRetention": "Im Vorjahr ermittelte Bindung",
+  "clv.inOne": "In einer Währung addiert",
 } satisfies Record<StringKey, string>;

@@ -703,4 +703,5 @@ export default {
   "clv.masked": "对您的角色隐藏",
   "clv.fromHistory": "从上一年取留存率",
   "clv.historyRetention": "上一年得出的留存率",
+  "clv.inOne": "以一种货币相加",
 } satisfies Record<StringKey, string>;

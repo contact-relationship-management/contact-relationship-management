@@ -3320,13 +3320,69 @@ function accountClv(accountPid: string, query: URLSearchParams) {
       total_minor: plain(totals),
     };
   }
+  const marginMinor = marginBps === null ? null : plain(keep(total));
+  // `convert_to` converts the CLV, the margin and the look-ahead at the same rates (CRM-R62).
+  const target = query.get("convert_to");
+  let conversion: Record<string, unknown> = {
+    convert_to: null,
+    converted_minor: null,
+    rate_date: null,
+    rates: [],
+    unconverted: [],
+    margin_converted_minor: null,
+  };
+  if (target) {
+    const groups: [string, Record<string, number> | null][] = [
+      ["clv", plain(total)],
+      ["margin", marginMinor],
+      ["base", projection?.annual_base_minor ?? null],
+      ["projected", projection?.projected_minor ?? null],
+      ["total", projection?.total_minor ?? null],
+    ];
+    const rows = groups.flatMap(([group, amounts]) =>
+      Object.entries(amounts ?? {}).map(([currency, value]) => ({
+        group,
+        currency,
+        value,
+      })),
+    );
+    const done = convertSums(target, query.get("rate_date"), rows);
+    if (typeof done === "string") return problem(422, done);
+    const of = (group: string) =>
+      done.rows.find((r) => r.group === group)?.value ?? 0;
+    // Only the CLV's own sums say what was left out, as the service does.
+    const own = convertSums(
+      target,
+      query.get("rate_date"),
+      rows.filter((r) => r.group === "clv"),
+    );
+    if (typeof own === "string") return problem(422, own);
+    if (projection)
+      projection = {
+        ...projection,
+        converted: {
+          annual_base_minor: of("base"),
+          projected_minor: of("projected"),
+          total_minor: of("total"),
+        },
+      };
+    conversion = {
+      convert_to: target,
+      converted_minor: of("clv"),
+      rate_date: own.rateDate,
+      rates: own.rates,
+      unconverted: own.unconverted,
+      margin_converted_minor: marginMinor ? of("margin") : null,
+    };
+  }
   return ok({
     account_pid: accountPid,
     as_of: asOf.toISOString(),
     won_deals: won.length,
     clv_minor: plain(total),
-    margin_minor: marginBps === null ? null : plain(keep(total)),
+    margin_minor: marginMinor,
     projection,
+    ...conversion,
   });
 }
 

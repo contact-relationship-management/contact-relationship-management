@@ -733,4 +733,5 @@ export default {
   "clv.masked": "Wedi'i guddio rhag eich rôl",
   "clv.fromHistory": "Cymryd cadw o'r flwyddyn flaenorol",
   "clv.historyRetention": "Cadw a gafwyd yn y flwyddyn flaenorol",
+  "clv.inOne": "Wedi'u hadio mewn un arian",
 } satisfies Record<StringKey, string>;

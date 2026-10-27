@@ -726,4 +726,5 @@ export default {
   "clv.masked": "Hidden from your role",
   "clv.fromHistory": "Take retention from the year before",
   "clv.historyRetention": "Retention found in the year before",
+  "clv.inOne": "Added in one currency",
 } as const;

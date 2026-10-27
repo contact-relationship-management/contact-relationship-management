@@ -153,6 +153,9 @@ pub(crate) struct Clv {
     margin_minor: Option<std::collections::BTreeMap<String, i64>>,
     /// With `retention_bps` and `years`: the look-ahead (CRM-R60); `null` otherwise or when masked.
     projection: Option<ClvProjection>,
+    /// With `convert_to` and `margin_bps`: the margin of every currency converted and added, minor
+    /// units of `convert_to`, at the rates named in `rates` (CRM-R62).
+    margin_converted_minor: Option<i64>,
 }
 
 /// The look-ahead of `GET /api/accounts/{pid}/clv` (CRM-R60), per currency, never converted.
@@ -171,6 +174,17 @@ pub(crate) struct ClvProjection {
     projected_minor: std::collections::BTreeMap<String, i64>,
     /// What has been won (its margin, with `margin_bps`) plus `projected_minor`.
     total_minor: std::collections::BTreeMap<String, i64>,
+    /// With `convert_to`: the three sums above, every currency converted and added (CRM-R62).
+    converted: Option<ClvProjectionConverted>,
+}
+
+/// The look-ahead in one currency: each currency's figure converted once, then added.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ClvProjectionConverted {
+    /// Minor units of `convert_to`.
+    annual_base_minor: i64,
+    projected_minor: i64,
+    total_minor: i64,
 }
 
 /// What `GET /api/accounts/{pid}/clv` may be asked.
@@ -380,6 +394,7 @@ fn clv_outlook(
                 annual_base_minor: base,
                 projected_minor: ahead,
                 total_minor: total,
+                converted: None,
             });
         }
     }
@@ -472,11 +487,46 @@ async fn account_clv(
         None => (None, None, Vec::new(), Vec::new()),
     };
     let now = chrono::Utc::now();
-    let (margin_minor, projection) = if masked {
+    let (margin_minor, mut projection) = if masked {
         (None, None)
     } else {
         clv_outlook(&query, &totals, &won, now)?
     };
+    // The margin and the look-ahead are converted at the same rates as the CLV: the same
+    // currencies, so the same ones are left out (CRM-R62).
+    let mut margin_converted_minor = None;
+    if let (Some(target), false) = (&query.convert_to, masked) {
+        let mut sums = Vec::new();
+        for (group, amounts) in [
+            ("margin", margin_minor.as_ref()),
+            ("base", projection.as_ref().map(|p| &p.annual_base_minor)),
+            ("projected", projection.as_ref().map(|p| &p.projected_minor)),
+            ("total", projection.as_ref().map(|p| &p.total_minor)),
+        ] {
+            for (currency, amount) in amounts.into_iter().flatten() {
+                sums.push((group.to_string(), currency.clone(), *amount));
+            }
+        }
+        if !sums.is_empty() {
+            let done =
+                super::fx_rates::convert_sums(&ctx, target, query.rate_date, "rate_date", &sums)
+                    .await?;
+            let of = |group: &str| {
+                done.rows
+                    .iter()
+                    .find(|row| row.0 == group)
+                    .map_or(0, |row| row.1)
+            };
+            margin_converted_minor = margin_minor.is_some().then(|| of("margin"));
+            if let Some(p) = projection.as_mut() {
+                p.converted = Some(ClvProjectionConverted {
+                    annual_base_minor: of("base"),
+                    projected_minor: of("projected"),
+                    total_minor: of("total"),
+                });
+            }
+        }
+    }
     format::json(Clv {
         account_pid: account.pid,
         won_deals: won.len(),
@@ -489,6 +539,7 @@ async fn account_clv(
         unconverted,
         margin_minor,
         projection,
+        margin_converted_minor,
     })
 }
 

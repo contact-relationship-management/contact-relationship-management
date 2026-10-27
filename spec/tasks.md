@@ -1630,3 +1630,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a checkbox and the retention found per currency in `ClvPanel`, the tour's stub, 2 keys in 8 locales (machine drafts); the Playwright test extended.
       - **Tests:** 1 request test (deals backdated by SQL: 75% found, 7,875 projected, a currency with no year before projects 0 with `null`, three refusals). **Checked by breaking it:** with the year-before window disabled the request test fails; restored.
       - **Not tested:** a retention above 100% through the API (the unit test holds it at 100%); the browser against the real service.
+- [x] CRM-T129 *(edge)* **Convert the CLV margin and look-ahead.** `convert_to` on the CLV read also converts the margin and the look-ahead; the last open part of the roadmap item "CLV refinement". (S)
+      **Done (2026-10-27, not released):** requirement CRM-R62 first, then:
+      - **API:** `margin_converted_minor`, `projection.converted` (`ClvProjectionConverted`), one `convert_sums` call over the margin and look-ahead groups so the CLV's `rates` and `unconverted` are unchanged; operation text; `schema.d.ts` regenerated.
+      - **UI:** a "Show in" field and the converted line in `ClvPanel`, the tour's conversion (also giving the CLV's own `converted_minor`), 1 key in 8 locales (machine drafts); the Playwright test extended.
+      - **Tests:** 1 request test (GBP, USD at 0.80 and an unconverted JPY: margin 7,000, base 7,000, projected 5,250, total 12,250; per-currency figures kept; nothing converted without `convert_to`; the margin alone).
+      - **Not tested:** that margin and base are not swapped (both are 7,000 in the test; projected and total differ); the masked caller (the `convert_to` path is skipped when masked, as for the CLV).

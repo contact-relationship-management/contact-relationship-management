@@ -1985,7 +1985,16 @@ export interface Clv {
     annual_base_minor: Record<string, number>;
     projected_minor: Record<string, number>;
     total_minor: Record<string, number>;
+    converted?: {
+      annual_base_minor: number;
+      projected_minor: number;
+      total_minor: number;
+    } | null;
   } | null;
+  convert_to?: string | null;
+  converted_minor?: number | null;
+  margin_converted_minor?: number | null;
+  unconverted?: Array<{ currency: string; amount_minor: number }>;
 }
 
 /** Read an account's CLV; `margin_bps` and `retention_bps` with `years` add the two refinements. */
@@ -1998,6 +2007,8 @@ export function accountClv(
     retentionFromHistory?: boolean;
     years?: number;
     discountBps?: number;
+    /** Also add every currency in this one (CRM-R54, CRM-R62). */
+    convertTo?: string;
   } = {},
   init?: FetchLike,
 ): Promise<Clv> {
@@ -2014,6 +2025,7 @@ export function accountClv(
     if (params.discountBps)
       query.set("discount_bps", String(params.discountBps));
   }
+  if (params.convertTo) query.set("convert_to", params.convertTo);
   const qs = query.toString();
   return api(`/accounts/${pid}/clv${qs ? `?${qs}` : ""}`, init);
 }

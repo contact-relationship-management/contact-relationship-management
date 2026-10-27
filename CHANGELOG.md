@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — the CLV margin and look-ahead converted (CRM-T129, CRM-R62)
+
+`GET /api/accounts/{pid}/clv?convert_to=` also adds `margin_converted_minor` and `projection.converted`, at the same rates as the CLV.
+
 ### Added — retention taken from an account's own history (CRM-T128, CRM-R61)
 
 `GET /api/accounts/{pid}/clv?retention_from=history&years=` reads each currency's retention from the latest year against the year before it, held at 100%.
