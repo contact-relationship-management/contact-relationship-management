@@ -838,7 +838,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60) */
+        /** CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60); ?retention_from=history in place of retention_bps takes each currency's retention from the year before, held at 100% (CRM-R61) */
         get: {
             parameters: {
                 query?: never;
@@ -17542,8 +17542,18 @@ export interface components {
             projected_minor: {
                 [key: string]: number;
             };
-            /** Format: uint32 */
-            retention_bps: number;
+            /**
+             * Format: uint32
+             * @description The retention asked for; `null` when it was read from history (`retention_from=history`).
+             */
+            retention_bps: number | null;
+            /**
+             * @description With `retention_from=history`: each currency's retention from its own won deals, `null`
+             *     where nothing was won in the year before (CRM-R61).
+             */
+            retention_history_bps: {
+                [key: string]: number | null;
+            } | null;
             /** @description What has been won (its margin, with `margin_bps`) plus `projected_minor`. */
             total_minor: {
                 [key: string]: number;

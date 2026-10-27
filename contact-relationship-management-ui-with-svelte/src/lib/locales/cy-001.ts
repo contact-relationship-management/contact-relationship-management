@@ -731,4 +731,6 @@ export default {
   "clv.projected": "Disgwyl dod â, gostyngedig",
   "clv.total": "Enillwyd a disgwyliedig",
   "clv.masked": "Wedi'i guddio rhag eich rôl",
+  "clv.fromHistory": "Cymryd cadw o'r flwyddyn flaenorol",
+  "clv.historyRetention": "Cadw a gafwyd yn y flwyddyn flaenorol",
 } satisfies Record<StringKey, string>;

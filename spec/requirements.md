@@ -1067,4 +1067,16 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Look-ahead.** With `retention_bps` and `years`, `projection` gives, per currency: `annual_base_minor` (revenue, or its margin when `margin_bps` is given, of deals won in the 365 days to `as_of`), `projected_minor` and `total_minor` (what has been won, as margin when given, plus `projected_minor`). Year `t` is year `t-1` × `retention ÷ (1 + discount)`, in integers with each year rounded half to even, and `projected_minor` is the sum of the years. Currencies are never added or converted.
 - **Masking** as before: a masked caller gets `null` for `margin_minor` and `projection`.
 - The account page shows them in a panel (CRM-T127), typing percentages that become basis points; `convert_to` does not apply to `margin_minor` or `projection`.
-- Not built: converting the margin or projection; a retention taken from the account's own history (the caller supplies it); a margin per product or deal; the rate on each deal's close day; discounting the revenue already won back to its close day.
+- Not built: converting the margin or projection; a retention taken from the account's own history (built in CRM-R61); a margin per product or deal; the rate on each deal's close day; discounting the revenue already won back to its close day.
+
+## CRM-R61 — Retention taken from an account's own history
+
+*As an account manager, I can have the look-ahead on an account's lifetime value use the retention the account has actually shown, so that I do not have to guess a number.*
+
+- `GET /api/accounts/{pid}/clv` takes `retention_from=history` in place of `retention_bps`, with `years` (and `discount_bps`) as in CRM-R60. Any other value, the two together, or `years` without a retention is `422` naming the member.
+- **Retention** per currency is the revenue won in the 365 days to `as_of` divided by the revenue won in the 365 days before those, in basis points, rounded half to even and held at 10000: history is never read as growth. Currencies are never added or converted.
+- Where nothing was won in the year before, there is no retention to find: it is `null` in `projection.retention_history_bps`, nothing is projected for that currency (`projected_minor` is `0`) and what was won still counts in `total_minor`. A number is never guessed.
+- `projection.retention_bps` is `null` when the retention was read from history; `retention_history_bps` is `null` when it was supplied. Masking, margin and `convert_to` are as in CRM-R60.
+- The CLV panel on the account page has a checkbox for it.
+- Not built: a window other than the two years; weighting recent quarters; growth above 100%; retention by deal count or by customer.
+

@@ -112,6 +112,27 @@ pub fn margin(amount_minor: i64, bps: u32) -> Result<i64, String> {
     i64::try_from(scaled).map_err(|_| "margin overflows".to_string())
 }
 
+/// The share of the year before that came again in the latest year, in basis points of it,
+/// rounded half to even and held at 100% (CRM-R61): history is never read as growth. `None`
+/// when nothing was won in the year before, because then there is nothing to measure against.
+///
+/// # Errors
+///
+/// On arithmetic overflow.
+pub fn retention_from_history(current_minor: i64, prior_minor: i64) -> Result<Option<u32>, String> {
+    if prior_minor <= 0 {
+        return Ok(None);
+    }
+    let scaled = super::fx::divide(
+        i128::from(current_minor.max(0)) * i128::from(MAX_BPS),
+        i128::from(prior_minor),
+    );
+    Ok(Some(
+        u32::try_from(scaled.min(i128::from(MAX_BPS)))
+            .map_err(|_| "retention overflows".to_string())?,
+    ))
+}
+
 /// What a year's revenue is still expected to bring over the next `years`, discounted
 /// (CRM-R60): year `t` is year `t-1` times `retention / (1 + discount)`, each year rounded half
 /// to even, and the years are added. Integer arithmetic, no floating point.
@@ -144,6 +165,17 @@ mod tests {
             currency: currency.to_string(),
             probability_percent: p,
         }
+    }
+
+    /// Retention is the latest year over the year before, held at 100%, with no basis when the
+    /// year before is empty (CRM-R61).
+    #[test]
+    fn retention_comes_from_the_year_before() {
+        assert_eq!(retention_from_history(6_000, 8_000).unwrap(), Some(7_500));
+        assert_eq!(retention_from_history(1, 3).unwrap(), Some(3_333));
+        assert_eq!(retention_from_history(20_000, 8_000).unwrap(), Some(10_000));
+        assert_eq!(retention_from_history(0, 8_000).unwrap(), Some(0));
+        assert_eq!(retention_from_history(5, 0).unwrap(), None);
     }
 
     /// Weighted sums group per currency and never merge currencies.

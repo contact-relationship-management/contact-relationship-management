@@ -701,4 +701,6 @@ export default {
   "clv.projected": "预期收入（折现后）",
   "clv.total": "已赢得加预期",
   "clv.masked": "对您的角色隐藏",
+  "clv.fromHistory": "从上一年取留存率",
+  "clv.historyRetention": "上一年得出的留存率",
 } satisfies Record<StringKey, string>;

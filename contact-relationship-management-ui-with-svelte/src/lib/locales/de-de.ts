@@ -740,4 +740,6 @@ export default {
   "clv.projected": "Erwartet, abgezinst",
   "clv.total": "Gewonnen plus erwartet",
   "clv.masked": "Für Ihre Rolle ausgeblendet",
+  "clv.fromHistory": "Bindung aus dem Vorjahr nehmen",
+  "clv.historyRetention": "Im Vorjahr ermittelte Bindung",
 } satisfies Record<StringKey, string>;

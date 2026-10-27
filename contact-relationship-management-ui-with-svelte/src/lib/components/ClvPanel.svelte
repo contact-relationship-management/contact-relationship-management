@@ -14,6 +14,7 @@
   let retention = $state("");
   let years = $state("3");
   let discount = $state("");
+  let fromHistory = $state(false);
   let result = $state<Clv | null>(null);
   let error = $state<string | null>(null);
 
@@ -25,8 +26,9 @@
     try {
       result = await accountClv(pid, {
         marginBps: margin.trim() ? bps(margin) : undefined,
-        retentionBps: retention.trim() ? bps(retention) : undefined,
-        years: retention.trim() ? Number(years) : undefined,
+        retentionBps: !fromHistory && retention.trim() ? bps(retention) : undefined,
+        retentionFromHistory: fromHistory,
+        years: fromHistory || retention.trim() ? Number(years) : undefined,
         discountBps: discount.trim() ? bps(discount) : undefined,
       });
     } catch (cause) {
@@ -57,6 +59,10 @@
   >
     <label>{t("clv.margin")} <input bind:value={margin} inputmode="decimal" size="5" data-testid="clv-margin" /></label>
     <label>{t("clv.retention")} <input bind:value={retention} inputmode="decimal" size="5" data-testid="clv-retention" /></label>
+    <label>
+      <input type="checkbox" bind:checked={fromHistory} data-testid="clv-history" />
+      {t("clv.fromHistory")}
+    </label>
     <label>{t("clv.years")} <input bind:value={years} inputmode="numeric" size="3" data-testid="clv-years" /></label>
     <label>{t("clv.discount")} <input bind:value={discount} inputmode="decimal" size="5" data-testid="clv-discount" /></label>
     <button type="submit" data-testid="clv-run">{t("clv.run")}</button>
@@ -70,6 +76,14 @@
       {@render lines(t("clv.won"), result.clv_minor, "clv-won")}
       {#if result.margin_minor}{@render lines(t("clv.marginResult"), result.margin_minor, "clv-margin-result")}{/if}
       {#if result.projection}
+        {#if result.projection.retention_history_bps}
+          <p data-testid="clv-history-retention">
+            {t("clv.historyRetention")}:
+            {#each Object.entries(result.projection.retention_history_bps) as [currency, bps] (currency)}
+              <span class="chip">{currency} {bps === null ? "—" : `${bps / 100}%`}</span>
+            {/each}
+          </p>
+        {/if}
         {@render lines(t("clv.base"), result.projection.annual_base_minor, "clv-base")}
         {@render lines(t("clv.projected"), result.projection.projected_minor, "clv-projected")}
         {@render lines(t("clv.total"), result.projection.total_minor, "clv-total")}

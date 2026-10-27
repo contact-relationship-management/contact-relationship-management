@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — retention from history in the CLV panel (CRM-T128)
+
+A checkbox on `ClvPanel`, `retentionFromHistory` in `accountClv`, the tour's stub, 2 keys in 8 locales (machine drafts), regenerated `schema.d.ts`; the Playwright test extended.
+
 ### Added — a CLV panel on the account page (CRM-T127)
 
 `ClvPanel` (margin, retention, years and discount in percent; 12 keys in 8 locales, machine drafts), `accountClv` and `Clv` in `crm.ts`, the tour's `/accounts/{pid}/clv`; one Playwright test.

@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — retention taken from an account's own history (CRM-T128, CRM-R61)
+
+`GET /api/accounts/{pid}/clv?retention_from=history&years=` reads each currency's retention from the latest year against the year before it, held at 100%.
+
 ### Added — a CLV panel on the account page (CRM-T127, CRM-R60)
 
 The account page shows lifetime value per currency, with the margin and the discounted look-ahead when asked for.

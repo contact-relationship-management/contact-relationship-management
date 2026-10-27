@@ -724,4 +724,6 @@ export default {
   "clv.projected": "Expected to bring, discounted",
   "clv.total": "Won plus expected",
   "clv.masked": "Hidden from your role",
+  "clv.fromHistory": "Take retention from the year before",
+  "clv.historyRetention": "Retention found in the year before",
 } as const;

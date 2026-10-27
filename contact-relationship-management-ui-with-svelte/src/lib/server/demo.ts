@@ -3230,11 +3230,15 @@ function accountClv(accountPid: string, query: URLSearchParams) {
   const yearAgo = asOf.getTime() - 365 * 86_400_000;
   const total: Record<string, bigint> = {};
   const recent: Record<string, bigint> = {};
+  const prior: Record<string, bigint> = {};
   for (const d of won) {
     const amount = BigInt(d.amount_minor ?? 0);
     total[d.currency] = (total[d.currency] ?? 0n) + amount;
-    if (d.closed_at && new Date(d.closed_at).getTime() >= yearAgo)
+    const at = d.closed_at ? new Date(d.closed_at).getTime() : null;
+    if (at !== null && at >= yearAgo)
       recent[d.currency] = (recent[d.currency] ?? 0n) + amount;
+    else if (at !== null && at >= yearAgo - 365 * 86_400_000)
+      prior[d.currency] = (prior[d.currency] ?? 0n) + amount;
   }
   const bps = (name: string) => {
     const raw = query.get(name);
@@ -3244,6 +3248,7 @@ function accountClv(accountPid: string, query: URLSearchParams) {
   };
   const marginBps = bps("margin_bps");
   const retentionBps = bps("retention_bps");
+  const fromHistory = query.get("retention_from") === "history";
   const discountBps = bps("discount_bps") ?? 0;
   const years = query.get("years") === null ? null : Number(query.get("years"));
   if (Number.isNaN(marginBps)) return problem(422, "/margin_bps: 0 to 10000");
@@ -3251,7 +3256,7 @@ function accountClv(accountPid: string, query: URLSearchParams) {
     return problem(422, "/retention_bps: 0 to 10000");
   if (Number.isNaN(discountBps))
     return problem(422, "/discount_bps: 0 to 10000");
-  if ((retentionBps === null) !== (years === null))
+  if ((retentionBps === null && !fromHistory) === (years !== null))
     return problem(422, "/years: retention_bps and years go together");
   if (years !== null && !(Number.isInteger(years) && years >= 1 && years <= 20))
     return problem(422, "/years: 1 to 20");
@@ -3267,16 +3272,34 @@ function accountClv(accountPid: string, query: URLSearchParams) {
   const plain = (m: Record<string, bigint>) =>
     Object.fromEntries(Object.entries(m).map(([c, v]) => [c, Number(v)]));
   let projection = null;
-  if (retentionBps !== null && years !== null) {
+  if ((retentionBps !== null || fromHistory) && years !== null) {
+    const history: Record<string, number | null> = {};
     const base = keep(recent);
     const baseWon = keep(total);
     const projected: Record<string, bigint> = {};
     for (const [c, b] of Object.entries(base)) {
+      let retention = retentionBps;
+      if (fromHistory) {
+        const before = prior[c] ?? 0n;
+        retention =
+          before > 0n
+            ? Number(
+                divideRound((recent[c] ?? 0n) * 10_000n, before) > 10_000n
+                  ? 10_000n
+                  : divideRound((recent[c] ?? 0n) * 10_000n, before),
+              )
+            : null;
+        history[c] = retention;
+      }
+      if (retention === null) {
+        projected[c] = 0n;
+        continue;
+      }
       let year = b;
       let sum = 0n;
       for (let i = 0; i < years; i++) {
         year = divideRound(
-          year * BigInt(retentionBps),
+          year * BigInt(retention),
           BigInt(10_000 + discountBps),
         );
         // Year t is year t-1 x retention / (1 + discount).
@@ -3289,6 +3312,7 @@ function accountClv(accountPid: string, query: URLSearchParams) {
       totals[c] = (totals[c] ?? 0n) + v;
     projection = {
       retention_bps: retentionBps,
+      retention_history_bps: fromHistory ? history : null,
       discount_bps: discountBps,
       years,
       annual_base_minor: plain(base),

@@ -471,3 +471,78 @@ async fn an_accounts_clv_shows_its_margin_and_a_discounted_look_ahead_per_curren
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn an_accounts_clv_can_take_its_retention_from_the_year_before() {
+    request::<App, _, _>(|request, ctx| async move {
+        let account: Value = request
+            .post("/api/accounts")
+            .json(
+                &json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "History Ltd" }),
+            )
+            .await
+            .json();
+        let account = account["pid"].as_str().unwrap().to_string();
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        // GBP: 8000 won 400 days ago, 6000 won now. USD: only 1000 won now.
+        for (name, amount, currency, days_ago) in [
+            ("old", 8_000, "GBP", 400),
+            ("new", 6_000, "GBP", 0),
+            ("usd", 1_000, "USD", 0),
+        ] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(
+                    &json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": amount,
+                               "currency": currency, "account_pid": account }),
+                )
+                .await
+                .json();
+            let pid = deal["pid"].as_str().unwrap();
+            request
+                .post(&format!("/api/deals/{pid}/stage"))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+            ctx.db
+                .execute_raw(Statement::from_sql_and_values(
+                    DatabaseBackend::Postgres,
+                    "UPDATE deals SET closed_at = now() - make_interval(days => $1) WHERE name = $2",
+                    [days_ago.into(), name.into()],
+                ))
+                .await
+                .unwrap();
+        }
+        let url = format!("/api/accounts/{account}/clv");
+        // 75% retention, 2 years, no discount: 4500 + 3375 on a 6000 year.
+        let done: Value = request
+            .get(&format!("{url}?retention_from=history&years=2"))
+            .await
+            .json();
+        let projection = &done["projection"];
+        assert!(projection["retention_bps"].is_null(), "{done}");
+        assert_eq!(projection["retention_history_bps"]["GBP"], 7_500, "{done}");
+        assert!(projection["retention_history_bps"]["USD"].is_null(), "{done}");
+        assert_eq!(projection["annual_base_minor"]["GBP"], 6_000, "{done}");
+        assert_eq!(projection["projected_minor"]["GBP"], 7_875, "{done}");
+        assert_eq!(projection["total_minor"]["GBP"], 21_875, "{done}");
+        // No year before for USD: nothing projected, and what was won still counts.
+        assert_eq!(projection["projected_minor"]["USD"], 0, "{done}");
+        assert_eq!(projection["total_minor"]["USD"], 1_000, "{done}");
+
+        for query in [
+            "retention_from=history",
+            "retention_from=forecast&years=2",
+            "retention_from=history&retention_bps=5000&years=2",
+        ] {
+            request
+                .get(&format!("{url}?{query}"))
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    })
+    .await;
+}

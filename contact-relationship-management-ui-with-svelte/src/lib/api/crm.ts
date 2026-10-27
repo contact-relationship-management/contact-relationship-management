@@ -1978,7 +1978,8 @@ export interface Clv {
   clv_minor: Record<string, number> | null;
   margin_minor: Record<string, number> | null;
   projection: {
-    retention_bps: number;
+    retention_bps: number | null;
+    retention_history_bps: Record<string, number | null> | null;
     discount_bps: number;
     years: number;
     annual_base_minor: Record<string, number>;
@@ -1993,6 +1994,8 @@ export function accountClv(
   params: {
     marginBps?: number;
     retentionBps?: number;
+    /** Take each currency's retention from its own won deals (CRM-R61), not `retentionBps`. */
+    retentionFromHistory?: boolean;
     years?: number;
     discountBps?: number;
   } = {},
@@ -2001,8 +2004,12 @@ export function accountClv(
   const query = new URLSearchParams();
   if (params.marginBps !== undefined)
     query.set("margin_bps", String(params.marginBps));
-  if (params.retentionBps !== undefined && params.years !== undefined) {
-    query.set("retention_bps", String(params.retentionBps));
+  if (
+    (params.retentionBps !== undefined || params.retentionFromHistory) &&
+    params.years !== undefined
+  ) {
+    if (params.retentionFromHistory) query.set("retention_from", "history");
+    else query.set("retention_bps", String(params.retentionBps));
     query.set("years", String(params.years));
     if (params.discountBps)
       query.set("discount_bps", String(params.discountBps));

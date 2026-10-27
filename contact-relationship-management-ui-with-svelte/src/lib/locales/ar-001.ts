@@ -725,4 +725,6 @@ export default {
   "clv.projected": "المتوقع، مخصومًا",
   "clv.total": "المكسوب مع المتوقع",
   "clv.masked": "مخفي عن دورك",
+  "clv.fromHistory": "أخذ الاحتفاظ من السنة السابقة",
+  "clv.historyRetention": "الاحتفاظ المستخلص من السنة السابقة",
 } satisfies Record<StringKey, string>;

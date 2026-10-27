@@ -1441,6 +1441,13 @@ test.describe("export, undo and search", () => {
     await page.getByTestId("clv-retention").fill("120");
     await page.getByTestId("clv-run").click();
     await expect(page.getByTestId("clv-error")).toBeVisible();
+    // From history: nothing was won in the year before, so there is no retention and nothing is
+    // projected; what was won still counts.
+    await page.getByTestId("clv-history").check();
+    await page.getByTestId("clv-run").click();
+    await expect(page.getByTestId("clv-history-retention")).toContainText("—");
+    await expect(page.getByTestId("clv-projected")).toContainText("0.00");
+    await expect(page.getByTestId("clv-total")).toContainText("44,000.00");
   });
 
   test("exchange rates are listed, set, replaced and deleted, and a bad rate is refused", async ({

@@ -738,4 +738,6 @@ export default {
   "clv.projected": "Attendu, actualisé",
   "clv.total": "Gagné plus attendu",
   "clv.masked": "Masqué pour votre rôle",
+  "clv.fromHistory": "Prendre la rétention de l'année précédente",
+  "clv.historyRetention": "Rétention constatée l'année précédente",
 } satisfies Record<StringKey, string>;

@@ -50,7 +50,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/accounts/{pid}/clv",
         "analytics",
-        "CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60)",
+        "CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60); ?retention_from=history in place of retention_bps takes each currency's retention from the year before, held at 100% (CRM-R61)",
         Kind::Ok,
     ),
     (

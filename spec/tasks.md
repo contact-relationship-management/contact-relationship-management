@@ -1623,3 +1623,10 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** `ClvPanel` (percent inputs sent as basis points, a masked state, `as_of`), `accountClv` and `Clv` in `crm.ts`, 12 keys in 8 locales (machine drafts), the tour's `/accounts/{pid}/clv` (integers, half to even, the same refusals).
       - **Tests:** 1 Playwright test (won £88,000; margin 50% gives £44,000; three years at 80% retention give £85,888 and a total of £129,888; a retention above 100% is refused). Type check, lint, vitest (164) and the whole Playwright suite (136) pass.
       - **Not tested:** the masked state and a discount in the browser (the service tests cover both); the panel against the real service.
+- [x] CRM-T128 *(edge)* **Retention from an account's own history.** `retention_from=history` on the CLV read, in place of a retention the caller guesses; the rest of the roadmap item "CLV refinement" apart from conversion. (S)
+      **Done (2026-10-27, not released):** requirement CRM-R61 first, then:
+      - **Rules:** `analytics::retention_from_history` (integers, half to even, held at 100%, `None` with no year before); 1 unit test.
+      - **API:** `retention_from`, `projection.retention_history_bps`, `retention_bps` now nullable; the refusals; operation text; `schema.d.ts` regenerated.
+      - **UI:** a checkbox and the retention found per currency in `ClvPanel`, the tour's stub, 2 keys in 8 locales (machine drafts); the Playwright test extended.
+      - **Tests:** 1 request test (deals backdated by SQL: 75% found, 7,875 projected, a currency with no year before projects 0 with `null`, three refusals). **Checked by breaking it:** with the year-before window disabled the request test fails; restored.
+      - **Not tested:** a retention above 100% through the API (the unit test holds it at 100%); the browser against the real service.

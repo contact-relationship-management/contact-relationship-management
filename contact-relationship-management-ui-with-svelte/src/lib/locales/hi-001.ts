@@ -726,4 +726,6 @@ export default {
   "clv.projected": "अपेक्षित, छूट सहित",
   "clv.total": "जीता हुआ और अपेक्षित",
   "clv.masked": "आपकी भूमिका से छिपा",
+  "clv.fromHistory": "प्रतिधारण पिछले वर्ष से लें",
+  "clv.historyRetention": "पिछले वर्ष में मिला प्रतिधारण",
 } satisfies Record<StringKey, string>;

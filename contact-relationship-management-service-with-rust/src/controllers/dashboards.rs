@@ -159,7 +159,11 @@ pub(crate) struct Clv {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct ClvProjection {
     years: u32,
-    retention_bps: u32,
+    /// The retention asked for; `null` when it was read from history (`retention_from=history`).
+    retention_bps: Option<u32>,
+    /// With `retention_from=history`: each currency's retention from its own won deals, `null`
+    /// where nothing was won in the year before (CRM-R61).
+    retention_history_bps: Option<std::collections::BTreeMap<String, Option<u32>>>,
     discount_bps: u32,
     /// The revenue (or its margin, with `margin_bps`) of deals won in the 365 days to `as_of`.
     annual_base_minor: std::collections::BTreeMap<String, i64>,
@@ -180,6 +184,8 @@ struct ClvQuery {
     margin_bps: Option<u32>,
     /// With `years`: the share of a year's revenue expected again the next year, in basis points.
     retention_bps: Option<u32>,
+    /// `history`: take the retention from the account's own won deals instead of `retention_bps` (CRM-R61).
+    retention_from: Option<String>,
     /// With `retention_bps` and `years`: the yearly discount rate, in basis points (0 when absent).
     discount_bps: Option<u32>,
     /// With `retention_bps`: how many years to look ahead, 1 to 20.
@@ -301,20 +307,36 @@ fn clv_outlook(
             }
             margin_minor = Some(shown);
         }
-        if let (Some(retention), Some(years)) = (query.retention_bps, query.years) {
+        if let (true, Some(years)) = (
+            query.retention_bps.is_some() || query.retention_from.is_some(),
+            query.years,
+        ) {
             let discount = query.discount_bps.unwrap_or(0);
             let since = now - chrono::Duration::days(365);
-            let mut recent: std::collections::BTreeMap<String, i64> =
-                std::collections::BTreeMap::new();
-            for deal in won
-                .iter()
-                .filter(|d| d.closed_at.is_some_and(|at| at > since))
-            {
-                let slot = recent.entry(deal.currency.clone()).or_insert(0);
+            let before = since - chrono::Duration::days(365);
+            let (mut recent, mut prior): (
+                std::collections::BTreeMap<String, i64>,
+                std::collections::BTreeMap<String, i64>,
+            ) = (
+                std::collections::BTreeMap::new(),
+                std::collections::BTreeMap::new(),
+            );
+            for deal in won {
+                let Some(at) = deal.closed_at else { continue };
+                let year = if at > since {
+                    &mut recent
+                } else if at > before {
+                    &mut prior
+                } else {
+                    continue;
+                };
+                let slot = year.entry(deal.currency.clone()).or_insert(0);
                 *slot = slot
                     .checked_add(deal.amount_minor)
                     .ok_or_else(|| super::unprocessable("clv sum overflows"))?;
             }
+            let from_history = query.retention_from.is_some();
+            let mut history = std::collections::BTreeMap::new();
             let (mut base, mut ahead, mut total) = (
                 std::collections::BTreeMap::new(),
                 std::collections::BTreeMap::new(),
@@ -322,8 +344,24 @@ fn clv_outlook(
             );
             for currency in totals.keys() {
                 let annual = kept(recent.get(currency).copied().unwrap_or(0)).map_err(overflow)?;
-                let coming =
-                    analytics::projected(annual, retention, discount, years).map_err(overflow)?;
+                let retention = if from_history {
+                    let found = analytics::retention_from_history(
+                        recent.get(currency).copied().unwrap_or(0),
+                        prior.get(currency).copied().unwrap_or(0),
+                    )
+                    .map_err(overflow)?;
+                    history.insert(currency.clone(), found);
+                    found
+                } else {
+                    query.retention_bps
+                };
+                // Nothing to measure against means nothing is projected, never a guess.
+                let coming = match retention {
+                    Some(r) => {
+                        analytics::projected(annual, r, discount, years).map_err(overflow)?
+                    }
+                    None => 0,
+                };
                 let won_so_far = kept(totals[currency]).map_err(overflow)?;
                 base.insert(currency.clone(), annual);
                 total.insert(
@@ -336,7 +374,8 @@ fn clv_outlook(
             }
             projection = Some(ClvProjection {
                 years,
-                retention_bps: retention,
+                retention_bps: query.retention_bps,
+                retention_history_bps: from_history.then_some(history),
                 discount_bps: discount,
                 annual_base_minor: base,
                 projected_minor: ahead,
@@ -379,8 +418,20 @@ async fn account_clv(
     {
         problems.push_field("years", "from 1 to 20");
     }
-    if query.retention_bps.is_some() != query.years.is_some() {
-        problems.push_field("years", "retention_bps and years go together");
+    if let Some(source) = &query.retention_from {
+        if source != "history" {
+            problems.push_field("retention_from", "only history");
+        }
+        if query.retention_bps.is_some() {
+            problems.push_field("retention_from", "not with retention_bps");
+        }
+    }
+    let has_retention = query.retention_bps.is_some() || query.retention_from.is_some();
+    if has_retention != query.years.is_some() {
+        problems.push_field(
+            "years",
+            "retention_bps or retention_from, and years, go together",
+        );
     }
     if query.discount_bps.is_some() && query.years.is_none() {
         problems.push_field("discount_bps", "needs retention_bps and years");
