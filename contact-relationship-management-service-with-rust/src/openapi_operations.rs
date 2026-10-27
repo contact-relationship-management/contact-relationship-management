@@ -790,6 +790,27 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
     ),
     (
         "get",
+        "/api/quotas/splits/{pid}",
+        "insights",
+        "How a won deal is credited for quotas (CRM-R65): its shares, or none when it is credited wholly to its owner; 404 for an unknown deal. Admin only",
+        Kind::Ok,
+    ),
+    (
+        "put",
+        "/api/quotas/splits/{pid}",
+        "insights",
+        "Credit a deal to several workers, replacing any earlier split: from 1 to 8 workers named once, each from 1 to 10000 basis points, adding up to 10000, else 422 naming /shares; 404 for an unknown deal; a write, audited. Attainment shares the amount to the minor unit. Admin only",
+        Kind::Ok,
+    ),
+    (
+        "delete",
+        "/api/quotas/splits/{pid}",
+        "insights",
+        "Credit the deal wholly to its owner again; audited; 404 when it was not split. Admin only",
+        Kind::Ok,
+    ),
+    (
+        "get",
         "/api/quotas/attainment",
         "insights",
         "Each quota whose period contains ?at= (today when absent), optionally ?owner_ref=: the revenue of the worker's won deals closed in the period in the quota's currency (other currencies listed apart, never converted), attainment as a ratio, what remains, and the commission its plan pays band by band; a statement, not a payment. An audited read. Admin only",

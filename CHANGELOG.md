@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — splitting a won deal between workers (CRM-T132, CRM-R65)
+
+`GET`, `PUT` and `DELETE /api/quotas/splits/{pid}` (admin only): a deal is credited to several workers in shares of 10000, shared to the minor unit, and quota attainment follows.
+
 ### Added — a limit on how long a ticket may wait (CRM-T131, CRM-R64)
 
 An SLA policy may set `max_wait_minutes`; the sweep flags a `pending` ticket that has waited longer, once, and the tickets page marks it.

@@ -9,6 +9,9 @@
   import { ratioPercent } from "#lib/format.js";
   import {
     deleteCommissionPlan,
+    deleteDealSplit,
+    listDeals,
+    setDealSplit,
     deleteQuota,
     listCommissionPlans,
     listQuotas,
@@ -32,6 +35,29 @@
   let amount = $state("");
   let planPid = $state("");
   let error = $state<string | null>(null);
+
+  // Splitting a won deal between workers (CRM-R65): one "worker:percent" per line, adding up to 100.
+  let splitDeal = $state("");
+  let splitShares = $state("");
+  const wonDeals = resource(async () => (await listDeals()).filter((d) => d.won));
+  const wonList = $derived(wonDeals.value ?? []);
+
+  const saveSplit = () =>
+    run(async () => {
+      const shares = splitShares
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const at = line.lastIndexOf(":");
+          return {
+            owner_ref: line.slice(0, at).trim(),
+            // A percentage typed as 12.5 is 1250 basis points.
+            share_bps: Math.round(Number(line.slice(at + 1)) * 100),
+          };
+        });
+      await setDealSplit(splitDeal, shares);
+    });
 
   const plans = resource(listCommissionPlans);
   const quotas = resource(listQuotas);
@@ -197,6 +223,40 @@
     </tbody>
   </table>
 {/if}
+
+<h2>{t("quota.split")}</h2>
+<form
+  class="panel"
+  data-testid="split-form"
+  onsubmit={(e) => {
+    e.preventDefault();
+    void saveSplit();
+  }}
+>
+  <label>
+    {t("quota.splitDeal")}
+    <select bind:value={splitDeal} required data-testid="split-deal">
+      <option value="">—</option>
+      {#each wonList as deal (deal.pid)}
+        <option value={deal.pid}>{deal.name}</option>
+      {/each}
+    </select>
+  </label>
+  <label>
+    {t("quota.splitShares")}
+    <textarea bind:value={splitShares} rows="3" required data-testid="split-shares"></textarea>
+  </label>
+  <p class="muted">{t("quota.splitHint")}</p>
+  <button type="submit" data-testid="split-set">{t("quota.splitSet")}</button>
+  <button
+    type="button"
+    disabled={!splitDeal}
+    onclick={() => void run(() => deleteDealSplit(splitDeal))}
+    data-testid="split-remove"
+  >
+    {t("quota.splitRemove")}
+  </button>
+</form>
 
 <h2>{t("quota.plans")}</h2>
 <form

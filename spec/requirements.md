@@ -1056,7 +1056,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Attainment.** `GET /api/quotas/attainment?owner_ref=&at=` gives, for each quota whose period contains `at` (today when absent), the worker's **won revenue in the quota's currency** from deals closed in the period, the deals counted, `revenue ÷ quota` as a ratio with both numbers, what remains (zero once met), the commission and each band's revenue and commission. **Other currencies are listed and never converted or added in.**
 - **Exact.** Tier thresholds are whole minor units of the quota (rounded down) so the bands tile with no gap and no overlap; commission is integer arithmetic, rounded half to even once per band.
 - The UI has `/quotas` (admin) with the standing, the quotas and the plans.
-- Not built: territories; team and manager roll-ups; quotas by product or pipeline; accelerators that reach back to earlier revenue; clawbacks; splitting a deal between workers; a quota in one currency measured from another through the exchange rates.
+- Not built: territories; team and manager roll-ups; quotas by product or pipeline; accelerators that reach back to earlier revenue; clawbacks; splitting a deal between workers (built in CRM-R65); a quota in one currency measured from another through the exchange rates.
 
 ## CRM-R60 — Margin and a discounted look-ahead on customer lifetime value
 
@@ -1110,4 +1110,15 @@ recipient would get before anything is sent, and be certain every message carrie
 - Leaving `pending` (a status change or a customer reply, CRM-R63) clears `wait_limit_exceeded_at`.
 - The tickets page marks a flagged ticket "Waiting too long".
 - Not built: closing or escalating the ticket by itself; a limit in working time; a limit per account or per customer; setting it on an existing policy (a policy is created with it); a warning before the limit.
+
+## CRM-R65 — Splitting a won deal between workers
+
+*As a sales manager, I can credit a deal to more than one worker, so that quota attainment and commission follow who did the work and not only who owns the record.*
+
+- `PUT /api/quotas/splits/{pid}` (the deal's pid) with `shares`: from 1 to 8 workers (`worker:<id>`) named once, each from 1 to 10000 basis points, adding up to exactly 10000. It replaces any earlier split. Anything else is `422` naming `/shares`; an unknown or deleted deal is `404`. Audited.
+- `GET /api/quotas/splits/{pid}` gives the shares (none when the deal is credited wholly to its owner); `DELETE` removes the split (`404` when there is none) and the owner is credited again. All three are admin only, like the quotas (CRM-R59).
+- **Attainment** (`GET /api/quotas/attainment`): a won deal that is split is credited to each worker named, **not** to its owner unless they are named; one that is not split is credited to its owner as before. A worker's share of the amount is exact: each share gets the floor of its proportion and the leftover minor units go one each to the largest remainders, the earliest share first on a tie, so the shares always add up to the amount. Currencies are never converted. A split deal counts once in each named worker's `won_deals`.
+- Splits are not retroactive bookkeeping: they change today's reading of attainment for any period the deal closed in.
+- The `/quotas` page can split a won deal and remove the split.
+- Not built: splitting an open deal ahead of its close; splits by role or by percent of margin; shares that differ by line item; the deal record itself showing its split; clawing a share back; a split history beyond the audit trail.
 

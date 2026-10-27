@@ -1442,6 +1442,35 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("quota-error")).toBeVisible();
   });
 
+  test("a won deal can be split between workers, and the standing follows", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/quotas");
+    const ayo = page
+      .getByTestId("quota-standing-row")
+      .filter({ hasText: "owner-ayo" });
+    const bea = page
+      .getByTestId("quota-standing-row")
+      .filter({ hasText: "owner-bea" });
+    await expect(bea).toContainText("140,000.00");
+    await page
+      .getByTestId("split-deal")
+      .selectOption({ label: "Fleet telematics renewal" });
+    await page.getByTestId("split-shares").fill("owner-ayo:50\nowner-bea:50");
+    await page.getByTestId("split-set").click();
+    // £88,000 shared evenly: Bea keeps 52,000 + 44,000, Ayo gains 44,000 on 27,500.
+    await expect(bea).toContainText("96,000.00");
+    await expect(ayo).toContainText("71,500.00");
+    // Shares that do not add up to 100 are refused.
+    await page.getByTestId("split-shares").fill("owner-ayo:60\nowner-bea:50");
+    await page.getByTestId("split-set").click();
+    await expect(page.getByTestId("quota-error")).toBeVisible();
+    // Removing the split credits the owner again.
+    await page.getByTestId("split-remove").click();
+    await expect(bea).toContainText("140,000.00");
+  });
+
   test("an account shows its lifetime value, the margin on it and a discounted look-ahead", async ({
     page,
   }) => {

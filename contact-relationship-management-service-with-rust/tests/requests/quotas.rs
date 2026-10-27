@@ -298,3 +298,116 @@ async fn attainment_is_the_workers_won_revenue_in_the_period_and_the_commission_
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_split_deal_is_credited_in_shares_to_the_minor_unit_and_a_removed_split_gives_it_back() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        let (ada, grace) = (a_worker(), a_worker());
+        let win = |owner: String, name: &'static str, amount: i64| {
+            let (request, pipeline, stage) = (&request, pipeline.clone(), stages[2].clone());
+            async move {
+                let deal: Value = request
+                    .post("/api/deals")
+                    .json(
+                        &json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": amount,
+                                   "currency": "GBP", "owner_ref": owner }),
+                    )
+                    .await
+                    .json();
+                let pid = deal["pid"].as_str().unwrap().to_string();
+                request
+                    .post(&format!("/api/deals/{pid}/stage"))
+                    .json(&json!({ "stage_pid": stage }))
+                    .await
+                    .assert_status_ok();
+                pid
+            }
+        };
+        let halved = win(ada.clone(), "Halved", 100_001).await;
+        let handed = win(ada.clone(), "Handed over", 10_000).await;
+        win(grace.clone(), "Own", 7_000).await;
+
+        let today = chrono::Utc::now().date_naive();
+        let (from, to) = (
+            today - chrono::Duration::days(10),
+            today + chrono::Duration::days(80),
+        );
+        for owner in [&ada, &grace] {
+            request
+                .put("/api/quotas")
+                .json(
+                    &json!({ "owner_ref": owner, "period_from": from, "period_to": to,
+                               "currency": "GBP", "amount_minor": 100_000 }),
+                )
+                .await
+                .assert_status_ok();
+        }
+        let standing = || {
+            let request = &request;
+            let (ada, grace) = (ada.clone(), grace.clone());
+            async move {
+                let report: Value = request.get("/api/quotas/attainment").await.json();
+                let rows = report["rows"].as_array().unwrap().clone();
+                let of = |owner: &str| {
+                    let r = rows.iter().find(|r| r["owner_ref"] == owner).unwrap();
+                    (r["revenue_minor"].as_i64().unwrap(), r["won_deals"].as_i64().unwrap())
+                };
+                (of(&ada), of(&grace))
+            }
+        };
+        assert_eq!(standing().await, ((110_001, 2), (7_000, 1)));
+
+        // Halved: the odd minor unit goes to the earlier share. Handed over: wholly to Grace.
+        let url = |deal: &str| format!("/api/quotas/splits/{deal}");
+        let set = request
+            .put(&url(&halved))
+            .json(&json!({ "shares": [
+                { "owner_ref": ada, "share_bps": 5_000 },
+                { "owner_ref": grace, "share_bps": 5_000 } ] }))
+            .await;
+        set.assert_status_ok();
+        request
+            .put(&url(&handed))
+            .json(&json!({ "shares": [{ "owner_ref": grace, "share_bps": 10_000 }] }))
+            .await
+            .assert_status_ok();
+        assert_eq!(standing().await, ((50_001, 1), (50_000 + 10_000 + 7_000, 3)));
+        let read: Value = request.get(&url(&halved)).await.json();
+        assert_eq!(read["shares"].as_array().unwrap().len(), 2, "{read}");
+
+        // Refused, naming /shares; an unknown deal is 404; nothing changed.
+        for shares in [
+            json!([]),
+            json!([{ "owner_ref": ada, "share_bps": 9_000 }]),
+            json!([{ "owner_ref": ada, "share_bps": 5_000 }, { "owner_ref": ada, "share_bps": 5_000 }]),
+            json!([{ "owner_ref": "contact:x", "share_bps": 10_000 }]),
+            json!([{ "owner_ref": ada, "share_bps": 0 }, { "owner_ref": grace, "share_bps": 10_000 }]),
+        ] {
+            request
+                .put(&url(&halved))
+                .json(&json!({ "shares": shares }))
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+        request
+            .put(&url(&uuid::Uuid::new_v4().to_string()))
+            .json(&json!({ "shares": [{ "owner_ref": ada, "share_bps": 10_000 }] }))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+        assert_eq!(standing().await, ((50_001, 1), (67_000, 3)));
+
+        // Removing the splits credits the owner again; a second removal is 404.
+        for deal in [&halved, &handed] {
+            request.delete(&url(deal)).await.assert_status_ok();
+        }
+        request
+            .delete(&url(&halved))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+        assert_eq!(standing().await, ((110_001, 2), (7_000, 1)));
+    })
+    .await;
+}

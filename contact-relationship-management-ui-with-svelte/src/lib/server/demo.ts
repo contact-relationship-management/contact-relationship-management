@@ -175,6 +175,8 @@ interface State {
   /** The tour's commission plans and quotas (CRM-R59). */
   plans: CommissionPlan[];
   quotas: Quota[];
+  /** Deals credited to several workers, by deal (CRM-R65). */
+  splits: Record<string, { owner_ref: string; share_bps: number }[]>;
   /** What the public help centre has counted (CRM-R57). */
   kb: {
     views: Record<string, number>;
@@ -926,6 +928,7 @@ function build(): State {
         set_by: "worker:demo",
       },
     ],
+    splits: {},
     quotas: [
       {
         pid: "quota-1",
@@ -3404,6 +3407,60 @@ function accountClv(accountPid: string, query: URLSearchParams) {
   });
 }
 
+/** Share an amount by basis points to the minor unit, leftovers to the largest remainders (CRM-R65). */
+function splitAmount(amount: number, shares: number[]): number[] {
+  const exact = shares.map((s) => BigInt(amount) * BigInt(s));
+  const parts = exact.map((e) => e / 10_000n);
+  let left = BigInt(amount) - parts.reduce((a, b) => a + b, 0n);
+  const order = shares
+    .map((_, i) => i)
+    .sort((a, b) => {
+      const ra = exact[a]! % 10_000n;
+      const rb = exact[b]! % 10_000n;
+      return ra === rb ? a - b : ra < rb ? 1 : -1;
+    });
+  for (const i of order) {
+    if (left <= 0n) break;
+    parts[i]! += 1n;
+    left -= 1n;
+  }
+  return parts.map(Number);
+}
+
+/** The tour's deal splits (CRM-R65). */
+function dealSplits(
+  method: string,
+  dealPid: string | undefined,
+  body: unknown,
+) {
+  const deal = state.deals.find((d) => d.pid === dealPid);
+  if (!deal) return problem(404, "deal not found");
+  if (method === "GET")
+    return ok({ deal_pid: deal.pid, shares: state.splits[deal.pid] ?? [] });
+  if (method === "DELETE") {
+    if (!state.splits[deal.pid]) return problem(404, "that deal is not split");
+    delete state.splits[deal.pid];
+    return ok({ pid: deal.pid });
+  }
+  const shares = (
+    (body ?? {}) as { shares?: { owner_ref: string; share_bps: number }[] }
+  ).shares;
+  if (
+    !shares ||
+    shares.length < 1 ||
+    shares.length > 8 ||
+    new Set(shares.map((s) => s.owner_ref)).size !== shares.length ||
+    shares.some((s) => !(s.share_bps >= 1 && s.share_bps <= 10_000)) ||
+    shares.reduce((a, s) => a + s.share_bps, 0) !== 10_000
+  )
+    return problem(
+      422,
+      "/shares: from 1 to 8 workers named once, adding up to 10000",
+    );
+  state.splits[deal.pid] = shares;
+  return ok({ deal_pid: deal.pid, shares });
+}
+
 /** The tour's quotas (CRM-R59) and their attainment, computed from the tour's won deals. */
 function quotaRoutes(
   method: string,
@@ -3412,6 +3469,7 @@ function quotaRoutes(
   body: unknown,
 ) {
   const [, id] = seg;
+  if (id === "splits") return dealSplits(method, seg[2], body);
   if (method === "GET" && id === "attainment") {
     const at = query.get("at") ?? new Date().toISOString().slice(0, 10);
     const rows: QuotaAttainment[] = state.quotas
@@ -3421,19 +3479,35 @@ function quotaRoutes(
           !query.get("owner_ref") || q.owner_ref === query.get("owner_ref"),
       )
       .map((q) => {
-        const won = state.deals.filter(
-          (d) =>
-            d.won &&
-            d.owner_ref === q.owner_ref &&
-            d.closed_at &&
-            d.closed_at.slice(0, 10) >= q.period_from &&
-            d.closed_at.slice(0, 10) <= q.period_to,
-        );
+        // What each won deal credits this worker: all of it, or their share of a split (CRM-R65).
+        const won = state.deals
+          .filter(
+            (d) =>
+              d.won &&
+              d.closed_at &&
+              d.closed_at.slice(0, 10) >= q.period_from &&
+              d.closed_at.slice(0, 10) <= q.period_to,
+          )
+          .flatMap((d) => {
+            const shares = state.splits[d.pid];
+            if (!shares) {
+              return d.owner_ref === q.owner_ref
+                ? [{ currency: d.currency, credited: d.amount_minor ?? 0 }]
+                : [];
+            }
+            const at = shares.findIndex((s) => s.owner_ref === q.owner_ref);
+            if (at < 0) return [];
+            const parts = splitAmount(
+              d.amount_minor ?? 0,
+              shares.map((s) => s.share_bps),
+            );
+            return [{ currency: d.currency, credited: parts[at]! }];
+          });
         const mine = won.filter((d) => d.currency === q.currency);
-        const revenue = mine.reduce((s, d) => s + (d.amount_minor ?? 0), 0);
+        const revenue = mine.reduce((s, d) => s + d.credited, 0);
         const other: Record<string, number> = {};
         for (const d of won.filter((d) => d.currency !== q.currency))
-          other[d.currency] = (other[d.currency] ?? 0) + (d.amount_minor ?? 0);
+          other[d.currency] = (other[d.currency] ?? 0) + d.credited;
         const plan = state.plans.find((p) => p.pid === q.plan_pid) ?? null;
         const bands = plan
           ? commissionBands(q.amount_minor, revenue, plan.tiers)

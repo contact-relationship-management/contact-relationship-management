@@ -731,4 +731,11 @@ export default {
   "clv.inOne": "एक मुद्रा में जोड़ा गया",
   "ticket.replied": "ग्राहक ने उत्तर दिया",
   "ticket.waitExceeded": "बहुत देर से प्रतीक्षा में",
+  "quota.split": "जीती हुई डील बाँटें",
+  "quota.splitDeal": "डील",
+  "quota.splitShares": "कर्मचारी और हिस्से",
+  "quota.splitHint":
+    "हर पंक्ति में एक कर्मचारी और प्रतिशत, जैसे worker:ada:60; कुल 100 होना चाहिए। राशि सबसे छोटी इकाई तक बाँटी जाती है।",
+  "quota.splitSet": "बाँटें",
+  "quota.splitRemove": "केवल स्वामी को श्रेय दें",
 } satisfies Record<StringKey, string>;

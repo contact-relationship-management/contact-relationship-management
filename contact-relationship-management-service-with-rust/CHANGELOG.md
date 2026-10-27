@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — deal splits for quotas (CRM-T132, CRM-R65)
+
+Migration `000044` (`deal_splits`); `rules::quota::split`; the three routes; `credited_deals` behind attainment; 1 unit test, 1 request test and the enforcement test extended. Also two clippy fixes in `dashboards.rs`.
+
 ### Added — a wait limit on tickets (CRM-T131, CRM-R64)
 
 Migration `000043` (`sla_policies.max_wait_minutes`, `tickets.wait_limit_exceeded_at`); `sweep_waiting`; `new_wait_limits_exceeded` in the sweep answer; the `ticket_wait_limit_exceeded` event; 1 request test.

@@ -1941,6 +1941,24 @@ async fn quotas_and_commission_plans_are_for_admin_and_service_callers_only() {
                 "service {method} {path}"
             );
         }
+        // How a deal is split is what people are paid too (CRM-R65): the service gets past the
+        // policy to a 404 for a deal that does not exist, the others are refused first.
+        let splits = "/api/quotas/splits/00000000-0000-0000-0000-000000000001";
+        assert_eq!(
+            call("GET", splits, reader.clone()).await,
+            403,
+            "reader splits"
+        );
+        assert_eq!(
+            call("GET", splits, writer.clone()).await,
+            403,
+            "writer splits"
+        );
+        assert_eq!(
+            call("GET", splits, service.clone()).await,
+            404,
+            "service splits"
+        );
         request
             .get("/api/quotas")
             .await

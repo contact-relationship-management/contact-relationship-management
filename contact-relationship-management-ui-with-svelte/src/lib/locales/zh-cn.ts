@@ -706,4 +706,11 @@ export default {
   "clv.inOne": "以一种货币相加",
   "ticket.replied": "客户已回复",
   "ticket.waitExceeded": "等待过久",
+  "quota.split": "拆分已赢得的交易",
+  "quota.splitDeal": "交易",
+  "quota.splitShares": "人员与份额",
+  "quota.splitHint":
+    "每行一位人员和一个百分比，如 worker:ada:60；合计为 100。金额精确分到最小单位。",
+  "quota.splitSet": "拆分",
+  "quota.splitRemove": "仅记给所有者",
 } satisfies Record<StringKey, string>;

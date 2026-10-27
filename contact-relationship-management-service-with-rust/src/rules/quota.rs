@@ -131,6 +131,35 @@ pub fn commission(bands: &[Band]) -> i64 {
         .fold(0_i64, |sum, b| sum.saturating_add(b.commission_minor))
 }
 
+/// Share `amount_minor` by `shares_bps` (which add up to 10000), to the minor unit (CRM-R65): each
+/// share gets the floor of its proportion and the leftover minor units go one each to the largest
+/// remainders, the earliest share first on a tie. The parts always add up to the amount.
+#[must_use]
+pub fn split(amount_minor: i64, shares_bps: &[u32]) -> Vec<i64> {
+    let amount = i128::from(amount_minor);
+    let exact: Vec<i128> = shares_bps.iter().map(|s| amount * i128::from(*s)).collect();
+    let mut parts: Vec<i128> = exact.iter().map(|e| e.div_euclid(10_000)).collect();
+    let mut left = amount - parts.iter().sum::<i128>();
+    let mut order: Vec<usize> = (0..shares_bps.len()).collect();
+    order.sort_by(|a, b| {
+        exact[*b]
+            .rem_euclid(10_000)
+            .cmp(&exact[*a].rem_euclid(10_000))
+            .then(a.cmp(b))
+    });
+    for i in order {
+        if left <= 0 {
+            break;
+        }
+        parts[i] += 1;
+        left -= 1;
+    }
+    parts
+        .into_iter()
+        .map(|p| i64::try_from(p).unwrap_or(i64::MAX))
+        .collect()
+}
+
 /// The share of a quota reached, with its numerator and denominator (`null` value on a zero quota).
 #[must_use]
 pub fn attainment(quota_minor: i64, revenue_minor: i64) -> Ratio {
@@ -146,6 +175,19 @@ pub fn remaining(quota_minor: i64, revenue_minor: i64) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A split adds up to the amount, leftovers going to the largest remainders, earliest first.
+    #[test]
+    fn a_split_adds_up_to_the_amount() {
+        assert_eq!(split(10_000, &[6_000, 4_000]), vec![6_000, 4_000]);
+        assert_eq!(split(100, &[3_333, 3_333, 3_334]), vec![33, 33, 34]);
+        assert_eq!(split(1, &[5_000, 5_000]), vec![1, 0]);
+        assert_eq!(split(2, &[3_333, 3_333, 3_334]), vec![1, 0, 1]);
+        for amount in [0, 1, 7, 999, 123_457] {
+            let parts = split(amount, &[1_234, 2_345, 6_421]);
+            assert_eq!(parts.iter().sum::<i64>(), amount);
+        }
+    }
 
     fn plan(tiers: &[(u32, u32)]) -> Vec<Tier> {
         tiers

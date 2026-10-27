@@ -730,4 +730,11 @@ export default {
   "clv.inOne": "مجموعة بعملة واحدة",
   "ticket.replied": "ردّ العميل",
   "ticket.waitExceeded": "انتظار طويل جدًا",
+  "quota.split": "تقسيم صفقة مكسوبة",
+  "quota.splitDeal": "الصفقة",
+  "quota.splitShares": "العاملون والحصص",
+  "quota.splitHint":
+    "عامل ونسبة مئوية في كل سطر، مثل worker:ada:60؛ يجب أن يبلغ المجموع 100. يُقسَّم المبلغ حتى أصغر وحدة.",
+  "quota.splitSet": "تقسيم",
+  "quota.splitRemove": "نسب الصفقة للمالك وحده",
 } satisfies Record<StringKey, string>;

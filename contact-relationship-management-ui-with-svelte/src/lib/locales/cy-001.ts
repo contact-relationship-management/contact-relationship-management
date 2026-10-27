@@ -736,4 +736,11 @@ export default {
   "clv.inOne": "Wedi'u hadio mewn un arian",
   "ticket.replied": "Atebodd y cwsmer",
   "ticket.waitExceeded": "Aros yn rhy hir",
+  "quota.split": "Hollti bargen a enillwyd",
+  "quota.splitDeal": "Bargen",
+  "quota.splitShares": "Gweithwyr a chyfrannau",
+  "quota.splitHint":
+    "Un gweithiwr a chanran ar bob llinell, fel worker:ada:60; mae'r cyfrannau'n gwneud 100. Rhennir y swm i'r uned leiaf.",
+  "quota.splitSet": "Hollti",
+  "quota.splitRemove": "Credydu'r perchennog yn unig",
 } satisfies Record<StringKey, string>;

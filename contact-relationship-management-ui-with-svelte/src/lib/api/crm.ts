@@ -1959,6 +1959,25 @@ export function setQuota(input: {
   return api("/quotas", { method: "PUT", body: input });
 }
 
+/** One worker's share of a deal, in basis points (CRM-R65). */
+export interface DealShare {
+  owner_ref: string;
+  share_bps: number;
+}
+
+/** Credit a deal to several workers; the shares add up to 10000. */
+export function setDealSplit(
+  dealPid: string,
+  shares: DealShare[],
+): Promise<{ deal_pid: string; shares: DealShare[] }> {
+  return api(`/quotas/splits/${dealPid}`, { method: "PUT", body: { shares } });
+}
+
+/** Credit the deal wholly to its owner again. */
+export function deleteDealSplit(dealPid: string): Promise<{ pid: string }> {
+  return api(`/quotas/splits/${dealPid}`, { method: "DELETE" });
+}
+
 /** Remove a quota. */
 export function deleteQuota(pid: string): Promise<{ pid: string }> {
   return api(`/quotas/${pid}`, { method: "DELETE" });

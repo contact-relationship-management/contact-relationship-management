@@ -195,6 +195,9 @@ fn generated() -> serde_json::Map<String, Value> {
         quotas::QuotaPayload,
         quotas::QuotaView,
         quotas::Attainment,
+        quotas::Share,
+        quotas::SplitPayload,
+        quotas::SplitView,
         quotas::AttainmentReport,
         crate::rules::quota::Tier,
         crate::rules::quota::Band,
@@ -339,6 +342,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/fx-rates") => "FxRatePayload",
         ("put", "/api/commission-plans") => "CommissionPlanPayload",
         ("put", "/api/quotas") => "QuotaPayload",
+        ("put", "/api/quotas/splits/{pid}") => "DealSplitPayload",
         (
             "put",
             "/api/contacts/{pid}/tags"
@@ -399,6 +403,7 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/fx-rates") => "FxRate",
         ("put", "/api/commission-plans") => "CommissionPlan",
         ("put", "/api/quotas") => "Quota",
+        ("get" | "put", "/api/quotas/splits/{pid}") => "DealSplit",
         ("get", "/api/quotas/attainment") => "QuotaAttainmentReport",
         ("put", "/api/sla-policies/{pid}/calendar") => "SlaPolicy",
         (

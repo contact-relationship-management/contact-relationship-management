@@ -729,4 +729,11 @@ export default {
   "clv.inOne": "Added in one currency",
   "ticket.replied": "Customer replied",
   "ticket.waitExceeded": "Waiting too long",
+  "quota.split": "Split a won deal",
+  "quota.splitDeal": "Deal",
+  "quota.splitShares": "Workers and shares",
+  "quota.splitHint":
+    "One worker and a percentage per line, such as worker:ada:60; the shares add up to 100. The amount is shared to the minor unit.",
+  "quota.splitSet": "Split",
+  "quota.splitRemove": "Credit the owner alone",
 } as const;

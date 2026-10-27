@@ -745,4 +745,11 @@ export default {
   "clv.inOne": "In einer Währung addiert",
   "ticket.replied": "Kunde hat geantwortet",
   "ticket.waitExceeded": "Wartet zu lange",
+  "quota.split": "Gewonnenen Deal aufteilen",
+  "quota.splitDeal": "Deal",
+  "quota.splitShares": "Mitarbeitende und Anteile",
+  "quota.splitHint":
+    "Pro Zeile eine Person und ein Prozentsatz, etwa worker:ada:60; zusammen 100. Der Betrag wird bis auf die kleinste Einheit verteilt.",
+  "quota.splitSet": "Aufteilen",
+  "quota.splitRemove": "Nur dem Eigentümer gutschreiben",
 } satisfies Record<StringKey, string>;

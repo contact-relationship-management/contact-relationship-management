@@ -180,6 +180,7 @@ pub(crate) struct ClvProjection {
 
 /// The look-ahead in one currency: each currency's figure converted once, then added.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
+#[allow(clippy::struct_field_names)] // the members are named as the unconverted ones are
 pub(crate) struct ClvProjectionConverted {
     /// Minor units of `convert_to`.
     annual_base_minor: i64,
@@ -409,7 +410,7 @@ async fn convert_outlook(
     target: &str,
     rate_date: Option<chrono::NaiveDate>,
     margin: Option<&std::collections::BTreeMap<String, i64>>,
-    mut projection: Option<&mut ClvProjection>,
+    projection: Option<&mut ClvProjection>,
 ) -> Result<Option<i64>> {
     let mut sums = Vec::new();
     let shown = projection.as_deref();
@@ -433,7 +434,7 @@ async fn convert_outlook(
             .find(|row| row.0 == group)
             .map_or(0, |row| row.1)
     };
-    if let Some(p) = projection.as_deref_mut() {
+    if let Some(p) = projection {
         p.converted = Some(ClvProjectionConverted {
             annual_base_minor: of("base"),
             projected_minor: of("projected"),

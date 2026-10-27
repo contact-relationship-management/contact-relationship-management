@@ -414,6 +414,176 @@ async fn remove_quota(
     })
 }
 
+// ----------------------------------------------------------------- splits
+
+/// Most workers a deal may be split between.
+const MAX_SHARES: usize = 8;
+
+/// One worker's share of a deal.
+#[derive(Debug, Clone, Deserialize, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "DealShare")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Share {
+    /// The worker, `worker:<id>`.
+    owner_ref: String,
+    /// Their share in basis points, 1 to 10000.
+    share_bps: u32,
+}
+
+/// `PUT /api/quotas/splits/{pid}` body.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[schemars(rename = "DealSplitPayload")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct SplitPayload {
+    /// Who is credited with the deal when it is won; the shares add up to 10000 and name each
+    /// worker once. At most 8.
+    shares: Vec<Share>,
+}
+
+/// How a deal is credited for quotas.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "DealSplit")]
+pub(crate) struct SplitView {
+    #[schemars(with = "uuid::Uuid")]
+    deal_pid: String,
+    /// Empty when the deal is credited wholly to its owner.
+    shares: Vec<Share>,
+}
+
+async fn shares_of<C: ConnectionTrait>(db: &C, deal: Uuid) -> Result<Vec<Share>> {
+    db.query_all_raw(stmt(
+        "SELECT owner_ref, share_bps FROM deal_splits WHERE deal_pid = $1 ORDER BY id",
+        [deal.into()],
+    ))
+    .await?
+    .iter()
+    .map(|r| {
+        Ok(Share {
+            owner_ref: r.try_get("", "owner_ref")?,
+            share_bps: u32::try_from(r.try_get::<i32>("", "share_bps")?).unwrap_or(0),
+        })
+    })
+    .collect()
+}
+
+async fn deal_exists<C: ConnectionTrait>(db: &C, deal: Uuid) -> Result<()> {
+    db.query_one_raw(stmt(
+        "SELECT 1 FROM deals WHERE pid = $1 AND deleted_at IS NULL",
+        [deal.into()],
+    ))
+    .await?
+    .map(|_| ())
+    .ok_or(Error::NotFound)
+}
+
+/// `GET /api/quotas/splits/{pid}` — how a deal is credited. `404` for an unknown deal.
+#[debug_handler]
+async fn get_split(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
+    deal_exists(&ctx.db, pid).await?;
+    format::json(SplitView {
+        deal_pid: pid.to_string(),
+        shares: shares_of(&ctx.db, pid).await?,
+    })
+}
+
+/// `PUT /api/quotas/splits/{pid}` — credit a deal to several workers, replacing any earlier
+/// split; audited (CRM-R65).
+#[debug_handler]
+async fn set_split(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+    Json(payload): Json<SplitPayload>,
+) -> Result<Response> {
+    let mut problems = Problems::new();
+    if payload.shares.is_empty() || payload.shares.len() > MAX_SHARES {
+        problems.push_field("shares", format!("from 1 to {MAX_SHARES} workers"));
+    }
+    for share in &payload.shares {
+        problems.require_ref("shares", entity_ref::EntityType::Worker, &share.owner_ref);
+        if !(1..=10_000).contains(&share.share_bps) {
+            problems.push_field("shares", "a share is from 1 to 10000 basis points");
+        }
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    if !payload
+        .shares
+        .iter()
+        .all(|s| seen.insert(s.owner_ref.as_str()))
+    {
+        problems.push_field("shares", "names a worker twice");
+    }
+    if payload
+        .shares
+        .iter()
+        .map(|s| u64::from(s.share_bps))
+        .sum::<u64>()
+        != 10_000
+    {
+        problems.push_field("shares", "the shares add up to 10000");
+    }
+    problems.finish()?;
+    let who = owner_of(&caller)?;
+    let txn = ctx.db.begin().await?;
+    deal_exists(&txn, pid).await?;
+    txn.execute_raw(stmt(
+        "DELETE FROM deal_splits WHERE deal_pid = $1",
+        [pid.into()],
+    ))
+    .await?;
+    for share in &payload.shares {
+        txn.execute_raw(stmt(
+            "INSERT INTO deal_splits (deal_pid, owner_ref, share_bps, set_by) VALUES ($1, $2, $3, $4)",
+            [
+                pid.into(),
+                share.owner_ref.as_str().into(),
+                i32::try_from(share.share_bps).unwrap_or(0).into(),
+                who.as_str().into(),
+            ],
+        ))
+        .await?;
+    }
+    Audit::record(
+        &txn,
+        "deal_split",
+        pid,
+        "set",
+        caller.actor(),
+        Some(serde_json::json!({ "shares": payload.shares })),
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(SplitView {
+        deal_pid: pid.to_string(),
+        shares: payload.shares,
+    })
+}
+
+/// `DELETE /api/quotas/splits/{pid}` — credit the deal wholly to its owner again; audited.
+/// `404` when it was not split.
+#[debug_handler]
+async fn remove_split(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+) -> Result<Response> {
+    let txn = ctx.db.begin().await?;
+    let gone = txn
+        .execute_raw(stmt(
+            "DELETE FROM deal_splits WHERE deal_pid = $1",
+            [pid.into()],
+        ))
+        .await?;
+    if gone.rows_affected() == 0 {
+        return Err(Error::NotFound);
+    }
+    Audit::record(&txn, "deal_split", pid, "deleted", caller.actor(), None).await?;
+    txn.commit().await?;
+    format::json(PidRef {
+        pid: pid.to_string(),
+    })
+}
+
 // ------------------------------------------------------------- attainment
 
 /// What `GET /api/quotas/attainment` may be asked.
@@ -465,6 +635,48 @@ pub(crate) struct AttainmentReport {
     note: &'static str,
 }
 
+/// The won, live deals closed in the period that are credited to `owner`, as `(currency, amount
+/// credited)`: the whole amount for a deal they own that is not split, and their share of one that
+/// is (CRM-R65).
+async fn credited_deals<C: ConnectionTrait>(
+    db: &C,
+    owner: &str,
+    from: NaiveDate,
+    to: NaiveDate,
+) -> Result<Vec<(String, i64)>> {
+    let deals = db
+        .query_all_raw(stmt(
+            "SELECT d.pid, trim(d.currency) AS currency, d.amount_minor, d.owner_ref \
+             FROM deals d \
+             WHERE d.won AND d.deleted_at IS NULL AND d.closed_at IS NOT NULL \
+               AND d.closed_at::date BETWEEN $2 AND $3 \
+               AND (d.owner_ref = $1 OR EXISTS \
+                    (SELECT 1 FROM deal_splits s WHERE s.deal_pid = d.pid AND s.owner_ref = $1))",
+            [owner.into(), from.into(), to.into()],
+        ))
+        .await?;
+    let mut credited = Vec::new();
+    for deal in &deals {
+        let pid: Uuid = deal.try_get("", "pid")?;
+        let amount: i64 = deal.try_get("", "amount_minor")?;
+        let shares = shares_of(db, pid).await?;
+        let mine = if shares.is_empty() {
+            (deal.try_get::<Option<String>>("", "owner_ref")?.as_deref() == Some(owner))
+                .then_some(amount)
+        } else {
+            let bps: Vec<u32> = shares.iter().map(|s| s.share_bps).collect();
+            shares
+                .iter()
+                .position(|s| s.owner_ref == owner)
+                .map(|i| quota::split(amount, &bps)[i])
+        };
+        if let Some(part) = mine {
+            credited.push((deal.try_get("", "currency")?, part));
+        }
+    }
+    Ok(credited)
+}
+
 /// `GET /api/quotas/attainment?owner_ref=&at=` — each quota whose period contains `at`, with the
 /// revenue the worker's won deals reached in it and the commission its plan pays. An audited read.
 #[debug_handler]
@@ -493,28 +705,14 @@ async fn attainment(
             (q.try_get("", "period_from")?, q.try_get("", "period_to")?);
         let currency = q.try_get::<String>("", "currency")?.trim().to_string();
         let quota_minor: i64 = q.try_get("", "amount_minor")?;
-        let won = ctx
-            .db
-            .query_all_raw(stmt(
-                "SELECT trim(currency) AS currency, COALESCE(SUM(amount_minor), 0)::bigint AS total, \
-                        count(*)::bigint AS n \
-                 FROM deals WHERE won AND deleted_at IS NULL AND owner_ref = $1 \
-                   AND closed_at IS NOT NULL AND closed_at::date BETWEEN $2 AND $3 \
-                 GROUP BY trim(currency)",
-                [owner.as_str().into(), from.into(), to.into()],
-            ))
-            .await?;
         let (mut revenue, mut deals, mut other) = (0_i64, 0_i64, BTreeMap::new());
-        for w in &won {
-            let (c, total, n): (String, i64, i64) = (
-                w.try_get("", "currency")?,
-                w.try_get("", "total")?,
-                w.try_get("", "n")?,
-            );
+        for (c, credited) in credited_deals(&ctx.db, &owner, from, to).await? {
             if c == currency {
-                (revenue, deals) = (total, n);
+                revenue = revenue.saturating_add(credited);
+                deals += 1;
             } else {
-                other.insert(c, total);
+                let slot: &mut i64 = other.entry(c).or_default();
+                *slot = slot.saturating_add(credited);
             }
         }
         let tiers: Option<Vec<Tier>> = q
@@ -572,5 +770,8 @@ pub fn routes() -> Routes {
         .add("/quotas", get(list_quotas))
         .add("/quotas", put(set_quota))
         .add("/quotas/attainment", get(attainment))
+        .add("/quotas/splits/{pid}", get(get_split))
+        .add("/quotas/splits/{pid}", put(set_split))
+        .add("/quotas/splits/{pid}", delete(remove_split))
         .add("/quotas/{pid}", delete(remove_quota))
 }
