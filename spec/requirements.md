@@ -1009,7 +1009,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - Each ticket keeps `first_response_paused_seconds` and `resolution_paused_seconds`. Deadlines are always the open time plus the target plus that waiting, so an audited **priority change** (which derives them again from the open time) keeps the waiting already counted. Waiting that is still in progress is counted when the ticket resumes.
 - Breach facts already stored (`first_response_breached`, `resolution_breached`) stay as they are: a breach is not cleared by pausing.
 - The tickets page marks a waiting ticket "SLA clock stopped" where it would otherwise show nothing.
-- Not built: pausing on other states; a customer reply resuming the clock (built in CRM-R63); a limit on how long a ticket may wait (a ticket left `pending` never breaches); showing the time the clock has been stopped; re-deriving the deadlines when a policy or a calendar changes.
+- Not built: pausing on other states; a customer reply resuming the clock (built in CRM-R63); a limit on how long a ticket may wait (built in CRM-R64; a ticket left `pending` never breaches an SLA deadline); showing the time the clock has been stopped; re-deriving the deadlines when a policy or a calendar changes.
 
 ## CRM-R56 — Time-decay and position-based attribution
 
@@ -1099,4 +1099,15 @@ recipient would get before anything is sent, and be certain every message carrie
 - The audit entry is the ordinary status change with `via: customer_reply` beside `from`; the same event is emitted.
 - The tickets page shows "Customer replied" on a waiting ticket.
 - Not built: recognising a reply from an inbound e-mail or a channel (the caller says so); reopening a resolved ticket on a reply; a limit on how long a ticket may wait.
+
+## CRM-R64 — A limit on how long a ticket may wait for the customer
+
+*As a support lead, I want to be told when a ticket has waited too long for the customer, so that a ticket that is stopped on the clock is not forgotten.*
+
+- `POST /api/sla-policies` takes an optional `max_wait_minutes` (above zero, otherwise `422` naming the member): the most a ticket of that priority may spend in `pending`. Left out, there is no limit.
+- `POST /api/sla/sweep` finds each `pending` ticket whose policy has a limit and which has waited longer than it (elapsed minutes since `paused_at`, not working time). It stores the moment in `wait_limit_exceeded_at`, emits `ticket_wait_limit_exceeded` **once**, and counts them in `new_wait_limits_exceeded`. A ticket already flagged, one without a limit and one inside it are not touched.
+- **Nothing else changes**: the ticket stays `pending`, its clock stays stopped and no SLA breach is recorded; the flag is a fact for people to act on, not a closure.
+- Leaving `pending` (a status change or a customer reply, CRM-R63) clears `wait_limit_exceeded_at`.
+- The tickets page marks a flagged ticket "Waiting too long".
+- Not built: closing or escalating the ticket by itself; a limit in working time; a limit per account or per customer; setting it on an existing policy (a policy is created with it); a warning before the limit.
 

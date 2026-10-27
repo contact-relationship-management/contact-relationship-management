@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — "Waiting too long" on the tickets page (CRM-T131)
+
+`wait_limit_exceeded_at` on `Ticket`, the mark beside the SLA state, the tour's flagged ticket, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; one Playwright test.
+
 ### Added — "Customer replied" on the tickets page (CRM-T130)
 
 `ticketCustomerReply`, a button on a waiting ticket, the tour's route, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; the Playwright test extended.

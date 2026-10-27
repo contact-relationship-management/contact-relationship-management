@@ -742,4 +742,5 @@ export default {
   "clv.historyRetention": "Rétention constatée l'année précédente",
   "clv.inOne": "Additionné dans une seule devise",
   "ticket.replied": "Le client a répondu",
+  "ticket.waitExceeded": "Attend trop longtemps",
 } satisfies Record<StringKey, string>;

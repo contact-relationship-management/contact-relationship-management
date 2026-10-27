@@ -255,3 +255,89 @@ async fn a_customer_reply_resumes_a_waiting_ticket_and_leaves_the_others_alone()
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_ticket_left_waiting_past_its_policys_limit_is_flagged_once_and_cleared_on_leaving() {
+    request::<App, _, _>(|request, ctx| async move {
+        // `normal` allows 60 minutes of waiting; `high` has no limit.
+        for (priority, limit) in [("normal", json!(60)), ("high", Value::Null)] {
+            request
+                .post("/api/sla-policies")
+                .json(&json!({ "priority": priority, "first_response_minutes": 60,
+                               "resolution_minutes": 240, "max_wait_minutes": limit }))
+                .await
+                .assert_status_ok();
+        }
+        request
+            .post("/api/sla-policies")
+            .json(&json!({ "priority": "low", "first_response_minutes": 60,
+                           "resolution_minutes": 240, "max_wait_minutes": 0 }))
+            .await
+            .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+
+        let open = |priority: &'static str| {
+            let request = &request;
+            async move {
+                let made: Value = request
+                    .post("/api/tickets")
+                    .json(&json!({ "title": priority, "priority": priority }))
+                    .await
+                    .json();
+                let pid = made["pid"].as_str().unwrap().to_string();
+                request
+                    .post(&format!("/api/tickets/{pid}/status"))
+                    .json(&json!({ "to": "pending" }))
+                    .await
+                    .assert_status_ok();
+                pid
+            }
+        };
+        let (limited, unlimited, recent) = (
+            open("normal").await,
+            open("high").await,
+            open("normal").await,
+        );
+        for (pid, minutes) in [(&limited, 90), (&unlimited, 90), (&recent, 30)] {
+            sql(
+                &ctx.db,
+                &format!(
+                    "UPDATE tickets SET paused_at = now() - interval '{minutes} minutes' \
+                     WHERE pid = $1::uuid"
+                ),
+                pid,
+            )
+            .await;
+        }
+        let exceeded = |pid: String| {
+            let request = &request;
+            async move {
+                let detail: Value = request.get(&format!("/api/tickets/{pid}")).await.json();
+                detail["ticket"]["wait_limit_exceeded_at"].clone()
+            }
+        };
+
+        // Only the one past its limit is flagged, and it stays pending with its clock stopped.
+        let swept: Value = request.post("/api/sla/sweep").await.json();
+        assert_eq!(swept["new_wait_limits_exceeded"], 1, "{swept}");
+        assert!(exceeded(limited.clone()).await.is_string());
+        assert!(exceeded(unlimited.clone()).await.is_null());
+        assert!(exceeded(recent.clone()).await.is_null());
+        let detail: Value = request.get(&format!("/api/tickets/{limited}")).await.json();
+        assert_eq!(detail["ticket"]["status"], "pending", "{detail}");
+        assert!(detail["ticket"]["paused_at"].is_string(), "{detail}");
+
+        // Once: a second sweep finds nothing new.
+        let again: Value = request.post("/api/sla/sweep").await.json();
+        assert_eq!(again["new_wait_limits_exceeded"], 0, "{again}");
+
+        // The customer answers: the flag goes with the wait.
+        request
+            .post(&format!("/api/tickets/{limited}/customer-reply"))
+            .await
+            .assert_status_ok();
+        assert!(exceeded(limited).await.is_null());
+    })
+    .await;
+}

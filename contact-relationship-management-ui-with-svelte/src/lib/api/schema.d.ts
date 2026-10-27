@@ -19330,6 +19330,13 @@ export interface components {
             calendar_pid: string | null;
             /** Format: int32 */
             first_response_minutes: number;
+            /**
+             * Format: int32
+             * @description The most minutes a ticket may wait for the customer (`pending`) before the sweep flags it
+             *     (CRM-R64). Leave out for no limit.
+             * @default null
+             */
+            max_wait_minutes: number | null;
             priority: string;
             /** Format: int32 */
             resolution_minutes: number;
@@ -19854,6 +19861,11 @@ export interface components {
             first_response_minutes: number;
             /** Format: int32 */
             id: number;
+            /**
+             * Format: int32
+             * @description The most minutes a ticket of this priority may wait in `pending` before the sweep flags it (CRM-R64).
+             */
+            max_wait_minutes: number | null;
             /** Format: uuid */
             pid: string;
             priority: string;
@@ -19874,6 +19886,11 @@ export interface components {
         SlaSweep: {
             /** Format: uint64 */
             new_breaches: number;
+            /**
+             * Format: uint64
+             * @description Waiting tickets found past their policy's `max_wait_minutes` in this sweep (CRM-R64).
+             */
+            new_wait_limits_exceeded: number;
         };
         /** @description One assignee's open load. */
         SlaWorkload: {
@@ -20117,6 +20134,11 @@ export interface components {
             title: string;
             /** Format: date-time */
             updated_at: string;
+            /**
+             * Format: date-time
+             * @description When the sweep found the ticket past its policy's wait limit; cleared on leaving `pending` (CRM-R64).
+             */
+            wait_limit_exceeded_at: string | null;
         };
         /** @description `GET /api/tickets/{pid}`: the ticket and its activities, oldest first. */
         TicketDetail: {

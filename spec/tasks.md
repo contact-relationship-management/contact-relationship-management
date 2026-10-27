@@ -1642,3 +1642,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a "Customer replied" button on a waiting ticket, `ticketCustomerReply`, the tour's route, 1 key in 8 locales (machine drafts); the Playwright test for the stopped clock extended.
       - **Tests:** 1 request test (an open ticket is unchanged; after 30 minutes pending the reply opens it, clears `paused_at` and moves the resolution deadline by 30 minutes; the audit names the reply; a resolved ticket is `422`). The existing status and pause tests pass unchanged.
       - **Not tested:** `404` for an unknown ticket; the masked/permission path for the new route (it is a write, like `/status`).
+- [x] CRM-T131 *(edge)* **A limit on how long a ticket may wait.** `max_wait_minutes` on an SLA policy and a sweep that flags a ticket left `pending` too long; the last part of the roadmap item "SLA clock refinements" that needs no inbound mail. (M)
+      **Done (2026-10-27, not released):** requirement CRM-R64 first, then:
+      - **Service:** migration `000043`; `PolicyPayload.max_wait_minutes`; `sweep_waiting` (once per ticket, event `ticket_wait_limit_exceeded`); `new_wait_limits_exceeded` in `SlaSweep`; the flag cleared in `transition`; `schema.d.ts` regenerated.
+      - **UI:** "Waiting too long" beside the SLA state, `wait_limit_exceeded_at` on `Ticket`, a flagged ticket in the tour, 1 key in 8 locales (machine drafts); one Playwright test.
+      - **Tests:** 1 request test (a limit of 0 is refused; of three waiting tickets only the one past its limit is flagged, a ticket with no limit and one inside it are not; it stays `pending` and paused; a second sweep finds none; a customer reply clears it). **Checked by breaking it:** with the clearing removed the test fails; restored.
+      - **Not tested:** the emitted event's payload; a policy changed after tickets were flagged.

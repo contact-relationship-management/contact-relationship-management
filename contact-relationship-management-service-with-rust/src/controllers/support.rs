@@ -33,6 +33,10 @@ pub(crate) struct PolicyPayload {
     /// for round-the-clock.
     #[serde(default)]
     calendar_pid: Option<Uuid>,
+    /// The most minutes a ticket may wait for the customer (`pending`) before the sweep flags it
+    /// (CRM-R64). Leave out for no limit.
+    #[serde(default)]
+    max_wait_minutes: Option<i32>,
 }
 
 /// `PUT /api/sla-policies/{pid}/calendar` body.
@@ -126,6 +130,9 @@ async fn create_policy(
     if payload.first_response_minutes > payload.resolution_minutes {
         problems.push("first response target exceeds the resolution target".to_string());
     }
+    if payload.max_wait_minutes.is_some_and(|m| m <= 0) {
+        problems.push_field("max_wait_minutes", "must be positive");
+    }
     problems.finish()?;
     if let Some(calendar) = payload.calendar_pid
         && !super::calendars::exists(&ctx.db, calendar).await?
@@ -139,6 +146,7 @@ async fn create_policy(
         first_response_minutes: ActiveValue::set(payload.first_response_minutes),
         resolution_minutes: ActiveValue::set(payload.resolution_minutes),
         calendar_pid: ActiveValue::set(payload.calendar_pid),
+        max_wait_minutes: ActiveValue::set(payload.max_wait_minutes),
         deleted_at: ActiveValue::set(None),
         ..Default::default()
     }
@@ -342,10 +350,65 @@ pub(crate) struct TicketDetail {
     activities: Vec<activities::Model>,
 }
 
+/// Flag each `pending` ticket that has waited longer than its policy's `max_wait_minutes`, once:
+/// the moment is stored and `ticket_wait_limit_exceeded` is emitted (CRM-R64). Nothing else
+/// changes: the clock stays stopped and the ticket stays `pending`.
+async fn sweep_waiting(
+    ctx: &AppContext,
+    caller: &MaybeAuthUser,
+    now: chrono::DateTime<chrono::FixedOffset>,
+) -> Result<u64> {
+    let limits: std::collections::HashMap<String, i32> = sla_policies::Entity::find()
+        .filter(sla_policies::Column::DeletedAt.is_null())
+        .filter(sla_policies::Column::MaxWaitMinutes.is_not_null())
+        .all(&ctx.db)
+        .await?
+        .into_iter()
+        .filter_map(|p| p.max_wait_minutes.map(|m| (p.priority, m)))
+        .collect();
+    if limits.is_empty() {
+        return Ok(0);
+    }
+    let waiting = tickets::Entity::find_live()
+        .filter(tickets::Column::Status.eq("pending"))
+        .filter(tickets::Column::WaitLimitExceededAt.is_null())
+        .all(&ctx.db)
+        .await?;
+    let mut found = 0;
+    for ticket in waiting {
+        let (Some(limit), Some(since)) = (limits.get(&ticket.priority), ticket.paused_at) else {
+            continue;
+        };
+        if now - since <= chrono::Duration::minutes(i64::from(*limit)) {
+            continue;
+        }
+        let txn = ctx.db.begin().await?;
+        let (pid, title) = (ticket.pid, ticket.title.clone());
+        let mut active: tickets::ActiveModel = ticket.into();
+        active.wait_limit_exceeded_at = ActiveValue::set(Some(now));
+        active.update(&txn).await?;
+        streaming::emit_on(
+            &txn,
+            "ticket",
+            "ticket_wait_limit_exceeded",
+            &pid.to_string(),
+            &title,
+            caller.actor(),
+            Some(serde_json::json!({ "waiting_since": since })),
+        )
+        .await?;
+        txn.commit().await?;
+        found += 1;
+    }
+    Ok(found)
+}
+
 /// `POST /api/sla/sweep`: how many tickets crossed a deadline in this sweep.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct SlaSweep {
     new_breaches: u64,
+    /// Waiting tickets found past their policy's `max_wait_minutes` in this sweep (CRM-R64).
+    new_wait_limits_exceeded: u64,
 }
 
 /// `GET /api/tickets/{pid}` — one ticket + its activities.
@@ -485,6 +548,7 @@ async fn transition(
         active.paused_at = ActiveValue::set(Some(now));
     } else if let Some(resumed) = resumed {
         active.paused_at = ActiveValue::set(None);
+        active.wait_limit_exceeded_at = ActiveValue::set(None);
         active.first_response_paused_seconds =
             ActiveValue::set(resumed.paused.first_response_seconds);
         active.resolution_paused_seconds = ActiveValue::set(resumed.paused.resolution_seconds);
@@ -627,6 +691,7 @@ async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Resu
     }
     format::json(SlaSweep {
         new_breaches: breaches,
+        new_wait_limits_exceeded: sweep_waiting(&ctx, &caller, now).await?,
     })
 }
 

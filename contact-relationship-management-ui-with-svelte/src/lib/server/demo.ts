@@ -531,6 +531,8 @@ function build(): State {
     status,
     first_response_due_at: iso(dueDays, 12),
     paused_at: status === "pending" ? iso(dueDays, 12) : null,
+    wait_limit_exceeded_at:
+      status === "pending" && dueDays <= -2 ? iso(dueDays, 12) : null,
     live_first_response_breached: first,
     live_resolution_breached: resolution,
   });
@@ -2560,6 +2562,7 @@ export function demoHandle(
       if (t.status === "pending") {
         t.status = "open";
         t.paused_at = null;
+        t.wait_limit_exceeded_at = null;
       } else if (t.status !== "open")
         return problem(
           422,
@@ -2573,6 +2576,7 @@ export function demoHandle(
       // The SLA clock stops while a ticket waits for the customer (CRM-R55).
       if (t)
         t.paused_at = t.status === "pending" ? new Date().toISOString() : null;
+      if (t && t.status !== "pending") t.wait_limit_exceeded_at = null;
       if (t && !open(t.status)) {
         t.live_first_response_breached = false;
         t.live_resolution_breached = false;

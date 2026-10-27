@@ -728,4 +728,5 @@ export default {
   "clv.historyRetention": "Retention found in the year before",
   "clv.inOne": "Added in one currency",
   "ticket.replied": "Customer replied",
+  "ticket.waitExceeded": "Waiting too long",
 } as const;

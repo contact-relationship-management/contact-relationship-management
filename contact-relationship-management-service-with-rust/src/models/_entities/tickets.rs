@@ -34,6 +34,8 @@ pub struct Model {
     pub resolution_breached: bool,
     /// When the ticket went `pending` (waiting for the customer); the SLA clock is stopped until it leaves `pending`.
     pub paused_at: Option<DateTimeWithTimeZone>,
+    /// When the sweep found the ticket past its policy's wait limit; cleared on leaving `pending` (CRM-R64).
+    pub wait_limit_exceeded_at: Option<DateTimeWithTimeZone>,
     /// Seconds of waiting that counted against the first-response deadline.
     pub first_response_paused_seconds: i64,
     /// Seconds of waiting that counted against the resolution deadline.

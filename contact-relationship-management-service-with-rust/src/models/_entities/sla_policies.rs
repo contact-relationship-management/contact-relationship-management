@@ -21,6 +21,8 @@ pub struct Model {
     pub first_response_minutes: i32,
     pub resolution_minutes: i32,
     pub calendar_pid: Option<Uuid>,
+    /// The most minutes a ticket of this priority may wait in `pending` before the sweep flags it (CRM-R64).
+    pub max_wait_minutes: Option<i32>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

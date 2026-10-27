@@ -744,4 +744,5 @@ export default {
   "clv.historyRetention": "Im Vorjahr ermittelte Bindung",
   "clv.inOne": "In einer Währung addiert",
   "ticket.replied": "Kunde hat geantwortet",
+  "ticket.waitExceeded": "Wartet zu lange",
 } satisfies Record<StringKey, string>;

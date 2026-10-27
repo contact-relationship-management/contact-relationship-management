@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a limit on how long a ticket may wait (CRM-T131, CRM-R64)
+
+An SLA policy may set `max_wait_minutes`; the sweep flags a `pending` ticket that has waited longer, once, and the tickets page marks it.
+
 ### Added — a customer reply resumes a waiting ticket (CRM-T130, CRM-R63)
 
 `POST /api/tickets/{pid}/customer-reply` sends a `pending` ticket back to `open` and starts its SLA clock again.

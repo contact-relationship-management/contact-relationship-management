@@ -729,4 +729,5 @@ export default {
   "clv.historyRetention": "الاحتفاظ المستخلص من السنة السابقة",
   "clv.inOne": "مجموعة بعملة واحدة",
   "ticket.replied": "ردّ العميل",
+  "ticket.waitExceeded": "انتظار طويل جدًا",
 } satisfies Record<StringKey, string>;

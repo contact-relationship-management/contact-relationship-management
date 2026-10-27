@@ -219,6 +219,20 @@ test.describe("data tables", () => {
     await expect(page.getByTestId("ticket-replied")).toHaveCount(0);
   });
 
+  test("a ticket left waiting too long is marked, and the customer's reply clears it", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/tickets");
+    const row = page
+      .getByTestId("ticket-queue")
+      .locator("tbody tr", { hasText: "Clinical feed delayed overnight" });
+    await expect(row).toContainText("Waiting too long");
+    await row.click();
+    await page.getByTestId("ticket-replied").click();
+    await expect(row).not.toContainText("Waiting too long");
+  });
+
   test("the inbox lists notifications, marks one read, then all", async ({
     page,
   }) => {

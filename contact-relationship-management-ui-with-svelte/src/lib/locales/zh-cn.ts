@@ -705,4 +705,5 @@ export default {
   "clv.historyRetention": "上一年得出的留存率",
   "clv.inOne": "以一种货币相加",
   "ticket.replied": "客户已回复",
+  "ticket.waitExceeded": "等待过久",
 } satisfies Record<StringKey, string>;

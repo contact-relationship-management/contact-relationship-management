@@ -116,6 +116,8 @@ export interface Ticket {
   first_response_due_at: string | null;
   /** When the ticket began waiting for the customer; its SLA clock is stopped until it leaves `pending` (CRM-R55). */
   paused_at?: string | null;
+  /** When the sweep found the ticket waiting longer than its policy allows (CRM-R64). */
+  wait_limit_exceeded_at?: string | null;
   live_first_response_breached?: boolean;
   live_resolution_breached?: boolean;
 }

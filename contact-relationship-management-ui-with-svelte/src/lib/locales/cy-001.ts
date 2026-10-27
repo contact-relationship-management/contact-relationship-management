@@ -735,4 +735,5 @@ export default {
   "clv.historyRetention": "Cadw a gafwyd yn y flwyddyn flaenorol",
   "clv.inOne": "Wedi'u hadio mewn un arian",
   "ticket.replied": "Atebodd y cwsmer",
+  "ticket.waitExceeded": "Aros yn rhy hir",
 } satisfies Record<StringKey, string>;

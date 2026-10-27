@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a wait limit on tickets (CRM-T131, CRM-R64)
+
+Migration `000043` (`sla_policies.max_wait_minutes`, `tickets.wait_limit_exceeded_at`); `sweep_waiting`; `new_wait_limits_exceeded` in the sweep answer; the `ticket_wait_limit_exceeded` event; 1 request test.
+
 ### Added — customer reply on a ticket (CRM-T130, CRM-R63)
 
 `POST /api/tickets/{pid}/customer-reply`; the status change is now one `transition` shared with `/status`, and the audit entry names `via: customer_reply`; 1 request test.
