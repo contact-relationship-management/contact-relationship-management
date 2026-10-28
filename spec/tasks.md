@@ -1664,5 +1664,6 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       **Done (2026-10-28, not released):** requirement CRM-R67 first, then:
       - **Service:** migration `000045` (`teams`); `GET`/`PUT`/`DELETE /api/quotas/teams` and `GET /api/quotas/team-attainment` inside the admin-only `/api/quotas` prefix, reusing `standings`; operations and schemas described.
       - **Tests:** 1 request test, run against Postgres and passing (two workers' quotas and revenue added, a member with no quota listed, a team replaced by name in another case, refusals for no workers, a repeat, a non-worker and no name, removal and a second removal `404`).
-      - **Not done:** the UI (a teams form and roll-up on `/quotas`), `schema.d.ts` regeneration, the admin-only enforcement test for the new routes.
+      - **UI:** a team form, list and per-currency roll-up on `/quotas`, `listTeams`/`setTeam`/`deleteTeam`/`teamAttainment`, the tour's teams (the attainment rows are now one `attainmentRows` shared with the quota route), 8 keys in 8 locales (machine drafts); one Playwright test; `schema.d.ts` regenerated.
+      - **Enforcement:** the admin-only test now covers both read routes (reader and writer `403`, service `200`).
       - **Not tested:** `other_currencies`; a worker on two teams.

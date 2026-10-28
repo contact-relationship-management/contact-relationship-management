@@ -13,7 +13,11 @@
     listDeals,
     setDealSplit,
     deleteQuota,
+    deleteTeam,
     listCommissionPlans,
+    listTeams,
+    setTeam,
+    teamAttainment,
     listQuotas,
     money,
     quotaAttainment,
@@ -59,6 +63,25 @@
       await setDealSplit(splitDeal, shares);
     });
 
+  // Teams of workers and what they reach together (CRM-R67): one worker per line.
+  let teamName = $state("");
+  let teamMembers = $state("");
+  const teams = resource(listTeams);
+  const teamStanding = resource(() => teamAttainment());
+  const teamList = $derived(teams.value ?? []);
+  const teamRows = $derived(teamStanding.value?.rows ?? []);
+
+  const saveTeam = () =>
+    run(async () => {
+      await setTeam({
+        name: teamName.trim(),
+        members: teamMembers
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean),
+      });
+    });
+
   const plans = resource(listCommissionPlans);
   const quotas = resource(listQuotas);
   const standing = resource(() => quotaAttainment());
@@ -66,7 +89,14 @@
   const quotaList = $derived(quotas.value ?? []);
   const rows = $derived(standing.value?.rows ?? []);
 
-  const reloadAll = () => Promise.all([plans.reload(), quotas.reload(), standing.reload()]);
+  const reloadAll = () =>
+    Promise.all([
+      plans.reload(),
+      quotas.reload(),
+      standing.reload(),
+      teams.reload(),
+      teamStanding.reload(),
+    ]);
 
   function parseTiers(text: string): CommissionTier[] {
     return text
@@ -257,6 +287,85 @@
     {t("quota.splitRemove")}
   </button>
 </form>
+
+<h2>{t("quota.teams")}</h2>
+<p class="muted">{t("quota.teamsHint")}</p>
+<form
+  class="panel"
+  data-testid="team-form"
+  onsubmit={(e) => {
+    e.preventDefault();
+    void saveTeam();
+  }}
+>
+  <label>
+    {t("quota.teamName")}
+    <input bind:value={teamName} required maxlength="80" data-testid="team-name" />
+  </label>
+  <label>
+    {t("quota.teamMembers")}
+    <textarea bind:value={teamMembers} rows="3" required data-testid="team-members"></textarea>
+  </label>
+  <p class="muted">{t("quota.teamMembersHint")}</p>
+  <button type="submit" data-testid="team-set">{t("quota.teamSet")}</button>
+</form>
+
+{#if teamList.length > 0}
+  <table data-testid="team-list">
+    <thead>
+      <tr>
+        <th>{t("quota.teamName")}</th>
+        <th>{t("quota.teamWorkers")}</th>
+        <th>{t("quota.quota")}</th>
+        <th>{t("quota.won")}</th>
+        <th>{t("quota.attainment")}</th>
+        <th>{t("quota.remaining")}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {#each teamRows as row (row.team_pid)}
+        <tr data-testid="team-row">
+          <td>
+            {row.name}
+            {#each row.without_quota as member (member)}
+              <span class="chip">{member}: {t("quota.teamNoQuota")}</span>
+            {/each}
+          </td>
+          <td>{row.members.join(", ")}</td>
+          <td>
+            {#each row.currencies as c (c.currency)}
+              <div>{money(c.quota_minor, c.currency, i18n.locale)}</div>
+            {/each}
+          </td>
+          <td>
+            {#each row.currencies as c (c.currency)}
+              <div>{money(c.revenue_minor, c.currency, i18n.locale)}</div>
+            {/each}
+            {#each Object.entries(row.other_currencies) as [code, minor] (code)}
+              <span class="chip">{money(minor, code, i18n.locale)}</span>
+            {/each}
+          </td>
+          <td>
+            {#each row.currencies as c (c.currency)}
+              <div>{ratioPercent(c.attainment)}</div>
+            {/each}
+          </td>
+          <td>
+            {#each row.currencies as c (c.currency)}
+              <div>{money(c.remaining_minor, c.currency, i18n.locale)}</div>
+            {/each}
+          </td>
+          <td>
+            <button type="button" onclick={() => void run(() => deleteTeam(row.team_pid))}>
+              {t("quota.delete")}
+            </button>
+          </td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+{/if}
 
 <h2>{t("quota.plans")}</h2>
 <form

@@ -738,4 +738,12 @@ export default {
   "quota.splitSet": "تقسيم",
   "quota.splitRemove": "نسب الصفقة للمالك وحده",
   "ticket.suggested": "مقالات قد تساعد",
+  "quota.teams": "الفرق",
+  "quota.teamsHint": "فريق لكل اسم؛ تُجمع نتائج أفراده لكل عملة دون تحويل.",
+  "quota.teamName": "اسم الفريق",
+  "quota.teamMembers": "العاملون",
+  "quota.teamMembersHint": "عامل واحد في كل سطر.",
+  "quota.teamSet": "حفظ الفريق",
+  "quota.teamNoQuota": "بلا حصة",
+  "quota.teamWorkers": "العاملون",
 } satisfies Record<StringKey, string>;

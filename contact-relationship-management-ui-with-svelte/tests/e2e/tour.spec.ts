@@ -1486,6 +1486,27 @@ test.describe("export, undo and search", () => {
     await expect(bea).toContainText("140,000.00");
   });
 
+  test("a team adds its workers' standings and can be removed", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/quotas");
+    await page.getByTestId("team-name").fill("North");
+    await page.getByTestId("team-members").fill("owner-ayo\nowner-bea");
+    await page.getByTestId("team-set").click();
+    const north = page.getByTestId("team-row").filter({ hasText: "North" });
+    // Ayo's 27,500.00 and Bea's 140,000.00 are added in one currency line.
+    await expect(north).toContainText("owner-ayo, owner-bea");
+    await expect(north).toContainText("150,000.00");
+    await expect(north).toContainText("167,500.00");
+    // A team with no workers is refused.
+    await page.getByTestId("team-members").fill(" ");
+    await page.getByTestId("team-set").click();
+    await expect(page.getByTestId("quota-error")).toBeVisible();
+    await north.getByRole("button").click();
+    await expect(page.getByTestId("team-list")).toHaveCount(0);
+  });
+
   test("an account shows its lifetime value, the margin on it and a discounted look-ahead", async ({
     page,
   }) => {

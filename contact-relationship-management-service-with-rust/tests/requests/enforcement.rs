@@ -1959,6 +1959,24 @@ async fn quotas_and_commission_plans_are_for_admin_and_service_callers_only() {
             404,
             "service splits"
         );
+        // So is a team's roll-up (CRM-R67).
+        for path in ["/api/quotas/teams", "/api/quotas/team-attainment"] {
+            assert_eq!(
+                call("GET", path, reader.clone()).await,
+                403,
+                "reader {path}"
+            );
+            assert_eq!(
+                call("GET", path, writer.clone()).await,
+                403,
+                "writer {path}"
+            );
+            assert_eq!(
+                call("GET", path, service.clone()).await,
+                200,
+                "service {path}"
+            );
+        }
         request
             .get("/api/quotas")
             .await

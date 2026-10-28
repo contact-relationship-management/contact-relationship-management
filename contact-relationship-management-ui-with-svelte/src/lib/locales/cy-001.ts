@@ -744,4 +744,13 @@ export default {
   "quota.splitSet": "Hollti",
   "quota.splitRemove": "Credydu'r perchennog yn unig",
   "ticket.suggested": "Erthyglau a allai helpu",
+  "quota.teams": "Timau",
+  "quota.teamsHint":
+    "Un tîm i bob enw; ychwanegir safleoedd ei weithwyr fesul arian cyfred, byth eu trosi.",
+  "quota.teamName": "Enw'r tîm",
+  "quota.teamMembers": "Gweithwyr",
+  "quota.teamMembersHint": "Un gweithiwr ar bob llinell.",
+  "quota.teamSet": "Gosod y tîm",
+  "quota.teamNoQuota": "Heb gwota",
+  "quota.teamWorkers": "Gweithwyr",
 } satisfies Record<StringKey, string>;

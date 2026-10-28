@@ -751,4 +751,13 @@ export default {
   "quota.splitSet": "Partager",
   "quota.splitRemove": "Créditer le propriétaire seul",
   "ticket.suggested": "Articles qui peuvent aider",
+  "quota.teams": "Équipes",
+  "quota.teamsHint":
+    "Une équipe par nom ; les résultats de ses collaborateurs sont additionnés par devise, jamais convertis.",
+  "quota.teamName": "Nom de l'équipe",
+  "quota.teamMembers": "Collaborateurs",
+  "quota.teamMembersHint": "Un collaborateur par ligne.",
+  "quota.teamSet": "Enregistrer l'équipe",
+  "quota.teamNoQuota": "Sans quota",
+  "quota.teamWorkers": "Collaborateurs",
 } satisfies Record<StringKey, string>;

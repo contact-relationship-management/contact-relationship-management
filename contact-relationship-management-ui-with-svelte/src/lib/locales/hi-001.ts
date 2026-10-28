@@ -739,4 +739,13 @@ export default {
   "quota.splitSet": "बाँटें",
   "quota.splitRemove": "केवल स्वामी को श्रेय दें",
   "ticket.suggested": "लेख जो मदद कर सकते हैं",
+  "quota.teams": "टीमें",
+  "quota.teamsHint":
+    "हर नाम की एक टीम; उसके कर्मचारियों के परिणाम हर मुद्रा में जोड़े जाते हैं, बदले नहीं जाते।",
+  "quota.teamName": "टीम का नाम",
+  "quota.teamMembers": "कर्मचारी",
+  "quota.teamMembersHint": "हर पंक्ति में एक कर्मचारी।",
+  "quota.teamSet": "टीम सहेजें",
+  "quota.teamNoQuota": "बिना कोटा",
+  "quota.teamWorkers": "कर्मचारी",
 } satisfies Record<StringKey, string>;

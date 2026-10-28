@@ -714,4 +714,12 @@ export default {
   "quota.splitSet": "拆分",
   "quota.splitRemove": "仅记给所有者",
   "ticket.suggested": "可能有帮助的文章",
+  "quota.teams": "团队",
+  "quota.teamsHint": "每个名称一个团队；其成员的业绩按币种相加，不做换算。",
+  "quota.teamName": "团队名称",
+  "quota.teamMembers": "成员",
+  "quota.teamMembersHint": "每行一名成员。",
+  "quota.teamSet": "保存团队",
+  "quota.teamNoQuota": "无配额",
+  "quota.teamWorkers": "成员",
 } satisfies Record<StringKey, string>;

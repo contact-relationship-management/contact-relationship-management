@@ -1994,6 +1994,62 @@ export function deleteDealSplit(dealPid: string): Promise<{ pid: string }> {
   return api(`/quotas/splits/${dealPid}`, { method: "DELETE" });
 }
 
+/** A team of workers (CRM-R67). */
+export interface Team {
+  pid: string;
+  name: string;
+  members: string[];
+  set_by: string;
+}
+
+/** The teams, by name. Admin only. */
+export function listTeams(init?: FetchLike): Promise<Team[]> {
+  return api("/quotas/teams", init);
+}
+
+/** Set the team of that name (any case), replacing its workers. */
+export function setTeam(input: {
+  name: string;
+  members: string[];
+}): Promise<Team> {
+  return api("/quotas/teams", { method: "PUT", body: input });
+}
+
+/** Remove a team; its workers' quotas are untouched. */
+export function deleteTeam(pid: string): Promise<{ pid: string }> {
+  return api(`/quotas/teams/${pid}`, { method: "DELETE" });
+}
+
+/** A team's quotas and revenue in one currency. */
+export interface TeamCurrency {
+  currency: string;
+  quota_minor: number;
+  revenue_minor: number;
+  won_deals: number;
+  attainment: Ratio;
+  remaining_minor: number;
+  workers: number;
+}
+
+/** One team's roll-up. */
+export interface TeamStanding {
+  team_pid: string;
+  name: string;
+  members: string[];
+  without_quota: string[];
+  currencies: TeamCurrency[];
+  /** Won revenue in currencies the team has no quota in, never converted. */
+  other_currencies: Record<string, number>;
+}
+
+/** Each team's workers' standings added up per currency. */
+export function teamAttainment(
+  at?: string,
+  init?: FetchLike,
+): Promise<{ as_of: string; at: string; rows: TeamStanding[]; note: string }> {
+  return api(`/quotas/team-attainment${at ? `?at=${at}` : ""}`, init);
+}
+
 /** Remove a quota. */
 export function deleteQuota(pid: string): Promise<{ pid: string }> {
   return api(`/quotas/${pid}`, { method: "DELETE" });

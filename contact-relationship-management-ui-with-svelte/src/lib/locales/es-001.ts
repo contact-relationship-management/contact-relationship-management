@@ -746,4 +746,13 @@ export default {
   "quota.splitSet": "Dividir",
   "quota.splitRemove": "Acreditar solo al propietario",
   "ticket.suggested": "Artículos que pueden ayudar",
+  "quota.teams": "Equipos",
+  "quota.teamsHint":
+    "Un equipo por nombre; los resultados de sus trabajadores se suman por moneda, sin convertir.",
+  "quota.teamName": "Nombre del equipo",
+  "quota.teamMembers": "Trabajadores",
+  "quota.teamMembersHint": "Un trabajador por línea.",
+  "quota.teamSet": "Guardar equipo",
+  "quota.teamNoQuota": "Sin cuota",
+  "quota.teamWorkers": "Trabajadores",
 } satisfies Record<StringKey, string>;

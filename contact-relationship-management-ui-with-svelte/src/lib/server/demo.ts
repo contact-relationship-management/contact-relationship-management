@@ -177,6 +177,8 @@ interface State {
   quotas: Quota[];
   /** Deals credited to several workers, by deal (CRM-R65). */
   splits: Record<string, { owner_ref: string; share_bps: number }[]>;
+  /** Teams of workers for the quota roll-up (CRM-R67). */
+  teams: { pid: string; name: string; members: string[]; set_by: string }[];
   /** What the public help centre has counted (CRM-R57). */
   kb: {
     views: Record<string, number>;
@@ -936,6 +938,7 @@ function build(): State {
       },
     ],
     splits: {},
+    teams: [],
     quotas: [
       {
         pid: "quota-1",
@@ -3512,6 +3515,163 @@ function dealSplits(
   return ok({ deal_pid: deal.pid, shares });
 }
 
+/** The quotas whose period contains `at`, with what each worker's won deals credit them. */
+function attainmentRows(at: string, owner: string | null): QuotaAttainment[] {
+  return state.quotas
+    .filter((q) => q.period_from <= at && q.period_to >= at)
+    .filter((q) => !owner || q.owner_ref === owner)
+    .map((q) => {
+      // What each won deal credits this worker: all of it, or their share of a split (CRM-R65).
+      const won = state.deals
+        .filter(
+          (d) =>
+            d.won &&
+            d.closed_at &&
+            d.closed_at.slice(0, 10) >= q.period_from &&
+            d.closed_at.slice(0, 10) <= q.period_to,
+        )
+        .flatMap((d) => {
+          const shares = state.splits[d.pid];
+          if (!shares) {
+            return d.owner_ref === q.owner_ref
+              ? [{ currency: d.currency, credited: d.amount_minor ?? 0 }]
+              : [];
+          }
+          const at = shares.findIndex((s) => s.owner_ref === q.owner_ref);
+          if (at < 0) return [];
+          const parts = splitAmount(
+            d.amount_minor ?? 0,
+            shares.map((s) => s.share_bps),
+          );
+          return [{ currency: d.currency, credited: parts[at]! }];
+        });
+      const mine = won.filter((d) => d.currency === q.currency);
+      const revenue = mine.reduce((s, d) => s + d.credited, 0);
+      const other: Record<string, number> = {};
+      for (const d of won.filter((d) => d.currency !== q.currency))
+        other[d.currency] = (other[d.currency] ?? 0) + d.credited;
+      const plan = state.plans.find((p) => p.pid === q.plan_pid) ?? null;
+      const bands = plan
+        ? commissionBands(q.amount_minor, revenue, plan.tiers)
+        : [];
+      return {
+        quota_pid: q.pid,
+        owner_ref: q.owner_ref,
+        period_from: q.period_from,
+        period_to: q.period_to,
+        currency: q.currency,
+        quota_minor: q.amount_minor,
+        revenue_minor: revenue,
+        won_deals: mine.length,
+        attainment: ratio(revenue, q.amount_minor),
+        remaining_minor: Math.max(q.amount_minor - revenue, 0),
+        other_currencies: other,
+        plan: plan?.name ?? null,
+        commission_minor: plan
+          ? bands.reduce((s, b) => s + b.commission_minor, 0)
+          : null,
+        bands,
+      };
+    });
+}
+
+/** The tour's teams (CRM-R67) and their roll-up, added per currency and never converted. */
+function teamRoutes(
+  method: string,
+  seg: string[],
+  query: URLSearchParams,
+  body: unknown,
+) {
+  if (seg[1] === "team-attainment") {
+    const at = query.get("at") ?? new Date().toISOString().slice(0, 10);
+    const standing = attainmentRows(at, null);
+    const rows = [...state.teams]
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+      .map((team) => {
+        const mine = standing.filter((s) => team.members.includes(s.owner_ref));
+        const per = new Map<
+          string,
+          { quota: number; revenue: number; won: number; workers: number }
+        >();
+        for (const s of mine) {
+          const slot = per.get(s.currency) ?? {
+            quota: 0,
+            revenue: 0,
+            won: 0,
+            workers: 0,
+          };
+          slot.quota += s.quota_minor;
+          slot.revenue += s.revenue_minor;
+          slot.won += s.won_deals;
+          slot.workers += 1;
+          per.set(s.currency, slot);
+        }
+        const other: Record<string, number> = {};
+        for (const s of mine)
+          for (const [code, minor] of Object.entries(s.other_currencies))
+            if (!per.has(code)) other[code] = (other[code] ?? 0) + minor;
+        return {
+          team_pid: team.pid,
+          name: team.name,
+          members: team.members,
+          without_quota: team.members.filter(
+            (m) => !mine.some((s) => s.owner_ref === m),
+          ),
+          currencies: [...per.entries()].map(([currency, v]) => ({
+            currency,
+            quota_minor: v.quota,
+            revenue_minor: v.revenue,
+            won_deals: v.won,
+            attainment: ratio(v.revenue, v.quota),
+            remaining_minor: Math.max(v.quota - v.revenue, 0),
+            workers: v.workers,
+          })),
+          other_currencies: other,
+        };
+      });
+    return ok({
+      as_of: new Date().toISOString(),
+      at,
+      rows,
+      note: "currencies are listed, never added or converted",
+    });
+  }
+  if (method === "GET") return ok(state.teams);
+  if (method === "DELETE") {
+    const at = state.teams.findIndex((t) => t.pid === seg[2]);
+    if (at < 0) return problem(404, "team not found");
+    state.teams.splice(at, 1);
+    return ok({ pid: seg[2] });
+  }
+  const input = (body ?? {}) as { name?: string; members?: string[] };
+  const name = (input.name ?? "").trim();
+  const members = input.members ?? [];
+  if (!name || name.length > 80)
+    return problem(422, "/name: 1 to 80 characters");
+  if (
+    members.length < 1 ||
+    members.length > 50 ||
+    new Set(members).size !== members.length
+  )
+    return problem(422, "/members: from 1 to 50 workers named once");
+  const had = state.teams.find(
+    (t) => t.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (had) {
+    had.name = name;
+    had.members = members;
+    return ok(had);
+  }
+  const team = {
+    pid: `team-${state.teams.length + 1}-${name.length}`,
+    name,
+    members,
+    set_by: "worker:demo",
+  };
+  state.teams.push(team);
+  return ok(team);
+}
+
 /** The tour's quotas (CRM-R59) and their attainment, computed from the tour's won deals. */
 function quotaRoutes(
   method: string,
@@ -3521,67 +3681,11 @@ function quotaRoutes(
 ) {
   const [, id] = seg;
   if (id === "splits") return dealSplits(method, seg[2], body);
+  if (id === "teams" || id === "team-attainment")
+    return teamRoutes(method, seg, query, body);
   if (method === "GET" && id === "attainment") {
     const at = query.get("at") ?? new Date().toISOString().slice(0, 10);
-    const rows: QuotaAttainment[] = state.quotas
-      .filter((q) => q.period_from <= at && q.period_to >= at)
-      .filter(
-        (q) =>
-          !query.get("owner_ref") || q.owner_ref === query.get("owner_ref"),
-      )
-      .map((q) => {
-        // What each won deal credits this worker: all of it, or their share of a split (CRM-R65).
-        const won = state.deals
-          .filter(
-            (d) =>
-              d.won &&
-              d.closed_at &&
-              d.closed_at.slice(0, 10) >= q.period_from &&
-              d.closed_at.slice(0, 10) <= q.period_to,
-          )
-          .flatMap((d) => {
-            const shares = state.splits[d.pid];
-            if (!shares) {
-              return d.owner_ref === q.owner_ref
-                ? [{ currency: d.currency, credited: d.amount_minor ?? 0 }]
-                : [];
-            }
-            const at = shares.findIndex((s) => s.owner_ref === q.owner_ref);
-            if (at < 0) return [];
-            const parts = splitAmount(
-              d.amount_minor ?? 0,
-              shares.map((s) => s.share_bps),
-            );
-            return [{ currency: d.currency, credited: parts[at]! }];
-          });
-        const mine = won.filter((d) => d.currency === q.currency);
-        const revenue = mine.reduce((s, d) => s + d.credited, 0);
-        const other: Record<string, number> = {};
-        for (const d of won.filter((d) => d.currency !== q.currency))
-          other[d.currency] = (other[d.currency] ?? 0) + d.credited;
-        const plan = state.plans.find((p) => p.pid === q.plan_pid) ?? null;
-        const bands = plan
-          ? commissionBands(q.amount_minor, revenue, plan.tiers)
-          : [];
-        return {
-          quota_pid: q.pid,
-          owner_ref: q.owner_ref,
-          period_from: q.period_from,
-          period_to: q.period_to,
-          currency: q.currency,
-          quota_minor: q.amount_minor,
-          revenue_minor: revenue,
-          won_deals: mine.length,
-          attainment: ratio(revenue, q.amount_minor),
-          remaining_minor: Math.max(q.amount_minor - revenue, 0),
-          other_currencies: other,
-          plan: plan?.name ?? null,
-          commission_minor: plan
-            ? bands.reduce((s, b) => s + b.commission_minor, 0)
-            : null,
-          bands,
-        };
-      });
+    const rows = attainmentRows(at, query.get("owner_ref"));
     return ok({
       as_of: new Date().toISOString(),
       at,

@@ -753,4 +753,13 @@ export default {
   "quota.splitSet": "Aufteilen",
   "quota.splitRemove": "Nur dem Eigentümer gutschreiben",
   "ticket.suggested": "Artikel, die helfen könnten",
+  "quota.teams": "Teams",
+  "quota.teamsHint":
+    "Ein Team pro Name; die Stände seiner Mitarbeitenden werden je Währung addiert, nie umgerechnet.",
+  "quota.teamName": "Teamname",
+  "quota.teamMembers": "Mitarbeitende",
+  "quota.teamMembersHint": "Eine Person pro Zeile.",
+  "quota.teamSet": "Team speichern",
+  "quota.teamNoQuota": "Ohne Quote",
+  "quota.teamWorkers": "Mitarbeitende",
 } satisfies Record<StringKey, string>;

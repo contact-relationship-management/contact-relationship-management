@@ -13208,6 +13208,280 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quotas/team-attainment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Each team's workers' quotas and credited won revenue added per currency for the quotas containing ?at= (today when absent), attainment as a ratio, what remains, and the members with no quota; currencies listed, never converted (CRM-R67). An audited read. Admin only */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamAttainmentReport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotas/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The teams (CRM-R67), by name. Admin only */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Team"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Set the team of that name (any case), replacing its workers: from 1 to 50 workers named once, else 422 naming /members or /name; a write, audited. Admin only */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TeamPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Team"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotas/teams/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a team; its workers' quotas are untouched; audited; 404 when there is none. Admin only */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quotas/{pid}": {
         parameters: {
             query?: never;
@@ -20379,6 +20653,73 @@ export interface components {
         TagPayload: {
             /** @description Unique, ignoring case. */
             name: string;
+        };
+        /** @description A team. */
+        Team: {
+            members: string[];
+            name: string;
+            /** Format: uuid */
+            pid: string;
+            set_by: string;
+        };
+        /** @description The answer. */
+        TeamAttainmentReport: {
+            /** Format: date-time */
+            as_of: string;
+            /** Format: date */
+            at: string;
+            note: string;
+            rows: components["schemas"]["TeamStanding"][];
+        };
+        /** @description A team's quotas and revenue in one currency. */
+        TeamCurrency: {
+            /** @description `revenue ÷ quota`, with both numbers. */
+            attainment: components["schemas"]["Ratio"];
+            currency: string;
+            /**
+             * Format: int64
+             * @description The workers' quotas in this currency, added.
+             */
+            quota_minor: number;
+            /**
+             * Format: int64
+             * @description What is still to win; zero once met.
+             */
+            remaining_minor: number;
+            /**
+             * Format: int64
+             * @description Their credited won revenue in this currency, added.
+             */
+            revenue_minor: number;
+            /** Format: int64 */
+            won_deals: number;
+            /**
+             * Format: uint
+             * @description How many workers have a quota in this currency.
+             */
+            workers: number;
+        };
+        /** @description `PUT /api/quotas/teams` body: sets the team of that name (any case), replacing its workers. */
+        TeamPayload: {
+            /** @description The workers on it (`worker:<id>`), from 1 to 50, each named once. */
+            members: string[];
+            /** @description The team's name, up to 80 characters. */
+            name: string;
+        };
+        /** @description One team's roll-up. */
+        TeamStanding: {
+            /** @description One entry per currency a member has a quota in; currencies are never added together. */
+            currencies: components["schemas"]["TeamCurrency"][];
+            members: string[];
+            name: string;
+            /** @description Members' won revenue in currencies they have no quota in, listed and never converted. */
+            other_currencies: {
+                [key: string]: number;
+            };
+            /** Format: uuid */
+            team_pid: string;
+            /** @description Members with no quota whose period contains the day: they add nothing to the roll-up. */
+            without_quota: string[];
         };
         Ticket: {
             /** Format: uuid */

@@ -737,4 +737,13 @@ export default {
   "quota.splitSet": "Split",
   "quota.splitRemove": "Credit the owner alone",
   "ticket.suggested": "Articles that may help",
+  "quota.teams": "Teams",
+  "quota.teamsHint":
+    "One team per name; its workers' standings are added per currency, never converted.",
+  "quota.teamName": "Team name",
+  "quota.teamMembers": "Workers",
+  "quota.teamMembersHint": "One worker per line.",
+  "quota.teamSet": "Set team",
+  "quota.teamNoQuota": "Without a quota",
+  "quota.teamWorkers": "Workers",
 } as const;
