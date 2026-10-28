@@ -158,6 +158,29 @@ async fn subject_rights_round_trip() {
             .expect("erased audit row")
             .clone();
         assert_eq!(erased_entry["snapshot"]["activity_summaries_scrubbed"], 1);
+        // Every count is named for the statement that produced it; none is
+        // another statement's number under the wrong label.
+        for key in [
+            "leads_scrubbed",
+            "working_group_memberships_deleted",
+            "notifications_deleted",
+            "form_submissions_deleted",
+            "external_links_deleted",
+            "webhook_deliveries_cancelled",
+            "merged_duplicates_scrubbed",
+            "purposes_withdrawn",
+            "link_tokens_deleted",
+            "custom_field_values_deleted",
+        ] {
+            assert!(
+                erased_entry["snapshot"][key].is_u64(),
+                "the erase audit names {key}"
+            );
+        }
+        assert_eq!(
+            erased_entry["snapshot"]["merged_duplicates_scrubbed"], 0,
+            "nothing was merged into this contact"
+        );
 
         // ── Retention: the report discloses the (default, unfloored-by-env)
         // horizon and today's just-erased contact; a sweep against a
