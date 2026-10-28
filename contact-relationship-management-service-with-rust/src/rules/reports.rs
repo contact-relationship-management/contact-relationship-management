@@ -18,6 +18,9 @@ pub const KINDS: &[&str] = &["contact", "account", "lead", "deal", "ticket"];
 pub const MEASURES: &[&str] = &["count", "sum_amount"];
 /// Most groups a report returns; more is flagged, not hidden.
 pub const MAX_GROUPS: usize = 200;
+
+/// Most group, currency and closing-day cells a report converted at close-day rates may read.
+pub const MAX_DAY_CELLS: usize = 20_000;
 /// Most reports one worker keeps.
 pub const MAX_PER_OWNER: i64 = 50;
 /// Longest report name.
@@ -52,6 +55,10 @@ pub struct Spec {
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
     #[serde(default)]
     pub rate_date: Option<NaiveDate>,
+    /// `close_day`: convert each deal at the rate in force on the day it closed (CRM-R83), not at
+    /// one day's rates; only with `convert_to`, and only for closed deals (`state` won or lost).
+    #[serde(default)]
+    pub rate_basis: Option<String>,
 }
 
 fn count() -> String {
@@ -69,6 +76,7 @@ pub enum Bind {
 
 /// The query for a report.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::struct_excessive_bools)] // four independent facts the controller reads, not a state
 pub struct Plan {
     /// SQL with `$1`, `$2`… placeholders; it selects `grp`, optionally `currency`, and `value`.
     pub sql: String,
@@ -76,6 +84,8 @@ pub struct Plan {
     pub binds: Vec<Bind>,
     /// Whether rows carry a currency (a sum of amounts is per currency, never merged).
     pub per_currency: bool,
+    /// Whether rows also carry the day the deals closed, as `day` (`rate_basis` of `close_day`).
+    pub by_day: bool,
     /// Whether the report looks at tags, which a masked reader may not.
     pub uses_tags: bool,
     /// Whether the measure is money, which a masked reader may not.
@@ -309,6 +319,31 @@ fn check(spec: &Spec, table: &Table) -> Vec<(String, String)> {
     } else if spec.rate_date.is_some() {
         add("rate_date", "needs convert_to".to_string());
     }
+    if let Some(basis) = &spec.rate_basis {
+        if spec.convert_to.is_none() {
+            add("rate_basis", "needs convert_to".to_string());
+        } else if basis != "close_day" {
+            add("rate_basis", "only close_day".to_string());
+        } else {
+            if spec.rate_date.is_some() {
+                add(
+                    "rate_date",
+                    "not with rate_basis: each deal has its own day".to_string(),
+                );
+            }
+            let closed = spec
+                .filter
+                .get("state")
+                .is_some_and(|states| states.iter().all(|s| s == "won" || s == "lost"));
+            if !closed {
+                add(
+                    "filter",
+                    "close_day needs state limited to won or lost: an open deal has no close day"
+                        .to_string(),
+                );
+            }
+        }
+    }
     problems
 }
 
@@ -376,7 +411,16 @@ pub fn plan(spec: &Spec) -> Result<Plan, Vec<(String, String)>> {
         (String::new(), expr.to_string())
     };
     let sum = spec.measure == "sum_amount";
+    let by_day = sum && spec.rate_basis.is_some();
     let (select, group_by, order) = match (sum, table.money) {
+        (true, Some((_, currency))) if by_day => (
+            format!(
+                "{group} AS grp, {currency} AS currency, d.closed_at::date AS day, \
+                 coalesce(sum(d.amount_minor), 0)::bigint AS value, count(*)::bigint AS n"
+            ),
+            "grp, currency, day".to_string(),
+            "grp, currency, day".to_string(),
+        ),
         (true, Some((amount, currency))) => (
             format!(
                 "{group} AS grp, {currency} AS currency, coalesce(sum({amount}), 0)::bigint AS value, count(*)::bigint AS n"
@@ -394,12 +438,17 @@ pub fn plan(spec: &Spec) -> Result<Plan, Vec<(String, String)>> {
         "SELECT {select} FROM {from}{join} WHERE {where_} GROUP BY {group_by} ORDER BY {order} LIMIT {limit}",
         from = table.from,
         where_ = conditions.join(" AND "),
-        limit = MAX_GROUPS + 1,
+        limit = if by_day {
+            MAX_DAY_CELLS + 1
+        } else {
+            MAX_GROUPS + 1
+        },
     );
     Ok(Plan {
         sql,
         binds,
         per_currency: sum,
+        by_day,
         uses_tags: by_tag || spec.filter.contains_key("tag"),
         uses_money: sum,
     })
@@ -417,6 +466,8 @@ pub struct Cell {
     pub value: i64,
     /// The records counted or summed.
     pub n: i64,
+    /// The day the deals closed, for a report converted at close-day rates (CRM-R83).
+    pub day: Option<NaiveDate>,
 }
 
 /// Small-cell suppression (CRM-R78): leave out every cell with fewer than `min` records behind it,
@@ -478,7 +529,49 @@ mod tests {
             to: None,
             convert_to: None,
             rate_date: None,
+            rate_basis: None,
         }
+    }
+
+    #[test]
+    fn close_day_rates_need_a_target_closed_deals_and_no_single_date() {
+        let mut s = spec("deal", "owner");
+        s.measure = "sum_amount".to_string();
+        s.convert_to = Some("GBP".to_string());
+        s.rate_basis = Some("close_day".to_string());
+        let members = |s: &Spec| -> Vec<String> {
+            plan(s)
+                .err()
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(m, _)| m)
+                .collect()
+        };
+        assert_eq!(members(&s), ["filter"], "an open deal has no close day");
+        s.filter
+            .insert("state".to_string(), vec!["won".into(), "open".into()]);
+        assert_eq!(members(&s), ["filter"], "open is still in");
+        s.filter
+            .insert("state".to_string(), vec!["won".into(), "lost".into()]);
+        let planned = plan(&s).unwrap();
+        assert!(planned.by_day && planned.per_currency);
+        assert!(planned.sql.contains("d.closed_at::date AS day"), "{}", planned.sql);
+        assert!(planned.sql.contains("GROUP BY grp, currency, day"), "{}", planned.sql);
+        assert!(
+            planned.sql.contains(&format!("LIMIT {}", MAX_DAY_CELLS + 1)),
+            "the group limit would cut a group's days short"
+        );
+        s.rate_date = NaiveDate::from_ymd_opt(2026, 6, 1);
+        assert_eq!(members(&s), ["rate_date"], "each deal has its own day");
+        s.rate_date = None;
+        s.rate_basis = Some("open_day".to_string());
+        assert_eq!(members(&s), ["rate_basis"]);
+        s.rate_basis = Some("close_day".to_string());
+        s.convert_to = None;
+        assert_eq!(members(&s), ["rate_basis"], "nothing to convert to");
+        s.convert_to = Some("GBP".to_string());
+        s.measure = "count".to_string();
+        assert_eq!(members(&s), ["convert_to"], "a count is not converted");
     }
 
     #[test]
@@ -696,6 +789,7 @@ mod tests {
             currency: currency.map(Into::into),
             value,
             n,
+            day: None,
         }
     }
 

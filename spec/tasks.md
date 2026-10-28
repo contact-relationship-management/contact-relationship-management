@@ -1752,3 +1752,11 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Tests:** `a_policy_closes_a_ticket_left_resolved_for_its_days_and_no_other` (eight days closed, six not, no days not, reopened-and-resolved-again not, bad values refused, audit says `auto_close`, a second sweep closes nothing); the OpenAPI schema tests still pass.
       - **UI:** only the generated `schema.d.ts`; the UI has no policy form (the wait-limit fields have none either).
       - **Not done:** see CRM-R82's list.
+
+- [x] CRM-T149 *(edge)* **Close-day rates in the report builder.** (M)
+      **Done (2026-10-28, not released):** requirement CRM-R83 first, then:
+      - **Service:** `rate_basis` on the report spec; `check` refuses it without `convert_to`, with another value, with `rate_date`, or without a `won`/`lost` state filter; the plan groups by day when it is set (cap `MAX_DAY_CELLS`, no group limit that would cut a group's days short); `Cell.day`; `rules::fx::convert_rows_dated` and `fx_rates::convert_rows_dated` read the rates once.
+      - **Tests:** unit tests for the pure conversion (own-day rates, group merge, a group with nothing converted has no row, never one-to-one) and for the spec's checks and SQL; `a_report_can_convert_each_deal_at_the_rate_of_the_day_it_closed` against the same deals as the CLV test (14,000 against 13,000 at one date; the deal before any rate and the yen named; five refusals with their pointers); a tour end-to-end test (the choice is disabled until the filter is won or lost; no date is shown beside the rates).
+      - **UI:** a checkbox on `/reports` using the existing `clv.closeDay` label (no new strings), enabled only when the filter is `state` of won or lost; it disables the rate date; the tour mirrors the service.
+      - **Found on the way:** (1) the OpenAPI unit test `mutating_operations_have_a_request_schema_or_are_bodyless` had been failing since CRM-T139, whose two bridge routes were never listed as bodyless; they now are. (2) The rates list on `/reports` was keyed by currency, so two rates for one currency (which close-day mode produces) crashed the page; it is keyed by currency, day and direction. The other pages that list rates convert at one date and cannot hit it.
+      - **Not done:** see CRM-R83's list.

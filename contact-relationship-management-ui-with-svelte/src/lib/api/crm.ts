@@ -1626,6 +1626,8 @@ export interface ReportSpec {
   convert_to?: string | null;
   /** The day whose exchange rates are used; today when absent. */
   rate_date?: string | null;
+  /** `close_day`: each deal at the rate of the day it closed; closed deals only (CRM-R83). */
+  rate_basis?: "close_day" | null;
 }
 
 /** An exchange rate a converted report used. */

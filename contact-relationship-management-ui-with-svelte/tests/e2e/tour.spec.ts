@@ -1442,6 +1442,30 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("report-unconverted")).toContainText("GBP");
   });
 
+  test("a deal report can convert each deal at the rate of the day it closed, for closed deals only", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/reports");
+    await page.getByTestId("report-kind").selectOption("deal");
+    await page.getByTestId("report-measure").selectOption("sum_amount");
+    await page.getByTestId("report-group").selectOption("state");
+    await page.getByTestId("report-convert").fill("USD");
+    // An open deal has no close day: the choice waits for a report of won or lost deals.
+    await expect(page.getByTestId("report-close-day")).toBeDisabled();
+    await page.getByTestId("report-filter-field").selectOption("state");
+    await page.getByTestId("report-filter-values").fill("won, open");
+    await expect(page.getByTestId("report-close-day")).toBeDisabled();
+    await page.getByTestId("report-filter-values").fill("won, lost");
+    await page.getByTestId("report-close-day").check();
+    await expect(page.getByTestId("report-rate-date")).toBeDisabled();
+    await page.getByTestId("report-run").click();
+    await expect(page.getByTestId("report-result")).toBeVisible();
+    await expect(page.getByTestId("report-error")).toHaveCount(0);
+    // No one day stands for the answer, so none is shown beside the rates.
+    await expect(page.getByTestId("report-rates")).not.toContainText("(20");
+  });
+
   test("quotas show where each worker stands, and a plan in use cannot be deleted", async ({
     page,
   }) => {

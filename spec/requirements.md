@@ -1304,3 +1304,17 @@ recipient would get before anything is sent, and be certain every message carrie
 - The days count from the **last** resolution: reopening clears `resolved_at` and resolving again sets it afresh, so a reopened ticket is not closed on its first resolution's clock. A ticket the wait-limit action resolved (CRM-R69) counts from that moment.
 - A closed ticket is final, so each ticket is closed **once**. The answer adds `new_auto_closed`.
 - Not built: closing from the `pending` state or any state but `resolved`; a warning to the customer before closing; a different number of days per category; changing the days on an existing policy (a policy is created with them); running the sweep on a schedule.
+
+## CRM-R83 — A report converts each deal at the rate of the day it closed
+
+*As a finance lead, I want a report of deal amounts shown in one currency at the rate in force when each deal closed, so that a figure for last year is not restated at today's exchange rate.*
+
+- `POST /api/reports/run` (and a saved report's spec) takes an optional `rate_basis` of `close_day`, beside `convert_to` (CRM-R50), as CRM-R70 does for an account's CLV. Anything else is refused (`422` naming `/spec/rate_basis`); so is a basis with no `convert_to`.
+- It is for **closed deals only**: the `state` filter must be present and limited to `won` and `lost`, because an open deal has no close day. Otherwise `422` naming `/spec/filter`; the report is not quietly narrowed.
+- It cannot be used with `rate_date`: each deal has its own day (`422` naming `/spec/rate_date`).
+- The database adds up each group's amounts **per currency and per closing day**; each of those sums is converted once at the rate in force on its day (the latest on or before it, or the reverse pair inverted), then the groups merge. The rounding is therefore at most half a minor unit per group, currency and day, **not per deal**, which differs from CRM-R70 where a handful of deals are converted one by one. A sum already in the target currency is kept as it is; a sum with no rate on its day is **left out and counted** in `unconverted`, never taken at one-to-one.
+- The answer's `rate_date` is `null` (no one day stands for it); `rates` lists each distinct rate used, so the same currency can appear more than once, with its effective day.
+- Small-cell suppression (CRM-R78) judges a group by all its records, over all its days.
+- A report that would read more than 20,000 group, currency and day cells is refused (`422`) and asks for a narrower one, rather than being cut off.
+- Money, so a masked reader is refused as for any sum (CRM-R50).
+- Not built: close-day rates for attribution, campaign ROI and the forecast; conversion per deal rather than per day sum; a day other than the one the deal closed (such as the invoice date).

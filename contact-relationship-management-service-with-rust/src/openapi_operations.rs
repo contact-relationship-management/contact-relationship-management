@@ -694,7 +694,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "post",
         "/api/reports/run",
         "insights",
-        "Answer a report specification now (CRM-R48): a kind of record, a grouping, a count or (deals) a per-currency sum, filters and a date range; saves nothing. A caller with a masked collection read may count but not sum amounts or use tags (403)",
+        "Answer a report specification now (CRM-R48): a kind of record, a grouping, a count or (deals) a per-currency sum, filters and a date range; saves nothing. convert_to shows a sum in one currency, at rate_date's rates or, with rate_basis close_day (won or lost deals only), at the rate of the day each deal closed (CRM-R50, CRM-R83). A caller with a masked collection read may count but not sum amounts or use tags (403)",
         Kind::Ok,
     ),
     (

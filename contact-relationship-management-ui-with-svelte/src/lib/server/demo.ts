@@ -2811,7 +2811,7 @@ function workflows(
 
 /** The tour's reports: computed over the sample records, as the service computes them over its own. */
 /** A report row and the records behind it, which the service uses to leave small groups out. */
-type SizedRow = ReportResult["rows"][number] & { n: number };
+type SizedRow = ReportResult["rows"][number] & { n: number; day?: string };
 
 function reportRows(spec: ReportSpec): SizedRow[] | string {
   type Rec = Record<string, unknown>;
@@ -2872,10 +2872,16 @@ function reportRows(spec: ReportSpec): SizedRow[] | string {
   );
   const sums = new Map<string, number>();
   const sizes = new Map<string, number>();
+  // Converted at close-day rates, a sum is kept for each day the deals closed (CRM-R83).
+  const byDay =
+    spec.measure === "sum_amount" && spec.rate_basis === "close_day";
   for (const r of kept) {
     for (const g of group(r)) {
       const money = spec.measure === "sum_amount";
-      const key = money ? `${g}\u0000${text(r.currency)}` : g;
+      const day = byDay
+        ? `\u0000${String(r.closed_at ?? "").slice(0, 10)}`
+        : "";
+      const key = money ? `${g}\u0000${text(r.currency)}${day}` : g;
       sums.set(
         key,
         (sums.get(key) ?? 0) + (money ? Number(r.amount_minor ?? 0) : 1),
@@ -2885,12 +2891,13 @@ function reportRows(spec: ReportSpec): SizedRow[] | string {
   }
   return [...sums.entries()]
     .map(([key, value]) => {
-      const [g, currency] = key.split("\u0000");
+      const [g, currency, day] = key.split("\u0000");
       return {
         group: g!,
         currency: currency ?? null,
         value,
         n: sizes.get(key)!,
+        ...(day ? { day } : {}),
       };
     })
     .sort((a, b) => b.value - a.value || a.group.localeCompare(b.group));
@@ -2930,6 +2937,20 @@ function reportResult(spec: ReportSpec): DemoReply {
     return problem(422, "kind is not a kind of record");
   if (spec.measure === "sum_amount" && spec.kind !== "deal")
     return problem(422, "only a deal report can sum amounts");
+  if (spec.rate_basis) {
+    if (!spec.convert_to)
+      return problem(422, "/spec/rate_basis: needs convert_to");
+    if (spec.rate_basis !== "close_day")
+      return problem(422, "/spec/rate_basis: only close_day");
+    if (spec.rate_date)
+      return problem(422, "/spec/rate_date: not with rate_basis");
+    const states = spec.filter.state;
+    if (!states || !states.every((s) => s === "won" || s === "lost"))
+      return problem(
+        422,
+        "/spec/filter: close_day needs state limited to won or lost",
+      );
+  }
   const all = reportRows(spec);
   if (typeof all === "string") return problem(422, all);
   const { kept: rows, suppressed } = suppressSmall(
@@ -2987,10 +3008,38 @@ function pickRate(from: string, to: string, day: string) {
 }
 
 /** Convert a deal report's sums as the service does: once per group and currency, then merge. */
-function convertReport(spec: ReportSpec, rows: ReportResult["rows"]) {
+function convertReport(spec: ReportSpec, rows: SizedRow[]) {
   if (spec.measure !== "sum_amount" && spec.convert_to)
     return "only a sum of amounts can be converted";
-  return convertSums(spec.convert_to!, spec.rate_date ?? null, rows);
+  if (spec.rate_basis !== "close_day")
+    return convertSums(spec.convert_to!, spec.rate_date ?? null, rows);
+  // Each group's sum for each closing day at that day's rate (CRM-R83), then the groups merge.
+  const merged = new Map<string, number>();
+  const rates = new Map<string, ReportRateUsed>();
+  const left = new Map<string, { groups: number; amount_minor: number }>();
+  for (const row of rows) {
+    const one = convertSums(spec.convert_to!, row.day ?? null, [row]);
+    if (typeof one === "string") return one;
+    for (const r of one.rows)
+      merged.set(r.group, (merged.get(r.group) ?? 0) + r.value);
+    for (const r of one.rates) rates.set(`${r.from}|${r.effective_on}`, r);
+    for (const u of one.unconverted) {
+      const entry = left.get(u.currency) ?? { groups: 0, amount_minor: 0 };
+      entry.groups += u.groups;
+      entry.amount_minor += u.amount_minor;
+      left.set(u.currency, entry);
+    }
+  }
+  return {
+    rows: [...merged.entries()]
+      .map(([group, value]) => ({ group, currency: spec.convert_to!, value }))
+      .sort((a, b) => b.value - a.value || a.group.localeCompare(b.group)),
+    rateDate: null,
+    rates: [...rates.values()].sort((a, b) => a.from.localeCompare(b.from)),
+    unconverted: [...left.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([currency, entry]) => ({ currency, ...entry })),
+  };
 }
 
 /** Convert `(group, currency, value)` sums into `target`: once per group and currency, then merge. */

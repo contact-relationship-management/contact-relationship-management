@@ -247,6 +247,66 @@ pub fn convert_rows(
     }
 }
 
+/// Convert `(group, day, currency, sum)` rows into `target`, **each at the rate in force on its own
+/// day** (CRM-R83), then merge the groups. Each row is one group's sum for one currency on one
+/// closing day, converted once, so the rounding is at most half a minor unit per such row (not per
+/// deal, which the database has already added up). A sum already in the target is kept; one with
+/// no rate on its day is left out and counted, never taken at one-to-one; a group with nothing
+/// converted has no row, as in [`convert_rows`].
+#[must_use]
+pub fn convert_rows_dated(
+    rows: &[(String, NaiveDate, String, i64)],
+    target: &str,
+    rates: &[Rate],
+) -> Converted {
+    use std::collections::BTreeMap;
+    let mut used: BTreeMap<(String, NaiveDate, bool), Picked> = BTreeMap::new();
+    let mut merged: BTreeMap<&str, i64> = BTreeMap::new();
+    let mut left: BTreeMap<&str, (usize, i64)> = BTreeMap::new();
+    for (group, day, currency, value) in rows {
+        let converted = if currency == target {
+            Some(*value)
+        } else if let Some(picked) = pick(rates, currency, target, *day) {
+            let value = convert(*value, &picked);
+            used.insert(
+                (currency.clone(), picked.rate.effective_on, picked.inverted),
+                picked,
+            );
+            Some(value)
+        } else {
+            None
+        };
+        if let Some(value) = converted {
+            let total = merged.entry(group.as_str()).or_default();
+            *total = total.saturating_add(value);
+        } else {
+            let entry = left.entry(currency.as_str()).or_default();
+            entry.0 += 1;
+            entry.1 = entry.1.saturating_add(*value);
+        }
+    }
+    let mut rows: Vec<(String, i64)> = merged
+        .into_iter()
+        .map(|(group, value)| (group.to_string(), value))
+        .collect();
+    rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    Converted {
+        rows,
+        used: used
+            .into_iter()
+            .map(|((currency, _, _), picked)| (currency, picked))
+            .collect(),
+        left_out: left
+            .into_iter()
+            .map(|(currency, (groups, amount_minor))| LeftOut {
+                currency: currency.to_string(),
+                groups,
+                amount_minor,
+            })
+            .collect(),
+    }
+}
+
 /// Deals converted each at the rate in force on its own day.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DatedConverted {
@@ -576,6 +636,43 @@ mod tests {
         assert_eq!(done.total, 14_000);
         assert_eq!(done.used.len(), 2);
         assert!(done.left_out.is_empty());
+    }
+
+    #[test]
+    fn report_rows_are_converted_at_their_own_day_then_merged_by_group() {
+        let rates = [
+            rate("USD", "GBP", "0.80", day(1, 1)),
+            rate("USD", "GBP", "0.50", day(6, 1)),
+        ];
+        let dated = |group: &str, on: NaiveDate, currency: &str, value: i64| {
+            (group.to_string(), on, currency.to_string(), value)
+        };
+        let rows = [
+            dated("ann", day(2, 1), "USD", 10_000),
+            dated("ann", day(7, 1), "USD", 10_000),
+            dated("ann", day(7, 1), "GBP", 1_000),
+            dated("bob", day(7, 1), "USD", 4_000),
+            // No rate on its day: left out, and the group that had only this has no row.
+            dated("cat", day(7, 1), "JPY", 500),
+        ];
+        let done = convert_rows_dated(&rows, "GBP", &rates);
+        // ann: 8,000 + 5,000 + 1,000; bob: 2,000.
+        assert_eq!(
+            done.rows,
+            [("ann".to_string(), 14_000), ("bob".to_string(), 2_000)]
+        );
+        assert_eq!(done.used.len(), 2, "both USD rates were used");
+        assert_eq!(
+            done.left_out,
+            [LeftOut {
+                currency: "JPY".to_string(),
+                groups: 1,
+                amount_minor: 500
+            }]
+        );
+        let before = [dated("ann", day(1, 1) - chrono::Duration::days(1), "USD", 100)];
+        let none = convert_rows_dated(&before, "GBP", &rates);
+        assert!(none.rows.is_empty() && none.left_out.len() == 1, "never one-to-one");
     }
 
     #[test]

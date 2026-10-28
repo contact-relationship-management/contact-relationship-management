@@ -35,4 +35,6 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   the live forecast and CLV convert from hand-entered rates (CRM-R50 to
   CRM-R54); the forecast snapshots and the trend still report per
   currency, and rates are not fetched
-  from a provider or applied at each deal's close day.
+  from a provider. Each deal's close day is applied to an account's CLV
+  (CRM-R70) and to the report builder (CRM-R83), not yet to attribution,
+  ROI or the forecast.

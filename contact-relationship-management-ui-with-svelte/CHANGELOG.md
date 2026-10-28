@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — close-day rates on the report page (CRM-T149, CRM-R83)
+
+A checkbox converts each deal at the rate of the day it closed, for won or lost deals; the rates list is keyed by currency and day.
+
 ### Added — suggested articles on the tickets page (CRM-T133)
 
 `ticketSuggestions`, a list under the selected ticket, the tour's suggestions and a sixth knowledge-base article, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; one Playwright test (and the help centre test now counts five).

@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — close-day rates in reports (CRM-T149, CRM-R83)
+
+A report of deal amounts can set `rate_basis: close_day` to convert each closing day's sums at that day's rate, for won or lost deals. Fixed on the way: the OpenAPI body test for the bridge routes, and a crash of the reports page when one currency had two rates.
+
 ### Added — closing a ticket left resolved (CRM-T148, CRM-R82)
 
 An SLA policy may set `auto_close_days` (1 to 365); the sweep then closes a ticket that has stayed resolved for longer, counted from its last resolution.

@@ -14340,7 +14340,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Answer a report specification now (CRM-R48): a kind of record, a grouping, a count or (deals) a per-currency sum, filters and a date range; saves nothing. A caller with a masked collection read may count but not sum amounts or use tags (403) */
+        /** Answer a report specification now (CRM-R48): a kind of record, a grouping, a count or (deals) a per-currency sum, filters and a date range; saves nothing. convert_to shows a sum in one currency, at rate_date's rates or, with rate_basis close_day (won or lost deals only), at the rate of the day each deal closed (CRM-R50, CRM-R83). A caller with a masked collection read may count but not sum amounts or use tags (403) */
         post: {
             parameters: {
                 query?: never;
@@ -20915,6 +20915,12 @@ export interface components {
              * @default count
              */
             measure: string;
+            /**
+             * @description `close_day`: convert each deal at the rate in force on the day it closed (CRM-R83), not at
+             *     one day's rates; only with `convert_to`, and only for closed deals (`state` won or lost).
+             * @default null
+             */
+            rate_basis: string | null;
             /**
              * Format: date
              * @description The day whose exchange rates are used (today when absent); only with `convert_to`.

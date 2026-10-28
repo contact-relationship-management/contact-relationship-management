@@ -733,3 +733,122 @@ async fn an_accounts_clv_can_convert_each_deal_at_the_rate_of_the_day_it_closed(
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_report_can_convert_each_deal_at_the_rate_of_the_day_it_closed() {
+    let _plain = super::no_suppression();
+    request::<App, _, _>(|request, ctx| async move {
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        // The same deals as an account's CLV: two USD deals either side of a rate change, one
+        // before any rate, pounds (closed now) and yen.
+        for (amount, currency, closed) in [
+            (10_000, "USD", Some("2026-02-01")),
+            (10_000, "USD", Some("2026-07-01")),
+            (4_000, "USD", Some("2025-12-01")),
+            (1_000, "GBP", None),
+            (700, "JPY", Some("2026-02-01")),
+        ] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(&json!({ "name": "D", "pipeline_pid": pipeline,
+                               "amount_minor": amount, "currency": currency }))
+                .await
+                .json();
+            let pid = deal["pid"].as_str().unwrap();
+            request
+                .post(&format!("/api/deals/{pid}/stage"))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+            if let Some(day) = closed {
+                ctx.db
+                    .execute_raw(Statement::from_sql_and_values(
+                        DatabaseBackend::Postgres,
+                        format!(
+                            "UPDATE deals SET closed_at = '{day}T09:00:00Z' WHERE pid = $1::uuid"
+                        ),
+                        [pid.into()],
+                    ))
+                    .await
+                    .unwrap();
+            }
+        }
+        let _ = set_rate!(&request, "USD", "GBP", "0.80", "2026-01-01");
+        let _ = set_rate!(&request, "USD", "GBP", "0.50", "2026-06-01");
+
+        let run = |extra: Value| {
+            let request = &request;
+            async move {
+                let mut spec = json!({ "kind": "deal", "group_by": "state",
+                                       "measure": "sum_amount", "convert_to": "GBP",
+                                       "filter": { "state": ["won"] } });
+                for (k, v) in extra.as_object().unwrap() {
+                    spec[k] = v.clone();
+                }
+                request.post("/api/reports/run").json(&spec).await
+            }
+        };
+
+        // One date for everything: all 24,000 USD at today's 0.50, plus the pounds.
+        let one: Value = run(json!({})).await.json();
+        assert_eq!(one["rows"][0]["value"], 13_000, "{one}");
+
+        // On the day each closed: 8,000 and 5,000 at their own rates and the pounds as they are;
+        // the deal before any rate and the yen are left out and named. No one date is claimed.
+        let dated: Value = run(json!({ "rate_basis": "close_day" })).await.json();
+        assert_eq!(
+            dated["rows"],
+            json!([{ "group": "won", "currency": "GBP", "value": 14_000 }]),
+            "{dated}"
+        );
+        assert!(dated["rate_date"].is_null(), "{dated}");
+        assert_eq!(dated["spec"]["rate_basis"], "close_day", "{dated}");
+        assert_eq!(dated["rates"].as_array().unwrap().len(), 2, "{dated}");
+        let left: Vec<(String, i64)> = dated["unconverted"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|u| {
+                (
+                    u["currency"].as_str().unwrap().into(),
+                    u["amount_minor"].as_i64().unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            left,
+            [("JPY".to_string(), 700), ("USD".to_string(), 4_000)],
+            "{dated}"
+        );
+
+        // Refused: open deals have no close day, a single date beside it, a basis with nothing to
+        // convert to, and a basis that is not one.
+        for (extra, pointer) in [
+            (
+                json!({ "rate_basis": "close_day", "filter": { "state": ["won", "open"] } }),
+                "/spec/filter",
+            ),
+            (
+                json!({ "rate_basis": "close_day", "filter": {} }),
+                "/spec/filter",
+            ),
+            (
+                json!({ "rate_basis": "close_day", "rate_date": "2026-03-01" }),
+                "/spec/rate_date",
+            ),
+            (json!({ "rate_basis": "today" }), "/spec/rate_basis"),
+            (
+                json!({ "rate_basis": "close_day", "convert_to": null }),
+                "/spec/rate_basis",
+            ),
+        ] {
+            let r = run(extra.clone()).await;
+            r.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            let answer: Value = r.json();
+            assert_eq!(answer["errors"][0]["pointer"], pointer, "{extra}: {answer}");
+        }
+    })
+    .await;
+}

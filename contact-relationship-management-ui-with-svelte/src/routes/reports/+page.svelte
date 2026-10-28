@@ -43,6 +43,7 @@
   let to = $state("");
   let convertTo = $state("");
   let rateDate = $state("");
+  let closeDay = $state(false);
   let name = $state("");
   let shared = $state(false);
   let result = $state<ReportResult | null>(null);
@@ -58,6 +59,17 @@
     if (filterField && !FIELDS[kind].includes(filterField)) filterField = "";
   });
 
+  // An open deal has no close day, so the choice needs the report limited to won or lost deals.
+  const closedOnly = $derived(
+    filterField === "state" &&
+      filterValues
+        .split(",")
+        .map((v) => v.trim().toLowerCase())
+        .filter(Boolean)
+        .every((v) => v === "won" || v === "lost") &&
+      filterValues.trim() !== "",
+  );
+
   function spec(): ReportSpec {
     const values = filterValues
       .split(",")
@@ -71,7 +83,9 @@
       from: from || null,
       to: to || null,
       convert_to: measure === "sum_amount" && convertTo ? convertTo.trim().toUpperCase() : null,
-      rate_date: measure === "sum_amount" && convertTo && rateDate ? rateDate : null,
+      rate_date:
+        measure === "sum_amount" && convertTo && rateDate && !closeDay ? rateDate : null,
+      rate_basis: measure === "sum_amount" && convertTo && closeDay ? "close_day" : null,
     };
   }
 
@@ -86,6 +100,7 @@
     to = s.to ?? "";
     convertTo = s.convert_to ?? "";
     rateDate = s.rate_date ?? "";
+    closeDay = s.rate_basis === "close_day";
   }
 
   async function run() {
@@ -197,7 +212,21 @@
     {#if convertTo}
       <label>
         {t("rpt.rateDate")}
-        <input type="date" bind:value={rateDate} data-testid="report-rate-date" />
+        <input
+          type="date"
+          bind:value={rateDate}
+          disabled={closeDay}
+          data-testid="report-rate-date"
+        />
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          bind:checked={closeDay}
+          disabled={!closedOnly}
+          data-testid="report-close-day"
+        />
+        {t("clv.closeDay")}
       </label>
     {/if}
   {/if}
@@ -251,8 +280,8 @@
     {/if}
     {#if result.rates.length > 0}
       <p class="muted small" data-testid="report-rates">
-        {t("rpt.ratesUsed")} ({result.rate_date}):
-        {#each result.rates as used (used.from)}
+        {t("rpt.ratesUsed")}{result.rate_date ? ` (${result.rate_date})` : ""}:
+        {#each result.rates as used (`${used.from}|${used.effective_on}|${used.inverted}`)}
           <span class="chip">
             1 {used.from} = {used.rate} {used.to}, {used.effective_on}, {used.source}
             {#if used.inverted}({t("rpt.inverted")}){/if}

@@ -96,19 +96,15 @@ struct Conversion {
 
 /// The rows as the database gave them, or converted to `convert_to` with the rates in force on
 /// the rate date (CRM-R50).
-async fn converted(
-    ctx: &AppContext,
-    spec: &Spec,
-    raw: Vec<(String, Option<String>, i64)>,
-) -> Result<Conversion> {
+async fn converted(ctx: &AppContext, spec: &Spec, raw: Vec<rules::Cell>) -> Result<Conversion> {
     let Some(target) = &spec.convert_to else {
         return Ok(Conversion {
             rows: raw
                 .into_iter()
-                .map(|(group, currency, value)| ReportRow {
-                    group,
-                    currency,
-                    value,
+                .map(|c| ReportRow {
+                    group: c.group,
+                    currency: c.currency,
+                    value: c.value,
                 })
                 .collect(),
             rate_date: None,
@@ -116,9 +112,31 @@ async fn converted(
             unconverted: Vec::new(),
         });
     };
+    if spec.rate_basis.is_some() {
+        // Each closing day at its own rate (CRM-R83): no one date stands for the answer.
+        let dated: Vec<(String, chrono::NaiveDate, String, i64)> = raw
+            .into_iter()
+            .filter_map(|c| Some((c.group, c.day?, c.currency.unwrap_or_default(), c.value)))
+            .collect();
+        let (rows, rates, unconverted) =
+            super::fx_rates::convert_rows_dated(ctx, target, &dated).await?;
+        return Ok(Conversion {
+            rows: rows
+                .into_iter()
+                .map(|(group, value)| ReportRow {
+                    group,
+                    currency: Some(target.clone()),
+                    value,
+                })
+                .collect(),
+            rate_date: None,
+            rates,
+            unconverted,
+        });
+    }
     let sums: Vec<(String, String, i64)> = raw
         .into_iter()
-        .map(|(group, currency, value)| (group, currency.unwrap_or_default(), value))
+        .map(|c| (c.group, c.currency.unwrap_or_default(), c.value))
         .collect();
     let done =
         super::fx_rates::convert_sums(ctx, target, spec.rate_date, "spec.rate_date", &sums).await?;
@@ -173,6 +191,12 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
         })
         .collect();
     let found = ctx.db.query_all_raw(stmt(&plan.sql, values)).await?;
+    if plan.by_day && found.len() > rules::MAX_DAY_CELLS {
+        return Err(unprocessable(
+            "that report spans too many closing days to convert at each day's rate; narrow it \
+             with from and to, or a filter",
+        ));
+    }
     let mut cells = Vec::with_capacity(found.len());
     for row in &found {
         cells.push(rules::Cell {
@@ -184,22 +208,23 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
             },
             value: row.try_get::<i64>("", "value")?,
             n: row.try_get::<i64>("", "n")?,
+            day: if plan.by_day {
+                row.try_get("", "day")?
+            } else {
+                None
+            },
         });
     }
     // A group with only a few records behind it is a few people (or a few deals' amounts): leave it
     // out, and say how many were, so a short table is not mistaken for a complete one (CRM-R78).
     let min_cell_size = crate::settings::current().min_cell_size;
     let (cells, suppressed) = rules::suppress(cells, min_cell_size, spec.convert_to.is_some());
-    let raw: Vec<(String, Option<String>, i64)> = cells
-        .into_iter()
-        .map(|c| (c.group, c.currency, c.value))
-        .collect();
     let Conversion {
         mut rows,
         rate_date,
         rates,
         unconverted,
-    } = converted(ctx, &spec, raw).await?;
+    } = converted(ctx, &spec, cells).await?;
     let truncated = rows.len() > MAX_GROUPS;
     rows.truncate(MAX_GROUPS);
     Audit::record_read(
