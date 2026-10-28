@@ -71,6 +71,36 @@ async fn fake_wpm(workers: Vec<Value>) -> (String, Seen) {
     (serve(app).await, seen)
 }
 
+/// A stand-in that records the `Authorization` header of every call it gets.
+async fn fake_that_records_credentials() -> (String, Arc<Mutex<Vec<Option<String>>>>) {
+    use axum::http::HeaderMap;
+    let seen: Arc<Mutex<Vec<Option<String>>>> = Arc::default();
+    let record = |State(seen): State<Arc<Mutex<Vec<Option<String>>>>>, headers: HeaderMap| async move {
+        seen.lock().unwrap().push(
+            headers
+                .get("authorization")
+                .map(|v| v.to_str().unwrap().to_string()),
+        );
+    };
+    let app = Router::new()
+        .route(
+            "/api/ideas",
+            post(move |s: State<_>, h: HeaderMap| async move {
+                record(s, h).await;
+                Json(json!({ "pid": uuid::Uuid::new_v4().to_string() }))
+            }),
+        )
+        .route(
+            "/api/workers",
+            get(move |s: State<_>, h: HeaderMap| async move {
+                record(s, h).await;
+                Json(json!([]))
+            }),
+        )
+        .with_state(seen.clone());
+    (serve(app).await, seen)
+}
+
 async fn serve(app: Router) -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
@@ -288,4 +318,53 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
             .assert_status(axum::http::StatusCode::BAD_GATEWAY);
     })
     .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn each_bridge_sends_its_own_token_when_it_has_one_and_none_when_it_has_not() {
+    let _restore = Restore;
+    let (base, seen) = fake_that_records_credentials().await;
+    settings::update(|s| {
+        s.ppm_service_url = Some(base.clone());
+        s.worker_service_url = Some(base.clone());
+    });
+
+    // No tokens: nothing is attached.
+    contact_relationship_management::clients::open_delivery_idea("t", "p", &["crm"])
+        .await
+        .unwrap();
+    contact_relationship_management::clients::active_workers()
+        .await
+        .unwrap();
+    assert_eq!(*seen.lock().unwrap(), [None, None]);
+    seen.lock().unwrap().clear();
+
+    // Each service gets the token meant for it, and not the other's.
+    settings::update(|s| {
+        s.ppm_service_token = Some("ppm-token".to_string());
+        s.worker_service_token = Some("wpm-token".to_string());
+    });
+    contact_relationship_management::clients::open_delivery_idea("t", "p", &["crm"])
+        .await
+        .unwrap();
+    contact_relationship_management::clients::active_workers()
+        .await
+        .unwrap();
+    assert_eq!(
+        *seen.lock().unwrap(),
+        [
+            Some("Bearer ppm-token".to_string()),
+            Some("Bearer wpm-token".to_string())
+        ]
+    );
+
+    // A token is not sent in the clear to another machine: the call fails and sends nothing.
+    seen.lock().unwrap().clear();
+    settings::update(|s| s.ppm_service_url = Some("http://ppm.example.com".to_string()));
+    let why = contact_relationship_management::clients::open_delivery_idea("t", "p", &[])
+        .await
+        .unwrap_err();
+    assert!(!why.contains("ppm-token"), "{why}");
+    assert!(seen.lock().unwrap().is_empty());
 }

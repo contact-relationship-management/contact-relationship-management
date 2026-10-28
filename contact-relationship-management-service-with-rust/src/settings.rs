@@ -54,6 +54,11 @@ pub struct Settings {
     pub ppm_service_url: Option<String>,
     /// `CRM_WORKER_SERVICE_URL`: the worker service (WPM) the team import reads workers from.
     pub worker_service_url: Option<String>,
+    /// `CRM_PPM_SERVICE_TOKEN`: a bearer token sent to the project portfolio service, when that has
+    /// authentication on (CRM-R87). Issued by the deployer's identity provider; never logged.
+    pub ppm_service_token: Option<String>,
+    /// `CRM_WORKER_SERVICE_TOKEN`: the same for the worker service (CRM-R87).
+    pub worker_service_token: Option<String>,
     /// `CRM_EVENT_TRANSPORT`: `memory` (default) or `outbox`.
     pub event_transport: EventTransport,
     /// `CRM_RETENTION_DAYS`, raw (parsed and clamped by the retention rules).
@@ -202,6 +207,8 @@ impl Settings {
                 .map_or(5, |n| n.clamp(0, 1000)),
             ppm_service_url: text("CRM_PPM_SERVICE_URL"),
             worker_service_url: text("CRM_WORKER_SERVICE_URL"),
+            ppm_service_token: text("CRM_PPM_SERVICE_TOKEN"),
+            worker_service_token: text("CRM_WORKER_SERVICE_TOKEN"),
             event_transport: EventTransport::parse(&get("CRM_EVENT_TRANSPORT").unwrap_or_default()),
             retention_days: get("CRM_RETENTION_DAYS"),
             mail_batch: get("CRM_MAIL_BATCH")

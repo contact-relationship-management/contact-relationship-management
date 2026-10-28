@@ -319,26 +319,64 @@ fn bridge_client() -> Result<reqwest::Client, String> {
         .map_err(|_| "no http client".to_string())
 }
 
+/// Attach `token`, when there is one, as a bearer credential (CRM-R87) — but only to an address
+/// that keeps it private: `https`, or `http` to this machine. A token is never sent in the clear
+/// across a network, and the client follows no redirect, so it goes to the address configured and
+/// nowhere else.
+///
+/// # Errors
+///
+/// A short reason, holding neither the token nor the address, when the address is not one the
+/// token may be sent to.
+fn with_credential(
+    request: reqwest::RequestBuilder,
+    base: &str,
+    token: Option<&str>,
+) -> Result<reqwest::RequestBuilder, String> {
+    let Some(token) = token else {
+        return Ok(request);
+    };
+    let url = reqwest::Url::parse(base)
+        .map_err(|_| "the service address is not a URL, so no credential is sent".to_string())?;
+    let local = match url.host() {
+        Some(url::Host::Domain(name)) => name.eq_ignore_ascii_case("localhost"),
+        Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+        Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+        None => false,
+    };
+    if url.scheme() == "https" || (url.scheme() == "http" && local) {
+        Ok(request.bearer_auth(token))
+    } else {
+        Err("a credential is only sent over https, or to this machine".to_string())
+    }
+}
+
 /// Open a delivery idea in the project portfolio service (CRM-R72): `POST {CRM_PPM_SERVICE_URL}/api/ideas`
 /// with `{"title", "pitch", "tags"}`, answered `{"pid"}`. The contract was checked against that
 /// service's source (`strategy.rs`, `create_idea`) on 2026-10-28 and is not run against a live one.
-/// No credentials are sent: it works against a service with authentication off.
+/// With `CRM_PPM_SERVICE_TOKEN` set it sends that as a bearer credential (CRM-R87); without, it
+/// reaches a service with authentication off.
 ///
 /// # Errors
 ///
 /// A short reason when the service is unconfigured, unreachable or answers something that is not
 /// an id. The reason holds no deal data.
 pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Result<String, String> {
-    let base = crate::settings::current()
+    let settings = crate::settings::current();
+    let base = settings
         .ppm_service_url
         .clone()
         .ok_or_else(|| "CRM_PPM_SERVICE_URL is not set".to_string())?;
-    let response = bridge_client()?
-        .post(format!("{}/api/ideas", base.trim_end_matches('/')))
-        .json(&serde_json::json!({ "title": title, "pitch": pitch, "tags": tags }))
-        .send()
-        .await
-        .map_err(|_| "the project portfolio service could not be reached".to_string())?;
+    let response = with_credential(
+        bridge_client()?
+            .post(format!("{}/api/ideas", base.trim_end_matches('/')))
+            .json(&serde_json::json!({ "title": title, "pitch": pitch, "tags": tags })),
+        &base,
+        settings.ppm_service_token.as_deref(),
+    )?
+    .send()
+    .await
+    .map_err(|_| "the project portfolio service could not be reached".to_string())?;
     if !response.status().is_success() {
         return Err(format!(
             "the project portfolio service answered {}",
@@ -362,29 +400,34 @@ pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Resu
 /// {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=&offset=`, read page by page. Checked
 /// against that service's source (`hr_core.rs`, `list_workers`: a bare JSON array, `pid` and
 /// `department` members, a page of at most 500, an offset of at most 10,000, `active` a real status)
-/// on 2026-10-28; not run against a live one, and no credentials are sent.
+/// on 2026-10-28; not run against a live one. With `CRM_WORKER_SERVICE_TOKEN` set it sends that as a
+/// bearer credential (CRM-R87), and the list is then the one that token may see.
 ///
 /// # Errors
 ///
 /// A short reason when the service is unconfigured, unreachable, answers something that is not a
 /// list, or has more than [`MAX_WORKER_PAGES`] pages.
 pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
-    let base = crate::settings::current()
+    let settings = crate::settings::current();
+    let base = settings
         .worker_service_url
         .clone()
         .ok_or_else(|| "CRM_WORKER_SERVICE_URL is not set".to_string())?;
     let client = bridge_client()?;
     let mut workers = Vec::new();
     for page in 0..MAX_WORKER_PAGES {
-        let response = client
-            .get(format!(
+        let response = with_credential(
+            client.get(format!(
                 "{}/api/workers?status=active&limit={WORKER_PAGE}&offset={}",
                 base.trim_end_matches('/'),
                 page * WORKER_PAGE
-            ))
-            .send()
-            .await
-            .map_err(|_| "the worker service could not be reached".to_string())?;
+            )),
+            &base,
+            settings.worker_service_token.as_deref(),
+        )?
+        .send()
+        .await
+        .map_err(|_| "the worker service could not be reached".to_string())?;
         if !response.status().is_success() {
             return Err(format!(
                 "the worker service answered {}",
@@ -494,6 +537,43 @@ async fn reqwest_get_json(url: &str) -> Option<serde_json::Value> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_credential_goes_only_over_https_or_to_this_machine() {
+        let client = reqwest::Client::new();
+        let sent = |base: &str, token: Option<&str>| {
+            super::with_credential(client.get("http://example.invalid/"), base, token).map(|r| {
+                r.build()
+                    .unwrap()
+                    .headers()
+                    .get("authorization")
+                    .map(|v| v.to_str().unwrap().to_string())
+            })
+        };
+        for base in [
+            "https://ppm.example.com",
+            "http://localhost:5150",
+            "http://127.0.0.1:1",
+            "http://[::1]:5150",
+        ] {
+            assert_eq!(
+                sent(base, Some("t0ken")),
+                Ok(Some("Bearer t0ken".into())),
+                "{base}"
+            );
+        }
+        for base in [
+            "http://ppm.example.com",
+            "http://10.0.0.5:5150",
+            "ftp://x",
+            "not a url",
+        ] {
+            let why = sent(base, Some("t0ken")).unwrap_err();
+            assert!(!why.contains("t0ken") && !why.contains(base), "{why}");
+        }
+        // Without a token nothing is attached, whatever the address.
+        assert_eq!(sent("http://ppm.example.com", None), Ok(None));
+    }
+
     use super::*;
     use std::str::FromStr;
 

@@ -1782,3 +1782,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a checkbox on `/campaigns` using the existing `clv.closeDay` label, enabled with the conversion; the rates list keyed by currency, day and direction.
       - **Bridge contracts checked against the sibling source (CRM-R72, CRM-R73):** PPM `create_idea` (`strategy.rs`) and WPM `list_workers` (`hr_core.rs`) match what `clients.rs` sends and reads. Two findings: WPM refuses an offset above 10,000, so the worker import reads at most 51 pages of 200 and stops with a reason of ours; and **neither call sends credentials**, so each reaches its service only while that has authentication off (recorded in both requirements; a service-to-service credential is not built). Neither was run against a live service.
       - **Not done:** see CRM-R86's list.
+
+- [x] CRM-T153 *(edge)* **A credential for the bridges.** Closes the gap CRM-T152 found. (S)
+      **Done (2026-10-28, not released):** requirement CRM-R87 first, then:
+      - **Service:** `Settings.ppm_service_token` and `worker_service_token`; `clients::with_credential` attaches a bearer token only to `https` or loopback `http`; both calls use it.
+      - **Tests:** a unit test of the address rule (four addresses that get the token, four that do not, an error that holds neither token nor address, nothing attached without a token); a wire test against one stand-in (nothing attached without tokens, each service gets its own, a token is not sent to a plain-`http` remote address and the call fails with nothing sent).
+      - **Not done:** see CRM-R87's list.

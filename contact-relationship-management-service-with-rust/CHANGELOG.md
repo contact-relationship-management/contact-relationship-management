@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — bridge credentials (CRM-T153, CRM-R87)
+
+`ppm_service_token`, `worker_service_token`; `clients::with_credential`.
+
 ### Added — close-day campaign ROI (CRM-T152, CRM-R86)
 
 `rate_basis` on the funnel query and answer; the worker import stops at 51 pages.
