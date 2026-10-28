@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Changed — no page shows the service's error text (CRM-T143, CRM-R76)
+
+The UI says what kind of failure it was, in the reader's language, and never the service's own words; enforced by lint and a test.
+
 ### Added — a translation-review register (CRM-T142, CRM-R75)
 
 Which locales are drafts and which a native speaker has reviewed (none yet), with a test that holds the register, the keys and the `{placeholders}` to the locale files.

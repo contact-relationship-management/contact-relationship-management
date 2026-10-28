@@ -906,9 +906,11 @@ test.describe("contact subject rights", () => {
     page.on("dialog", (dialog) => void dialog.accept());
     await page.goto("/contacts/c1");
     await page.getByTestId("erase").click();
+    // The page says what kind of failure it was, in its own words; the service's text stays out.
     await expect(page.getByTestId("action-error")).toContainText(
-      "active nurture enrolment",
+      "That was not accepted",
     );
+    await expect(page.getByTestId("action-error")).not.toContainText("nurture");
     await expect(page).toHaveURL(/\/contacts\/c1$/);
   });
 });
@@ -1313,10 +1315,14 @@ test.describe("break-glass page (CRM-T44)", () => {
       route.fulfill({ status: 403, json: { description: "forbidden" } }),
     );
     await page.goto("/break-glass/review");
-    await expect(page.getByTestId("error")).toContainText("forbidden");
+    await expect(page.getByTestId("error")).toContainText(
+      "You do not have permission",
+    );
   });
 
-  test("shows the service's refusal", async ({ page }) => {
+  test("shows a refusal in the page's own words, not the service's", async ({
+    page,
+  }) => {
     await page.route("**/api/proxy/break-glass", (route) =>
       route.fulfill({ status: 403, json: { description: "denied by policy" } }),
     );
@@ -1326,8 +1332,9 @@ test.describe("break-glass page (CRM-T44)", () => {
       .fill("Patient collapsed, covering colleague absent");
     await page.getByTestId("bg-request").click();
     await expect(page.getByTestId("bg-error")).toContainText(
-      "denied by policy",
+      "You do not have permission",
     );
+    await expect(page.getByTestId("bg-error")).not.toContainText("policy");
   });
 });
 

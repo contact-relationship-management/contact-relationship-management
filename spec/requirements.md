@@ -1225,3 +1225,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - `spec/translation-register.md` in the UI folder has a row per locale file: language, status (`source`, `draft` or `reviewed`), method, reviewer, date reviewed, the number of strings and how many are identical to English. A `reviewed` row names the reviewer and the date. Every locale other than English is `draft`: **none has been reviewed by a native speaker**.
 - A test fails if a locale file has no row or a row no file, a count is out of date, a `reviewed` row lacks a reviewer or a date, a locale lacks a key English has or has one it does not or has an empty string, or a string carries different `{placeholders}` from the English one.
 - Not built: a review workflow in the UI; marking individual strings reviewed; pluralisation rules per language.
+
+## CRM-R76 — No page shows the service's error text
+
+*As a reader, I see an error in my own language and in plain words, so that nothing the service wrote for a developer (a record's id, a rule, a person) appears on my screen.*
+
+- A failed call becomes a **fixed, translated message chosen by the kind of failure**: not accepted (`400`, `422`), sign in again (`401`), no permission (`403`), not found (`404`), conflicts with what is there (`409`), too many requests (`429`), service unreachable or unavailable (`5xx` and a failed `fetch`), and a generic one for anything else. The same message is shown for the same kind of failure in all eight locales.
+- The service's `description`, a problem's `title` and `detail`, and an error's own `message` are **never shown**. `fieldErrors` still names which members were not accepted (so a page can mark them) but says only "Not accepted" for each, never the service's `detail`.
+- A page that has a more specific message of its own passes it as the fallback, or throws a `PageError`, whose text is already the page's own and in the reader's language.
+- Enforced three ways: `errorMessage` and `fieldErrors` in `src/lib/errors.ts` are the only code that reads an error; an ESLint rule (`no-restricted-properties` on `message`, `no-restricted-syntax` on `String(error)`) fails lint in the routes and components; and a unit test scans them for the same patterns and checks every kind of failure in every locale.
+- This does not touch what the service *returns as data* (a workflow step's detail, a search hit's detail, an audit finding): that is content, not an error.
+- Not built: showing a request id so a person can quote it to support; a different message per endpoint.

@@ -233,9 +233,10 @@ describe("fieldErrors", () => {
         ],
       },
     };
+    // The members are named; the service's own words are not carried (see errors.test.ts).
     expect(fieldErrors(cause)).toEqual({
-      display_name: "display_name is required",
-      "stages/2/name": "too long",
+      display_name: "Not accepted.",
+      "stages/2/name": "Not accepted.",
     });
   });
 
@@ -249,7 +250,7 @@ describe("fieldErrors", () => {
           ],
         },
       }),
-    ).toEqual({ a: "first" });
+    ).toEqual({ a: "Not accepted." });
     expect(fieldErrors(new Error("x"))).toEqual({});
     expect(fieldErrors(null)).toEqual({});
     expect(fieldErrors({ body: { errors: "no" } })).toEqual({});

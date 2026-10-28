@@ -36,4 +36,30 @@ export default ts.config(
     files: ["**/*.svelte", "**/*.svelte.ts"],
     languageOptions: { parserOptions: { parser: ts.parser } },
   },
+  {
+    // No page shows the service's error text (CRM-R76). A failed call is turned into words by
+    // `errorMessage` in `src/lib/errors.ts`, the one place that may read an error: it chooses a
+    // fixed, translated message by the kind of failure. Pages and components must not reach
+    // past it for the error's own `message`, or print an error as a string.
+    files: ["src/routes/**/*.{ts,svelte}", "src/lib/components/**/*.svelte"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        {
+          property: "message",
+          message:
+            "Do not show an error's own text: use errorMessage() from #lib/errors.js, or throw a PageError.",
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.name='String'][arguments.0.name=/^(cause|err|error|e)$/]",
+          message:
+            "Do not print an error as a string: use errorMessage() from #lib/errors.js.",
+        },
+      ],
+    },
+  },
 );

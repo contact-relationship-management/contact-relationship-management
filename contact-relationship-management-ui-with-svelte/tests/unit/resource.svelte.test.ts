@@ -1,6 +1,7 @@
 import { flushSync } from "svelte";
 import { describe, expect, it } from "vitest";
-import { errorMessage } from "#lib/errors.js";
+import { ApiError } from "#lib/api/client.js";
+import { translate } from "#lib/i18n.svelte.js";
 import { resource } from "#lib/resource.svelte.js";
 
 /** A promise the test settles by hand. */
@@ -15,13 +16,7 @@ function deferred<T>() {
 }
 const settle = () => new Promise((done) => setTimeout(done, 0));
 
-describe("errorMessage", () => {
-  it("uses an Error's message, else the fallback, else the string form", () => {
-    expect(errorMessage(new Error("boom"))).toBe("boom");
-    expect(errorMessage("plain")).toBe("plain");
-    expect(errorMessage(42, "could not save")).toBe("could not save");
-  });
-});
+// `errorMessage` itself is covered in errors.test.ts; here it is only what `resource` stores.
 
 describe("resource", () => {
   it("loads once, then shows the value", async () => {
@@ -124,13 +119,14 @@ describe("resource", () => {
     let r!: ReturnType<typeof resource<string>>;
     const stop = $effect.root(() => {
       r = resource(async () => {
-        if (fail) throw new Error("API error 500");
+        if (fail) throw new ApiError(500, { description: "internal detail" });
         return "ok";
       });
     });
     flushSync();
     await settle();
-    expect(r.error).toBe("API error 500");
+    // The reader gets the page's own words for a failure, not the service's.
+    expect(r.error).toBe(translate("error.unavailable", "en-001"));
     fail = false;
     flushSync();
     await settle();

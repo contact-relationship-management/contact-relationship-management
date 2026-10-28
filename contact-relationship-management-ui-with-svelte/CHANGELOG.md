@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `ticketSuggestions`, a list under the selected ticket, the tour's suggestions and a sixth knowledge-base article, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; one Playwright test (and the help centre test now counts five).
 
+### Changed — no page shows the service's error text (CRM-T143)
+
+A failed call is now a fixed, translated message chosen by its status; the service's `description`, `detail` and an error's `message` never reach the screen. An ESLint rule and a unit test hold the pages to it. The help page decides "not found" by status, not by reading the error's words.
+
 ### Added — a translation-review register (CRM-T142)
 
 `spec/translation-register.md` and five Vitest tests; `spec/locale-review.md` regenerated.

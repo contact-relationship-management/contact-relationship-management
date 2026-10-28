@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ApiError } from "#lib/api/client.js";
   import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import { page } from "$app/state";
@@ -22,7 +23,7 @@
   const record = resource(async () => {
     const id = pid;
     const found = (await listDeals()).find((d) => d.pid === id);
-    if (!found) throw new Error("404");
+    if (!found) throw new ApiError(404, null);
     return found;
   });
   const deal = $derived(record.value);

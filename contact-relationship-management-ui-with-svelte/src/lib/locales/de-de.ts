@@ -788,4 +788,17 @@ export default {
   "quota.teamImportStub":
     "Nichts gelesen: die Brücke zum Personaldienst ist nicht eingeschaltet",
   "quota.teamImportDone": "Teams aus Abteilungen gesetzt",
+  "error.generic": "Etwas ist schiefgelaufen.",
+  "error.invalid":
+    "Das wurde nicht angenommen. Prüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
+  "error.unauthorized": "Sie müssen sich erneut anmelden.",
+  "error.forbidden": "Dazu haben Sie keine Berechtigung.",
+  "error.notFound": "Das wurde nicht gefunden.",
+  "error.conflict":
+    "Das steht im Widerspruch zu etwas, das schon vorhanden ist.",
+  "error.tooMany":
+    "Zu viele Anfragen. Warten Sie einen Moment und versuchen Sie es erneut.",
+  "error.unavailable":
+    "Der Dienst ist nicht erreichbar oder nicht verfügbar. Versuchen Sie es gleich noch einmal.",
+  "error.fieldInvalid": "Nicht angenommen.",
 } satisfies Record<StringKey, string>;

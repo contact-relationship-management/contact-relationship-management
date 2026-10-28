@@ -772,4 +772,15 @@ export default {
   "quota.teamImportStub":
     "Nothing was read: the bridge to the worker service is not switched on",
   "quota.teamImportDone": "Teams set from departments",
+  "error.generic": "Something went wrong.",
+  "error.invalid":
+    "That was not accepted. Check what you entered and try again.",
+  "error.unauthorized": "You need to sign in again.",
+  "error.forbidden": "You do not have permission to do that.",
+  "error.notFound": "That could not be found.",
+  "error.conflict": "That conflicts with something that is already there.",
+  "error.tooMany": "Too many requests. Wait a moment and try again.",
+  "error.unavailable":
+    "The service could not be reached or is not available. Try again shortly.",
+  "error.fieldInvalid": "Not accepted.",
 } as const;

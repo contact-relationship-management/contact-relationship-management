@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import { page } from "$app/state";
+  import { ApiError } from "#lib/api/client.js";
   import { errorMessage } from "#lib/errors.js";
   import { kbArticle, kbFeedback, type KbArticle } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
@@ -22,9 +23,9 @@
     kbArticle(pid).then(
       (found) => (article = found),
       (cause) => {
-        const text = errorMessage(cause);
-        if (/404|not found/i.test(text)) missing = true;
-        else error = text;
+        // Decided by the status the call failed with, never by the words of the error.
+        if (cause instanceof ApiError && cause.status === 404) missing = true;
+        else error = errorMessage(cause);
       },
     );
   });

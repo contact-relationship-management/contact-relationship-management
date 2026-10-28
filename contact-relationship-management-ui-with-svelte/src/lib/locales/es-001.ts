@@ -782,4 +782,15 @@ export default {
   "quota.teamImportStub":
     "No se leyó nada: el puente al servicio de personal no está activado",
   "quota.teamImportDone": "Equipos definidos desde los departamentos",
+  "error.generic": "Algo salió mal.",
+  "error.invalid": "No se aceptó. Revise lo que escribió e inténtelo de nuevo.",
+  "error.unauthorized": "Debe iniciar sesión de nuevo.",
+  "error.forbidden": "No tiene permiso para hacer eso.",
+  "error.notFound": "No se encontró.",
+  "error.conflict": "Entra en conflicto con algo que ya existe.",
+  "error.tooMany":
+    "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
+  "error.unavailable":
+    "No se pudo acceder al servicio o no está disponible. Inténtelo de nuevo en breve.",
+  "error.fieldInvalid": "No aceptado.",
 } satisfies Record<StringKey, string>;

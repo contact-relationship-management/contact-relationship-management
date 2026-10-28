@@ -25,7 +25,7 @@
     - testid           `data-testid` on the board
 -->
 <script lang="ts">
-  import { errorMessage } from "#lib/errors.js";
+  import { errorMessage, PageError } from "#lib/errors.js";
   import { packLabels } from "#lib/lily-labels.js";
   import KanbanBoard from "@lilydesignsystem/svelte-kanban-board";
   import type {
@@ -133,7 +133,7 @@
     const card = cards.find((c) => c.id === cardId);
     const lane = card?.laneId ?? lanes?.[0]?.id;
     if (toLaneId !== undefined && lane !== undefined && toLaneId !== lane) {
-      throw new Error(t("kanban.laneLocked"));
+      throw new PageError(t("kanban.laneLocked"));
     }
     if (card && card.columnId !== toColumnId) await onMove?.(cardId, toColumnId);
     if (toIndex !== undefined) await onPosition?.(cardId, toIndex);

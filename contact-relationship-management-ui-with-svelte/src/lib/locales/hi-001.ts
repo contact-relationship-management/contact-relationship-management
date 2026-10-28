@@ -774,4 +774,15 @@ export default {
   "quota.teamImportStub":
     "कुछ नहीं पढ़ा गया: कर्मचारी सेवा का ब्रिज चालू नहीं है",
   "quota.teamImportDone": "विभागों से टीमें बनाई गईं",
+  "error.generic": "कुछ गड़बड़ हो गई।",
+  "error.invalid":
+    "यह स्वीकार नहीं किया गया। जो आपने दर्ज किया उसे जाँचें और फिर कोशिश करें।",
+  "error.unauthorized": "आपको दोबारा साइन इन करना होगा।",
+  "error.forbidden": "आपको ऐसा करने की अनुमति नहीं है।",
+  "error.notFound": "यह नहीं मिला।",
+  "error.conflict": "यह किसी मौजूदा चीज़ से टकराता है।",
+  "error.tooMany": "बहुत अधिक अनुरोध। थोड़ा रुकें और फिर कोशिश करें।",
+  "error.unavailable":
+    "सेवा तक पहुँचा नहीं जा सका या वह उपलब्ध नहीं है। थोड़ी देर में फिर कोशिश करें।",
+  "error.fieldInvalid": "स्वीकार नहीं किया गया।",
 } satisfies Record<StringKey, string>;

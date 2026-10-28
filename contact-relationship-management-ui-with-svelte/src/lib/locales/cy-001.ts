@@ -779,4 +779,16 @@ export default {
   "quota.teamImportStub":
     "Ni ddarllenwyd dim: nid yw'r bont i'r gwasanaeth gweithwyr wedi'i throi ymlaen",
   "quota.teamImportDone": "Timau wedi'u gosod o adrannau",
+  "error.generic": "Aeth rhywbeth o'i le.",
+  "error.invalid":
+    "Ni chafodd hynny ei dderbyn. Gwiriwch beth a roesoch a rhowch gynnig arall arni.",
+  "error.unauthorized": "Mae angen i chi fewngofnodi eto.",
+  "error.forbidden": "Nid oes caniatâd gennych i wneud hynny.",
+  "error.notFound": "Methwyd dod o hyd i hynny.",
+  "error.conflict": "Mae hynny'n gwrthdaro â rhywbeth sydd yno'n barod.",
+  "error.tooMany":
+    "Gormod o geisiadau. Arhoswch funud a rhowch gynnig arall arni.",
+  "error.unavailable":
+    "Methwyd cyrraedd y gwasanaeth neu nid yw ar gael. Rhowch gynnig arall arni cyn bo hir.",
+  "error.fieldInvalid": "Heb ei dderbyn.",
 } satisfies Record<StringKey, string>;

@@ -745,4 +745,13 @@ export default {
   "quota.teamImport": "根据人员服务的部门设置团队",
   "quota.teamImportStub": "未读取任何内容：到人员服务的桥接未启用",
   "quota.teamImportDone": "已按部门设置团队",
+  "error.generic": "出了点问题。",
+  "error.invalid": "未被接受。请检查输入的内容后重试。",
+  "error.unauthorized": "您需要重新登录。",
+  "error.forbidden": "您没有执行此操作的权限。",
+  "error.notFound": "找不到。",
+  "error.conflict": "这与已有的内容冲突。",
+  "error.tooMany": "请求过多。请稍等片刻后重试。",
+  "error.unavailable": "无法连接到服务，或服务不可用。请稍后重试。",
+  "error.fieldInvalid": "未被接受。",
 } satisfies Record<StringKey, string>;

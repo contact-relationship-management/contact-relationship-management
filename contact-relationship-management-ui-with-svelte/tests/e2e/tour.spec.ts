@@ -894,13 +894,15 @@ test.describe("export, undo and search", () => {
       .fill("https://hubspot.com.evil.example/x");
     await page.getByTestId("link-add").click();
     await expect(page.getByTestId("link-error")).toContainText(
-      "must be on one of",
+      "That was not accepted",
     );
     await page
       .getByTestId("link-url")
       .fill("https://app.hubspot.com/contacts/1234/record/0-1/5001");
     await page.getByTestId("link-add").click();
-    await expect(page.getByTestId("link-error")).toContainText("already has");
+    await expect(page.getByTestId("link-error")).toContainText(
+      "conflicts with something",
+    );
     await expect(page.getByTestId("link")).toHaveCount(1);
   });
 
@@ -1571,7 +1573,9 @@ test.describe("export, undo and search", () => {
     await page.getByTestId("territory-name").fill("Elsewhere");
     await page.getByTestId("territory-accounts").fill("org-demo-1");
     await page.getByTestId("territory-set").click();
-    await expect(page.getByTestId("quota-error")).toContainText("Everywhere");
+    await expect(page.getByTestId("quota-error")).toContainText(
+      "That was not accepted",
+    );
     // A territory with only one account leaves the others' revenue unassigned.
     await page.getByTestId("territory-name").fill("Everywhere");
     await page.getByTestId("territory-accounts").fill("org-demo-6");

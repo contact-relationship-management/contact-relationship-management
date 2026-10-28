@@ -788,4 +788,15 @@ export default {
   "quota.teamImportStub":
     "Rien n'a été lu : le pont vers le service du personnel n'est pas activé",
   "quota.teamImportDone": "Équipes définies depuis les départements",
+  "error.generic": "Une erreur s'est produite.",
+  "error.invalid":
+    "Cela n'a pas été accepté. Vérifiez ce que vous avez saisi et réessayez.",
+  "error.unauthorized": "Vous devez vous reconnecter.",
+  "error.forbidden": "Vous n'avez pas la permission de faire cela.",
+  "error.notFound": "Introuvable.",
+  "error.conflict": "Cela entre en conflit avec quelque chose qui existe déjà.",
+  "error.tooMany": "Trop de requêtes. Patientez un instant et réessayez.",
+  "error.unavailable":
+    "Le service est injoignable ou indisponible. Réessayez dans un instant.",
+  "error.fieldInvalid": "Non accepté.",
 } satisfies Record<StringKey, string>;

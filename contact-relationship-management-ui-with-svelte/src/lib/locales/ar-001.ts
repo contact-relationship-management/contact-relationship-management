@@ -770,4 +770,14 @@ export default {
   "quota.teamImport": "تعيين الفرق من أقسام خدمة العاملين",
   "quota.teamImportStub": "لم يُقرأ شيء: الجسر إلى خدمة العاملين غير مفعّل",
   "quota.teamImportDone": "تم تعيين الفرق من الأقسام",
+  "error.generic": "حدث خطأ ما.",
+  "error.invalid": "لم يُقبل ذلك. تحقق مما أدخلته وحاول مرة أخرى.",
+  "error.unauthorized": "عليك تسجيل الدخول مرة أخرى.",
+  "error.forbidden": "ليست لديك صلاحية للقيام بذلك.",
+  "error.notFound": "تعذر العثور على ذلك.",
+  "error.conflict": "يتعارض هذا مع شيء موجود بالفعل.",
+  "error.tooMany": "طلبات كثيرة جدًا. انتظر قليلًا وحاول مرة أخرى.",
+  "error.unavailable":
+    "تعذر الوصول إلى الخدمة أو أنها غير متاحة. حاول مرة أخرى بعد قليل.",
+  "error.fieldInvalid": "غير مقبول.",
 } satisfies Record<StringKey, string>;
