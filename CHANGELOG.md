@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — personal-data inventory, retention schedule, DPIA and record of processing (CRM-T141, CRM-R74)
+
+`spec/compliance/` gains an inventory of every table with its retention class, a DPIA filled in as far as the software goes, and an Art. 30 record; a test keeps the inventory complete. Four tables with no deletion path are named as a gap (CRM-T140).
+
 ### Added — bridges to PPM and WPM (CRM-T139, CRM-R72, CRM-R73)
 
 `POST /api/bridges/ppm/deals/{pid}` opens one delivery idea in the project portfolio service for a won deal; `POST /api/bridges/wpm/teams-import` sets a team per department from the worker service. Admin only and stub-first: nothing leaves the process unless `CRM_UPSTREAM_MODE=http`; set `CRM_PPM_SERVICE_URL` and `CRM_WORKER_SERVICE_URL`. Checked against stand-ins, not the running services.

@@ -22,6 +22,7 @@ mod fx_rates;
 mod idempotency;
 mod insight_rollups;
 mod insights;
+mod inventory;
 mod kb;
 mod lead_assignment;
 mod lead_imports;

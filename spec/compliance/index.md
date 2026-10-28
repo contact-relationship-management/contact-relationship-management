@@ -10,6 +10,12 @@ certification, audit, or legal opinion, and no accreditation is claimed.
   mapped to what is implemented, what is the deployer's duty, and what is a gap.
 - [dpia-template.md](dpia-template.md) — a data protection impact assessment
   skeleton pre-filled with this system's data flows.
+- [personal-data-inventory.md](personal-data-inventory.md) — every table, the personal data in it,
+  its retention class and what erasure does to it; a test keeps it complete.
+- [dpia.md](dpia.md) — the DPIA filled in as far as the software goes, with the deployer's own
+  decisions left open.
+- [record-of-processing.md](record-of-processing.md) — the Art. 30 record, started from what the
+  software does.
 - [operations-runbook.md](operations-runbook.md) — deployment hardening,
   backup and restore, encryption, key management, logging, incident response.
 

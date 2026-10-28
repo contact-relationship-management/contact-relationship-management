@@ -1207,3 +1207,13 @@ recipient would get before anything is sent, and be certain every message carrie
 - WPM's contract (`GET /api/workers`) was read from its source and is exercised against a stand-in, not a running WPM.
 - The `/quotas` page has a button to run it and says how many teams were set.
 - Not built: teams by manager and reports; removing a team when its department disappears; importing on a schedule; any other worker fields.
+
+## CRM-R74 — A personal-data inventory, a retention schedule, a DPIA and a record of processing
+
+*As a data protection officer at an adopting organization, I can see what personal data the service holds, how long, and what it does with it, so that I can complete the organization's own assessment and record.*
+
+- `spec/compliance/personal-data-inventory.md` lists **every table** with the personal data in it, whom it is about, its retention class and what erasure does to it. The classes are `swept` (hard-deleted by the retention sweep after `CRM_RETENTION_DAYS`), `evidence` (kept on purpose), `ttl` (expires by itself), `manual` (kept until a person removes it) and `gap` (personal data and no deletion path).
+- A test fails if a table has no row, a row has no table, a class is unknown, or the `swept` tables are not exactly those the sweep deletes from. A new table cannot be added without being described.
+- `dpia.md` is the DPIA template filled in as far as the software goes: system facts, an engineering assessment of likelihood and severity as shipped, and the deployer's own decisions left open. `record-of-processing.md` is the Art. 30 record, started from ten processing activities, with the controller's details left open. Neither is a sign-off, legal advice or reviewed by anyone.
+- The gaps the inventory names are not hidden: email deliveries and events, the event outbox and webhook deliveries have no deletion path (CRM-T140).
+- Not built: filling the deployer's decisions; a generated record from the code; per-field classification beyond the table.
