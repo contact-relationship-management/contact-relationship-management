@@ -1372,3 +1372,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - A repeat of the same message changes nothing (`already_open`), so no message id is kept.
 - A `From` header can be forged, and the mail service's own verdict (SPF, DKIM) is not read: someone who knows a reference and the customer's address could restart a waiting ticket's clock. That is all it can do (CRM-R63's limits stand), and the hazard is written in `compliance/risk-management.md` (H14).
 - Not built: a vendor's own inbound format (SendGrid Inbound Parse, Mailgun routes, Postmark, SES): the mail service or a small relay must send the two members above; matching by `In-Reply-To` or `References` (the service sends no ticket mail of its own to match); a reply to a resolved or closed ticket opening a new one; attachments; reading the sender's authentication verdict; a reference that cannot be guessed.
+
+## CRM-R89 — Attribution settings: a time-decay half-life, and leaving out opens that come too soon
+
+*As a marketer, I want to choose how fast time decay forgets and to leave out opens a mail program made ahead of the reader, so that attribution does not reward a machine.*
+
+- `GET /api/attribution` takes `half_life_days` (4 to 90, default 7, the earlier fixed value). It is for the `time_decay` model alone: with any other model, or a value outside the range, `422` naming `/half_life_days`. The answer's `half_life_days` is the one used for `time_decay` and `null` for the other models. The shortest is 4 days because the longest window (365 days) then makes at most 91 halvings, inside the 100 a weight is held to, so a touch never weighs nothing and the shares still add up to the amount.
+- `GET /api/attribution` takes `min_open_seconds` (1 to 86,400): an e-mail **open reported less than that many seconds after the e-mail was sent** is taken for a mail program loading it ahead of the reader (CRM-R58) and **does not count**. It needs `touches` to include `opened` and is refused otherwise (`422` naming `/min_open_seconds`), as is a value outside the range. The answer's `min_open_seconds` says what was asked, `null` when nothing was.
+- It applies to **opens only**. Sends, clicks, campaign leads and the recorded source are untouched: a click by a link scanner is the same kind of error but is not what a delay can tell from a person, and a click is deliberate on its face.
+- It is **a rule of thumb, not a detector**: a real reader who opens within the delay is left out, and a program that loads the message later is counted. The page says what it does; a deal left with no touch is reported as unattributed as ever, never dropped.
+- The audit entry of a run names both settings.
+- Not built: weights for the position model; discounting an open by how soon it came rather than leaving it out; a delay for clicks; unique versus repeat opens.

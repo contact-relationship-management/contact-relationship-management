@@ -14,8 +14,16 @@ pub const MIN_WINDOW_DAYS: i64 = 1;
 pub const MAX_WINDOW_DAYS: i64 = 365;
 /// The window when none is asked for.
 pub const DEFAULT_WINDOW_DAYS: i64 = 90;
-/// Under `TimeDecay`, a touch's weight halves for every this many days before the deal closed.
+/// Under `TimeDecay`, a touch's weight halves for every this many days before the deal closed,
+/// unless the caller chooses another (CRM-R89).
 pub const HALF_LIFE_DAYS: i64 = 7;
+/// Shortest half-life a caller may choose, in days. With the longest window (365 days) it makes at
+/// most 92 halvings, inside the 100 a weight is held to, so a touch never weighs nothing.
+pub const MIN_HALF_LIFE_DAYS: i64 = 4;
+/// Longest half-life a caller may choose, in days.
+pub const MAX_HALF_LIFE_DAYS: i64 = 90;
+/// Longest "an open this soon after sending is a machine" a caller may set, in seconds (one day).
+pub const MAX_MIN_OPEN_SECONDS: i64 = 86_400;
 
 /// How an amount is shared among touches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,6 +88,22 @@ pub fn window_days(asked: Option<i64>) -> Result<i64, String> {
     }
 }
 
+/// The half-life asked for, or the default.
+///
+/// # Errors
+///
+/// The reason, when it is outside [`MIN_HALF_LIFE_DAYS`] to [`MAX_HALF_LIFE_DAYS`].
+pub fn half_life_days(asked: Option<i64>) -> Result<i64, String> {
+    let days = asked.unwrap_or(HALF_LIFE_DAYS);
+    if (MIN_HALF_LIFE_DAYS..=MAX_HALF_LIFE_DAYS).contains(&days) {
+        Ok(days)
+    } else {
+        Err(format!(
+            "the half-life is {MIN_HALF_LIFE_DAYS} to {MAX_HALF_LIFE_DAYS} days"
+        ))
+    }
+}
+
 /// One contact a campaign had with the buyer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Touch {
@@ -118,11 +142,11 @@ fn apportion(amount: i64, weights: &[i128]) -> Vec<i64> {
 /// A touch's weight under time decay: `2^-(age / half-life)`, held as an integer. Between whole
 /// half-lives it falls in a straight line (so it is exact integer arithmetic, within about 6% of
 /// the true curve); a touch from after the close counts as having just happened.
-fn decay_weight(age_seconds: i64) -> i128 {
-    let half_life = i128::from(HALF_LIFE_DAYS) * 86_400;
+fn decay_weight(age_seconds: i64, half_life_days: i64) -> i128 {
+    let half_life = i128::from(half_life_days) * 86_400;
     let age = i128::from(age_seconds.max(0));
     let (whole, part) = (age / half_life, age % half_life);
-    // 2^100 leaves room for the 52 halvings of the longest window and the longest half-life.
+    // 2^100 leaves room for the 92 halvings of the longest window and the shortest half-life.
     let base: i128 = 1 << 100;
     let at_start = base >> whole.min(100);
     at_start * (2 * half_life - part) / (2 * half_life)
@@ -142,6 +166,19 @@ pub fn credit(
     touches: &[Touch],
     closed_at: DateTime<Utc>,
 ) -> Vec<(Uuid, i64)> {
+    credit_with(model, amount_minor, touches, closed_at, HALF_LIFE_DAYS)
+}
+
+/// [`credit`] with the time-decay half-life the caller chose (CRM-R89): [`HALF_LIFE_DAYS`] is the
+/// default, and the half-life matters only to [`Model::TimeDecay`].
+#[must_use]
+pub fn credit_with(
+    model: Model,
+    amount_minor: i64,
+    touches: &[Touch],
+    closed_at: DateTime<Utc>,
+    half_life_days: i64,
+) -> Vec<(Uuid, i64)> {
     if touches.is_empty() || amount_minor < 0 {
         return Vec::new();
     }
@@ -154,7 +191,7 @@ pub fn credit(
         Model::Linear => vec![1; n],
         Model::TimeDecay => ordered
             .iter()
-            .map(|t| decay_weight((closed_at - t.at).num_seconds()))
+            .map(|t| decay_weight((closed_at - t.at).num_seconds(), half_life_days))
             .collect(),
         Model::Position => match n {
             1 | 2 => vec![1; n],
@@ -327,6 +364,51 @@ mod tests {
             .iter()
             .find(|(c, _)| *c == id(campaign))
             .map_or(0, |(_, v)| *v)
+    }
+
+    #[test]
+    fn a_chosen_half_life_changes_time_decay_only_and_the_default_is_unchanged() {
+        let closed = closed();
+        let at = |days: i64, campaign: u128| Touch {
+            campaign: id(campaign),
+            at: closed - chrono::Duration::days(days),
+        };
+        let touches = [at(14, 1), at(0, 2)];
+        // Seven days: 14 days is two half-lives, so 1 : 4 of 10,000.
+        assert_eq!(
+            credit_with(Model::TimeDecay, 10_000, &touches, closed, 7),
+            [(id(1), 2_000), (id(2), 8_000)]
+        );
+        assert_eq!(
+            credit(Model::TimeDecay, 10_000, &touches, closed),
+            credit_with(Model::TimeDecay, 10_000, &touches, closed, HALF_LIFE_DAYS)
+        );
+        // Fourteen days: one half-life, so 1 : 2.
+        assert_eq!(
+            credit_with(Model::TimeDecay, 9_000, &touches, closed, 14),
+            [(id(1), 3_000), (id(2), 6_000)]
+        );
+        // The other models do not look at it.
+        for model in [Model::First, Model::Last, Model::Linear, Model::Position] {
+            assert_eq!(
+                credit_with(model, 10_000, &touches, closed, 90),
+                credit(model, 10_000, &touches, closed)
+            );
+        }
+        // The longest window at the shortest half-life still gives every touch some weight.
+        let old = [at(365, 1), at(364, 2)];
+        let shares = credit_with(Model::TimeDecay, 10_000, &old, closed, MIN_HALF_LIFE_DAYS);
+        assert_eq!(shares.iter().map(|s| s.1).sum::<i64>(), 10_000);
+        assert_eq!(shares.len(), 2, "both are listed");
+    }
+
+    #[test]
+    fn the_half_life_is_four_to_ninety_days_and_seven_when_not_asked() {
+        assert_eq!(half_life_days(None), Ok(7));
+        assert_eq!(half_life_days(Some(4)), Ok(4));
+        assert_eq!(half_life_days(Some(90)), Ok(90));
+        assert!(half_life_days(Some(3)).is_err() && half_life_days(Some(91)).is_err());
+        assert!(half_life_days(Some(0)).is_err() && half_life_days(Some(-7)).is_err());
     }
 
     #[test]

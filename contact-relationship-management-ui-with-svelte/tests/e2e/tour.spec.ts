@@ -1290,8 +1290,16 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("attribution-row")).toContainText(
       "£52,000.00",
     );
-    // With no kind chosen there is nothing to ask for.
+    // That open came twenty seconds after sending: leaving out opens sooner than a minute drops it.
+    await page.getByTestId("attribution-min-open").fill("60");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row")).toHaveCount(0);
+    await page.getByTestId("attribution-min-open").fill("10");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row")).toHaveCount(1);
+    // With no kind chosen there is nothing to ask for; the open setting waits for opens.
     await page.getByTestId("attribution-touch-opened").uncheck();
+    await expect(page.getByTestId("attribution-min-open")).toBeDisabled();
     await expect(page.getByTestId("attribution-run")).toBeDisabled();
   });
 
@@ -1310,8 +1318,15 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("attribution-row").nth(1)).toContainText(
       "£49,671.64",
     );
+    // A longer half-life lets the older touch weigh more; the field is for time decay alone.
+    await page.getByTestId("attribution-half-life").fill("90");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row").first()).not.toContainText(
+      "£90,328.36",
+    );
     // With two touches, position gives each end half.
     await page.getByTestId("attribution-model").selectOption("position");
+    await expect(page.getByTestId("attribution-half-life")).toBeDisabled();
     await page.getByTestId("attribution-run").click();
     await expect(page.getByTestId("attribution-row").first()).toContainText(
       "£114,000.00",

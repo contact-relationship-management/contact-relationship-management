@@ -2391,7 +2391,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear|time_decay|position (default linear; time_decay halves a touch's weight every 7 days before the deal closed, position gives 40% to the first touch, 40% to the last and 20% shared among the rest), ?touches=sent|opened|clicked, comma-separated (default sent; opens and clicks are what a mail provider reports, CRM-R58), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=GBP shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate; ?rate_basis=close_day converts each deal's share at the rate of the day it closed instead (CRM-R85). A caller with a masked collection read gets 403 */
+        /** Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear|time_decay|position (default linear; time_decay halves a touch's weight every 7 days before the deal closed, position gives 40% to the first touch, 40% to the last and 20% shared among the rest; ?half_life_days=4..90 chooses the time_decay half-life, 7 by default, CRM-R89), ?touches=sent|opened|clicked, comma-separated, with ?min_open_seconds=1..86400 leaving out opens reported sooner than that after sending (CRM-R89) (default sent; opens and clicks are what a mail provider reports, CRM-R58), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=GBP shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate; ?rate_basis=close_day converts each deal's share at the rate of the day it closed instead (CRM-R85). A caller with a masked collection read gets 403 */
         get: {
             parameters: {
                 query?: never;
@@ -18516,6 +18516,16 @@ export interface components {
              * @description Won deals considered.
              */
             deals: number;
+            /**
+             * Format: int64
+             * @description With `time_decay`: the half-life used, in days (CRM-R89); `null` for the other models.
+             */
+            half_life_days: number | null;
+            /**
+             * Format: int64
+             * @description The seconds after sending before which an open does not count, when one was asked for.
+             */
+            min_open_seconds: number | null;
             /** @description The model used. */
             model: string;
             /** @description What the figures mean, in a line. */

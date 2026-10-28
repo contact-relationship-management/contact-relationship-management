@@ -10,6 +10,8 @@
 
   let model = $state<"first" | "last" | "linear" | "time_decay" | "position">("linear");
   let windowDays = $state(90);
+  let halfLifeDays = $state<number | null>(null);
+  let minOpenSeconds = $state<number | null>(null);
   let from = $state("");
   let to = $state("");
   let convertTo = $state("");
@@ -41,6 +43,8 @@
         from,
         to,
         touches: kinds,
+        halfLifeDays: model === "time_decay" && halfLifeDays ? halfLifeDays : undefined,
+        minOpenSeconds: opened && minOpenSeconds ? minOpenSeconds : undefined,
         convertTo: convertTo.trim().toUpperCase(),
         rateDate,
         rateBasis: closeDay && convertTo.trim() ? "close_day" : undefined,
@@ -95,6 +99,29 @@
       max="365"
       bind:value={windowDays}
       data-testid="attribution-window"
+    />
+  </label>
+  <label>
+    {t("attr.halfLife")}
+    <input
+      type="number"
+      min="4"
+      max="90"
+      placeholder="7"
+      bind:value={halfLifeDays}
+      disabled={model !== "time_decay"}
+      data-testid="attribution-half-life"
+    />
+  </label>
+  <label>
+    {t("attr.minOpen")}
+    <input
+      type="number"
+      min="1"
+      max="86400"
+      bind:value={minOpenSeconds}
+      disabled={!opened}
+      data-testid="attribution-min-open"
     />
   </label>
   <label>{t("attr.from")} <input type="date" bind:value={from} /></label>

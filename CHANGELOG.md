@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — attribution settings (CRM-T155, CRM-R89)
+
+`GET /api/attribution` takes `half_life_days` (4 to 90, for `time_decay`) and `min_open_seconds` (opens reported sooner after sending do not count); both are echoed in the answer.
+
 ### Added — a reply by e-mail resumes a waiting ticket (CRM-T154, CRM-R88)
 
 `POST /webhooks/inbound-email` (signed like `/webhooks/email`) reads a sender and a subject; a subject carrying a ticket's reference (`[T-0a1b2c3d]`, shown on the ticket) from the ticket's contact puts a waiting ticket back to `open`. Nothing of the message is kept. Not checked against a real mail service.

@@ -18,14 +18,14 @@ English one. The strings identical to English, for a reviewer to settle, are in
 
 | Locale | Language | Status | Method | Reviewer | Reviewed on | Strings | Identical to English |
 |---|---|---|---|---|---|---|---|
-| `ar-001` | Arabic (Modern Standard, right-to-left) | `draft` | Written by Claude | — | — | 695 | 1 |
-| `cy-001` | Welsh | `draft` | Written by Claude | — | — | 695 | 10 |
-| `de-de` | German (Germany) | `draft` | Written by Claude | — | — | 695 | 32 |
-| `en-001` | English (international, Oxford spelling) | `source` | Written by the maintainers | — | — | 695 | 0 |
-| `es-001` | Spanish (Latin America and Spain) | `draft` | Written by Claude | — | — | 695 | 10 |
-| `fr-001` | French | `draft` | Written by Claude | — | — | 695 | 31 |
-| `hi-001` | Hindi | `draft` | Written by Claude | — | — | 695 | 2 |
-| `zh-cn` | Chinese (Simplified, China) | `draft` | Written by Claude | — | — | 695 | 1 |
+| `ar-001` | Arabic (Modern Standard, right-to-left) | `draft` | Written by Claude | — | — | 697 | 1 |
+| `cy-001` | Welsh | `draft` | Written by Claude | — | — | 697 | 10 |
+| `de-de` | German (Germany) | `draft` | Written by Claude | — | — | 697 | 32 |
+| `en-001` | English (international, Oxford spelling) | `source` | Written by the maintainers | — | — | 697 | 0 |
+| `es-001` | Spanish (Latin America and Spain) | `draft` | Written by Claude | — | — | 697 | 10 |
+| `fr-001` | French | `draft` | Written by Claude | — | — | 697 | 31 |
+| `hi-001` | Hindi | `draft` | Written by Claude | — | — | 697 | 2 |
+| `zh-cn` | Chinese (Simplified, China) | `draft` | Written by Claude | — | — | 697 | 1 |
 
 ## How a locale becomes `reviewed`
 

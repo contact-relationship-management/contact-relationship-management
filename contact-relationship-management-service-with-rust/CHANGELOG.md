@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — attribution settings (CRM-T155, CRM-R89)
+
+`half_life_days`, `min_open_seconds`; `rules::attribution::credit_with`.
+
 ### Added — inbound reply recognition (CRM-T154, CRM-R88)
 
 `POST /webhooks/inbound-email`; `reference` in `GET /api/tickets/{pid}`; `webhook::signed_request`.

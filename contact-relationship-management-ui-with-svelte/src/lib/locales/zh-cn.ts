@@ -630,6 +630,8 @@ export default {
   "attr.touchesHint":
     "打开和点击是邮件服务商报告的数据，且仅限仍表示同意的人。提前加载图片的邮件程序和链接扫描器会使其被高估。",
   "attr.window": "时间窗口（成交前的天数）",
+  "attr.halfLife": "半衰期（天，时间衰减）",
+  "attr.minOpen": "忽略发送后少于此秒数的打开",
   "attr.from": "成交起始日",
   "attr.to": "成交截止日",
   "attr.run": "显示",

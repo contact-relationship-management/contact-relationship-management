@@ -3214,13 +3214,16 @@ type Touched = {
   campaign: string;
   daysBefore: number;
   kind: "sent" | "opened" | "clicked";
+  /** For an open: how long after the e-mail was sent the provider reported it (CRM-R89). */
+  afterSendSeconds?: number;
 };
 const TOUCHED: Record<string, Touched[]> = {
   "deal-9": [
     { campaign: "camp-1", daysBefore: 40, kind: "sent" },
     { campaign: "camp-2", daysBefore: 9, kind: "sent" },
     // What the mail provider reported (CRM-R58): the newer campaign's e-mail was opened.
-    { campaign: "camp-2", daysBefore: 8, kind: "opened" },
+    // It came twenty seconds after sending: a mail program loading it ahead of the reader.
+    { campaign: "camp-2", daysBefore: 8, kind: "opened", afterSendSeconds: 20 },
   ],
   "deal-10": [
     { campaign: "camp-1", daysBefore: 20, kind: "sent" },
@@ -3252,8 +3255,8 @@ function apportion(amount: number, weights: bigint[]): number[] {
 }
 
 /** A touch's weight under time decay: halves every seven days, straight between (integers). */
-function decayWeight(daysBefore: number): bigint {
-  const half = 7n * 86_400n;
+function decayWeight(daysBefore: number, halfLifeDays = 7): bigint {
+  const half = BigInt(halfLifeDays) * 86_400n;
   const age = BigInt(Math.max(0, daysBefore)) * 86_400n;
   const whole = age / half;
   const part = age % half;
@@ -3266,6 +3269,7 @@ function shareAmount(
   model: string,
   amount: number,
   touches: { campaign: string; daysBefore: number }[],
+  halfLifeDays = 7,
 ): Map<string, number> {
   const ordered = [...touches].sort(
     (a, b) =>
@@ -3280,7 +3284,7 @@ function shareAmount(
       case "last":
         return i === n - 1 ? 1n : 0n;
       case "time_decay":
-        return decayWeight(t.daysBefore);
+        return decayWeight(t.daysBefore, halfLifeDays);
       case "position":
         return n <= 2 ? 1n : i === 0 || i === n - 1 ? 40n * middle : 20n;
       default:
@@ -4258,6 +4262,24 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
     .map((k) => k.trim());
   if (kinds.some((k) => !["sent", "opened", "clicked"].includes(k)))
     return problem(422, "touches is a list of sent, opened, clicked");
+  const halfAsked = query.get("half_life_days");
+  if (halfAsked !== null) {
+    const days = Number(halfAsked);
+    if (model !== "time_decay")
+      return problem(422, "/half_life_days: only with the time_decay model");
+    if (!Number.isInteger(days) || days < 4 || days > 90)
+      return problem(422, "/half_life_days: the half-life is 4 to 90 days");
+  }
+  const halfLifeDays = halfAsked === null ? 7 : Number(halfAsked);
+  const openAsked = query.get("min_open_seconds");
+  if (openAsked !== null) {
+    const seconds = Number(openAsked);
+    if (!Number.isInteger(seconds) || seconds < 1 || seconds > 86_400)
+      return problem(422, "/min_open_seconds: 1 to 86400 seconds");
+    if (!kinds.includes("opened"))
+      return problem(422, "/min_open_seconds: needs touches to include opened");
+  }
+  const minOpenSeconds = openAsked === null ? 0 : Number(openAsked);
   const convertTo = query.get("convert_to");
   const rateDate = query.get("rate_date");
   if (!convertTo && rateDate) return problem(422, "rate_date needs convert_to");
@@ -4284,7 +4306,15 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
     const amount = Number(deal.amount_minor ?? 0);
     const closedDay = deal.closed_at!.slice(0, 10);
     const touches = (TOUCHED[deal.pid] ?? []).filter(
-      (t) => t.daysBefore <= windowDays && kinds.includes(t.kind),
+      (t) =>
+        t.daysBefore <= windowDays &&
+        kinds.includes(t.kind) &&
+        // An open reported too soon after sending is taken for a machine and left out (CRM-R89).
+        !(
+          t.kind === "opened" &&
+          minOpenSeconds > 0 &&
+          (t.afterSendSeconds ?? Infinity) < minOpenSeconds
+        ),
     );
     if (touches.length === 0) {
       unattributedDeals += 1;
@@ -4311,7 +4341,12 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
     }
     for (const campaign of new Set(touches.map((t) => t.campaign)))
       tally.get(campaign)!.deals += 1;
-    for (const [campaign, share] of shareAmount(model, amount, touches)) {
+    for (const [campaign, share] of shareAmount(
+      model,
+      amount,
+      touches,
+      halfLifeDays,
+    )) {
       const credit = tally.get(campaign)!.credit;
       credit.set(deal.currency, (credit.get(deal.currency) ?? 0) + share);
       dated.push({
@@ -4356,6 +4391,8 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
   return ok({
     model,
     window_days: windowDays,
+    half_life_days: model === "time_decay" ? halfLifeDays : null,
+    min_open_seconds: minOpenSeconds > 0 ? minOpenSeconds : null,
     touches: ["sent", "opened", "clicked"].filter((k) => kinds.includes(k)),
     as_of: new Date().toISOString(),
     deals: won.length,

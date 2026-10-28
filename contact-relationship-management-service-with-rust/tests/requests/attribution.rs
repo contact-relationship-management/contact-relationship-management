@@ -488,3 +488,129 @@ async fn attribution_can_convert_each_deals_share_at_the_rate_of_the_day_it_clos
     })
     .await;
 }
+
+/// A sent e-mail that the provider reported opened `after_seconds` after it was sent.
+async fn sent_and_opened(
+    db: &sea_orm::DatabaseConnection,
+    campaign: &str,
+    contact: &str,
+    days_ago: i32,
+    after_seconds: i32,
+) {
+    let message = format!("<{campaign}@test>");
+    db.execute_raw(Statement::from_sql_and_values(
+        DatabaseBackend::Postgres,
+        "INSERT INTO email_deliveries (pid, campaign_pid, contact_pid, state, sent_at, message_id) \
+         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 'sent', \
+                 now() - make_interval(days => $3::int), $4)",
+        [
+            campaign.into(),
+            contact.into(),
+            days_ago.into(),
+            message.clone().into(),
+        ],
+    ))
+    .await
+    .unwrap();
+    db.execute_raw(Statement::from_sql_and_values(
+        DatabaseBackend::Postgres,
+        "INSERT INTO email_events (message_id, event, received_at) \
+         SELECT message_id, 'opened', sent_at + make_interval(secs => $2::int) \
+           FROM email_deliveries WHERE message_id = $1",
+        [message.into(), after_seconds.into()],
+    ))
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn an_open_too_soon_after_sending_is_left_out_and_the_decay_half_life_can_be_chosen() {
+    request::<App, _, _>(|request, ctx| async move {
+        let segment = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json::<Value>()["pid"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let alpha = campaign!(&request, segment, "Alpha");
+        let beta = campaign!(&request, segment, "Beta");
+        let buyer = seed_contact!(&request, "Settings Buyer").await;
+        // Alpha's e-mail was "opened" half a minute after it was sent (a mail program loading it
+        // ahead of the reader); Beta's two hours after.
+        sent_and_opened(&ctx.db, &alpha, &buyer, 20, 30).await;
+        sent_and_opened(&ctx.db, &beta, &buyer, 10, 7_200).await;
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        won_deal!(
+            &request,
+            pipeline,
+            stages,
+            json!({ "name": "Bought", "amount_minor": 10_000, "currency": "GBP",
+                    "primary_contact_pid": buyer })
+        );
+
+        // Opens alone, both counted: 5,000 each.
+        let both: Value = request.get("/api/attribution?touches=opened").await.json();
+        assert_eq!(earned(&both, "Alpha", "GBP"), 5_000, "{both}");
+        assert_eq!(earned(&both, "Beta", "GBP"), 5_000, "{both}");
+        assert!(both["min_open_seconds"].is_null(), "{both}");
+
+        // Opens under a minute left out: Alpha's has no part, and the answer says so.
+        let late: Value = request
+            .get("/api/attribution?touches=opened&min_open_seconds=60")
+            .await
+            .json();
+        assert_eq!(earned(&late, "Alpha", "GBP"), 0, "{late}");
+        assert_eq!(earned(&late, "Beta", "GBP"), 10_000, "{late}");
+        assert_eq!(late["min_open_seconds"], 60, "{late}");
+
+        // Clicks and sends are not what the setting is about: with `sent` counted, Alpha still
+        // has its send.
+        let sends: Value = request
+            .get("/api/attribution?touches=sent,opened&min_open_seconds=60")
+            .await
+            .json();
+        assert!(earned(&sends, "Alpha", "GBP") > 0, "{sends}");
+
+        // The half-life. Alpha's e-mail went 20 days ago and Beta's 10: at the default 7 days
+        // Beta weighs about 2.7 times Alpha; with 90 days they weigh nearly the same.
+        let share = |answer: &Value, name: &str| earned(answer, name, "GBP");
+        let quick: Value = request
+            .get("/api/attribution?model=time_decay&touches=sent")
+            .await
+            .json();
+        let slow: Value = request
+            .get("/api/attribution?model=time_decay&touches=sent&half_life_days=90")
+            .await
+            .json();
+        assert_eq!(quick["half_life_days"], 7, "{quick}");
+        assert_eq!(slow["half_life_days"], 90, "{slow}");
+        assert_eq!(share(&quick, "Alpha") + share(&quick, "Beta"), 10_000);
+        assert_eq!(share(&slow, "Alpha") + share(&slow, "Beta"), 10_000);
+        assert!(share(&quick, "Beta") > 7_000, "{quick}");
+        assert!((5_000..5_700).contains(&share(&slow, "Beta")), "{slow}");
+        let linear: Value = request.get("/api/attribution?touches=sent").await.json();
+        assert!(linear["half_life_days"].is_null(), "{linear}");
+
+        for (query, pointer) in [
+            ("half_life_days=14", "/half_life_days"),
+            ("model=time_decay&half_life_days=3", "/half_life_days"),
+            ("model=time_decay&half_life_days=91", "/half_life_days"),
+            ("min_open_seconds=60", "/min_open_seconds"),
+            ("touches=opened&min_open_seconds=0", "/min_open_seconds"),
+            ("touches=opened&min_open_seconds=86401", "/min_open_seconds"),
+        ] {
+            let r = request.get(&format!("/api/attribution?{query}")).await;
+            r.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            let refused: Value = r.json();
+            assert_eq!(
+                refused["errors"][0]["pointer"], pointer,
+                "{query}: {refused}"
+            );
+        }
+    })
+    .await;
+}

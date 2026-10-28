@@ -37,6 +37,13 @@ struct AttributionQuery {
     touches: Option<String>,
     /// How far back from the day a deal closed a touch still counts, 1 to 365 (default 90).
     window_days: Option<i64>,
+    /// With `time_decay`: a touch's weight halves for every this many days before the deal closed,
+    /// 4 to 90 (default 7; CRM-R89).
+    half_life_days: Option<i64>,
+    /// An open reported less than this many seconds after the e-mail was sent is taken for a mail
+    /// program loading it ahead of the reader, and does not count; 1 to 86,400, and only with
+    /// `touches` including `opened` (CRM-R89). Clicks are not affected.
+    min_open_seconds: Option<i64>,
     /// First day a deal may have closed on.
     from: Option<NaiveDate>,
     /// Last day a deal may have closed on.
@@ -83,6 +90,10 @@ pub(crate) struct Attribution {
     model: String,
     /// The window used, in days.
     window_days: i64,
+    /// With `time_decay`: the half-life used, in days (CRM-R89); `null` for the other models.
+    half_life_days: Option<i64>,
+    /// The seconds after sending before which an open does not count, when one was asked for.
+    min_open_seconds: Option<i64>,
     /// The e-mail touches counted: `sent`, `opened`, `clicked`.
     touches: Vec<String>,
     as_of: DateTime<Utc>,
@@ -174,7 +185,7 @@ impl Kinds {
 }
 
 /// The model, the window and the e-mail touches, or a `422` naming each wrong member.
-fn validate(query: &AttributionQuery) -> Result<(Model, i64, Kinds)> {
+fn validate(query: &AttributionQuery) -> Result<Asked> {
     let mut problems = Problems::new();
     let model = match query.model.as_deref() {
         None => Some(Model::Linear),
@@ -212,11 +223,44 @@ fn validate(query: &AttributionQuery) -> Result<(Model, i64, Kinds)> {
             );
         }
     }
+    if query.half_life_days.is_some() && model != Some(Model::TimeDecay) {
+        problems.push_field("half_life_days", "only with the time_decay model");
+    }
+    let half_life = rules::half_life_days(query.half_life_days)
+        .map_err(|why| problems.push_field("half_life_days", why))
+        .ok();
+    if let Some(seconds) = query.min_open_seconds {
+        if !(1..=rules::MAX_MIN_OPEN_SECONDS).contains(&seconds) {
+            problems.push_field(
+                "min_open_seconds",
+                format!("1 to {} seconds", rules::MAX_MIN_OPEN_SECONDS),
+            );
+        } else if kinds.is_some_and(|k| !k.opened) {
+            problems.push_field("min_open_seconds", "needs touches to include opened");
+        }
+    }
     problems.finish()?;
-    match (model, days, kinds) {
-        (Some(model), Some(days), Some(kinds)) => Ok((model, days, kinds)),
+    match (model, days, kinds, half_life) {
+        (Some(model), Some(days), Some(kinds), Some(half_life_days)) => Ok(Asked {
+            model,
+            days,
+            kinds,
+            half_life_days,
+            min_open_seconds: query.min_open_seconds.unwrap_or(0),
+        }),
         _ => Err(super::unprocessable("the request cannot be answered")),
     }
+}
+
+/// What a valid ask came to.
+struct Asked {
+    model: Model,
+    days: i64,
+    kinds: Kinds,
+    /// The time-decay half-life, in days.
+    half_life_days: i64,
+    /// An open sooner than this after sending does not count; `0` for none.
+    min_open_seconds: i64,
 }
 
 /// The won deals closed in the range, newest first, one more than the cap so a cut is seen.
@@ -257,6 +301,7 @@ async fn touches_of(
     deals: &[Won],
     days: i64,
     kinds: Kinds,
+    min_open_seconds: i64,
 ) -> Result<HashMap<Uuid, Vec<Touch>>> {
     // The engagement events asked for: an open or a click the provider reported, at the moment it
     // was reported (CRM-R58).
@@ -281,6 +326,8 @@ async fn touches_of(
                JOIN email_events ev ON ev.message_id = e.message_id \
               WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
                 AND ev.event IN (SELECT jsonb_array_elements_text($4::jsonb)) \
+                AND ($5::int = 0 OR ev.event <> 'opened' \
+                     OR ev.received_at >= e.sent_at + make_interval(secs => $5::int)) \
                 AND ev.received_at <= d.closed_at \
                 AND ev.received_at >= d.closed_at - make_interval(days => $2::int) \
              UNION ALL \
@@ -295,6 +342,7 @@ async fn touches_of(
                 i32::try_from(days).unwrap_or(i32::MAX).into(),
                 kinds.sent.into(),
                 serde_json::json!(engagement).into(),
+                i32::try_from(min_open_seconds).unwrap_or(i32::MAX).into(),
             ],
         ))
         .await?;
@@ -362,7 +410,12 @@ struct Shared {
 }
 
 /// Share every deal among its touches: each campaign's tally, and what no campaign touched.
-fn share_out(model: Model, deals: &[Won], touches: &mut HashMap<Uuid, Vec<Touch>>) -> Shared {
+fn share_out(
+    model: Model,
+    half_life_days: i64,
+    deals: &[Won],
+    touches: &mut HashMap<Uuid, Vec<Touch>>,
+) -> Shared {
     let mut tallies: BTreeMap<Uuid, Tally> = BTreeMap::new();
     let mut unattributed: BTreeMap<String, i64> = BTreeMap::new();
     let mut unattributed_dated = Vec::new();
@@ -392,7 +445,13 @@ fn share_out(model: Model, deals: &[Won], touches: &mut HashMap<Uuid, Vec<Touch>
         for campaign in list.iter().map(|t| t.campaign).collect::<BTreeSet<_>>() {
             tallies.entry(campaign).or_default().deals += 1;
         }
-        for (campaign, share) in rules::credit(model, deal.amount_minor, &list, deal.closed_at) {
+        for (campaign, share) in rules::credit_with(
+            model,
+            deal.amount_minor,
+            &list,
+            deal.closed_at,
+            half_life_days,
+        ) {
             let tally = tallies.entry(campaign).or_default();
             add(&mut tally.credit, &deal.currency, share);
             tally
@@ -466,7 +525,13 @@ async fn run(
     caller: MaybeAuthUser,
     axum::extract::Query(query): axum::extract::Query<AttributionQuery>,
 ) -> Result<Response> {
-    let (model, days, kinds) = validate(&query)?;
+    let Asked {
+        model,
+        days,
+        kinds,
+        half_life_days,
+        min_open_seconds,
+    } = validate(&query)?;
     // The answer is money, so a masked collection read may not have it.
     if auth::aggregate_masked(&caller).map_err(record_rejection)? {
         return Err(record_rejection((
@@ -477,9 +542,9 @@ async fn run(
     let mut deals = won_deals(&ctx, &query).await?;
     let truncated = deals.len() > MAX_DEALS;
     deals.truncate(MAX_DEALS);
-    let mut touches = touches_of(&ctx, &deals, days, kinds).await?;
+    let mut touches = touches_of(&ctx, &deals, days, kinds, min_open_seconds).await?;
 
-    let shared = share_out(model, &deals, &mut touches);
+    let shared = share_out(model, half_life_days, &deals, &mut touches);
     let mut conversion = convert_credit(&ctx, &query, &shared).await?;
     let Shared {
         tallies,
@@ -537,12 +602,16 @@ async fn run(
         caller.actor(),
         Some(serde_json::json!({
             "model": model.name(), "window_days": days, "deals": deals.len(),
+            "half_life_days": (model == Model::TimeDecay).then_some(half_life_days),
+            "min_open_seconds": (min_open_seconds > 0).then_some(min_open_seconds),
         })),
     )
     .await?;
     format::json(Attribution {
         model: model.name().to_string(),
         window_days: days,
+        half_life_days: (model == Model::TimeDecay).then_some(half_life_days),
+        min_open_seconds: (min_open_seconds > 0).then_some(min_open_seconds),
         touches: kinds.names(),
         as_of: Utc::now(),
         deals: deals.len(),

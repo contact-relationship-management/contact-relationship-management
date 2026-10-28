@@ -661,6 +661,8 @@ export default {
   "attr.touchesHint":
     "Las aperturas y los clics son lo que informa el proveedor de correo, y solo de personas que siguen consintiendo. Los programas de correo que cargan imágenes por adelantado y los escáneres de enlaces hacen que se cuenten de más.",
   "attr.window": "Ventana (días antes del cierre)",
+  "attr.halfLife": "Semivida (días, decaimiento temporal)",
+  "attr.minOpen": "Omitir aperturas anteriores a (segundos tras el envío)",
   "attr.from": "Cerrado desde",
   "attr.to": "Cerrado hasta",
   "attr.run": "Mostrar",

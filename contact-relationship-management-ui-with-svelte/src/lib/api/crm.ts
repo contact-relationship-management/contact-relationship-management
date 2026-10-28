@@ -1765,6 +1765,10 @@ export interface Attribution {
   rate_date: string | null;
   /** `close_day` when each deal's share was converted at the rate of the day it closed (CRM-R85). */
   rate_basis: string | null;
+  /** With `time_decay`: the half-life used, in days (CRM-R89). */
+  half_life_days: number | null;
+  /** The seconds after sending before which an open did not count, when one was asked for. */
+  min_open_seconds: number | null;
   rates: ReportRateUsed[];
   unconverted: ReportUnconverted[];
   note: string;
@@ -1781,6 +1785,10 @@ export function attribution(
     rateDate?: string;
     /** With `convertTo`: convert each deal's share at the rate of the day it closed (CRM-R85). */
     rateBasis?: "close_day";
+    /** With `time_decay`: a touch's weight halves every this many days, 4 to 90 (CRM-R89). */
+    halfLifeDays?: number;
+    /** With opens counted: an open sooner than this many seconds after sending is left out. */
+    minOpenSeconds?: number;
     /** Which e-mail touches count; the service's default is `sent` alone. */
     touches?: ("sent" | "opened" | "clicked")[];
   },
@@ -1791,6 +1799,10 @@ export function attribution(
     window_days: String(params.windowDays),
   });
   if (params.touches?.length) query.set("touches", params.touches.join(","));
+  if (params.halfLifeDays)
+    query.set("half_life_days", String(params.halfLifeDays));
+  if (params.minOpenSeconds)
+    query.set("min_open_seconds", String(params.minOpenSeconds));
   if (params.from) query.set("from", params.from);
   if (params.to) query.set("to", params.to);
   if (params.convertTo) {

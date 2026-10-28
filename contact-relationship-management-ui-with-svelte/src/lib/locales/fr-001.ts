@@ -666,6 +666,9 @@ export default {
   "attr.touchesHint":
     "Les ouvertures et les clics sont ce que signale le fournisseur de messagerie, et seulement pour les personnes qui consentent encore. Les logiciels qui chargent les images à l'avance et les analyseurs de liens les font surcompter.",
   "attr.window": "Fenêtre (jours avant la clôture)",
+  "attr.halfLife": "Demi-vie (jours, décroissance temporelle)",
+  "attr.minOpen":
+    "Ignorer les ouvertures plus rapides que (secondes après l'envoi)",
   "attr.from": "Clôturées depuis",
   "attr.to": "Clôturées jusqu'à",
   "attr.run": "Afficher",

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — attribution settings on the page (CRM-T155, CRM-R89)
+
+A half-life for time decay and a delay for opens; two strings in the eight locales.
+
 ### Added — a ticket's reference on the tickets page (CRM-T154, CRM-R88)
 
 `ticketReference` and one string in the eight locales.

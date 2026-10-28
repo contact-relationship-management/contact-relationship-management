@@ -1796,3 +1796,10 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** the selected ticket shows its reference (`ticketReference`, the same rule, with a unit test using the service test's pid); one new string in the eight locales (machine drafts, 695 per locale in the register).
       - **Documents:** hazard H14 in `compliance/risk-management.md`; a processing activity in `compliance/record-of-processing.md`.
       - **Not done:** see CRM-R88's list; **not run against a real mail service**.
+
+- [x] CRM-T155 *(edge)* **Attribution settings.** A half-life for time decay and a delay under which an open does not count. (M)
+      **Done (2026-10-28, not released):** requirement CRM-R89 first, then:
+      - **Service:** `rules::attribution::{half_life_days, credit_with}` (`credit` is `credit_with` at the default); `half_life_days` and `min_open_seconds` on the attribution query, validated and echoed; the open condition is in the touch query (`ev.received_at >= e.sent_at + interval`).
+      - **Tests:** unit tests (a chosen half-life, the default unchanged, the other models unmoved, the longest window at the shortest half-life still weighs every touch, the range); `an_open_too_soon_after_sending_is_left_out_and_the_decay_half_life_can_be_chosen` (a thirty-second open and a two-hour open; the setting with sends beside opens; 7 against 90 days; six refusals with their pointers).
+      - **UI:** two inputs on `/attribution`, each disabled until it applies; the tour has one open twenty seconds after sending; two strings in the eight locales (machine drafts, 697 per locale); tour tests for both.
+      - **Not done:** see CRM-R89's list.
