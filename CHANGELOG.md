@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Changed — every page is scanned for accessibility (CRM-T144, CRM-R77)
+
+The axe gate now covers all pages, not 12, and a test fails if a page is added without being listed. Five barriers it found were fixed.
+
 ### Changed — no page shows the service's error text (CRM-T143, CRM-R76)
 
 The UI says what kind of failure it was, in the reader's language, and never the service's own words; enforced by lint and a test.

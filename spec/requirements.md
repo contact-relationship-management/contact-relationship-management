@@ -1236,3 +1236,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - Enforced three ways: `errorMessage` and `fieldErrors` in `src/lib/errors.ts` are the only code that reads an error; an ESLint rule (`no-restricted-properties` on `message`, `no-restricted-syntax` on `String(error)`) fails lint in the routes and components; and a unit test scans them for the same patterns and checks every kind of failure in every locale.
 - This does not touch what the service *returns as data* (a workflow step's detail, a search hit's detail, an audit finding): that is content, not an error.
 - Not built: showing a request id so a person can quote it to support; a different message per endpoint.
+
+## CRM-R77 — Every page is scanned for accessibility
+
+*As a person who uses assistive technology, I can expect no page to have been left out of the automated check, so that a new page cannot ship with a barrier an automatic scan would have found.*
+
+- `tests/e2e/a11y.spec.ts` runs axe-core with the WCAG 2.0, 2.1 and 2.2 A and AA rules over **every page route**. A signed-in page is scanned in the tour with its sample data (tables, forms, records and a calendar on the page, not empty lists); the public pages are scanned signed out. A violation fails the build.
+- The pages and how to reach them are one table, `tests/e2e/a11y-routes.ts`: the route as the file tree names it, a real address (a sample id in place of `[pid]`, a real locale in place of `[locale]`), and how to get there. A page that is not scanned stays in the table with a **written reason**.
+- A unit test fails if a page exists under `src/routes` that the table does not list, an entry names a page that does not exist, a dynamic page has no real address, or an exclusion has no reason. A new route therefore cannot go unscanned.
+- Running it over the pages that had never been scanned found five barriers, all fixed: error text too faint to read (`.error`), contact links too small to hit and links in running text told apart by colour alone, a pipeline drop-down with no name, and calendar days whose name did not contain their visible text.
+- This is an automatic check, which finds only a part of what is wrong. It is **not** an accessibility audit: the manual audit with screen readers and keyboards (CRM-T48) has not been done.
+- Not built: scanning the states a page reaches after an action (a dialog open, an error shown); scanning each locale and each theme.

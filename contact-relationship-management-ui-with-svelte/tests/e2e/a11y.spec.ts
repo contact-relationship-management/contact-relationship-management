@@ -1,24 +1,22 @@
-// Accessibility gate (CRM-T37): axe-core with the WCAG 2.0/2.1/2.2 A and AA
-// rule tags over the public pages and the list pages. Violations fail the
-// build; anything excluded below carries a written reason.
+// Accessibility gate (CRM-T37, CRM-R77): axe-core with the WCAG 2.0/2.1/2.2 A and AA rule tags over
+// **every page**, the signed-in ones in the tour with its sample data (so tables, forms and
+// records are on the page, not empty lists). The pages and how to reach them are in
+// `a11y-routes.ts`, which a unit test holds to the file tree. Violations fail the build; a page
+// left out carries a written reason there.
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { ROUTES } from "./a11y-routes";
+
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
-async function signIn(page: Page) {
-  await page.context().addCookies([
-    {
-      name: "__Host-mxi_session",
-      value: "a11y-test-session",
-      domain: "localhost",
-      path: "/",
-      httpOnly: true,
-      secure: true,
-      sameSite: "Lax",
-    },
-  ]);
+/** Sign in to the tour, as the sign-in page's own hint says to. */
+async function startTour(page: Page) {
+  await page.goto("/signin");
+  await page.getByLabel("Email").fill("example@example.com");
+  await page.getByRole("button", { name: "Send magic link" }).click();
+  await expect(page.getByTestId("demo-banner")).toBeVisible();
 }
 
 async function scan(page: Page) {
@@ -33,38 +31,16 @@ function summarize(
   );
 }
 
-test.describe("public pages", () => {
-  for (const path of ["/", "/tour", "/signin", "/accessibility"]) {
-    test(`${path} has no WCAG A/AA violations`, async ({ page }) => {
-      await page.goto(path);
-      await page.waitForLoadState("networkidle");
-      expect(summarize((await scan(page)).violations)).toEqual([]);
-    });
+for (const { route, path, mode, excluded } of ROUTES) {
+  const title = `${route} (${path}) has no WCAG A/AA violations`;
+  if (excluded !== undefined) {
+    test.skip(`${title}: ${excluded}`, () => {});
+    continue;
   }
-});
-
-test.describe("signed-in list pages", () => {
-  test.beforeEach(async ({ page }) => {
-    await signIn(page);
-    // Empty lists are enough to exercise the page chrome, headings, tables
-    // and controls; data-heavy states are covered by the functional suite.
-    await page.route("**/api/proxy/**", (route) => route.fulfill({ json: [] }));
+  test(title, async ({ page }) => {
+    if (mode === "tour") await startTour(page);
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+    expect(summarize((await scan(page)).violations)).toEqual([]);
   });
-
-  for (const path of [
-    "/contacts",
-    "/accounts",
-    "/leads",
-    "/tickets",
-    "/articles",
-    "/campaigns",
-    "/break-glass",
-    "/break-glass/review",
-  ]) {
-    test(`${path} has no WCAG A/AA violations`, async ({ page }) => {
-      await page.goto(path);
-      await page.waitForLoadState("networkidle");
-      expect(summarize((await scan(page)).violations)).toEqual([]);
-    });
-  }
-});
+}

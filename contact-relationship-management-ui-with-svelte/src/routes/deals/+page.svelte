@@ -178,6 +178,7 @@
 <p>
   <label>
     <select
+      aria-label={t("rpt.field.pipeline")}
       data-testid="pipeline-select"
       value={selectedPipeline}
       onchange={(event) => {

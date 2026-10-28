@@ -81,9 +81,15 @@
     weekday: (wd: number) => fmt({ weekday: "long" }).format(weekdayDate(wd)),
     weekdayAbbr: (wd: number) =>
       fmt({ weekday: "short" }).format(weekdayDate(wd)),
-    day: (iso: string, _wd: number, outside: boolean) =>
-      fmt({ dateStyle: "full" }).format(new Date(`${iso}T00:00:00Z`)) +
-      (outside ? " ·" : ""),
+    // A cell shows its day number and that day's events, so its name starts with exactly those
+    // words and then gives the full date: the visible text must be inside the accessible name,
+    // as one run (WCAG 2.5.3).
+    day: (iso: string, _wd: number, outside: boolean) => {
+      const full = fmt({ dateStyle: "full" }).format(new Date(`${iso}T00:00:00Z`));
+      const titles = events.filter((e) => e.date === iso).map((e) => e.title);
+      const shown = titles.length ? `${Number(iso.slice(8))} ${titles.join(" ")}, ` : "";
+      return shown + full + (outside ? " ·" : "");
+    },
   });
 
   const overdueColumns = [
