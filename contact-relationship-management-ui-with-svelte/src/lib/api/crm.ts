@@ -1746,6 +1746,8 @@ export interface Attribution {
   /** With `convert_to`: the currency every figure is in (CRM-R51). */
   convert_to: string | null;
   rate_date: string | null;
+  /** `close_day` when each deal's share was converted at the rate of the day it closed (CRM-R85). */
+  rate_basis: string | null;
   rates: ReportRateUsed[];
   unconverted: ReportUnconverted[];
   note: string;
@@ -1760,6 +1762,8 @@ export function attribution(
     to?: string;
     convertTo?: string;
     rateDate?: string;
+    /** With `convertTo`: convert each deal's share at the rate of the day it closed (CRM-R85). */
+    rateBasis?: "close_day";
     /** Which e-mail touches count; the service's default is `sent` alone. */
     touches?: ("sent" | "opened" | "clicked")[];
   },
@@ -1774,7 +1778,8 @@ export function attribution(
   if (params.to) query.set("to", params.to);
   if (params.convertTo) {
     query.set("convert_to", params.convertTo);
-    if (params.rateDate) query.set("rate_date", params.rateDate);
+    if (params.rateBasis) query.set("rate_basis", params.rateBasis);
+    else if (params.rateDate) query.set("rate_date", params.rateDate);
   }
   return api(`/attribution?${query}`, init);
 }

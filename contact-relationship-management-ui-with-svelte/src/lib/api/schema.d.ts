@@ -2391,7 +2391,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear|time_decay|position (default linear; time_decay halves a touch's weight every 7 days before the deal closed, position gives 40% to the first touch, 40% to the last and 20% shared among the rest), ?touches=sent|opened|clicked, comma-separated (default sent; opens and clicks are what a mail provider reports, CRM-R58), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=GBP shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate. A caller with a masked collection read gets 403 */
+        /** Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear|time_decay|position (default linear; time_decay halves a touch's weight every 7 days before the deal closed, position gives 40% to the first touch, 40% to the last and 20% shared among the rest), ?touches=sent|opened|clicked, comma-separated (default sent; opens and clicks are what a mail provider reports, CRM-R58), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=GBP shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate; ?rate_basis=close_day converts each deal's share at the rate of the day it closed instead (CRM-R85). A caller with a masked collection read gets 403 */
         get: {
             parameters: {
                 query?: never;
@@ -18479,9 +18479,12 @@ export interface components {
             model: string;
             /** @description What the figures mean, in a line. */
             note: string;
+            /** @description `close_day` when each deal's share was converted at the rate of the day it closed. */
+            rate_basis: string | null;
             /**
              * Format: date
-             * @description With `convert_to`: the day whose exchange rates were used.
+             * @description With `convert_to`: the day whose exchange rates were used; `null` with `rate_basis`, where
+             *     each deal has its own.
              */
             rate_date: string | null;
             /** @description With `convert_to`: the rate used for each currency that was converted. */

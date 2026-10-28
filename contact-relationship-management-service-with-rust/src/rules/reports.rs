@@ -555,10 +555,20 @@ mod tests {
             .insert("state".to_string(), vec!["won".into(), "lost".into()]);
         let planned = plan(&s).unwrap();
         assert!(planned.by_day && planned.per_currency);
-        assert!(planned.sql.contains("d.closed_at::date AS day"), "{}", planned.sql);
-        assert!(planned.sql.contains("GROUP BY grp, currency, day"), "{}", planned.sql);
         assert!(
-            planned.sql.contains(&format!("LIMIT {}", MAX_DAY_CELLS + 1)),
+            planned.sql.contains("d.closed_at::date AS day"),
+            "{}",
+            planned.sql
+        );
+        assert!(
+            planned.sql.contains("GROUP BY grp, currency, day"),
+            "{}",
+            planned.sql
+        );
+        assert!(
+            planned
+                .sql
+                .contains(&format!("LIMIT {}", MAX_DAY_CELLS + 1)),
             "the group limit would cut a group's days short"
         );
         s.rate_date = NaiveDate::from_ymd_opt(2026, 6, 1);

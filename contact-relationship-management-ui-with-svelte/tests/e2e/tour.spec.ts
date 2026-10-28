@@ -1442,6 +1442,27 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("report-unconverted")).toContainText("GBP");
   });
 
+  test("attribution can convert each deal's share at the rate of the day it closed", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/attribution");
+    await expect(page.getByTestId("attribution-close-day")).toHaveCount(0);
+    await page.getByTestId("attribution-convert").fill("USD");
+    await page.getByTestId("attribution-close-day").check();
+    await expect(page.getByTestId("attribution-rate-date")).toBeDisabled();
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row").first()).toContainText(
+      "$",
+    );
+    await expect(page.getByTestId("attribution-error")).toHaveCount(0);
+    await expect(page.getByTestId("attribution-rates")).toBeVisible();
+    // No one day stands for the answer, so none is shown beside the rates.
+    await expect(page.getByTestId("attribution-rates")).not.toContainText(
+      "(20",
+    );
+  });
+
   test("a deal report can convert each deal at the rate of the day it closed, for closed deals only", async ({
     page,
   }) => {

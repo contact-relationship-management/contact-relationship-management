@@ -385,3 +385,106 @@ async fn attribution_shows_its_credit_in_one_currency_naming_the_rates_and_what_
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn attribution_can_convert_each_deals_share_at_the_rate_of_the_day_it_closed() {
+    request::<App, _, _>(|request, ctx| async move {
+        let segment = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json::<Value>()["pid"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let alpha = campaign!(&request, segment, "Alpha");
+        let beta = campaign!(&request, segment, "Beta");
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        // Alpha's dollars close either side of a rate change and once before any rate; Beta's yen
+        // never have one; a deal no campaign touched closes after the change.
+        for (name, amount, currency, source, closed) in [
+            ("A1", 10_000, "USD", Some(&alpha), "2026-02-01"),
+            ("A2", 10_000, "USD", Some(&alpha), "2026-07-01"),
+            ("A3", 4_000, "USD", Some(&alpha), "2025-12-01"),
+            ("B1", 700, "JPY", Some(&beta), "2026-02-01"),
+            ("W1", 2_000, "USD", None, "2026-07-01"),
+        ] {
+            let mut body = json!({ "name": name, "amount_minor": amount, "currency": currency });
+            if let Some(campaign) = source {
+                body["source_campaign_pid"] = json!(campaign);
+            }
+            let pid = won_deal!(&request, pipeline, stages, body);
+            ctx.db
+                .execute_raw(Statement::from_sql_and_values(
+                    DatabaseBackend::Postgres,
+                    format!(
+                        "UPDATE deals SET closed_at = '{closed}T09:00:00Z' WHERE pid = $1::uuid"
+                    ),
+                    [pid.as_str().into()],
+                ))
+                .await
+                .unwrap();
+        }
+        for (rate, on) in [("0.80", "2026-01-01"), ("0.50", "2026-06-01")] {
+            request
+                .put("/api/fx-rates")
+                .json(&json!({ "from": "USD", "to": "GBP", "rate": rate,
+                               "effective_on": on, "source": "test table" }))
+                .await
+                .assert_status_ok();
+        }
+
+        // One date for everything: all 24,000 of Alpha's dollars at today's 0.50.
+        let one: Value = request.get("/api/attribution?convert_to=GBP").await.json();
+        assert_eq!(earned(&one, "Alpha", "GBP"), 12_000, "{one}");
+        assert!(one["rate_basis"].is_null(), "{one}");
+
+        // On the day each closed: 8,000 and 5,000 at their own rates; the deal before any rate and
+        // the yen are left out and named; the untouched deal is 2,000 at 0.50.
+        let dated: Value = request
+            .get("/api/attribution?convert_to=GBP&rate_basis=close_day")
+            .await
+            .json();
+        assert_eq!(earned(&dated, "Alpha", "GBP"), 13_000, "{dated}");
+        assert_eq!(dated["unattributed"][0]["amount_minor"], 1_000, "{dated}");
+        assert_eq!(dated["rate_basis"], "close_day", "{dated}");
+        assert!(dated["rate_date"].is_null(), "{dated}");
+        assert_eq!(dated["rates"].as_array().unwrap().len(), 2, "{dated}");
+        let left: Vec<(String, i64)> = dated["unconverted"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|u| {
+                (
+                    u["currency"].as_str().unwrap().into(),
+                    u["amount_minor"].as_i64().unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            left,
+            [("JPY".to_string(), 700), ("USD".to_string(), 4_000)],
+            "{dated}"
+        );
+
+        for (query, pointer) in [
+            ("rate_basis=close_day", "/rate_basis"),
+            ("convert_to=GBP&rate_basis=today", "/rate_basis"),
+            (
+                "convert_to=GBP&rate_basis=close_day&rate_date=2026-03-01",
+                "/rate_date",
+            ),
+        ] {
+            let r = request.get(&format!("/api/attribution?{query}")).await;
+            r.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            let refused: Value = r.json();
+            assert_eq!(
+                refused["errors"][0]["pointer"], pointer,
+                "{query}: {refused}"
+            );
+        }
+    })
+    .await;
+}

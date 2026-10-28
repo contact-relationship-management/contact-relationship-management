@@ -36,5 +36,5 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   CRM-R54); the forecast snapshots and the trend still report per
   currency, and rates are not fetched
   from a provider. Each deal's close day is applied to an account's CLV
-  (CRM-R70) and to the report builder (CRM-R83), not yet to attribution,
-  ROI or the forecast.
+  (CRM-R70), to the report builder (CRM-R83) and to attribution (CRM-R85),
+  not yet to campaign ROI or the forecast.

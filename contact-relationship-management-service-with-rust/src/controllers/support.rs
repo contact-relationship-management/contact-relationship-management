@@ -150,7 +150,10 @@ async fn create_policy(
     } else if action != "flag" && payload.max_wait_minutes.is_none() {
         problems.push_field("wait_limit_action", "needs a max_wait_minutes to act on");
     }
-    if payload.auto_close_days.is_some_and(|d| !(1..=365).contains(&d)) {
+    if payload
+        .auto_close_days
+        .is_some_and(|d| !(1..=365).contains(&d))
+    {
         problems.push_field("auto_close_days", "between 1 and 365");
     }
     if action == "escalate" {

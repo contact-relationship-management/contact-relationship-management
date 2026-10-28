@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — close-day attribution (CRM-T151, CRM-R85)
+
+`rate_basis` on `GET /api/attribution`; `rate_basis` in its answer.
+
 ### Added — close-day report conversion (CRM-T149, CRM-R83)
 
 `rate_basis` on the report spec; `MAX_DAY_CELLS`; `rules::fx::convert_rows_dated`. The bridge routes are listed as bodyless in the OpenAPI body test.

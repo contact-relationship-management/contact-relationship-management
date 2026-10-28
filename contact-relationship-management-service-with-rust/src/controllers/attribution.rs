@@ -45,6 +45,9 @@ struct AttributionQuery {
     convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
     rate_date: Option<NaiveDate>,
+    /// `close_day`: convert each deal's share at the rate of the day the deal closed (CRM-R85);
+    /// only with `convert_to`, and not with `rate_date`.
+    rate_basis: Option<String>,
 }
 
 /// An amount in one currency.
@@ -94,8 +97,11 @@ pub(crate) struct Attribution {
     truncated: bool,
     /// With `convert_to`: the currency every figure is in.
     convert_to: Option<String>,
-    /// With `convert_to`: the day whose exchange rates were used.
+    /// With `convert_to`: the day whose exchange rates were used; `null` with `rate_basis`, where
+    /// each deal has its own.
     rate_date: Option<NaiveDate>,
+    /// `close_day` when each deal's share was converted at the rate of the day it closed.
+    rate_basis: Option<String>,
     /// With `convert_to`: the rate used for each currency that was converted.
     rates: Vec<RateUsed>,
     /// With `convert_to`: credit that had no rate in force and was left out, never taken at 1.0.
@@ -193,6 +199,18 @@ fn validate(query: &AttributionQuery) -> Result<(Model, i64, Kinds)> {
         }
     } else if query.rate_date.is_some() {
         problems.push_field("rate_date", "needs convert_to");
+    }
+    if let Some(basis) = &query.rate_basis {
+        if query.convert_to.is_none() {
+            problems.push_field("rate_basis", "needs convert_to");
+        } else if basis != "close_day" {
+            problems.push_field("rate_basis", "only close_day");
+        } else if query.rate_date.is_some() {
+            problems.push_field(
+                "rate_date",
+                "not with rate_basis: each deal has its own day",
+            );
+        }
     }
     problems.finish()?;
     match (model, days, kinds) {
@@ -331,16 +349,23 @@ struct Tally {
     touches: usize,
     deals: usize,
     credit: BTreeMap<String, i64>,
+    /// Each share with the day its deal closed, for conversion at close-day rates (CRM-R85).
+    dated: Vec<(NaiveDate, String, i64)>,
+}
+
+/// What sharing the deals out came to.
+struct Shared {
+    tallies: BTreeMap<Uuid, Tally>,
+    unattributed: BTreeMap<String, i64>,
+    unattributed_dated: Vec<(NaiveDate, String, i64)>,
+    unattributed_deals: usize,
 }
 
 /// Share every deal among its touches: each campaign's tally, and what no campaign touched.
-fn share_out(
-    model: Model,
-    deals: &[Won],
-    touches: &mut HashMap<Uuid, Vec<Touch>>,
-) -> (BTreeMap<Uuid, Tally>, BTreeMap<String, i64>, usize) {
+fn share_out(model: Model, deals: &[Won], touches: &mut HashMap<Uuid, Vec<Touch>>) -> Shared {
     let mut tallies: BTreeMap<Uuid, Tally> = BTreeMap::new();
     let mut unattributed: BTreeMap<String, i64> = BTreeMap::new();
+    let mut unattributed_dated = Vec::new();
     let mut unattributed_deals = 0;
     for deal in deals {
         let mut list = touches.remove(&deal.pid).unwrap_or_default();
@@ -354,6 +379,11 @@ fn share_out(
         if list.is_empty() {
             unattributed_deals += 1;
             add(&mut unattributed, &deal.currency, deal.amount_minor);
+            unattributed_dated.push((
+                deal.closed_at.date_naive(),
+                deal.currency.clone(),
+                deal.amount_minor,
+            ));
             continue;
         }
         for touch in &list {
@@ -363,26 +393,56 @@ fn share_out(
             tallies.entry(campaign).or_default().deals += 1;
         }
         for (campaign, share) in rules::credit(model, deal.amount_minor, &list, deal.closed_at) {
-            add(
-                &mut tallies.entry(campaign).or_default().credit,
-                &deal.currency,
-                share,
-            );
+            let tally = tallies.entry(campaign).or_default();
+            add(&mut tally.credit, &deal.currency, share);
+            tally
+                .dated
+                .push((deal.closed_at.date_naive(), deal.currency.clone(), share));
         }
     }
-    (tallies, unattributed, unattributed_deals)
+    Shared {
+        tallies,
+        unattributed,
+        unattributed_dated,
+        unattributed_deals,
+    }
 }
 
 /// With `convert_to`, each campaign's credit in each currency is converted once and merged.
 async fn convert_credit(
     ctx: &AppContext,
     query: &AttributionQuery,
-    tallies: &BTreeMap<Uuid, Tally>,
-    unattributed: &BTreeMap<String, i64>,
+    shared: &Shared,
 ) -> Result<Option<fx_rates::Done>> {
     let Some(target) = &query.convert_to else {
         return Ok(None);
     };
+    let Shared {
+        tallies,
+        unattributed,
+        unattributed_dated,
+        ..
+    } = shared;
+    if query.rate_basis.is_some() {
+        // Each deal's share at the rate of the day the deal closed (CRM-R85), converted once.
+        let mut rows: Vec<(String, NaiveDate, String, i64)> = Vec::new();
+        for (pid, tally) in tallies {
+            for (day, currency, amount) in &tally.dated {
+                rows.push((pid.to_string(), *day, currency.clone(), *amount));
+            }
+        }
+        for (day, currency, amount) in unattributed_dated {
+            rows.push((UNATTRIBUTED.to_string(), *day, currency.clone(), *amount));
+        }
+        let (rows, rates, unconverted) = fx_rates::convert_rows_dated(ctx, target, &rows).await?;
+        return Ok(Some(fx_rates::Done {
+            rows,
+            // Not shown: with a basis each deal has its own day, and the answer says `null`.
+            rate_date: Utc::now().date_naive(),
+            rates,
+            unconverted,
+        }));
+    }
     let mut sums: Vec<(String, String, i64)> = Vec::new();
     for (pid, tally) in tallies {
         for (currency, amount) in &tally.credit {
@@ -400,6 +460,7 @@ async fn convert_credit(
 /// `GET /api/attribution?model=&window_days=&from=&to=` — share the revenue of won deals among
 /// the campaigns that touched the buyer.
 #[debug_handler]
+#[allow(clippy::too_many_lines)] // one handler: read, share, convert and answer
 async fn run(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
@@ -418,9 +479,14 @@ async fn run(
     deals.truncate(MAX_DEALS);
     let mut touches = touches_of(&ctx, &deals, days, kinds).await?;
 
-    let (tallies, unattributed, unattributed_deals) = share_out(model, &deals, &mut touches);
-
-    let mut conversion = convert_credit(&ctx, &query, &tallies, &unattributed).await?;
+    let shared = share_out(model, &deals, &mut touches);
+    let mut conversion = convert_credit(&ctx, &query, &shared).await?;
+    let Shared {
+        tallies,
+        unattributed,
+        unattributed_deals,
+        ..
+    } = shared;
 
     let names = names_of(&ctx, &tallies.keys().copied().collect()).await?;
     let converted: BTreeMap<String, i64> = conversion
@@ -489,7 +555,11 @@ async fn run(
         campaigns,
         truncated,
         convert_to: query.convert_to.clone(),
-        rate_date: conversion.as_ref().map(|d| d.rate_date),
+        rate_date: conversion
+            .as_ref()
+            .filter(|_| query.rate_basis.is_none())
+            .map(|d| d.rate_date),
+        rate_basis: query.rate_basis.clone(),
         rates: conversion
             .as_mut()
             .map(|d| std::mem::take(&mut d.rates))

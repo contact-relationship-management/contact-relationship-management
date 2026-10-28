@@ -28,6 +28,7 @@
       .map(([, name]) => name),
   );
   let rateDate = $state("");
+  let closeDay = $state(false);
   let result = $state<Attribution | null>(null);
   let error = $state<string | null>(null);
 
@@ -42,6 +43,7 @@
         touches: kinds,
         convertTo: convertTo.trim().toUpperCase(),
         rateDate,
+        rateBasis: closeDay && convertTo.trim() ? "close_day" : undefined,
       });
     } catch (cause) {
       result = null;
@@ -104,7 +106,16 @@
   {#if convertTo}
     <label>
       {t("rpt.rateDate")}
-      <input type="date" bind:value={rateDate} data-testid="attribution-rate-date" />
+      <input
+        type="date"
+        bind:value={rateDate}
+        disabled={closeDay}
+        data-testid="attribution-rate-date"
+      />
+    </label>
+    <label>
+      <input type="checkbox" bind:checked={closeDay} data-testid="attribution-close-day" />
+      {t("clv.closeDay")}
     </label>
   {/if}
   <fieldset class="touches">
@@ -180,8 +191,8 @@
     {#if result.truncated}<p class="muted">{t("attr.truncated")}</p>{/if}
     {#if result.rates.length > 0}
       <p class="muted small" data-testid="attribution-rates">
-        {t("rpt.ratesUsed")} ({result.rate_date}):
-        {#each result.rates as used (used.from)}
+        {t("rpt.ratesUsed")}{result.rate_date ? ` (${result.rate_date})` : ""}:
+        {#each result.rates as used (`${used.from}|${used.effective_on}|${used.inverted}`)}
           <span class="chip">
             1 {used.from} = {used.rate} {used.to}, {used.effective_on}, {used.source}
             {#if used.inverted}({t("rpt.inverted")}){/if}

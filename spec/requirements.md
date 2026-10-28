@@ -1327,3 +1327,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - It **claims no conformity**, is not a risk management file, says it has not been reviewed against the standard's text, and invents no severity, probability or acceptability: those depend on a clinical use the project does not have.
 - It says the shipped product is not a device, points to the MHRA for that question in Great Britain, and says which controls (the wait-limit action, automatic closing) should not be switched on for care.
 - Not built: a risk management plan, estimates, or a residual-risk judgement; a review by a clinical safety officer or a regulatory specialist; a test that every control named is still there.
+
+## CRM-R85 — Attribution converts each deal's share at the rate of the day it closed
+
+*As a marketing lead, I want the credit each campaign earns shown in one currency at the rate in force when each deal closed, so that last year's campaigns are not restated at today's exchange rate.*
+
+- `GET /api/attribution` takes an optional `rate_basis=close_day` beside `convert_to` (CRM-R51), as an account's CLV (CRM-R70) and the report builder (CRM-R83) do. Anything else is refused (`422` naming `/rate_basis`); so is a basis with no `convert_to`, and one beside `rate_date` (`422` naming `/rate_date`).
+- Every attribution is of **won deals**, so every deal has a close day and no further condition is needed.
+- Each deal's **share** to a campaign, and the amount of a deal no campaign touched, is converted **once** at the rate in force on the day that deal closed (the latest on or before it, or the reverse pair inverted), then each campaign's converted shares are added. The rounding is at most half a minor unit per deal and campaign. A share already in the target currency is kept; one with no rate on its day is **left out and counted** in `unconverted`, never taken at one-to-one.
+- The answer's `rate_date` is `null` and `rate_basis` says `close_day`; `rates` lists each distinct rate used, so one currency can appear more than once with its effective day.
+- Unchanged: the models, the window, the touches, money-masked readers refused (CRM-R49, CRM-R58).
+- Not built: close-day rates for campaign ROI and the forecast; a day other than the day a deal closed.

@@ -670,9 +670,17 @@ mod tests {
                 amount_minor: 500
             }]
         );
-        let before = [dated("ann", day(1, 1) - chrono::Duration::days(1), "USD", 100)];
+        let before = [dated(
+            "ann",
+            day(1, 1) - chrono::Duration::days(1),
+            "USD",
+            100,
+        )];
         let none = convert_rows_dated(&before, "GBP", &rates);
-        assert!(none.rows.is_empty() && none.left_out.len() == 1, "never one-to-one");
+        assert!(
+            none.rows.is_empty() && none.left_out.len() == 1,
+            "never one-to-one"
+        );
     }
 
     #[test]

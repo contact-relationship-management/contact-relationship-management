@@ -1766,3 +1766,11 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Document:** `compliance/risk-management.md` (the process clause by clause, misuse, thirteen hazards with their controls, the risks the controls create, what an integrator still has to do); entries in the compliance index and `regulatory.md`.
       - **Checked:** the tests it names exist (`consent_withdrawn_between_runs_is_honoured`, `enrolment_rechecks_consent_inside_the_action`, `a_merge_moves_everything_and_is_recorded`, `subject_rights_round_trip`, the wait-limit and auto-close tests); the controls it calls Implemented are ones a test pins, and the ones it cannot say that of are marked Deployer or Gap.
       - **Not done:** review against the standard's text; see CRM-R84's list.
+
+- [x] CRM-T151 *(edge)* **Close-day rates in attribution.** (S)
+      **Done (2026-10-28, not released):** requirement CRM-R85 first, then:
+      - **Service:** `rate_basis` on the attribution query, validated; each share is kept with the day its deal closed (`Tally.dated`, `Shared`); `convert_credit` converts them with `fx_rates::convert_rows_dated` (from CRM-T149).
+      - **Tests:** `attribution_can_convert_each_deals_share_at_the_rate_of_the_day_it_closed` (13,000 against 12,000 at one date; the deal before any rate and the yen named; the untouched deal at its own day's rate; three refusals with their pointers).
+      - **UI:** a checkbox on `/attribution` with the existing `clv.closeDay` label; the tour's per-day conversion is now one function shared with the report builder; a tour end-to-end test.
+      - **Found on the way:** `cargo fmt --check` had been failing on four files from CRM-T148 and CRM-T149; they are formatted.
+      - **Not done:** see CRM-R85's list.

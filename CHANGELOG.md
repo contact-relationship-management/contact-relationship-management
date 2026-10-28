@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — close-day rates in attribution (CRM-T151, CRM-R85)
+
+`GET /api/attribution` takes `rate_basis=close_day`: each deal's share to a campaign is converted at the rate of the day the deal closed. Also: `cargo fmt` applied to four files that CI's format check would have refused.
+
 ### Added — a starting hazard analysis in the manner of ISO 14971 (CRM-T150, CRM-R84)
 
 `spec/compliance/risk-management.md`: the standard's process against what the software does, thirteen hazards with their controls and status. No conformity is claimed.

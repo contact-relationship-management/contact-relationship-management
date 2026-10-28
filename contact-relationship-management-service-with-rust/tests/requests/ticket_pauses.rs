@@ -532,7 +532,11 @@ async fn a_policy_closes_a_ticket_left_resolved_for_its_days_and_no_other() {
         assert_eq!(status(due.clone()).await, "closed");
         assert_eq!(status(recent).await, "resolved", "six days is under seven");
         assert_eq!(status(no_days).await, "resolved", "no days, no closing");
-        assert_eq!(status(reopened).await, "resolved", "the days count from the last resolve");
+        assert_eq!(
+            status(reopened).await,
+            "resolved",
+            "the days count from the last resolve"
+        );
 
         // The audit says it was the sweep, not a person.
         let audits: Value = request.get(&format!("/api/audits/{due}")).await.json();
