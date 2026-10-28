@@ -39,6 +39,7 @@ pub mod support;
 pub mod tags;
 pub mod teams;
 pub mod templates;
+pub mod territories;
 pub mod unmerge;
 pub mod views;
 pub mod webhooks;

@@ -272,6 +272,7 @@ async fn list_quotas(
 
 /// `PUT /api/quotas` — set a quota; audited.
 #[debug_handler]
+#[allow(clippy::too_many_lines)] // one validation per member, then the write
 async fn set_quota(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
@@ -597,6 +598,7 @@ struct AttainmentQuery {
 
 /// One worker's attainment of one quota.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
+#[allow(clippy::struct_field_names)] // `attainment` is the ratio the page and clients read
 #[schemars(rename = "QuotaAttainment")]
 pub(crate) struct Attainment {
     #[schemars(with = "uuid::Uuid")]

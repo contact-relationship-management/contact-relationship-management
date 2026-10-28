@@ -1667,3 +1667,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a team form, list and per-currency roll-up on `/quotas`, `listTeams`/`setTeam`/`deleteTeam`/`teamAttainment`, the tour's teams (the attainment rows are now one `attainmentRows` shared with the quota route), 8 keys in 8 locales (machine drafts); one Playwright test; `schema.d.ts` regenerated.
       - **Enforcement:** the admin-only test now covers both read routes (reader and writer `403`, service `200`).
       - **Not tested:** `other_currencies`; a worker on two teams.
+- [x] CRM-T135 *(edge)* **Territories of named accounts.** Named accounts in a territory, each in at most one, and the won revenue on them per currency; part of the roadmap item "territories; quota refinements". (M)
+      **Done (2026-10-28, not released):** requirement CRM-R68 first, then:
+      - **Service:** migration `000046` (`territories`, `territory_accounts` with the organization as primary key, so one territory per account); `GET`/`PUT`/`DELETE /api/quotas/territories` and `GET /api/quotas/territory-attainment` inside the admin-only `/api/quotas` prefix, joining deals to territories through the account's `organization_ref`; operations and schemas described; three clippy lint allowances recorded with their reason.
+      - **Tests:** 1 request test (won revenue per currency on two territories, an open deal not counted, a deal with no account listed as unassigned, an account taken by another territory refused naming it, the same name in another case replacing, five refusals and a bad period, removal freeing the account, a second removal `404`); the admin-only test extended to the four routes.
+      - **Not done:** `schema.d.ts`, the UI on `/quotas`, the changelogs.
+      - **Not tested:** a territory with 200 accounts; a total that overflows (it is refused `422`, as written, but not exercised).

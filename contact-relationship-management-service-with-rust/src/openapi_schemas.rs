@@ -41,7 +41,7 @@ fn generated() -> serde_json::Map<String, Value> {
         attachments, attribution, audits, board, break_glass, calendars, custom_fields, dashboards,
         engagement, external_links, fx_rates, insights, kb, lead_imports, marketing, merge,
         notifications, privacy, quotas, record_imports, relationships, reports, sales, search,
-        support, tags, teams, templates, unmerge, views, webhooks, workflows,
+        support, tags, teams, templates, territories, unmerge, views, webhooks, workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -200,6 +200,11 @@ fn generated() -> serde_json::Map<String, Value> {
         teams::TeamCurrency,
         teams::TeamStanding,
         teams::TeamReport,
+        territories::TerritoryPayload,
+        territories::TerritoryView,
+        territories::TerritoryRevenue,
+        territories::TerritoryStanding,
+        territories::TerritoryReport,
         support::SuggestedArticle,
         quotas::Share,
         quotas::SplitPayload,
@@ -293,6 +298,7 @@ fn base_schemas() -> Value {
 
 /// The request schema for `(method, path)`, if the operation takes a body.
 #[must_use]
+#[allow(clippy::too_many_lines)] // one arm per route that takes a body
 pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
     Some(match (method, path) {
         ("post", "/api/contacts") => "ContactPayload",
@@ -349,6 +355,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/commission-plans") => "CommissionPlanPayload",
         ("put", "/api/quotas") => "QuotaPayload",
         ("put", "/api/quotas/teams") => "TeamPayload",
+        ("put", "/api/quotas/territories") => "TerritoryPayload",
         ("put", "/api/quotas/splits/{pid}") => "DealSplitPayload",
         (
             "put",
@@ -398,6 +405,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
 
 /// The schema of a non-list `200` response for `(method, path)`.
 #[must_use]
+#[allow(clippy::too_many_lines)] // one arm per route with a single-object answer
 pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
     Some(match (method, path) {
         ("get", "/api/contacts/{pid}") => "ContactDetail",
@@ -412,6 +420,8 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/quotas") => "Quota",
         ("put", "/api/quotas/teams") => "Team",
         ("get", "/api/quotas/team-attainment") => "TeamAttainmentReport",
+        ("put", "/api/quotas/territories") => "Territory",
+        ("get", "/api/quotas/territory-attainment") => "TerritoryAttainmentReport",
         ("get" | "put", "/api/quotas/splits/{pid}") => "DealSplit",
         ("get", "/api/quotas/attainment") => "QuotaAttainmentReport",
         ("put", "/api/sla-policies/{pid}/calendar") => "SlaPolicy",
@@ -537,6 +547,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/commission-plans" => "CommissionPlan",
         "/api/quotas" => "Quota",
         "/api/quotas/teams" => "Team",
+        "/api/quotas/territories" => "Territory",
         "/api/business-calendars" => "BusinessCalendar",
         "/api/contacts/{pid}/attachments"
         | "/api/accounts/{pid}/attachments"

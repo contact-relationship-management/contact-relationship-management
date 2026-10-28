@@ -1142,3 +1142,13 @@ recipient would get before anything is sent, and be certain every message carrie
 - `GET /api/quotas/team-attainment?at=` (today when absent) adds the members' standings (CRM-R59, with splits, CRM-R65) **per currency**: quotas, credited won revenue, won deals, attainment as a ratio, what remains, and how many workers have a quota in that currency. Members with no quota containing the day are listed in `without_quota`; their revenue in a currency the team has no quota in is listed in `other_currencies`. Currencies are never added together or converted. An audited read.
 - The `/quotas` page keeps teams and shows each team's roll-up.
 - Not built: a team inside a team; a worker's team over time; a team's own quota; territories and clawbacks.
+
+## CRM-R68 — Territories of named accounts
+
+*As a sales manager, I can name the accounts that make up a territory, so that I can see what has been won in each one.*
+
+- `PUT /api/quotas/territories` with `name` (up to 80 characters), an optional `owner_ref` (`worker:<id>`) and `accounts`: from 1 to 200 organizations (`organization:<id>`, the `organization_ref` an account carries) named once. A territory of that name in any case is replaced. An account is in **at most one territory**: naming one that is in another territory is `422` naming `/accounts` and that territory. Anything else is `422` naming `/name`, `/owner_ref` or `/accounts`. Audited.
+- `GET /api/quotas/territories` lists them by name with their accounts; `DELETE /api/quotas/territories/{pid}` removes one (`404` when there is none) and frees its accounts. Admin only, like the quotas (CRM-R59).
+- `GET /api/quotas/territory-attainment?from=&to=` (the 90 days to today when absent; `422` if `from` is after `to` or the period is over 366 days) adds up the **won, live deals closed in the period** whose account's `organization_ref` is in the territory: revenue and deals **per currency**, never added or converted. A deal counts **whole** in the territory that holds its account, whoever it is credited to (splits, CRM-R65, do not apply). Revenue on accounts in no territory, and on deals with no account, is listed as `unassigned`. An audited read.
+- A territory has no quota of its own; it reports what was won.
+- Not built: territories by country, region or tag (the CRM holds no geography); a territory's own quota; rules that route a new account to a territory; moving open deals; the page showing territories.

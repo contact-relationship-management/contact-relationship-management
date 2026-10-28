@@ -62,6 +62,7 @@ pub fn app_routes() -> AppRoutes {
         .add_route(controllers::fx_rates::routes())
         .add_route(controllers::quotas::routes())
         .add_route(controllers::teams::routes())
+        .add_route(controllers::territories::routes())
         .add_route(controllers::record_imports::routes())
         .add_route(controllers::docs::routes())
         .add_route(controllers::metrics::routes())

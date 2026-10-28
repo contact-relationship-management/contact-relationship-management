@@ -505,3 +505,149 @@ async fn a_team_adds_its_workers_standings_per_currency_and_is_replaced_by_name_
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_territory_holds_named_accounts_once_and_adds_the_revenue_won_on_them_per_currency() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        let ada = a_worker();
+        let org = || format!("organization:{}", uuid::Uuid::new_v4());
+        let (north_org, south_org, spare_org) = (org(), org(), org());
+        let account = |organization_ref: String| {
+            let request = &request;
+            async move {
+                let made: Value = request
+                    .post("/api/accounts")
+                    .json(&json!({ "organization_ref": organization_ref, "display_name": "Acme" }))
+                    .await
+                    .json();
+                made["pid"].as_str().unwrap().to_string()
+            }
+        };
+        let (north, south) = (
+            account(north_org.clone()).await,
+            account(south_org.clone()).await,
+        );
+        let deal = |account: Option<String>, amount: i64, currency: &'static str, win: bool| {
+            let (request, pipeline, stage) = (&request, pipeline.clone(), stages[2].clone());
+            async move {
+                let made: Value = request
+                    .post("/api/deals")
+                    .json(
+                        &json!({ "name": "D", "pipeline_pid": pipeline, "amount_minor": amount,
+                                   "currency": currency, "account_pid": account }),
+                    )
+                    .await
+                    .json();
+                if win {
+                    request
+                        .post(&format!(
+                            "/api/deals/{}/stage",
+                            made["pid"].as_str().unwrap()
+                        ))
+                        .json(&json!({ "stage_pid": stage }))
+                        .await
+                        .assert_status_ok();
+                }
+            }
+        };
+        deal(Some(north.clone()), 30_000, "GBP", true).await;
+        deal(Some(north.clone()), 5_000, "USD", true).await;
+        deal(Some(north.clone()), 99_000, "GBP", false).await; // open: not counted
+        deal(Some(south.clone()), 10_000, "GBP", true).await;
+        deal(None, 7_000, "GBP", true).await;
+
+        request
+            .put("/api/quotas/territories")
+            .json(&json!({ "name": "North", "owner_ref": ada, "accounts": [north_org] }))
+            .await
+            .assert_status_ok();
+        request
+            .put("/api/quotas/territories")
+            .json(&json!({ "name": "South", "accounts": [south_org] }))
+            .await
+            .assert_status_ok();
+
+        let report: Value = request.get("/api/quotas/territory-attainment").await.json();
+        let find = |name: &str| {
+            report["rows"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|r| r["name"] == name)
+                .unwrap()
+                .clone()
+        };
+        let north_row = find("North");
+        assert_eq!(north_row["owner_ref"], ada.as_str(), "{report}");
+        assert_eq!(
+            north_row["currencies"],
+            json!([
+                { "currency": "GBP", "revenue_minor": 30_000, "won_deals": 1 },
+                { "currency": "USD", "revenue_minor": 5_000, "won_deals": 1 }
+            ]),
+            "{report}"
+        );
+        assert_eq!(
+            find("South")["currencies"][0]["revenue_minor"],
+            10_000,
+            "{report}"
+        );
+        assert_eq!(report["unassigned"][0]["revenue_minor"], 7_000, "{report}");
+
+        // An account is in one territory: another territory cannot take it; the same name may
+        // keep it, in any case, and add another.
+        let taken = request
+            .put("/api/quotas/territories")
+            .json(&json!({ "name": "East", "accounts": [north_org] }))
+            .await;
+        taken.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        assert!(taken.text().contains("North"), "{}", taken.text());
+        let again: Value = request
+            .put("/api/quotas/territories")
+            .json(&json!({ "name": "NORTH", "accounts": [north_org, spare_org] }))
+            .await
+            .json();
+        assert_eq!(again["accounts"].as_array().unwrap().len(), 2, "{again}");
+        let listed: Value = request.get("/api/quotas/territories").await.json();
+        assert_eq!(listed.as_array().unwrap().len(), 2, "{listed}");
+
+        // Refused: no accounts, a repeat, a non-organization, a bad worker, no name, a bad period.
+        for body in [
+            json!({ "name": "W", "accounts": [] }),
+            json!({ "name": "W", "accounts": [spare_org, spare_org] }),
+            json!({ "name": "W", "accounts": ["person:x"] }),
+            json!({ "name": "W", "owner_ref": "contact:x", "accounts": [spare_org] }),
+            json!({ "name": "", "accounts": [spare_org] }),
+        ] {
+            request
+                .put("/api/quotas/territories")
+                .json(&body)
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+        request
+            .get("/api/quotas/territory-attainment?from=2026-02-01&to=2026-01-01")
+            .await
+            .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+
+        // Removing a territory frees its accounts; a second removal is 404.
+        let pid = again["pid"].as_str().unwrap();
+        request
+            .delete(&format!("/api/quotas/territories/{pid}"))
+            .await
+            .assert_status_ok();
+        request
+            .delete(&format!("/api/quotas/territories/{pid}"))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+        request
+            .put("/api/quotas/territories")
+            .json(&json!({ "name": "East", "accounts": [north_org] }))
+            .await
+            .assert_status_ok();
+    })
+    .await;
+}
