@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — CLV at the rate of the day each deal closed (CRM-T137, CRM-R70)
+
+`GET /api/accounts/{pid}/clv?convert_to=&rate_basis=close_day` converts each won deal at the rate in force on its closing day, rounded once per deal; deals with no rate then are named, not taken at 1.0. The account page has a checkbox for it.
+
 ### Added — resolving or escalating a ticket that waits too long (CRM-T136, CRM-R69)
 
 An SLA policy may set `wait_limit_action` (`flag`, `resolve` or `escalate`, with `escalate_to`) beside `max_wait_minutes`: the sweep resolves the ticket or reassigns it to that worker, once. It resolves rather than closes, since `closed` is final.

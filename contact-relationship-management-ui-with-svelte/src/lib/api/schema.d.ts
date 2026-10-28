@@ -838,7 +838,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60); ?retention_from=history in place of retention_bps takes each currency's retention from the year before, held at 100% (CRM-R61); with ?convert_to= the margin and the look-ahead are also converted and added (CRM-R62) */
+        /** CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60); ?retention_from=history in place of retention_bps takes each currency's retention from the year before, held at 100% (CRM-R61); with ?convert_to= the margin and the look-ahead are also converted and added (CRM-R62). ?rate_basis=close_day with ?convert_to= converts each won deal at the rate in force on the day it closed instead of all at one date, rounded once per deal; not with ?rate_date=, ?margin_bps= or a look-ahead (CRM-R70) */
         get: {
             parameters: {
                 query?: never;
@@ -18421,12 +18421,18 @@ export interface components {
             } | null;
             /** @description With `retention_bps` and `years`: the look-ahead (CRM-R60); `null` otherwise or when masked. */
             projection: components["schemas"]["ClvProjection"] | (null);
+            /** @description With `rate_basis=close_day`: `close_day`; `null` otherwise (CRM-R70). */
+            rate_basis: string | null;
             /**
              * Format: date
-             * @description With `convert_to`: the day whose exchange rates were used.
+             * @description With `convert_to`: the day whose exchange rates were used; `null` with
+             *     `rate_basis=close_day`, where each deal has its own.
              */
             rate_date: string | null;
-            /** @description With `convert_to`: the rate used for each currency that was converted. */
+            /**
+             * @description With `convert_to`: the rate used for each currency that was converted (each distinct rate,
+             *     with `rate_basis=close_day`).
+             */
             rates: components["schemas"]["ReportRateUsed"][];
             /** @description With `convert_to`: CLV that had no rate in force, left out and never taken at 1.0. */
             unconverted: components["schemas"]["ReportUnconverted"][];

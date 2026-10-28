@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.
 
+### Added — `rate_basis=close_day` on the CLV (CRM-T137, CRM-R70)
+
+Each won deal converted at the rate in force on the day it closed; `rate_basis` in the answer, `rate_date` `null`, the distinct rates used and the deals with no rate listed.
+
 ### Added — wait-limit actions (CRM-T136, CRM-R69)
 
 `wait_limit_action` and `escalate_to` on `POST /api/sla-policies`; migration `000047`; `new_wait_limit_resolved` and `new_wait_limit_escalated` in the sweep's answer.

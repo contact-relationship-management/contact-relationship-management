@@ -771,4 +771,5 @@ export default {
     "Eine Organisation pro Zeile, etwa organization:…; ein Konto gehört nur zu einem Gebiet.",
   "quota.territorySet": "Gebiet speichern",
   "quota.territoryUnassigned": "Gewonnen auf Konten ohne Gebiet",
+  "clv.closeDay": "Jeden Deal zum Kurs seines Abschlusstags",
 } satisfies Record<StringKey, string>;

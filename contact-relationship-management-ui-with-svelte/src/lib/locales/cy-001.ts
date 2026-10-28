@@ -762,4 +762,5 @@ export default {
     "Un sefydliad ar bob llinell, fel organization:…; mae cyfrif mewn un diriogaeth yn unig.",
   "quota.territorySet": "Gosod y diriogaeth",
   "quota.territoryUnassigned": "Enillwyd ar gyfrifon heb diriogaeth",
+  "clv.closeDay": "Pob cytundeb ar gyfradd y diwrnod y caeodd",
 } satisfies Record<StringKey, string>;

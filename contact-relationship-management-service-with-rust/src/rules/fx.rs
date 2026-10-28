@@ -247,6 +247,62 @@ pub fn convert_rows(
     }
 }
 
+/// Deals converted each at the rate in force on its own day.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DatedConverted {
+    /// Every converted amount added, in minor units of the target.
+    pub total: i64,
+    /// Each distinct rate used, by currency then the day it took effect.
+    pub used: Vec<(String, Picked)>,
+    /// What had no rate in force on its day, by currency.
+    pub left_out: Vec<LeftOut>,
+}
+
+/// Convert `(day, currency, amount)` deals into `target`, **each at the rate in force on its own
+/// day** (CRM-R70) and rounded once per deal, then add them. An amount already in the target is
+/// kept as it is; one with no rate on its day is left out and counted, never taken at one-to-one.
+#[must_use]
+pub fn convert_dated(
+    deals: &[(NaiveDate, String, i64)],
+    target: &str,
+    rates: &[Rate],
+) -> DatedConverted {
+    use std::collections::BTreeMap;
+    let mut total = 0_i64;
+    let mut used: BTreeMap<(String, NaiveDate, bool), Picked> = BTreeMap::new();
+    let mut left: BTreeMap<&str, (usize, i64)> = BTreeMap::new();
+    for (day, currency, amount) in deals {
+        if currency == target {
+            total = total.saturating_add(*amount);
+        } else if let Some(picked) = pick(rates, currency, target, *day) {
+            total = total.saturating_add(convert(*amount, &picked));
+            used.insert(
+                (currency.clone(), picked.rate.effective_on, picked.inverted),
+                picked,
+            );
+        } else {
+            let entry = left.entry(currency.as_str()).or_default();
+            entry.0 += 1;
+            entry.1 = entry.1.saturating_add(*amount);
+        }
+    }
+    DatedConverted {
+        total,
+        used: used
+            .into_iter()
+            .map(|((currency, _, _), picked)| (currency, picked))
+            .collect(),
+        left_out: left
+            .into_iter()
+            .map(|(currency, (groups, amount_minor))| LeftOut {
+                currency: currency.to_string(),
+                groups,
+                amount_minor,
+            })
+            .collect(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -502,5 +558,60 @@ mod tests {
             1,
             "before any rate, nothing is converted at one-to-one"
         );
+    }
+
+    #[test]
+    fn each_deal_is_converted_at_the_rate_of_its_own_day() {
+        let rates = [
+            rate("USD", "GBP", "0.80", day(1, 1)),
+            rate("USD", "GBP", "0.50", day(6, 1)),
+        ];
+        let deals = [
+            (day(2, 1), "USD".to_string(), 10_000),
+            (day(7, 1), "USD".to_string(), 10_000),
+            (day(7, 1), "GBP".to_string(), 1_000),
+        ];
+        let done = convert_dated(&deals, "GBP", &rates);
+        // 8,000 at the January rate, 5,000 at the June rate, and the pounds as they are.
+        assert_eq!(done.total, 14_000);
+        assert_eq!(done.used.len(), 2);
+        assert!(done.left_out.is_empty());
+    }
+
+    #[test]
+    fn a_deal_before_any_rate_is_left_out_and_counted_never_taken_at_one() {
+        let rates = [rate("USD", "GBP", "0.80", day(6, 1))];
+        let deals = [
+            (day(2, 1), "USD".to_string(), 10_000),
+            (day(7, 1), "USD".to_string(), 10_000),
+            (day(2, 1), "JPY".to_string(), 500),
+        ];
+        let done = convert_dated(&deals, "GBP", &rates);
+        assert_eq!(done.total, 8_000);
+        assert_eq!(
+            done.left_out,
+            vec![
+                LeftOut {
+                    currency: "JPY".into(),
+                    groups: 1,
+                    amount_minor: 500
+                },
+                LeftOut {
+                    currency: "USD".into(),
+                    groups: 1,
+                    amount_minor: 10_000
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn a_reverse_rate_is_inverted_on_the_deals_day_and_each_deal_rounds_once() {
+        let rates = [rate("GBP", "USD", "1.25", day(1, 1))];
+        // 1 cent at 1/1.25 = 0.8 → 1; three such deals are 3, not 3 × 0.8 rounded once to 2.
+        let deals = vec![(day(3, 1), "USD".to_string(), 1); 3];
+        let done = convert_dated(&deals, "GBP", &rates);
+        assert_eq!(done.total, 3);
+        assert!(done.used[0].1.inverted);
     }
 }

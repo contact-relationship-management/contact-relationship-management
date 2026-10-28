@@ -16,8 +16,14 @@
   let discount = $state("");
   let fromHistory = $state(false);
   let convertTo = $state("");
+  let closeDay = $state(false);
   let result = $state<Clv | null>(null);
   let error = $state<string | null>(null);
+
+  // Each deal at its own closing day's rate is for the total alone: not with a margin or look-ahead.
+  const closeDayAllowed = $derived(
+    closeDay && !!convertTo.trim() && !margin.trim() && !retention.trim() && !fromHistory,
+  );
 
   /** A percentage typed as `12.5` is 1250 basis points. */
   const bps = (percent: string) => Math.round(Number(percent) * 100);
@@ -30,6 +36,7 @@
         retentionBps: !fromHistory && retention.trim() ? bps(retention) : undefined,
         retentionFromHistory: fromHistory,
         convertTo: convertTo.trim().toUpperCase() || undefined,
+        rateBasis: closeDayAllowed ? "close_day" : undefined,
         years: fromHistory || retention.trim() ? Number(years) : undefined,
         discountBps: discount.trim() ? bps(discount) : undefined,
       });
@@ -62,6 +69,15 @@
     <label>{t("clv.margin")} <input bind:value={margin} inputmode="decimal" size="5" data-testid="clv-margin" /></label>
     <label>{t("clv.retention")} <input bind:value={retention} inputmode="decimal" size="5" data-testid="clv-retention" /></label>
     <label>{t("rpt.convertTo")} <input bind:value={convertTo} maxlength="3" size="4" data-testid="clv-convert" /></label>
+    <label>
+      <input
+        type="checkbox"
+        bind:checked={closeDay}
+        disabled={!convertTo.trim() || !!margin.trim() || !!retention.trim() || fromHistory}
+        data-testid="clv-close-day"
+      />
+      {t("clv.closeDay")}
+    </label>
     <label>
       <input type="checkbox" bind:checked={fromHistory} data-testid="clv-history" />
       {t("clv.fromHistory")}

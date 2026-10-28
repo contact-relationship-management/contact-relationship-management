@@ -191,6 +191,43 @@ pub(crate) async fn convert_sums(
     })
 }
 
+/// Convert `(day, currency, amount)` deals into `target`, each at the rate in force on its own day
+/// (CRM-R70), and add them: the total, the distinct rates used and what had no rate on its day.
+///
+/// # Errors
+///
+/// When the rates cannot be read.
+pub(crate) async fn convert_dated(
+    ctx: &AppContext,
+    target: &str,
+    deals: &[(NaiveDate, String, i64)],
+) -> Result<(i64, Vec<RateUsed>, Vec<Unconverted>)> {
+    let rates = rates_involving(&ctx.db, target).await?;
+    let done = fx::convert_dated(deals, target, &rates);
+    Ok((
+        done.total,
+        done.used
+            .into_iter()
+            .map(|(from, picked)| RateUsed {
+                from,
+                to: target.to_string(),
+                rate: fx::format_rate(picked.rate.ppb),
+                effective_on: picked.rate.effective_on,
+                source: picked.rate.source,
+                inverted: picked.inverted,
+            })
+            .collect(),
+        done.left_out
+            .into_iter()
+            .map(|l| Unconverted {
+                currency: l.currency,
+                groups: l.groups,
+                amount_minor: l.amount_minor,
+            })
+            .collect(),
+    ))
+}
+
 /// `GET /api/fx-rates` — the recorded rates, newest first (at most 1000).
 #[debug_handler]
 async fn list(State(ctx): State<AppContext>) -> Result<Response> {

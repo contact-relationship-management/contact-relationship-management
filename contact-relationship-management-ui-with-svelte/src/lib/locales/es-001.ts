@@ -764,4 +764,5 @@ export default {
     "Una organización por línea, como organization:…; una cuenta está en un solo territorio.",
   "quota.territorySet": "Guardar territorio",
   "quota.territoryUnassigned": "Ganado en cuentas sin territorio",
+  "clv.closeDay": "Cada negocio al tipo del día en que se cerró",
 } satisfies Record<StringKey, string>;

@@ -1577,6 +1577,25 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("clv-unconverted")).toContainText("GBP");
   });
 
+  test("a lifetime value can be converted at the rate of the day each deal closed", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/accounts/acc-2");
+    await page.getByTestId("clv-convert").fill("USD");
+    // The close-day choice is off until a currency is chosen, and is for the total alone.
+    await page.getByTestId("clv-run").click();
+    // £88,000 at today's 1.30.
+    await expect(page.getByTestId("clv-converted")).toContainText("114,400.00");
+    // The same deal at the 1.27 in force 30 days ago, when it closed.
+    await page.getByTestId("clv-close-day").check();
+    await page.getByTestId("clv-run").click();
+    await expect(page.getByTestId("clv-converted")).toContainText("111,760.00");
+    // With a margin asked for, the choice is unavailable.
+    await page.getByTestId("clv-margin").fill("50");
+    await expect(page.getByTestId("clv-close-day")).toBeDisabled();
+  });
+
   test("exchange rates are listed, set, replaced and deleted, and a bad rate is refused", async ({
     page,
   }) => {

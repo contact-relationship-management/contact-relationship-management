@@ -769,4 +769,5 @@ export default {
     "Une organisation par ligne, comme organization:… ; un compte n'est que dans un territoire.",
   "quota.territorySet": "Enregistrer le territoire",
   "quota.territoryUnassigned": "Gagné sur des comptes sans territoire",
+  "clv.closeDay": "Chaque affaire au taux du jour de sa clôture",
 } satisfies Record<StringKey, string>;

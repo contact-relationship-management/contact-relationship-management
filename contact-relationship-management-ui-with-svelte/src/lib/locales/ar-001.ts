@@ -755,4 +755,5 @@ export default {
     "منظمة واحدة في كل سطر، مثل organization:…؛ الحساب في منطقة واحدة فقط.",
   "quota.territorySet": "حفظ المنطقة",
   "quota.territoryUnassigned": "محقق على حسابات بلا منطقة",
+  "clv.closeDay": "كل صفقة بسعر يوم إغلاقها",
 } satisfies Record<StringKey, string>;

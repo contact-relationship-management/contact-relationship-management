@@ -3391,6 +3391,51 @@ function accountClv(accountPid: string, query: URLSearchParams) {
         value,
       })),
     );
+    const closeDay = query.get("rate_basis");
+    if (closeDay !== null) {
+      if (closeDay !== "close_day")
+        return problem(422, "/rate_basis: only close_day");
+      if (query.get("rate_date") !== null)
+        return problem(422, "/rate_basis: not with rate_date");
+      if (marginBps !== null || years !== null)
+        return problem(422, "/rate_basis: not with margin_bps or a look-ahead");
+      // Each won deal at the rate of the day it closed, rounded once per deal (CRM-R70).
+      let converted = 0;
+      const rates = new Map<string, ReportRateUsed>();
+      const left = new Map<string, { groups: number; amount_minor: number }>();
+      for (const d of won) {
+        const day = (d.closed_at ?? asOf.toISOString()).slice(0, 10);
+        const one = convertSums(target, day, [
+          { group: "clv", currency: d.currency, value: d.amount_minor ?? 0 },
+        ]);
+        if (typeof one === "string") return problem(422, one);
+        converted += one.rows[0]?.value ?? 0;
+        for (const r of one.rates) rates.set(`${r.from}|${r.effective_on}`, r);
+        for (const u of one.unconverted) {
+          const entry = left.get(u.currency) ?? { groups: 0, amount_minor: 0 };
+          entry.groups += u.groups;
+          entry.amount_minor += u.amount_minor;
+          left.set(u.currency, entry);
+        }
+      }
+      return ok({
+        account_pid: accountPid,
+        as_of: asOf.toISOString(),
+        won_deals: won.length,
+        clv_minor: plain(total),
+        margin_minor: null,
+        projection: null,
+        convert_to: target,
+        converted_minor: converted,
+        rate_date: null,
+        rate_basis: "close_day",
+        rates: [...rates.values()].sort((a, b) => a.from.localeCompare(b.from)),
+        unconverted: [...left.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([currency, entry]) => ({ currency, ...entry })),
+        margin_converted_minor: null,
+      });
+    }
     const done = convertSums(target, query.get("rate_date"), rows);
     if (typeof done === "string") return problem(422, done);
     const of = (group: string) =>

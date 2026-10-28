@@ -24,7 +24,8 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
 - **CLV refinement** — margin and a discounted, retention-based look-ahead
   are built (CRM-R60) and shown on the account page, with the retention
   readable from the account's own history (CRM-R61) and conversion to
-  one currency (CRM-R62); a rate on each deal's close day is not.
+  one currency (CRM-R62), at the rate of the day each deal closed if asked
+  (CRM-R70, for the total alone).
 - **Cross-app bridges** — WPM (rep identity/teams from employee
   records), PPM (post-sale delivery projects opened from won
   deals).

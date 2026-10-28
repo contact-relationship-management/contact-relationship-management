@@ -2155,6 +2155,8 @@ export interface Clv {
   } | null;
   convert_to?: string | null;
   converted_minor?: number | null;
+  /** `close_day` when each deal was converted at the rate of its own closing day (CRM-R70). */
+  rate_basis?: string | null;
   margin_converted_minor?: number | null;
   unconverted?: Array<{ currency: string; amount_minor: number }>;
 }
@@ -2171,6 +2173,8 @@ export function accountClv(
     discountBps?: number;
     /** Also add every currency in this one (CRM-R54, CRM-R62). */
     convertTo?: string;
+    /** With `convertTo`: convert each won deal at the rate of the day it closed (CRM-R70). */
+    rateBasis?: "close_day";
   } = {},
   init?: FetchLike,
 ): Promise<Clv> {
@@ -2188,6 +2192,8 @@ export function accountClv(
       query.set("discount_bps", String(params.discountBps));
   }
   if (params.convertTo) query.set("convert_to", params.convertTo);
+  if (params.convertTo && params.rateBasis)
+    query.set("rate_basis", params.rateBasis);
   const qs = query.toString();
   return api(`/accounts/${pid}/clv${qs ? `?${qs}` : ""}`, init);
 }

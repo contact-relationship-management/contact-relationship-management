@@ -1163,3 +1163,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - `resolve` resolves the ticket as a status change from `pending` does (CRM-R55): the clock resumes, `resolved_at` is set, audited with `via: wait_limit`. A customer reply cannot reopen a resolved ticket (CRM-R63), but a status change to `open` can. It is **resolved, not closed**: `closed` is final and can only follow `resolved`, so an automatic step stops short of it and a person closes the ticket.
 - Each ticket is acted on **once**, as before. `POST /api/sla/sweep` counts them in `new_wait_limits_exceeded`, with `new_wait_limit_resolved` and `new_wait_limit_escalated` saying how many of those were resolved or reassigned. `ticket_wait_limit_exceeded` is emitted for each, with the `action` taken.
 - Not built: closing a ticket automatically; escalating by raising its priority; a limit or an action on an existing policy (a policy is created with them); a warning before the limit; telling the customer.
+
+## CRM-R70 — CLV at the rate of the day each deal closed
+
+*As a finance analyst, I can have an account's lifetime value converted at the rate in force when each deal closed, so that the figure does not move with today's rate.*
+
+- `GET /api/accounts/{pid}/clv?convert_to=GBP&rate_basis=close_day` converts **each won deal** at the rate in force on the day it closed (the latest on or before that day, the pair's own or the inverse of the reverse pair's, as in CRM-R50), rounds it **once per deal** (half to even) and adds the results as `converted_minor`. A deal already in the target currency is kept as it is. `rate_basis` is `close_day` or `422`.
+- `rate_date` is `null` (each deal has its own day) and `rate_basis` is `close_day`. `rates` lists each **distinct** rate used, with the day it took effect; `unconverted` names, per currency, the deals with no rate in force on their close day and their amounts: **never taken at 1.0, never dropped quietly**. The per-currency `clv_minor` is unchanged.
+- It is `422` without `convert_to`, with `rate_date`, or with `margin_bps` or a look-ahead (`retention_bps`, `retention_from`, `years`): the margin and the look-ahead stay on the one date of CRM-R62.
+- A masked reader gets `null` as for any CLV figure.
+- The account page has a checkbox "Each deal at the rate of the day it closed", available once a currency is chosen and no margin or look-ahead is asked for.
+- Not built: the margin and look-ahead at close-day rates; the same for the other converted reports (attribution, ROI, forecast); converting through a third currency.

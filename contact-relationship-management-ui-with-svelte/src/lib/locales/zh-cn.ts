@@ -731,4 +731,5 @@ export default {
     "每行一个组织，如 organization:…；一个账户只属于一个区域。",
   "quota.territorySet": "保存区域",
   "quota.territoryUnassigned": "未划入区域的账户上赢得的收入",
+  "clv.closeDay": "每笔交易按成交当日汇率",
 } satisfies Record<StringKey, string>;

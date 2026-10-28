@@ -142,9 +142,13 @@ pub(crate) struct Clv {
     /// With `convert_to`: every currency's CLV converted and added, in minor units of
     /// `convert_to`; what had no rate is left out (see `unconverted`). `null` when masked.
     converted_minor: Option<i64>,
-    /// With `convert_to`: the day whose exchange rates were used.
+    /// With `convert_to`: the day whose exchange rates were used; `null` with
+    /// `rate_basis=close_day`, where each deal has its own.
     rate_date: Option<chrono::NaiveDate>,
-    /// With `convert_to`: the rate used for each currency that was converted.
+    /// With `rate_basis=close_day`: `close_day`; `null` otherwise (CRM-R70).
+    rate_basis: Option<String>,
+    /// With `convert_to`: the rate used for each currency that was converted (each distinct rate,
+    /// with `rate_basis=close_day`).
     rates: Vec<super::fx_rates::RateUsed>,
     /// With `convert_to`: CLV that had no rate in force, left out and never taken at 1.0.
     unconverted: Vec<super::fx_rates::Unconverted>,
@@ -195,6 +199,10 @@ struct ClvQuery {
     convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
     rate_date: Option<chrono::NaiveDate>,
+    /// `close_day`: convert each won deal at the rate in force on the day it closed, instead of
+    /// all at `rate_date`; needs `convert_to` and not with `rate_date`, `margin_bps` or a
+    /// look-ahead (CRM-R70).
+    rate_basis: Option<String>,
     /// Also show the margin on the CLV, in basis points of revenue, 0 to 10000 (CRM-R60).
     margin_bps: Option<u32>,
     /// With `years`: the share of a year's revenue expected again the next year, in basis points.
@@ -454,6 +462,20 @@ fn check_clv_query(query: &ClvQuery) -> Result<()> {
     } else if query.rate_date.is_some() {
         problems.push_field("rate_date", "needs convert_to");
     }
+    if let Some(basis) = &query.rate_basis {
+        if basis != "close_day" {
+            problems.push_field("rate_basis", "only close_day");
+        } else if query.convert_to.is_none() {
+            problems.push_field("rate_basis", "needs convert_to");
+        } else if query.rate_date.is_some() {
+            problems.push_field("rate_basis", "not with rate_date");
+        } else if query.margin_bps.is_some()
+            || query.years.is_some()
+            || query.retention_from.is_some()
+        {
+            problems.push_field("rate_basis", "not with margin_bps or a look-ahead");
+        }
+    }
     for (field, value) in [
         ("margin_bps", query.margin_bps),
         ("retention_bps", query.retention_bps),
@@ -516,7 +538,21 @@ async fn account_clv(
     let totals = analytics::clv_by_currency(&inputs).map_err(|e| super::unprocessable(&e))?;
     // With `convert_to`, each currency's CLV is converted once and the results added.
     let mut conversion = None;
-    if let (Some(target), false) = (&query.convert_to, masked) {
+    let mut dated = None;
+    if let (Some(target), true, false) = (&query.convert_to, query.rate_basis.is_some(), masked) {
+        // Each deal at the rate of the day it closed, rounded once per deal (CRM-R70).
+        let deals_by_day: Vec<(chrono::NaiveDate, String, i64)> = won
+            .iter()
+            .map(|deal| {
+                (
+                    deal.closed_at.unwrap_or(deal.updated_at).date_naive(),
+                    deal.currency.clone(),
+                    deal.amount_minor,
+                )
+            })
+            .collect();
+        dated = Some(super::fx_rates::convert_dated(&ctx, target, &deals_by_day).await?);
+    } else if let (Some(target), false) = (&query.convert_to, masked) {
         let sums: Vec<(String, String, i64)> = totals
             .iter()
             .map(|(currency, total)| ("clv".to_string(), currency.clone(), *total))
@@ -526,14 +562,15 @@ async fn account_clv(
                 .await?,
         );
     }
-    let (converted_minor, rate_date, rates, unconverted) = match conversion {
-        Some(done) => (
+    let (converted_minor, rate_date, rates, unconverted) = match (conversion, dated) {
+        (_, Some((total, rates, unconverted))) => (Some(total), None, rates, unconverted),
+        (Some(done), None) => (
             Some(done.rows.first().map_or(0, |row| row.1)),
             Some(done.rate_date),
             done.rates,
             done.unconverted,
         ),
-        None => (None, None, Vec::new(), Vec::new()),
+        (None, None) => (None, None, Vec::new(), Vec::new()),
     };
     let now = chrono::Utc::now();
     let (margin_minor, mut projection) = if masked {
@@ -560,6 +597,10 @@ async fn account_clv(
         convert_to: query.convert_to.clone(),
         converted_minor,
         rate_date,
+        rate_basis: query
+            .rate_basis
+            .clone()
+            .filter(|_| converted_minor.is_some()),
         rates,
         unconverted,
         margin_minor,

@@ -755,4 +755,5 @@ export default {
     "One organization per line, such as organization:…; an account is in one territory only.",
   "quota.territorySet": "Set territory",
   "quota.territoryUnassigned": "Won on accounts in no territory",
+  "clv.closeDay": "Each deal at the rate of the day it closed",
 } as const;

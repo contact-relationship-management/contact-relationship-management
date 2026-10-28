@@ -622,3 +622,112 @@ async fn an_accounts_clv_margin_and_look_ahead_are_converted_once_per_currency_a
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn an_accounts_clv_can_convert_each_deal_at_the_rate_of_the_day_it_closed() {
+    request::<App, _, _>(|request, ctx| async move {
+        let account: Value = request
+            .post("/api/accounts")
+            .json(
+                &json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Moving Rates Ltd" }),
+            )
+            .await
+            .json();
+        let account = account["pid"].as_str().unwrap().to_string();
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        // (amount, currency, the day it closed): two USD deals either side of a rate change, one
+        // before any rate, pounds and yen.
+        for (amount, currency, closed) in [
+            (10_000, "USD", Some("2026-02-01")),
+            (10_000, "USD", Some("2026-07-01")),
+            (4_000, "USD", Some("2025-12-01")),
+            (1_000, "GBP", None),
+            (700, "JPY", Some("2026-02-01")),
+        ] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(
+                    &json!({ "name": "D", "pipeline_pid": pipeline, "amount_minor": amount,
+                               "currency": currency, "account_pid": account }),
+                )
+                .await
+                .json();
+            let pid = deal["pid"].as_str().unwrap();
+            request
+                .post(&format!("/api/deals/{pid}/stage"))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+            if let Some(day) = closed {
+                ctx.db
+                    .execute_raw(Statement::from_sql_and_values(
+                        DatabaseBackend::Postgres,
+                        format!(
+                            "UPDATE deals SET closed_at = '{day}T09:00:00Z' WHERE pid = $1::uuid"
+                        ),
+                        [pid.into()],
+                    ))
+                    .await
+                    .unwrap();
+            }
+        }
+        let _ = set_rate!(&request, "USD", "GBP", "0.80", "2026-01-01");
+        let _ = set_rate!(&request, "USD", "GBP", "0.50", "2026-06-01");
+
+        // One date for everything: all 24,000 USD at today's 0.50, plus the pounds.
+        let one: Value = request
+            .get(&format!("/api/accounts/{account}/clv?convert_to=GBP"))
+            .await
+            .json();
+        assert_eq!(one["converted_minor"], 13_000, "{one}");
+        assert!(one["rate_basis"].is_null(), "{one}");
+
+        // On the day each closed: 8,000 and 5,000 at their own rates, the pounds as they are; the
+        // deal before any rate and the yen are left out and named.
+        let dated: Value = request
+            .get(&format!(
+                "/api/accounts/{account}/clv?convert_to=GBP&rate_basis=close_day"
+            ))
+            .await
+            .json();
+        assert_eq!(dated["converted_minor"], 14_000, "{dated}");
+        assert_eq!(dated["rate_basis"], "close_day", "{dated}");
+        assert!(dated["rate_date"].is_null(), "{dated}");
+        assert_eq!(dated["rates"].as_array().unwrap().len(), 2, "{dated}");
+        let left: Vec<(String, i64)> = dated["unconverted"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|u| {
+                (
+                    u["currency"].as_str().unwrap().into(),
+                    u["amount_minor"].as_i64().unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            left,
+            [("JPY".to_string(), 700), ("USD".to_string(), 4_000)],
+            "{dated}"
+        );
+        // The per-currency figures are untouched.
+        assert_eq!(dated["clv_minor"], one["clv_minor"], "{dated}");
+
+        for query in [
+            "rate_basis=close_day",
+            "convert_to=GBP&rate_basis=today",
+            "convert_to=GBP&rate_basis=close_day&rate_date=2026-03-01",
+            "convert_to=GBP&rate_basis=close_day&margin_bps=2000",
+            "convert_to=GBP&rate_basis=close_day&retention_bps=5000&years=2",
+        ] {
+            request
+                .get(&format!("/api/accounts/{account}/clv?{query}"))
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    })
+    .await;
+}
