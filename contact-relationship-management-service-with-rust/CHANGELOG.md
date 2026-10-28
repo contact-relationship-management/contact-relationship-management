@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.
 
+### Added — territories of named accounts (CRM-T135, CRM-R68)
+
+`GET`, `PUT` and `DELETE /api/quotas/territories` and `GET /api/quotas/territory-attainment`, admin only; migration `000046`. An account is in at most one territory; revenue is per currency, never converted.
+
 ### Added — teams and their quota roll-up (CRM-T134, CRM-R67)
 
 `GET`, `PUT` and `DELETE /api/quotas/teams` and `GET /api/quotas/team-attainment`, admin only; migration `000045`. Currencies are added per currency, never converted.

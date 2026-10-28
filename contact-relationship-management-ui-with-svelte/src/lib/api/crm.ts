@@ -2050,6 +2050,70 @@ export function teamAttainment(
   return api(`/quotas/team-attainment${at ? `?at=${at}` : ""}`, init);
 }
 
+/** A territory of named accounts (CRM-R68). */
+export interface Territory {
+  pid: string;
+  name: string;
+  owner_ref: string | null;
+  /** The organizations in it, `organization:<id>`. */
+  accounts: string[];
+  set_by: string;
+}
+
+/** The territories, by name. Admin only. */
+export function listTerritories(init?: FetchLike): Promise<Territory[]> {
+  return api("/quotas/territories", init);
+}
+
+/** Set the territory of that name (any case), replacing its accounts and worker. */
+export function setTerritory(input: {
+  name: string;
+  owner_ref?: string | null;
+  accounts: string[];
+}): Promise<Territory> {
+  return api("/quotas/territories", { method: "PUT", body: input });
+}
+
+/** Remove a territory; its accounts are free again. */
+export function deleteTerritory(pid: string): Promise<{ pid: string }> {
+  return api(`/quotas/territories/${pid}`, { method: "DELETE" });
+}
+
+/** Won revenue in one currency. */
+export interface TerritoryRevenue {
+  currency: string;
+  revenue_minor: number;
+  won_deals: number;
+}
+
+/** One territory's won revenue. */
+export interface TerritoryStanding {
+  territory_pid: string;
+  name: string;
+  owner_ref: string | null;
+  accounts: number;
+  currencies: TerritoryRevenue[];
+}
+
+/** The revenue won on each territory's accounts; the 90 days to today when no period is given. */
+export function territoryAttainment(
+  period?: { from?: string; to?: string },
+  init?: FetchLike,
+): Promise<{
+  as_of: string;
+  from: string;
+  to: string;
+  rows: TerritoryStanding[];
+  unassigned: TerritoryRevenue[];
+  note: string;
+}> {
+  const query = new URLSearchParams();
+  if (period?.from) query.set("from", period.from);
+  if (period?.to) query.set("to", period.to);
+  const text = query.toString();
+  return api(`/quotas/territory-attainment${text ? `?${text}` : ""}`, init);
+}
+
 /** Remove a quota. */
 export function deleteQuota(pid: string): Promise<{ pid: string }> {
   return api(`/quotas/${pid}`, { method: "DELETE" });

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `ticketSuggestions`, a list under the selected ticket, the tour's suggestions and a sixth knowledge-base article, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; one Playwright test (and the help centre test now counts five).
 
+### Added — territories on `/quotas` (CRM-T135)
+
+A form to set a territory and its accounts, the revenue won in each per currency, and what was won on accounts in no territory.
+
 ### Added — teams on `/quotas` (CRM-T134)
 
 A form to set a team and its workers, and each team's quotas, revenue, attainment and what remains per currency; a worker with no quota is marked.

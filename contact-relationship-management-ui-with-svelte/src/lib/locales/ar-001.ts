@@ -746,4 +746,13 @@ export default {
   "quota.teamSet": "حفظ الفريق",
   "quota.teamNoQuota": "بلا حصة",
   "quota.teamWorkers": "العاملون",
+  "quota.territories": "المناطق",
+  "quota.territoriesHint":
+    "المنطقة قائمة مسماة من الحسابات، وكل حساب في منطقة واحدة على الأكثر؛ تُعرض الإيرادات المحققة لكل عملة دون تحويل.",
+  "quota.territoryName": "اسم المنطقة",
+  "quota.territoryAccounts": "الحسابات",
+  "quota.territoryAccountsHint":
+    "منظمة واحدة في كل سطر، مثل organization:…؛ الحساب في منطقة واحدة فقط.",
+  "quota.territorySet": "حفظ المنطقة",
+  "quota.territoryUnassigned": "محقق على حسابات بلا منطقة",
 } satisfies Record<StringKey, string>;

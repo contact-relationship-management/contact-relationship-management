@@ -760,4 +760,13 @@ export default {
   "quota.teamSet": "Enregistrer l'équipe",
   "quota.teamNoQuota": "Sans quota",
   "quota.teamWorkers": "Collaborateurs",
+  "quota.territories": "Territoires",
+  "quota.territoriesHint":
+    "Un territoire est une liste nommée de comptes, chacun dans un seul au plus ; le chiffre d'affaires gagné est montré par devise, jamais converti.",
+  "quota.territoryName": "Nom du territoire",
+  "quota.territoryAccounts": "Comptes",
+  "quota.territoryAccountsHint":
+    "Une organisation par ligne, comme organization:… ; un compte n'est que dans un territoire.",
+  "quota.territorySet": "Enregistrer le territoire",
+  "quota.territoryUnassigned": "Gagné sur des comptes sans territoire",
 } satisfies Record<StringKey, string>;

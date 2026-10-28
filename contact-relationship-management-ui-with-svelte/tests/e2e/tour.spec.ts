@@ -1507,6 +1507,36 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("team-list")).toHaveCount(0);
   });
 
+  test("a territory of named accounts adds what was won on them, and an account is in only one", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/quotas");
+    await page.getByTestId("territory-name").fill("Everywhere");
+    await page
+      .getByTestId("territory-accounts")
+      .fill([1, 2, 3, 4, 5, 6].map((n) => `org-demo-${n}`).join("\n"));
+    await page.getByTestId("territory-set").click();
+    const row = page
+      .getByTestId("territory-row")
+      .filter({ hasText: "Everywhere" });
+    // The three won deals (52,000 + 88,000 + 27,500) are all on these accounts.
+    await expect(row).toContainText("167,500.00");
+    await expect(page.getByTestId("territory-unassigned")).toHaveCount(0);
+    // An account already in a territory cannot be taken by another.
+    await page.getByTestId("territory-name").fill("Elsewhere");
+    await page.getByTestId("territory-accounts").fill("org-demo-1");
+    await page.getByTestId("territory-set").click();
+    await expect(page.getByTestId("quota-error")).toContainText("Everywhere");
+    // A territory with only one account leaves the others' revenue unassigned.
+    await page.getByTestId("territory-name").fill("Everywhere");
+    await page.getByTestId("territory-accounts").fill("org-demo-6");
+    await page.getByTestId("territory-set").click();
+    await expect(page.getByTestId("territory-unassigned")).toBeVisible();
+    await row.getByRole("button").click();
+    await expect(page.getByTestId("territory-row")).toHaveCount(0);
+  });
+
   test("an account shows its lifetime value, the margin on it and a discounted look-ahead", async ({
     page,
   }) => {

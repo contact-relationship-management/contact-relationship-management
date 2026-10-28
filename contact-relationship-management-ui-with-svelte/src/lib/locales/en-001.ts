@@ -746,4 +746,13 @@ export default {
   "quota.teamSet": "Set team",
   "quota.teamNoQuota": "Without a quota",
   "quota.teamWorkers": "Workers",
+  "quota.territories": "Territories",
+  "quota.territoriesHint":
+    "A territory is a named list of accounts, each in at most one; the revenue won on them is shown per currency, never converted.",
+  "quota.territoryName": "Territory name",
+  "quota.territoryAccounts": "Accounts",
+  "quota.territoryAccountsHint":
+    "One organization per line, such as organization:…; an account is in one territory only.",
+  "quota.territorySet": "Set territory",
+  "quota.territoryUnassigned": "Won on accounts in no territory",
 } as const;

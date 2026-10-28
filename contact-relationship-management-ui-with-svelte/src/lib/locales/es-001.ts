@@ -755,4 +755,13 @@ export default {
   "quota.teamSet": "Guardar equipo",
   "quota.teamNoQuota": "Sin cuota",
   "quota.teamWorkers": "Trabajadores",
+  "quota.territories": "Territorios",
+  "quota.territoriesHint":
+    "Un territorio es una lista con nombre de cuentas, cada una en uno como máximo; los ingresos ganados se muestran por moneda, sin convertir.",
+  "quota.territoryName": "Nombre del territorio",
+  "quota.territoryAccounts": "Cuentas",
+  "quota.territoryAccountsHint":
+    "Una organización por línea, como organization:…; una cuenta está en un solo territorio.",
+  "quota.territorySet": "Guardar territorio",
+  "quota.territoryUnassigned": "Ganado en cuentas sin territorio",
 } satisfies Record<StringKey, string>;

@@ -762,4 +762,13 @@ export default {
   "quota.teamSet": "Team speichern",
   "quota.teamNoQuota": "Ohne Quote",
   "quota.teamWorkers": "Mitarbeitende",
+  "quota.territories": "Gebiete",
+  "quota.territoriesHint":
+    "Ein Gebiet ist eine benannte Liste von Konten, jedes in höchstens einem; der gewonnene Umsatz wird je Währung gezeigt, nie umgerechnet.",
+  "quota.territoryName": "Gebietsname",
+  "quota.territoryAccounts": "Konten",
+  "quota.territoryAccountsHint":
+    "Eine Organisation pro Zeile, etwa organization:…; ein Konto gehört nur zu einem Gebiet.",
+  "quota.territorySet": "Gebiet speichern",
+  "quota.territoryUnassigned": "Gewonnen auf Konten ohne Gebiet",
 } satisfies Record<StringKey, string>;

@@ -748,4 +748,13 @@ export default {
   "quota.teamSet": "टीम सहेजें",
   "quota.teamNoQuota": "बिना कोटा",
   "quota.teamWorkers": "कर्मचारी",
+  "quota.territories": "क्षेत्र",
+  "quota.territoriesHint":
+    "क्षेत्र खातों की नामित सूची है, हर खाता अधिकतम एक में; जीती गई आय हर मुद्रा में दिखती है, बदली नहीं जाती।",
+  "quota.territoryName": "क्षेत्र का नाम",
+  "quota.territoryAccounts": "खाते",
+  "quota.territoryAccountsHint":
+    "हर पंक्ति में एक संगठन, जैसे organization:…; एक खाता केवल एक क्षेत्र में होता है।",
+  "quota.territorySet": "क्षेत्र सहेजें",
+  "quota.territoryUnassigned": "बिना क्षेत्र वाले खातों पर जीता",
 } satisfies Record<StringKey, string>;

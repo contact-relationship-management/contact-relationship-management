@@ -179,6 +179,14 @@ interface State {
   splits: Record<string, { owner_ref: string; share_bps: number }[]>;
   /** Teams of workers for the quota roll-up (CRM-R67). */
   teams: { pid: string; name: string; members: string[]; set_by: string }[];
+  /** Territories of named accounts (CRM-R68). */
+  territories: {
+    pid: string;
+    name: string;
+    owner_ref: string | null;
+    accounts: string[];
+    set_by: string;
+  }[];
   /** What the public help centre has counted (CRM-R57). */
   kb: {
     views: Record<string, number>;
@@ -939,6 +947,7 @@ function build(): State {
     ],
     splits: {},
     teams: [],
+    territories: [],
     quotas: [
       {
         pid: "quota-1",
@@ -3672,6 +3681,126 @@ function teamRoutes(
   return ok(team);
 }
 
+/** The organization a deal's account stands for, reached through the contact it is linked to. */
+function dealOrganization(dealPid: string): string | null {
+  for (const [contactPid, link] of Object.entries(state.links)) {
+    if (!link.deals.includes(dealPid)) continue;
+    const contact = state.contacts.find((c) => c.pid === contactPid);
+    const account = state.accounts.find((a) => a.pid === contact?.account_pid);
+    if (account) return account.organization_ref;
+  }
+  return null;
+}
+
+/** The tour's territories (CRM-R68) and the revenue won on their accounts, per currency. */
+function territoryRoutes(
+  method: string,
+  seg: string[],
+  query: URLSearchParams,
+  body: unknown,
+) {
+  if (seg[1] === "territory-attainment") {
+    const to = query.get("to") ?? new Date().toISOString().slice(0, 10);
+    const from =
+      query.get("from") ??
+      new Date(Date.parse(to) - 90 * DAY).toISOString().slice(0, 10);
+    if (from > to || (Date.parse(to) - Date.parse(from)) / DAY > 366)
+      return problem(
+        422,
+        "/from: not after /to, and at most 366 days before it",
+      );
+    const sums = new Map<string, { minor: number; won: number }>();
+    for (const d of state.deals) {
+      if (!d.won || !d.closed_at) continue;
+      const day = d.closed_at.slice(0, 10);
+      if (day < from || day > to) continue;
+      const org = dealOrganization(d.pid);
+      const territory = state.territories.find(
+        (t) => org && t.accounts.includes(org),
+      );
+      const key = `${territory?.pid ?? ""}|${d.currency}`;
+      const slot = sums.get(key) ?? { minor: 0, won: 0 };
+      slot.minor += d.amount_minor ?? 0;
+      slot.won += 1;
+      sums.set(key, slot);
+    }
+    const revenue = (pid: string) =>
+      [...sums.entries()]
+        .filter(([key]) => key.split("|")[0] === pid)
+        .map(([key, v]) => ({
+          currency: key.split("|")[1]!,
+          revenue_minor: v.minor,
+          won_deals: v.won,
+        }));
+    return ok({
+      as_of: new Date().toISOString(),
+      from,
+      to,
+      rows: [...state.territories]
+        .sort((a, b) =>
+          a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
+        )
+        .map((t) => ({
+          territory_pid: t.pid,
+          name: t.name,
+          owner_ref: t.owner_ref,
+          accounts: t.accounts.length,
+          currencies: revenue(t.pid),
+        })),
+      unassigned: revenue(""),
+      note: "currencies are listed, never added or converted",
+    });
+  }
+  if (method === "GET") return ok(state.territories);
+  if (method === "DELETE") {
+    const at = state.territories.findIndex((t) => t.pid === seg[2]);
+    if (at < 0) return problem(404, "territory not found");
+    state.territories.splice(at, 1);
+    return ok({ pid: seg[2] });
+  }
+  const input = (body ?? {}) as {
+    name?: string;
+    owner_ref?: string | null;
+    accounts?: string[];
+  };
+  const name = (input.name ?? "").trim();
+  const accounts = input.accounts ?? [];
+  if (!name || name.length > 80)
+    return problem(422, "/name: 1 to 80 characters");
+  if (
+    accounts.length < 1 ||
+    accounts.length > 200 ||
+    new Set(accounts).size !== accounts.length
+  )
+    return problem(422, "/accounts: from 1 to 200 accounts named once");
+  const had = state.territories.find(
+    (t) => t.name.toLowerCase() === name.toLowerCase(),
+  );
+  for (const account of accounts) {
+    const other = state.territories.find(
+      (t) => t !== had && t.accounts.includes(account),
+    );
+    if (other)
+      return problem(
+        422,
+        `/accounts: ${account} is already in the territory ${other.name}`,
+      );
+  }
+  if (had) {
+    Object.assign(had, { name, owner_ref: input.owner_ref ?? null, accounts });
+    return ok(had);
+  }
+  const territory = {
+    pid: `territory-${state.territories.length + 1}-${name.length}`,
+    name,
+    owner_ref: input.owner_ref ?? null,
+    accounts,
+    set_by: "worker:demo",
+  };
+  state.territories.push(territory);
+  return ok(territory);
+}
+
 /** The tour's quotas (CRM-R59) and their attainment, computed from the tour's won deals. */
 function quotaRoutes(
   method: string,
@@ -3683,6 +3812,8 @@ function quotaRoutes(
   if (id === "splits") return dealSplits(method, seg[2], body);
   if (id === "teams" || id === "team-attainment")
     return teamRoutes(method, seg, query, body);
+  if (id === "territories" || id === "territory-attainment")
+    return territoryRoutes(method, seg, query, body);
   if (method === "GET" && id === "attainment") {
     const at = query.get("at") ?? new Date().toISOString().slice(0, 10);
     const rows = attainmentRows(at, query.get("owner_ref"));

@@ -1151,4 +1151,5 @@ recipient would get before anything is sent, and be certain every message carrie
 - `GET /api/quotas/territories` lists them by name with their accounts; `DELETE /api/quotas/territories/{pid}` removes one (`404` when there is none) and frees its accounts. Admin only, like the quotas (CRM-R59).
 - `GET /api/quotas/territory-attainment?from=&to=` (the 90 days to today when absent; `422` if `from` is after `to` or the period is over 366 days) adds up the **won, live deals closed in the period** whose account's `organization_ref` is in the territory: revenue and deals **per currency**, never added or converted. A deal counts **whole** in the territory that holds its account, whoever it is credited to (splits, CRM-R65, do not apply). Revenue on accounts in no territory, and on deals with no account, is listed as `unassigned`. An audited read.
 - A territory has no quota of its own; it reports what was won.
-- Not built: territories by country, region or tag (the CRM holds no geography); a territory's own quota; rules that route a new account to a territory; moving open deals; the page showing territories.
+- Not built: territories by country, region or tag (the CRM holds no geography); a territory's own quota; rules that route a new account to a territory; moving open deals.
+- The `/quotas` page keeps territories and shows what was won in each.

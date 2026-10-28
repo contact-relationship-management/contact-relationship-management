@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — territories of named accounts (CRM-T135, CRM-R68)
+
+`GET`, `PUT` and `DELETE /api/quotas/territories` and `GET /api/quotas/territory-attainment` (admin only): a territory is a named list of accounts, each in at most one, and the revenue won on them is added per currency, never converted. The `/quotas` page keeps territories and shows what was won.
+
 ### Added — teams and their quota roll-up (CRM-T134, CRM-R67)
 
 `GET`, `PUT` and `DELETE /api/quotas/teams` and `GET /api/quotas/team-attainment` (admin only): teams of workers, and each team's quotas and credited won revenue added per currency, never converted. The `/quotas` page keeps teams and shows the roll-up.

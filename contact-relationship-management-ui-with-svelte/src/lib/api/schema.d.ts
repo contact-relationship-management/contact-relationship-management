@@ -13482,6 +13482,280 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quotas/territories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The territories (CRM-R68), by name, each with its accounts. Admin only */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Territory"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Set the territory of that name (any case), replacing its accounts and worker: from 1 to 200 organizations named once, each in at most one territory, else 422 naming /name, /owner_ref or /accounts; a write, audited. Admin only */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TerritoryPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Territory"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotas/territories/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a territory; its accounts are free again; audited; 404 when there is none. Admin only */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotas/territory-attainment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Won revenue and deals per currency on each territory's accounts for ?from= to ?to= (the 90 days to today when absent; at most 366 days, else 422), and on accounts in no territory; a deal counts whole, currencies never added or converted (CRM-R68). An audited read. Admin only */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TerritoryAttainmentReport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quotas/{pid}": {
         parameters: {
             query?: never;
@@ -20720,6 +20994,62 @@ export interface components {
             team_pid: string;
             /** @description Members with no quota whose period contains the day: they add nothing to the roll-up. */
             without_quota: string[];
+        };
+        /** @description A territory. */
+        Territory: {
+            accounts: string[];
+            name: string;
+            owner_ref: string | null;
+            /** Format: uuid */
+            pid: string;
+            set_by: string;
+        };
+        /** @description The answer. */
+        TerritoryAttainmentReport: {
+            /** Format: date-time */
+            as_of: string;
+            /** Format: date */
+            from: string;
+            note: string;
+            rows: components["schemas"]["TerritoryStanding"][];
+            /** Format: date */
+            to: string;
+            /** @description Won revenue on accounts in no territory, and on deals with no account. */
+            unassigned: components["schemas"]["TerritoryRevenue"][];
+        };
+        /**
+         * @description `PUT /api/quotas/territories` body: sets the territory of that name (any case), replacing its
+         *     accounts and worker.
+         */
+        TerritoryPayload: {
+            /**
+             * @description The accounts in it (`organization:<id>`), from 1 to 200, each named once; an account is in
+             *     at most one territory.
+             */
+            accounts: string[];
+            /** @description Its name, up to 80 characters. */
+            name: string;
+            /** @description The worker (`worker:<id>`) it is assigned to, if any. */
+            owner_ref: string | null;
+        };
+        /** @description Won revenue in one currency. */
+        TerritoryRevenue: {
+            currency: string;
+            /** Format: int64 */
+            revenue_minor: number;
+            /** Format: int64 */
+            won_deals: number;
+        };
+        /** @description One territory's won revenue. */
+        TerritoryStanding: {
+            /** Format: uint */
+            accounts: number;
+            /** @description One entry per currency; currencies are never added together. */
+            currencies: components["schemas"]["TerritoryRevenue"][];
+            name: string;
+            owner_ref: string | null;
+            /** Format: uuid */
+            territory_pid: string;
         };
         Ticket: {
             /** Format: uuid */

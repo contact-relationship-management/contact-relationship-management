@@ -14,6 +14,10 @@
     setDealSplit,
     deleteQuota,
     deleteTeam,
+    deleteTerritory,
+    listTerritories,
+    setTerritory,
+    territoryAttainment,
     listCommissionPlans,
     listTeams,
     setTeam,
@@ -82,6 +86,27 @@
       });
     });
 
+  // Territories of named accounts and what was won in them (CRM-R68): one organization per line.
+  let territoryName = $state("");
+  let territoryOwner = $state("");
+  let territoryAccounts = $state("");
+  const territories = resource(listTerritories);
+  const territoryStanding = resource(() => territoryAttainment());
+  const territoryRows = $derived(territoryStanding.value?.rows ?? []);
+  const unassigned = $derived(territoryStanding.value?.unassigned ?? []);
+
+  const saveTerritory = () =>
+    run(async () => {
+      await setTerritory({
+        name: territoryName.trim(),
+        owner_ref: territoryOwner.trim() || null,
+        accounts: territoryAccounts
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean),
+      });
+    });
+
   const plans = resource(listCommissionPlans);
   const quotas = resource(listQuotas);
   const standing = resource(() => quotaAttainment());
@@ -96,6 +121,8 @@
       standing.reload(),
       teams.reload(),
       teamStanding.reload(),
+      territories.reload(),
+      territoryStanding.reload(),
     ]);
 
   function parseTiers(text: string): CommissionTier[] {
@@ -363,6 +390,79 @@
           </td>
         </tr>
       {/each}
+    </tbody>
+  </table>
+{/if}
+
+<h2>{t("quota.territories")}</h2>
+<p class="muted">{t("quota.territoriesHint")}</p>
+<form
+  class="panel"
+  data-testid="territory-form"
+  onsubmit={(e) => {
+    e.preventDefault();
+    void saveTerritory();
+  }}
+>
+  <label>
+    {t("quota.territoryName")}
+    <input bind:value={territoryName} required maxlength="80" data-testid="territory-name" />
+  </label>
+  <label>
+    {t("quota.owner")}
+    <input bind:value={territoryOwner} data-testid="territory-owner" />
+  </label>
+  <label>
+    {t("quota.territoryAccounts")}
+    <textarea bind:value={territoryAccounts} rows="3" required data-testid="territory-accounts"
+    ></textarea>
+  </label>
+  <p class="muted">{t("quota.territoryAccountsHint")}</p>
+  <button type="submit" data-testid="territory-set">{t("quota.territorySet")}</button>
+</form>
+
+{#if territoryRows.length > 0 || unassigned.length > 0}
+  <table data-testid="territory-list">
+    <thead>
+      <tr>
+        <th>{t("quota.territoryName")}</th>
+        <th>{t("quota.owner")}</th>
+        <th>{t("quota.territoryAccounts")}</th>
+        <th>{t("quota.won")}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {#each territoryRows as row (row.territory_pid)}
+        <tr data-testid="territory-row">
+          <td>{row.name}</td>
+          <td>{row.owner_ref ?? "—"}</td>
+          <td>{row.accounts}</td>
+          <td>
+            {#each row.currencies as c (c.currency)}
+              <div>{money(c.revenue_minor, c.currency, i18n.locale)} · {c.won_deals}</div>
+            {/each}
+          </td>
+          <td>
+            <button
+              type="button"
+              onclick={() => void run(() => deleteTerritory(row.territory_pid))}
+            >
+              {t("quota.delete")}
+            </button>
+          </td>
+        </tr>
+      {/each}
+      {#if unassigned.length > 0}
+        <tr data-testid="territory-unassigned">
+          <td colspan="3">{t("quota.territoryUnassigned")}</td>
+          <td colspan="2">
+            {#each unassigned as c (c.currency)}
+              <div>{money(c.revenue_minor, c.currency, i18n.locale)} · {c.won_deals}</div>
+            {/each}
+          </td>
+        </tr>
+      {/if}
     </tbody>
   </table>
 {/if}

@@ -753,4 +753,13 @@ export default {
   "quota.teamSet": "Gosod y tîm",
   "quota.teamNoQuota": "Heb gwota",
   "quota.teamWorkers": "Gweithwyr",
+  "quota.territories": "Tiriogaethau",
+  "quota.territoriesHint":
+    "Rhestr enwedig o gyfrifon yw tiriogaeth, pob un mewn un ar y mwyaf; dangosir yr incwm a enillwyd fesul arian cyfred, byth wedi'i drosi.",
+  "quota.territoryName": "Enw'r diriogaeth",
+  "quota.territoryAccounts": "Cyfrifon",
+  "quota.territoryAccountsHint":
+    "Un sefydliad ar bob llinell, fel organization:…; mae cyfrif mewn un diriogaeth yn unig.",
+  "quota.territorySet": "Gosod y diriogaeth",
+  "quota.territoryUnassigned": "Enillwyd ar gyfrifon heb diriogaeth",
 } satisfies Record<StringKey, string>;

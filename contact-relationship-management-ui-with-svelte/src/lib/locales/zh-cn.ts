@@ -722,4 +722,13 @@ export default {
   "quota.teamSet": "保存团队",
   "quota.teamNoQuota": "无配额",
   "quota.teamWorkers": "成员",
+  "quota.territories": "区域",
+  "quota.territoriesHint":
+    "区域是命名的客户账户列表，每个账户最多属于一个区域；赢得的收入按币种显示，不做换算。",
+  "quota.territoryName": "区域名称",
+  "quota.territoryAccounts": "账户",
+  "quota.territoryAccountsHint":
+    "每行一个组织，如 organization:…；一个账户只属于一个区域。",
+  "quota.territorySet": "保存区域",
+  "quota.territoryUnassigned": "未划入区域的账户上赢得的收入",
 } satisfies Record<StringKey, string>;
