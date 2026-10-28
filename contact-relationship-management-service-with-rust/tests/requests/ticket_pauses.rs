@@ -451,3 +451,102 @@ async fn a_policy_can_resolve_or_escalate_a_ticket_left_waiting_past_its_limit()
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_policy_closes_a_ticket_left_resolved_for_its_days_and_no_other() {
+    request::<App, _, _>(|request, ctx| async move {
+        let policy = |priority: &'static str, days: Value| {
+            let request = &request;
+            async move {
+                request
+                    .post("/api/sla-policies")
+                    .json(&json!({ "priority": priority, "first_response_minutes": 60,
+                                   "resolution_minutes": 240, "auto_close_days": days }))
+                    .await
+            }
+        };
+        policy("normal", json!(7)).await.assert_status_ok();
+        policy("low", Value::Null).await.assert_status_ok();
+        for days in [json!(0), json!(366), json!(-1)] {
+            policy("urgent", days)
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+
+        // A ticket resolved `ago` days ago, of the given priority.
+        let resolved = |priority: &'static str, ago: i32| {
+            let (request, ctx) = (&request, &ctx);
+            async move {
+                let made: Value = request
+                    .post("/api/tickets")
+                    .json(&json!({ "title": priority, "priority": priority }))
+                    .await
+                    .json();
+                let pid = made["pid"].as_str().unwrap().to_string();
+                request
+                    .post(&format!("/api/tickets/{pid}/status"))
+                    .json(&json!({ "to": "resolved" }))
+                    .await
+                    .assert_status_ok();
+                sql(
+                    &ctx.db,
+                    &format!(
+                        "UPDATE tickets SET resolved_at = now() - interval '{ago} days' \
+                         WHERE pid = $1::uuid"
+                    ),
+                    &pid,
+                )
+                .await;
+                pid
+            }
+        };
+        let (due, recent, no_days) = (
+            resolved("normal", 8).await,
+            resolved("normal", 6).await,
+            resolved("low", 400).await,
+        );
+        // Reopened after the days passed: resolved again just now, so not due.
+        let reopened = resolved("normal", 30).await;
+        request
+            .post(&format!("/api/tickets/{reopened}/status"))
+            .json(&json!({ "to": "open" }))
+            .await
+            .assert_status_ok();
+        request
+            .post(&format!("/api/tickets/{reopened}/status"))
+            .json(&json!({ "to": "resolved" }))
+            .await
+            .assert_status_ok();
+
+        let swept: Value = request.post("/api/sla/sweep").await.json();
+        assert_eq!(swept["new_auto_closed"], 1, "{swept}");
+        let status = |pid: String| {
+            let request = &request;
+            async move {
+                let detail: Value = request.get(&format!("/api/tickets/{pid}")).await.json();
+                detail["ticket"]["status"].clone()
+            }
+        };
+        assert_eq!(status(due.clone()).await, "closed");
+        assert_eq!(status(recent).await, "resolved", "six days is under seven");
+        assert_eq!(status(no_days).await, "resolved", "no days, no closing");
+        assert_eq!(status(reopened).await, "resolved", "the days count from the last resolve");
+
+        // The audit says it was the sweep, not a person.
+        let audits: Value = request.get(&format!("/api/audits/{due}")).await.json();
+        let closed = audits
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|a| a["action"] == "ticket_closed")
+            .expect("closed audit row");
+        assert_eq!(closed["snapshot"]["via"], "auto_close", "{closed}");
+
+        // Once: a closed ticket is not closed again.
+        let again: Value = request.post("/api/sla/sweep").await.json();
+        assert_eq!(again["new_auto_closed"], 0, "{again}");
+    })
+    .await;
+}

@@ -27,6 +27,8 @@ pub struct Model {
     pub wait_limit_action: String,
     /// The worker an `escalate` hands the ticket to.
     pub escalate_to: Option<String>,
+    /// Days a ticket may stay `resolved` before the sweep closes it (CRM-R82).
+    pub auto_close_days: Option<i32>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

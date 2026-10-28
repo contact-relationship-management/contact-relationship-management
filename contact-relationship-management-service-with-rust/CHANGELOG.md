@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — automatic closing (CRM-T148, CRM-R82)
+
+`auto_close_days` on `POST /api/sla-policies`; `new_auto_closed` in the answer of `POST /api/sla/sweep`.
+
 ### Added — suggested articles (CRM-T133, CRM-R66)
 
 `rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.

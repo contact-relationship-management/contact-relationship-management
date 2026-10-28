@@ -44,6 +44,10 @@ pub(crate) struct PolicyPayload {
     /// The worker (`worker:<id>`) an `escalate` reassigns the ticket to; only with `escalate`.
     #[serde(default)]
     escalate_to: Option<String>,
+    /// Days (1 to 365) a ticket may stay `resolved` before the sweep closes it (CRM-R82). Leave out
+    /// to leave closing to a person.
+    #[serde(default)]
+    auto_close_days: Option<i32>,
 }
 
 /// `PUT /api/sla-policies/{pid}/calendar` body.
@@ -146,6 +150,9 @@ async fn create_policy(
     } else if action != "flag" && payload.max_wait_minutes.is_none() {
         problems.push_field("wait_limit_action", "needs a max_wait_minutes to act on");
     }
+    if payload.auto_close_days.is_some_and(|d| !(1..=365).contains(&d)) {
+        problems.push_field("auto_close_days", "between 1 and 365");
+    }
     if action == "escalate" {
         match payload.escalate_to.as_deref() {
             Some(worker) => {
@@ -172,6 +179,7 @@ async fn create_policy(
         max_wait_minutes: ActiveValue::set(payload.max_wait_minutes),
         wait_limit_action: ActiveValue::set(action.to_string()),
         escalate_to: ActiveValue::set(payload.escalate_to.clone()),
+        auto_close_days: ActiveValue::set(payload.auto_close_days),
         deleted_at: ActiveValue::set(None),
         ..Default::default()
     }
@@ -463,6 +471,44 @@ async fn sweep_waiting(
     Ok(done)
 }
 
+/// Close each `resolved` ticket that has stayed so for longer than its policy's `auto_close_days`
+/// (CRM-R82), as a status change audited with `via: auto_close`. Returns how many it closed. A
+/// reopened ticket has no `resolved_at`, so it is not counted from its first resolution.
+async fn sweep_closing(
+    ctx: &AppContext,
+    caller: &MaybeAuthUser,
+    now: chrono::DateTime<chrono::FixedOffset>,
+) -> Result<u64> {
+    let days: std::collections::HashMap<String, i32> = sla_policies::Entity::find()
+        .filter(sla_policies::Column::DeletedAt.is_null())
+        .filter(sla_policies::Column::AutoCloseDays.is_not_null())
+        .all(&ctx.db)
+        .await?
+        .into_iter()
+        .filter_map(|p| p.auto_close_days.map(|d| (p.priority, d)))
+        .collect();
+    if days.is_empty() {
+        return Ok(0);
+    }
+    let resolved = tickets::Entity::find_live()
+        .filter(tickets::Column::Status.eq("resolved"))
+        .filter(tickets::Column::ResolvedAt.is_not_null())
+        .all(&ctx.db)
+        .await?;
+    let mut closed = 0;
+    for ticket in resolved {
+        let (Some(limit), Some(since)) = (days.get(&ticket.priority), ticket.resolved_at) else {
+            continue;
+        };
+        if now - since <= chrono::Duration::days(i64::from(*limit)) {
+            continue;
+        }
+        transition(ctx, caller, ticket, "closed", Some("auto_close")).await?;
+        closed += 1;
+    }
+    Ok(closed)
+}
+
 /// `POST /api/sla/sweep`: how many tickets crossed a deadline in this sweep.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[allow(clippy::struct_field_names)] // the `new_` names are what clients read
@@ -474,6 +520,8 @@ pub(crate) struct SlaSweep {
     new_wait_limit_resolved: u64,
     /// Of those, tickets the policy reassigned to its worker (CRM-R69).
     new_wait_limit_escalated: u64,
+    /// Resolved tickets the policy closed after their days were up (CRM-R82).
+    new_auto_closed: u64,
 }
 
 /// `GET /api/tickets/{pid}` — one ticket + its activities.
@@ -755,11 +803,13 @@ async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Resu
         Metrics::global().sla_breached_total.inc();
     }
     let waited = sweep_waiting(&ctx, &caller, now).await?;
+    let auto_closed = sweep_closing(&ctx, &caller, now).await?;
     format::json(SlaSweep {
         new_breaches: breaches,
         new_wait_limits_exceeded: waited.exceeded,
         new_wait_limit_resolved: waited.resolved,
         new_wait_limit_escalated: waited.escalated,
+        new_auto_closed: auto_closed,
     })
 }
 

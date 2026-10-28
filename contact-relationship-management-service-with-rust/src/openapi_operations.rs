@@ -1606,7 +1606,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "post",
         "/api/sla-policies",
         "support",
-        "Set a priority's SLA targets, optionally with max_wait_minutes and what the sweep does past it: wait_limit_action flag (default), resolve, or escalate to escalate_to (a worker); 422 naming the member otherwise (CRM-R64, CRM-R69)",
+        "Set a priority's SLA targets, optionally with max_wait_minutes and what the sweep does past it: wait_limit_action flag (default), resolve, or escalate to escalate_to (a worker), and auto_close_days (1 to 365) after which the sweep closes a ticket left resolved; 422 naming the member otherwise (CRM-R64, CRM-R69, CRM-R82)",
         Kind::Created,
     ),
     (

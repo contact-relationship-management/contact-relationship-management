@@ -1745,3 +1745,10 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Scripts:** `pnpm lint` and `pnpm format` now cover `src`, `tests`, `scripts` and the top-level configuration files; `vite.config.ts` was the one file that was not formatted, and is now.
       - **Found on the way:** Vite hands a test the browser build of Prettier, which has no file functions, so the test loads Prettier with Node's own resolver.
       - **Not done:** `.svelte` formatting; Markdown formatting.
+
+- [x] CRM-T148 *(edge)* **Close a ticket left resolved.** (S)
+      **Done (2026-10-28, not released):** requirement CRM-R82 first, then:
+      - **Service:** migration `m20261028_000051_auto_close_days` (`sla_policies.auto_close_days`, checked 1 to 365); `PolicyPayload.auto_close_days` validated; `sweep_closing` in `support.rs` goes through the same `transition` as a person, with `via: auto_close`; `new_auto_closed` in the sweep's answer.
+      - **Tests:** `a_policy_closes_a_ticket_left_resolved_for_its_days_and_no_other` (eight days closed, six not, no days not, reopened-and-resolved-again not, bad values refused, audit says `auto_close`, a second sweep closes nothing); the OpenAPI schema tests still pass.
+      - **UI:** only the generated `schema.d.ts`; the UI has no policy form (the wait-limit fields have none either).
+      - **Not done:** see CRM-R82's list.

@@ -15155,7 +15155,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Set a priority's SLA targets, optionally with max_wait_minutes and what the sweep does past it: wait_limit_action flag (default), resolve, or escalate to escalate_to (a worker); 422 naming the member otherwise (CRM-R64, CRM-R69) */
+        /** Set a priority's SLA targets, optionally with max_wait_minutes and what the sweep does past it: wait_limit_action flag (default), resolve, or escalate to escalate_to (a worker), and auto_close_days (1 to 365) after which the sweep closes a ticket left resolved; 422 naming the member otherwise (CRM-R64, CRM-R69, CRM-R82) */
         post: {
             parameters: {
                 query?: never;
@@ -20551,6 +20551,13 @@ export interface components {
         /** @description `POST /api/sla-policies` body. */
         PolicyPayload: {
             /**
+             * Format: int32
+             * @description Days (1 to 365) a ticket may stay `resolved` before the sweep closes it (CRM-R82). Leave out
+             *     to leave closing to a person.
+             * @default null
+             */
+            auto_close_days: number | null;
+            /**
              * Format: uuid
              * @description A business calendar (CRM-R45): the targets are then counted in its working time. Leave out
              *     for round-the-clock.
@@ -21126,6 +21133,11 @@ export interface components {
             priority: string;
         };
         SlaPolicy: {
+            /**
+             * Format: int32
+             * @description Days a ticket may stay `resolved` before the sweep closes it (CRM-R82).
+             */
+            auto_close_days: number | null;
             /** Format: uuid */
             calendar_pid: string | null;
             /** Format: date-time */
@@ -21163,6 +21175,11 @@ export interface components {
         };
         /** @description `POST /api/sla/sweep`: how many tickets crossed a deadline in this sweep. */
         SlaSweep: {
+            /**
+             * Format: uint64
+             * @description Resolved tickets the policy closed after their days were up (CRM-R82).
+             */
+            new_auto_closed: number;
             /** Format: uint64 */
             new_breaches: number;
             /**

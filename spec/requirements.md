@@ -1162,7 +1162,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - `escalate` also takes `escalate_to`, a worker (`worker:<id>`), required for it and refused with any other action (`422` naming `/escalate_to`). The sweep flags the ticket as in CRM-R64 and **reassigns it to that worker**; it stays `pending` and its clock stays stopped. Audited as `ticket_escalated` with `via: wait_limit`.
 - `resolve` resolves the ticket as a status change from `pending` does (CRM-R55): the clock resumes, `resolved_at` is set, audited with `via: wait_limit`. A customer reply cannot reopen a resolved ticket (CRM-R63), but a status change to `open` can. It is **resolved, not closed**: `closed` is final and can only follow `resolved`, so an automatic step stops short of it and a person closes the ticket.
 - Each ticket is acted on **once**, as before. `POST /api/sla/sweep` counts them in `new_wait_limits_exceeded`, with `new_wait_limit_resolved` and `new_wait_limit_escalated` saying how many of those were resolved or reassigned. `ticket_wait_limit_exceeded` is emitted for each, with the `action` taken.
-- Not built: closing a ticket automatically; escalating by raising its priority; a limit or an action on an existing policy (a policy is created with them); a warning before the limit; telling the customer.
+- Not built: closing a ticket automatically (see CRM-R82 for closing one left resolved); escalating by raising its priority; a limit or an action on an existing policy (a policy is created with them); a warning before the limit; telling the customer.
 
 ## CRM-R70 — CLV at the rate of the day each deal closed
 
@@ -1294,3 +1294,13 @@ recipient would get before anything is sent, and be certain every message carrie
 - The report adds `event_horizon_days`, `mail_horizon_days` and `logs_past_horizon` (rows by table); the sweep adds `logs_deleted`, the two horizons and counts them in `rows_deleted`; the audit entry records them. The sweep stays an operator's act: nothing deletes on a timer.
 - The inventory marks these four tables `aged`, and its test requires `aged` to be exactly the tables the sweep prunes by age.
 - Not built: running the sweep on a schedule; separate horizons per table; archiving instead of deleting.
+
+## CRM-R82 — A ticket left resolved is closed after its days
+
+*As a support lead, I want a resolved ticket that nobody has reopened to be closed after a set number of days, so that finished tickets do not sit open on the board and the closed count means something.*
+
+- `POST /api/sla-policies` takes an optional `auto_close_days`, a whole number from 1 to 365, refused otherwise (`422` naming `/auto_close_days`). Left out, nothing is closed automatically and a person closes the ticket, as before.
+- `POST /api/sla/sweep` closes each live ticket whose status is `resolved` and whose `resolved_at` is **more than** that many days ago, for the policy of its priority. It is the same status change a person makes (`resolved` to `closed`, CRM-R63's lifecycle), audited as `ticket_closed` with `via: auto_close`, and emits `ticket_closed` like any other.
+- The days count from the **last** resolution: reopening clears `resolved_at` and resolving again sets it afresh, so a reopened ticket is not closed on its first resolution's clock. A ticket the wait-limit action resolved (CRM-R69) counts from that moment.
+- A closed ticket is final, so each ticket is closed **once**. The answer adds `new_auto_closed`.
+- Not built: closing from the `pending` state or any state but `resolved`; a warning to the customer before closing; a different number of days per category; changing the days on an existing policy (a policy is created with them); running the sweep on a schedule.

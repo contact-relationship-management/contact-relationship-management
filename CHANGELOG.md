@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — closing a ticket left resolved (CRM-T148, CRM-R82)
+
+An SLA policy may set `auto_close_days` (1 to 365); the sweep then closes a ticket that has stayed resolved for longer, counted from its last resolution.
+
 ### Added — articles suggested for a ticket (CRM-T133, CRM-R66)
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
