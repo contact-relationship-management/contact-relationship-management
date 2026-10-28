@@ -1971,6 +1971,22 @@ async fn quotas_and_commission_plans_are_for_admin_and_service_callers_only() {
             404,
             "service splits"
         );
+        // The bridges send data out and read people in (CRM-R72, CRM-R73): never for a reader or a
+        // writer, and for a service only as far as the stub, which sends nothing.
+        for method in ["GET"] {
+            for path in ["/api/bridges/wpm/teams-import"] {
+                assert_eq!(
+                    call(method, path, reader.clone()).await,
+                    403,
+                    "reader {path}"
+                );
+                assert_eq!(
+                    call(method, path, writer.clone()).await,
+                    403,
+                    "writer {path}"
+                );
+            }
+        }
         // So is a team's roll-up (CRM-R67).
         for path in [
             "/api/quotas/teams",

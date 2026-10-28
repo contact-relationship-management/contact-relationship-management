@@ -42,6 +42,10 @@ pub struct Settings {
     pub trust_forwarded_for: bool,
     /// `CRM_UPSTREAM_MODE`: `http` looks names up; anything else is the stub.
     pub upstream_mode: Mode,
+    /// `CRM_PPM_SERVICE_URL`: the project portfolio service the bridge sends delivery ideas to.
+    pub ppm_service_url: Option<String>,
+    /// `CRM_WORKER_SERVICE_URL`: the worker service (WPM) the team import reads workers from.
+    pub worker_service_url: Option<String>,
     /// `CRM_EVENT_TRANSPORT`: `memory` (default) or `outbox`.
     pub event_transport: EventTransport,
     /// `CRM_RETENTION_DAYS`, raw (parsed and clamped by the retention rules).
@@ -183,6 +187,8 @@ impl Settings {
             } else {
                 Mode::Stub
             },
+            ppm_service_url: text("CRM_PPM_SERVICE_URL"),
+            worker_service_url: text("CRM_WORKER_SERVICE_URL"),
             event_transport: EventTransport::parse(&get("CRM_EVENT_TRANSPORT").unwrap_or_default()),
             retention_days: get("CRM_RETENTION_DAYS"),
             mail_batch: get("CRM_MAIL_BATCH")

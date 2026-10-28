@@ -762,4 +762,12 @@ export default {
   "quota.clawbackReason": "السبب",
   "quota.clawbackSet": "استرداد",
   "quota.clawbackRemove": "إعادة الائتمان",
+  "deal.delivery": "فتح فكرة تسليم في محفظة المشاريع",
+  "deal.deliverySent": "أُرسلت فكرة التسليم إلى محفظة المشاريع",
+  "deal.deliveryAlready": "لدى محفظة المشاريع فكرة التسليم لهذه الصفقة بالفعل",
+  "deal.deliveryStub":
+    "لم يُرسل: الجسر إلى محفظة المشاريع غير مفعّل. كان سيرسل",
+  "quota.teamImport": "تعيين الفرق من أقسام خدمة العاملين",
+  "quota.teamImportStub": "لم يُقرأ شيء: الجسر إلى خدمة العاملين غير مفعّل",
+  "quota.teamImportDone": "تم تعيين الفرق من الأقسام",
 } satisfies Record<StringKey, string>;

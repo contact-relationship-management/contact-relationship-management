@@ -778,4 +778,14 @@ export default {
   "quota.clawbackReason": "Grund",
   "quota.clawbackSet": "Zurückfordern",
   "quota.clawbackRemove": "Gutschrift zurückgeben",
+  "deal.delivery": "Lieferidee im Projektportfolio anlegen",
+  "deal.deliverySent": "Lieferidee an das Projektportfolio gesendet",
+  "deal.deliveryAlready":
+    "Das Projektportfolio hat die Lieferidee für diesen Deal bereits",
+  "deal.deliveryStub":
+    "Nicht gesendet: die Brücke zum Projektportfolio ist nicht eingeschaltet. Gesendet würde",
+  "quota.teamImport": "Teams aus den Abteilungen des Personaldienstes setzen",
+  "quota.teamImportStub":
+    "Nichts gelesen: die Brücke zum Personaldienst ist nicht eingeschaltet",
+  "quota.teamImportDone": "Teams aus Abteilungen gesetzt",
 } satisfies Record<StringKey, string>;

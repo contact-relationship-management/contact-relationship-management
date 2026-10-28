@@ -2342,6 +2342,7 @@ export function demoHandle(
   if (head === "kb") return kbPublic(method, seg, query, body);
   if (head === "commission-plans") return commissionPlans(method, id, body);
   if (head === "quotas") return quotaRoutes(method, seg, query, body);
+  if (head === "bridges") return bridgeRoutes(method, seg);
   if (head === "email-templates") return emailTemplates(method, id, body);
   if (head === "custom-fields") return customFieldDefs(method, id, body);
   if (tail === "custom-fields" && id)
@@ -3911,6 +3912,34 @@ function territoryRoutes(
   };
   state.territories.push(territory);
   return ok(territory);
+}
+
+/**
+ * The tour's bridges (CRM-R72, CRM-R73). The tour has no other services, so it answers as the
+ * service does without `CRM_UPSTREAM_MODE=http`: nothing is sent or read, and it says what would be.
+ */
+function bridgeRoutes(method: string, seg: string[]) {
+  if (method !== "POST") return problem(405, "POST only");
+  if (seg[1] === "wpm" && seg[2] === "teams-import")
+    return ok({ mode: "stub", teams: [], skipped: [], without_department: 0 });
+  if (seg[1] === "ppm" && seg[2] === "deals") {
+    const deal = state.deals.find((d) => d.pid === seg[3]);
+    if (!deal) return problem(404, "deal not found");
+    if (!deal.won) return problem(422, "only a won deal opens a delivery");
+    return ok({
+      deal_pid: deal.pid,
+      mode: "stub",
+      sent: false,
+      ppm_idea_pid: null,
+      already_opened: false,
+      idea: {
+        title: `Deliver: ${deal.name}`.slice(0, 200),
+        pitch: `Won deal ${deal.pid} in the CRM: ${deal.amount_minor ?? 0} minor units of ${deal.currency}.`,
+        tags: ["crm", "won-deal"],
+      },
+    });
+  }
+  return problem(404, "no such bridge");
 }
 
 /** The tour's quotas (CRM-R59) and their attainment, computed from the tour's won deals. */

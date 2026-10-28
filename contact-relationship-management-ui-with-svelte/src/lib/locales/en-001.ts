@@ -762,4 +762,14 @@ export default {
   "quota.clawbackReason": "Reason",
   "quota.clawbackSet": "Claw back",
   "quota.clawbackRemove": "Give credit back",
+  "deal.delivery": "Open a delivery idea in the project portfolio",
+  "deal.deliverySent": "Delivery idea sent to the project portfolio",
+  "deal.deliveryAlready":
+    "The project portfolio already has this deal's delivery idea",
+  "deal.deliveryStub":
+    "Not sent: the bridge to the project portfolio is not switched on. It would send",
+  "quota.teamImport": "Set teams from the worker service's departments",
+  "quota.teamImportStub":
+    "Nothing was read: the bridge to the worker service is not switched on",
+  "quota.teamImportDone": "Teams set from departments",
 } as const;

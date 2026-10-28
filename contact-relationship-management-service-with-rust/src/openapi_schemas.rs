@@ -38,10 +38,10 @@ fn reference(name: &str) -> Value {
 #[allow(clippy::too_many_lines)] // one list of the documented types
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
-        attachments, attribution, audits, board, break_glass, calendars, custom_fields, dashboards,
-        engagement, external_links, fx_rates, insights, kb, lead_imports, marketing, merge,
-        notifications, privacy, quotas, record_imports, relationships, reports, sales, search,
-        support, tags, teams, templates, territories, unmerge, views, webhooks, workflows,
+        attachments, attribution, audits, board, break_glass, bridges, calendars, custom_fields,
+        dashboards, engagement, external_links, fx_rates, insights, kb, lead_imports, marketing,
+        merge, notifications, privacy, quotas, record_imports, relationships, reports, sales,
+        search, support, tags, teams, templates, territories, unmerge, views, webhooks, workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -210,6 +210,10 @@ fn generated() -> serde_json::Map<String, Value> {
         quotas::SplitPayload,
         quotas::ClawbackPayload,
         quotas::ClawbackView,
+        bridges::IdeaView,
+        bridges::DeliveryView,
+        bridges::Skipped,
+        bridges::ImportView,
         quotas::SplitView,
         quotas::AttainmentReport,
         crate::rules::quota::Tier,
@@ -424,6 +428,8 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/quotas/teams") => "Team",
         ("get", "/api/quotas/team-attainment") => "TeamAttainmentReport",
         ("put", "/api/quotas/territories") => "Territory",
+        ("post", "/api/bridges/ppm/deals/{pid}") => "DealDelivery",
+        ("post", "/api/bridges/wpm/teams-import") => "TeamImport",
         ("get", "/api/quotas/territory-attainment") => "TerritoryAttainmentReport",
         ("get" | "put", "/api/quotas/splits/{pid}") => "DealSplit",
         ("get", "/api/quotas/attainment") => "QuotaAttainmentReport",

@@ -1486,6 +1486,24 @@ test.describe("export, undo and search", () => {
     await expect(bea).toContainText("140,000.00");
   });
 
+  test("a won deal offers its delivery idea to the project portfolio, and teams can be imported", async ({
+    page,
+  }) => {
+    await startTour(page);
+    // The tour has no other services, so both bridges answer as the stub does: nothing is sent.
+    await page.goto("/deals/deal-10");
+    await page.getByTestId("deal-delivery-open").click();
+    await expect(page.getByTestId("deal-delivery-result")).toContainText(
+      "Deliver: Fleet telematics renewal",
+    );
+    // An open deal offers none.
+    await page.goto("/deals/deal-1");
+    await expect(page.getByTestId("deal-delivery")).toHaveCount(0);
+    await page.goto("/quotas");
+    await page.getByTestId("team-import").click();
+    await expect(page.getByTestId("team-import-result")).toBeVisible();
+  });
+
   test("credit can be clawed back from one worker and given back", async ({
     page,
   }) => {

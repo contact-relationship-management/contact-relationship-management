@@ -764,4 +764,14 @@ export default {
   "quota.clawbackReason": "कारण",
   "quota.clawbackSet": "वापस लें",
   "quota.clawbackRemove": "श्रेय लौटाएँ",
+  "deal.delivery": "परियोजना पोर्टफ़ोलियो में डिलीवरी विचार खोलें",
+  "deal.deliverySent": "डिलीवरी विचार परियोजना पोर्टफ़ोलियो को भेजा गया",
+  "deal.deliveryAlready":
+    "परियोजना पोर्टफ़ोलियो में इस सौदे का डिलीवरी विचार पहले से है",
+  "deal.deliveryStub":
+    "भेजा नहीं गया: परियोजना पोर्टफ़ोलियो का ब्रिज चालू नहीं है। यह भेजता",
+  "quota.teamImport": "कर्मचारी सेवा के विभागों से टीमें बनाएँ",
+  "quota.teamImportStub":
+    "कुछ नहीं पढ़ा गया: कर्मचारी सेवा का ब्रिज चालू नहीं है",
+  "quota.teamImportDone": "विभागों से टीमें बनाई गईं",
 } satisfies Record<StringKey, string>;

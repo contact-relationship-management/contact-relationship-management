@@ -7,6 +7,7 @@ mod attachments;
 mod attribution;
 mod audit_chain;
 mod board;
+mod bridges;
 mod business_calendars;
 mod consent_purposes;
 mod custom_fields;

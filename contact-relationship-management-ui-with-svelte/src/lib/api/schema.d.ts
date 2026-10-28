@@ -2985,6 +2985,174 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bridges/ppm/deals/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open a delivery idea in the project portfolio service (PPM) for a won deal (CRM-R72): once per deal, answering the idea already opened if asked again; 404 for an unknown deal, 422 when it is not won, 502 when PPM cannot be reached; audited. Without CRM_UPSTREAM_MODE=http it sends nothing and answers what it would have sent. Admin only */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DealDelivery"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bridges/wpm/teams-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set a team per department from the active workers of the worker service (WPM) (CRM-R73): all together or none, each audited, teams it does not name left alone, nothing written to WPM; 502 when it cannot be read. Without CRM_UPSTREAM_MODE=http it reads nothing. Admin only */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamImport"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/business-calendars": {
         parameters: {
             query?: never;
@@ -19236,6 +19404,20 @@ export interface components {
             updated_at: string;
             won: boolean;
         };
+        /** @description `POST /api/bridges/ppm/deals/{pid}` answer. */
+        DealDelivery: {
+            /** @description Whether the deal had been opened before, so nothing was sent again. */
+            already_opened: boolean;
+            /** Format: uuid */
+            deal_pid: string;
+            idea: components["schemas"]["DeliveryIdea"];
+            /** @description `stub` (nothing was sent) or `http`. */
+            mode: string;
+            /** @description The idea in PPM; `null` in `stub` mode. */
+            ppm_idea_pid: string | null;
+            /** @description Whether the idea was sent in this call. */
+            sent: boolean;
+        };
         /** @description `PUT /api/deals/{pid}` body; absent fields stay as they are. */
         DealEditPayload: {
             /**
@@ -19336,6 +19518,12 @@ export interface components {
             remaining: number;
             /** Format: int64 */
             total: number;
+        };
+        /** @description What is sent to PPM for a deal. */
+        DeliveryIdea: {
+            pitch: string;
+            tags: string[];
+            title: string;
         };
         /** @description `GET /api/insights/dpo`. */
         DpoView: {
@@ -21207,6 +21395,25 @@ export interface components {
              * @description How many workers have a quota in this currency.
              */
             workers: number;
+        };
+        /** @description `POST /api/bridges/wpm/teams-import` answer. */
+        TeamImport: {
+            /** @description `stub` (nothing was read) or `http`. */
+            mode: string;
+            /** @description Departments left alone, with the reason. */
+            skipped: components["schemas"]["TeamImportSkipped"][];
+            /** @description The teams set, one per department, by name. */
+            teams: components["schemas"]["Team"][];
+            /**
+             * Format: uint
+             * @description Active workers with no department, who join no team.
+             */
+            without_department: number;
+        };
+        /** @description A department the import did not turn into a team, and why. */
+        TeamImportSkipped: {
+            department: string;
+            reason: string;
         };
         /** @description `PUT /api/quotas/teams` body: sets the team of that name (any case), replacing its workers. */
         TeamPayload: {

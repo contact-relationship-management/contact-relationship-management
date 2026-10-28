@@ -1994,6 +1994,35 @@ export function deleteDealSplit(dealPid: string): Promise<{ pid: string }> {
   return api(`/quotas/splits/${dealPid}`, { method: "DELETE" });
 }
 
+/** What the PPM bridge sent (or, in stub mode, would send) for a won deal (CRM-R72). */
+export interface DealDelivery {
+  deal_pid: string;
+  /** `stub`: nothing was sent. */
+  mode: "stub" | "http";
+  sent: boolean;
+  ppm_idea_pid: string | null;
+  already_opened: boolean;
+  idea: { title: string; pitch: string; tags: string[] };
+}
+
+/** Open a delivery idea in the project portfolio service for a won deal; once per deal. */
+export function openDelivery(dealPid: string): Promise<DealDelivery> {
+  return api(`/bridges/ppm/deals/${dealPid}`, { method: "POST" });
+}
+
+/** What a worker-service import did (CRM-R73). */
+export interface TeamImport {
+  mode: "stub" | "http";
+  teams: Team[];
+  skipped: { department: string; reason: string }[];
+  without_department: number;
+}
+
+/** Set a team per department from the worker service's active workers. */
+export function importTeams(): Promise<TeamImport> {
+  return api("/bridges/wpm/teams-import", { method: "POST" });
+}
+
 /** Credit taken back from one worker on a won deal (CRM-R71). */
 export interface Clawback {
   owner_ref: string;

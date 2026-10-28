@@ -294,6 +294,120 @@ pub async fn resolve_organization(name: &str) -> Result<String, String> {
     Ok(urn)
 }
 
+/// A worker as the worker service lists it: the only two things a team is made from. Everything
+/// else the service sends (pay, employment) is never read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UpstreamWorker {
+    /// The worker's id there, which is the `worker:<id>` reference here.
+    pub pid: String,
+    /// The department the worker is in; empty when none.
+    pub department: String,
+}
+
+/// Workers asked for per page of the worker service's list.
+const WORKER_PAGE: usize = 200;
+/// Most pages read in one import, so a runaway answer cannot loop forever.
+const MAX_WORKER_PAGES: usize = 100;
+
+fn bridge_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|_| "no http client".to_string())
+}
+
+/// Open a delivery idea in the project portfolio service (CRM-R72): `POST {CRM_PPM_SERVICE_URL}/api/ideas`
+/// with `{"title", "pitch", "tags"}`, answered `{"pid"}`. The idea's contract was read from that
+/// service's source, not run against it.
+///
+/// # Errors
+///
+/// A short reason when the service is unconfigured, unreachable or answers something that is not
+/// an id. The reason holds no deal data.
+pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Result<String, String> {
+    let base = crate::settings::current()
+        .ppm_service_url
+        .clone()
+        .ok_or_else(|| "CRM_PPM_SERVICE_URL is not set".to_string())?;
+    let response = bridge_client()?
+        .post(format!("{}/api/ideas", base.trim_end_matches('/')))
+        .json(&serde_json::json!({ "title": title, "pitch": pitch, "tags": tags }))
+        .send()
+        .await
+        .map_err(|_| "the project portfolio service could not be reached".to_string())?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "the project portfolio service answered {}",
+            response.status().as_u16()
+        ));
+    }
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|_| "the project portfolio service answer was not JSON".to_string())?;
+    let id = ["pid", "id"]
+        .iter()
+        .find_map(|k| body.get(k).and_then(serde_json::Value::as_str))
+        .ok_or_else(|| "the project portfolio service gave no id".to_string())?;
+    uuid::Uuid::parse_str(id)
+        .map(|u| u.to_string())
+        .map_err(|_| "the project portfolio service gave an id that is not a UUID".to_string())
+}
+
+/// The active workers of the worker service, with their department (CRM-R73): `GET
+/// {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=&offset=`, read page by page.
+///
+/// # Errors
+///
+/// A short reason when the service is unconfigured, unreachable, answers something that is not a
+/// list, or has more than [`MAX_WORKER_PAGES`] pages.
+pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
+    let base = crate::settings::current()
+        .worker_service_url
+        .clone()
+        .ok_or_else(|| "CRM_WORKER_SERVICE_URL is not set".to_string())?;
+    let client = bridge_client()?;
+    let mut workers = Vec::new();
+    for page in 0..MAX_WORKER_PAGES {
+        let response = client
+            .get(format!(
+                "{}/api/workers?status=active&limit={WORKER_PAGE}&offset={}",
+                base.trim_end_matches('/'),
+                page * WORKER_PAGE
+            ))
+            .send()
+            .await
+            .map_err(|_| "the worker service could not be reached".to_string())?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "the worker service answered {}",
+                response.status().as_u16()
+            ));
+        }
+        let body: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|_| "the worker service answer was not JSON".to_string())?;
+        let rows = body
+            .as_array()
+            .ok_or_else(|| "the worker service answer was not a list".to_string())?;
+        for row in rows {
+            let text = |key: &str| row.get(key).and_then(serde_json::Value::as_str);
+            if let Some(pid) = text("pid") {
+                workers.push(UpstreamWorker {
+                    pid: pid.to_string(),
+                    department: text("department").unwrap_or_default().trim().to_string(),
+                });
+            }
+        }
+        if rows.len() < WORKER_PAGE {
+            return Ok(workers);
+        }
+    }
+    Err("the worker service has more workers than one import reads".to_string())
+}
+
 /// The mailbox in a person record. The accepted shapes are `{"email": "a@b"}`
 /// and `{"emails": [...]}` where each entry is a string or an object with an
 /// `address`, `email` or `value` member; an entry marked `primary` (or

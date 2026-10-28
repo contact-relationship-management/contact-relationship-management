@@ -776,4 +776,16 @@ export default {
   "quota.clawbackReason": "Motif",
   "quota.clawbackSet": "Reprendre",
   "quota.clawbackRemove": "Rendre le crédit",
+  "deal.delivery":
+    "Ouvrir une idée de livraison dans le portefeuille de projets",
+  "deal.deliverySent": "Idée de livraison envoyée au portefeuille de projets",
+  "deal.deliveryAlready":
+    "Le portefeuille de projets a déjà l'idée de livraison de cette affaire",
+  "deal.deliveryStub":
+    "Non envoyé : le pont vers le portefeuille de projets n'est pas activé. Il enverrait",
+  "quota.teamImport":
+    "Définir les équipes depuis les départements du service du personnel",
+  "quota.teamImportStub":
+    "Rien n'a été lu : le pont vers le service du personnel n'est pas activé",
+  "quota.teamImportDone": "Équipes définies depuis les départements",
 } satisfies Record<StringKey, string>;

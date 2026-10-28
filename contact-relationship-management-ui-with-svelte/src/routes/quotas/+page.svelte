@@ -16,6 +16,8 @@
     setDealSplit,
     deleteQuota,
     deleteTeam,
+    importTeams,
+    type TeamImport,
     deleteTerritory,
     listTerritories,
     setTerritory,
@@ -122,6 +124,13 @@
         amount_minor: Math.round(Number(clawAmount) * 100),
         reason: clawReason.trim() || null,
       });
+    });
+
+  // Teams from the worker service's departments (CRM-R73).
+  let imported = $state<TeamImport | null>(null);
+  const importFromWorkerService = () =>
+    run(async () => {
+      imported = await importTeams();
     });
 
   const plans = resource(listCommissionPlans);
@@ -376,6 +385,18 @@
 
 <h2>{t("quota.teams")}</h2>
 <p class="muted">{t("quota.teamsHint")}</p>
+<p>
+  <button type="button" onclick={() => void importFromWorkerService()} data-testid="team-import">
+    {t("quota.teamImport")}
+  </button>
+  {#if imported}
+    <span role="status" data-testid="team-import-result">
+      {imported.mode === "stub"
+        ? t("quota.teamImportStub")
+        : `${t("quota.teamImportDone")}: ${imported.teams.length}`}
+    </span>
+  {/if}
+</p>
 <form
   class="panel"
   data-testid="team-form"

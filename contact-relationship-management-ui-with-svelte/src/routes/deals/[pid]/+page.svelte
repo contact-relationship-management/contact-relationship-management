@@ -2,7 +2,15 @@
   import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import { page } from "$app/state";
-  import { editDeal, listDeals, money, reopenDeal, type Deal } from "#lib/api/crm.js";
+  import {
+    editDeal,
+    listDeals,
+    money,
+    openDelivery,
+    reopenDeal,
+    type Deal,
+    type DealDelivery,
+  } from "#lib/api/crm.js";
   import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";
   import Tags from "#lib/components/Tags.svelte";
@@ -19,6 +27,19 @@
   });
   const deal = $derived(record.value);
   const error = $derived(record.error);
+
+  // Opening the delivery idea in the project portfolio service (CRM-R72).
+  let delivery = $state<DealDelivery | null>(null);
+  let deliveryError = $state<string | null>(null);
+
+  async function openDeliveryIdea(current: Deal) {
+    deliveryError = null;
+    try {
+      delivery = await openDelivery(current.pid);
+    } catch (cause) {
+      deliveryError = errorMessage(cause);
+    }
+  }
 
   let editing = $state(false);
   let reopening = $state(false);
@@ -101,6 +122,26 @@
   </p>
   {#if reopened}<p role="status" data-testid="deal-reopened">{t("deal.reopened")}</p>{/if}
   {#if saved}<p role="status" data-testid="deal-saved">{t("deal.saved")}</p>{/if}
+  {#if deal.won}
+    <section class="panel" data-testid="deal-delivery">
+      <button type="button" onclick={() => deal && void openDeliveryIdea(deal)} data-testid="deal-delivery-open">
+        {t("deal.delivery")}
+      </button>
+      {#if delivery}
+        <p role="status" data-testid="deal-delivery-result">
+          {#if delivery.already_opened}
+            {t("deal.deliveryAlready")}
+          {:else if delivery.sent}
+            {t("deal.deliverySent")}
+          {:else}
+            {t("deal.deliveryStub")}
+          {/if}
+          <span class="muted">{delivery.idea.title}</span>
+        </p>
+      {/if}
+      {#if deliveryError}<p class="error" role="alert" data-testid="deal-delivery-error">{deliveryError}</p>{/if}
+    </section>
+  {/if}
   {#if deal.closed_at}
     <p data-testid="deal-locked">{t("deal.closedLocked")}</p>
     {#if reopening}

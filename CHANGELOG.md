@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — bridges to PPM and WPM (CRM-T139, CRM-R72, CRM-R73)
+
+`POST /api/bridges/ppm/deals/{pid}` opens one delivery idea in the project portfolio service for a won deal; `POST /api/bridges/wpm/teams-import` sets a team per department from the worker service. Admin only and stub-first: nothing leaves the process unless `CRM_UPSTREAM_MODE=http`; set `CRM_PPM_SERVICE_URL` and `CRM_WORKER_SERVICE_URL`. Checked against stand-ins, not the running services.
+
 ### Added — clawing credit back from a worker (CRM-T138, CRM-R71)
 
 `GET`, `PUT` and `DELETE /api/quotas/clawbacks/{pid}` (admin only): an amount taken back from one worker's credit for a won deal, up to what they hold; attainment follows, for that worker alone.

@@ -771,4 +771,15 @@ export default {
   "quota.clawbackReason": "Motivo",
   "quota.clawbackSet": "Retirar",
   "quota.clawbackRemove": "Devolver el crédito",
+  "deal.delivery": "Abrir una idea de entrega en la cartera de proyectos",
+  "deal.deliverySent": "Idea de entrega enviada a la cartera de proyectos",
+  "deal.deliveryAlready":
+    "La cartera de proyectos ya tiene la idea de entrega de este negocio",
+  "deal.deliveryStub":
+    "No enviado: el puente a la cartera de proyectos no está activado. Enviaría",
+  "quota.teamImport":
+    "Definir equipos con los departamentos del servicio de personal",
+  "quota.teamImportStub":
+    "No se leyó nada: el puente al servicio de personal no está activado",
+  "quota.teamImportDone": "Equipos definidos desde los departamentos",
 } satisfies Record<StringKey, string>;

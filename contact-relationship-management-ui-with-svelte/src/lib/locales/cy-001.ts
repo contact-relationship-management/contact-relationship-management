@@ -769,4 +769,14 @@ export default {
   "quota.clawbackReason": "Rheswm",
   "quota.clawbackSet": "Cymryd yn ôl",
   "quota.clawbackRemove": "Rhoi credyd yn ôl",
+  "deal.delivery": "Agor syniad cyflawni ym mhortffolio'r prosiectau",
+  "deal.deliverySent": "Anfonwyd y syniad cyflawni i bortffolio'r prosiectau",
+  "deal.deliveryAlready":
+    "Mae gan bortffolio'r prosiectau syniad cyflawni'r cytundeb hwn eisoes",
+  "deal.deliveryStub":
+    "Heb ei anfon: nid yw'r bont i bortffolio'r prosiectau wedi'i throi ymlaen. Byddai'n anfon",
+  "quota.teamImport": "Gosod timau o adrannau'r gwasanaeth gweithwyr",
+  "quota.teamImportStub":
+    "Ni ddarllenwyd dim: nid yw'r bont i'r gwasanaeth gweithwyr wedi'i throi ymlaen",
+  "quota.teamImportDone": "Timau wedi'u gosod o adrannau",
 } satisfies Record<StringKey, string>;

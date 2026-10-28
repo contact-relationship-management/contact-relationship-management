@@ -26,9 +26,11 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   readable from the account's own history (CRM-R61) and conversion to
   one currency (CRM-R62), at the rate of the day each deal closed if asked
   (CRM-R70, for the total alone).
-- **Cross-app bridges** — WPM (rep identity/teams from employee
-  records), PPM (post-sale delivery projects opened from won
-  deals).
+- **Cross-app bridges** — a won deal opens a delivery idea in PPM
+  (CRM-R72) and WPM's departments become teams (CRM-R73), both stub-first
+  and checked against stand-ins only; projects in PPM (it has plans and
+  ideas), teams by manager, rep identity beyond ids, and running either
+  on a schedule or on an event are not built.
 - **FX beyond reports** — the report builder, attribution, campaign ROI,
   the live forecast and CLV convert from hand-entered rates (CRM-R50 to
   CRM-R54); the forecast snapshots and the trend still report per

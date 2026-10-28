@@ -1184,3 +1184,26 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Attainment** (`GET /api/quotas/attainment`): the worker's credit for the deal is reduced by the clawback, never below zero, **for them alone**; other workers on a split keep theirs. A deal whose credit to a worker is clawed back whole no longer counts in that worker's `won_deals`. Currencies are never converted.
 - The deal itself, its amount and its other uses (forecast, win rate, CLV) are untouched: a clawback is about what a worker is credited with.
 - Not built: a clawback reaching into a period already paid; a clawback in another currency; clawing back commission directly; a list of clawbacks on the `/quotas` page (it has a form to set and remove one); automatic clawbacks when a deal is reopened or lost.
+
+## CRM-R72 — A won deal opens a delivery idea in PPM
+
+*As a sales manager, I can hand a won deal to delivery, so that the project portfolio service has an idea for the work that was sold.*
+
+- `POST /api/bridges/ppm/deals/{pid}` (no body) sends **one idea** to the project portfolio service: `POST {CRM_PPM_SERVICE_URL}/api/ideas` with a `title` (`Deliver: <deal name>`, up to 200 characters), a `pitch` (the deal's pid, amount in minor units and currency) and the tags `crm` and `won-deal`. Nothing else about the deal, its account or its contacts is sent. PPM answers `{pid}`.
+- It is **once per deal**: the idea's id is kept, and asking again answers it with `already_opened: true` and sends nothing. An unknown or deleted deal is `404`; a deal that is not won is `422`; PPM unreachable, refusing or answering without an id is `502` and nothing is kept. Audited as `deal_delivery` / `opened`.
+- **Stub-first**, like the other upstream clients (CRM-D11): unless `CRM_UPSTREAM_MODE=http`, nothing is sent and nothing is kept; the answer is `mode: stub`, `sent: false` and the idea that would have gone. The routes under `/api/bridges` are **admin only**, since they send data out.
+- PPM's contract (`POST /api/ideas`) was read from its source and is exercised against a stand-in in the tests, not against a running PPM; the idea is PPM's to promote or drop.
+- A won deal's page has a button "Open a delivery idea in the project portfolio" and says what happened.
+- Not built: a project (PPM has plans and ideas, not projects); opening one automatically when a deal is won; following the idea's fate in PPM; sending line items or contacts.
+
+## CRM-R73 — Teams from the worker service's departments
+
+*As a sales manager, I can have teams made from the worker service's departments, so that a team's roll-up (CRM-R67) follows who is employed where without my keeping both lists.*
+
+- `POST /api/bridges/wpm/teams-import` (no body) reads the **active** workers of the worker service (WPM) — `GET {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=200&offset=`, page by page, at most 100 pages — and sets **a team per department**, named for it, holding that department's workers (`worker:<pid>`), as `PUT /api/quotas/teams` would (CRM-R67). Only each worker's `pid` and `department` are read; pay and employment details are never taken.
+- **All the teams are set together or none**; each is audited with `via: wpm`. Teams the import does not name are left as they are; **nothing is written to the worker service**. Running it again replaces the same teams.
+- Left out and reported in `skipped`, with the reason: a department of **more than 50** workers (a team's limit); a department that differs from another only in case; a worker whose id is not a reference. Active workers with no department are counted in `without_department`.
+- `502` when the worker service cannot be reached or answers something that is not a list. **Stub-first** and admin only, as CRM-R72: without `CRM_UPSTREAM_MODE=http` nothing is read and the answer is `mode: stub` with no teams.
+- WPM's contract (`GET /api/workers`) was read from its source and is exercised against a stand-in, not a running WPM.
+- The `/quotas` page has a button to run it and says how many teams were set.
+- Not built: teams by manager and reports; removing a team when its department disappears; importing on a schedule; any other worker fields.

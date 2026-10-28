@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.
 
+### Added — bridges (CRM-T139, CRM-R72, CRM-R73)
+
+`/api/bridges/ppm/deals/{pid}` and `/api/bridges/wpm/teams-import`, admin only; migration `000049`; `CRM_PPM_SERVICE_URL`, `CRM_WORKER_SERVICE_URL`; `put_team` shared with the team routes.
+
 ### Added — clawbacks (CRM-T138, CRM-R71)
 
 `/api/quotas/clawbacks/{pid}`, admin only; migration `000048`; `credited_deals` takes the clawback off and drops a deal clawed back whole.

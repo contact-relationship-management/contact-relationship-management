@@ -845,6 +845,20 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         Kind::Ok,
     ),
     (
+        "post",
+        "/api/bridges/ppm/deals/{pid}",
+        "insights",
+        "Open a delivery idea in the project portfolio service (PPM) for a won deal (CRM-R72): once per deal, answering the idea already opened if asked again; 404 for an unknown deal, 422 when it is not won, 502 when PPM cannot be reached; audited. Without CRM_UPSTREAM_MODE=http it sends nothing and answers what it would have sent. Admin only",
+        Kind::Ok,
+    ),
+    (
+        "post",
+        "/api/bridges/wpm/teams-import",
+        "insights",
+        "Set a team per department from the active workers of the worker service (WPM) (CRM-R73): all together or none, each audited, teams it does not name left alone, nothing written to WPM; 502 when it cannot be read. Without CRM_UPSTREAM_MODE=http it reads nothing. Admin only",
+        Kind::Ok,
+    ),
+    (
         "get",
         "/api/quotas/clawbacks/{pid}",
         "insights",

@@ -738,4 +738,11 @@ export default {
   "quota.clawbackReason": "原因",
   "quota.clawbackSet": "追回",
   "quota.clawbackRemove": "归还业绩",
+  "deal.delivery": "在项目组合中创建交付想法",
+  "deal.deliverySent": "交付想法已发送到项目组合",
+  "deal.deliveryAlready": "项目组合中已有此交易的交付想法",
+  "deal.deliveryStub": "未发送：到项目组合的桥接未启用。本应发送",
+  "quota.teamImport": "根据人员服务的部门设置团队",
+  "quota.teamImportStub": "未读取任何内容：到人员服务的桥接未启用",
+  "quota.teamImportDone": "已按部门设置团队",
 } satisfies Record<StringKey, string>;

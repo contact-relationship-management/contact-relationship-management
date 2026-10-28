@@ -78,6 +78,52 @@ async fn list_teams(State(ctx): State<AppContext>) -> Result<Response> {
     format::json(rows.iter().map(team_view).collect::<Result<Vec<_>>>()?)
 }
 
+/// Set the team of `name` (any case) to `members` inside `txn`, audited; `via` names what caused it
+/// (the worker service import, CRM-R73).
+pub(super) async fn put_team<C: ConnectionTrait>(
+    txn: &C,
+    who: &str,
+    actor: Option<&str>,
+    name: &str,
+    members: &[String],
+    via: Option<&str>,
+) -> Result<TeamView> {
+    let members_json = serde_json::to_value(members).map_err(|e| Error::string(&e.to_string()))?;
+    let row = txn
+        .query_one_raw(stmt(
+            &format!(
+                "INSERT INTO teams (pid, name, members, set_by) VALUES ($1, $2, $3::jsonb, $4) \
+                 ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, \
+                   members = EXCLUDED.members, set_by = EXCLUDED.set_by, updated_at = now() \
+                 RETURNING {TEAM_COLUMNS}"
+            ),
+            [
+                Uuid::new_v4().into(),
+                name.into(),
+                members_json.into(),
+                who.into(),
+            ],
+        ))
+        .await?
+        .ok_or(Error::NotFound)?;
+    let made = team_view(&row)?;
+    Audit::record(
+        txn,
+        "team",
+        row.try_get("", "pid")?,
+        "set",
+        actor,
+        Some(match via {
+            Some(via) => {
+                serde_json::json!({ "name": made.name, "members": made.members, "via": via })
+            }
+            None => serde_json::json!({ "name": made.name, "members": made.members }),
+        }),
+    )
+    .await?;
+    Ok(made)
+}
+
 /// `PUT /api/quotas/teams` — set a team; audited.
 #[debug_handler]
 async fn set_team(
@@ -104,36 +150,8 @@ async fn set_team(
         return Err(super::unprocessable("the team cannot be set"));
     };
     let who = owner_of(&caller)?;
-    let members =
-        serde_json::to_value(&payload.members).map_err(|e| Error::string(&e.to_string()))?;
     let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!(
-                "INSERT INTO teams (pid, name, members, set_by) VALUES ($1, $2, $3::jsonb, $4) \
-                 ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, \
-                   members = EXCLUDED.members, set_by = EXCLUDED.set_by, updated_at = now() \
-                 RETURNING {TEAM_COLUMNS}"
-            ),
-            [
-                Uuid::new_v4().into(),
-                name.as_str().into(),
-                members.into(),
-                who.into(),
-            ],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let made = team_view(&row)?;
-    Audit::record(
-        &txn,
-        "team",
-        row.try_get("", "pid")?,
-        "set",
-        caller.actor(),
-        Some(serde_json::json!({ "name": made.name, "members": made.members })),
-    )
-    .await?;
+    let made = put_team(&txn, &who, caller.actor(), &name, &payload.members, None).await?;
     txn.commit().await?;
     format::json(made)
 }

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `ticketSuggestions`, a list under the selected ticket, the tour's suggestions and a sixth knowledge-base article, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; one Playwright test (and the help centre test now counts five).
 
+### Added — bridge buttons (CRM-T139)
+
+A button on a won deal to open its delivery idea in the project portfolio, and one on `/quotas` to set teams from the worker service.
+
 ### Added — clawbacks on `/quotas` (CRM-T138)
 
 A form to claw credit back from a worker on a won deal and to give it back.

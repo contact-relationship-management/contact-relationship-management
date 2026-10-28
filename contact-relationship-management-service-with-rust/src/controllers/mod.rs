@@ -12,6 +12,7 @@ pub mod attribution;
 pub mod audits;
 pub mod board;
 pub mod break_glass;
+pub mod bridges;
 pub mod calendars;
 pub mod custom_fields;
 pub mod dashboards;
