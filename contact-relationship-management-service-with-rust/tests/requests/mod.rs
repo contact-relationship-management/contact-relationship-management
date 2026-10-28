@@ -26,6 +26,7 @@ mod inventory;
 mod kb;
 mod lead_assignment;
 mod lead_imports;
+mod log_retention;
 mod marketing;
 mod mcp;
 mod merge;

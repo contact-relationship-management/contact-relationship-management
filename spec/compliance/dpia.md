@@ -41,8 +41,9 @@ and the [record of processing](record-of-processing.md).
 - **Retention** *(system fact)*: the [schedule](personal-data-inventory.md#retention-schedule).
   Soft-deleted rows are hard-deleted by an operator-run sweep after `CRM_RETENTION_DAYS` (365,
   never below 30); consent history and the audit log are kept as evidence; a 24-hour cache expires
-  by itself; **email delivery and event rows, the event outbox and webhook deliveries are never
-  pruned today** (CRM-T140).
+  by itself; email delivery and event rows are pruned by their own horizon (730 days by default,
+  never below 400) and the event outbox and webhook deliveries by another (30 days, never below 7),
+  only when finished with (CRM-R81).
 - **Transfers outside the UK/EEA:** [deployer decides]. The software adds none of its own; the
   email provider, the hosting and any bridge target are where a transfer would arise.
 
@@ -76,7 +77,7 @@ Rated for the software as shipped. **L** = likelihood, **S** = severity, each Lo
 |---|---|---|---|---|
 | Unauthorized access to contact data | M | H | Authentication enforced when `CRM_REQUIRE_AUTH` is on (it is a deployer's switch, off for demos); attribute-based access control on every route; record-level masking for aggregate reads and money; destructive actions and the routes that send data out (`/api/bridges`, quotas, webhooks) admin-only; TLS at the ingress is the deployer's | M if auth is on and the policy is reviewed; **High if it is left off** |
 | Alteration of the audit record | L | H | Hash-chained, append-only audit log; the chain is verifiable by an endpoint; external anchoring is the deployer's | L |
-| Over-retention | M | M | Retention sweep with a floor; **gaps**: email deliveries and events, the event outbox and webhook deliveries are never pruned (CRM-T140) | M until CRM-T140 closes, or the deployer prunes them |
+| Over-retention | M | M | Retention sweep with a floor for soft-deleted rows; delivery and event logs pruned by age once finished with, each with its own horizon and floor (CRM-R81); the sweep is **run by an operator**, not on a schedule | L–M: it depends on the operator running the sweep |
 | Marketing without consent | L | H | Consent gate in the send path and again at send time; segments require `consent = granted`; suppression survives; unsubscribe in every message | L |
 | Special-category data in free text | M | H | Policy and training (deployer); the system cannot detect it; erasure scrubs activity summaries and a lead's name | M, **High if patients or citizens are contacts** |
 | Data sent to another service by a bridge | L | M | Admin only; stub unless `CRM_UPSTREAM_MODE=http`; only a deal's name, amount and tags are sent, once per deal; every opening is audited | L |

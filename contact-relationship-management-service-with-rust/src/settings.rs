@@ -42,6 +42,11 @@ pub struct Settings {
     pub trust_forwarded_for: bool,
     /// `CRM_UPSTREAM_MODE`: `http` looks names up; anything else is the stub.
     pub upstream_mode: Mode,
+    /// `CRM_EVENT_RETENTION_DAYS`, raw: how long the event outbox and webhook deliveries are kept
+    /// (parsed and floored by the retention rules; CRM-R81).
+    pub event_retention_days: Option<String>,
+    /// `CRM_MAIL_RETENTION_DAYS`, raw: how long email deliveries and events are kept (CRM-R81).
+    pub mail_retention_days: Option<String>,
     /// `CRM_MIN_CELL_SIZE`: a report leaves out a group with fewer records than this (CRM-R78):
     /// 5 by default, 0 for none, at most 1000.
     pub min_cell_size: i64,
@@ -190,6 +195,8 @@ impl Settings {
             } else {
                 Mode::Stub
             },
+            event_retention_days: get("CRM_EVENT_RETENTION_DAYS"),
+            mail_retention_days: get("CRM_MAIL_RETENTION_DAYS"),
             min_cell_size: get("CRM_MIN_CELL_SIZE")
                 .and_then(|v| v.trim().parse::<i64>().ok())
                 .map_or(5, |n| n.clamp(0, 1000)),

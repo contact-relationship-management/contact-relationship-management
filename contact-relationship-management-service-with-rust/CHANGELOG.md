@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.
 
+### Added — log retention (CRM-T140, CRM-R81)
+
+`CRM_EVENT_RETENTION_DAYS`, `CRM_MAIL_RETENTION_DAYS`; `logs_past_horizon` in `GET /api/retention`; `logs_deleted` in the sweep's answer.
+
 ### Changed — single-use link tokens (CRM-T146, CRM-R79)
 
 Migration `000050` (`link_tokens`); the `link_tokens` module; the signed confirm and preference tokens are gone from `unsubscribe.rs`.

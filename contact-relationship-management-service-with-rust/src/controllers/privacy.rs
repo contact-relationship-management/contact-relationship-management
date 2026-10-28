@@ -350,6 +350,12 @@ pub(crate) struct RetentionReport {
     /// Rows past the horizon, by table (tables with none are left out).
     soft_deleted_past_horizon: std::collections::BTreeMap<String, i64>,
     withdrawn_consent_past_horizon: usize,
+    /// Days the event outbox and webhook deliveries are kept (`CRM_EVENT_RETENTION_DAYS`, CRM-R81).
+    event_horizon_days: i64,
+    /// Days email deliveries and events are kept (`CRM_MAIL_RETENTION_DAYS`, CRM-R81).
+    mail_horizon_days: i64,
+    /// Delivery and event rows the sweep would delete for their age, by table (none left out).
+    logs_past_horizon: std::collections::BTreeMap<String, i64>,
     derivation: &'static str,
 }
 
@@ -359,6 +365,11 @@ pub(crate) struct RetentionSweep {
     horizon_days: i64,
     /// Rows deleted, by table (tables with none are left out).
     deleted: std::collections::BTreeMap<String, u64>,
+    /// Delivery and event rows deleted for their age, by table (CRM-R81).
+    logs_deleted: std::collections::BTreeMap<String, u64>,
+    event_horizon_days: i64,
+    mail_horizon_days: i64,
+    /// Everything deleted, soft-deleted rows and logs together.
     rows_deleted: u64,
 }
 
@@ -366,6 +377,23 @@ pub(crate) struct RetentionSweep {
 /// floor 30 — CRM-D14).
 fn horizon_days() -> i64 {
     rules::retention_days(crate::settings::current().retention_days.as_deref())
+}
+
+/// The horizon in days for a log table's rule (CRM-R81).
+fn log_horizon(horizon: rules::Horizon) -> i64 {
+    let settings = crate::settings::current();
+    match horizon {
+        rules::Horizon::Event => {
+            rules::event_retention_days(settings.event_retention_days.as_deref())
+        }
+        rules::Horizon::Mail => rules::mail_retention_days(settings.mail_retention_days.as_deref()),
+    }
+}
+
+/// The `WHERE` of a log rule at its horizon. The horizon is a clamped integer, never text.
+fn log_condition(rule: &rules::LogRule) -> String {
+    rule.condition
+        .replace("{days}", &log_horizon(rule.horizon).to_string())
 }
 
 /// `GET /api/retention` — the report: per table, soft-deleted rows
@@ -408,15 +436,39 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
         .all(&ctx.db)
         .await?
         .len();
+    let mut logs = std::collections::BTreeMap::new();
+    for rule in rules::log_rules(crate::models::deliveries::MAX_ATTEMPTS) {
+        let count = ctx
+            .db
+            .query_one_raw(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Postgres,
+                format!(
+                    "SELECT COUNT(*) AS n FROM {} WHERE {}",
+                    rule.table,
+                    log_condition(&rule)
+                ),
+            ))
+            .await?
+            .and_then(|row| row.try_get::<i64>("", "n").ok())
+            .unwrap_or(0);
+        if count > 0 {
+            logs.insert(rule.table.to_string(), count);
+        }
+    }
     format::json(RetentionReport {
         as_of: chrono::Utc::now(),
         horizon_days: days,
         soft_deleted_past_horizon: tables,
         withdrawn_consent_past_horizon,
+        event_horizon_days: log_horizon(rules::Horizon::Event),
+        mail_horizon_days: log_horizon(rules::Horizon::Mail),
+        logs_past_horizon: logs,
         derivation: "soft-deleted rows older than the horizon are hard-deleted by the \
                      sweep; contacts with marketing_consent = withdrawn since before the \
                      horizon are reported (not auto-scrubbed — each still needs the \
-                     /erase gate, CRM-R20); the horizon floors at 30 days (CRM-D14)",
+                     /erase gate, CRM-R20); the horizon floors at 30 days (CRM-D14); delivery \
+                     and event rows that are finished with are deleted by their own, separate \
+                     horizons (CRM-R81)",
     })
 }
 
@@ -440,6 +492,25 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
             total += result.rows_affected();
         }
     }
+    // Delivery and event logs that are finished with, on their own horizons (CRM-R81).
+    let mut logs_deleted = std::collections::BTreeMap::new();
+    for rule in rules::log_rules(crate::models::deliveries::MAX_ATTEMPTS) {
+        let result = txn
+            .execute_unprepared(&format!(
+                "DELETE FROM {} WHERE {}",
+                rule.table,
+                log_condition(&rule)
+            ))
+            .await?;
+        if result.rows_affected() > 0 {
+            logs_deleted.insert(rule.table.to_string(), result.rows_affected());
+            total += result.rows_affected();
+        }
+    }
+    let (event_horizon_days, mail_horizon_days) = (
+        log_horizon(rules::Horizon::Event),
+        log_horizon(rules::Horizon::Mail),
+    );
     Audit::record(
         &txn,
         "retention",
@@ -449,6 +520,9 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
         Some(serde_json::json!({
             "horizon_days": days,
             "rows_deleted": total,
+            "logs_deleted": logs_deleted,
+            "event_horizon_days": event_horizon_days,
+            "mail_horizon_days": mail_horizon_days,
         })),
     )
     .await?;
@@ -456,6 +530,9 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
     format::json(RetentionSweep {
         horizon_days: days,
         deleted,
+        logs_deleted,
+        event_horizon_days,
+        mail_horizon_days,
         rows_deleted: total,
     })
 }

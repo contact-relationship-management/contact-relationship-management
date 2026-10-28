@@ -23,13 +23,18 @@ address a web form or import gave it).
 | `evidence` | Append-only compliance evidence, kept on purpose and never altered. | Until the deployer's own archive rule |
 | `ttl` | Deleted automatically when it is old enough. | 24 hours for `idempotency_keys`; a week after it expires or is spent for `link_tokens` |
 | `manual` | Kept until a person removes it through the API, or until its contact is erased (the last column). Most of these are configuration or hold no personal data. | No automatic period |
+| `aged` | A delivery or event log. Rows that are **finished with** are hard-deleted by the same sweep once they are older than their own horizon; a row something may still act on is never touched (see below). | `CRM_EVENT_RETENTION_DAYS` for the event outbox and webhook deliveries (**30 by default, never below 7**); `CRM_MAIL_RETENTION_DAYS` for email deliveries and events (**730 by default, never below 400**: attribution looks back 365 days) |
 | `gap` | Holds personal data or identifiers and **has no deletion path today**. | None: a deployer must archive or delete these by its own means until a task closes the gap |
 
-**Gaps, in plain words.** Email deliveries and events, the event outbox and webhook deliveries
-are never pruned. They hold contact pids, message ids and event payloads, not names, but they
-are personal data while a pid can be joined back to a person. A retention rule for them is
-[CRM-T140](../tasks.md). Until then the deployer's schedule (database job or partition drop) is the
-control, and the [operations runbook](operations-runbook.md) is where it belongs.
+**What `aged` deletes, and what it never does** (CRM-R81). Email deliveries: only a delivery
+that was sent, or failed for good (five attempts), of a campaign that has completed or been
+cancelled, or of no campaign (a nurture step); a pending, retryable or running-campaign delivery
+stays. Email events: any older than the horizon. The event outbox: only an event that has been
+published **and** handed to the webhooks; one still owed stays. Webhook deliveries: any that is no
+longer pending. A row is never deleted for being old alone if something may still act on it.
+
+**Gaps.** None are open at the moment: every table that holds personal data has a deletion path or
+is kept as evidence on purpose. A new table has to be classed here before it exists (the test).
 
 **What the sweep does not do.** It never erases a contact: a contact whose marketing consent has
 been withdrawn past the horizon is only *reported*. Erasing is a separate, gated act
@@ -60,11 +65,11 @@ history remain under a pid that no longer identifies anyone.
 | `deal_deliveries` | Deal pid, the idea's id in PPM, who opened it | Reps | `manual` | Not applicable |
 | `deal_splits` | Worker references and shares | Reps | `manual` | Not applicable |
 | `deals` | Name (may name a customer), amount, owner reference, primary contact pid, lost reason (free text) | Contacts, reps | `swept` | Kept: revenue records, keyed to a pid that no longer identifies anyone |
-| `email_deliveries` | Contact pid, message id, provider id, send state and error text | Contacts | `gap` | Kept |
-| `email_events` | Message id and the provider event (delivered, bounced, opened, clicked) | Contacts, through the message id | `gap` | Kept |
+| `email_deliveries` | Contact pid, message id, provider id, send state and error text | Contacts | `aged` | Kept |
+| `email_events` | Message id and the provider event (delivered, bounced, opened, clicked) | Contacts, through the message id | `aged` | Kept |
 | `email_suppressions` | Contact pid and the reason a mailbox is suppressed | Contacts | `manual` | Kept: a suppression must survive |
 | `email_templates` | None (template text) | — | `manual` | Not applicable |
-| `event_outbox` | Event payloads: record pids, actor, field values the event carries | Contacts, reps | `gap` | Kept |
+| `event_outbox` | Event payloads: record pids, actor, field values the event carries | Contacts, reps | `aged` | Kept |
 | `external_links` | URL, external id, label, who created it, by subject | Contacts, accounts, deals | `manual` | Links of the contact deleted |
 | `forecast_snapshots` | None (totals per day) | — | `swept` | Not applicable |
 | `form_submissions` | Contact pid, lead pid, form, purpose, confirmation times | Contacts | `manual` | Submissions of the contact deleted |
@@ -95,7 +100,7 @@ history remain under a pid that no longer identifies anyone.
 | `territories` | Name, owner reference | Reps | `manual` | Not applicable |
 | `territory_accounts` | Organization reference | Organizations | `manual` | Not applicable |
 | `tickets` | Title (free text), contact pid, assignee reference, times | Contacts, reps | `swept` | Kept: keyed to a pid that no longer identifies anyone |
-| `webhook_deliveries` | Event id and record pid, send state and the receiver's error text | Contacts, through the record | `gap` | Pending ones cancelled; rows kept |
+| `webhook_deliveries` | Event id and record pid, send state and the receiver's error text | Contacts, through the record | `aged` | Pending ones cancelled; rows kept |
 | `webhook_subscriptions` | Receiver URL, signing secrets, who created it | Reps | `manual` | Not applicable |
 | `workflow_runs` | Workflow name, the record it ran on, the outcome and steps | Contacts, through the record | `manual` | Kept |
 | `workflows` | None (rules) | — | `manual` | Not applicable |

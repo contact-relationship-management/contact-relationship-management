@@ -20940,8 +20940,22 @@ export interface components {
             /** Format: date-time */
             as_of: string;
             derivation: string;
+            /**
+             * Format: int64
+             * @description Days the event outbox and webhook deliveries are kept (`CRM_EVENT_RETENTION_DAYS`, CRM-R81).
+             */
+            event_horizon_days: number;
             /** Format: int64 */
             horizon_days: number;
+            /** @description Delivery and event rows the sweep would delete for their age, by table (none left out). */
+            logs_past_horizon: {
+                [key: string]: number;
+            };
+            /**
+             * Format: int64
+             * @description Days email deliveries and events are kept (`CRM_MAIL_RETENTION_DAYS`, CRM-R81).
+             */
+            mail_horizon_days: number;
             /** @description Rows past the horizon, by table (tables with none are left out). */
             soft_deleted_past_horizon: {
                 [key: string]: number;
@@ -20956,8 +20970,19 @@ export interface components {
                 [key: string]: number;
             };
             /** Format: int64 */
+            event_horizon_days: number;
+            /** Format: int64 */
             horizon_days: number;
-            /** Format: uint64 */
+            /** @description Delivery and event rows deleted for their age, by table (CRM-R81). */
+            logs_deleted: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            mail_horizon_days: number;
+            /**
+             * Format: uint64
+             * @description Everything deleted, soft-deleted rows and logs together.
+             */
             rows_deleted: number;
         };
         /** @description Body of `POST /api/break-glass/{pid}/review`. */

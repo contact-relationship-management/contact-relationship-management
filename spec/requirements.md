@@ -1280,3 +1280,17 @@ recipient would get before anything is sent, and be certain every message carrie
 - The project's **own lint rule** (no page reads an error's text, CRM-R76) is tested: a sample page that reads an error's `message`, or prints an error as a string, is refused; the same in a script and in a component; and the one module that may read an error, and ordinary code, are left alone.
 - `pnpm lint` and `pnpm format` cover the same files (`src`, `tests`, `scripts` and the top-level configuration files), where they covered only `src`; CI's front-end job already runs `pnpm run lint`, and its coverage run runs this test.
 - Not built: Prettier for `.svelte` files (needs a plugin the project does not use); a format check of the Markdown or the locale files; the Rust side, whose `rustfmt` and `clippy` are CI steps already.
+
+## CRM-R81 — Delivery and event logs are pruned by age
+
+*As a data protection officer, I want the delivery and event logs to have a retention period like everything else, so that contact pids, message ids and event payloads are not kept for ever.*
+
+- `POST /api/retention/sweep` (and its report, `GET /api/retention`) also covers four logs, each with a rule for which rows are **finished with**:
+  - **email deliveries**: sent, or failed for good (five attempts), more than the horizon ago, and of a campaign that has `completed` or been `cancelled`, or of no campaign (a nurture step); a pending, retryable or running-campaign delivery is never deleted, since a run could still send or retry it.
+  - **email events**: received more than the horizon ago.
+  - **the event outbox**: published more than the horizon ago **and** handed to the webhooks; an event not yet published or fanned out is still owed to a subscriber and stays.
+  - **webhook deliveries**: no longer `pending`, last changed more than the horizon ago.
+- Two horizons, both settings: `CRM_EVENT_RETENTION_DAYS` for the outbox and webhook deliveries (30 by default, never below 7) and `CRM_MAIL_RETENTION_DAYS` for email deliveries and events (730 by default, **never below 400**, because attribution reads opens and clicks up to 365 days back from a deal's close). A value below its floor is raised to it.
+- The report adds `event_horizon_days`, `mail_horizon_days` and `logs_past_horizon` (rows by table); the sweep adds `logs_deleted`, the two horizons and counts them in `rows_deleted`; the audit entry records them. The sweep stays an operator's act: nothing deletes on a timer.
+- The inventory marks these four tables `aged`, and its test requires `aged` to be exactly the tables the sweep prunes by age.
+- Not built: running the sweep on a schedule; separate horizons per table; archiving instead of deleting.

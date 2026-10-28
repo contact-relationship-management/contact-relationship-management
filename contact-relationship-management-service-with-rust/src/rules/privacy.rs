@@ -38,6 +38,100 @@ pub fn retention_days(raw: Option<&str>) -> i64 {
         .max(RETENTION_FLOOR_DAYS)
 }
 
+/// Default horizon (days) for the event outbox and webhook deliveries, when `CRM_EVENT_RETENTION_DAYS`
+/// is unset (CRM-R81). They are working records of delivery, not evidence.
+pub const EVENT_DEFAULT_DAYS: i64 = 30;
+/// Floor for it: a week, so a receiver that was down for a few days can still be retried and
+/// investigated before the record of the attempt is gone.
+pub const EVENT_FLOOR_DAYS: i64 = 7;
+
+/// Default horizon (days) for email deliveries and events, when `CRM_MAIL_RETENTION_DAYS` is unset.
+pub const MAIL_DEFAULT_DAYS: i64 = 730;
+/// Floor for it. An open or click is a touch for attribution, which looks back at most 365 days
+/// from a deal's close, so events must outlive that window with room to spare.
+pub const MAIL_FLOOR_DAYS: i64 = 400;
+
+fn horizon(raw: Option<&str>, default: i64, floor: i64) -> i64 {
+    raw.and_then(|value| value.trim().parse::<i64>().ok())
+        .unwrap_or(default)
+        .max(floor)
+}
+
+/// The horizon for the event outbox and webhook deliveries: unset, blank or junk is the default,
+/// and anything below the floor is raised to it.
+#[must_use]
+pub fn event_retention_days(raw: Option<&str>) -> i64 {
+    horizon(raw, EVENT_DEFAULT_DAYS, EVENT_FLOOR_DAYS)
+}
+
+/// The horizon for email deliveries and events, read the same way.
+#[must_use]
+pub fn mail_retention_days(raw: Option<&str>) -> i64 {
+    horizon(raw, MAIL_DEFAULT_DAYS, MAIL_FLOOR_DAYS)
+}
+
+/// Which of the two horizons a log table is held to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Horizon {
+    /// `CRM_EVENT_RETENTION_DAYS`.
+    Event,
+    /// `CRM_MAIL_RETENTION_DAYS`.
+    Mail,
+}
+
+/// A delivery or event table the sweep prunes, and what makes a row **finished with** (CRM-R81).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LogRule {
+    /// The table.
+    pub table: &'static str,
+    /// Which horizon applies.
+    pub horizon: Horizon,
+    /// The rows that may go once they are older than the horizon; `{days}` is the horizon. A row
+    /// that something may still act on (a pending delivery, an unpublished event, a delivery of a
+    /// running campaign) is never matched.
+    pub condition: String,
+}
+
+/// The tables pruned by age rather than by a soft-delete: delivery and event logs. `max_attempts`
+/// is how many sends a failed delivery gets, after which it is final.
+#[must_use]
+pub fn log_rules(max_attempts: i32) -> Vec<LogRule> {
+    vec![
+        LogRule {
+            table: "email_deliveries",
+            horizon: Horizon::Mail,
+            // Sent, or failed for good, a long time ago, and of a campaign that cannot run again
+            // (or of no campaign: a nurture step). A running campaign may still send or retry.
+            condition: format!(
+                "(state = 'sent' OR (state = 'failed' AND attempts >= {max_attempts})) \
+                 AND COALESCE(sent_at, updated_at) < now() - interval '{{days}} days' \
+                 AND NOT EXISTS (SELECT 1 FROM campaigns c WHERE c.pid = email_deliveries.campaign_pid \
+                                 AND c.status NOT IN ('completed', 'cancelled'))"
+            ),
+        },
+        LogRule {
+            table: "email_events",
+            horizon: Horizon::Mail,
+            condition: "received_at < now() - interval '{days} days'".to_string(),
+        },
+        LogRule {
+            table: "event_outbox",
+            horizon: Horizon::Event,
+            // Only an event that has been published and handed to the webhooks: an unpublished one
+            // is still owed to a subscriber.
+            condition: "published_at IS NOT NULL AND webhook_fanned_out_at IS NOT NULL \
+                        AND published_at < now() - interval '{days} days'"
+                .to_string(),
+        },
+        LogRule {
+            table: "webhook_deliveries",
+            horizon: Horizon::Event,
+            condition: "status <> 'pending' AND updated_at < now() - interval '{days} days'"
+                .to_string(),
+        },
+    ]
+}
+
 /// Every table with a `deleted_at` column, for the retention sweep.
 /// Kept in one place so a new soft-deleting table is added here (the
 /// sweep test counts this list against the entity modules). Unlike
@@ -125,5 +219,65 @@ mod tests {
                 "{table} has no deleted_at column"
             );
         }
+    }
+
+    #[test]
+    fn the_log_horizons_default_and_never_go_below_their_floors() {
+        assert_eq!(event_retention_days(None), EVENT_DEFAULT_DAYS);
+        assert_eq!(event_retention_days(Some("junk")), EVENT_DEFAULT_DAYS);
+        assert_eq!(event_retention_days(Some("90")), 90);
+        assert_eq!(event_retention_days(Some("1")), EVENT_FLOOR_DAYS);
+        assert_eq!(mail_retention_days(None), MAIL_DEFAULT_DAYS);
+        assert_eq!(mail_retention_days(Some(" 1000 ")), 1000);
+        assert_eq!(mail_retention_days(Some("30")), MAIL_FLOOR_DAYS);
+        assert_eq!(mail_retention_days(Some("-1")), MAIL_FLOOR_DAYS);
+    }
+
+    #[test]
+    fn the_mail_floor_outlives_the_longest_attribution_window() {
+        // Attribution looks back at most 365 days from a deal's close.
+        // Checked when the code is built, not when the test runs.
+        const {
+            assert!(MAIL_FLOOR_DAYS > 365);
+            assert!(MAIL_DEFAULT_DAYS >= MAIL_FLOOR_DAYS);
+            assert!(EVENT_DEFAULT_DAYS >= EVENT_FLOOR_DAYS);
+        }
+    }
+
+    #[test]
+    fn each_log_rule_names_its_table_and_uses_the_horizon_and_never_matches_pending_work() {
+        let rules = log_rules(5);
+        let tables: Vec<&str> = rules.iter().map(|r| r.table).collect();
+        assert_eq!(
+            tables,
+            [
+                "email_deliveries",
+                "email_events",
+                "event_outbox",
+                "webhook_deliveries"
+            ]
+        );
+        for rule in &rules {
+            assert!(rule.condition.contains("{days}"), "{}", rule.table);
+        }
+        let by = |t: &str| {
+            rules
+                .iter()
+                .find(|r| r.table == t)
+                .unwrap()
+                .condition
+                .clone()
+        };
+        // A delivery that may still be sent, retried or claimed is not matched.
+        assert!(by("email_deliveries").contains("state = 'sent'"));
+        assert!(by("email_deliveries").contains("attempts >= 5"));
+        assert!(by("email_deliveries").contains("NOT IN ('completed', 'cancelled')"));
+        assert!(!by("email_deliveries").contains("'pending'"));
+        // An event not yet published and fanned out is still owed.
+        assert!(by("event_outbox").contains("published_at IS NOT NULL"));
+        assert!(by("event_outbox").contains("webhook_fanned_out_at IS NOT NULL"));
+        assert!(by("webhook_deliveries").contains("status <> 'pending'"));
+        assert_eq!(rules[0].horizon, Horizon::Mail);
+        assert_eq!(rules[2].horizon, Horizon::Event);
     }
 }

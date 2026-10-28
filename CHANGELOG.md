@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — retention for delivery and event logs (CRM-T140, CRM-R81)
+
+The retention sweep also prunes email deliveries and events (`CRM_MAIL_RETENTION_DAYS`, 730 days, never below 400) and the event outbox and webhook deliveries (`CRM_EVENT_RETENTION_DAYS`, 30 days, never below 7), only rows that are finished with.
+
 ### Added — ESLint and Prettier as tests (CRM-T147, CRM-R80)
 
 `pnpm test` fails on a lint or formatting fault and tests the project's own lint rule; `pnpm lint` and `pnpm format` now cover tests, scripts and the configuration files.

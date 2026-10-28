@@ -5,12 +5,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use contact_relationship_management::app::App;
-use contact_relationship_management::rules::privacy::SOFT_DELETED_TABLES;
+use contact_relationship_management::models::deliveries::MAX_ATTEMPTS;
+use contact_relationship_management::rules::privacy::{SOFT_DELETED_TABLES, log_rules};
 use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serial_test::serial;
 
-const CLASSES: [&str; 5] = ["swept", "evidence", "ttl", "manual", "gap"];
+const CLASSES: [&str; 6] = ["swept", "aged", "evidence", "ttl", "manual", "gap"];
 
 /// `table -> retention class`, from the inventory table: the rows with five cells, the first and
 /// fourth of which are in backticks.
@@ -81,6 +82,19 @@ async fn every_table_is_in_the_inventory_and_the_swept_ones_are_those_the_sweep_
         assert_eq!(
             swept, deleted_from,
             "`swept` must be exactly what the sweep deletes from"
+        );
+
+        // `aged` is exactly the logs the sweep prunes by age (CRM-R81).
+        let aged: BTreeSet<&str> = listed
+            .iter()
+            .filter(|(_, class)| *class == "aged")
+            .map(|(table, _)| table.as_str())
+            .collect();
+        let rules = log_rules(MAX_ATTEMPTS);
+        let pruned: BTreeSet<&str> = rules.iter().map(|rule| rule.table).collect();
+        assert_eq!(
+            aged, pruned,
+            "`aged` must be exactly what the sweep prunes by age"
         );
 
         // Every table the sweep reaches has the column it deletes by.
