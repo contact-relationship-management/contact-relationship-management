@@ -38,6 +38,16 @@ fn path_of(url: &str) -> String {
         .to_string()
 }
 
+/// The link to the next choice, which a preference page puts in each of its buttons.
+fn next_path(html: &str) -> String {
+    let start = html
+        .find("action=\"/preferences/")
+        .expect("a form with a link")
+        + "action=\"".len();
+    let end = start + html[start..].find('"').expect("the link ends");
+    html[start..end].to_string()
+}
+
 macro_rules! give_address {
     ($request:expr, $pid:expr, $address:expr) => {{
         let detail: Value = $request
@@ -221,7 +231,7 @@ async fn each_purpose_is_its_own_and_only_granted_allows_a_send() {
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_double_opt_in_is_pending_until_the_person_confirms_and_never_overrides_a_withdrawal() {
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         let (_recorder, _restore) = recording();
         let pid = seed_contact!(&request, "Double Opt In").await;
         let requested = request_consent!(request, pid, "events");
@@ -253,8 +263,48 @@ async fn a_double_opt_in_is_pending_until_the_person_confirms_and_never_override
             (Some("events"), Some("granted"), Some("double_opt_in")),
             "{last}"
         );
-        // A repeat is harmless and records nothing more.
-        request.post(&path).await.assert_status_ok();
+        // The link works once (CRM-R79): a repeat finds it spent, opens nothing and records
+        // nothing more, and the database never held the token, only its hash.
+        request
+            .post(&path)
+            .await
+            .assert_status(StatusCode::NOT_FOUND);
+        request
+            .get(&path)
+            .await
+            .assert_status(StatusCode::NOT_FOUND);
+        let token = path.trim_start_matches("/confirm/");
+        let held = |column: &'static str, value: String| {
+            let db = &ctx.db;
+            async move {
+                use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+                db.query_one_raw(Statement::from_string(
+                    DatabaseBackend::Postgres,
+                    format!(
+                        "SELECT count(*) AS n FROM link_tokens WHERE {column} = '{value}' \
+                         AND used_at IS NOT NULL"
+                    ),
+                ))
+                .await
+                .unwrap()
+                .unwrap()
+                .try_get::<i64>("", "n")
+                .unwrap()
+            }
+        };
+        assert_eq!(
+            held(
+                "token_hash",
+                contact_relationship_management::link_tokens::hash(token)
+            )
+            .await,
+            1
+        );
+        assert_eq!(
+            held("token_hash", token.to_string()).await,
+            0,
+            "the token itself is not kept"
+        );
         let again: Value = request
             .get(&format!("/api/contacts/{pid}/consent"))
             .await
@@ -345,34 +395,58 @@ async fn the_preference_page_changes_one_purpose_at_a_time() {
             .post(&format!("/api/contacts/{pid}/preferences-link"))
             .await
             .json();
-        let path = path_of(link["url"].as_str().unwrap());
-        assert!(path.starts_with("/preferences/"));
+        let first = path_of(link["url"].as_str().unwrap());
+        assert!(first.starts_with("/preferences/"));
 
-        let page = request.get(&path).await;
-        page.assert_status_ok();
-        let html = page.text();
-        for purpose in ["marketing", "newsletter", "events", "product_updates"] {
-            assert!(
-                html.contains(&format!("value=\"{purpose}\"")),
-                "{purpose} in {html}"
-            );
+        // Opening the page spends nothing, however often it is opened.
+        for _ in 0..2 {
+            let page = request.get(&first).await;
+            page.assert_status_ok();
+            let html = page.text();
+            for purpose in ["marketing", "newsletter", "events", "product_updates"] {
+                assert!(
+                    html.contains(&format!("value=\"{purpose}\"")),
+                    "{purpose} in {html}"
+                );
+            }
+            assert_eq!(page.header("cache-control"), "no-store");
         }
-        assert_eq!(page.header("cache-control"), "no-store");
 
-        request
-            .post(&path)
+        // A choice spends the link and the answer carries the next one (CRM-R79).
+        let answer = request
+            .post(&first)
             .form(&[("purpose", "newsletter"), ("action", "granted")])
-            .await
-            .assert_status_ok();
+            .await;
+        answer.assert_status_ok();
         assert_eq!(state!(request, pid, "newsletter"), "granted");
         assert_eq!(state!(request, pid, "marketing"), "granted");
+        let second = next_path(&answer.text());
+        assert_ne!(second, first);
+        // The mailed link is spent: a replay of it changes nothing and opens nothing.
         request
-            .post(&path)
-            .form(&[("purpose", "marketing"), ("action", "withdrawn")])
+            .post(&first)
+            .form(&[("purpose", "newsletter"), ("action", "withdrawn")])
             .await
-            .assert_status_ok();
+            .assert_status(StatusCode::NOT_FOUND);
+        request
+            .get(&first)
+            .await
+            .assert_status(StatusCode::NOT_FOUND);
+        assert_eq!(state!(request, pid, "newsletter"), "granted");
+
+        let answer = request
+            .post(&second)
+            .form(&[("purpose", "marketing"), ("action", "withdrawn")])
+            .await;
+        answer.assert_status_ok();
         assert_eq!(state!(request, pid, "marketing"), "withdrawn");
         assert_eq!(state!(request, pid, "newsletter"), "granted");
+        let third = next_path(&answer.text());
+        request
+            .post(&second)
+            .form(&[("purpose", "marketing"), ("action", "granted")])
+            .await
+            .assert_status(StatusCode::NOT_FOUND);
         let history: Value = request
             .get(&format!("/api/contacts/{pid}/consent"))
             .await
@@ -382,16 +456,18 @@ async fn the_preference_page_changes_one_purpose_at_a_time() {
             "preference_page"
         );
 
+        // A choice that is refused spends nothing: the same link still works afterwards.
         request
-            .post(&path)
+            .post(&third)
             .form(&[("purpose", "bogus"), ("action", "granted")])
             .await
             .assert_status(StatusCode::UNPROCESSABLE_ENTITY);
         request
-            .post(&path)
+            .post(&third)
             .form(&[("purpose", "events"), ("action", "pending")])
             .await
             .assert_status(StatusCode::UNPROCESSABLE_ENTITY);
+        request.get(&third).await.assert_status_ok();
         request
             .get("/preferences/garbage")
             .await
@@ -560,6 +636,112 @@ async fn erasure_withdraws_every_purpose_and_the_export_lists_them() {
             held,
             [("events".to_string(), "withdrawn".to_string()), ("newsletter".to_string(), "withdrawn".to_string())]
         );
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_link_token_works_once_even_when_used_twice_at_once_expires_and_goes_with_the_contact() {
+    request::<App, _, _>(|request, ctx| async move {
+        use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+        let (_recorder, _restore) = recording();
+        let sql = |text: String| {
+            let db = &ctx.db;
+            async move {
+                db.execute_raw(Statement::from_string(DatabaseBackend::Postgres, text))
+                    .await
+                    .unwrap();
+            }
+        };
+        let count = |text: String| {
+            let db = &ctx.db;
+            async move {
+                db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, text))
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .try_get::<i64>("", "n")
+                    .unwrap()
+            }
+        };
+
+        // Used twice at once: one of the two gets it, and the purpose is confirmed once.
+        let pid = seed_contact!(&request, "Twice At Once").await;
+        let asked = request_consent!(request, pid, "events");
+        let path = path_of(asked["confirm_url"].as_str().unwrap());
+        let (a, b) = tokio::join!(request.post(&path), request.post(&path));
+        let mut codes = [a.status_code().as_u16(), b.status_code().as_u16()];
+        codes.sort_unstable();
+        assert_eq!(
+            codes,
+            [200, 404],
+            "exactly one of two simultaneous uses wins"
+        );
+        assert_eq!(state!(request, pid, "events"), "granted");
+
+        // Expired: neither the page nor the button works, and nothing is granted.
+        let asked = request_consent!(request, pid, "newsletter");
+        let path = path_of(asked["confirm_url"].as_str().unwrap());
+        sql(format!(
+            "UPDATE link_tokens SET expires_at = now() - interval '1 minute' \
+             WHERE contact_pid = '{pid}' AND used_at IS NULL"
+        ))
+        .await;
+        request
+            .get(&path)
+            .await
+            .assert_status(StatusCode::NOT_FOUND);
+        request
+            .post(&path)
+            .await
+            .assert_status(StatusCode::NOT_FOUND);
+        assert_eq!(state!(request, pid, "newsletter"), "pending");
+
+        // The cleanup deletes what expired or was spent more than a week ago, and keeps the rest.
+        sql(format!(
+            "UPDATE link_tokens SET expires_at = now() - interval '8 days' \
+             WHERE contact_pid = '{pid}' AND used_at IS NULL"
+        ))
+        .await;
+        sql(format!(
+            "UPDATE link_tokens SET used_at = now() - interval '8 days' \
+             WHERE contact_pid = '{pid}' AND used_at IS NOT NULL"
+        ))
+        .await;
+        let fresh = request_consent!(request, pid, "product_updates");
+        assert!(fresh["confirm_url"].is_string());
+        let swept = contact_relationship_management::link_tokens::sweep(&ctx.db)
+            .await
+            .unwrap();
+        assert_eq!(swept, 2);
+        assert_eq!(
+            count(format!(
+                "SELECT count(*) AS n FROM link_tokens WHERE contact_pid = '{pid}'"
+            ))
+            .await,
+            1,
+            "the unspent, unexpired one stays"
+        );
+
+        // Erasing the contact takes its links away, so none can be used afterwards.
+        let path = path_of(fresh["confirm_url"].as_str().unwrap());
+        request
+            .post(&format!("/api/contacts/{pid}/erase"))
+            .await
+            .assert_status_ok();
+        assert_eq!(
+            count(format!(
+                "SELECT count(*) AS n FROM link_tokens WHERE contact_pid = '{pid}'"
+            ))
+            .await,
+            0
+        );
+        request
+            .post(&path)
+            .await
+            .assert_status(StatusCode::NOT_FOUND);
     })
     .await;
 }

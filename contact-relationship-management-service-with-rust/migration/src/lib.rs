@@ -61,6 +61,7 @@ mod m20261028_000046_territories;
 mod m20261028_000047_wait_limit_action;
 mod m20261028_000048_clawbacks;
 mod m20261028_000049_deal_deliveries;
+mod m20261028_000050_link_tokens;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -120,6 +121,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261028_000047_wait_limit_action::Migration),
             Box::new(m20261028_000048_clawbacks::Migration),
             Box::new(m20261028_000049_deal_deliveries::Migration),
+            Box::new(m20261028_000050_link_tokens::Migration),
             // inject-above (do not remove this comment)
         ]
     }

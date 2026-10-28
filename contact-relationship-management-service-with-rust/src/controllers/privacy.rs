@@ -215,6 +215,7 @@ async fn erase_attached(
 /// continuity). Refused while a live engagement exists (CRM-R20).
 /// Destructive-classified; audited with counts.
 #[debug_handler]
+#[allow(clippy::too_many_lines)] // one statement for each place the contact's data lives
 async fn erase(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
@@ -287,6 +288,11 @@ async fn erase(
         format!(
             "UPDATE contact_consents SET state = 'withdrawn', changed_at = now() \
              WHERE contact_pid = '{cpid}' OR contact_pid IN \
+             (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
+        ),
+        // Mailed links that still work for this person or the duplicates merged into it (CRM-R79).
+        format!(
+            "DELETE FROM link_tokens WHERE contact_pid = '{cpid}' OR contact_pid IN \
              (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
         ),
     ];

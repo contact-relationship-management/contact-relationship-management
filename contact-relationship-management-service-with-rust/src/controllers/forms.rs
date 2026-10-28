@@ -250,7 +250,7 @@ async fn accept(ctx: &AppContext, form: &WebForm, payload: &FormPayload) -> Resu
         state != "granted" && !confirmation_sent_lately(&txn, contact.pid, &form.purpose).await?;
     let submission = record_submission(&txn, form, contact.pid, lead_pid, ask).await?;
     txn.commit().await?;
-    if ask && !send_confirmation(form, &contact, name, email).await {
+    if ask && !send_confirmation(&ctx.db, form, &contact, name, email).await {
         clear_sent_mark(&ctx.db, submission).await;
     }
     Ok(())
@@ -392,6 +392,7 @@ async fn clear_sent_mark(db: &sea_orm::DatabaseConnection, submission: Uuid) {
 /// Send the confirmation to the address in the request. It is not marketing and carries no
 /// unsubscribe link. Returns whether it went out; a failure is logged and not shown.
 async fn send_confirmation(
+    db: &sea_orm::DatabaseConnection,
     form: &WebForm,
     contact: &contacts::Model,
     name: &str,
@@ -409,10 +410,22 @@ async fn send_confirmation(
         return false;
     };
     let expires = chrono::Utc::now() + chrono::Duration::days(CONFIRM_DAYS);
-    let link = signer.link(
-        "confirm",
-        &signer.confirm_token(contact.pid, index, expires.timestamp()),
-    );
+    let token = match crate::link_tokens::issue(
+        db,
+        crate::link_tokens::CONFIRM,
+        contact.pid,
+        index,
+        expires,
+    )
+    .await
+    {
+        Ok(token) => token,
+        Err(error) => {
+            tracing::warn!(form = %form.slug, %error, "web form: could not make a confirmation link");
+            return false;
+        }
+    };
+    let link = signer.link("confirm", &token);
     let sender = mail::current();
     let message = mail::Message {
         to: email.to_string(),

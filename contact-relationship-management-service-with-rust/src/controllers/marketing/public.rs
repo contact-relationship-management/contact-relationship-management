@@ -379,11 +379,18 @@ fn invalid_link() -> Response {
     )
 }
 
-/// The purpose a confirmation token names, with the contact.
-fn confirm_target(token: &str) -> Option<(Uuid, &'static str)> {
-    let (contact, index) =
-        crate::unsubscribe::current()?.verify_confirm(token, chrono::Utc::now().timestamp())?;
-    Some((contact, tokens::PURPOSES.get(usize::from(index))?))
+/// The purpose a confirmation token names, with the contact, **without spending it** (CRM-R79).
+async fn confirm_target(
+    db: &sea_orm::DatabaseConnection,
+    token: &str,
+) -> Option<(Uuid, &'static str)> {
+    let target = crate::link_tokens::peek(db, crate::link_tokens::CONFIRM, token)
+        .await
+        .ok()??;
+    Some((
+        target.contact,
+        tokens::PURPOSES.get(usize::from(target.detail))?,
+    ))
 }
 
 /// The words for a purpose on the public pages.
@@ -400,8 +407,11 @@ pub(crate) fn purpose_label(purpose: &str) -> &'static str {
 /// `GET /confirm/{token}` — the page a confirmation message links to. It changes nothing,
 /// because mail scanners follow links; the button posts (CRM-R29).
 #[debug_handler]
-pub(super) async fn confirm_page_get(Path(token): Path<String>) -> Response {
-    let Some((_, purpose)) = confirm_target(&token) else {
+pub(super) async fn confirm_page_get(
+    State(ctx): State<AppContext>,
+    Path(token): Path<String>,
+) -> Response {
+    let Some((_, purpose)) = confirm_target(&ctx.db, &token).await else {
         return invalid_link();
     };
     public_page(
@@ -424,11 +434,21 @@ pub(super) async fn confirm_post(
     Path(token): Path<String>,
 ) -> Response {
     use axum::http::StatusCode;
-    let Some((contact_pid, purpose)) = confirm_target(&token) else {
-        return invalid_link();
-    };
+    // The token is spent in the same transaction as the confirmation, so a failure leaves it
+    // usable and a second request, even a simultaneous one, finds it spent (CRM-R79).
+    let mut purpose = "";
     let outcome: Result<Option<bool>> = async {
         let txn = ctx.db.begin().await?;
+        let Some(spent) =
+            crate::link_tokens::consume(&txn, crate::link_tokens::CONFIRM, &token).await?
+        else {
+            return Ok(None);
+        };
+        let Some(named) = tokens::PURPOSES.get(usize::from(spent.detail)) else {
+            return Ok(None);
+        };
+        purpose = named;
+        let contact_pid = spent.contact;
         let Ok(contact) = records::find_contact(&txn, contact_pid).await else {
             return Ok(None);
         };
@@ -468,8 +488,12 @@ pub(super) async fn confirm_post(
     }
 }
 
-fn preferences_contact(token: &str) -> Option<Uuid> {
-    crate::unsubscribe::current()?.verify_preferences(token, chrono::Utc::now().timestamp())
+/// The contact a preference link names, **without spending it** (CRM-R79).
+async fn preferences_contact(db: &sea_orm::DatabaseConnection, token: &str) -> Option<Uuid> {
+    crate::link_tokens::peek(db, crate::link_tokens::PREFERENCES, token)
+        .await
+        .ok()?
+        .map(|target| target.contact)
 }
 
 /// The preference page: each purpose with the choice that is not the current one.
@@ -516,7 +540,7 @@ pub(super) async fn preferences_page_get(
     State(ctx): State<AppContext>,
     Path(token): Path<String>,
 ) -> Response {
-    let Some(contact) = preferences_contact(&token) else {
+    let Some(contact) = preferences_contact(&ctx.db, &token).await else {
         return invalid_link();
     };
     preferences_html(&ctx.db, contact, &token)
@@ -539,9 +563,6 @@ pub(super) async fn preferences_post(
     Path(token): Path<String>,
     axum::extract::Form(choice): axum::extract::Form<PreferenceChoice>,
 ) -> Response {
-    let Some(contact_pid) = preferences_contact(&token) else {
-        return invalid_link();
-    };
     let Some(purpose) = tokens::PURPOSES.iter().find(|p| **p == choice.purpose) else {
         return public_page(
             axum::http::StatusCode::UNPROCESSABLE_ENTITY,
@@ -556,11 +577,20 @@ pub(super) async fn preferences_post(
             "<h1>That choice is not available.</h1>",
         );
     }
+    // A choice is made with a link that works once: it is spent here, with the change, and the
+    // page that answers carries a fresh one, for the next choice, that expires when the first
+    // would have (CRM-R79).
     let outcome: Result<Response> = async {
-        let contact = records::find_contact(&ctx.db, contact_pid).await?;
-        if crate::consents::state_of(&ctx.db, &contact, purpose).await? != choice.action {
-            apply_consent(
-                &ctx.db,
+        let txn = ctx.db.begin().await?;
+        let Some(spent) =
+            crate::link_tokens::consume(&txn, crate::link_tokens::PREFERENCES, &token).await?
+        else {
+            return Ok(invalid_link());
+        };
+        let contact = records::find_contact(&txn, spent.contact).await?;
+        if crate::consents::state_of(&txn, &contact, purpose).await? != choice.action {
+            apply_consent_in(
+                &txn,
                 contact,
                 purpose,
                 &choice.action,
@@ -569,7 +599,16 @@ pub(super) async fn preferences_post(
             )
             .await?;
         }
-        preferences_html(&ctx.db, contact_pid, &token).await
+        let next = crate::link_tokens::issue(
+            &txn,
+            crate::link_tokens::PREFERENCES,
+            spent.contact,
+            0,
+            spent.expires_at,
+        )
+        .await?;
+        txn.commit().await?;
+        preferences_html(&ctx.db, spent.contact, &next).await
     }
     .await;
     outcome.unwrap_or_else(|error| {

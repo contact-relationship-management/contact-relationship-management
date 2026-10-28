@@ -51,6 +51,7 @@ pub mod hardening;
 pub mod idempotency;
 pub mod idempotency_store;
 pub mod json;
+pub mod link_tokens;
 pub mod mail;
 pub mod mcp;
 pub mod metrics;

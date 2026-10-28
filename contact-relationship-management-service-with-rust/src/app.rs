@@ -202,6 +202,10 @@ impl Hooks for App {
                 {
                     tracing::warn!(%error, "idempotency cleanup failed");
                 }
+                // CRM-R79: link tokens that expired or were spent more than a week ago.
+                if let Err(error) = crate::link_tokens::sweep(&idem_db).await {
+                    tracing::warn!(%error, "link token cleanup failed");
+                }
                 tokio::time::sleep(std::time::Duration::from_hours(1)).await;
             }
         });

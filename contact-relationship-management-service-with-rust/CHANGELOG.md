@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.
 
+### Changed — single-use link tokens (CRM-T146, CRM-R79)
+
+Migration `000050` (`link_tokens`); the `link_tokens` module; the signed confirm and preference tokens are gone from `unsubscribe.rs`.
+
 ### Added — small-cell suppression (CRM-T145, CRM-R78)
 
 `CRM_MIN_CELL_SIZE`; `min_cell_size` and `suppressed` in a report's answer and audit entry; `rules::reports::suppress`.

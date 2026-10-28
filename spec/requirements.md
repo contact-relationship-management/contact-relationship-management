@@ -1259,3 +1259,15 @@ recipient would get before anything is sent, and be certain every message carrie
 - **Primary suppression only.** An answer carries no total, so a left-out cell cannot be got by subtraction from it; but two reports asked in different ways (one grouped by status, another by status and then filtered to one owner) can still be compared by a determined caller. Secondary suppression across reports is not built.
 - The Reports page says how many groups were left out and why.
 - Not built: secondary suppression, a different threshold per kind or per caller, rounding of counts, noise; the fixed dashboards and the attribution, funnel and attainment views.
+
+## CRM-R79 — Confirmation and preference links work once, and are kept only as a hash
+
+*As a person who is mailed a link, I want it to work once and no longer, so that a copy of the email, or of the database, cannot be used to confirm or change what I agreed to.*
+
+- The **confirmation** link (double opt-in, CRM-R29) and the **preference-page** link (CRM-R29) carry a random token of 256 bits, 43 URL-safe characters, made by the operating system's generator. The database keeps only its **SHA-256** (`link_tokens`: the hash, the kind, the contact pid, the purpose index, the times); the token itself exists only in the mailed link, so a copy of the table opens nothing.
+- A token **works once**. It is spent by the request that acts on it, **in the same transaction as the act**: a confirmation that fails leaves the link usable, and two simultaneous requests are decided by the database, so exactly one wins and the other finds it spent. A spent, expired, unknown, mistyped or wrong-kind token is the same `404` page as before.
+- **Opening the page spends nothing** (`GET /confirm/{token}` and `GET /preferences/{token}`), because mail scanners follow links. The button spends it.
+- A **preference choice** spends the link and the page that answers carries a **fresh** token in its buttons, expiring when the first would have, so a person can make several choices but the link in the email works for the first only. A choice that is refused spends nothing.
+- A token expires as before (confirmation and preference links are valid for the days they were issued for). The rows of tokens that expired or were spent **more than a week ago are deleted** by the hourly job that also drops idempotency keys, and **erasing a contact deletes its tokens**.
+- The **unsubscribe link is not one of these**: it is a signed, stateless token that never expires and is not single-use, deliberately, so a recipient can leave from any old message; replaying it only withdraws consent again.
+- Not built: single-use for the unsubscribe link; a keyed hash (a 256-bit random token needs none); revoking a person's links on demand other than by erasure; a "this link was already used" page that differs from "not valid or has expired".

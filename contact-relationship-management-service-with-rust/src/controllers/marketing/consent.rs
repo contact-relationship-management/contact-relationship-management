@@ -240,7 +240,9 @@ pub(super) async fn request_consent(
         caller.actor(),
     )
     .await?;
-    let token = signer.confirm_token(pid, index, expires_at.timestamp());
+    let token =
+        crate::link_tokens::issue(&ctx.db, crate::link_tokens::CONFIRM, pid, index, expires_at)
+            .await?;
     format::json(ConsentRequested {
         purpose: payload.purpose,
         state: "pending",
@@ -267,7 +269,14 @@ pub(super) async fn preferences_link(
     let signer = unsubscriber()?;
     let contact = records::find_contact(&ctx.db, pid).await?;
     let expires_at = chrono::Utc::now() + chrono::Duration::days(PREFERENCES_DAYS);
-    let token = signer.preferences_token(contact.pid, expires_at.timestamp());
+    let token = crate::link_tokens::issue(
+        &ctx.db,
+        crate::link_tokens::PREFERENCES,
+        contact.pid,
+        0,
+        expires_at,
+    )
+    .await?;
     format::json(PreferencesLink {
         url: signer.link("preferences", &token),
         expires_at,

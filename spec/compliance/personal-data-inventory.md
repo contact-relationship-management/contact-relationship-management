@@ -21,7 +21,7 @@ address a web form or import gave it).
 |---|---|---|
 | `swept` | A row is kept while it is live. Once soft-deleted it is **hard-deleted** by `POST /api/retention/sweep` (an operator runs it; `GET /api/retention` shows what it would delete). | `CRM_RETENTION_DAYS` after the soft-delete: **365 by default, never below 30** |
 | `evidence` | Append-only compliance evidence, kept on purpose and never altered. | Until the deployer's own archive rule |
-| `ttl` | Deleted automatically when it is old enough. | 24 hours |
+| `ttl` | Deleted automatically when it is old enough. | 24 hours for `idempotency_keys`; a week after it expires or is spent for `link_tokens` |
 | `manual` | Kept until a person removes it through the API, or until its contact is erased (the last column). Most of these are configuration or hold no personal data. | No automatic period |
 | `gap` | Holds personal data or identifiers and **has no deletion path today**. | None: a deployer must archive or delete these by its own means until a task closes the gap |
 
@@ -73,6 +73,7 @@ history remain under a pid that no longer identifies anyone.
 | `kb_daily` | None (daily article counts) | — | `manual` | Not applicable |
 | `lead_imports` | Who imported, source note, the pids created | Reps; leads | `manual` | Not applicable |
 | `leads` | Display name, email address and its domain, source, score, owner | Leads | `swept` | Name and address scrubbed for a contact's lead |
+| `link_tokens` | A hash of each mailed confirmation or preference link (never the token), the contact pid it names, its purpose index and times | Contacts | `ttl` | Deleted with the contact; the rest a week after they expire or are spent |
 | `memberships` | Account pid and dates | Organizations | `swept` | Not applicable |
 | `notifications` | Recipient reference, the kind and the record it points at | Reps; contacts, through the record | `manual` | Notifications about the contact deleted |
 | `nurture_enrollments` | Sequence and contact pid, step and next due time | Contacts | `swept` | Kept |

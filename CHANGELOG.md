@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Changed — confirmation and preference links work once (CRM-T146, CRM-R79)
+
+They are random tokens kept only as a hash, spent in the transaction of the act they allow, and deleted a week after they expire or are spent. A preference choice hands the page a fresh token. The unsubscribe link is unchanged, on purpose.
+
 ### Added — small groups are left out of reports (CRM-T145, CRM-R78)
 
 A report leaves out any group with fewer than `CRM_MIN_CELL_SIZE` records behind it (5 by default, 0 for none) and says how many it left out. Primary suppression only.
