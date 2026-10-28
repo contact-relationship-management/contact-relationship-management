@@ -1571,14 +1571,14 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "post",
         "/api/sla-policies",
         "support",
-        "Set a priority's SLA targets",
+        "Set a priority's SLA targets, optionally with max_wait_minutes and what the sweep does past it: wait_limit_action flag (default), resolve, or escalate to escalate_to (a worker); 422 naming the member otherwise (CRM-R64, CRM-R69)",
         Kind::Created,
     ),
     (
         "post",
         "/api/sla/sweep",
         "support",
-        "Persist breach facts + emit sla_breached once per breach",
+        "Persist breach facts + emit sla_breached once per breach; act once on each waiting ticket past its policy's limit (flag, resolve or escalate) and count them (CRM-R64, CRM-R69)",
         Kind::Ok,
     ),
     (

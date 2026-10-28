@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — resolving or escalating a ticket that waits too long (CRM-T136, CRM-R69)
+
+An SLA policy may set `wait_limit_action` (`flag`, `resolve` or `escalate`, with `escalate_to`) beside `max_wait_minutes`: the sweep resolves the ticket or reassigns it to that worker, once. It resolves rather than closes, since `closed` is final.
+
 ### Added — territories of named accounts (CRM-T135, CRM-R68)
 
 `GET`, `PUT` and `DELETE /api/quotas/territories` and `GET /api/quotas/territory-attainment` (admin only): a territory is a named list of accounts, each in at most one, and the revenue won on them is added per currency, never converted. The `/quotas` page keeps territories and shows what was won.

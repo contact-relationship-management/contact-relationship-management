@@ -23,6 +23,10 @@ pub struct Model {
     pub calendar_pid: Option<Uuid>,
     /// The most minutes a ticket of this priority may wait in `pending` before the sweep flags it (CRM-R64).
     pub max_wait_minutes: Option<i32>,
+    /// What the sweep does past that limit: `flag`, `resolve` or `escalate` (CRM-R69).
+    pub wait_limit_action: String,
+    /// The worker an `escalate` hands the ticket to.
+    pub escalate_to: Option<String>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

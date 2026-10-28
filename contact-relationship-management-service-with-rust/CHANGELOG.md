@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.
 
+### Added — wait-limit actions (CRM-T136, CRM-R69)
+
+`wait_limit_action` and `escalate_to` on `POST /api/sla-policies`; migration `000047`; `new_wait_limit_resolved` and `new_wait_limit_escalated` in the sweep's answer.
+
 ### Added — territories of named accounts (CRM-T135, CRM-R68)
 
 `GET`, `PUT` and `DELETE /api/quotas/territories` and `GET /api/quotas/territory-attainment`, admin only; migration `000046`. An account is in at most one territory; revenue is per currency, never converted.

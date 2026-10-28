@@ -341,3 +341,113 @@ async fn a_ticket_left_waiting_past_its_policys_limit_is_flagged_once_and_cleare
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_policy_can_resolve_or_escalate_a_ticket_left_waiting_past_its_limit() {
+    request::<App, _, _>(|request, ctx| async move {
+        let worker = format!("worker:{}", uuid::Uuid::new_v4());
+        let policy = |priority: &'static str, action: Value, to: Value| {
+            let request = &request;
+            async move {
+                request
+                    .post("/api/sla-policies")
+                    .json(&json!({ "priority": priority, "first_response_minutes": 60,
+                                   "resolution_minutes": 240, "max_wait_minutes": 60,
+                                   "wait_limit_action": action, "escalate_to": to }))
+                    .await
+            }
+        };
+        policy("normal", json!("resolve"), Value::Null)
+            .await
+            .assert_status_ok();
+        policy("high", json!("escalate"), json!(worker))
+            .await
+            .assert_status_ok();
+        policy("low", json!("flag"), Value::Null)
+            .await
+            .assert_status_ok();
+
+        // Refused: escalating without a worker, a worker without escalating, an unknown action,
+        // an action with no limit to act on.
+        for (action, to) in [
+            (json!("escalate"), Value::Null),
+            (json!("flag"), json!(worker)),
+            (json!("delete"), Value::Null),
+            (json!("escalate"), json!("contact:x")),
+        ] {
+            policy("urgent", action, to)
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+        request
+            .post("/api/sla-policies")
+            .json(&json!({ "priority": "urgent", "first_response_minutes": 15,
+                           "resolution_minutes": 240, "wait_limit_action": "resolve" }))
+            .await
+            .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+
+        let wait = |priority: &'static str| {
+            let (request, ctx) = (&request, &ctx);
+            async move {
+                let made: Value = request
+                    .post("/api/tickets")
+                    .json(&json!({ "title": priority, "priority": priority }))
+                    .await
+                    .json();
+                let pid = made["pid"].as_str().unwrap().to_string();
+                request
+                    .post(&format!("/api/tickets/{pid}/status"))
+                    .json(&json!({ "to": "pending" }))
+                    .await
+                    .assert_status_ok();
+                sql(
+                    &ctx.db,
+                    "UPDATE tickets SET paused_at = now() - interval '90 minutes' \
+                     WHERE pid = $1::uuid",
+                    &pid,
+                )
+                .await;
+                pid
+            }
+        };
+        let (resolved, escalated, flagged) =
+            (wait("normal").await, wait("high").await, wait("low").await);
+
+        let swept: Value = request.post("/api/sla/sweep").await.json();
+        assert_eq!(swept["new_wait_limits_exceeded"], 3, "{swept}");
+        assert_eq!(swept["new_wait_limit_resolved"], 1, "{swept}");
+        assert_eq!(swept["new_wait_limit_escalated"], 1, "{swept}");
+        let ticket = |pid: String| {
+            let request = &request;
+            async move {
+                let detail: Value = request.get(&format!("/api/tickets/{pid}")).await.json();
+                detail["ticket"].clone()
+            }
+        };
+
+        // Resolved: out of `pending`, the clock running again, nothing left flagged.
+        let done = ticket(resolved).await;
+        assert_eq!(done["status"], "resolved", "{done}");
+        assert!(
+            done["paused_at"].is_null() && done["resolved_at"].is_string(),
+            "{done}"
+        );
+        // Escalated: still waiting, handed to the worker, flagged.
+        let handed = ticket(escalated).await;
+        assert_eq!(handed["status"], "pending", "{handed}");
+        assert_eq!(handed["assignee_ref"], worker.as_str(), "{handed}");
+        assert!(handed["wait_limit_exceeded_at"].is_string(), "{handed}");
+        // Flagged only: as before.
+        let only = ticket(flagged).await;
+        assert_eq!(only["status"], "pending", "{only}");
+        assert!(only["assignee_ref"].is_null(), "{only}");
+        assert!(only["wait_limit_exceeded_at"].is_string(), "{only}");
+
+        // Once: nothing more happens on the next sweep.
+        let again: Value = request.post("/api/sla/sweep").await.json();
+        assert_eq!(again["new_wait_limits_exceeded"], 0, "{again}");
+    })
+    .await;
+}

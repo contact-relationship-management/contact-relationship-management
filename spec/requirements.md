@@ -1153,3 +1153,13 @@ recipient would get before anything is sent, and be certain every message carrie
 - A territory has no quota of its own; it reports what was won.
 - Not built: territories by country, region or tag (the CRM holds no geography); a territory's own quota; rules that route a new account to a territory; moving open deals.
 - The `/quotas` page keeps territories and shows what was won in each.
+
+## CRM-R69 — What happens to a ticket that waits too long
+
+*As a support lead, I choose what the sweep does with a ticket left waiting past its limit, so that a ticket stopped on the customer is dealt with and not only flagged.*
+
+- `POST /api/sla-policies` takes an optional `wait_limit_action` beside `max_wait_minutes` (CRM-R64): `flag` (the default and the earlier behaviour), `resolve` or `escalate`. An action other than `flag` needs a `max_wait_minutes` to act on; anything else is `422` naming `/wait_limit_action`.
+- `escalate` also takes `escalate_to`, a worker (`worker:<id>`), required for it and refused with any other action (`422` naming `/escalate_to`). The sweep flags the ticket as in CRM-R64 and **reassigns it to that worker**; it stays `pending` and its clock stays stopped. Audited as `ticket_escalated` with `via: wait_limit`.
+- `resolve` resolves the ticket as a status change from `pending` does (CRM-R55): the clock resumes, `resolved_at` is set, audited with `via: wait_limit`. A customer reply cannot reopen a resolved ticket (CRM-R63), but a status change to `open` can. It is **resolved, not closed**: `closed` is final and can only follow `resolved`, so an automatic step stops short of it and a person closes the ticket.
+- Each ticket is acted on **once**, as before. `POST /api/sla/sweep` counts them in `new_wait_limits_exceeded`, with `new_wait_limit_resolved` and `new_wait_limit_escalated` saying how many of those were resolved or reassigned. `ticket_wait_limit_exceeded` is emitted for each, with the `action` taken.
+- Not built: closing a ticket automatically; escalating by raising its priority; a limit or an action on an existing policy (a policy is created with them); a warning before the limit; telling the customer.

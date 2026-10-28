@@ -37,6 +37,13 @@ pub(crate) struct PolicyPayload {
     /// (CRM-R64). Leave out for no limit.
     #[serde(default)]
     max_wait_minutes: Option<i32>,
+    /// What the sweep does with a ticket past `max_wait_minutes` (CRM-R69): `flag` (the default),
+    /// `resolve` it (a status change to `open` reopens it) or `escalate` it to `escalate_to`.
+    #[serde(default)]
+    wait_limit_action: Option<String>,
+    /// The worker (`worker:<id>`) an `escalate` reassigns the ticket to; only with `escalate`.
+    #[serde(default)]
+    escalate_to: Option<String>,
 }
 
 /// `PUT /api/sla-policies/{pid}/calendar` body.
@@ -133,6 +140,22 @@ async fn create_policy(
     if payload.max_wait_minutes.is_some_and(|m| m <= 0) {
         problems.push_field("max_wait_minutes", "must be positive");
     }
+    let action = payload.wait_limit_action.as_deref().unwrap_or("flag");
+    if !["flag", "resolve", "escalate"].contains(&action) {
+        problems.push_field("wait_limit_action", "one of flag, resolve, escalate");
+    } else if action != "flag" && payload.max_wait_minutes.is_none() {
+        problems.push_field("wait_limit_action", "needs a max_wait_minutes to act on");
+    }
+    if action == "escalate" {
+        match payload.escalate_to.as_deref() {
+            Some(worker) => {
+                problems.require_ref("escalate_to", entity_ref::EntityType::Worker, worker);
+            }
+            None => problems.push_field("escalate_to", "escalating needs a worker"),
+        }
+    } else if payload.escalate_to.is_some() {
+        problems.push_field("escalate_to", "only with the escalate action");
+    }
     problems.finish()?;
     if let Some(calendar) = payload.calendar_pid
         && !super::calendars::exists(&ctx.db, calendar).await?
@@ -147,6 +170,8 @@ async fn create_policy(
         resolution_minutes: ActiveValue::set(payload.resolution_minutes),
         calendar_pid: ActiveValue::set(payload.calendar_pid),
         max_wait_minutes: ActiveValue::set(payload.max_wait_minutes),
+        wait_limit_action: ActiveValue::set(action.to_string()),
+        escalate_to: ActiveValue::set(payload.escalate_to.clone()),
         deleted_at: ActiveValue::set(None),
         ..Default::default()
     }
@@ -350,65 +375,105 @@ pub(crate) struct TicketDetail {
     activities: Vec<activities::Model>,
 }
 
-/// Flag each `pending` ticket that has waited longer than its policy's `max_wait_minutes`, once:
-/// the moment is stored and `ticket_wait_limit_exceeded` is emitted (CRM-R64). Nothing else
-/// changes: the clock stays stopped and the ticket stays `pending`.
+/// What the sweep did with the tickets past their policy's wait limit.
+#[derive(Debug, Default)]
+struct WaitSweep {
+    exceeded: u64,
+    resolved: u64,
+    escalated: u64,
+}
+
+/// Act on each `pending` ticket that has waited longer than its policy's `max_wait_minutes`, once
+/// (CRM-R64, CRM-R69): `flag` stores the moment and emits `ticket_wait_limit_exceeded`; `escalate`
+/// does that and hands the ticket to the policy's worker; `resolve` resolves it, the clock resuming
+/// as for any status change. A ticket stays `pending` unless the policy resolves it.
 async fn sweep_waiting(
     ctx: &AppContext,
     caller: &MaybeAuthUser,
     now: chrono::DateTime<chrono::FixedOffset>,
-) -> Result<u64> {
-    let limits: std::collections::HashMap<String, i32> = sla_policies::Entity::find()
-        .filter(sla_policies::Column::DeletedAt.is_null())
-        .filter(sla_policies::Column::MaxWaitMinutes.is_not_null())
-        .all(&ctx.db)
-        .await?
-        .into_iter()
-        .filter_map(|p| p.max_wait_minutes.map(|m| (p.priority, m)))
-        .collect();
+) -> Result<WaitSweep> {
+    let limits: std::collections::HashMap<String, (i32, String, Option<String>)> =
+        sla_policies::Entity::find()
+            .filter(sla_policies::Column::DeletedAt.is_null())
+            .filter(sla_policies::Column::MaxWaitMinutes.is_not_null())
+            .all(&ctx.db)
+            .await?
+            .into_iter()
+            .filter_map(|p| {
+                p.max_wait_minutes
+                    .map(|m| (p.priority, (m, p.wait_limit_action, p.escalate_to)))
+            })
+            .collect();
+    let mut done = WaitSweep::default();
     if limits.is_empty() {
-        return Ok(0);
+        return Ok(done);
     }
     let waiting = tickets::Entity::find_live()
         .filter(tickets::Column::Status.eq("pending"))
         .filter(tickets::Column::WaitLimitExceededAt.is_null())
         .all(&ctx.db)
         .await?;
-    let mut found = 0;
     for ticket in waiting {
-        let (Some(limit), Some(since)) = (limits.get(&ticket.priority), ticket.paused_at) else {
+        let (Some((limit, action, escalate_to)), Some(since)) =
+            (limits.get(&ticket.priority), ticket.paused_at)
+        else {
             continue;
         };
         if now - since <= chrono::Duration::minutes(i64::from(*limit)) {
             continue;
         }
-        let txn = ctx.db.begin().await?;
         let (pid, title) = (ticket.pid, ticket.title.clone());
-        let mut active: tickets::ActiveModel = ticket.into();
-        active.wait_limit_exceeded_at = ActiveValue::set(Some(now));
-        active.update(&txn).await?;
+        if action == "resolve" {
+            transition(ctx, caller, ticket, "resolved", Some("wait_limit")).await?;
+            done.resolved += 1;
+        } else {
+            let txn = ctx.db.begin().await?;
+            let mut active: tickets::ActiveModel = ticket.into();
+            active.wait_limit_exceeded_at = ActiveValue::set(Some(now));
+            if action == "escalate" {
+                active.assignee_ref = ActiveValue::set(escalate_to.clone());
+                done.escalated += 1;
+            }
+            active.update(&txn).await?;
+            if action == "escalate" {
+                Audit::record(
+                    &txn,
+                    "ticket",
+                    pid,
+                    "ticket_escalated",
+                    caller.actor(),
+                    Some(serde_json::json!({ "to": escalate_to, "via": "wait_limit" })),
+                )
+                .await?;
+            }
+            txn.commit().await?;
+        }
         streaming::emit_on(
-            &txn,
+            &ctx.db,
             "ticket",
             "ticket_wait_limit_exceeded",
             &pid.to_string(),
             &title,
             caller.actor(),
-            Some(serde_json::json!({ "waiting_since": since })),
+            Some(serde_json::json!({ "waiting_since": since, "action": action })),
         )
         .await?;
-        txn.commit().await?;
-        found += 1;
+        done.exceeded += 1;
     }
-    Ok(found)
+    Ok(done)
 }
 
 /// `POST /api/sla/sweep`: how many tickets crossed a deadline in this sweep.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
+#[allow(clippy::struct_field_names)] // the `new_` names are what clients read
 pub(crate) struct SlaSweep {
     new_breaches: u64,
     /// Waiting tickets found past their policy's `max_wait_minutes` in this sweep (CRM-R64).
     new_wait_limits_exceeded: u64,
+    /// Of those, tickets the policy resolved (CRM-R69).
+    new_wait_limit_resolved: u64,
+    /// Of those, tickets the policy reassigned to its worker (CRM-R69).
+    new_wait_limit_escalated: u64,
 }
 
 /// `GET /api/tickets/{pid}` — one ticket + its activities.
@@ -689,9 +754,12 @@ async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Resu
         breaches += u64::from(new_first) + u64::from(new_resolution);
         Metrics::global().sla_breached_total.inc();
     }
+    let waited = sweep_waiting(&ctx, &caller, now).await?;
     format::json(SlaSweep {
         new_breaches: breaches,
-        new_wait_limits_exceeded: sweep_waiting(&ctx, &caller, now).await?,
+        new_wait_limits_exceeded: waited.exceeded,
+        new_wait_limit_resolved: waited.resolved,
+        new_wait_limit_escalated: waited.escalated,
     })
 }
 

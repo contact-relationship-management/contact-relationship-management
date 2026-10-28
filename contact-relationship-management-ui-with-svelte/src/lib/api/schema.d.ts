@@ -14803,7 +14803,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Set a priority's SLA targets */
+        /** Set a priority's SLA targets, optionally with max_wait_minutes and what the sweep does past it: wait_limit_action flag (default), resolve, or escalate to escalate_to (a worker); 422 naming the member otherwise (CRM-R64, CRM-R69) */
         post: {
             parameters: {
                 query?: never;
@@ -14976,7 +14976,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Persist breach facts + emit sla_breached once per breach */
+        /** Persist breach facts + emit sla_breached once per breach; act once on each waiting ticket past its policy's limit (flag, resolve or escalate) and count them (CRM-R64, CRM-R69) */
         post: {
             parameters: {
                 query?: never;
@@ -20159,6 +20159,11 @@ export interface components {
              * @default null
              */
             calendar_pid: string | null;
+            /**
+             * @description The worker (`worker:<id>`) an `escalate` reassigns the ticket to; only with `escalate`.
+             * @default null
+             */
+            escalate_to: string | null;
             /** Format: int32 */
             first_response_minutes: number;
             /**
@@ -20171,6 +20176,12 @@ export interface components {
             priority: string;
             /** Format: int32 */
             resolution_minutes: number;
+            /**
+             * @description What the sweep does with a ticket past `max_wait_minutes` (CRM-R69): `flag` (the default),
+             *     `resolve` it (a status change to `open` reopens it) or `escalate` it to `escalate_to`.
+             * @default null
+             */
+            wait_limit_action: string | null;
         };
         /** @description `PUT /api/{deals,leads,tickets}/{pid}/position` body. */
         PositionPayload: {
@@ -20688,6 +20699,8 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             deleted_at: string | null;
+            /** @description The worker an `escalate` hands the ticket to. */
+            escalate_to: string | null;
             /** Format: int32 */
             first_response_minutes: number;
             /** Format: int32 */
@@ -20704,6 +20717,8 @@ export interface components {
             resolution_minutes: number;
             /** Format: date-time */
             updated_at: string;
+            /** @description What the sweep does past that limit: `flag`, `resolve` or `escalate` (CRM-R69). */
+            wait_limit_action: string;
         };
         /** @description `GET /api/insights/sla`. */
         SlaRegister: {
@@ -20717,6 +20732,16 @@ export interface components {
         SlaSweep: {
             /** Format: uint64 */
             new_breaches: number;
+            /**
+             * Format: uint64
+             * @description Of those, tickets the policy reassigned to its worker (CRM-R69).
+             */
+            new_wait_limit_escalated: number;
+            /**
+             * Format: uint64
+             * @description Of those, tickets the policy resolved (CRM-R69).
+             */
+            new_wait_limit_resolved: number;
             /**
              * Format: uint64
              * @description Waiting tickets found past their policy's `max_wait_minutes` in this sweep (CRM-R64).
