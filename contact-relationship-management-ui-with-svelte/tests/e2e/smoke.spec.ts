@@ -1062,7 +1062,13 @@ test.describe("masked amounts (CRM-T32)", () => {
           won_revenue_other_currencies: converted
             ? { JPY: 700 }
             : { USD: 20_000, JPY: 700 },
-          rate_date: converted ? "2026-10-26" : null,
+          rate_date:
+            converted && !route.request().url().includes("rate_basis")
+              ? "2026-10-26"
+              : null,
+          rate_basis: route.request().url().includes("rate_basis")
+            ? "close_day"
+            : null,
           rates: converted
             ? [
                 {
@@ -1092,6 +1098,18 @@ test.describe("masked amounts (CRM-T32)", () => {
     await expect(page.getByTestId("funnel-unconverted")).toContainText("JPY");
     await expect(page.getByTestId("funnel")).toContainText("£1,160.00");
     expect(asked.at(-1)).toContain("convert=true");
+    await expect(page.getByTestId("funnel-rates")).toContainText(
+      "(2026-10-26)",
+    );
+    // Each deal at the rate of the day it closed: the request says so, and no one day is shown.
+    await page.getByTestId("funnel-close-day").check();
+    await expect.poll(() => asked.at(-1)).toContain("rate_basis=close_day");
+    await expect(page.getByTestId("funnel-rates")).toContainText(
+      "1 USD = 0.8 GBP",
+    );
+    await expect(page.getByTestId("funnel-rates")).not.toContainText("(20");
+    await page.getByTestId("funnel-convert").uncheck();
+    await expect(page.getByTestId("funnel-close-day")).toBeDisabled();
   });
 });
 

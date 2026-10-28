@@ -598,8 +598,11 @@ pub(crate) struct CampaignFunnel {
     /// Won revenue in other currencies, never summed in.
     won_revenue_other_currencies: Option<std::collections::BTreeMap<String, i64>>,
     roi: Option<analytics::Ratio>,
-    /// With `convert=true`: the day whose exchange rates were used (CRM-R52).
+    /// With `convert=true`: the day whose exchange rates were used (CRM-R52); `null` with
+    /// `rate_basis`, where each deal has its own.
     rate_date: Option<chrono::NaiveDate>,
+    /// `close_day` when each deal was converted at the rate of the day it closed (CRM-R86).
+    rate_basis: Option<String>,
     /// With `convert=true`: the rate used for each currency that was converted.
     rates: Vec<crate::controllers::fx_rates::RateUsed>,
     /// With `convert=true`: revenue that had no rate in force and stays out of the figures.
@@ -613,6 +616,9 @@ pub(super) struct FunnelQuery {
     convert: Option<bool>,
     /// The day whose exchange rates are used (today when absent); only with `convert=true`.
     rate_date: Option<chrono::NaiveDate>,
+    /// `close_day`: convert each deal at the rate of the day it closed (CRM-R86); only with
+    /// `convert=true`, and not with `rate_date`.
+    rate_basis: Option<String>,
 }
 
 /// `GET /api/campaigns/{pid}/deliveries` — how a send is going: rows per state
@@ -693,6 +699,7 @@ pub(super) async fn clear_email_suppression(
 /// recipients → delivered → opened → clicked → leads → won revenue;
 /// ROI reports `null` on a zero cost, with absolutes alongside.
 #[debug_handler]
+#[allow(clippy::too_many_lines)] // one handler: read, convert (two ways) and answer
 pub(super) async fn campaign_funnel(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
@@ -700,11 +707,23 @@ pub(super) async fn campaign_funnel(
     axum::extract::Query(query): axum::extract::Query<FunnelQuery>,
 ) -> Result<Response> {
     let convert = query.convert.unwrap_or(false);
+    let mut problems = Problems::new();
     if !convert && query.rate_date.is_some() {
-        let mut problems = Problems::new();
         problems.push_field("rate_date", "needs convert=true");
-        problems.finish()?;
     }
+    if let Some(basis) = &query.rate_basis {
+        if !convert {
+            problems.push_field("rate_basis", "needs convert=true");
+        } else if basis != "close_day" {
+            problems.push_field("rate_basis", "only close_day");
+        } else if query.rate_date.is_some() {
+            problems.push_field(
+                "rate_date",
+                "not with rate_basis: each deal has its own day",
+            );
+        }
+    }
+    problems.finish()?;
     let masked =
         crate::auth::aggregate_masked(&caller).map_err(crate::controllers::record_rejection)?;
     let campaign = records::find_campaign(&ctx.db, pid).await?;
@@ -734,7 +753,30 @@ pub(super) async fn campaign_funnel(
     // With `convert=true`, revenue in other currencies is converted into the campaign's currency
     // (once per currency) and counts toward ROI; what has no rate stays listed apart.
     let mut conversion = None;
-    if convert && !other_currency.is_empty() {
+    let mut dated = None;
+    if convert && query.rate_basis.is_some() && !other_currency.is_empty() {
+        // Each deal at the rate of the day it closed, rounded once per deal (CRM-R86); what had
+        // no rate on its day is all that stays listed apart.
+        let foreign: Vec<(chrono::NaiveDate, String, i64)> = attributed_deals
+            .iter()
+            .filter(|deal| !deal.currency.eq_ignore_ascii_case(&campaign.currency))
+            .map(|deal| {
+                (
+                    deal.closed_at.unwrap_or(deal.updated_at).date_naive(),
+                    deal.currency.clone(),
+                    deal.amount_minor,
+                )
+            })
+            .collect();
+        let (total, rates, unconverted) =
+            crate::controllers::fx_rates::convert_dated(&ctx, &campaign.currency, &foreign).await?;
+        same_currency_revenue = same_currency_revenue.saturating_add(total);
+        other_currency = unconverted
+            .iter()
+            .map(|u| (u.currency.clone(), u.amount_minor))
+            .collect();
+        dated = Some((rates, unconverted));
+    } else if convert && !other_currency.is_empty() {
         let sums: Vec<(String, String, i64)> = other_currency
             .iter()
             .map(|(currency, amount)| ("revenue".to_string(), currency.clone(), *amount))
@@ -758,6 +800,10 @@ pub(super) async fn campaign_funnel(
         conversion = Some(done);
     }
     let (rate_date, rates, unconverted) = match conversion {
+        _ if query.rate_basis.is_some() => {
+            let (rates, unconverted) = dated.unwrap_or_default();
+            (None, rates, unconverted)
+        }
         Some(done) => (Some(done.rate_date), done.rates, done.unconverted),
         None if convert => (
             Some(
@@ -784,6 +830,7 @@ pub(super) async fn campaign_funnel(
         won_revenue_other_currencies: (!masked).then_some(other_currency),
         roi: (!masked).then_some(roi),
         rate_date,
+        rate_basis: query.rate_basis.clone(),
         rates: if masked { Vec::new() } else { rates },
         unconverted: if masked { Vec::new() } else { unconverted },
     })

@@ -3740,7 +3740,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Funnel + ROI (null on zero cost; per-currency honesty). ?convert=true with ?rate_date= (today when absent) converts revenue won in other currencies into the campaign's currency, naming the rates used and the revenue left out for want of a rate (CRM-R52) */
+        /** Funnel + ROI (null on zero cost; per-currency honesty). ?convert=true with ?rate_date= (today when absent) converts revenue won in other currencies into the campaign's currency, naming the rates used and the revenue left out for want of a rate (CRM-R52); with ?rate_basis=close_day each deal is converted at the rate of the day it closed instead (CRM-R86) */
         get: {
             parameters: {
                 query?: never;
@@ -18665,9 +18665,12 @@ export interface components {
             campaign: components["schemas"]["Campaign"];
             /** Format: uint */
             leads: number;
+            /** @description `close_day` when each deal was converted at the rate of the day it closed (CRM-R86). */
+            rate_basis: string | null;
             /**
              * Format: date
-             * @description With `convert=true`: the day whose exchange rates were used (CRM-R52).
+             * @description With `convert=true`: the day whose exchange rates were used (CRM-R52); `null` with
+             *     `rate_basis`, where each deal has its own.
              */
             rate_date: string | null;
             /** @description With `convert=true`: the rate used for each currency that was converted. */

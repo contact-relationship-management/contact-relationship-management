@@ -2104,9 +2104,18 @@ function runCampaign(pid: string): DemoReply {
   return ok(c);
 }
 
-function campaignFunnel(pid: string): DemoReply {
+function campaignFunnel(pid: string, query: URLSearchParams): DemoReply {
   const campaign = state.campaigns.find((c) => c.pid === pid);
   if (!campaign) return problem(404, "campaign not found");
+  const basis = query.get("rate_basis");
+  if (basis !== null) {
+    if (query.get("convert") !== "true")
+      return problem(422, "/rate_basis: needs convert=true");
+    if (basis !== "close_day")
+      return problem(422, "/rate_basis: only close_day");
+    if (query.get("rate_date") !== null)
+      return problem(422, "/rate_date: not with rate_basis");
+  }
   const index = state.campaigns.indexOf(campaign);
   const leads = [14, 9, 3, 0][index] ?? 0;
   const won = [3, 1, 0, 0][index] ?? 0;
@@ -2122,6 +2131,7 @@ function campaignFunnel(pid: string): DemoReply {
     // The tour's won revenue is all in the campaign's currency, so there is nothing to convert.
     won_revenue_other_currencies: {},
     rate_date: null,
+    rate_basis: basis,
     rates: [],
     unconverted: [],
   });
@@ -2572,7 +2582,7 @@ export function demoHandle(
       state.campaigns.push(made);
       return ok({ pid: made.pid });
     }
-    if (tail === "funnel" && get) return campaignFunnel(id!);
+    if (tail === "funnel" && get) return campaignFunnel(id!, query);
     if (tail === "run" && post) return runCampaign(id!);
     if (tail === "status" && post)
       return transition(state.campaigns, id!, body, "campaign");

@@ -1774,3 +1774,11 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a checkbox on `/attribution` with the existing `clv.closeDay` label; the tour's per-day conversion is now one function shared with the report builder; a tour end-to-end test.
       - **Found on the way:** `cargo fmt --check` had been failing on four files from CRM-T148 and CRM-T149; they are formatted.
       - **Not done:** see CRM-R85's list.
+
+- [x] CRM-T152 *(edge)* **Close-day rates in a campaign's ROI; the bridge contracts checked.** (S)
+      **Done (2026-10-28, not released):** requirement CRM-R86 first, then:
+      - **Service:** `rate_basis` on the funnel query, validated; each foreign-currency won deal converted with `fx_rates::convert_dated`; `won_revenue_other_currencies` is what had no rate on its day.
+      - **Tests:** `a_funnel_can_convert_each_deal_at_the_rate_of_the_day_it_closed` (113,000 against 112,000 at one date, ROI numerator 63,000, the dollars before any rate and the yen kept apart, three refusals with their pointers); the mocked live-UI funnel test now covers the checkbox, the request and the missing date.
+      - **UI:** a checkbox on `/campaigns` using the existing `clv.closeDay` label, enabled with the conversion; the rates list keyed by currency, day and direction.
+      - **Bridge contracts checked against the sibling source (CRM-R72, CRM-R73):** PPM `create_idea` (`strategy.rs`) and WPM `list_workers` (`hr_core.rs`) match what `clients.rs` sends and reads. Two findings: WPM refuses an offset above 10,000, so the worker import reads at most 51 pages of 200 and stops with a reason of ours; and **neither call sends credentials**, so each reaches its service only while that has authentication off (recorded in both requirements; a service-to-service credential is not built). Neither was run against a live service.
+      - **Not done:** see CRM-R86's list.

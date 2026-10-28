@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — close-day rates on the campaign funnel (CRM-T152, CRM-R86)
+
+A checkbox beside the conversion; the rates list is keyed by currency and day.
+
 ### Added — close-day rates on the attribution page (CRM-T151, CRM-R85)
 
 A checkbox converts each deal's share at the rate of the day it closed; the tour's per-day conversion is shared with the report builder.

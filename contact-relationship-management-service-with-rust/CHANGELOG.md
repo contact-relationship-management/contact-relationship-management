@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — close-day campaign ROI (CRM-T152, CRM-R86)
+
+`rate_basis` on the funnel query and answer; the worker import stops at 51 pages.
+
 ### Added — close-day attribution (CRM-T151, CRM-R85)
 
 `rate_basis` on `GET /api/attribution`; `rate_basis` in its answer.

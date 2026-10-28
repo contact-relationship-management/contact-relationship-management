@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — close-day rates in a campaign's ROI (CRM-T152, CRM-R86)
+
+`GET /api/campaigns/{pid}/funnel` takes `rate_basis=close_day` with `convert=true`. The bridge to WPM reads at most 51 pages of workers (WPM refuses a larger offset), and both bridges' contracts were checked against the sibling services' source; neither sends credentials yet.
+
 ### Added — close-day rates in attribution (CRM-T151, CRM-R85)
 
 `GET /api/attribution` takes `rate_basis=close_day`: each deal's share to a campaign is converted at the rate of the day the deal closed. Also: `cargo fmt` applied to four files that CI's format check would have refused.

@@ -812,7 +812,12 @@ export function listCampaigns(init?: FetchLike): Promise<Campaign[]> {
 /** One campaign's funnel + ROI; `convert` counts other currencies at the rate in force (CRM-R52). */
 export function campaignFunnel(
   pid: string,
-  options: { convert?: boolean; rateDate?: string } = {},
+  options: {
+    convert?: boolean;
+    rateDate?: string;
+    /** With `convert`: convert each deal at the rate of the day it closed (CRM-R86). */
+    rateBasis?: "close_day";
+  } = {},
   init?: FetchLike,
 ): Promise<{
   campaign: Campaign;
@@ -824,13 +829,16 @@ export function campaignFunnel(
   /** Won revenue in other currencies: with `convert`, only what had no rate. */
   won_revenue_other_currencies: Record<string, number> | null;
   rate_date: string | null;
+  /** `close_day` when each deal was converted at the rate of the day it closed. */
+  rate_basis: string | null;
   rates: ReportRateUsed[];
   unconverted: ReportUnconverted[];
 }> {
   const query = new URLSearchParams();
   if (options.convert) {
     query.set("convert", "true");
-    if (options.rateDate) query.set("rate_date", options.rateDate);
+    if (options.rateBasis) query.set("rate_basis", options.rateBasis);
+    else if (options.rateDate) query.set("rate_date", options.rateDate);
   }
   const suffix = query.size > 0 ? `?${query}` : "";
   return api(`/campaigns/${pid}/funnel${suffix}`, init);

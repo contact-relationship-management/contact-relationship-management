@@ -30,6 +30,7 @@
     unconverted: ReportUnconverted[];
   } | null>(null);
   let convert = $state(false);
+  let closeDay = $state(false);
   let actionError = $state<string | null>(null);
 
   async function run(campaign: Campaign) {
@@ -46,7 +47,10 @@
   }
 
   async function showFunnel(campaign: Campaign) {
-    const data = await campaignFunnel(campaign.pid, { convert });
+    const data = await campaignFunnel(campaign.pid, {
+      convert,
+      rateBasis: convert && closeDay ? "close_day" : undefined,
+    });
     funnel = {
       pid: campaign.pid,
       leads: data.leads,
@@ -189,6 +193,16 @@
         />
         {t("campaign.convert")}
       </label>
+      <label>
+        <input
+          type="checkbox"
+          bind:checked={closeDay}
+          disabled={!convert}
+          onchange={() => void showFunnel(selected)}
+          data-testid="funnel-close-day"
+        />
+        {t("clv.closeDay")}
+      </label>
       {#if funnel?.pid === selected.pid}
         <p data-testid="funnel">
           {t("nav.leads")}: {funnel.leads} ·
@@ -202,8 +216,8 @@
         </p>
         {#if funnel.rates.length > 0}
           <p class="muted small" data-testid="funnel-rates">
-            {t("rpt.ratesUsed")} ({funnel.rate_date}):
-            {#each funnel.rates as used (used.from)}
+            {t("rpt.ratesUsed")}{funnel.rate_date ? ` (${funnel.rate_date})` : ""}:
+            {#each funnel.rates as used (`${used.from}|${used.effective_on}|${used.inverted}`)}
               <span class="chip">
                 1 {used.from} = {used.rate}
                 {used.to}, {used.effective_on}, {used.source}

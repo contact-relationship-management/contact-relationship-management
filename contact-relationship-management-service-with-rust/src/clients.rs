@@ -306,8 +306,10 @@ pub struct UpstreamWorker {
 
 /// Workers asked for per page of the worker service's list.
 const WORKER_PAGE: usize = 200;
-/// Most pages read in one import, so a runaway answer cannot loop forever.
-const MAX_WORKER_PAGES: usize = 100;
+/// Most pages read in one import, so a runaway answer cannot loop forever. The worker service
+/// refuses an offset above 10,000, which the 51st page of 200 reaches, so a longer list stops
+/// here with a reason of ours instead of a bare `400` from there.
+const MAX_WORKER_PAGES: usize = 51;
 
 fn bridge_client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
@@ -318,8 +320,9 @@ fn bridge_client() -> Result<reqwest::Client, String> {
 }
 
 /// Open a delivery idea in the project portfolio service (CRM-R72): `POST {CRM_PPM_SERVICE_URL}/api/ideas`
-/// with `{"title", "pitch", "tags"}`, answered `{"pid"}`. The idea's contract was read from that
-/// service's source, not run against it.
+/// with `{"title", "pitch", "tags"}`, answered `{"pid"}`. The contract was checked against that
+/// service's source (`strategy.rs`, `create_idea`) on 2026-10-28 and is not run against a live one.
+/// No credentials are sent: it works against a service with authentication off.
 ///
 /// # Errors
 ///
@@ -356,7 +359,10 @@ pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Resu
 }
 
 /// The active workers of the worker service, with their department (CRM-R73): `GET
-/// {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=&offset=`, read page by page.
+/// {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=&offset=`, read page by page. Checked
+/// against that service's source (`hr_core.rs`, `list_workers`: a bare JSON array, `pid` and
+/// `department` members, a page of at most 500, an offset of at most 10,000, `active` a real status)
+/// on 2026-10-28; not run against a live one, and no credentials are sent.
 ///
 /// # Errors
 ///

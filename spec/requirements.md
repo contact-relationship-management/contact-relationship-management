@@ -1192,7 +1192,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - `POST /api/bridges/ppm/deals/{pid}` (no body) sends **one idea** to the project portfolio service: `POST {CRM_PPM_SERVICE_URL}/api/ideas` with a `title` (`Deliver: <deal name>`, up to 200 characters), a `pitch` (the deal's pid, amount in minor units and currency) and the tags `crm` and `won-deal`. Nothing else about the deal, its account or its contacts is sent. PPM answers `{pid}`.
 - It is **once per deal**: the idea's id is kept, and asking again answers it with `already_opened: true` and sends nothing. An unknown or deleted deal is `404`; a deal that is not won is `422`; PPM unreachable, refusing or answering without an id is `502` and nothing is kept. Audited as `deal_delivery` / `opened`.
 - **Stub-first**, like the other upstream clients (CRM-D11): unless `CRM_UPSTREAM_MODE=http`, nothing is sent and nothing is kept; the answer is `mode: stub`, `sent: false` and the idea that would have gone. The routes under `/api/bridges` are **admin only**, since they send data out.
-- PPM's contract (`POST /api/ideas`) was read from its source and is exercised against a stand-in in the tests, not against a running PPM; the idea is PPM's to promote or drop.
+- PPM's contract (`POST /api/ideas`) was read from its source and checked against it again on 2026-10-28 (`{title, pitch, tags}` in, `{pid}` out; a title of 1,024 bytes at most, ours is 200 characters; tags of 64 at most); it is exercised against a stand-in in the tests, not against a running PPM; the idea is PPM's to promote or drop. **No credentials are sent**, so it reaches a PPM only while that has authentication off; a service-to-service credential is not built.
 - A won deal's page has a button "Open a delivery idea in the project portfolio" and says what happened.
 - Not built: a project (PPM has plans and ideas, not projects); opening one automatically when a deal is won; following the idea's fate in PPM; sending line items or contacts.
 
@@ -1204,7 +1204,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - **All the teams are set together or none**; each is audited with `via: wpm`. Teams the import does not name are left as they are; **nothing is written to the worker service**. Running it again replaces the same teams.
 - Left out and reported in `skipped`, with the reason: a department of **more than 50** workers (a team's limit); a department that differs from another only in case; a worker whose id is not a reference. Active workers with no department are counted in `without_department`.
 - `502` when the worker service cannot be reached or answers something that is not a list. **Stub-first** and admin only, as CRM-R72: without `CRM_UPSTREAM_MODE=http` nothing is read and the answer is `mode: stub` with no teams.
-- WPM's contract (`GET /api/workers`) was read from its source and is exercised against a stand-in, not a running WPM.
+- WPM's contract (`GET /api/workers`) was read from its source and checked against it again on 2026-10-28 (a bare JSON array ordered by id, `pid` and `department` members, `status=active` a real status, a page of at most 500, an offset of at most 10,000, so at most 51 pages of 200 are read); it is exercised against a stand-in, not a running WPM. **No credentials are sent**, and WPM filters the list by the caller's organizations when it has authentication on, so an import reaches it only while that is off; a service-to-service credential is not built.
 - The `/quotas` page has a button to run it and says how many teams were set.
 - Not built: teams by manager and reports; removing a team when its department disappears; importing on a schedule; any other worker fields.
 
@@ -1338,3 +1338,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - The answer's `rate_date` is `null` and `rate_basis` says `close_day`; `rates` lists each distinct rate used, so one currency can appear more than once with its effective day.
 - Unchanged: the models, the window, the touches, money-masked readers refused (CRM-R49, CRM-R58).
 - Not built: close-day rates for campaign ROI and the forecast; a day other than the day a deal closed.
+
+## CRM-R86 — A campaign's ROI converts each deal at the rate of the day it closed
+
+*As a marketing lead, I want a campaign's won revenue in other currencies counted at the rate in force when each deal closed, so that the ROI of a campaign that ran last year is not restated at today's exchange rate.*
+
+- `GET /api/campaigns/{pid}/funnel` takes an optional `rate_basis=close_day` beside `convert=true` (CRM-R52), as CLV (CRM-R70), the report builder (CRM-R83) and attribution (CRM-R85) do. Anything else is refused (`422` naming `/rate_basis`); so is a basis without `convert=true`, and one beside `rate_date` (`422` naming `/rate_date`).
+- Each won deal attributed to the campaign in **another currency** is converted **once** at the rate in force on the day it closed (the latest on or before it, or the reverse pair inverted) and added to the campaign's own-currency revenue, which ROI then uses. Deals already in the campaign's currency are untouched.
+- A deal with **no rate on its day** is left out, counted in `unconverted`, and its amount stays in `won_revenue_other_currencies`. So with this basis `won_revenue_other_currencies` holds **only what had no rate on its day**: a currency can be partly converted, and what is shown is the part that was not.
+- The answer's `rate_date` is `null` and `rate_basis` says `close_day`; `rates` lists each distinct rate used, so one currency can appear more than once with its effective day. Cost, revenue and ROI stay masked for a masked reader.
+- The tour has no foreign-currency deals, so it accepts and validates the option and answers as it does without it; the service's behaviour is tested against the real database.
+- Not built: close-day rates for the forecast (live and snapshots) and the trend; a day other than the day a deal closed.

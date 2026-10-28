@@ -4,6 +4,7 @@
 
 use contact_relationship_management::app::App;
 use loco_rs::testing::prelude::*;
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -220,6 +221,120 @@ async fn a_funnel_can_count_revenue_won_in_other_currencies_at_the_rate_in_force
             let refused: Value = r.json();
             assert_eq!(
                 refused["errors"][0]["pointer"], "/rate_date",
+                "{query}: {refused}"
+            );
+        }
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_funnel_can_convert_each_deal_at_the_rate_of_the_day_it_closed() {
+    request::<App, _, _>(|request, ctx| async move {
+        let segment: Value = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json();
+        let campaign: Value = request
+            .post("/api/campaigns")
+            .json(
+                &json!({ "name": "Dated", "cost_minor": 50_000, "currency": "GBP",
+                           "segment_pid": segment["pid"] }),
+            )
+            .await
+            .json();
+        let pid = campaign["pid"].as_str().unwrap().to_string();
+        let (pipeline, stages) = super::seed_pipeline!(&request).await;
+        // Pounds, dollars either side of a rate change and once before any rate, and yen.
+        for (name, amount, currency, closed) in [
+            ("G", 100_000, "GBP", None),
+            ("D1", 10_000, "USD", Some("2026-02-01")),
+            ("D2", 10_000, "USD", Some("2026-07-01")),
+            ("D3", 4_000, "USD", Some("2025-12-01")),
+            ("Y", 700, "JPY", Some("2026-02-01")),
+        ] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(
+                    &json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": amount,
+                               "currency": currency, "source_campaign_pid": pid }),
+                )
+                .await
+                .json();
+            let deal_pid = deal["pid"].as_str().unwrap();
+            request
+                .post(&format!("/api/deals/{deal_pid}/stage"))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+            if let Some(day) = closed {
+                ctx.db
+                    .execute_raw(Statement::from_sql_and_values(
+                        DatabaseBackend::Postgres,
+                        format!(
+                            "UPDATE deals SET closed_at = '{day}T09:00:00Z' WHERE pid = $1::uuid"
+                        ),
+                        [deal_pid.into()],
+                    ))
+                    .await
+                    .unwrap();
+            }
+        }
+        for (rate, on) in [("0.80", "2026-01-01"), ("0.50", "2026-06-01")] {
+            request
+                .put("/api/fx-rates")
+                .json(&json!({ "from": "USD", "to": "GBP", "rate": rate,
+                               "effective_on": on, "source": "test table" }))
+                .await
+                .assert_status_ok();
+        }
+
+        // One date for all the dollars: 24,000 at today's 0.50.
+        let one: Value = request
+            .get(&format!("/api/campaigns/{pid}/funnel?convert=true"))
+            .await
+            .json();
+        assert_eq!(one["won_revenue_minor"], 112_000, "{one}");
+        assert!(one["rate_basis"].is_null(), "{one}");
+
+        // On the day each closed: 8,000 and 5,000; the dollars before any rate and the yen stay
+        // apart, counted; no one date is claimed.
+        let dated: Value = request
+            .get(&format!(
+                "/api/campaigns/{pid}/funnel?convert=true&rate_basis=close_day"
+            ))
+            .await
+            .json();
+        assert_eq!(dated["won_revenue_minor"], 113_000, "{dated}");
+        assert_eq!(dated["roi"]["numerator"], 63_000, "{dated}");
+        assert_eq!(dated["rate_basis"], "close_day", "{dated}");
+        assert!(dated["rate_date"].is_null(), "{dated}");
+        assert_eq!(dated["rates"].as_array().unwrap().len(), 2, "{dated}");
+        assert_eq!(
+            dated["won_revenue_other_currencies"],
+            json!({ "JPY": 700, "USD": 4_000 }),
+            "only what had no rate on its day: {dated}"
+        );
+        assert_eq!(dated["unconverted"].as_array().unwrap().len(), 2, "{dated}");
+
+        for (query, pointer) in [
+            ("rate_basis=close_day", "/rate_basis"),
+            ("convert=true&rate_basis=today", "/rate_basis"),
+            (
+                "convert=true&rate_basis=close_day&rate_date=2026-03-01",
+                "/rate_date",
+            ),
+        ] {
+            let r = request
+                .get(&format!("/api/campaigns/{pid}/funnel?{query}"))
+                .await;
+            r.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            let refused: Value = r.json();
+            assert_eq!(
+                refused["errors"][0]["pointer"], pointer,
                 "{query}: {refused}"
             );
         }
