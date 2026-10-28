@@ -24,7 +24,10 @@ project-portfolio-management front-end's Kanban board, i18n, and
   API.
 - **Masked amounts** (deal values, forecasts, ROI) render as a
   first-class masked state, never zeros or errors.
-- **Eight-locale i18n from the start** with the parity test.
+- **Eight-locale i18n from the start** with the parity test, and a
+  [translation-review register](translation-register.md) that says who wrote each locale and
+  whether anyone native has reviewed it (none has); a test keeps the register, the keys and the
+  `{placeholders}` true.
 - **No client-held tokens**: mutations via server routes (session
   cookie + CSRF).
 

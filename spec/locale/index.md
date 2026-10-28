@@ -26,7 +26,7 @@ The repository has two sets of locales, for two different things, and they are n
 | Set | What it translates | Locales |
 |---|---|---|
 | `locales/` (this page) | The 11 role briefs | 11 directories: `ar-001`, `cy-001`, `cy-gb`, `en-001`, `en-gb`, `en-gb-oxendict`, `en-us`, `hi-001`, `hi-in`, `zh-001`, `zh-cn` |
-| The UI (`src/lib/locales/*.ts`) | The 330 interface strings | 8: `ar-001`, `cy-001`, `de-de`, `en-001`, `es-001`, `fr-001`, `hi-001`, `zh-cn` |
+| The UI (`src/lib/locales/*.ts`) | The interface strings (counted in the [translation-review register](../../contact-relationship-management-ui-with-svelte/spec/translation-register.md)) | 8: `ar-001`, `cy-001`, `de-de`, `en-001`, `es-001`, `fr-001`, `hi-001`, `zh-cn` |
 
 - The briefs have regional variants the UI does not (`cy-gb`, `en-gb`, `en-us`, `en-gb-oxendict`, `hi-in`,
   `zh-001`). The UI picks a locale by language, so each of them resolves to a UI locale (`en-gb` to `en-001`,

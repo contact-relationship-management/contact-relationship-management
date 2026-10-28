@@ -1217,3 +1217,11 @@ recipient would get before anything is sent, and be certain every message carrie
 - `dpia.md` is the DPIA template filled in as far as the software goes: system facts, an engineering assessment of likelihood and severity as shipped, and the deployer's own decisions left open. `record-of-processing.md` is the Art. 30 record, started from ten processing activities, with the controller's details left open. Neither is a sign-off, legal advice or reviewed by anyone.
 - The gaps the inventory names are not hidden: email deliveries and events, the event outbox and webhook deliveries have no deletion path (CRM-T140).
 - Not built: filling the deployer's decisions; a generated record from the code; per-field classification beyond the table.
+
+## CRM-R75 — A translation-review register
+
+*As someone responsible for what a person reads in their own language, I can see which locales have been reviewed by a native speaker and which have not, so that no draft is mistaken for reviewed wording.*
+
+- `spec/translation-register.md` in the UI folder has a row per locale file: language, status (`source`, `draft` or `reviewed`), method, reviewer, date reviewed, the number of strings and how many are identical to English. A `reviewed` row names the reviewer and the date. Every locale other than English is `draft`: **none has been reviewed by a native speaker**.
+- A test fails if a locale file has no row or a row no file, a count is out of date, a `reviewed` row lacks a reviewer or a date, a locale lacks a key English has or has one it does not or has an empty string, or a string carries different `{placeholders}` from the English one.
+- Not built: a review workflow in the UI; marking individual strings reviewed; pluralisation rules per language.

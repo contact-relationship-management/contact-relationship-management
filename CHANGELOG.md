@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — a translation-review register (CRM-T142, CRM-R75)
+
+Which locales are drafts and which a native speaker has reviewed (none yet), with a test that holds the register, the keys and the `{placeholders}` to the locale files.
+
 ### Added — personal-data inventory, retention schedule, DPIA and record of processing (CRM-T141, CRM-R74)
 
 `spec/compliance/` gains an inventory of every table with its retention class, a DPIA filled in as far as the software goes, and an Art. 30 record; a test keeps the inventory complete. Four tables with no deletion path are named as a gap (CRM-T140).

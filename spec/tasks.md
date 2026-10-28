@@ -1704,3 +1704,8 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Test:** `tests/requests/inventory.rs` (the inventory against `information_schema` and `SOFT_DELETED_TABLES`). **Checked by breaking it:** with the `tags` row removed it fails naming the table; restored.
       - **Gaps recorded, not closed:** CRM-T140 (no deletion path for four tables); small-group suppression and single-use link tokens, named in the DPIA, are separate tasks below.
       - **Not done:** the deployer's decisions; any DPO review.
+- [x] CRM-T142 *(edge)* **A translation-review register and a test that holds it to the locales.** (S)
+      **Done (2026-10-28, not released):** requirement CRM-R75 first, then:
+      - **Docs:** `spec/translation-register.md` (8 locales, 684 strings each, every one but English a draft, none reviewed), `spec/locale-review.md` regenerated (it still said 330 strings), the UI and locale indexes.
+      - **Tests:** 5 Vitest tests in `tests/unit/translation-register.test.ts` (a row per locale file, status meanings, counts, the same keys and no empty string, the same `{placeholders}`); the existing key-parity test in `crm.test.ts` stays. No drift was found in the 684 strings. **Checked by breaking it:** changing `{count}` to `{cnt}` in one German string fails naming the locale and key; restored.
+      - **Not done:** any native review.
