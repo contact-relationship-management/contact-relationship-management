@@ -41,7 +41,7 @@ fn generated() -> serde_json::Map<String, Value> {
         attachments, attribution, audits, board, break_glass, calendars, custom_fields, dashboards,
         engagement, external_links, fx_rates, insights, kb, lead_imports, marketing, merge,
         notifications, privacy, quotas, record_imports, relationships, reports, sales, search,
-        support, tags, templates, unmerge, views, webhooks, workflows,
+        support, tags, teams, templates, unmerge, views, webhooks, workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -195,6 +195,11 @@ fn generated() -> serde_json::Map<String, Value> {
         quotas::QuotaPayload,
         quotas::QuotaView,
         quotas::Attainment,
+        teams::TeamPayload,
+        teams::TeamView,
+        teams::TeamCurrency,
+        teams::TeamStanding,
+        teams::TeamReport,
         support::SuggestedArticle,
         quotas::Share,
         quotas::SplitPayload,
@@ -343,6 +348,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/fx-rates") => "FxRatePayload",
         ("put", "/api/commission-plans") => "CommissionPlanPayload",
         ("put", "/api/quotas") => "QuotaPayload",
+        ("put", "/api/quotas/teams") => "TeamPayload",
         ("put", "/api/quotas/splits/{pid}") => "DealSplitPayload",
         (
             "put",
@@ -404,6 +410,8 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/fx-rates") => "FxRate",
         ("put", "/api/commission-plans") => "CommissionPlan",
         ("put", "/api/quotas") => "Quota",
+        ("put", "/api/quotas/teams") => "Team",
+        ("get", "/api/quotas/team-attainment") => "TeamAttainmentReport",
         ("get" | "put", "/api/quotas/splits/{pid}") => "DealSplit",
         ("get", "/api/quotas/attainment") => "QuotaAttainmentReport",
         ("put", "/api/sla-policies/{pid}/calendar") => "SlaPolicy",
@@ -528,6 +536,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/fx-rates" => "FxRate",
         "/api/commission-plans" => "CommissionPlan",
         "/api/quotas" => "Quota",
+        "/api/quotas/teams" => "Team",
         "/api/business-calendars" => "BusinessCalendar",
         "/api/contacts/{pid}/attachments"
         | "/api/accounts/{pid}/attachments"

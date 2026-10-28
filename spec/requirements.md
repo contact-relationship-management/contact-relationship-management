@@ -1132,3 +1132,12 @@ recipient would get before anything is sent, and be certain every message carrie
 - The tickets page lists them under the selected ticket.
 - Not built: suggesting as a ticket is typed (there is no new-ticket form in the client); other languages or stemming; the ticket's description and replies (a ticket has only a title); learning which suggestions were used; suggestions on the public help centre.
 
+
+## CRM-R67 — Teams and their quota roll-up
+
+*As a sales manager, I can group workers into teams and see a team's attainment, so that I can read how a team is doing without adding up each person by hand.*
+
+- `PUT /api/quotas/teams` with `name` (up to 80 characters) and `members`: from 1 to 50 workers (`worker:<id>`) named once. A team of that name in any case is replaced, not duplicated. Anything else is `422` naming `/name` or `/members`. Audited.
+- `GET /api/quotas/teams` lists the teams by name; `DELETE /api/quotas/teams/{pid}` removes one (`404` when there is none) and leaves its workers' quotas alone. Admin only, like the quotas (CRM-R59).
+- `GET /api/quotas/team-attainment?at=` (today when absent) adds the members' standings (CRM-R59, with splits, CRM-R65) **per currency**: quotas, credited won revenue, won deals, attainment as a ratio, what remains, and how many workers have a quota in that currency. Members with no quota containing the day are listed in `without_quota`; their revenue in a currency the team has no quota in is listed in `other_currencies`. Currencies are never added together or converted. An audited read.
+- Not built: a team inside a team; a worker's team over time; a team's own quota; the page showing teams; territories and clawbacks.

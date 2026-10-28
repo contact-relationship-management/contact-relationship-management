@@ -411,3 +411,97 @@ async fn a_split_deal_is_credited_in_shares_to_the_minor_unit_and_a_removed_spli
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_team_adds_its_workers_standings_per_currency_and_is_replaced_by_name_and_removed() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        let (ada, grace, idle) = (a_worker(), a_worker(), a_worker());
+        for (owner, name, amount) in [(&ada, "Ada's", 30_000), (&grace, "Grace's", 20_000)] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(
+                    &json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": amount,
+                               "currency": "GBP", "owner_ref": owner }),
+                )
+                .await
+                .json();
+            request
+                .post(&format!(
+                    "/api/deals/{}/stage",
+                    deal["pid"].as_str().unwrap()
+                ))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+        }
+        let today = chrono::Utc::now().date_naive();
+        let (from, to) = (
+            today - chrono::Duration::days(10),
+            today + chrono::Duration::days(80),
+        );
+        for owner in [&ada, &grace] {
+            request
+                .put("/api/quotas")
+                .json(
+                    &json!({ "owner_ref": owner, "period_from": from, "period_to": to,
+                               "currency": "GBP", "amount_minor": 100_000 }),
+                )
+                .await
+                .assert_status_ok();
+        }
+
+        let team: Value = request
+            .put("/api/quotas/teams")
+            .json(&json!({ "name": "North", "members": [ada, grace, idle] }))
+            .await
+            .json();
+        let pid = team["pid"].as_str().unwrap().to_string();
+
+        let report: Value = request.get("/api/quotas/team-attainment").await.json();
+        let row = &report["rows"].as_array().unwrap()[0];
+        assert_eq!(row["name"], "North", "{report}");
+        let gbp = &row["currencies"].as_array().unwrap()[0];
+        assert_eq!(gbp["quota_minor"], 200_000, "{row}");
+        assert_eq!(gbp["revenue_minor"], 50_000, "{row}");
+        assert_eq!(gbp["remaining_minor"], 150_000, "{row}");
+        assert_eq!(gbp["workers"], 2, "{row}");
+        assert_eq!(row["without_quota"], json!([idle]), "{row}");
+
+        // The same name in another case replaces the team rather than adding one.
+        let again: Value = request
+            .put("/api/quotas/teams")
+            .json(&json!({ "name": "NORTH", "members": [ada] }))
+            .await
+            .json();
+        assert_eq!(again["pid"], pid.as_str());
+        let listed: Value = request.get("/api/quotas/teams").await.json();
+        assert_eq!(listed.as_array().unwrap().len(), 1, "{listed}");
+
+        // Refused: no workers, a repeat, a non-worker, no name.
+        for body in [
+            json!({ "name": "South", "members": [] }),
+            json!({ "name": "South", "members": [ada, ada] }),
+            json!({ "name": "South", "members": ["contact:x"] }),
+            json!({ "name": "", "members": [ada] }),
+        ] {
+            request
+                .put("/api/quotas/teams")
+                .json(&body)
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+
+        request
+            .delete(&format!("/api/quotas/teams/{pid}"))
+            .await
+            .assert_status_ok();
+        request
+            .delete(&format!("/api/quotas/teams/{pid}"))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+    })
+    .await;
+}

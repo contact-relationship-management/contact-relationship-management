@@ -1660,3 +1660,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** the suggestions under the selected ticket, `ticketSuggestions`, the tour's version of the ranking, a sixth tour article (so the help centre test counts five), 1 key in 8 locales (machine drafts); one Playwright test.
       - **Tests:** 3 unit tests (words, ranking and weights, the limit of five) and 1 request test (headline match before text match, a draft is never offered, an unrelated article is not, an empty answer, an unknown ticket `404`).
       - **Not tested:** the ranking in a language other than English; a very large knowledge base (all published articles are read per request).
+- [x] CRM-T134 *(edge)* **Teams and their quota roll-up.** Teams kept by hand and each team's workers' attainment added per currency; part of the roadmap item "territories; quota refinements". (M)
+      **Done (2026-10-28, not released):** requirement CRM-R67 first, then:
+      - **Service:** migration `000045` (`teams`); `GET`/`PUT`/`DELETE /api/quotas/teams` and `GET /api/quotas/team-attainment` inside the admin-only `/api/quotas` prefix, reusing `standings`; operations and schemas described.
+      - **Tests:** 1 request test, run against Postgres and passing (two workers' quotas and revenue added, a member with no quota listed, a team replaced by name in another case, refusals for no workers, a repeat, a non-worker and no name, removal and a second removal `404`).
+      - **Not done:** the UI (a teams form and roll-up on `/quotas`), `schema.d.ts` regeneration, the admin-only enforcement test for the new routes.
+      - **Not tested:** `other_currencies`; a worker on two teams.

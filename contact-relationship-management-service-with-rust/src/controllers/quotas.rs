@@ -601,21 +601,21 @@ struct AttainmentQuery {
 pub(crate) struct Attainment {
     #[schemars(with = "uuid::Uuid")]
     quota_pid: String,
-    owner_ref: String,
+    pub(super) owner_ref: String,
     period_from: NaiveDate,
     period_to: NaiveDate,
-    currency: String,
-    quota_minor: i64,
+    pub(super) currency: String,
+    pub(super) quota_minor: i64,
     /// Won revenue of the worker's deals closed in the period, in the quota's currency.
-    revenue_minor: i64,
+    pub(super) revenue_minor: i64,
     /// How many deals made it.
-    won_deals: i64,
+    pub(super) won_deals: i64,
     /// `revenue ÷ quota`, with both numbers.
     attainment: Ratio,
     /// What is still to win; zero once the quota is met.
     remaining_minor: i64,
     /// Won revenue in other currencies, never added in or converted.
-    other_currencies: BTreeMap<String, i64>,
+    pub(super) other_currencies: BTreeMap<String, i64>,
     /// The plan the quota is paid under, when it has one.
     plan: Option<String>,
     /// What the plan pays on `revenue_minor`; `null` without a plan.
@@ -677,17 +677,14 @@ async fn credited_deals<C: ConnectionTrait>(
     Ok(credited)
 }
 
-/// `GET /api/quotas/attainment?owner_ref=&at=` — each quota whose period contains `at`, with the
-/// revenue the worker's won deals reached in it and the commission its plan pays. An audited read.
-#[debug_handler]
-async fn attainment(
-    State(ctx): State<AppContext>,
-    caller: MaybeAuthUser,
-    axum::extract::Query(query): axum::extract::Query<AttainmentQuery>,
-) -> Result<Response> {
-    let at = query.at.unwrap_or_else(|| chrono::Utc::now().date_naive());
-    let quotas = ctx
-        .db
+/// Every quota whose period contains `at` (of `owner_filter` alone, when given) with the revenue its
+/// worker's credited deals reached and the commission its plan pays.
+pub(super) async fn standings<C: ConnectionTrait>(
+    db: &C,
+    at: NaiveDate,
+    owner_filter: Option<String>,
+) -> Result<Vec<Attainment>> {
+    let quotas = db
         .query_all_raw(stmt(
             "SELECT q.pid, q.owner_ref, q.period_from, q.period_to, q.currency, q.amount_minor, \
                     p.name AS plan_name, p.tiers AS plan_tiers \
@@ -695,7 +692,11 @@ async fn attainment(
              WHERE q.period_from <= $1 AND q.period_to >= $1 \
                AND ($2::text IS NULL OR q.owner_ref = $2) \
              ORDER BY q.owner_ref, q.currency LIMIT $3",
-            [at.into(), query.owner_ref.into(), MAX_LISTED.into()],
+            [
+                at.into(),
+                owner_filter.map_or(Value::String(None), Value::from),
+                MAX_LISTED.into(),
+            ],
         ))
         .await?;
     let mut rows = Vec::with_capacity(quotas.len());
@@ -706,7 +707,7 @@ async fn attainment(
         let currency = q.try_get::<String>("", "currency")?.trim().to_string();
         let quota_minor: i64 = q.try_get("", "amount_minor")?;
         let (mut revenue, mut deals, mut other) = (0_i64, 0_i64, BTreeMap::new());
-        for (c, credited) in credited_deals(&ctx.db, &owner, from, to).await? {
+        for (c, credited) in credited_deals(db, &owner, from, to).await? {
             if c == currency {
                 revenue = revenue.saturating_add(credited);
                 deals += 1;
@@ -741,6 +742,19 @@ async fn attainment(
             bands,
         });
     }
+    Ok(rows)
+}
+
+/// `GET /api/quotas/attainment?owner_ref=&at=` — each quota whose period contains `at`, with the
+/// revenue the worker's won deals reached in it and the commission its plan pays. An audited read.
+#[debug_handler]
+async fn attainment(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    axum::extract::Query(query): axum::extract::Query<AttainmentQuery>,
+) -> Result<Response> {
+    let at = query.at.unwrap_or_else(|| chrono::Utc::now().date_naive());
+    let rows = standings(&ctx.db, at, query.owner_ref).await?;
     Audit::record_read(
         &ctx.db,
         "quota",
