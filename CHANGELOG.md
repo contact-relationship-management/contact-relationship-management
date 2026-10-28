@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a starting hazard analysis in the manner of ISO 14971 (CRM-T150, CRM-R84)
+
+`spec/compliance/risk-management.md`: the standard's process against what the software does, thirteen hazards with their controls and status. No conformity is claimed.
+
 ### Added — close-day rates in reports (CRM-T149, CRM-R83)
 
 A report of deal amounts can set `rate_basis: close_day` to convert each closing day's sums at that day's rate, for won or lost deals. Fixed on the way: the OpenAPI body test for the bridge routes, and a crash of the reports page when one currency had two rates.

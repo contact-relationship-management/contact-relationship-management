@@ -1318,3 +1318,12 @@ recipient would get before anything is sent, and be certain every message carrie
 - A report that would read more than 20,000 group, currency and day cells is refused (`422`) and asks for a narrower one, rather than being cut off.
 - Money, so a masked reader is refused as for any sum (CRM-R50).
 - Not built: close-day rates for attribution, campaign ROI and the forecast; conversion per deal rather than per day sum; a day other than the one the deal closed (such as the invoice date).
+
+## CRM-R84 — A starting hazard analysis in the manner of ISO 14971
+
+*As an integrator who gives the software a medical purpose, I want the hazards it could contribute to, and the controls it has, set out against the ISO 14971 process, so that I start my risk management file from facts and not from a blank page.*
+
+- `spec/compliance/risk-management.md` maps the clauses of ISO 14971:2019 to what is the project's, what is the deployer's and what is a gap; lists the foreseeable misuse; and lists thirteen hazards with the control in the software, the test that pins it where there is one, and a status in the evidence pack's own terms (Implemented, Deployer, Gap).
+- It **claims no conformity**, is not a risk management file, says it has not been reviewed against the standard's text, and invents no severity, probability or acceptability: those depend on a clinical use the project does not have.
+- It says the shipped product is not a device, points to the MHRA for that question in Great Britain, and says which controls (the wait-limit action, automatic closing) should not be switched on for care.
+- Not built: a risk management plan, estimates, or a residual-risk judgement; a review by a clinical safety officer or a regulatory specialist; a test that every control named is still there.

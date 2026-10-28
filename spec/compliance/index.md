@@ -16,6 +16,7 @@ certification, audit, or legal opinion, and no accreditation is claimed.
   decisions left open.
 - [record-of-processing.md](record-of-processing.md) — the Art. 30 record, started from what the
   software does.
+- [risk-management.md](risk-management.md) — the ISO 14971 process mapped to what the software does, with the hazards a medical use would add to and their controls (not a risk management file; no conformity claimed).
 - [operations-runbook.md](operations-runbook.md) — deployment hardening,
   backup and restore, encryption, key management, logging, incident response.
 

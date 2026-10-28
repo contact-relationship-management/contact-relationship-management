@@ -40,7 +40,9 @@
   purpose: in Great Britain that is a question for the
   [MHRA](https://www.gov.uk/government/organisations/medicines-and-healthcare-products-regulatory-agency). The project as shipped is not a device and has not
   sought the regulator's view (see
-  [AI_STATEMENT](special-files-for-public-repos/AI_STATEMENT.md)).
+  [AI_STATEMENT](special-files-for-public-repos/AI_STATEMENT.md)). A
+  manufacturer's risk management under ISO 14971 would start from
+  [compliance/risk-management.md](compliance/risk-management.md).
 
 ## Production readiness
 

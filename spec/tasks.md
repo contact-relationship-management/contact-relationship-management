@@ -1760,3 +1760,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a checkbox on `/reports` using the existing `clv.closeDay` label (no new strings), enabled only when the filter is `state` of won or lost; it disables the rate date; the tour mirrors the service.
       - **Found on the way:** (1) the OpenAPI unit test `mutating_operations_have_a_request_schema_or_are_bodyless` had been failing since CRM-T139, whose two bridge routes were never listed as bodyless; they now are. (2) The rates list on `/reports` was keyed by currency, so two rates for one currency (which close-day mode produces) crashed the page; it is keyed by currency, day and direction. The other pages that list rates convert at one date and cannot hit it.
       - **Not done:** see CRM-R83's list.
+
+- [x] CRM-T150 *(edge)* **A starting hazard analysis in the manner of ISO 14971.** (S)
+      **Done (2026-10-28, not released):** requirement CRM-R84 first, then:
+      - **Document:** `compliance/risk-management.md` (the process clause by clause, misuse, thirteen hazards with their controls, the risks the controls create, what an integrator still has to do); entries in the compliance index and `regulatory.md`.
+      - **Checked:** the tests it names exist (`consent_withdrawn_between_runs_is_honoured`, `enrolment_rechecks_consent_inside_the_action`, `a_merge_moves_everything_and_is_recorded`, `subject_rights_round_trip`, the wait-limit and auto-close tests); the controls it calls Implemented are ones a test pins, and the ones it cannot say that of are marked Deployer or Gap.
+      - **Not done:** review against the standard's text; see CRM-R84's list.
