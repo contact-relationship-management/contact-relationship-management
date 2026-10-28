@@ -729,6 +729,7 @@ export default {
   "clv.historyRetention": "الاحتفاظ المستخلص من السنة السابقة",
   "clv.inOne": "مجموعة بعملة واحدة",
   "ticket.replied": "ردّ العميل",
+  "ticket.reference": "المرجع لموضوع الرد",
   "ticket.waitExceeded": "انتظار طويل جدًا",
   "quota.split": "تقسيم صفقة مكسوبة",
   "quota.splitDeal": "الصفقة",

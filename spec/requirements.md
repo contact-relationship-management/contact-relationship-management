@@ -1098,7 +1098,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - A ticket already `open` is returned as it is and nothing is audited. A ticket that is `resolved` or `closed` is `422`: a reply does not reopen it. An unknown ticket is `404`.
 - The audit entry is the ordinary status change with `via: customer_reply` beside `from`; the same event is emitted.
 - The tickets page shows "Customer replied" on a waiting ticket.
-- Not built: recognising a reply from an inbound e-mail or a channel (the caller says so); reopening a resolved ticket on a reply; a limit on how long a ticket may wait.
+- Not built: recognising a reply from a channel other than e-mail (the caller says so; e-mail is CRM-R88); reopening a resolved ticket on a reply; a limit on how long a ticket may wait.
 
 ## CRM-R64 — A limit on how long a ticket may wait for the customer
 
@@ -1323,7 +1323,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As an integrator who gives the software a medical purpose, I want the hazards it could contribute to, and the controls it has, set out against the ISO 14971 process, so that I start my risk management file from facts and not from a blank page.*
 
-- `spec/compliance/risk-management.md` maps the clauses of ISO 14971:2019 to what is the project's, what is the deployer's and what is a gap; lists the foreseeable misuse; and lists thirteen hazards with the control in the software, the test that pins it where there is one, and a status in the evidence pack's own terms (Implemented, Deployer, Gap).
+- `spec/compliance/risk-management.md` maps the clauses of ISO 14971:2019 to what is the project's, what is the deployer's and what is a gap; lists the foreseeable misuse; and lists fourteen hazards with the control in the software, the test that pins it where there is one, and a status in the evidence pack's own terms (Implemented, Deployer, Gap).
 - It **claims no conformity**, is not a risk management file, says it has not been reviewed against the standard's text, and invents no severity, probability or acceptability: those depend on a clinical use the project does not have.
 - It says the shipped product is not a device, points to the MHRA for that question in Great Britain, and says which controls (the wait-limit action, automatic closing) should not be switched on for care.
 - Not built: a risk management plan, estimates, or a residual-risk judgement; a review by a clinical safety officer or a regulatory specialist; a test that every control named is still there.
@@ -1360,3 +1360,15 @@ recipient would get before anything is sent, and be certain every message carrie
 - The token is the deployer's to obtain from their identity provider and to renew: it is read when the service starts, so a renewal is a restart. The service does not fetch, refresh or validate it.
 - What the receiving service lets the token do is that service's decision: WPM filters its worker list by the token's organizations, so the import sees the workers that token may see.
 - Not built: fetching or refreshing a token; a token per caller (one is used for all); sending the caller's own token on; a credential for the person and organization lookups (CRM-R7).
+
+## CRM-R88 — A customer's reply by e-mail resumes the ticket it answers
+
+*As a support agent, I want a customer's e-mailed answer to restart a waiting ticket by itself, so that I need not press "Customer replied" for every message.*
+
+- `POST /webhooks/inbound-email` (public, outside `/api`) takes `{"from", "subject"}` from a mail service the deployer has set to forward replies. It is **signed like `/webhooks/email`** (`X-CRM-Timestamp`, `X-CRM-Signature` over the body, `CRM_WEBHOOK_SECRET`): `401` when the signature is wrong or stale, `404` while no secret is set, `400` for a body that is not that shape. Any other member of the body (the text, the headers) is **not read and not kept**.
+- A ticket's **reference** is `T-` and the first eight hex digits of its pid (`T-0a1b2c3d`). It is given as `reference` by `GET /api/tickets/{pid}` and shown on the tickets page; a reply finds the ticket by the first `[T-xxxxxxxx]` in its subject, in any case and after any `Re:` or `Fwd:`.
+- The message resumes a ticket only if **all** hold: the subject names a reference; exactly one live ticket has it; the ticket has a contact; and the sender's mailbox (the part inside `<...>` when there is one, in lower case) **is the mailbox the person service gives for that contact** (CRM-R7), not an address the message names for itself. A ticket with no contact, or a contact with no known mailbox, is not resumed.
+- The answer is always `200` with a `result`, so a mail service does not retry what it was right to ignore: `resumed` (a `pending` ticket goes to `open` exactly as for CRM-R63, the clock running again; audited with `via: inbound_mail`, no address in it), `already_open`, `ignored` (a resolved or closed ticket: a reply does not reopen it), `no_reference`, `unknown_ticket`, `ambiguous_reference` or `unverified_sender`.
+- A repeat of the same message changes nothing (`already_open`), so no message id is kept.
+- A `From` header can be forged, and the mail service's own verdict (SPF, DKIM) is not read: someone who knows a reference and the customer's address could restart a waiting ticket's clock. That is all it can do (CRM-R63's limits stand), and the hazard is written in `compliance/risk-management.md` (H14).
+- Not built: a vendor's own inbound format (SendGrid Inbound Parse, Mailgun routes, Postmark, SES): the mail service or a small relay must send the two members above; matching by `In-Reply-To` or `References` (the service sends no ticket mail of its own to match); a reply to a resolved or closed ticket opening a new one; attachments; reading the sender's authentication verdict; a reference that cannot be guessed.

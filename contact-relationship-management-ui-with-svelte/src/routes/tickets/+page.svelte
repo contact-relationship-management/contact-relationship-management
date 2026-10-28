@@ -4,7 +4,13 @@
   import type { SavedView } from "#lib/api/crm.js";
   import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
-  import { listTickets, ticketCustomerReply, ticketStatus, ticketSuggestions } from "#lib/api/crm.js";
+  import {
+    listTickets,
+    ticketCustomerReply,
+    ticketReference,
+    ticketStatus,
+    ticketSuggestions,
+  } from "#lib/api/crm.js";
   import { breachedCount, slaBreached } from "#lib/format.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
@@ -110,6 +116,9 @@
       {#if selected.status === "pending"}
         <button onclick={() => void replied(selected.pid)} data-testid="ticket-replied">{t("ticket.replied")}</button>
       {/if}
+      <p class="muted small" data-testid="ticket-reference">
+        {t("ticket.reference")}: <code>[{ticketReference(selected.pid)}]</code>
+      </p>
       {#if actionError}
         <p class="error" data-testid="action-error">{actionError}</p>
       {/if}

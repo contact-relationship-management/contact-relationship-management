@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a reply by e-mail resumes a waiting ticket (CRM-T154, CRM-R88)
+
+`POST /webhooks/inbound-email` (signed like `/webhooks/email`) reads a sender and a subject; a subject carrying a ticket's reference (`[T-0a1b2c3d]`, shown on the ticket) from the ticket's contact puts a waiting ticket back to `open`. Nothing of the message is kept. Not checked against a real mail service.
+
 ### Added — a credential for the bridges (CRM-T153, CRM-R87)
 
 `CRM_PPM_SERVICE_TOKEN` and `CRM_WORKER_SERVICE_TOKEN`: sent as a bearer token to PPM and WPM, only over https or to this machine.

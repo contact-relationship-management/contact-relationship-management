@@ -844,6 +844,15 @@ export function campaignFunnel(
   return api(`/campaigns/${pid}/funnel${suffix}`, init);
 }
 
+/**
+ * What a customer's reply puts in its subject, in square brackets, so that the service finds the
+ * ticket (CRM-R88): `T-` and the first eight hex digits of the ticket's pid. The same rule as the
+ * service's, which also gives it as `reference` on `GET /api/tickets/{pid}`.
+ */
+export function ticketReference(pid: string): string {
+  return `T-${pid.replaceAll("-", "").slice(0, 8).toLowerCase()}`;
+}
+
 /** Run (simulated send). */
 export function runCampaign(pid: string): Promise<Campaign> {
   return api(`/campaigns/${pid}/run`, { method: "POST" });

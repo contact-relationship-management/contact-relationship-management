@@ -14,7 +14,7 @@ use super::paging::{Page, PageParams};
 use super::{PidRef, StatusPayload, unprocessable};
 use crate::auth::MaybeAuthUser;
 use crate::metrics::Metrics;
-use crate::models::_entities::{activities, articles, sla_policies, tickets};
+use crate::models::_entities::{activities, articles, contacts, sla_policies, tickets};
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
 use crate::rules::calendar::Calendar;
@@ -383,6 +383,9 @@ async fn list_tickets(
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct TicketDetail {
     ticket: tickets::Model,
+    /// What a customer's reply puts in its subject, in square brackets, so that the reply finds
+    /// this ticket (CRM-R88).
+    reference: String,
     activities: Vec<activities::Model>,
 }
 
@@ -552,6 +555,7 @@ async fn get_ticket(
         .all(&ctx.db)
         .await?;
     format::json(TicketDetail {
+        reference: reference(ticket.pid),
         ticket,
         activities: activity_rows,
     })
@@ -613,6 +617,124 @@ async fn ticket_status(
     problems.finish()?;
     let ticket = records::find_ticket(&ctx.db, pid).await?;
     transition(&ctx, &caller, ticket, &payload.to, None).await
+}
+
+/// The reference a reply carries for the ticket `pid` (CRM-R88): `T-` and the first eight hex
+/// digits of its pid.
+fn reference(pid: Uuid) -> String {
+    format!("T-{}", &pid.simple().to_string()[..8])
+}
+
+/// The first `[T-xxxxxxxx]` in `subject`, as its eight hex digits.
+fn reference_in(subject: &str) -> Option<String> {
+    let lower = subject.to_ascii_lowercase();
+    let mut rest = lower.as_str();
+    while let Some(at) = rest.find("[t-") {
+        let after = &rest[at + 3..];
+        if let Some(digits) = after.get(..8)
+            && after.get(8..9) == Some("]")
+            && digits.bytes().all(|b| b.is_ascii_hexdigit())
+        {
+            return Some(digits.to_string());
+        }
+        rest = after;
+    }
+    None
+}
+
+/// The mailbox in a `From` value: what is inside `<...>` when there is such a part, in lower case.
+fn address_in(from: &str) -> String {
+    let inner = match (from.rfind('<'), from.rfind('>')) {
+        (Some(open), Some(close)) if open < close => &from[open + 1..close],
+        _ => from,
+    };
+    inner.trim().to_ascii_lowercase()
+}
+
+/// `POST /webhooks/inbound-email` body: the two things a reply is recognised by. Anything else a
+/// sender includes (the text, the headers) is not read and is not kept.
+#[derive(Debug, Deserialize)]
+struct InboundMail {
+    /// The sender's `From` value, with or without a display name.
+    from: String,
+    /// The subject, which carries the ticket's reference.
+    subject: String,
+}
+
+/// What became of one inbound message (CRM-R88).
+async fn recognise_reply(ctx: &AppContext, mail: &InboundMail) -> Result<&'static str> {
+    let Some(digits) = reference_in(&mail.subject) else {
+        return Ok("no_reference");
+    };
+    let found = ctx
+        .db
+        .query_all_raw(sea_orm::Statement::from_sql_and_values(
+            sea_orm::DatabaseBackend::Postgres,
+            "SELECT pid FROM tickets WHERE deleted_at IS NULL AND pid::text LIKE $1 LIMIT 2",
+            [format!("{digits}%").into()],
+        ))
+        .await?;
+    let pid: Uuid = match found.as_slice() {
+        [] => return Ok("unknown_ticket"),
+        [one] => one.try_get("", "pid")?,
+        _ => return Ok("ambiguous_reference"),
+    };
+    let ticket = records::find_ticket(&ctx.db, pid).await?;
+    // The sender must be the person the ticket is about: the mailbox the person service gives for
+    // its contact, not an address the message names for itself.
+    let contact = match ticket.contact_pid {
+        Some(contact_pid) => {
+            contacts::Entity::find_live()
+                .filter(contacts::Column::Pid.eq(contact_pid))
+                .one(&ctx.db)
+                .await?
+        }
+        None => None,
+    };
+    let known = match &contact {
+        Some(contact) => crate::clients::email_address(&contact.person_ref).await,
+        None => None,
+    };
+    if known.is_none_or(|address| address_in(&address) != address_in(&mail.from)) {
+        return Ok("unverified_sender");
+    }
+    match ticket.status.as_str() {
+        "pending" => {
+            transition(
+                ctx,
+                &MaybeAuthUser(None),
+                ticket,
+                "open",
+                Some("inbound_mail"),
+            )
+            .await?;
+            Ok("resumed")
+        }
+        "open" => Ok("already_open"),
+        _ => Ok("ignored"),
+    }
+}
+
+/// `POST /webhooks/inbound-email` — a customer's reply, as a mail service forwards it (CRM-R88).
+/// Signed like `/webhooks/email`; `404` when no secret is configured. It answers `200` with the
+/// outcome for every well-formed message, so a mail service does not retry one it was right to
+/// ignore.
+#[debug_handler]
+async fn inbound_email(
+    State(ctx): State<AppContext>,
+    headers: axum::http::HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<Response> {
+    use axum::http::StatusCode;
+    match crate::webhook::signed_request(&headers, &body) {
+        None => return Ok(StatusCode::NOT_FOUND.into_response()),
+        Some(false) => return Ok(StatusCode::UNAUTHORIZED.into_response()),
+        Some(true) => {}
+    }
+    let Ok(mail) = serde_json::from_slice::<InboundMail>(&body) else {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    };
+    format::json(serde_json::json!({ "result": recognise_reply(&ctx, &mail).await? }))
 }
 
 /// `POST /api/tickets/{pid}/customer-reply` — the customer has answered (CRM-R63): a ticket
@@ -998,6 +1120,11 @@ async fn suggested_articles(
     )
 }
 
+/// The public route for a customer's reply by e-mail (outside `/api`; see `auth::is_public_path`).
+pub fn public_routes() -> Routes {
+    Routes::new().add("/webhooks/inbound-email", post(inbound_email))
+}
+
 /// The support routes.
 pub fn routes() -> Routes {
     Routes::new()
@@ -1017,4 +1144,56 @@ pub fn routes() -> Routes {
         .add("/articles", get(list_articles))
         .add("/articles/{pid}", put(update_article))
         .add("/articles/{pid}/status", post(article_status))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_reference_is_t_and_eight_hex_digits_of_the_pid() {
+        let pid = Uuid::parse_str("0a1b2c3d-1111-2222-3333-444455556666").unwrap();
+        assert_eq!(reference(pid), "T-0a1b2c3d");
+    }
+
+    #[test]
+    fn a_reply_is_found_by_the_reference_in_its_subject_however_it_is_dressed() {
+        for subject in [
+            "Re: Your request [T-0a1b2c3d]",
+            "RE: [t-0A1B2C3D] printer",
+            "Fwd: Re: Re: [T-0a1b2c3d] and more",
+            "[T-zzzzzzzz] [T-0a1b2c3d]",
+        ] {
+            assert_eq!(
+                reference_in(subject).as_deref(),
+                Some("0a1b2c3d"),
+                "{subject}"
+            );
+        }
+        for subject in [
+            "no reference",
+            "T-0a1b2c3d without brackets",
+            "[T-0a1b2c]",
+            "[T-0a1b2c3d4]",
+            "[T-0a1b2c3g]",
+            "[CRM-0a1b2c3d]",
+            "",
+        ] {
+            assert_eq!(reference_in(subject), None, "{subject}");
+        }
+    }
+
+    #[test]
+    fn the_sender_is_the_address_not_the_display_name() {
+        assert_eq!(
+            address_in("Ada Lovelace <Ada@Example.test>"),
+            "ada@example.test"
+        );
+        assert_eq!(address_in("  ada@example.test "), "ada@example.test");
+        assert_eq!(
+            address_in("\"Ada <x@y.z>\" <ada@example.test>"),
+            "ada@example.test"
+        );
+        assert_eq!(address_in("<ada@example.test>"), "ada@example.test");
+    }
 }

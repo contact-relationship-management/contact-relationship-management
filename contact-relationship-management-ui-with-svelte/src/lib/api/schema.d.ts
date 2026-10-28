@@ -18217,6 +18217,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/webhooks/inbound-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Public, HMAC-signed (X-CRM-Timestamp, X-CRM-Signature): a customer's reply as a mail service forwards it (CRM-R88). Only from and subject are read, and nothing of the message is kept. A subject carrying a ticket's reference in square brackets (T- and eight hex digits, shown on the ticket) and a sender who is the ticket's contact resume a ticket waiting for the customer; the answer is always 200 with a result: resumed, already_open, ignored (resolved or closed), no_reference, unknown_ticket, ambiguous_reference or unverified_sender. 404 while no webhook secret is set */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        from: string;
+                        subject: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -21615,6 +21656,11 @@ export interface components {
         /** @description `GET /api/tickets/{pid}`: the ticket and its activities, oldest first. */
         TicketDetail: {
             activities: components["schemas"]["Activity"][];
+            /**
+             * @description What a customer's reply puts in its subject, in square brackets, so that the reply finds
+             *     this ticket (CRM-R88).
+             */
+            reference: string;
             ticket: components["schemas"]["Ticket"];
         };
         /** @description `PUT /api/tickets/{pid}` body. */

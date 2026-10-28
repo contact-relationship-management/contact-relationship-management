@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — inbound reply recognition (CRM-T154, CRM-R88)
+
+`POST /webhooks/inbound-email`; `reference` in `GET /api/tickets/{pid}`; `webhook::signed_request`.
+
 ### Added — bridge credentials (CRM-T153, CRM-R87)
 
 `ppm_service_token`, `worker_service_token`; `clients::with_credential`.

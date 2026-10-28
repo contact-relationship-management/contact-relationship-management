@@ -217,6 +217,8 @@ test.describe("data tables", () => {
     await expect(row).not.toContainText("SLA clock stopped");
     await row.click();
     await expect(page.getByTestId("ticket-replied")).toHaveCount(0);
+    // The reference a mailed reply carries in its subject is shown for the selected ticket.
+    await expect(page.getByTestId("ticket-reference")).toContainText("[T-");
   });
 
   test("a ticket left waiting too long is marked, and the customer's reply clears it", async ({

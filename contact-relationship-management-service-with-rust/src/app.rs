@@ -37,6 +37,7 @@ pub fn app_routes() -> AppRoutes {
         .add_route(controllers::kb::public_routes())
         .add_route(controllers::kb::routes())
         .add_route(controllers::support::routes())
+        .add_route(controllers::support::public_routes())
         .add_route(controllers::dashboards::routes())
         .add_route(controllers::insights::routes())
         .add_route(controllers::engagement::routes())

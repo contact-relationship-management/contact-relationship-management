@@ -735,6 +735,7 @@ export default {
   "clv.historyRetention": "Cadw a gafwyd yn y flwyddyn flaenorol",
   "clv.inOne": "Wedi'u hadio mewn un arian",
   "ticket.replied": "Atebodd y cwsmer",
+  "ticket.reference": "Cyfeirnod ar gyfer pwnc ateb",
   "ticket.waitExceeded": "Aros yn rhy hir",
   "quota.split": "Hollti bargen a enillwyd",
   "quota.splitDeal": "Bargen",

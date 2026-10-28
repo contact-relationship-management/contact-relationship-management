@@ -742,6 +742,7 @@ export default {
   "clv.historyRetention": "Rétention constatée l'année précédente",
   "clv.inOne": "Additionné dans une seule devise",
   "ticket.replied": "Le client a répondu",
+  "ticket.reference": "Référence pour l'objet d'une réponse",
   "ticket.waitExceeded": "Attend trop longtemps",
   "quota.split": "Partager une affaire gagnée",
   "quota.splitDeal": "Affaire",

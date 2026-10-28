@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a ticket's reference on the tickets page (CRM-T154, CRM-R88)
+
+`ticketReference` and one string in the eight locales.
+
 ### Added — close-day rates on the campaign funnel (CRM-T152, CRM-R86)
 
 A checkbox beside the conversion; the rates list is keyed by currency and day.

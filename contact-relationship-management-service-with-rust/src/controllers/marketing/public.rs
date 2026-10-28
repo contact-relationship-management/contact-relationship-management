@@ -161,25 +161,10 @@ pub(super) async fn email_webhook(
     body: axum::body::Bytes,
 ) -> Result<Response> {
     use axum::http::StatusCode;
-    let Some(secret) = crate::webhook::secret() else {
-        return Ok(StatusCode::NOT_FOUND.into_response());
-    };
-    let header = |name: &str| {
-        headers
-            .get(name)
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or_default()
-            .to_string()
-    };
-    let now = chrono::Utc::now().timestamp();
-    if !crate::webhook::verify(
-        &secret,
-        &header("x-crm-timestamp"),
-        &header("x-crm-signature"),
-        &body,
-        now,
-    ) {
-        return Ok(StatusCode::UNAUTHORIZED.into_response());
+    match crate::webhook::signed_request(&headers, &body) {
+        None => return Ok(StatusCode::NOT_FOUND.into_response()),
+        Some(false) => return Ok(StatusCode::UNAUTHORIZED.into_response()),
+        Some(true) => {}
     }
     let Ok(event) = serde_json::from_slice::<EmailEvent>(&body) else {
         return Ok(StatusCode::BAD_REQUEST.into_response());

@@ -28,6 +28,7 @@ per-IP rate limits; TLS, backups and key management are the deployer's (see the
 | 8 | Analytics and reporting | Dashboards, the report builder, CLV, attribution | Contacts (aggregated) | Counts and sums; report groups under `CRM_MIN_CELL_SIZE` records left out | Staff with access; masked callers see counts without money | [ ] | Derived on request; saved reports kept until deleted |
 | 9 | Audit and security logging | Prove who changed what, detect abuse | Staff; whoever a record was about | Actor, record pid, snapshots of field values, request trace (method, URI with query string, status) | Admins; the log destination [deployer's] | [ ] | Audit rows are evidence and never altered; logs are the deployer's |
 | 10 | Event delivery | Tell subscribed systems that something changed | Contacts, staff (through the record) | Event payloads: pids, actor, field values the event carries | Webhook receivers the deployer registered | [ ] | The outbox and webhook deliveries pruned by age once finished with (30 days by default) |
+| 11 | Customer replies by mail | Resume a ticket that is waiting for the customer | Customers | The sender address and subject of a forwarded reply, read in passing; nothing of the message is kept | The mail service the deployer set up to forward replies | [ ] | Not kept; the audit entry says only that the ticket was resumed by mail |
 
 **Lawful basis per activity** [deployer decides, Art. 30 does not require it but the DPIA does].
 **Rights handling:** see DPIA section 2. **Last reviewed:** [date].

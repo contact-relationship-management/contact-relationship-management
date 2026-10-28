@@ -1788,3 +1788,11 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Service:** `Settings.ppm_service_token` and `worker_service_token`; `clients::with_credential` attaches a bearer token only to `https` or loopback `http`; both calls use it.
       - **Tests:** a unit test of the address rule (four addresses that get the token, four that do not, an error that holds neither token nor address, nothing attached without a token); a wire test against one stand-in (nothing attached without tokens, each service gets its own, a token is not sent to a plain-`http` remote address and the call fails with nothing sent).
       - **Not done:** see CRM-R87's list.
+
+- [x] CRM-T154 *(edge)* **A reply by e-mail resumes the ticket.** The last open part of the roadmap item "SLA clock refinements". (M)
+      **Done (2026-10-28, not released):** requirement CRM-R88 first, then:
+      - **Service:** `POST /webhooks/inbound-email` (`support::public_routes`, public in `auth::is_public_path`, documented in the public OpenAPI entries); `webhook::signed_request` shared with `/webhooks/email`; `reference` on `TicketDetail`; `recognise_reply` reuses `transition` with `via: inbound_mail`.
+      - **Tests:** unit tests of the reference, its recognition in a subject and the sender's address; `a_reply_by_mail_resumes_the_ticket_it_names_when_it_comes_from_the_customer` (no reference, an unknown one, a stranger's address, the customer with a display name and different case, a repeat, a resolved ticket, a ticket about nobody, the audit `via`, unsigned, badly signed and no secret).
+      - **UI:** the selected ticket shows its reference (`ticketReference`, the same rule, with a unit test using the service test's pid); one new string in the eight locales (machine drafts, 695 per locale in the register).
+      - **Documents:** hazard H14 in `compliance/risk-management.md`; a processing activity in `compliance/record-of-processing.md`.
+      - **Not done:** see CRM-R88's list; **not run against a real mail service**.

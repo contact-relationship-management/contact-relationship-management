@@ -72,6 +72,26 @@ pub fn verify(secret: &str, timestamp: &str, signature: &str, body: &[u8], now: 
         .is_ok()
 }
 
+/// Whether a request to a signed webhook is authentic: `None` when no secret is configured (the
+/// route then answers `404`), otherwise whether its `X-CRM-Timestamp` and `X-CRM-Signature` match.
+#[must_use]
+pub fn signed_request(headers: &axum::http::HeaderMap, body: &[u8]) -> Option<bool> {
+    let secret = secret()?;
+    let header = |name: &str| {
+        headers
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+    };
+    Some(verify(
+        &secret,
+        header("x-crm-timestamp"),
+        header("x-crm-signature"),
+        body,
+        chrono::Utc::now().timestamp(),
+    ))
+}
+
 /// Every credential a request presents: a bearer token, a basic-auth
 /// password, or `X-CRM-Webhook-Token`. Providers differ (Brevo can send a
 /// bearer token or custom headers; Mailjet puts basic auth in the callback

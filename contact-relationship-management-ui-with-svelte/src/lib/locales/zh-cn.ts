@@ -705,6 +705,7 @@ export default {
   "clv.historyRetention": "上一年得出的留存率",
   "clv.inOne": "以一种货币相加",
   "ticket.replied": "客户已回复",
+  "ticket.reference": "回复主题所用的参考号",
   "ticket.waitExceeded": "等待过久",
   "quota.split": "拆分已赢得的交易",
   "quota.splitDeal": "交易",

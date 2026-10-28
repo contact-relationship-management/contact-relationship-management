@@ -554,3 +554,149 @@ async fn a_policy_closes_a_ticket_left_resolved_for_its_days_and_no_other() {
     })
     .await;
 }
+
+const INBOUND_SECRET: &str = "inbound-secret-0123456789abcdef-xyz";
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_reply_by_mail_resumes_the_ticket_it_names_when_it_comes_from_the_customer() {
+    use contact_relationship_management::{clients, settings, webhook};
+    settings::update(|s| s.webhook_secret = Some(INBOUND_SECRET.to_string()));
+    request::<App, _, _>(|request, _ctx| async move {
+        let person = super::a_person();
+        clients::prime_email(&person, "ada@example.test");
+        let contact: Value = request
+            .post("/api/contacts")
+            .json(&json!({ "person_ref": person, "display_name": "Ada" }))
+            .await
+            .json();
+        let contact = contact["pid"].as_str().unwrap().to_string();
+        let made = |with_contact: bool| {
+            let (request, contact) = (&request, &contact);
+            async move {
+                let mut body = json!({ "title": "Printer", "priority": "normal" });
+                if with_contact {
+                    body["contact_pid"] = json!(contact);
+                }
+                let made: Value = request.post("/api/tickets").json(&body).await.json();
+                let pid = made["pid"].as_str().unwrap().to_string();
+                request
+                    .post(&format!("/api/tickets/{pid}/status"))
+                    .json(&json!({ "to": "pending" }))
+                    .await
+                    .assert_status_ok();
+                let detail: Value = request.get(&format!("/api/tickets/{pid}")).await.json();
+                (pid, detail["reference"].as_str().unwrap().to_string())
+            }
+        };
+        let (pid, reference) = made(true).await;
+        assert!(
+            reference.starts_with("T-") && pid.starts_with(&reference[2..]),
+            "{reference}"
+        );
+
+        let post = |from: &str, subject: &str, signed: bool| {
+            let request = &request;
+            let body = json!({ "from": from, "subject": subject, "text": "ignored" }).to_string();
+            let timestamp = chrono::Utc::now().timestamp().to_string();
+            let signature = if signed {
+                webhook::sign(INBOUND_SECRET, &timestamp, body.as_bytes())
+            } else {
+                "sha256=00".to_string()
+            };
+            async move {
+                request
+                    .post("/webhooks/inbound-email")
+                    .add_header("x-crm-timestamp", timestamp)
+                    .add_header("x-crm-signature", signature)
+                    .add_header("content-type", "application/json")
+                    .bytes(body.into())
+                    .await
+            }
+        };
+        let result = |from: &'static str, subject: String| {
+            let post = &post;
+            async move {
+                let r = post(from, &subject, true).await;
+                r.assert_status_ok();
+                r.json::<Value>()["result"].as_str().unwrap().to_string()
+            }
+        };
+        let status = |pid: String| {
+            let request = &request;
+            async move {
+                let detail: Value = request.get(&format!("/api/tickets/{pid}")).await.json();
+                detail["ticket"]["status"].as_str().unwrap().to_string()
+            }
+        };
+        let subject = format!("Re: Printer [{reference}]");
+
+        // Nothing resumes it: no reference, an unknown one, someone else's address.
+        assert_eq!(
+            result("ada@example.test", "Re: Printer".into()).await,
+            "no_reference"
+        );
+        assert_eq!(
+            result("ada@example.test", "Re: [T-ffffffff]".into()).await,
+            "unknown_ticket"
+        );
+        assert_eq!(
+            result("mallory@example.test", subject.clone()).await,
+            "unverified_sender"
+        );
+        assert_eq!(status(pid.clone()).await, "pending");
+
+        // The customer, with a display name and different case, resumes it once.
+        assert_eq!(
+            result("Ada Lovelace <ADA@example.test>", subject.clone()).await,
+            "resumed"
+        );
+        assert_eq!(status(pid.clone()).await, "open");
+        assert_eq!(
+            result("ada@example.test", subject.clone()).await,
+            "already_open"
+        );
+        let audits: Value = request.get(&format!("/api/audits/{pid}")).await.json();
+        let via: Vec<&str> = audits
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|a| a["snapshot"]["via"].as_str())
+            .collect();
+        assert_eq!(via, ["inbound_mail"], "{audits}");
+
+        // A reply does not reopen a resolved ticket.
+        request
+            .post(&format!("/api/tickets/{pid}/status"))
+            .json(&json!({ "to": "resolved" }))
+            .await
+            .assert_status_ok();
+        assert_eq!(result("ada@example.test", subject).await, "ignored");
+        assert_eq!(status(pid).await, "resolved");
+
+        // A ticket about nobody cannot be verified.
+        let (other, other_reference) = made(false).await;
+        assert_eq!(
+            result("ada@example.test", format!("[{other_reference}]")).await,
+            "unverified_sender"
+        );
+        assert_eq!(status(other).await, "pending");
+
+        // Unsigned, badly signed, or with no secret configured: refused or hidden.
+        post("ada@example.test", "x", false)
+            .await
+            .assert_status(axum::http::StatusCode::UNAUTHORIZED);
+        request
+            .post("/webhooks/inbound-email")
+            .add_header("content-type", "application/json")
+            .bytes("{}".into())
+            .await
+            .assert_status(axum::http::StatusCode::UNAUTHORIZED);
+        settings::update(|s| s.webhook_secret = None);
+        post("ada@example.test", "x", true)
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+    })
+    .await;
+}
