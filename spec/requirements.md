@@ -1247,3 +1247,15 @@ recipient would get before anything is sent, and be certain every message carrie
 - Running it over the pages that had never been scanned found five barriers, all fixed: error text too faint to read (`.error`), contact links too small to hit and links in running text told apart by colour alone, a pipeline drop-down with no name, and calendar days whose name did not contain their visible text.
 - This is an automatic check, which finds only a part of what is wrong. It is **not** an accessibility audit: the manual audit with screen readers and keyboards (CRM-T48) has not been done.
 - Not built: scanning the states a page reaches after an action (a dialog open, an error shown); scanning each locale and each theme.
+
+## CRM-R78 — Small groups are left out of analytics
+
+*As a data protection officer, I want a report never to show a group so small that it describes one person or one deal, so that an aggregate cannot be used to read a record.*
+
+- A report (CRM-R48, saved or ad hoc) **leaves out every group with fewer than `CRM_MIN_CELL_SIZE` records behind it**: 5 by default, `0` for none, at most 1000. It is left out, not shown as a small number or as zero.
+- What counts as the group's size: for a count, the count; for a sum of amounts, the **number of deals summed** in that group and currency (a sum over one deal is that deal's amount, however large the figure); with `convert_to`, the deals in the group across all its currencies, since a conversion adds them up.
+- The answer carries `min_cell_size` (what was applied) and `suppressed` (how many cells, or with `convert_to` groups, were left out), so a short table is not mistaken for a complete one. A filter that narrows a group to a few records does not get round it. The audit entry for a run records the same two numbers.
+- Applies to every caller, administrators included: a data-protection measure is not a privilege. It applies to the report builder, where a caller can group person-level records; the fixed dashboards (win rate, pipeline by stage, SLA, activity) are totals over the whole book, not groupings by a person-level field, and are unchanged.
+- **Primary suppression only.** An answer carries no total, so a left-out cell cannot be got by subtraction from it; but two reports asked in different ways (one grouped by status, another by status and then filtered to one owner) can still be compared by a determined caller. Secondary suppression across reports is not built.
+- The Reports page says how many groups were left out and why.
+- Not built: secondary suppression, a different threshold per kind or per caller, rounding of counts, noise; the fixed dashboards and the attribution, funnel and attainment views.

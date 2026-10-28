@@ -78,6 +78,10 @@ pub(crate) struct ReportResult {
     rates: Vec<RateUsed>,
     /// With `convert_to`: sums that had no rate in force and were left out, never taken at 1.0.
     unconverted: Vec<Unconverted>,
+    /// Groups with fewer records than this are left out (CRM-R78); `0` when none are.
+    min_cell_size: i64,
+    /// How many cells (or, with `convert_to`, groups) were left out for being that small.
+    suppressed: usize,
     /// What the figures mean, in a line.
     note: &'static str,
 }
@@ -169,18 +173,27 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
         })
         .collect();
     let found = ctx.db.query_all_raw(stmt(&plan.sql, values)).await?;
-    let mut raw = Vec::with_capacity(found.len());
+    let mut cells = Vec::with_capacity(found.len());
     for row in &found {
-        raw.push((
-            row.try_get::<String>("", "grp")?,
-            if plan.per_currency {
+        cells.push(rules::Cell {
+            group: row.try_get::<String>("", "grp")?,
+            currency: if plan.per_currency {
                 row.try_get("", "currency")?
             } else {
                 None
             },
-            row.try_get::<i64>("", "value")?,
-        ));
+            value: row.try_get::<i64>("", "value")?,
+            n: row.try_get::<i64>("", "n")?,
+        });
     }
+    // A group with only a few records behind it is a few people (or a few deals' amounts): leave it
+    // out, and say how many were, so a short table is not mistaken for a complete one (CRM-R78).
+    let min_cell_size = crate::settings::current().min_cell_size;
+    let (cells, suppressed) = rules::suppress(cells, min_cell_size, spec.convert_to.is_some());
+    let raw: Vec<(String, Option<String>, i64)> = cells
+        .into_iter()
+        .map(|c| (c.group, c.currency, c.value))
+        .collect();
     let Conversion {
         mut rows,
         rate_date,
@@ -197,7 +210,7 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
         caller.actor(),
         Some(serde_json::json!({
             "kind": spec.kind, "group_by": spec.group_by, "measure": spec.measure,
-            "groups": rows.len(),
+            "groups": rows.len(), "suppressed": suppressed, "min_cell_size": min_cell_size,
         })),
     )
     .await?;
@@ -209,8 +222,11 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
         rate_date,
         rates,
         unconverted,
+        min_cell_size,
+        suppressed,
         note: "counted over the records that exist now; a record with several tags is in each \
-               tag's group; sums are per currency and never added across currencies",
+               tag's group; sums are per currency and never added across currencies; a group \
+               with fewer records than min_cell_size is left out, never shown as a small number",
     })
 }
 

@@ -42,6 +42,9 @@ pub struct Settings {
     pub trust_forwarded_for: bool,
     /// `CRM_UPSTREAM_MODE`: `http` looks names up; anything else is the stub.
     pub upstream_mode: Mode,
+    /// `CRM_MIN_CELL_SIZE`: a report leaves out a group with fewer records than this (CRM-R78):
+    /// 5 by default, 0 for none, at most 1000.
+    pub min_cell_size: i64,
     /// `CRM_PPM_SERVICE_URL`: the project portfolio service the bridge sends delivery ideas to.
     pub ppm_service_url: Option<String>,
     /// `CRM_WORKER_SERVICE_URL`: the worker service (WPM) the team import reads workers from.
@@ -187,6 +190,9 @@ impl Settings {
             } else {
                 Mode::Stub
             },
+            min_cell_size: get("CRM_MIN_CELL_SIZE")
+                .and_then(|v| v.trim().parse::<i64>().ok())
+                .map_or(5, |n| n.clamp(0, 1000)),
             ppm_service_url: text("CRM_PPM_SERVICE_URL"),
             worker_service_url: text("CRM_WORKER_SERVICE_URL"),
             event_transport: EventTransport::parse(&get("CRM_EVENT_TRANSPORT").unwrap_or_default()),

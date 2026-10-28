@@ -780,4 +780,6 @@ export default {
   "error.unavailable":
     "تعذر الوصول إلى الخدمة أو أنها غير متاحة. حاول مرة أخرى بعد قليل.",
   "error.fieldInvalid": "غير مقبول.",
+  "rpt.suppressed":
+    "استُبعدت {count} مجموعات تضم أقل من {min} سجلات حتى لا يمكن تمييز شخص بعينه من رقم صغير.",
 } satisfies Record<StringKey, string>;

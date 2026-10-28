@@ -119,6 +119,7 @@ async fn a_rate_that_cannot_be_recorded_is_refused_naming_the_member() {
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_report_shows_its_sums_in_one_currency_naming_the_rates_and_what_it_could_not_convert() {
+    let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, _stages) = seed_pipeline!(&request).await;
         for (name, amount, currency) in [
@@ -243,6 +244,7 @@ async fn a_report_shows_its_sums_in_one_currency_naming_the_rates_and_what_it_co
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_saved_report_keeps_its_conversion() {
+    let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, _stages) = seed_pipeline!(&request).await;
         request

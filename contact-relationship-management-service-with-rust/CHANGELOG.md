@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.
 
+### Added — small-cell suppression (CRM-T145, CRM-R78)
+
+`CRM_MIN_CELL_SIZE`; `min_cell_size` and `suppressed` in a report's answer and audit entry; `rules::reports::suppress`.
+
 ### Added — the inventory test (CRM-T141)
 
 `tests/requests/inventory.rs` fails when a table is not in `spec/compliance/personal-data-inventory.md`, and when the `swept` tables are not those the retention sweep deletes from.

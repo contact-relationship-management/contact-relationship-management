@@ -1663,6 +1663,10 @@ export interface ReportResult {
   rate_date: string | null;
   rates: ReportRateUsed[];
   unconverted: ReportUnconverted[];
+  /** Groups with fewer records than this are left out (CRM-R78); `0` when none are. */
+  min_cell_size: number;
+  /** How many were left out. */
+  suppressed: number;
   note: string;
 }
 

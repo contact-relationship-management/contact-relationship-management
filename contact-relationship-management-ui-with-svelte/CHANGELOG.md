@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `ticketSuggestions`, a list under the selected ticket, the tour's suggestions and a sixth knowledge-base article, 1 key in 8 locales (machine drafts), regenerated `schema.d.ts`; one Playwright test (and the help centre test now counts five).
 
+### Added — a note on left-out groups (CRM-T145)
+
+The Reports page says how many groups were left out; `scripts/update-translation-register.mjs` refreshes the register's counts.
+
 ### Changed — axe over every page (CRM-T144)
 
 `tests/e2e/a11y-routes.ts` lists the pages; error text contrast, link underlines and target size, the pipeline drop-down's name and the calendar's day names were fixed.

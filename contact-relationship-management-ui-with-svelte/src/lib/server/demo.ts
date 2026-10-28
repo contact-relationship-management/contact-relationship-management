@@ -2810,7 +2810,10 @@ function workflows(
 }
 
 /** The tour's reports: computed over the sample records, as the service computes them over its own. */
-function reportRows(spec: ReportSpec): ReportResult["rows"] | string {
+/** A report row and the records behind it, which the service uses to leave small groups out. */
+type SizedRow = ReportResult["rows"][number] & { n: number };
+
+function reportRows(spec: ReportSpec): SizedRow[] | string {
   type Rec = Record<string, unknown>;
   const none = "(none)";
   const text = (v: unknown, fallback = none) =>
@@ -2868,6 +2871,7 @@ function reportRows(spec: ReportSpec): ReportResult["rows"] | string {
     }),
   );
   const sums = new Map<string, number>();
+  const sizes = new Map<string, number>();
   for (const r of kept) {
     for (const g of group(r)) {
       const money = spec.measure === "sum_amount";
@@ -2876,14 +2880,48 @@ function reportRows(spec: ReportSpec): ReportResult["rows"] | string {
         key,
         (sums.get(key) ?? 0) + (money ? Number(r.amount_minor ?? 0) : 1),
       );
+      sizes.set(key, (sizes.get(key) ?? 0) + 1);
     }
   }
   return [...sums.entries()]
     .map(([key, value]) => {
       const [g, currency] = key.split("\u0000");
-      return { group: g!, currency: currency ?? null, value };
+      return {
+        group: g!,
+        currency: currency ?? null,
+        value,
+        n: sizes.get(key)!,
+      };
     })
     .sort((a, b) => b.value - a.value || a.group.localeCompare(b.group));
+}
+
+/**
+ * The smallest group the tour's reports show (CRM-R78). The service's default is 5; the tour's
+ * sample data is small and made up, so it leaves out only a group of one, enough to show the rule.
+ */
+const DEMO_MIN_CELL = 2;
+
+/** The cells with fewer than `min` records behind them are left out, as the service does it. */
+function suppressSmall<T extends { group: string; n: number }>(
+  cells: T[],
+  min: number,
+  byGroup: boolean,
+): { kept: T[]; suppressed: number } {
+  const size = new Map<string, number>();
+  for (const c of cells) size.set(c.group, (size.get(c.group) ?? 0) + c.n);
+  const left = new Set<string>();
+  const kept = cells.filter((c) => {
+    const ok = (byGroup ? size.get(c.group)! : c.n) >= min;
+    if (!ok)
+      left.add(
+        byGroup
+          ? c.group
+          : `${c.group}\u0000${(c as { currency?: string }).currency ?? ""}`,
+      );
+    return ok;
+  });
+  return { kept, suppressed: left.size };
 }
 
 function reportResult(spec: ReportSpec): DemoReply {
@@ -2892,8 +2930,13 @@ function reportResult(spec: ReportSpec): DemoReply {
     return problem(422, "kind is not a kind of record");
   if (spec.measure === "sum_amount" && spec.kind !== "deal")
     return problem(422, "only a deal report can sum amounts");
-  const rows = reportRows(spec);
-  if (typeof rows === "string") return problem(422, rows);
+  const all = reportRows(spec);
+  if (typeof all === "string") return problem(422, all);
+  const { kept: rows, suppressed } = suppressSmall(
+    all,
+    DEMO_MIN_CELL,
+    Boolean(spec.convert_to),
+  );
   const converting = spec.convert_to
     ? convertReport(spec, rows)
     : { rows, rateDate: null, rates: [], unconverted: [] };
@@ -2906,6 +2949,8 @@ function reportResult(spec: ReportSpec): DemoReply {
     rate_date: converting.rateDate,
     rates: converting.rates,
     unconverted: converting.unconverted,
+    min_cell_size: DEMO_MIN_CELL,
+    suppressed,
     note: "counted over the records that exist now; sums are per currency and never added across currencies",
   } satisfies ReportResult);
 }

@@ -34,6 +34,7 @@ fn rows(result: &Value) -> Vec<(String, i64)> {
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn records_are_counted_by_a_field_a_tag_and_a_date_range() {
+    let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
         let one = seed_contact!(&request, "Report One").await;
         let two = seed_contact!(&request, "Report Two").await;
@@ -117,6 +118,7 @@ async fn records_are_counted_by_a_field_a_tag_and_a_date_range() {
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn deal_amounts_are_summed_per_currency_and_never_added_across_them() {
+    let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
         let deal = |name: &'static str, amount: i64, currency: &'static str| {
@@ -229,6 +231,7 @@ async fn a_report_that_cannot_be_asked_is_refused_naming_the_member() {
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_report_is_saved_run_again_changed_and_deleted() {
+    let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
         request
             .post("/api/leads")
@@ -273,6 +276,88 @@ async fn a_report_is_saved_run_again_changed_and_deleted() {
             .get(&format!("/api/reports/{pid}/run"))
             .await
             .assert_status(axum::http::StatusCode::NOT_FOUND);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_group_with_only_a_few_records_behind_it_is_left_out_and_counted() {
+    request::<App, _, _>(|request, _ctx| async move {
+        contact_relationship_management::settings::update(|s| s.min_cell_size = 5);
+        let _restore = super::no_suppression_restore();
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        let deal = |name: &'static str, currency: &'static str, win: bool| {
+            let (request, pipeline, won) = (&request, pipeline.clone(), stages[2].clone());
+            async move {
+                let made: Value = request
+                    .post("/api/deals")
+                    .json(&json!({ "name": name, "pipeline_pid": pipeline,
+                                   "amount_minor": 1_000, "currency": currency }))
+                    .await
+                    .json();
+                if win {
+                    request
+                        .post(&format!(
+                            "/api/deals/{}/stage",
+                            made["pid"].as_str().unwrap()
+                        ))
+                        .json(&json!({ "stage_pid": won }))
+                        .await
+                        .assert_status_ok();
+                }
+            }
+        };
+        // Six won in pounds, one won in dollars, two still open.
+        for _ in 0..6 {
+            deal("W", "GBP", true).await;
+        }
+        deal("U", "USD", true).await;
+        deal("O1", "GBP", false).await;
+        deal("O2", "GBP", false).await;
+
+        // Counts: "won" has seven behind it and is shown; "open" has two and is left out, not shown
+        // as a small number.
+        let counted = run!(&request, json!({ "kind": "deal", "group_by": "state" }));
+        assert_eq!(rows(&counted), [("won".to_string(), 7)], "{counted}");
+        assert_eq!(counted["min_cell_size"], 5);
+        assert_eq!(counted["suppressed"], 1);
+
+        // Sums are judged per currency: six deals in pounds are shown, the one in dollars is a
+        // single deal's amount and is left out, and so are the two open ones.
+        let summed = run!(
+            &request,
+            json!({ "kind": "deal", "group_by": "state", "measure": "sum_amount" })
+        );
+        let shown: Vec<(&str, &str, i64)> = summed["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| {
+                (
+                    r["group"].as_str().unwrap(),
+                    r["currency"].as_str().unwrap(),
+                    r["value"].as_i64().unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(shown, [("won", "GBP", 6_000)], "{summed}");
+        assert_eq!(summed["suppressed"], 2);
+
+        // A filter that narrows a group to one record does not get round it.
+        let narrowed = run!(
+            &request,
+            json!({ "kind": "deal", "group_by": "currency", "filter": { "state": ["open"] } })
+        );
+        assert!(rows(&narrowed).is_empty(), "{narrowed}");
+        assert_eq!(narrowed["suppressed"], 1);
+
+        // Off, the same question shows everything and says nothing was left out.
+        contact_relationship_management::settings::update(|s| s.min_cell_size = 0);
+        let all = run!(&request, json!({ "kind": "deal", "group_by": "state" }));
+        assert_eq!(rows(&all).len(), 2, "{all}");
+        assert_eq!(all["suppressed"], 0);
     })
     .await;
 }

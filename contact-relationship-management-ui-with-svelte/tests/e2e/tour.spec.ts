@@ -1208,6 +1208,20 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("report-result")).toContainText("referral");
   });
 
+  test("a report leaves out a group of one and says so", async ({ page }) => {
+    await startTour(page);
+    await page.goto("/reports");
+    await page.getByTestId("report-kind").selectOption("deal");
+    await page.getByTestId("report-group").selectOption("state");
+    await page.getByTestId("report-run").click();
+    // Eight open and three won are shown; the one lost deal would be that deal, so it is not.
+    await expect(page.getByTestId("report-row")).toHaveCount(2);
+    await expect(page.getByTestId("report-result")).not.toContainText("lost");
+    await expect(page.getByTestId("rpt-suppressed")).toContainText(
+      "1 groups with fewer than 2 records were left out",
+    );
+  });
+
   test("won revenue is shared among the campaigns that touched the buyer, per model and window", async ({
     page,
   }) => {

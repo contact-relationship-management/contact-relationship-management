@@ -242,6 +242,13 @@
       </table>
     {/if}
     {#if result.truncated}<p class="muted">{t("rpt.truncated")}</p>{/if}
+    {#if result.suppressed > 0}
+      <p class="muted" data-testid="rpt-suppressed">
+        {t("rpt.suppressed")
+          .replace("{count}", String(result.suppressed))
+          .replace("{min}", String(result.min_cell_size))}
+      </p>
+    {/if}
     {#if result.rates.length > 0}
       <p class="muted small" data-testid="report-rates">
         {t("rpt.ratesUsed")} ({result.rate_date}):

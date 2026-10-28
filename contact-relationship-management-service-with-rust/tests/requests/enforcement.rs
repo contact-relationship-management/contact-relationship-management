@@ -1510,6 +1510,7 @@ async fn a_masked_reader_cannot_see_tags_and_a_tag_filter_does_not_show_masked_r
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_masked_reader_may_count_but_not_sum_or_use_tags_and_shared_reports_stay_the_owners() {
+    let _plain = super::no_suppression();
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
         s.require_auth = true;

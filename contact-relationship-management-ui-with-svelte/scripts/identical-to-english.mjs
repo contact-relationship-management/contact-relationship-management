@@ -21,6 +21,7 @@ for (const code of codes.filter((c) => c !== "en-001")) {
   const table = (await import(new URL(`${code}.ts`, dir))).default;
   const same = Object.keys(en).filter((key) => table[key] === en[key]);
   console.log(`## ${code} (${same.length} of ${Object.keys(en).length})\n`);
-  for (const key of same) console.log(`- \`${key}\`: ${JSON.stringify(en[key])}`);
+  for (const key of same)
+    console.log(`- \`${key}\`: ${JSON.stringify(en[key])}`);
   console.log("");
 }

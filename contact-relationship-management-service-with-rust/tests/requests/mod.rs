@@ -50,6 +50,29 @@ mod webhooks;
 mod workflows;
 
 /// A fresh synthetic `person:` URN.
+/// Switches small-cell suppression (CRM-R78) off for a test that checks a report's arithmetic on
+/// a few records, and puts it back when the test ends, even by panic.
+pub struct NoSuppression;
+
+/// Puts the default small-cell size back when a test that set its own ends.
+pub fn no_suppression_restore() -> NoSuppression {
+    NoSuppression
+}
+
+pub fn no_suppression() -> NoSuppression {
+    contact_relationship_management::settings::update(|s| s.min_cell_size = 0);
+    NoSuppression
+}
+
+impl Drop for NoSuppression {
+    fn drop(&mut self) {
+        contact_relationship_management::settings::update(|s| {
+            s.min_cell_size =
+                contact_relationship_management::settings::Settings::default().min_cell_size;
+        });
+    }
+}
+
 pub fn a_person() -> String {
     format!("person:{}", uuid::Uuid::new_v4())
 }

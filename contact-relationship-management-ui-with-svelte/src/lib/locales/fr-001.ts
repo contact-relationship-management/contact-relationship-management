@@ -799,4 +799,6 @@ export default {
   "error.unavailable":
     "Le service est injoignable ou indisponible. Réessayez dans un instant.",
   "error.fieldInvalid": "Non accepté.",
+  "rpt.suppressed":
+    "{count} groupes de moins de {min} enregistrements ont été omis, afin que personne ne puisse être reconnu à partir d'un petit nombre.",
 } satisfies Record<StringKey, string>;

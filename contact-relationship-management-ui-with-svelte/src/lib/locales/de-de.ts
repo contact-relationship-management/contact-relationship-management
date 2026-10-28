@@ -801,4 +801,6 @@ export default {
   "error.unavailable":
     "Der Dienst ist nicht erreichbar oder nicht verfügbar. Versuchen Sie es gleich noch einmal.",
   "error.fieldInvalid": "Nicht angenommen.",
+  "rpt.suppressed":
+    "{count} Gruppen mit weniger als {min} Datensätzen wurden weggelassen, damit niemand aus einer kleinen Zahl erkennbar wird.",
 } satisfies Record<StringKey, string>;

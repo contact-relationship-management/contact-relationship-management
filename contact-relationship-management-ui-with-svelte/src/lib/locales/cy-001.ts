@@ -791,4 +791,6 @@ export default {
   "error.unavailable":
     "Methwyd cyrraedd y gwasanaeth neu nid yw ar gael. Rhowch gynnig arall arni cyn bo hir.",
   "error.fieldInvalid": "Heb ei dderbyn.",
+  "rpt.suppressed":
+    "Gadawyd {count} grŵp â llai na {min} cofnod allan, fel na ellir adnabod neb o rif bach.",
 } satisfies Record<StringKey, string>;

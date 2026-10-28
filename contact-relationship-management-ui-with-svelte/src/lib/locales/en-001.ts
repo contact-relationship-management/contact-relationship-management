@@ -783,4 +783,6 @@ export default {
   "error.unavailable":
     "The service could not be reached or is not available. Try again shortly.",
   "error.fieldInvalid": "Not accepted.",
+  "rpt.suppressed":
+    "{count} groups with fewer than {min} records were left out, so that no one can be picked out from a small number.",
 } as const;

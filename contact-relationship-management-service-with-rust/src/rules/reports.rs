@@ -379,13 +379,13 @@ pub fn plan(spec: &Spec) -> Result<Plan, Vec<(String, String)>> {
     let (select, group_by, order) = match (sum, table.money) {
         (true, Some((amount, currency))) => (
             format!(
-                "{group} AS grp, {currency} AS currency, coalesce(sum({amount}), 0)::bigint AS value"
+                "{group} AS grp, {currency} AS currency, coalesce(sum({amount}), 0)::bigint AS value, count(*)::bigint AS n"
             ),
             "grp, currency".to_string(),
             "value DESC, grp, currency".to_string(),
         ),
         _ => (
-            format!("{group} AS grp, count(*)::bigint AS value"),
+            format!("{group} AS grp, count(*)::bigint AS value, count(*)::bigint AS n"),
             "grp".to_string(),
             "value DESC, grp".to_string(),
         ),
@@ -403,6 +403,65 @@ pub fn plan(spec: &Spec) -> Result<Plan, Vec<(String, String)>> {
         uses_tags: by_tag || spec.filter.contains_key("tag"),
         uses_money: sum,
     })
+}
+
+/// One cell of an answer as the database gave it: the group, the currency (for a sum), the figure
+/// and **how many records are behind it**.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cell {
+    /// The group's name.
+    pub group: String,
+    /// The currency, for a sum of amounts.
+    pub currency: Option<String>,
+    /// The count, or the sum in minor units.
+    pub value: i64,
+    /// The records counted or summed.
+    pub n: i64,
+}
+
+/// Small-cell suppression (CRM-R78): leave out every cell with fewer than `min` records behind it,
+/// because a count of one is a person and a sum over one record is that record's amount. `min` of
+/// zero or less leaves everything. With `by_group` a cell's size is the records of its whole group
+/// (all its currencies), which is what a conversion adds up. Returns what is kept and how many
+/// cells (or, by group, groups) were left out.
+///
+/// This is **primary** suppression only: an answer carries no total, so one left-out cell cannot
+/// be got by subtraction from it, but two reports asked in different ways can still be compared.
+#[must_use]
+pub fn suppress(cells: Vec<Cell>, min: i64, by_group: bool) -> (Vec<Cell>, usize) {
+    use std::collections::{BTreeMap, BTreeSet};
+    if min <= 0 {
+        return (cells, 0);
+    }
+    let mut size: BTreeMap<String, i64> = BTreeMap::new();
+    for cell in &cells {
+        let slot = size.entry(cell.group.clone()).or_default();
+        *slot = slot.saturating_add(cell.n);
+    }
+    let big_enough = |cell: &Cell| {
+        let n = if by_group { size[&cell.group] } else { cell.n };
+        n >= min
+    };
+    let mut left_out: BTreeSet<(String, Option<String>)> = BTreeSet::new();
+    let kept: Vec<Cell> = cells
+        .into_iter()
+        .filter(|cell| {
+            let keep = big_enough(cell);
+            if !keep {
+                let key = (
+                    cell.group.clone(),
+                    if by_group {
+                        None
+                    } else {
+                        cell.currency.clone()
+                    },
+                );
+                left_out.insert(key);
+            }
+            keep
+        })
+        .collect();
+    (kept, left_out.len())
 }
 
 #[cfg(test)]
@@ -457,7 +516,7 @@ mod tests {
         let p = plan(&spec("lead", "source")).unwrap();
         assert!(
             p.sql.starts_with(
-                "SELECT l.source AS grp, count(*)::bigint AS value FROM leads l WHERE"
+                "SELECT l.source AS grp, count(*)::bigint AS value, count(*)::bigint AS n FROM leads l WHERE"
             )
         );
         assert!(
@@ -629,5 +688,64 @@ mod tests {
         s.from = day;
         s.to = day;
         assert!(plan(&s).is_ok(), "one day is a range");
+    }
+
+    fn cell(group: &str, currency: Option<&str>, value: i64, n: i64) -> Cell {
+        Cell {
+            group: group.into(),
+            currency: currency.map(Into::into),
+            value,
+            n,
+        }
+    }
+
+    #[test]
+    fn a_cell_with_fewer_records_than_the_minimum_is_left_out_and_counted() {
+        let cells = vec![
+            cell("won", None, 40, 40),
+            cell("lost", None, 4, 4),
+            cell("open", None, 1, 1),
+        ];
+        let (kept, left) = suppress(cells, 5, false);
+        assert_eq!(
+            kept.iter().map(|c| c.group.as_str()).collect::<Vec<_>>(),
+            ["won"]
+        );
+        assert_eq!(left, 2);
+    }
+
+    #[test]
+    fn exactly_the_minimum_is_shown_and_zero_or_less_turns_it_off() {
+        let cells = vec![cell("a", None, 5, 5), cell("b", None, 1, 1)];
+        assert_eq!(suppress(cells.clone(), 5, false).0.len(), 1);
+        assert_eq!(suppress(cells.clone(), 0, false), (cells.clone(), 0));
+        assert_eq!(suppress(cells.clone(), -3, false), (cells, 0));
+    }
+
+    #[test]
+    fn a_sum_is_judged_by_the_records_behind_it_not_by_its_size() {
+        // A huge sum over one deal is that deal's amount: left out. A tiny sum over many is not.
+        let cells = vec![
+            cell("won", Some("GBP"), 9_000_000, 1),
+            cell("lost", Some("GBP"), 12, 30),
+        ];
+        let (kept, left) = suppress(cells, 5, false);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].group, "lost");
+        assert_eq!(left, 1);
+    }
+
+    #[test]
+    fn a_converted_group_is_judged_by_all_its_currencies_together() {
+        let cells = vec![
+            cell("won", Some("GBP"), 100, 3),
+            cell("won", Some("USD"), 100, 3),
+            cell("lost", Some("GBP"), 100, 4),
+        ];
+        // By cell, neither "won" cell reaches 5; by group, "won" has 6 behind it.
+        assert_eq!(suppress(cells.clone(), 5, false).0.len(), 0);
+        let (kept, left) = suppress(cells, 5, true);
+        assert_eq!(kept.iter().filter(|c| c.group == "won").count(), 2);
+        assert_eq!(left, 1, "one group, not one cell, is counted");
     }
 }

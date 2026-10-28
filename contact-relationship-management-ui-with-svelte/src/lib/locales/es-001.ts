@@ -793,4 +793,6 @@ export default {
   "error.unavailable":
     "No se pudo acceder al servicio o no está disponible. Inténtelo de nuevo en breve.",
   "error.fieldInvalid": "No aceptado.",
+  "rpt.suppressed":
+    "Se omitieron {count} grupos con menos de {min} registros, para que nadie pueda identificarse a partir de una cifra pequeña.",
 } satisfies Record<StringKey, string>;

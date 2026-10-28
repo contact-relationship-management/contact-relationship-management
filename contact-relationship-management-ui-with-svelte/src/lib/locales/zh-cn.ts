@@ -754,4 +754,6 @@ export default {
   "error.tooMany": "请求过多。请稍等片刻后重试。",
   "error.unavailable": "无法连接到服务，或服务不可用。请稍后重试。",
   "error.fieldInvalid": "未被接受。",
+  "rpt.suppressed":
+    "已省略 {count} 个记录少于 {min} 条的分组，以免从小数字中识别出个人。",
 } satisfies Record<StringKey, string>;

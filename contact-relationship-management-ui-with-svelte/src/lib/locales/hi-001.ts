@@ -785,4 +785,6 @@ export default {
   "error.unavailable":
     "सेवा तक पहुँचा नहीं जा सका या वह उपलब्ध नहीं है। थोड़ी देर में फिर कोशिश करें।",
   "error.fieldInvalid": "स्वीकार नहीं किया गया।",
+  "rpt.suppressed":
+    "{min} से कम रिकॉर्ड वाले {count} समूह छोड़ दिए गए, ताकि छोटी संख्या से किसी की पहचान न हो सके।",
 } satisfies Record<StringKey, string>;

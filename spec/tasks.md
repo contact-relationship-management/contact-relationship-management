@@ -1722,3 +1722,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Tests:** 60 Playwright tests over deals, accounts, contacts, help, follow-ups and the board pass again after the style changes; Vitest 193 pass.
       - **Not done:** the manual audit (CRM-T48); other locales and themes; states after an action.
       - **Not tested:** that every locale's calendar label satisfies the rule (the German route is scanned; the others use the same code).
+- [x] CRM-T145 *(edge)* **Small-cell suppression for the report builder.** (M)
+      **Done (2026-10-28, not released):** requirement CRM-R78 first, then:
+      - **Service:** the report SQL returns `n`, the records behind each cell; `rules::reports::suppress` (a pure function: by cell, or by group when converting); `Settings.min_cell_size` from `CRM_MIN_CELL_SIZE` (5, 0 off, at most 1000); `min_cell_size` and `suppressed` in the answer and in the audit entry.
+      - **Tests:** 4 unit tests (below the minimum left out and counted; exactly the minimum shown and zero or less off; a sum judged by records, not size; a converted group judged across its currencies) and 1 request test (7 won and 2 open deals: counts, per-currency sums, a filter that narrows to one group, and off). The four existing report tests that check arithmetic on a few records run with suppression off.
+      - **UI:** the Reports page says how many groups were left out and why (`rpt.suppressed`, 8 locales, machine drafts); the tour applies the same rule with its own minimum of 2, since its sample data is small and made up; one Playwright test (the one lost deal is left out); `scripts/update-translation-register.mjs` refreshes the register's counts (now 694 strings); `schema.d.ts` regenerated; the DPIA, the record of processing and the env-var list no longer say suppression is missing.
+      - **Not done:** secondary suppression; the fixed dashboards and the attribution, funnel and attainment views.

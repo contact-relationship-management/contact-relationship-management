@@ -20840,6 +20840,11 @@ export interface components {
              * @description When it was read.
              */
             as_of: string;
+            /**
+             * Format: int64
+             * @description Groups with fewer records than this are left out (CRM-R78); `0` when none are.
+             */
+            min_cell_size: number;
             /** @description What the figures mean, in a line. */
             note: string;
             /**
@@ -20852,6 +20857,11 @@ export interface components {
             /** @description The groups, largest first. */
             rows: components["schemas"]["ReportRow"][];
             spec: components["schemas"]["ReportSpec"];
+            /**
+             * Format: uint
+             * @description How many cells (or, with `convert_to`, groups) were left out for being that small.
+             */
+            suppressed: number;
             /** @description There were more groups than are returned. */
             truncated: boolean;
             /** @description With `convert_to`: sums that had no rate in force and were left out, never taken at 1.0. */

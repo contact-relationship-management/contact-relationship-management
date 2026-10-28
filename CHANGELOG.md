@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — small groups are left out of reports (CRM-T145, CRM-R78)
+
+A report leaves out any group with fewer than `CRM_MIN_CELL_SIZE` records behind it (5 by default, 0 for none) and says how many it left out. Primary suppression only.
+
 ### Changed — every page is scanned for accessibility (CRM-T144, CRM-R77)
 
 The axe gate now covers all pages, not 12, and a test fails if a page is added without being listed. Five barriers it found were fixed.
