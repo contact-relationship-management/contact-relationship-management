@@ -1271,3 +1271,12 @@ recipient would get before anything is sent, and be certain every message carrie
 - A token expires as before (confirmation and preference links are valid for the days they were issued for). The rows of tokens that expired or were spent **more than a week ago are deleted** by the hourly job that also drops idempotency keys, and **erasing a contact deletes its tokens**.
 - The **unsubscribe link is not one of these**: it is a signed, stateless token that never expires and is not single-use, deliberately, so a recipient can leave from any old message; replaying it only withdraws consent again.
 - Not built: single-use for the unsubscribe link; a keyed hash (a 256-bit random token needs none); revoking a person's links on demand other than by erasure; a "this link was already used" page that differs from "not valid or has expired".
+
+## CRM-R80 — ESLint and Prettier are tests
+
+*As a maintainer, I want a lint or formatting fault to fail the tests, not only a separate command, so that no one has to remember to run a second tool and the project's own lint rules are themselves tested.*
+
+- `pnpm test` runs ESLint and Prettier through their programming interfaces (`tests/unit/lint.test.ts`, in Node, not the browser build): **the whole project must lint with no error and no warning**, and **every file Prettier can format must be formatted** (`src`, `tests`, `scripts` and the configuration files at the top; `.svelte` files have no Prettier parser here, and `.prettierignore` is honoured). The test fails naming each file and fault.
+- The project's **own lint rule** (no page reads an error's text, CRM-R76) is tested: a sample page that reads an error's `message`, or prints an error as a string, is refused; the same in a script and in a component; and the one module that may read an error, and ordinary code, are left alone.
+- `pnpm lint` and `pnpm format` cover the same files (`src`, `tests`, `scripts` and the top-level configuration files), where they covered only `src`; CI's front-end job already runs `pnpm run lint`, and its coverage run runs this test.
+- Not built: Prettier for `.svelte` files (needs a plugin the project does not use); a format check of the Markdown or the locale files; the Rust side, whose `rustfmt` and `clippy` are CI steps already.

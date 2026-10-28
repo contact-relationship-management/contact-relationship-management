@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — ESLint and Prettier as tests (CRM-T147, CRM-R80)
+
+`pnpm test` fails on a lint or formatting fault and tests the project's own lint rule; `pnpm lint` and `pnpm format` now cover tests, scripts and the configuration files.
+
 ### Changed — confirmation and preference links work once (CRM-T146, CRM-R79)
 
 They are random tokens kept only as a hash, spent in the transaction of the act they allow, and deleted a week after they expire or are spent. A preference choice hands the page a fresh token. The unsubscribe link is unchanged, on purpose.

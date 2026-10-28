@@ -1734,3 +1734,9 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Tests:** 3 unit tests (a token is long, random and URL-safe; what is kept is a SHA-256 that does not contain the token, pinned to a known value; only the right shape reaches the database) and 3 request tests (the confirmation link spent once with a repeat `404` and the database holding the hash and not the token; the preference page spending the link per choice with the next one in the answer, a refused choice spending nothing; two simultaneous uses with exactly one winning, an expired link, the weekly sweep and erasure). **Found by the test:** `make_interval` needs an `int`, so the weekly sweep failed until cast; fixed.
       - **Not done:** the DPIA's other gap (CRM-T140); single-use for the unsubscribe link, by design.
       - **Not tested:** a very large number of simultaneous requests; the tokens against a real mail scanner.
+- [x] CRM-T147 *(edge)* **ESLint and Prettier as tests.** (S)
+      **Done (2026-10-28, not released):** requirement CRM-R80 first, then:
+      - **Tests:** `tests/unit/lint.test.ts` (6 tests: the no-error-text rule refused in a page for `.message` and for `String(error)`, in a script and a component, and leaving `src/lib/errors.ts` and ordinary code alone; the whole project through ESLint; every formattable file through Prettier, 85 of them). **Checked by breaking both:** an unformatted test file and a `src` file with a lint fault each fail the test naming the file; removed.
+      - **Scripts:** `pnpm lint` and `pnpm format` now cover `src`, `tests`, `scripts` and the top-level configuration files; `vite.config.ts` was the one file that was not formatted, and is now.
+      - **Found on the way:** Vite hands a test the browser build of Prettier, which has no file functions, so the test loads Prettier with Node's own resolver.
+      - **Not done:** `.svelte` formatting; Markdown formatting.

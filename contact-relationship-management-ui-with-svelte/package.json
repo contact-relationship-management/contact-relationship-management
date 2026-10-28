@@ -16,8 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "format": "prettier --write src",
-    "lint": "prettier --check src && eslint .",
+    "format": "prettier --write src tests scripts \"*.{ts,js}\"",
+    "lint": "prettier --check src tests scripts \"*.{ts,js}\" && eslint .",
     "api:types": "openapi-typescript \"${OPENAPI:?set OPENAPI to the service openapi.json}\" -o src/lib/api/schema.d.ts",
     "test:live": "playwright test -c playwright.live.config.ts"
   },
