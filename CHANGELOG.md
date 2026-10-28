@@ -13,6 +13,10 @@ subproject keeps a detailed changelog:
 
 `GET /api/tickets/{pid}/suggested-articles`: the published articles that share words with the ticket's title, best first, with the words they share; shown on the tickets page.
 
+### Added — clawing credit back from a worker (CRM-T138, CRM-R71)
+
+`GET`, `PUT` and `DELETE /api/quotas/clawbacks/{pid}` (admin only): an amount taken back from one worker's credit for a won deal, up to what they hold; attainment follows, for that worker alone.
+
 ### Added — CLV at the rate of the day each deal closed (CRM-T137, CRM-R70)
 
 `GET /api/accounts/{pid}/clv?convert_to=&rate_basis=close_day` converts each won deal at the rate in force on its closing day, rounded once per deal; deals with no rate then are named, not taken at 1.0. The account page has a checkbox for it.

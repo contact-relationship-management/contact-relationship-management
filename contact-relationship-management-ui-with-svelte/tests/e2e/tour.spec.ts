@@ -1486,6 +1486,32 @@ test.describe("export, undo and search", () => {
     await expect(bea).toContainText("140,000.00");
   });
 
+  test("credit can be clawed back from one worker and given back", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/quotas");
+    const bea = page
+      .getByTestId("quota-standing-row")
+      .filter({ hasText: "owner-bea" });
+    await expect(bea).toContainText("140,000.00");
+    await page
+      .getByTestId("clawback-deal")
+      .selectOption({ label: "Fleet telematics renewal" });
+    await page.getByTestId("clawback-owner").fill("owner-bea");
+    await page.getByTestId("clawback-amount").fill("8000");
+    await page.getByTestId("clawback-reason").fill("customer refund");
+    await page.getByTestId("clawback-set").click();
+    // £88,000 less £8,000 taken back.
+    await expect(bea).toContainText("132,000.00");
+    // More than the worker holds for the deal is refused, as the service refuses it.
+    await page.getByTestId("clawback-amount").fill("90000");
+    await page.getByTestId("clawback-set").click();
+    await expect(page.getByTestId("quota-error")).toBeVisible();
+    await page.getByTestId("clawback-remove").click();
+    await expect(bea).toContainText("140,000.00");
+  });
+
   test("a team adds its workers' standings and can be removed", async ({
     page,
   }) => {

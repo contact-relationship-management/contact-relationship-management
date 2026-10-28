@@ -846,6 +846,27 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
     ),
     (
         "get",
+        "/api/quotas/clawbacks/{pid}",
+        "insights",
+        "What has been taken back from workers' credit on a deal (CRM-R71); 404 for an unknown deal. Admin only",
+        Kind::Ok,
+    ),
+    (
+        "put",
+        "/api/quotas/clawbacks/{pid}",
+        "insights",
+        "Take an amount back from one worker's credit for a won deal, replacing their earlier clawback on it: above zero and no more than their credit, else 422 naming /amount_minor; 422 naming /owner_ref when the deal is not won or does not credit them; 404 for an unknown deal; a write, audited. Answers every clawback on the deal. Admin only",
+        Kind::Ok,
+    ),
+    (
+        "delete",
+        "/api/quotas/clawbacks/{pid}",
+        "insights",
+        "Give the worker named in ?owner_ref= their credit back; audited; 404 when there is no such clawback. Admin only",
+        Kind::Ok,
+    ),
+    (
+        "get",
         "/api/quotas/splits/{pid}",
         "insights",
         "How a won deal is credited for quotas (CRM-R65): its shares, or none when it is credited wholly to its owner; 404 for an unknown deal. Admin only",

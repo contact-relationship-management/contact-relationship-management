@@ -763,4 +763,10 @@ export default {
   "quota.territorySet": "Gosod y diriogaeth",
   "quota.territoryUnassigned": "Enillwyd ar gyfrifon heb diriogaeth",
   "clv.closeDay": "Pob cytundeb ar gyfradd y diwrnod y caeodd",
+  "quota.clawback": "Cymryd credyd yn ôl",
+  "quota.clawbackHint":
+    "Yn cymryd swm yn ôl o gredyd un gweithiwr am gytundeb a enillwyd, hyd at yr hyn sydd ganddo; mae'r lleill mewn rhaniad yn cadw eu rhai hwy.",
+  "quota.clawbackReason": "Rheswm",
+  "quota.clawbackSet": "Cymryd yn ôl",
+  "quota.clawbackRemove": "Rhoi credyd yn ôl",
 } satisfies Record<StringKey, string>;

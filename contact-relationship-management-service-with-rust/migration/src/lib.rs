@@ -59,6 +59,7 @@ mod m20261027_000044_deal_splits;
 mod m20261027_000045_teams;
 mod m20261028_000046_territories;
 mod m20261028_000047_wait_limit_action;
+mod m20261028_000048_clawbacks;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -116,6 +117,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261027_000045_teams::Migration),
             Box::new(m20261028_000046_territories::Migration),
             Box::new(m20261028_000047_wait_limit_action::Migration),
+            Box::new(m20261028_000048_clawbacks::Migration),
             // inject-above (do not remove this comment)
         ]
     }

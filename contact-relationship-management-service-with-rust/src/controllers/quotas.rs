@@ -585,6 +585,203 @@ async fn remove_split(
     })
 }
 
+// -------------------------------------------------------------- clawbacks
+
+/// Longest reason, in characters.
+const MAX_REASON: usize = 200;
+
+/// `PUT /api/quotas/clawbacks/{pid}` body (the deal's pid).
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[schemars(rename = "ClawbackPayload")]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ClawbackPayload {
+    /// The worker (`worker:<id>`) whose credit for the deal is reduced.
+    owner_ref: String,
+    /// What is taken back, in minor units: above zero and no more than their credit for the deal.
+    amount_minor: i64,
+    /// Why, up to 200 characters.
+    reason: Option<String>,
+}
+
+/// A clawback.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "Clawback")]
+pub(crate) struct ClawbackView {
+    owner_ref: String,
+    amount_minor: i64,
+    reason: Option<String>,
+    set_by: String,
+}
+
+/// What `DELETE /api/quotas/clawbacks/{pid}` is asked.
+#[derive(Debug, Deserialize)]
+struct ClawbackQuery {
+    owner_ref: String,
+}
+
+/// What a worker is credited for a won, live deal before any clawback: `(currency, minor units)`,
+/// or `None` when the deal is not won or does not credit them.
+async fn credit_of<C: ConnectionTrait>(
+    db: &C,
+    deal: Uuid,
+    owner: &str,
+) -> Result<Option<(String, i64)>> {
+    let Some(row) = db
+        .query_one_raw(stmt(
+            "SELECT trim(currency) AS currency, amount_minor, owner_ref FROM deals \
+             WHERE pid = $1 AND won AND deleted_at IS NULL",
+            [deal.into()],
+        ))
+        .await?
+    else {
+        return Ok(None);
+    };
+    let amount: i64 = row.try_get("", "amount_minor")?;
+    let shares = shares_of(db, deal).await?;
+    let part = if shares.is_empty() {
+        (row.try_get::<Option<String>>("", "owner_ref")?.as_deref() == Some(owner))
+            .then_some(amount)
+    } else {
+        let bps: Vec<u32> = shares.iter().map(|s| s.share_bps).collect();
+        shares
+            .iter()
+            .position(|s| s.owner_ref == owner)
+            .map(|i| quota::split(amount, &bps)[i])
+    };
+    Ok(part.map(|p| (row.try_get("", "currency").unwrap_or_default(), p)))
+}
+
+async fn clawbacks_of<C: ConnectionTrait>(db: &C, deal: Uuid) -> Result<Vec<ClawbackView>> {
+    db.query_all_raw(stmt(
+        "SELECT owner_ref, amount_minor, reason, set_by FROM deal_clawbacks \
+         WHERE deal_pid = $1 ORDER BY id",
+        [deal.into()],
+    ))
+    .await?
+    .iter()
+    .map(|r| {
+        Ok(ClawbackView {
+            owner_ref: r.try_get("", "owner_ref")?,
+            amount_minor: r.try_get("", "amount_minor")?,
+            reason: r.try_get("", "reason")?,
+            set_by: r.try_get("", "set_by")?,
+        })
+    })
+    .collect()
+}
+
+/// `GET /api/quotas/clawbacks/{pid}` — what has been taken back on a deal. `404` for an unknown
+/// deal.
+#[debug_handler]
+async fn get_clawbacks(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
+    deal_exists(&ctx.db, pid).await?;
+    format::json(clawbacks_of(&ctx.db, pid).await?)
+}
+
+/// `PUT /api/quotas/clawbacks/{pid}` — take an amount back from one worker's credit for a won
+/// deal, replacing their earlier clawback on it; audited (CRM-R68).
+#[debug_handler]
+async fn set_clawback(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+    Json(payload): Json<ClawbackPayload>,
+) -> Result<Response> {
+    let mut problems = Problems::new();
+    problems.require_ref(
+        "owner_ref",
+        entity_ref::EntityType::Worker,
+        &payload.owner_ref,
+    );
+    if payload.amount_minor < 1 {
+        problems.push_field("amount_minor", "above zero");
+    }
+    let reason = payload
+        .reason
+        .as_deref()
+        .map(str::trim)
+        .filter(|r| !r.is_empty());
+    if reason.is_some_and(|r| r.chars().count() > MAX_REASON) {
+        problems.push_field("reason", format!("up to {MAX_REASON} characters"));
+    }
+    problems.finish()?;
+    let who = owner_of(&caller)?;
+    let txn = ctx.db.begin().await?;
+    deal_exists(&txn, pid).await?;
+    let Some((_, credit)) = credit_of(&txn, pid, &payload.owner_ref).await? else {
+        return Err(super::unprocessable(
+            "/owner_ref: the deal is not won, or does not credit that worker",
+        ));
+    };
+    if payload.amount_minor > credit {
+        return Err(super::unprocessable(
+            "/amount_minor: no more than the worker's credit for the deal",
+        ));
+    }
+    txn.execute_raw(stmt(
+        "INSERT INTO deal_clawbacks (deal_pid, owner_ref, amount_minor, reason, set_by) \
+         VALUES ($1, $2, $3, $4, $5) \
+         ON CONFLICT (deal_pid, owner_ref) DO UPDATE SET amount_minor = EXCLUDED.amount_minor, \
+           reason = EXCLUDED.reason, set_by = EXCLUDED.set_by",
+        [
+            pid.into(),
+            payload.owner_ref.as_str().into(),
+            payload.amount_minor.into(),
+            reason.map(str::to_string).into(),
+            who.as_str().into(),
+        ],
+    ))
+    .await?;
+    Audit::record(
+        &txn,
+        "deal_clawback",
+        pid,
+        "set",
+        caller.actor(),
+        Some(serde_json::json!({
+            "owner_ref": payload.owner_ref, "amount_minor": payload.amount_minor, "reason": reason
+        })),
+    )
+    .await?;
+    let all = clawbacks_of(&txn, pid).await?;
+    txn.commit().await?;
+    format::json(all)
+}
+
+/// `DELETE /api/quotas/clawbacks/{pid}?owner_ref=` — give the worker their credit back; audited.
+/// `404` when there is no such clawback.
+#[debug_handler]
+async fn remove_clawback(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+    axum::extract::Query(query): axum::extract::Query<ClawbackQuery>,
+) -> Result<Response> {
+    let txn = ctx.db.begin().await?;
+    let gone = txn
+        .execute_raw(stmt(
+            "DELETE FROM deal_clawbacks WHERE deal_pid = $1 AND owner_ref = $2",
+            [pid.into(), query.owner_ref.as_str().into()],
+        ))
+        .await?;
+    if gone.rows_affected() == 0 {
+        return Err(Error::NotFound);
+    }
+    Audit::record(
+        &txn,
+        "deal_clawback",
+        pid,
+        "deleted",
+        caller.actor(),
+        Some(serde_json::json!({ "owner_ref": query.owner_ref })),
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(PidRef {
+        pid: pid.to_string(),
+    })
+}
+
 // ------------------------------------------------------------- attainment
 
 /// What `GET /api/quotas/attainment` may be asked.
@@ -672,7 +869,18 @@ async fn credited_deals<C: ConnectionTrait>(
                 .position(|s| s.owner_ref == owner)
                 .map(|i| quota::split(amount, &bps)[i])
         };
-        if let Some(part) = mine {
+        // A clawback takes from the worker's credit, never below nothing; a deal wholly clawed back
+        // no longer counts (CRM-R68).
+        let clawed: Option<i64> = db
+            .query_one_raw(stmt(
+                "SELECT amount_minor FROM deal_clawbacks WHERE deal_pid = $1 AND owner_ref = $2",
+                [pid.into(), owner.into()],
+            ))
+            .await?
+            .map(|r| r.try_get("", "amount_minor"))
+            .transpose()?;
+        let mine = mine.map(|part| part.saturating_sub(clawed.unwrap_or(0)).max(0));
+        if let Some(part) = mine.filter(|p| *p > 0) {
             credited.push((deal.try_get("", "currency")?, part));
         }
     }
@@ -789,5 +997,8 @@ pub fn routes() -> Routes {
         .add("/quotas/splits/{pid}", get(get_split))
         .add("/quotas/splits/{pid}", put(set_split))
         .add("/quotas/splits/{pid}", delete(remove_split))
+        .add("/quotas/clawbacks/{pid}", get(get_clawbacks))
+        .add("/quotas/clawbacks/{pid}", put(set_clawback))
+        .add("/quotas/clawbacks/{pid}", delete(remove_clawback))
         .add("/quotas/{pid}", delete(remove_quota))
 }

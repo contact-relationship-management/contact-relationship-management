@@ -651,3 +651,128 @@ async fn a_territory_holds_named_accounts_once_and_adds_the_revenue_won_on_them_
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_clawback_takes_credit_back_from_one_worker_and_is_refused_beyond_what_they_hold() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        let (ada, grace, other) = (a_worker(), a_worker(), a_worker());
+        let make = |owner: String, amount: i64, win: bool| {
+            let (request, pipeline, stage) = (&request, pipeline.clone(), stages[2].clone());
+            async move {
+                let deal: Value = request
+                    .post("/api/deals")
+                    .json(
+                        &json!({ "name": "D", "pipeline_pid": pipeline, "amount_minor": amount,
+                                   "currency": "GBP", "owner_ref": owner }),
+                    )
+                    .await
+                    .json();
+                let pid = deal["pid"].as_str().unwrap().to_string();
+                if win {
+                    request
+                        .post(&format!("/api/deals/{pid}/stage"))
+                        .json(&json!({ "stage_pid": stage }))
+                        .await
+                        .assert_status_ok();
+                }
+                pid
+            }
+        };
+        let shared = make(ada.clone(), 100_001, true).await;
+        let open = make(ada.clone(), 5_000, false).await;
+        request
+            .put(&format!("/api/quotas/splits/{shared}"))
+            .json(&json!({ "shares": [
+                { "owner_ref": ada, "share_bps": 5_000 },
+                { "owner_ref": grace, "share_bps": 5_000 } ] }))
+            .await
+            .assert_status_ok();
+        let today = chrono::Utc::now().date_naive();
+        for owner in [&ada, &grace] {
+            request
+                .put("/api/quotas")
+                .json(
+                    &json!({ "owner_ref": owner, "period_from": today - chrono::Duration::days(10),
+                               "period_to": today + chrono::Duration::days(80),
+                               "currency": "GBP", "amount_minor": 100_000 }),
+                )
+                .await
+                .assert_status_ok();
+        }
+        let standing = || {
+            let (request, ada, grace) = (&request, ada.clone(), grace.clone());
+            async move {
+                let report: Value = request.get("/api/quotas/attainment").await.json();
+                let rows = report["rows"].as_array().unwrap().clone();
+                let of = |owner: &str| {
+                    let r = rows.iter().find(|r| r["owner_ref"] == owner).unwrap();
+                    (
+                        r["revenue_minor"].as_i64().unwrap(),
+                        r["won_deals"].as_i64().unwrap(),
+                    )
+                };
+                (of(&ada), of(&grace))
+            }
+        };
+        // The odd minor unit is Ada's: 50,001 and 50,000.
+        assert_eq!(standing().await, ((50_001, 1), (50_000, 1)));
+
+        // Ten thousand taken back from Ada alone.
+        let url = format!("/api/quotas/clawbacks/{shared}");
+        let set: Value = request
+            .put(&url)
+            .json(&json!({ "owner_ref": ada, "amount_minor": 10_000, "reason": "refunded" }))
+            .await
+            .json();
+        assert_eq!(set[0]["amount_minor"], 10_000, "{set}");
+        assert_eq!(standing().await, ((40_001, 1), (50_000, 1)));
+
+        // Refused, and nothing changed: nothing, more than the credit, a worker the deal does not
+        // credit, an open deal, a bad worker. An unknown deal is 404.
+        for (target, body) in [
+            (&shared, json!({ "owner_ref": ada, "amount_minor": 0 })),
+            (&shared, json!({ "owner_ref": ada, "amount_minor": 50_002 })),
+            (&shared, json!({ "owner_ref": other, "amount_minor": 1 })),
+            (&open, json!({ "owner_ref": ada, "amount_minor": 1 })),
+            (
+                &shared,
+                json!({ "owner_ref": "contact:x", "amount_minor": 1 }),
+            ),
+        ] {
+            request
+                .put(&format!("/api/quotas/clawbacks/{target}"))
+                .json(&body)
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+        request
+            .put(&format!("/api/quotas/clawbacks/{}", uuid::Uuid::new_v4()))
+            .json(&json!({ "owner_ref": ada, "amount_minor": 1 }))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+        assert_eq!(standing().await, ((40_001, 1), (50_000, 1)));
+
+        // Replaced, not added; a share clawed back whole no longer counts as a deal won.
+        request
+            .put(&url)
+            .json(&json!({ "owner_ref": ada, "amount_minor": 50_001 }))
+            .await
+            .assert_status_ok();
+        let listed: Value = request.get(&url).await.json();
+        assert_eq!(listed.as_array().unwrap().len(), 1, "{listed}");
+        assert_eq!(standing().await, ((0, 0), (50_000, 1)));
+
+        // Removed, the credit comes back; a second removal is 404.
+        let gone = format!("{url}?owner_ref={ada}");
+        request.delete(&gone).await.assert_status_ok();
+        request
+            .delete(&gone)
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+        assert_eq!(standing().await, ((50_001, 1), (50_000, 1)));
+    })
+    .await;
+}

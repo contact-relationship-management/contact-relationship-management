@@ -9,7 +9,9 @@
   import { ratioPercent } from "#lib/format.js";
   import {
     deleteCommissionPlan,
+    deleteClawback,
     deleteDealSplit,
+    setClawback,
     listDeals,
     setDealSplit,
     deleteQuota,
@@ -104,6 +106,21 @@
           .split("\n")
           .map((line) => line.trim())
           .filter(Boolean),
+      });
+    });
+
+  // Taking credit back from one worker on a won deal (CRM-R71); the amount is typed in major units.
+  let clawDeal = $state("");
+  let clawOwner = $state("");
+  let clawAmount = $state("");
+  let clawReason = $state("");
+
+  const saveClawback = () =>
+    run(async () => {
+      await setClawback(clawDeal, {
+        owner_ref: clawOwner.trim(),
+        amount_minor: Math.round(Number(clawAmount) * 100),
+        reason: clawReason.trim() || null,
       });
     });
 
@@ -312,6 +329,48 @@
     data-testid="split-remove"
   >
     {t("quota.splitRemove")}
+  </button>
+</form>
+
+<h2>{t("quota.clawback")}</h2>
+<form
+  class="panel"
+  data-testid="clawback-form"
+  onsubmit={(e) => {
+    e.preventDefault();
+    void saveClawback();
+  }}
+>
+  <label>
+    {t("quota.splitDeal")}
+    <select bind:value={clawDeal} required data-testid="clawback-deal">
+      <option value="">—</option>
+      {#each wonList as deal (deal.pid)}
+        <option value={deal.pid}>{deal.name}</option>
+      {/each}
+    </select>
+  </label>
+  <label>
+    {t("quota.owner")}
+    <input bind:value={clawOwner} required data-testid="clawback-owner" />
+  </label>
+  <label>
+    {t("quota.amount")}
+    <input bind:value={clawAmount} required inputmode="decimal" data-testid="clawback-amount" />
+  </label>
+  <label>
+    {t("quota.clawbackReason")}
+    <input bind:value={clawReason} maxlength="200" data-testid="clawback-reason" />
+  </label>
+  <p class="muted">{t("quota.clawbackHint")}</p>
+  <button type="submit" data-testid="clawback-set">{t("quota.clawbackSet")}</button>
+  <button
+    type="button"
+    disabled={!clawDeal || !clawOwner.trim()}
+    onclick={() => void run(() => deleteClawback(clawDeal, clawOwner.trim()))}
+    data-testid="clawback-remove"
+  >
+    {t("quota.clawbackRemove")}
   </button>
 </form>
 

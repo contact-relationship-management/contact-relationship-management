@@ -1174,3 +1174,13 @@ recipient would get before anything is sent, and be certain every message carrie
 - A masked reader gets `null` as for any CLV figure.
 - The account page has a checkbox "Each deal at the rate of the day it closed", available once a currency is chosen and no margin or look-ahead is asked for.
 - Not built: the margin and look-ahead at close-day rates; the same for the other converted reports (attribution, ROI, forecast); converting through a third currency.
+
+## CRM-R71 — Clawing credit back from a worker
+
+*As a sales manager, I can take an amount back from what a worker is credited for a won deal (a refund, a cancellation), so that attainment and commission do not pay for revenue that was returned.*
+
+- `PUT /api/quotas/clawbacks/{pid}` (the deal's pid) with `owner_ref` (`worker:<id>`), `amount_minor` and an optional `reason` (up to 200 characters). The amount is above zero and **no more than that worker's credit for the deal** (their whole amount, or their share of a split, CRM-R65); the deal must be **won** and credit that worker. Otherwise `422` naming `/amount_minor` or `/owner_ref`; an unknown or deleted deal is `404`. A worker has at most one clawback per deal: setting another **replaces** it. Audited. It answers every clawback on the deal.
+- `GET /api/quotas/clawbacks/{pid}` lists them (`404` for an unknown deal); `DELETE /api/quotas/clawbacks/{pid}?owner_ref=` gives the credit back (`404` when there is none). All three are admin only, like the quotas (CRM-R59).
+- **Attainment** (`GET /api/quotas/attainment`): the worker's credit for the deal is reduced by the clawback, never below zero, **for them alone**; other workers on a split keep theirs. A deal whose credit to a worker is clawed back whole no longer counts in that worker's `won_deals`. Currencies are never converted.
+- The deal itself, its amount and its other uses (forecast, win rate, CLV) are untouched: a clawback is about what a worker is credited with.
+- Not built: a clawback reaching into a period already paid; a clawback in another currency; clawing back commission directly; a list of clawbacks on the `/quotas` page (it has a form to set and remove one); automatic clawbacks when a deal is reopened or lost.

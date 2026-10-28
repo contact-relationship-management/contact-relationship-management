@@ -1994,6 +1994,33 @@ export function deleteDealSplit(dealPid: string): Promise<{ pid: string }> {
   return api(`/quotas/splits/${dealPid}`, { method: "DELETE" });
 }
 
+/** Credit taken back from one worker on a won deal (CRM-R71). */
+export interface Clawback {
+  owner_ref: string;
+  amount_minor: number;
+  reason: string | null;
+  set_by: string;
+}
+
+/** Take an amount back from a worker's credit for a won deal; replaces their earlier clawback. */
+export function setClawback(
+  dealPid: string,
+  input: { owner_ref: string; amount_minor: number; reason?: string | null },
+): Promise<Clawback[]> {
+  return api(`/quotas/clawbacks/${dealPid}`, { method: "PUT", body: input });
+}
+
+/** Give the worker their credit back. */
+export function deleteClawback(
+  dealPid: string,
+  ownerRef: string,
+): Promise<{ pid: string }> {
+  return api(
+    `/quotas/clawbacks/${dealPid}?owner_ref=${encodeURIComponent(ownerRef)}`,
+    { method: "DELETE" },
+  );
+}
+
 /** A team of workers (CRM-R67). */
 export interface Team {
   pid: string;

@@ -177,6 +177,16 @@ interface State {
   quotas: Quota[];
   /** Deals credited to several workers, by deal (CRM-R65). */
   splits: Record<string, { owner_ref: string; share_bps: number }[]>;
+  /** Credit taken back from workers, by deal (CRM-R71). */
+  clawbacks: Record<
+    string,
+    {
+      owner_ref: string;
+      amount_minor: number;
+      reason: string | null;
+      set_by: string;
+    }[]
+  >;
   /** Teams of workers for the quota roll-up (CRM-R67). */
   teams: { pid: string; name: string; members: string[]; set_by: string }[];
   /** Territories of named accounts (CRM-R68). */
@@ -947,6 +957,7 @@ function build(): State {
     ],
     splits: {},
     teams: [],
+    clawbacks: {},
     territories: [],
     quotas: [
       {
@@ -3569,6 +3580,66 @@ function dealSplits(
   return ok({ deal_pid: deal.pid, shares });
 }
 
+/** What a won deal credits a worker before any clawback: all of it, their share of a split, or none. */
+function dealCredit(d: Deal, owner: string): number | null {
+  const shares = state.splits[d.pid];
+  if (!shares) return d.owner_ref === owner ? (d.amount_minor ?? 0) : null;
+  const at = shares.findIndex((s) => s.owner_ref === owner);
+  if (at < 0) return null;
+  return splitAmount(
+    d.amount_minor ?? 0,
+    shares.map((s) => s.share_bps),
+  )[at]!;
+}
+
+/** The tour's clawbacks (CRM-R71): credit taken back from one worker on a won deal. */
+function clawbackRoutes(
+  method: string,
+  dealPid: string | undefined,
+  query: URLSearchParams,
+  body: unknown,
+) {
+  const deal = state.deals.find((d) => d.pid === dealPid);
+  if (!deal) return problem(404, "deal not found");
+  const list = (state.clawbacks[deal.pid] ??= []);
+  if (method === "GET") return ok(list);
+  if (method === "DELETE") {
+    const at = list.findIndex((c) => c.owner_ref === query.get("owner_ref"));
+    if (at < 0) return problem(404, "no such clawback");
+    list.splice(at, 1);
+    return ok({ pid: deal.pid });
+  }
+  const input = (body ?? {}) as {
+    owner_ref?: string;
+    amount_minor?: number;
+    reason?: string | null;
+  };
+  const amount = input.amount_minor ?? 0;
+  if (!input.owner_ref || !(Number.isInteger(amount) && amount >= 1))
+    return problem(422, "/amount_minor: above zero");
+  const credit = deal.won ? dealCredit(deal, input.owner_ref) : null;
+  if (credit === null)
+    return problem(
+      422,
+      "/owner_ref: the deal is not won, or does not credit that worker",
+    );
+  if (amount > credit)
+    return problem(
+      422,
+      "/amount_minor: no more than the worker's credit for the deal",
+    );
+  const row = {
+    owner_ref: input.owner_ref,
+    amount_minor: amount,
+    reason: input.reason?.trim() || null,
+    set_by: "worker:demo",
+  };
+  const at = list.findIndex((c) => c.owner_ref === input.owner_ref);
+  if (at < 0) list.push(row);
+  else list[at] = row;
+  return ok(list);
+}
+
 /** The quotas whose period contains `at`, with what each worker's won deals credit them. */
 function attainmentRows(at: string, owner: string | null): QuotaAttainment[] {
   return state.quotas
@@ -3585,19 +3656,15 @@ function attainmentRows(at: string, owner: string | null): QuotaAttainment[] {
             d.closed_at.slice(0, 10) <= q.period_to,
         )
         .flatMap((d) => {
-          const shares = state.splits[d.pid];
-          if (!shares) {
-            return d.owner_ref === q.owner_ref
-              ? [{ currency: d.currency, credited: d.amount_minor ?? 0 }]
-              : [];
-          }
-          const at = shares.findIndex((s) => s.owner_ref === q.owner_ref);
-          if (at < 0) return [];
-          const parts = splitAmount(
-            d.amount_minor ?? 0,
-            shares.map((s) => s.share_bps),
-          );
-          return [{ currency: d.currency, credited: parts[at]! }];
+          // Their credit less anything clawed back, never below nothing; a share clawed back whole
+          // no longer counts as a deal won (CRM-R71).
+          const credit = dealCredit(d, q.owner_ref);
+          if (credit === null) return [];
+          const clawed =
+            state.clawbacks[d.pid]?.find((c) => c.owner_ref === q.owner_ref)
+              ?.amount_minor ?? 0;
+          const credited = Math.max(credit - clawed, 0);
+          return credited > 0 ? [{ currency: d.currency, credited }] : [];
         });
       const mine = won.filter((d) => d.currency === q.currency);
       const revenue = mine.reduce((s, d) => s + d.credited, 0);
@@ -3855,6 +3922,7 @@ function quotaRoutes(
 ) {
   const [, id] = seg;
   if (id === "splits") return dealSplits(method, seg[2], body);
+  if (id === "clawbacks") return clawbackRoutes(method, seg[2], query, body);
   if (id === "teams" || id === "team-attainment")
     return teamRoutes(method, seg, query, body);
   if (id === "territories" || id === "territory-attainment")

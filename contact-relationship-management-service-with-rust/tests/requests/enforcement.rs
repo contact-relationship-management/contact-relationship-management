@@ -1943,6 +1943,18 @@ async fn quotas_and_commission_plans_are_for_admin_and_service_callers_only() {
         }
         // How a deal is split is what people are paid too (CRM-R65): the service gets past the
         // policy to a 404 for a deal that does not exist, the others are refused first.
+        let clawbacks = "/api/quotas/clawbacks/00000000-0000-0000-0000-000000000001";
+        for (token, want, who) in [
+            (&reader, 403, "reader"),
+            (&writer, 403, "writer"),
+            (&service, 404, "service"),
+        ] {
+            assert_eq!(
+                call("GET", clawbacks, token.clone()).await,
+                want,
+                "{who} clawbacks"
+            );
+        }
         let splits = "/api/quotas/splits/00000000-0000-0000-0000-000000000001";
         assert_eq!(
             call("GET", splits, reader.clone()).await,

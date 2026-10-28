@@ -758,4 +758,10 @@ export default {
   "quota.territorySet": "क्षेत्र सहेजें",
   "quota.territoryUnassigned": "बिना क्षेत्र वाले खातों पर जीता",
   "clv.closeDay": "हर सौदा बंद होने के दिन की दर पर",
+  "quota.clawback": "श्रेय वापस लें",
+  "quota.clawbackHint":
+    "जीते गए सौदे के लिए एक कर्मचारी के श्रेय से राशि वापस लेता है, उसके पास जितना है उतना ही; बंटवारे में बाकी का श्रेय बना रहता है।",
+  "quota.clawbackReason": "कारण",
+  "quota.clawbackSet": "वापस लें",
+  "quota.clawbackRemove": "श्रेय लौटाएँ",
 } satisfies Record<StringKey, string>;

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `rules::suggest` (word overlap, headline words 2, text words 1); `GET /api/tickets/{pid}/suggested-articles`; 3 unit tests and 1 request test.
 
+### Added — clawbacks (CRM-T138, CRM-R71)
+
+`/api/quotas/clawbacks/{pid}`, admin only; migration `000048`; `credited_deals` takes the clawback off and drops a deal clawed back whole.
+
 ### Added — `rate_basis=close_day` on the CLV (CRM-T137, CRM-R70)
 
 Each won deal converted at the rate in force on the day it closed; `rate_basis` in the answer, `rate_date` `null`, the distinct rates used and the deals with no rate listed.

@@ -756,4 +756,10 @@ export default {
   "quota.territorySet": "Set territory",
   "quota.territoryUnassigned": "Won on accounts in no territory",
   "clv.closeDay": "Each deal at the rate of the day it closed",
+  "quota.clawback": "Claw credit back",
+  "quota.clawbackHint":
+    "Takes an amount back from one worker's credit for a won deal, up to what they hold; others on a split keep theirs.",
+  "quota.clawbackReason": "Reason",
+  "quota.clawbackSet": "Claw back",
+  "quota.clawbackRemove": "Give credit back",
 } as const;

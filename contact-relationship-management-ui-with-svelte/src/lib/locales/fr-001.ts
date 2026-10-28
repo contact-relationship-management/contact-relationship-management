@@ -770,4 +770,10 @@ export default {
   "quota.territorySet": "Enregistrer le territoire",
   "quota.territoryUnassigned": "Gagné sur des comptes sans territoire",
   "clv.closeDay": "Chaque affaire au taux du jour de sa clôture",
+  "quota.clawback": "Reprendre du crédit",
+  "quota.clawbackHint":
+    "Reprend un montant du crédit d'un collaborateur pour une affaire gagnée, jusqu'à ce qu'il détient ; les autres d'un partage gardent le leur.",
+  "quota.clawbackReason": "Motif",
+  "quota.clawbackSet": "Reprendre",
+  "quota.clawbackRemove": "Rendre le crédit",
 } satisfies Record<StringKey, string>;

@@ -765,4 +765,10 @@ export default {
   "quota.territorySet": "Guardar territorio",
   "quota.territoryUnassigned": "Ganado en cuentas sin territorio",
   "clv.closeDay": "Cada negocio al tipo del día en que se cerró",
+  "quota.clawback": "Retirar crédito",
+  "quota.clawbackHint":
+    "Retira un importe del crédito de un trabajador por un negocio ganado, hasta lo que tiene; los demás en un reparto conservan el suyo.",
+  "quota.clawbackReason": "Motivo",
+  "quota.clawbackSet": "Retirar",
+  "quota.clawbackRemove": "Devolver el crédito",
 } satisfies Record<StringKey, string>;

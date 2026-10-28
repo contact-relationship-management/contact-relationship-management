@@ -13022,6 +13022,190 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quotas/clawbacks/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What has been taken back from workers' credit on a deal (CRM-R71); 404 for an unknown deal. Admin only */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Clawback"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Take an amount back from one worker's credit for a won deal, replacing their earlier clawback on it: above zero and no more than their credit, else 422 naming /amount_minor; 422 naming /owner_ref when the deal is not won or does not credit them; 404 for an unknown deal; a write, audited. Answers every clawback on the deal. Admin only */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ClawbackPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Give the worker named in ?owner_ref= their credit back; audited; 404 when there is no such clawback. Admin only */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quotas/splits/{pid}": {
         parameters: {
             query?: never;
@@ -18387,6 +18571,26 @@ export interface components {
             ok: boolean;
             /** Format: uint */
             rows: number;
+        };
+        /** @description A clawback. */
+        Clawback: {
+            /** Format: int64 */
+            amount_minor: number;
+            owner_ref: string;
+            reason: string | null;
+            set_by: string;
+        };
+        /** @description `PUT /api/quotas/clawbacks/{pid}` body (the deal's pid). */
+        ClawbackPayload: {
+            /**
+             * Format: int64
+             * @description What is taken back, in minor units: above zero and no more than their credit for the deal.
+             */
+            amount_minor: number;
+            /** @description The worker (`worker:<id>`) whose credit for the deal is reduced. */
+            owner_ref: string;
+            /** @description Why, up to 200 characters. */
+            reason: string | null;
         };
         /** @description `GET /api/accounts/{pid}/clv`. */
         Clv: {

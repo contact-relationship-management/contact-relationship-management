@@ -20,7 +20,7 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   escalating on it (CRM-R69); closing on it, and recognising a reply from inbound
   mail, are not.
 - **Help centre refinements** — a public help centre and a deflection estimate are built (CRM-R57); articles suggested for an existing ticket are built (CRM-R66); suggesting as a ticket is typed, deflection tied to visits, and a limit shared by all clients are not.
-- **Territories; quota refinements** — quotas, tiered commission plans and attainment are built (CRM-R59); splitting a deal between workers is built (CRM-R65); team roll-ups are built (CRM-R67); territories of named accounts are built (CRM-R68); clawbacks are not.
+- **Territories; quota refinements** — quotas, tiered commission plans and attainment are built (CRM-R59); splitting a deal between workers is built (CRM-R65); team roll-ups are built (CRM-R67); territories of named accounts are built (CRM-R68); clawing credit back from a worker is built (CRM-R71); clawing back commission directly is not.
 - **CLV refinement** — margin and a discounted, retention-based look-ahead
   are built (CRM-R60) and shown on the account page, with the retention
   readable from the account's own history (CRM-R61) and conversion to

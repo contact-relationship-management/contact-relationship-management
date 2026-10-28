@@ -772,4 +772,10 @@ export default {
   "quota.territorySet": "Gebiet speichern",
   "quota.territoryUnassigned": "Gewonnen auf Konten ohne Gebiet",
   "clv.closeDay": "Jeden Deal zum Kurs seines Abschlusstags",
+  "quota.clawback": "Gutschrift zurückfordern",
+  "quota.clawbackHint":
+    "Nimmt von der Gutschrift einer Person für einen gewonnenen Deal einen Betrag zurück, höchstens ihren Anteil; andere bei einer Aufteilung behalten ihren.",
+  "quota.clawbackReason": "Grund",
+  "quota.clawbackSet": "Zurückfordern",
+  "quota.clawbackRemove": "Gutschrift zurückgeben",
 } satisfies Record<StringKey, string>;

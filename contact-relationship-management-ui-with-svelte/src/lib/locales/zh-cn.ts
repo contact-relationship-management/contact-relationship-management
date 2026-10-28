@@ -732,4 +732,10 @@ export default {
   "quota.territorySet": "保存区域",
   "quota.territoryUnassigned": "未划入区域的账户上赢得的收入",
   "clv.closeDay": "每笔交易按成交当日汇率",
+  "quota.clawback": "追回业绩",
+  "quota.clawbackHint":
+    "从某位员工在已赢得交易中的业绩里追回一笔金额，不超过其所得；分摊中的其他人不受影响。",
+  "quota.clawbackReason": "原因",
+  "quota.clawbackSet": "追回",
+  "quota.clawbackRemove": "归还业绩",
 } satisfies Record<StringKey, string>;

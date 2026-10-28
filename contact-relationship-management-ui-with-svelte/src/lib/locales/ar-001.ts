@@ -756,4 +756,10 @@ export default {
   "quota.territorySet": "حفظ المنطقة",
   "quota.territoryUnassigned": "محقق على حسابات بلا منطقة",
   "clv.closeDay": "كل صفقة بسعر يوم إغلاقها",
+  "quota.clawback": "استرداد الائتمان",
+  "quota.clawbackHint":
+    "يسترد مبلغًا من ائتمان عامل واحد عن صفقة رابحة، بحد أقصى ما يملكه؛ ويحتفظ الآخرون في التقسيم بحصصهم.",
+  "quota.clawbackReason": "السبب",
+  "quota.clawbackSet": "استرداد",
+  "quota.clawbackRemove": "إعادة الائتمان",
 } satisfies Record<StringKey, string>;

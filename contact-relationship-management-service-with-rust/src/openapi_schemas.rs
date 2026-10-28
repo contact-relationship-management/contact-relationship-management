@@ -208,6 +208,8 @@ fn generated() -> serde_json::Map<String, Value> {
         support::SuggestedArticle,
         quotas::Share,
         quotas::SplitPayload,
+        quotas::ClawbackPayload,
+        quotas::ClawbackView,
         quotas::SplitView,
         quotas::AttainmentReport,
         crate::rules::quota::Tier,
@@ -357,6 +359,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/quotas/teams") => "TeamPayload",
         ("put", "/api/quotas/territories") => "TerritoryPayload",
         ("put", "/api/quotas/splits/{pid}") => "DealSplitPayload",
+        ("put", "/api/quotas/clawbacks/{pid}") => "ClawbackPayload",
         (
             "put",
             "/api/contacts/{pid}/tags"
@@ -548,6 +551,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
         "/api/quotas" => "Quota",
         "/api/quotas/teams" => "Team",
         "/api/quotas/territories" => "Territory",
+        "/api/quotas/clawbacks/{pid}" => "Clawback",
         "/api/business-calendars" => "BusinessCalendar",
         "/api/contacts/{pid}/attachments"
         | "/api/accounts/{pid}/attachments"
