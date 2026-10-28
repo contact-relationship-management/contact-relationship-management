@@ -36,6 +36,11 @@
   with the identity services; and — if scoring ever influences
   significant decisions — automated-decision-making review.
   Tracked as production gates in [tasks.md](tasks.md).
+- Medical-device status, if a deployer gives the product a medical
+  purpose: in Great Britain that is a question for the
+  [MHRA](https://www.gov.uk/government/organisations/medicines-and-healthcare-products-regulatory-agency). The project as shipped is not a device and has not
+  sought the regulator's view (see
+  [AI_STATEMENT](special-files-for-public-repos/AI_STATEMENT.md)).
 
 ## Production readiness
 

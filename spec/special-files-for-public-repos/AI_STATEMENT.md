@@ -41,7 +41,9 @@ compilers, are used to build it.
   downstream integrator who gives their product a medical purpose may bring
   their product into scope; that classification is theirs to make, and
   this document exists partly so they can answer their own supplier
-  questions.
+  questions. In Great Britain the regulator for that question is the
+  [Medicines and Healthcare products Regulatory Agency (MHRA)](https://www.gov.uk/government/organisations/medicines-and-healthcare-products-regulatory-agency);
+  this project has not asked it for a view.
 - ISO/IEC 42001 and the NIST AI RMF are used as vocabulary, not claimed
   as conformity. No certification is claimed, no audit has occurred, and
   the words "certified," "audited," and "validated" appear in this document
