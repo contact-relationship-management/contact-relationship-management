@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a delay for clicks (CRM-T157, CRM-R91)
+
+`GET /api/attribution` takes `min_click_seconds` (1 to 86,400, with `clicked` counted): clicks reported sooner after sending do not count; echoed in the answer.
+
 ### Added — position-model weights (CRM-T156, CRM-R90)
 
 `GET /api/attribution` takes `end_percent` (1 to 49, for `position`): the share each of the first and last touches earns, 40 by default; echoed in the answer.

@@ -670,6 +670,8 @@ export default {
   "attr.endPercent": "Part des extrémités (%, position)",
   "attr.minOpen":
     "Ignorer les ouvertures plus rapides que (secondes après l'envoi)",
+  "attr.minClick":
+    "Ignorer les clics plus rapides que (secondes après l'envoi)",
   "attr.from": "Clôturées depuis",
   "attr.to": "Clôturées jusqu'à",
   "attr.run": "Afficher",

@@ -1392,3 +1392,12 @@ recipient would get before anything is sent, and be certain every message carrie
 - The most is 49 because two ends at 50 would leave the middle nothing and the rest of the model would then be `first` and `last` in disguise; at 49 a middle touch still earns something.
 - With one or two touches the share is not used: they split equally, as before. The shares add up to the amount exactly at every value.
 - Not built: weights per touch position beyond the two ends (a separate share for the second touch, say); discounting an open by how soon it came; a delay for clicks.
+
+## CRM-R91 — Attribution settings: leaving out clicks that come too soon
+
+*As a marketer, I want to leave out clicks a link scanner made ahead of the reader, so that attribution does not reward a machine.*
+
+- `GET /api/attribution` takes `min_click_seconds` (1 to 86,400): an e-mail **click reported less than that many seconds after the e-mail was sent** is taken for a security scanner following the links (CRM-R58) and **does not count**. It needs `touches` to include `clicked` and is refused otherwise (`422` naming `/min_click_seconds`), as is a value outside the range. The answer's `min_click_seconds` says what was asked, `null` when nothing was; the audit entry names it.
+- It applies to **clicks only**, as `min_open_seconds` (CRM-R89) applies to opens only; the two are independent and may be used together. Sends, campaign leads and the recorded source are untouched.
+- It is **a rule of thumb, not a detector**, like CRM-R89: a real reader who clicks within the delay is left out. A deal left with no touch is reported as unattributed, never dropped.
+- Not built: weights for the touches between the ends; discounting a touch by how soon it came rather than leaving it out; unique versus repeat clicks.

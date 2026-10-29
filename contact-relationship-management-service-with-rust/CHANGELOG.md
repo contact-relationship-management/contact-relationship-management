@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a delay for clicks (CRM-T157, CRM-R91)
+
+`min_click_seconds` on `GET /api/attribution`, validated, echoed and audited.
+
 ### Added — position-model weights (CRM-T156, CRM-R90)
 
 `end_percent`; `rules::attribution::credit_tuned`.

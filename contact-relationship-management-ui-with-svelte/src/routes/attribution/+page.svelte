@@ -13,6 +13,7 @@
   let halfLifeDays = $state<number | null>(null);
   let endPercent = $state<number | null>(null);
   let minOpenSeconds = $state<number | null>(null);
+  let minClickSeconds = $state<number | null>(null);
   let from = $state("");
   let to = $state("");
   let convertTo = $state("");
@@ -47,6 +48,7 @@
         halfLifeDays: model === "time_decay" && halfLifeDays ? halfLifeDays : undefined,
         endPercent: model === "position" && endPercent ? endPercent : undefined,
         minOpenSeconds: opened && minOpenSeconds ? minOpenSeconds : undefined,
+        minClickSeconds: clicked && minClickSeconds ? minClickSeconds : undefined,
         convertTo: convertTo.trim().toUpperCase(),
         rateDate,
         rateBasis: closeDay && convertTo.trim() ? "close_day" : undefined,
@@ -136,6 +138,17 @@
       bind:value={minOpenSeconds}
       disabled={!opened}
       data-testid="attribution-min-open"
+    />
+  </label>
+  <label>
+    {t("attr.minClick")}
+    <input
+      type="number"
+      min="1"
+      max="86400"
+      bind:value={minClickSeconds}
+      disabled={!clicked}
+      data-testid="attribution-min-click"
     />
   </label>
   <label>{t("attr.from")} <input type="date" bind:value={from} /></label>

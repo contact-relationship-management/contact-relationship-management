@@ -3214,7 +3214,7 @@ type Touched = {
   campaign: string;
   daysBefore: number;
   kind: "sent" | "opened" | "clicked";
-  /** For an open: how long after the e-mail was sent the provider reported it (CRM-R89). */
+  /** For an open or a click: how long after the e-mail was sent the provider reported it (CRM-R89, CRM-R91). */
   afterSendSeconds?: number;
 };
 const TOUCHED: Record<string, Touched[]> = {
@@ -3227,7 +3227,8 @@ const TOUCHED: Record<string, Touched[]> = {
   ],
   "deal-10": [
     { campaign: "camp-1", daysBefore: 20, kind: "sent" },
-    { campaign: "camp-2", daysBefore: 5, kind: "clicked" },
+    // Reported eight seconds after sending: a scanner following the link, not a reader.
+    { campaign: "camp-2", daysBefore: 5, kind: "clicked", afterSendSeconds: 8 },
   ],
 };
 
@@ -4294,6 +4295,18 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
       return problem(422, "/min_open_seconds: needs touches to include opened");
   }
   const minOpenSeconds = openAsked === null ? 0 : Number(openAsked);
+  const clickAsked = query.get("min_click_seconds");
+  if (clickAsked !== null) {
+    const seconds = Number(clickAsked);
+    if (!Number.isInteger(seconds) || seconds < 1 || seconds > 86_400)
+      return problem(422, "/min_click_seconds: 1 to 86400 seconds");
+    if (!kinds.includes("clicked"))
+      return problem(
+        422,
+        "/min_click_seconds: needs touches to include clicked",
+      );
+  }
+  const minClickSeconds = clickAsked === null ? 0 : Number(clickAsked);
   const convertTo = query.get("convert_to");
   const rateDate = query.get("rate_date");
   if (!convertTo && rateDate) return problem(422, "rate_date needs convert_to");
@@ -4328,6 +4341,12 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
           t.kind === "opened" &&
           minOpenSeconds > 0 &&
           (t.afterSendSeconds ?? Infinity) < minOpenSeconds
+        ) &&
+        // So is a click (CRM-R91).
+        !(
+          t.kind === "clicked" &&
+          minClickSeconds > 0 &&
+          (t.afterSendSeconds ?? Infinity) < minClickSeconds
         ),
     );
     if (touches.length === 0) {
@@ -4409,6 +4428,7 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
     half_life_days: model === "time_decay" ? halfLifeDays : null,
     end_percent: model === "position" ? endPercent : null,
     min_open_seconds: minOpenSeconds > 0 ? minOpenSeconds : null,
+    min_click_seconds: minClickSeconds > 0 ? minClickSeconds : null,
     touches: ["sent", "opened", "clicked"].filter((k) => kinds.includes(k)),
     as_of: new Date().toISOString(),
     deals: won.length,

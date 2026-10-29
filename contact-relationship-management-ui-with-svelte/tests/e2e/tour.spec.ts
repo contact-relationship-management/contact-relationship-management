@@ -1303,6 +1303,25 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("attribution-run")).toBeDisabled();
   });
 
+  test("a click sooner after sending than the delay is left out", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/attribution");
+    await page.getByTestId("attribution-touch-sent").uncheck();
+    await expect(page.getByTestId("attribution-min-click")).toBeDisabled();
+    await page.getByTestId("attribution-touch-clicked").check();
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row")).toHaveCount(1);
+    // That click came eight seconds after sending: a delay of a minute drops it, ten seconds keeps it.
+    await page.getByTestId("attribution-min-click").fill("60");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row")).toHaveCount(0);
+    await page.getByTestId("attribution-min-click").fill("5");
+    await page.getByTestId("attribution-run").click();
+    await expect(page.getByTestId("attribution-row")).toHaveCount(1);
+  });
+
   test("time decay favours the recent touch and position splits the ends evenly", async ({
     page,
   }) => {

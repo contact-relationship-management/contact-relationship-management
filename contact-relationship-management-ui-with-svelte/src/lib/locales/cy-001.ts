@@ -662,6 +662,7 @@ export default {
   "attr.halfLife": "Hanner oes (diwrnod, pylu amser)",
   "attr.endPercent": "Cyfran y pennau (%, safle)",
   "attr.minOpen": "Gadael agoriadau allan sy'n gynt na (eiliadau ar ôl anfon)",
+  "attr.minClick": "Gadael cliciau allan sy'n gynt na (eiliadau ar ôl anfon)",
   "attr.from": "Caewyd o",
   "attr.to": "Caewyd tan",
   "attr.run": "Dangos",

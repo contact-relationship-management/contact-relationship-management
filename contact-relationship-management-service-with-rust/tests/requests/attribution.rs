@@ -523,6 +523,19 @@ async fn sent_and_opened(
     days_ago: i32,
     after_seconds: i32,
 ) {
+    sent_and_reported(db, campaign, contact, days_ago, "opened", after_seconds).await;
+}
+
+/// A sent e-mail that the provider reported `event` (`opened` or `clicked`) `after_seconds` after
+/// it was sent.
+async fn sent_and_reported(
+    db: &sea_orm::DatabaseConnection,
+    campaign: &str,
+    contact: &str,
+    days_ago: i32,
+    event: &str,
+    after_seconds: i32,
+) {
     let message = format!("<{campaign}@test>");
     db.execute_raw(Statement::from_sql_and_values(
         DatabaseBackend::Postgres,
@@ -541,12 +554,89 @@ async fn sent_and_opened(
     db.execute_raw(Statement::from_sql_and_values(
         DatabaseBackend::Postgres,
         "INSERT INTO email_events (message_id, event, received_at) \
-         SELECT message_id, 'opened', sent_at + make_interval(secs => $2::int) \
+         SELECT message_id, $3, sent_at + make_interval(secs => $2::int) \
            FROM email_deliveries WHERE message_id = $1",
-        [message.into(), after_seconds.into()],
+        [message.into(), after_seconds.into(), event.into()],
     ))
     .await
     .unwrap();
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_click_too_soon_after_sending_is_left_out_and_opens_are_not_touched() {
+    request::<App, _, _>(|request, ctx| async move {
+        let segment = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json::<Value>()["pid"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let alpha = campaign!(&request, segment, "Alpha");
+        let beta = campaign!(&request, segment, "Beta");
+        let buyer = seed_contact!(&request, "Click Buyer").await;
+        // Alpha's link was "clicked" ten seconds after sending (a scanner following it); Beta's
+        // an hour after.
+        sent_and_reported(&ctx.db, &alpha, &buyer, 20, "clicked", 10).await;
+        sent_and_reported(&ctx.db, &beta, &buyer, 10, "clicked", 3_600).await;
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        won_deal!(
+            &request,
+            pipeline,
+            stages,
+            json!({ "name": "Bought", "amount_minor": 10_000, "currency": "GBP",
+                    "primary_contact_pid": buyer })
+        );
+
+        let both: Value = request.get("/api/attribution?touches=clicked").await.json();
+        assert_eq!(earned(&both, "Alpha", "GBP"), 5_000, "{both}");
+        assert_eq!(earned(&both, "Beta", "GBP"), 5_000, "{both}");
+        assert!(both["min_click_seconds"].is_null(), "{both}");
+
+        let late: Value = request
+            .get("/api/attribution?touches=clicked&min_click_seconds=60")
+            .await
+            .json();
+        assert_eq!(earned(&late, "Alpha", "GBP"), 0, "{late}");
+        assert_eq!(earned(&late, "Beta", "GBP"), 10_000, "{late}");
+        assert_eq!(late["min_click_seconds"], 60, "{late}");
+
+        // The delay is for clicks: an open ten seconds after sending still counts, and sends do.
+        let mixed: Value = request
+            .get("/api/attribution?touches=sent,clicked&min_click_seconds=60")
+            .await
+            .json();
+        assert!(earned(&mixed, "Alpha", "GBP") > 0, "{mixed}");
+        let gamma = campaign!(&request, segment, "Gamma");
+        sent_and_reported(&ctx.db, &gamma, &buyer, 5, "opened", 10).await;
+        let opens: Value = request
+            .get("/api/attribution?touches=opened,clicked&min_click_seconds=60")
+            .await
+            .json();
+        assert!(earned(&opens, "Gamma", "GBP") > 0, "{opens}");
+
+        for (query, pointer) in [
+            ("min_click_seconds=60", "/min_click_seconds"),
+            ("touches=opened&min_click_seconds=60", "/min_click_seconds"),
+            ("touches=clicked&min_click_seconds=0", "/min_click_seconds"),
+            (
+                "touches=clicked&min_click_seconds=86401",
+                "/min_click_seconds",
+            ),
+        ] {
+            let r = request.get(&format!("/api/attribution?{query}")).await;
+            r.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            let refused: Value = r.json();
+            assert_eq!(
+                refused["errors"][0]["pointer"], pointer,
+                "{query}: {refused}"
+            );
+        }
+    })
+    .await;
 }
 
 #[tokio::test]

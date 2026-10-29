@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the click delay on the page (CRM-T157, CRM-R91)
+
+One input on `/attribution`, disabled unless clicks are counted; one string in the eight locales.
+
 ### Added — the position share on the page (CRM-T156, CRM-R90)
 
 An end-share input on Attribution; one string in the eight locales.

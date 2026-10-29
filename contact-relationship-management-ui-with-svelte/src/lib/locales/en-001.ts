@@ -655,6 +655,7 @@ export default {
   "attr.halfLife": "Half-life (days, time decay)",
   "attr.endPercent": "End share (%, position)",
   "attr.minOpen": "Leave out opens sooner than (seconds after sending)",
+  "attr.minClick": "Leave out clicks sooner than (seconds after sending)",
   "attr.from": "Closed from",
   "attr.to": "Closed to",
   "attr.run": "Show",

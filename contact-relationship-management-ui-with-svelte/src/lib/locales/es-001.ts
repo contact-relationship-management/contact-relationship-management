@@ -664,6 +664,7 @@ export default {
   "attr.halfLife": "Semivida (días, decaimiento temporal)",
   "attr.endPercent": "Porcentaje de los extremos (%, posición)",
   "attr.minOpen": "Omitir aperturas anteriores a (segundos tras el envío)",
+  "attr.minClick": "Omitir clics anteriores a (segundos tras el envío)",
   "attr.from": "Cerrado desde",
   "attr.to": "Cerrado hasta",
   "attr.run": "Mostrar",

@@ -633,6 +633,7 @@ export default {
   "attr.halfLife": "半衰期（天，时间衰减）",
   "attr.endPercent": "首尾占比（%，位置）",
   "attr.minOpen": "忽略发送后少于此秒数的打开",
+  "attr.minClick": "忽略发送后少于此秒数的点击",
   "attr.from": "成交起始日",
   "attr.to": "成交截止日",
   "attr.run": "显示",

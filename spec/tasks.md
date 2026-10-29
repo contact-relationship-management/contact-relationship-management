@@ -1810,3 +1810,10 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Tests:** a unit test (30, 40 and 49 percent, the default unchanged, other models unmoved, exact at every value, the range); the position request test now chooses 25 and checks three refusals with their pointers.
       - **UI:** one input on `/attribution`, disabled unless the model is position; one string in the eight locales (machine drafts, 698 per locale); the tour validates and applies it.
       - **Not done:** see CRM-R90's list.
+
+- [x] CRM-T157 *(edge)* **A delay for clicks.** The last open part of the roadmap item "attribution settings" besides weights. (S)
+      **Done (2026-10-29, not released):** requirement CRM-R91 first, then:
+      - **Service:** `min_click_seconds` on the attribution query, validated, echoed and audited; the click condition is in the touch query beside the open one.
+      - **Tests:** `a_click_too_soon_after_sending_is_left_out_and_opens_are_not_touched` (a ten-second and an hour-old click, sends and opens untouched, four refusals with their pointers); passes against PostgreSQL with the other attribution tests.
+      - **UI:** one input on `/attribution`, disabled unless clicks are counted; the tour has a click eight seconds after sending; one string in the eight locales (machine drafts, 699 per locale); a tour test.
+      - **Not done:** see CRM-R91's list.

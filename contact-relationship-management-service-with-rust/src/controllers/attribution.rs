@@ -47,6 +47,10 @@ struct AttributionQuery {
     /// program loading it ahead of the reader, and does not count; 1 to 86,400, and only with
     /// `touches` including `opened` (CRM-R89). Clicks are not affected.
     min_open_seconds: Option<i64>,
+    /// A click reported less than this many seconds after the e-mail was sent is taken for a link
+    /// scanner and does not count; 1 to 86,400, and only with `touches` including `clicked`
+    /// (CRM-R91). Opens are not affected.
+    min_click_seconds: Option<i64>,
     /// First day a deal may have closed on.
     from: Option<NaiveDate>,
     /// Last day a deal may have closed on.
@@ -100,6 +104,8 @@ pub(crate) struct Attribution {
     end_percent: Option<i64>,
     /// The seconds after sending before which an open does not count, when one was asked for.
     min_open_seconds: Option<i64>,
+    /// The seconds after sending before which a click does not count, when one was asked for.
+    min_click_seconds: Option<i64>,
     /// The e-mail touches counted: `sent`, `opened`, `clicked`.
     touches: Vec<String>,
     as_of: DateTime<Utc>,
@@ -251,6 +257,16 @@ fn validate(query: &AttributionQuery) -> Result<Asked> {
             problems.push_field("min_open_seconds", "needs touches to include opened");
         }
     }
+    if let Some(seconds) = query.min_click_seconds {
+        if !(1..=rules::MAX_MIN_OPEN_SECONDS).contains(&seconds) {
+            problems.push_field(
+                "min_click_seconds",
+                format!("1 to {} seconds", rules::MAX_MIN_OPEN_SECONDS),
+            );
+        } else if kinds.is_some_and(|k| !k.clicked) {
+            problems.push_field("min_click_seconds", "needs touches to include clicked");
+        }
+    }
     problems.finish()?;
     match (model, days, kinds, half_life, end) {
         (Some(model), Some(days), Some(kinds), Some(half_life_days), Some(end_percent)) => {
@@ -261,6 +277,7 @@ fn validate(query: &AttributionQuery) -> Result<Asked> {
                 half_life_days,
                 end_percent,
                 min_open_seconds: query.min_open_seconds.unwrap_or(0),
+                min_click_seconds: query.min_click_seconds.unwrap_or(0),
             })
         }
         _ => Err(super::unprocessable("the request cannot be answered")),
@@ -278,6 +295,8 @@ struct Asked {
     end_percent: i64,
     /// An open sooner than this after sending does not count; `0` for none.
     min_open_seconds: i64,
+    /// A click sooner than this after sending does not count; `0` for none.
+    min_click_seconds: i64,
 }
 
 /// The won deals closed in the range, newest first, one more than the cap so a cut is seen.
@@ -319,6 +338,7 @@ async fn touches_of(
     days: i64,
     kinds: Kinds,
     min_open_seconds: i64,
+    min_click_seconds: i64,
 ) -> Result<HashMap<Uuid, Vec<Touch>>> {
     // The engagement events asked for: an open or a click the provider reported, at the moment it
     // was reported (CRM-R58).
@@ -345,6 +365,8 @@ async fn touches_of(
                 AND ev.event IN (SELECT jsonb_array_elements_text($4::jsonb)) \
                 AND ($5::int = 0 OR ev.event <> 'opened' \
                      OR ev.received_at >= e.sent_at + make_interval(secs => $5::int)) \
+                AND ($6::int = 0 OR ev.event <> 'clicked' \
+                     OR ev.received_at >= e.sent_at + make_interval(secs => $6::int)) \
                 AND ev.received_at <= d.closed_at \
                 AND ev.received_at >= d.closed_at - make_interval(days => $2::int) \
              UNION ALL \
@@ -360,6 +382,7 @@ async fn touches_of(
                 kinds.sent.into(),
                 serde_json::json!(engagement).into(),
                 i32::try_from(min_open_seconds).unwrap_or(i32::MAX).into(),
+                i32::try_from(min_click_seconds).unwrap_or(i32::MAX).into(),
             ],
         ))
         .await?;
@@ -551,6 +574,7 @@ async fn run(
         half_life_days,
         end_percent,
         min_open_seconds,
+        min_click_seconds,
     } = validate(&query)?;
     // The answer is money, so a masked collection read may not have it.
     if auth::aggregate_masked(&caller).map_err(record_rejection)? {
@@ -562,7 +586,15 @@ async fn run(
     let mut deals = won_deals(&ctx, &query).await?;
     let truncated = deals.len() > MAX_DEALS;
     deals.truncate(MAX_DEALS);
-    let mut touches = touches_of(&ctx, &deals, days, kinds, min_open_seconds).await?;
+    let mut touches = touches_of(
+        &ctx,
+        &deals,
+        days,
+        kinds,
+        min_open_seconds,
+        min_click_seconds,
+    )
+    .await?;
 
     let shared = share_out(model, half_life_days, end_percent, &deals, &mut touches);
     let mut conversion = convert_credit(&ctx, &query, &shared).await?;
@@ -625,6 +657,7 @@ async fn run(
             "half_life_days": (model == Model::TimeDecay).then_some(half_life_days),
             "end_percent": (model == Model::Position).then_some(end_percent),
             "min_open_seconds": (min_open_seconds > 0).then_some(min_open_seconds),
+            "min_click_seconds": (min_click_seconds > 0).then_some(min_click_seconds),
         })),
     )
     .await?;
@@ -634,6 +667,7 @@ async fn run(
         half_life_days: (model == Model::TimeDecay).then_some(half_life_days),
         end_percent: (model == Model::Position).then_some(end_percent),
         min_open_seconds: (min_open_seconds > 0).then_some(min_open_seconds),
+        min_click_seconds: (min_click_seconds > 0).then_some(min_click_seconds),
         touches: kinds.names(),
         as_of: Utc::now(),
         deals: deals.len(),

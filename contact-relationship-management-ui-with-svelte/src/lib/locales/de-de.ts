@@ -672,6 +672,8 @@ export default {
   "attr.endPercent": "Anteil der Enden (%, Position)",
   "attr.minOpen":
     "Öffnungen auslassen, die früher erfolgen als (Sekunden nach dem Versand)",
+  "attr.minClick":
+    "Klicks auslassen, die früher erfolgen als (Sekunden nach dem Versand)",
   "attr.from": "Abgeschlossen ab",
   "attr.to": "Abgeschlossen bis",
   "attr.run": "Anzeigen",

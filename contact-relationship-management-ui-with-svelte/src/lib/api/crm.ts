@@ -1771,6 +1771,8 @@ export interface Attribution {
   end_percent: number | null;
   /** The seconds after sending before which an open did not count, when one was asked for. */
   min_open_seconds: number | null;
+  /** The seconds after sending before which a click did not count, when one was asked for. */
+  min_click_seconds: number | null;
   rates: ReportRateUsed[];
   unconverted: ReportUnconverted[];
   note: string;
@@ -1793,6 +1795,8 @@ export function attribution(
     endPercent?: number;
     /** With opens counted: an open sooner than this many seconds after sending is left out. */
     minOpenSeconds?: number;
+    /** With clicks counted: a click sooner than this many seconds after sending is left out (CRM-R91). */
+    minClickSeconds?: number;
     /** Which e-mail touches count; the service's default is `sent` alone. */
     touches?: ("sent" | "opened" | "clicked")[];
   },
@@ -1808,6 +1812,8 @@ export function attribution(
   if (params.endPercent) query.set("end_percent", String(params.endPercent));
   if (params.minOpenSeconds)
     query.set("min_open_seconds", String(params.minOpenSeconds));
+  if (params.minClickSeconds)
+    query.set("min_click_seconds", String(params.minClickSeconds));
   if (params.from) query.set("from", params.from);
   if (params.to) query.set("to", params.to);
   if (params.convertTo) {
