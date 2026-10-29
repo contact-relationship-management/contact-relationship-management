@@ -1,5 +1,7 @@
 # Requirements
 
+**Every requirement is read as worldwide** (see [scope](scope.md#worldwide-by-design)): the target is not the United States or the United Kingdom alone, and any standard, protocol, convention or locale a requirement adopts must give equitable capability to countries, regions and federations worldwide.
+
 Numbered requirements with user stories and acceptance criteria.
 IDs are stable; design decisions ([design.md](design.md)) and tasks
 ([tasks.md](tasks.md)) trace to them. The four-module map:

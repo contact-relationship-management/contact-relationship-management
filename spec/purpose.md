@@ -64,6 +64,7 @@ A single relationship hub over the family's identity registries:
 | Marketing is consent-clean | no send without current consent; unsubscribes stick |
 | Support keeps promises | SLA clocks derived, breaches visible |
 | Numbers agree | every KPI is one pure-core derivation with unit tests |
+| Worldwide, equitably | no standard, protocol, convention or locale favours one country or region; see [scope](scope.md#worldwide-by-design) |
 
 ## Non-goals
 

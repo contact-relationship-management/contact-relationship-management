@@ -1,5 +1,28 @@
 # Scope
 
+## Worldwide by design
+
+The target is **worldwide**, not the United States or the United Kingdom
+alone. Any standard, protocol, convention, locale, format or regulation
+the CRM adopts must give **equitable capability to countries, regions and
+federations worldwide**: no country's or region's convention is the
+default that the rest are adapted to. In practice:
+
+- Names, addresses, phone numbers, dates, calendars, currencies, number
+  formats, scripts and writing directions are not assumed to follow one
+  country's shape (a family name may come first, be absent, or be
+  several; an address may have no postcode or state).
+- Where a regime applies (data protection, consent, retention, tax,
+  accessibility), it is a **configurable, named set of rules** beside
+  others, not a hard-coded one; GDPR, UK GDPR, CCPA and the like are
+  examples, not the list.
+- Standards are chosen for being international and open (ISO, IETF,
+  Unicode CLDR, BCP 47) and, where a national one is used, a
+  counterpart for other regions is built or recorded as a gap in the
+  roadmap rather than left unmentioned.
+- A feature that works for one region and not another is recorded as a
+  gap, with the regions it fails, and is not described as complete.
+
 ## In scope (v1)
 
 - Contacts and accounts as **relationship wrappers** over `person:`
