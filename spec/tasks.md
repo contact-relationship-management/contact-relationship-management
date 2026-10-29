@@ -1803,3 +1803,10 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Tests:** unit tests (a chosen half-life, the default unchanged, the other models unmoved, the longest window at the shortest half-life still weighs every touch, the range); `an_open_too_soon_after_sending_is_left_out_and_the_decay_half_life_can_be_chosen` (a thirty-second open and a two-hour open; the setting with sends beside opens; 7 against 90 days; six refusals with their pointers).
       - **UI:** two inputs on `/attribution`, each disabled until it applies; the tour has one open twenty seconds after sending; two strings in the eight locales (machine drafts, 697 per locale); tour tests for both.
       - **Not done:** see CRM-R89's list.
+
+- [x] CRM-T156 *(edge)* **Position-model weights.** The share of each of the first and last touches can be chosen. (S)
+      **Done (2026-10-29, not released):** requirement CRM-R90 first, then:
+      - **Service:** `rules::attribution::{end_percent, credit_tuned}` (`credit_with` is `credit_tuned` at 40); `end_percent` on the attribution query, validated, echoed and audited.
+      - **Tests:** a unit test (30, 40 and 49 percent, the default unchanged, other models unmoved, exact at every value, the range); the position request test now chooses 25 and checks three refusals with their pointers.
+      - **UI:** one input on `/attribution`, disabled unless the model is position; one string in the eight locales (machine drafts, 698 per locale); the tour validates and applies it.
+      - **Not done:** see CRM-R90's list.

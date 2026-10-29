@@ -3270,6 +3270,7 @@ function shareAmount(
   amount: number,
   touches: { campaign: string; daysBefore: number }[],
   halfLifeDays = 7,
+  endPercent = 40,
 ): Map<string, number> {
   const ordered = [...touches].sort(
     (a, b) =>
@@ -3286,7 +3287,11 @@ function shareAmount(
       case "time_decay":
         return decayWeight(t.daysBefore, halfLifeDays);
       case "position":
-        return n <= 2 ? 1n : i === 0 || i === n - 1 ? 40n * middle : 20n;
+        return n <= 2
+          ? 1n
+          : i === 0 || i === n - 1
+            ? BigInt(endPercent) * middle
+            : BigInt(100 - 2 * endPercent);
       default:
         return 1n;
     }
@@ -4271,6 +4276,15 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
       return problem(422, "/half_life_days: the half-life is 4 to 90 days");
   }
   const halfLifeDays = halfAsked === null ? 7 : Number(halfAsked);
+  const endAsked = query.get("end_percent");
+  if (endAsked !== null) {
+    const percent = Number(endAsked);
+    if (model !== "position")
+      return problem(422, "/end_percent: only with the position model");
+    if (!Number.isInteger(percent) || percent < 1 || percent > 49)
+      return problem(422, "/end_percent: the share is 1 to 49 percent");
+  }
+  const endPercent = endAsked === null ? 40 : Number(endAsked);
   const openAsked = query.get("min_open_seconds");
   if (openAsked !== null) {
     const seconds = Number(openAsked);
@@ -4346,6 +4360,7 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
       amount,
       touches,
       halfLifeDays,
+      endPercent,
     )) {
       const credit = tally.get(campaign)!.credit;
       credit.set(deal.currency, (credit.get(deal.currency) ?? 0) + share);
@@ -4392,6 +4407,7 @@ function attributionAnswer(query: URLSearchParams): DemoReply {
     model,
     window_days: windowDays,
     half_life_days: model === "time_decay" ? halfLifeDays : null,
+    end_percent: model === "position" ? endPercent : null,
     min_open_seconds: minOpenSeconds > 0 ? minOpenSeconds : null,
     touches: ["sent", "opened", "clicked"].filter((k) => kinds.includes(k)),
     as_of: new Date().toISOString(),

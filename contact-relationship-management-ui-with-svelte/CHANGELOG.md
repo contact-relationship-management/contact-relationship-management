@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the position share on the page (CRM-T156, CRM-R90)
+
+An end-share input on Attribution; one string in the eight locales.
+
 ### Added — attribution settings on the page (CRM-T155, CRM-R89)
 
 A half-life for time decay and a delay for opens; two strings in the eight locales.

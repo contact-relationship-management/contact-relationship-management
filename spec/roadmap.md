@@ -12,9 +12,10 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   last, linear, time-decay and position-based over e-mails sent, opened
   and clicked as a provider reports them, campaign leads and the recorded
   source; the time-decay half-life can be chosen and opens that come
-  seconds after sending can be left out (CRM-R89). Weights for the
-  position model, discounting rather than leaving out, and a delay for
-  clicks are not built.
+  seconds after sending can be left out (CRM-R89); each end of the
+  position model's share can be chosen (CRM-R90). Weights for the touches
+  between, discounting rather than leaving out, and a delay for clicks are
+  not built.
 - **SLA clock refinements** — business-hours calendars and holidays
   (CRM-R45) and a clock that pauses while a ticket waits on the
   customer (CRM-R55) are built, with a customer reply resuming it

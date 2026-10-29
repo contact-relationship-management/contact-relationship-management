@@ -1767,6 +1767,8 @@ export interface Attribution {
   rate_basis: string | null;
   /** With `time_decay`: the half-life used, in days (CRM-R89). */
   half_life_days: number | null;
+  /** With `position`: the share each of the first and last touches got, in percent (CRM-R90). */
+  end_percent: number | null;
   /** The seconds after sending before which an open did not count, when one was asked for. */
   min_open_seconds: number | null;
   rates: ReportRateUsed[];
@@ -1787,6 +1789,8 @@ export function attribution(
     rateBasis?: "close_day";
     /** With `time_decay`: a touch's weight halves every this many days, 4 to 90 (CRM-R89). */
     halfLifeDays?: number;
+    /** With `position`: the share of each of the first and last touches, 1 to 49 (CRM-R90). */
+    endPercent?: number;
     /** With opens counted: an open sooner than this many seconds after sending is left out. */
     minOpenSeconds?: number;
     /** Which e-mail touches count; the service's default is `sent` alone. */
@@ -1801,6 +1805,7 @@ export function attribution(
   if (params.touches?.length) query.set("touches", params.touches.join(","));
   if (params.halfLifeDays)
     query.set("half_life_days", String(params.halfLifeDays));
+  if (params.endPercent) query.set("end_percent", String(params.endPercent));
   if (params.minOpenSeconds)
     query.set("min_open_seconds", String(params.minOpenSeconds));
   if (params.from) query.set("from", params.from);

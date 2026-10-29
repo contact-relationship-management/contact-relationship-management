@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — position-model weights (CRM-T156, CRM-R90)
+
+`GET /api/attribution` takes `end_percent` (1 to 49, for `position`): the share each of the first and last touches earns, 40 by default; echoed in the answer.
+
 ### Added — attribution settings (CRM-T155, CRM-R89)
 
 `GET /api/attribution` takes `half_life_days` (4 to 90, for `time_decay`) and `min_open_seconds` (opens reported sooner after sending do not count); both are echoed in the answer.

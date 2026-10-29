@@ -653,6 +653,7 @@ export default {
     "Opens and clicks are what the mail provider reports, and only for people who still consent. Mail programs that load images in advance, and link scanners, make them overcount.",
   "attr.window": "Window (days before the deal closed)",
   "attr.halfLife": "Half-life (days, time decay)",
+  "attr.endPercent": "End share (%, position)",
   "attr.minOpen": "Leave out opens sooner than (seconds after sending)",
   "attr.from": "Closed from",
   "attr.to": "Closed to",

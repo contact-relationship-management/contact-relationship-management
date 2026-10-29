@@ -11,6 +11,7 @@
   let model = $state<"first" | "last" | "linear" | "time_decay" | "position">("linear");
   let windowDays = $state(90);
   let halfLifeDays = $state<number | null>(null);
+  let endPercent = $state<number | null>(null);
   let minOpenSeconds = $state<number | null>(null);
   let from = $state("");
   let to = $state("");
@@ -44,6 +45,7 @@
         to,
         touches: kinds,
         halfLifeDays: model === "time_decay" && halfLifeDays ? halfLifeDays : undefined,
+        endPercent: model === "position" && endPercent ? endPercent : undefined,
         minOpenSeconds: opened && minOpenSeconds ? minOpenSeconds : undefined,
         convertTo: convertTo.trim().toUpperCase(),
         rateDate,
@@ -111,6 +113,18 @@
       bind:value={halfLifeDays}
       disabled={model !== "time_decay"}
       data-testid="attribution-half-life"
+    />
+  </label>
+  <label>
+    {t("attr.endPercent")}
+    <input
+      type="number"
+      min="1"
+      max="49"
+      placeholder="40"
+      bind:value={endPercent}
+      disabled={model !== "position"}
+      data-testid="attribution-end-percent"
     />
   </label>
   <label>

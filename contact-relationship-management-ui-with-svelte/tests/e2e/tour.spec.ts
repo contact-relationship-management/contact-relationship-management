@@ -1327,6 +1327,8 @@ test.describe("export, undo and search", () => {
     // With two touches, position gives each end half.
     await page.getByTestId("attribution-model").selectOption("position");
     await expect(page.getByTestId("attribution-half-life")).toBeDisabled();
+    // The end share is for position alone; with two touches each end still gets half.
+    await page.getByTestId("attribution-end-percent").fill("30");
     await page.getByTestId("attribution-run").click();
     await expect(page.getByTestId("attribution-row").first()).toContainText(
       "£114,000.00",

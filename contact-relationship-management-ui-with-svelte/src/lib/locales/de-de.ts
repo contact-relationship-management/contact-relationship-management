@@ -669,6 +669,7 @@ export default {
     "Öffnungen und Klicks sind das, was der Mailanbieter meldet, und nur für Personen, die weiterhin zustimmen. Mailprogramme, die Bilder vorab laden, und Link-Scanner lassen sie zu hoch ausfallen.",
   "attr.window": "Zeitfenster (Tage vor Abschluss)",
   "attr.halfLife": "Halbwertszeit (Tage, Zeitverfall)",
+  "attr.endPercent": "Anteil der Enden (%, Position)",
   "attr.minOpen":
     "Öffnungen auslassen, die früher erfolgen als (Sekunden nach dem Versand)",
   "attr.from": "Abgeschlossen ab",

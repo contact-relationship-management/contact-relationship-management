@@ -24,6 +24,12 @@ pub const MIN_HALF_LIFE_DAYS: i64 = 4;
 pub const MAX_HALF_LIFE_DAYS: i64 = 90;
 /// Longest "an open this soon after sending is a machine" a caller may set, in seconds (one day).
 pub const MAX_MIN_OPEN_SECONDS: i64 = 86_400;
+/// The share, in percent, the position model gives each of the first and last touches by default.
+pub const END_PERCENT: i64 = 40;
+/// The least a position model may give each end (CRM-R90).
+pub const MIN_END_PERCENT: i64 = 1;
+/// The most: two ends at 49% leave the middle touches 2%, so they are never given nothing.
+pub const MAX_END_PERCENT: i64 = 49;
 
 /// How an amount is shared among touches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -104,6 +110,22 @@ pub fn half_life_days(asked: Option<i64>) -> Result<i64, String> {
     }
 }
 
+/// The share each end of the position model gets, or the default.
+///
+/// # Errors
+///
+/// The reason, when it is outside [`MIN_END_PERCENT`] to [`MAX_END_PERCENT`].
+pub fn end_percent(asked: Option<i64>) -> Result<i64, String> {
+    let percent = asked.unwrap_or(END_PERCENT);
+    if (MIN_END_PERCENT..=MAX_END_PERCENT).contains(&percent) {
+        Ok(percent)
+    } else {
+        Err(format!(
+            "the share is {MIN_END_PERCENT} to {MAX_END_PERCENT} percent"
+        ))
+    }
+}
+
 /// One contact a campaign had with the buyer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Touch {
@@ -179,6 +201,28 @@ pub fn credit_with(
     closed_at: DateTime<Utc>,
     half_life_days: i64,
 ) -> Vec<(Uuid, i64)> {
+    credit_tuned(
+        model,
+        amount_minor,
+        touches,
+        closed_at,
+        half_life_days,
+        END_PERCENT,
+    )
+}
+
+/// [`credit_with`] with the position model's end share the caller chose (CRM-R90): each of the
+/// first and last touches gets `end_percent` percent and the middle touches share the rest. It
+/// matters only to [`Model::Position`].
+#[must_use]
+pub fn credit_tuned(
+    model: Model,
+    amount_minor: i64,
+    touches: &[Touch],
+    closed_at: DateTime<Utc>,
+    half_life_days: i64,
+    end_percent: i64,
+) -> Vec<(Uuid, i64)> {
     if touches.is_empty() || amount_minor < 0 {
         return Vec::new();
     }
@@ -196,14 +240,15 @@ pub fn credit_with(
         Model::Position => match n {
             1 | 2 => vec![1; n],
             _ => {
-                // 40 : 40 : 20 shared by the middle, in whole numbers.
+                // end : end : (100 - 2 end) shared by the middle, in whole numbers.
                 let middle = i128::try_from(n - 2).unwrap_or(i128::MAX);
+                let end = i128::from(end_percent);
                 (0..n)
                     .map(|i| {
                         if i == 0 || i == n - 1 {
-                            40 * middle
+                            end * middle
                         } else {
-                            20
+                            100 - 2 * end
                         }
                     })
                     .collect()
@@ -447,6 +492,25 @@ mod tests {
             credit(Model::TimeDecay, 10, &[after], closed),
             [(id(4), 10)]
         );
+    }
+
+    #[test]
+    fn a_chosen_end_share_moves_position_only_and_the_default_is_forty() {
+        let touches = [touch(1, 3), touch(2, 10), touch(3, 20)];
+        let at = |end| credit_tuned(Model::Position, 10_000, &touches, closed(), 7, end);
+        assert_eq!(at(40), credit(Model::Position, 10_000, &touches, closed()));
+        assert_eq!(at(30), [(id(1), 3_000), (id(2), 4_000), (id(3), 3_000)]);
+        assert_eq!(at(49), [(id(1), 4_900), (id(2), 200), (id(3), 4_900)]);
+        assert_eq!(
+            credit_tuned(Model::Linear, 9_000, &touches, closed(), 7, 49),
+            credit(Model::Linear, 9_000, &touches, closed()),
+            "other models do not read it"
+        );
+        for end in MIN_END_PERCENT..=MAX_END_PERCENT {
+            assert_eq!(total(&at(end)), 10_000, "exact at {end}");
+        }
+        assert_eq!(end_percent(None), Ok(40));
+        assert!(end_percent(Some(0)).is_err() && end_percent(Some(50)).is_err());
     }
 
     #[test]

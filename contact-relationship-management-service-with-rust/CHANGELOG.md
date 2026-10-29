@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — position-model weights (CRM-T156, CRM-R90)
+
+`end_percent`; `rules::attribution::credit_tuned`.
+
 ### Added — attribution settings (CRM-T155, CRM-R89)
 
 `half_life_days`, `min_open_seconds`; `rules::attribution::credit_with`.

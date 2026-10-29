@@ -1383,3 +1383,12 @@ recipient would get before anything is sent, and be certain every message carrie
 - It is **a rule of thumb, not a detector**: a real reader who opens within the delay is left out, and a program that loads the message later is counted. The page says what it does; a deal left with no touch is reported as unattributed as ever, never dropped.
 - The audit entry of a run names both settings.
 - Not built: weights for the position model; discounting an open by how soon it came rather than leaving it out; a delay for clicks; unique versus repeat opens.
+
+## CRM-R90 — Position-model weights: the share of each end
+
+*As a marketer, I want to choose how much the first and last touches earn under the position model, so that the model fits how we sell.*
+
+- `GET /api/attribution` takes `end_percent` (1 to 49, default 40, the earlier fixed value): each of the first and last touches earns that share and the touches between share the rest. It is for the `position` model alone: with any other model, or a value outside the range, `422` naming `/end_percent`. The answer's `end_percent` is the one used for `position` and `null` for the other models; the audit entry names it.
+- The most is 49 because two ends at 50 would leave the middle nothing and the rest of the model would then be `first` and `last` in disguise; at 49 a middle touch still earns something.
+- With one or two touches the share is not used: they split equally, as before. The shares add up to the amount exactly at every value.
+- Not built: weights per touch position beyond the two ends (a separate share for the second touch, say); discounting an open by how soon it came; a delay for clicks.

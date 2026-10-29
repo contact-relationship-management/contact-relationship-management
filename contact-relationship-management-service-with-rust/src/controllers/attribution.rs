@@ -40,6 +40,9 @@ struct AttributionQuery {
     /// With `time_decay`: a touch's weight halves for every this many days before the deal closed,
     /// 4 to 90 (default 7; CRM-R89).
     half_life_days: Option<i64>,
+    /// With `position`: the share, in percent, each of the first and last touches gets, 1 to 49
+    /// (default 40; CRM-R90). The touches between share the rest.
+    end_percent: Option<i64>,
     /// An open reported less than this many seconds after the e-mail was sent is taken for a mail
     /// program loading it ahead of the reader, and does not count; 1 to 86,400, and only with
     /// `touches` including `opened` (CRM-R89). Clicks are not affected.
@@ -92,6 +95,9 @@ pub(crate) struct Attribution {
     window_days: i64,
     /// With `time_decay`: the half-life used, in days (CRM-R89); `null` for the other models.
     half_life_days: Option<i64>,
+    /// With `position`: the share each of the first and last touches got, in percent (CRM-R90);
+    /// `null` for the other models.
+    end_percent: Option<i64>,
     /// The seconds after sending before which an open does not count, when one was asked for.
     min_open_seconds: Option<i64>,
     /// The e-mail touches counted: `sent`, `opened`, `clicked`.
@@ -229,6 +235,12 @@ fn validate(query: &AttributionQuery) -> Result<Asked> {
     let half_life = rules::half_life_days(query.half_life_days)
         .map_err(|why| problems.push_field("half_life_days", why))
         .ok();
+    if query.end_percent.is_some() && model != Some(Model::Position) {
+        problems.push_field("end_percent", "only with the position model");
+    }
+    let end = rules::end_percent(query.end_percent)
+        .map_err(|why| problems.push_field("end_percent", why))
+        .ok();
     if let Some(seconds) = query.min_open_seconds {
         if !(1..=rules::MAX_MIN_OPEN_SECONDS).contains(&seconds) {
             problems.push_field(
@@ -240,14 +252,17 @@ fn validate(query: &AttributionQuery) -> Result<Asked> {
         }
     }
     problems.finish()?;
-    match (model, days, kinds, half_life) {
-        (Some(model), Some(days), Some(kinds), Some(half_life_days)) => Ok(Asked {
-            model,
-            days,
-            kinds,
-            half_life_days,
-            min_open_seconds: query.min_open_seconds.unwrap_or(0),
-        }),
+    match (model, days, kinds, half_life, end) {
+        (Some(model), Some(days), Some(kinds), Some(half_life_days), Some(end_percent)) => {
+            Ok(Asked {
+                model,
+                days,
+                kinds,
+                half_life_days,
+                end_percent,
+                min_open_seconds: query.min_open_seconds.unwrap_or(0),
+            })
+        }
         _ => Err(super::unprocessable("the request cannot be answered")),
     }
 }
@@ -259,6 +274,8 @@ struct Asked {
     kinds: Kinds,
     /// The time-decay half-life, in days.
     half_life_days: i64,
+    /// The position model's share for each end, in percent.
+    end_percent: i64,
     /// An open sooner than this after sending does not count; `0` for none.
     min_open_seconds: i64,
 }
@@ -413,6 +430,7 @@ struct Shared {
 fn share_out(
     model: Model,
     half_life_days: i64,
+    end_percent: i64,
     deals: &[Won],
     touches: &mut HashMap<Uuid, Vec<Touch>>,
 ) -> Shared {
@@ -445,12 +463,13 @@ fn share_out(
         for campaign in list.iter().map(|t| t.campaign).collect::<BTreeSet<_>>() {
             tallies.entry(campaign).or_default().deals += 1;
         }
-        for (campaign, share) in rules::credit_with(
+        for (campaign, share) in rules::credit_tuned(
             model,
             deal.amount_minor,
             &list,
             deal.closed_at,
             half_life_days,
+            end_percent,
         ) {
             let tally = tallies.entry(campaign).or_default();
             add(&mut tally.credit, &deal.currency, share);
@@ -530,6 +549,7 @@ async fn run(
         days,
         kinds,
         half_life_days,
+        end_percent,
         min_open_seconds,
     } = validate(&query)?;
     // The answer is money, so a masked collection read may not have it.
@@ -544,7 +564,7 @@ async fn run(
     deals.truncate(MAX_DEALS);
     let mut touches = touches_of(&ctx, &deals, days, kinds, min_open_seconds).await?;
 
-    let shared = share_out(model, half_life_days, &deals, &mut touches);
+    let shared = share_out(model, half_life_days, end_percent, &deals, &mut touches);
     let mut conversion = convert_credit(&ctx, &query, &shared).await?;
     let Shared {
         tallies,
@@ -603,6 +623,7 @@ async fn run(
         Some(serde_json::json!({
             "model": model.name(), "window_days": days, "deals": deals.len(),
             "half_life_days": (model == Model::TimeDecay).then_some(half_life_days),
+            "end_percent": (model == Model::Position).then_some(end_percent),
             "min_open_seconds": (min_open_seconds > 0).then_some(min_open_seconds),
         })),
     )
@@ -611,6 +632,7 @@ async fn run(
         model: model.name().to_string(),
         window_days: days,
         half_life_days: (model == Model::TimeDecay).then_some(half_life_days),
+        end_percent: (model == Model::Position).then_some(end_percent),
         min_open_seconds: (min_open_seconds > 0).then_some(min_open_seconds),
         touches: kinds.names(),
         as_of: Utc::now(),

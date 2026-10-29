@@ -267,6 +267,32 @@ async fn time_decay_favours_the_recent_touch_and_position_splits_the_ends_evenly
         assert_eq!(earned(&position, "Early", "GBP"), 40_000, "{position}");
         assert_eq!(earned(&position, "Middle", "GBP"), 20_000, "{position}");
         assert_eq!(earned(&position, "Late", "GBP"), 40_000, "{position}");
+        assert_eq!(position["end_percent"], 40, "{position}");
+
+        // A chosen end share: 25% each end leaves the middle half.
+        let chosen: Value = request
+            .get("/api/attribution?model=position&end_percent=25")
+            .await
+            .json();
+        assert_eq!(earned(&chosen, "Early", "GBP"), 25_000, "{chosen}");
+        assert_eq!(earned(&chosen, "Middle", "GBP"), 50_000, "{chosen}");
+        assert_eq!(earned(&chosen, "Late", "GBP"), 25_000, "{chosen}");
+        assert_eq!(chosen["end_percent"], 25, "{chosen}");
+        let linear: Value = request.get("/api/attribution").await.json();
+        assert!(linear["end_percent"].is_null(), "{linear}");
+        for query in [
+            "end_percent=25",
+            "model=position&end_percent=0",
+            "model=position&end_percent=50",
+        ] {
+            let r = request.get(&format!("/api/attribution?{query}")).await;
+            r.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            let refused: Value = r.json();
+            assert_eq!(
+                refused["errors"][0]["pointer"], "/end_percent",
+                "{query}: {refused}"
+            );
+        }
 
         let decay = ask("time_decay").await;
         let (e, m, l) = (

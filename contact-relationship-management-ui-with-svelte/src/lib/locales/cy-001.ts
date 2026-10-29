@@ -660,6 +660,7 @@ export default {
     "Agoriadau a chlicio yw'r hyn y mae'r darparwr post yn ei adrodd, ac dim ond ar gyfer pobl sy'n dal i gydsynio. Mae rhaglenni post sy'n llwytho delweddau ymlaen llaw, a sganwyr dolenni, yn peri iddynt gael eu gorgyfrif.",
   "attr.window": "Ffenestr (dyddiau cyn i'r fargen gau)",
   "attr.halfLife": "Hanner oes (diwrnod, pylu amser)",
+  "attr.endPercent": "Cyfran y pennau (%, safle)",
   "attr.minOpen": "Gadael agoriadau allan sy'n gynt na (eiliadau ar ôl anfon)",
   "attr.from": "Caewyd o",
   "attr.to": "Caewyd tan",
