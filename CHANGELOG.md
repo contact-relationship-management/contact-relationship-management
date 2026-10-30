@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — the UI's default `CRM_API_URL` reaches the service (maintenance, 2026-10-30)
+
+The default and `.env.example` are now `http://localhost:5150/api`, the base the BFF proxy needs, so a default local setup reaches the service; a trailing slash is dropped and no `/api` is added to a value without it. A unit test pins the default and the upstream URL; INSTALL.md and the UI README say so. **Not verified:** the proxy against a running service.
+
 ### Changed — llms.txt and llms.json list every current document (maintenance, 2026-10-30)
 
 Regenerated with `scripts/build-llms.py`, whose table now adds the bridges tutorial, the matcher, the service and UI index and stack-spec pages, the translation register, the DPIA, inventory, record of processing, risk management, GDS review and DTAC pages, NEWS, RFC and MAINTAINERS, and gives the current id ranges (CRM-R1 to R94, CRM-T0 to T163, CRM-D1 to D18). Left out on purpose: the per-locale role briefs (reached through `spec/locale/index.md`), the DTAC folder's README, and the AI-statement template under `spec/special-files-for-public-repos/`. There is no `*-skill` folder and no `*.github.io` folder for this repository, and none was made.

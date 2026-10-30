@@ -69,7 +69,7 @@ every page round-trips through the API.
 
 ```bash
 pnpm install
-pnpm dev           # :5173; the service at CRM_API_URL (default http://localhost:5150)
+pnpm dev           # :5173; the service at CRM_API_URL (default http://localhost:5150/api)
 pnpm test          # vitest
 pnpm exec playwright test
 pnpm test:live     # against a running service (creates records)

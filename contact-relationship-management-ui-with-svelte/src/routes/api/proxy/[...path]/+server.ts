@@ -9,6 +9,7 @@
 
 import type { RequestHandler } from "./$types";
 import { CRM_API_URL } from "#lib/server/config.js";
+import { upstreamUrl } from "#lib/server/api-url.js";
 import { exchangeToken } from "#lib/server/auth.js";
 import { DEMO_TOUR_ENABLED } from "#lib/server/config.js";
 import { demoHandleFor, isDemoSession } from "#lib/server/demo.js";
@@ -64,7 +65,7 @@ const proxy: RequestHandler = async ({
     });
   }
 
-  const target = `${CRM_API_URL}/${params.path}${url.search}`;
+  const target = upstreamUrl(CRM_API_URL, params.path ?? "", url.search);
 
   // Copy request headers, but drop hop-by-hop / origin-specific ones and
   // never forward the browser's cookie to the entity service.

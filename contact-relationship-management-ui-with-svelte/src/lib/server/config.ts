@@ -1,9 +1,11 @@
 // Server-side (BFF) configuration. Never imported by browser code.
 
 import * as env from "$app/env/private";
+import { crmApiBase } from "./api-url.js";
 
-/** Base URL of the contact-relationship-management service the BFF proxies to. */
-export const CRM_API_URL: string = env.CRM_API_URL || "http://localhost:5150";
+/** API base of the contact-relationship-management service the BFF proxies
+ *  to, ending in `/api` (default `http://localhost:5150/api`). */
+export const CRM_API_URL: string = crmApiBase(env.CRM_API_URL);
 
 /** Authentication service base URL — for the session→PASETO exchange
  *  and the magic-link login flow (PF-T18). */

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the default `CRM_API_URL` reaches the service (maintenance, 2026-10-30)
+
+The default and `.env.example` were `http://localhost:5150`, but the BFF proxy sends `/api/proxy/<path>` to `<CRM_API_URL>/<path>`, so a default local setup missed the service's `/api` routes. Both are now `http://localhost:5150/api`. `src/lib/server/api-url.ts` holds the default and the URL building (a blank value takes the default, trailing slashes are dropped), pinned by `tests/unit/api-url.test.ts`. No `/api` is appended to a value without it: a service behind another prefix sets the whole base, and guessing would hide a wrong setting. A deployment that set the old form keeps missing the routes until it adds `/api`. **Not verified:** the proxy was not run against a running service; the live Playwright suite already passes `<API>/api` and was not run.
+
 ### Fixed — `/followups` passes the WCAG AA contrast check again (CRM-R77)
 
 A calendar day outside the shown month was drawn at 60% opacity, which faded a follow-up on a weekend in it to 4.35:1 (#747476 on #f7f7f7), under AA's 4.5:1, and the axe gate on `/followups` failed. Such a day now has a dashed border and a light, italic day number instead, at full contrast. The a11y suite (40 pages) and the whole Playwright run pass. Checked in the default light theme only; the other Lily themes and dark mode were not scanned.

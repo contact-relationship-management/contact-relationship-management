@@ -150,14 +150,17 @@ pnpm install
 pnpm dev
 ```
 
-To use a running service instead of the tour, point the UI at the service's
-`/api` path. The proxy appends the path after `/api/proxy/` to this value, so
-the code default, `http://localhost:5150`, without `/api`, does not reach the
-service's routes:
+To use a running service instead of the tour, the UI needs the service's
+`/api` base in `CRM_API_URL`. The proxy appends the path after `/api/proxy/`
+to this value, and the default, `http://localhost:5150/api`, is a service
+started as above, so only the authentication service needs setting:
 
 ```bash
-CRM_API_URL=http://localhost:5150/api AUTH_API_URL=http://localhost:<auth port> pnpm dev
+AUTH_API_URL=http://localhost:<auth port> pnpm dev
 ```
+
+A service elsewhere sets the whole base, `/api` included, for example
+`CRM_API_URL=https://crm.example.org/api`; a trailing slash is dropped.
 
 Signing in that way needs the family authentication service at `AUTH_API_URL`
 (the UI calls its `/api/auth/magic-link` and `/api/auth/token`). The CRM

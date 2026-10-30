@@ -27,9 +27,9 @@ pnpm dev
 
 Sign in as `example@example.com` for the guided tour: fictitious data
 held in the UI server, with no service needed (`CRM_DEMO_TOUR=off`
-removes it). To use the Loco sibling instead, set
-`CRM_API_URL=http://localhost:5150/api` and point `AUTH_API_URL` at the
-family authentication service, which provides the sign-in routes
+removes it). To use the Loco sibling instead, run it on its dev port (the
+default `CRM_API_URL`, `http://localhost:5150/api`, reaches it) and point
+`AUTH_API_URL` at the family authentication service, which provides the sign-in routes
 (`/api/auth/magic-link`, `/api/auth/token`). The CRM service does not.
 
 ## Tests
@@ -50,7 +50,7 @@ variable reaches the browser.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CRM_API_URL` | `http://localhost:5150` | The service's API base. The BFF proxy sends `/api/proxy/<path>` to `<CRM_API_URL>/<path>`, so set it to the service's `/api` path, for example `http://localhost:5150/api` (the default, without `/api`, misses the service's routes) |
+| `CRM_API_URL` | `http://localhost:5150/api` | The service's API base, `/api` included. The BFF proxy sends `/api/proxy/<path>` to `<CRM_API_URL>/<path>`; a trailing slash is dropped, and no `/api` is added, so a value without it misses the service's routes |
 | `AUTH_API_URL` | `http://localhost:5150` | The authentication service (session → PASETO exchange, magic link) |
 | `CRM_DEMO_TOUR` | on | `off` removes the guided tour |
 | `PUBLIC_OIDC_SIGNIN_ENABLED` | unset | Public. Set `true` to show "Sign in with SSO" (`/signin/sso`); needs OIDC configured on the auth service. Unset, `/signin/sso` is `404` |
