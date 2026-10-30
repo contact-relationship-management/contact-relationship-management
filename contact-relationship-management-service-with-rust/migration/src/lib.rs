@@ -67,6 +67,7 @@ mod m20261030_000052_wpm_employments;
 mod m20261030_000053_employment_last_events;
 mod m20261030_000054_person_user_refs;
 mod m20261030_000055_search_ngrams;
+mod m20261030_000056_template_language;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -132,6 +133,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261030_000053_employment_last_events::Migration),
             Box::new(m20261030_000054_person_user_refs::Migration),
             Box::new(m20261030_000055_search_ngrams::Migration),
+            Box::new(m20261030_000056_template_language::Migration),
             // inject-above (do not remove this comment)
         ]
     }

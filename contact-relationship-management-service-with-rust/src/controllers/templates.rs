@@ -27,6 +27,7 @@ pub(crate) struct Template {
     subject: String,
     body: String,
     fallbacks: BTreeMap<String, String>,
+    language: Option<String>,
 }
 
 /// `POST /api/email-templates` and `PUT /api/email-templates/{pid}` body (a `PUT` replaces it).
@@ -43,6 +44,11 @@ pub(crate) struct TemplatePayload {
     /// The template's own text for a token with no value, by token name.
     #[serde(default)]
     fallbacks: BTreeMap<String, String>,
+    /// The language the template is written in, a BCP 47 tag (`ja`, `pt-BR`); its built-in
+    /// fallbacks are in that language. Absent: English fallbacks. A language without built-in
+    /// fallbacks needs the template's own for every token it uses (CRM-T169).
+    #[serde(default)]
+    language: Option<String>,
 }
 
 /// `POST /api/email-templates/preview` body: a draft, not yet saved.
@@ -54,6 +60,9 @@ pub(crate) struct PreviewPayload {
     body: String,
     #[serde(default)]
     fallbacks: BTreeMap<String, String>,
+    /// The draft's language, as on a template.
+    #[serde(default)]
+    language: Option<String>,
     /// Tokens to treat as having no value, to see their fallbacks.
     #[serde(default)]
     blank: Vec<String>,
@@ -69,6 +78,8 @@ pub(crate) struct TemplateView {
     subject: String,
     body: String,
     fallbacks: BTreeMap<String, String>,
+    /// The language it is written in; absent when it names none (English fallbacks).
+    language: Option<String>,
     /// How many live campaigns and nurture steps refer to it.
     in_use: i64,
     updated_at: chrono::DateTime<chrono::Utc>,
@@ -95,7 +106,8 @@ pub(crate) struct Preview {
 pub(crate) struct TokenInfo {
     name: String,
     description: String,
-    /// The text used when the contact has no value; absent for `unsubscribe_url`.
+    /// The text used when the contact has no value, in the language asked for; absent for
+    /// `unsubscribe_url`, and for a language with no built-in fallbacks.
     fallback: Option<String>,
     /// Whether every template body must contain it.
     required: bool,
@@ -105,7 +117,7 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
-const COLUMNS: &str = "t.pid, t.name, t.subject, t.body, t.fallbacks, t.updated_at, \
+const COLUMNS: &str = "t.pid, t.name, t.subject, t.body, t.fallbacks, t.language, t.updated_at, \
     (SELECT count(*) FROM campaigns c WHERE c.template_pid = t.pid AND c.deleted_at IS NULL) \
     + (SELECT count(*) FROM nurture_steps s WHERE s.template_pid = t.pid \
        AND s.deleted_at IS NULL) AS in_use";
@@ -118,6 +130,7 @@ fn view(row: &sea_orm::QueryResult) -> Result<TemplateView> {
         subject: row.try_get("", "subject")?,
         body: row.try_get("", "body")?,
         fallbacks: serde_json::from_value(fallbacks).unwrap_or_default(),
+        language: row.try_get("", "language")?,
         in_use: row.try_get("", "in_use")?,
         updated_at: row.try_get("", "updated_at")?,
     })
@@ -132,7 +145,12 @@ fn validate(payload: &TemplatePayload) -> Result<()> {
             format!("is longer than {} characters", rules::MAX_NAME),
         );
     }
-    for (field, message) in rules::check(&payload.subject, &payload.body, &payload.fallbacks) {
+    for (field, message) in rules::check(
+        &payload.subject,
+        &payload.body,
+        &payload.fallbacks,
+        payload.language.as_deref(),
+    ) {
         problems.push_field(&field, message);
     }
     problems.finish()
@@ -142,15 +160,29 @@ fn taken() -> Error {
     unprocessable("a template with that name already exists")
 }
 
-/// `GET /api/email-templates/tokens` — the merge tokens and their default fallbacks.
+/// `GET /api/email-templates/tokens` query.
+#[derive(Debug, Deserialize)]
+pub(crate) struct TokensQuery {
+    /// The language whose built-in fallbacks to show; absent is a template with none (English).
+    language: Option<String>,
+}
+
+/// `GET /api/email-templates/tokens?language=` — the merge tokens and their default fallbacks in
+/// that language.
 #[debug_handler]
-async fn tokens() -> Result<Response> {
+async fn tokens(Query(query): Query<TokensQuery>) -> Result<Response> {
+    let language = match query.language.as_deref().filter(|l| !l.trim().is_empty()) {
+        Some(tag) => {
+            Some(rules::language(tag).map_err(|why| unprocessable(&format!("language {why}")))?)
+        }
+        None => None,
+    };
     let mut out: Vec<TokenInfo> = rules::TOKENS
         .iter()
         .map(|t| TokenInfo {
             name: t.name.to_string(),
             description: t.description.to_string(),
-            fallback: Some(t.fallback.to_string()),
+            fallback: rules::built_in_fallback(t.name, language.as_deref()).map(str::to_string),
             required: false,
         })
         .collect();
@@ -197,6 +229,13 @@ fn bind(payload: &TemplatePayload) -> Vec<Value> {
         payload.subject.clone().into(),
         payload.body.clone().into(),
         serde_json::json!(payload.fallbacks).into(),
+        payload
+            .language
+            .as_deref()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .map(str::to_string)
+            .into(),
     ]
 }
 
@@ -214,8 +253,8 @@ async fn create(
     let txn = ctx.db.begin().await?;
     let inserted = txn
         .execute_raw(stmt(
-            "INSERT INTO email_templates (pid, name, subject, body, fallbacks) \
-             VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING",
+            "INSERT INTO email_templates (pid, name, subject, body, fallbacks, language) \
+             VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING",
             values,
         ))
         .await?
@@ -245,7 +284,7 @@ async fn replace(
     let changed = txn
         .execute_raw(stmt(
             "UPDATE email_templates SET name = $2, subject = $3, body = $4, fallbacks = $5, \
-             updated_at = now() WHERE pid = $1",
+             language = $6, updated_at = now() WHERE pid = $1",
             values,
         ))
         .await;
@@ -298,7 +337,12 @@ async fn remove(
 /// `POST /api/email-templates/preview` — a draft rendered for a synthetic contact.
 #[debug_handler]
 async fn preview(Json(payload): Json<PreviewPayload>) -> Result<Response> {
-    let found = rules::check(&payload.subject, &payload.body, &payload.fallbacks);
+    let found = rules::check(
+        &payload.subject,
+        &payload.body,
+        &payload.fallbacks,
+        payload.language.as_deref(),
+    );
     let mut problems = Problems::new();
     for token in &payload.blank {
         if !rules::TOKENS.iter().any(|t| t.name == token) {
@@ -321,6 +365,7 @@ async fn preview(Json(payload): Json<PreviewPayload>) -> Result<Response> {
         &rules::Fill {
             values: &values,
             fallbacks: &payload.fallbacks,
+            language: payload.language.as_deref(),
             unsubscribe_url: PREVIEW_UNSUBSCRIBE,
         },
     );
@@ -343,7 +388,7 @@ const PREVIEW_UNSUBSCRIBE: &str = "https://example.invalid/unsubscribe/preview";
 pub(crate) async fn load(db: &impl ConnectionTrait, pid: Uuid) -> Result<Option<Template>> {
     let Some(row) = db
         .query_one_raw(stmt(
-            "SELECT subject, body, fallbacks FROM email_templates WHERE pid = $1",
+            "SELECT subject, body, fallbacks, language FROM email_templates WHERE pid = $1",
             [pid.into()],
         ))
         .await?
@@ -355,6 +400,7 @@ pub(crate) async fn load(db: &impl ConnectionTrait, pid: Uuid) -> Result<Option<
         subject: row.try_get("", "subject")?,
         body: row.try_get("", "body")?,
         fallbacks: serde_json::from_value(fallbacks).unwrap_or_default(),
+        language: row.try_get("", "language")?,
     }))
 }
 
@@ -364,13 +410,10 @@ pub(crate) async fn contact_values(
     contact: &contacts::Model,
 ) -> Result<BTreeMap<String, String>> {
     let mut values = BTreeMap::new();
-    // The given name is the one on file, else the first word of the display name.
-    let given = contact
-        .given_name
-        .clone()
-        .or_else(|| rules::first_word(&contact.display_name));
-    if let Some(given) = given {
-        values.insert("given_name".to_string(), given);
+    // The given name is the one on file only: the display name's first word is the family name
+    // in many orders, and some names have no spaces (CRM-T169). Without one, the fallback.
+    if let Some(given) = &contact.given_name {
+        values.insert("given_name".to_string(), given.clone());
     }
     values.insert("name".to_string(), contact.display_name.clone());
     if let Some(family) = &contact.family_name {
@@ -424,6 +467,7 @@ pub(crate) async fn content_for(
         &rules::Fill {
             values: &values,
             fallbacks: &template.fallbacks,
+            language: template.language.as_deref(),
             unsubscribe_url: unsubscribe_url.unwrap_or_default(),
         },
     );

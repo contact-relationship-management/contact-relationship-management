@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — names and template text in any language (CRM-T169, 2026-10-30)
+
+The `given_name` merge token took the first word of the display name when no given name was stored, so "Wang Fang" got "Dear Wang"; it now takes its fallback. A template names its language (a BCP 47 tag; migration `000056`), and its built-in fallbacks are in that language for the UI's eight (machine drafts but English); a template in another language must give its own for each token it uses, so no English word lands in it; a template with no language keeps English, as before. The matcher's honorifics, name suffixes, nicknames and legal-form words are per-language data in several scripts, with joined forms such as `株式会社` and `女士` stripped; the imports guess columns named in any of the UI's eight languages. The templates page has a language field. **Not done or verified:** every non-English word list and fallback is an unreviewed machine draft; names without spaces are still not split into parts; a campaign cannot choose a template by each recipient's language; the service keeps the published matcher 0.1.2 until 0.2.0 is published. Details: the [service](contact-relationship-management-service-with-rust/CHANGELOG.md) and [UI](contact-relationship-management-ui-with-svelte/CHANGELOG.md) changelogs and the matcher's.
+
 ### Fixed — the deal list fits a phone again with three forecast currencies (CRM-T176 follow-up, 2026-10-30)
 
 CRM-T176 gave the tour three forecast currencies; their totals were joined by non-breaking spaces, so `/deals` scrolled sideways at 360px in CI (Linux Chromium). They now wrap. Details: the [UI changelog](contact-relationship-management-ui-with-svelte/CHANGELOG.md).

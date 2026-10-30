@@ -2214,6 +2214,63 @@ function breakGlass(
   return null;
 }
 
+/**
+ * Header names the tour's imports recognise, in the UI's eight languages: a part of the service's
+ * `rules::column_names` (CRM-T169; a unit test holds each name here to the service's list).
+ */
+export const COLUMN_NAMES: Record<"name" | "email" | "company", string[]> = {
+  name: [
+    "name",
+    "full name",
+    "display name",
+    "contact",
+    "lead",
+    "الاسم",
+    "enw",
+    "vollständiger name",
+    "nombre",
+    "nom",
+    "नाम",
+    "姓名",
+  ],
+  email: [
+    "email",
+    "e mail",
+    "email address",
+    "البريد الإلكتروني",
+    "e bost",
+    "e mail adresse",
+    "correo electrónico",
+    "courriel",
+    "ईमेल",
+    "电子邮件",
+  ],
+  company: [
+    "company",
+    "organisation",
+    "organization",
+    "الشركة",
+    "cwmni",
+    "firma",
+    "empresa",
+    "entreprise",
+    "कंपनी",
+    "公司",
+  ],
+};
+
+/** A header as the service compares it: lower case, `_` and `-` as spaces, no Latin accents. */
+function headerKey(header: string): string {
+  return header
+    .normalize("NFD")
+    .replace(/(\p{Script=Latin})\p{M}+/gu, "$1")
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/[_-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** The tour's lead import (CRM-R34): a plain comma split, no quoting, nothing is saved. */
 /** The tour's contact and account imports: the lead import's answers, with this kind's mapping. */
 function recordImports(
@@ -2263,12 +2320,14 @@ function leadImports(
     const lines = (csv ?? "").split(/\r?\n/).filter((l) => l.trim() !== "");
     if (lines.length === 0) return problem(422, "the file is empty");
     const columns = lines[0]!.split(",").map((c) => c.trim());
-    const guess = (...names: string[]) =>
-      columns.find((c) => names.includes(c.toLowerCase())) ?? null;
+    const guess = (names: string[]) => {
+      const keys = names.map(headerKey);
+      return columns.find((c) => keys.includes(headerKey(c))) ?? null;
+    };
     const suggested = {
-      display_name: guess("name", "full name", "display name"),
-      email: guess("email", "e-mail"),
-      company: guess("company", "organisation", "organization"),
+      display_name: guess(COLUMN_NAMES.name),
+      email: guess(COLUMN_NAMES.email),
+      company: guess(COLUMN_NAMES.company),
     };
     if (!mapping) {
       return ok({
@@ -2377,7 +2436,8 @@ export function demoHandle(
   if (head === "commission-plans") return commissionPlans(method, id, body);
   if (head === "quotas") return quotaRoutes(method, seg, query, body);
   if (head === "bridges") return bridgeRoutes(method, seg);
-  if (head === "email-templates") return emailTemplates(method, id, body);
+  if (head === "email-templates")
+    return emailTemplates(method, id, body, query);
   if (head === "custom-fields") return customFieldDefs(method, id, body);
   if (tail === "custom-fields" && id)
     return customFieldValues(head, id, method, body);
@@ -2697,30 +2757,94 @@ export function demoHandle(
   );
 }
 
-const MERGE_TOKENS: MergeToken[] = [
-  ["given_name", "The first word of the contact's name", "there"],
-  ["name", "The contact's full name", "there"],
-  [
-    "family_name",
-    "The contact's family name, when one is recorded",
-    "customer",
+/**
+ * The built-in fallbacks by language, in token order, as the service's `rules::templates::FALLBACKS`
+ * (CRM-T169; a unit test compares the two). A template in a language not here sets its own.
+ */
+export const TEMPLATE_FALLBACKS: Record<string, string[]> = {
+  ar: [
+    "عميلنا العزيز",
+    "عميلنا العزيز",
+    "العميل",
+    "مؤسستكم",
+    "الفريق",
+    "دوركم",
   ],
-  ["account_name", "The name of the contact's account", "your organisation"],
-  ["rep_name", "The name of the contact's owner, or the account's", "the team"],
-  ["job_title", "The contact's job title", "your role"],
-].map(([name, description, fallback]) => ({
-  name: name!,
-  description: description!,
-  fallback: fallback!,
-  required: false,
-}));
-MERGE_TOKENS.push({
-  name: "unsubscribe_url",
-  description:
-    "The contact's signed unsubscribe link; every body must contain it",
-  fallback: null,
-  required: true,
-});
+  cy: ["gyfaill", "gyfaill", "cwsmer", "eich sefydliad", "y tîm", "eich rôl"],
+  de: [
+    "zusammen",
+    "zusammen",
+    "Kundschaft",
+    "Ihre Organisation",
+    "das Team",
+    "Ihre Funktion",
+  ],
+  en: [
+    "there",
+    "there",
+    "customer",
+    "your organisation",
+    "the team",
+    "your role",
+  ],
+  es: [
+    "a todos",
+    "a todos",
+    "cliente",
+    "su organización",
+    "el equipo",
+    "su puesto",
+  ],
+  fr: [
+    "à tous",
+    "à tous",
+    "client",
+    "votre organisation",
+    "l’équipe",
+    "votre fonction",
+  ],
+  hi: ["ग्राहक", "ग्राहक", "ग्राहक", "आपका संगठन", "टीम", "आपकी भूमिका"],
+  zh: ["您好", "您好", "客户", "贵机构", "团队", "您的职位"],
+};
+
+const TOKEN_DESCRIPTIONS: Array<[string, string]> = [
+  [
+    "given_name",
+    "The contact's given name, when one is recorded (never taken from the display name)",
+  ],
+  ["name", "The contact's full name"],
+  ["family_name", "The contact's family name, when one is recorded"],
+  ["account_name", "The name of the contact's account"],
+  ["rep_name", "The name of the contact's owner, or the account's"],
+  ["job_title", "The contact's job title"],
+];
+
+/** The built-in fallbacks of a language tag (its primary subtag); none is English, as the service. */
+function fallbacksIn(language: string | null | undefined): string[] | null {
+  const primary = (language?.trim() || "en").split("-")[0]!.toLowerCase();
+  return TEMPLATE_FALLBACKS[primary] ?? null;
+}
+
+const LANGUAGE_TAG = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/;
+
+function mergeTokensIn(language: string | null | undefined): MergeToken[] {
+  const texts = fallbacksIn(language);
+  return [
+    ...TOKEN_DESCRIPTIONS.map(([name, description], i) => ({
+      name,
+      description,
+      fallback: texts?.[i] ?? null,
+      required: false,
+    })),
+    {
+      name: "unsubscribe_url",
+      description:
+        "The contact's signed unsubscribe link; every body must contain it",
+      fallback: null,
+      required: true,
+    },
+  ];
+}
 
 const SYNTHETIC: Record<string, string> = {
   given_name: "Alex",
@@ -2733,16 +2857,22 @@ const SYNTHETIC: Record<string, string> = {
 
 /** Render a draft the way the service does, for the made-up contact (text only). */
 function renderDraft(
-  draft: { subject: string; body: string; fallbacks: Record<string, string> },
+  draft: {
+    subject: string;
+    body: string;
+    fallbacks: Record<string, string>;
+    language?: string | null;
+  },
   blank: string[],
 ): TemplatePreview | { unknown: string } {
+  const tokens = mergeTokensIn(draft.language);
   const fell: string[] = [];
   let unknown: string | null = null;
   const fill = (source: string) =>
     source.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_all, name: string) => {
       if (name === "unsubscribe_url")
         return "https://example.invalid/unsubscribe/preview";
-      const token = MERGE_TOKENS.find((t) => t.name === name);
+      const token = tokens.find((t) => t.name === name);
       if (!token) {
         unknown = name;
         return "";
@@ -2750,12 +2880,22 @@ function renderDraft(
       const value = blank.includes(name) ? undefined : SYNTHETIC[name];
       if (value) return value;
       if (!fell.includes(name)) fell.push(name);
-      return draft.fallbacks[name] || token.fallback!;
+      return draft.fallbacks[name] || token.fallback || "";
     });
   const subject = fill(draft.subject);
   const text = fill(draft.body);
   if (unknown) return { unknown };
   const problems: string[] = [];
+  if (draft.language && !LANGUAGE_TAG.test(draft.language.trim()))
+    problems.push(
+      "language is a BCP 47 language tag such as ja, pt-BR or zh-Hant",
+    );
+  else if (!fallbacksIn(draft.language))
+    for (const name of fell)
+      if (!draft.fallbacks[name])
+        problems.push(
+          `fallbacks/${name} is required: there is no built-in fallback in ${draft.language!.trim()}`,
+        );
   if (!/\{\{\s*unsubscribe_url\s*\}\}/.test(draft.body))
     problems.push(
       "body must contain {{unsubscribe_url}}, the link a recipient uses to unsubscribe",
@@ -4748,9 +4888,22 @@ function customFieldValues(
   return problem(405, "method not allowed");
 }
 
-function emailTemplates(method: string, id: string | undefined, body: unknown) {
+function emailTemplates(
+  method: string,
+  id: string | undefined,
+  body: unknown,
+  query: URLSearchParams,
+) {
   const input = (body ?? {}) as Partial<EmailTemplate> & { blank?: string[] };
-  if (method === "GET" && id === "tokens") return ok(MERGE_TOKENS);
+  if (method === "GET" && id === "tokens") {
+    const language = query.get("language")?.trim() || null;
+    if (language && !LANGUAGE_TAG.test(language))
+      return problem(
+        422,
+        "language is a BCP 47 language tag such as ja, pt-BR or zh-Hant",
+      );
+    return ok(mergeTokensIn(language));
+  }
   if (method === "GET" && !id) return ok(state.templates);
   if (method === "POST" && id === "preview") {
     const out = renderDraft(
@@ -4758,6 +4911,7 @@ function emailTemplates(method: string, id: string | undefined, body: unknown) {
         subject: input.subject ?? "",
         body: input.body ?? "",
         fallbacks: input.fallbacks ?? {},
+        language: input.language ?? null,
       },
       input.blank ?? [],
     );
@@ -4766,9 +4920,15 @@ function emailTemplates(method: string, id: string | undefined, body: unknown) {
       : ok(out);
   }
   if (method === "POST" && !id) {
+    // Every token blank, so a language without built-in fallbacks shows each one it needs.
     const problems = renderDraft(
-      { subject: input.subject ?? "", body: input.body ?? "", fallbacks: {} },
-      [],
+      {
+        subject: input.subject ?? "",
+        body: input.body ?? "",
+        fallbacks: input.fallbacks ?? {},
+        language: input.language ?? null,
+      },
+      TOKEN_DESCRIPTIONS.map(([name]) => name),
     );
     if (!input.name?.trim()) return problem(422, "name is required");
     if ("unknown" in problems)
@@ -4780,6 +4940,7 @@ function emailTemplates(method: string, id: string | undefined, body: unknown) {
       subject: input.subject ?? "",
       body: input.body ?? "",
       fallbacks: input.fallbacks ?? {},
+      language: input.language?.trim() || null,
       in_use: 0,
       updated_at: new Date().toISOString(),
     };

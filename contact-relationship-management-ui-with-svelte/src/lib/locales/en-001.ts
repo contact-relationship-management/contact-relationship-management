@@ -490,6 +490,9 @@ export default {
   "tpl.empty": "No templates yet.",
   "tpl.problems": "To fix before saving",
   "tpl.fellBack": "Used the fallback for",
+  "tpl.language": "Language of the message",
+  "tpl.noBuiltIn":
+    "There are no built-in fallbacks in this language: give one for each token you use.",
   "campaign.new": "New campaign",
   "campaign.segment": "Audience (segment)",
   "campaign.noSegment": "None yet",

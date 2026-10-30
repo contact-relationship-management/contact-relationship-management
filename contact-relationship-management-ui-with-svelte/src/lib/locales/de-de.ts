@@ -505,6 +505,9 @@ export default {
   "tpl.empty": "Noch keine Vorlagen.",
   "tpl.problems": "Vor dem Speichern beheben",
   "tpl.fellBack": "Ersatztext verwendet für",
+  "tpl.language": "Sprache der Nachricht",
+  "tpl.noBuiltIn":
+    "Für diese Sprache gibt es keine eingebauten Ersatztexte: Geben Sie für jeden verwendeten Platzhalter einen an.",
   "campaign.new": "Neue Kampagne",
   "campaign.segment": "Zielgruppe (Segment)",
   "campaign.noSegment": "Noch keine",

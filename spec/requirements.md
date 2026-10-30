@@ -299,7 +299,11 @@ that two contact records are the same person, and why.*
   contacts and returns the probability that they are one person, a verdict
   (match, review, non-match) and each field's contribution to it.
 - The fields are given and family name (case, accents, nicknames, initials and
-  swapped order tolerated), email, phone, organisation and job title. A phone
+  swapped order tolerated), email, phone, organisation and job title. Honorifics,
+  name suffixes, nicknames and organizations' legal-form words are per-language data
+  (`src/words.rs`, `src/nicknames.rs`: English and a dozen other languages, Arabic,
+  Hindi, Russian, Chinese, Japanese and Korean forms among them, joined forms such
+  as `株式会社` and `女士` stripped too), all applied to every contact (CRM-T169). A phone
   number's digits may be typed in any Unicode decimal digit set or in full width;
   with a default calling code, a national number loses its trunk prefix only where
   that code's plan has one (`0` for most, `8` for Russia, Kazakhstan and Belarus,
@@ -707,7 +711,8 @@ and undo the whole import if it was a mistake.*
 - **Upload and map.** The file is sent as text in a JSON body (`csv`): a header row, comma separated, quoted fields
   allowed. `POST /api/lead-imports/preview` with no `mapping` answers with the columns, how many rows there are, and a
   suggested mapping (a column named `name`, `full name` or `display name`; `email` or `e-mail`; `company` or
-  `organization`). With a `mapping` of `display_name` (required), `email` and `company` to column names, it answers one report
+  `organization`; or the same names in any of the UI's eight languages, such as `Vorname`, `Courriel`, `电子邮件` or `البريد
+  الإلكتروني`: the service's `rules::column_names`, CRM-T169, with Latin accents, case, `_` and `-` ignored). With a `mapping` of `display_name` (required), `email` and `company` to column names, it answers one report
   line per row. Nothing is saved by a preview.
 - **The row report.** Each row is `valid`, or `invalid` with the reason (no name, a name that is too long or has a line break,
   an address that is not usable, the wrong number of columns). A valid row also lists *likely duplicates*: existing contacts
@@ -765,15 +770,20 @@ under a name, and share it with colleagues without sharing anything they could n
 *As someone who writes marketing email, I can write a message once with the recipient's own details in it, see exactly what a
 recipient would get before anything is sent, and be certain every message carries the way to unsubscribe.*
 
-- **What a template is.** A name (unique, ignoring case), a subject, a plain-text body and optional fallbacks, stored on the
+- **What a template is.** A name (unique, ignoring case), a subject, a plain-text body, optional fallbacks and an optional
+  `language` (a BCP 47 tag such as `ja`, `pt-BR` or `zh-Hant`, the language it is written in; migration `000056`), stored on the
   server. `GET/POST /api/email-templates`, `GET/PUT/DELETE /api/email-templates/{pid}`. A template that a campaign or a
   nurture step still refers to cannot be deleted (`409`).
-- **Merge tokens** are written `{{name}}` (spaces inside the braces are ignored) from a closed set: `given_name` (the first word
-  of the contact's name), `name`, `family_name` (only when the contact has one recorded; never guessed from the display name), `account_name`, `rep_name` (the contact's owner, or the account's when the contact has none),
+- **Merge tokens** are written `{{name}}` (spaces inside the braces are ignored) from a closed set: `given_name` (the given name on
+  file; never taken from the display name, CRM-T169), `name`, `family_name` (only when the contact has one recorded; never guessed from the display name), `account_name`, `rep_name` (the contact's owner, or the account's when the contact has none),
   `job_title`, and `unsubscribe_url`. Anything else, or a `{{` that is never closed, is `422`; there is no escape for a literal
-  `{{`. `GET /api/email-templates/tokens` lists the set with each token's default fallback.
-- **Fallbacks.** Every token except `unsubscribe_url` has a declared fallback (`given_name` and `name`: "there"; `account_name`:
-  "your organisation"; `family_name`: "customer"; `rep_name`: "the team"; `job_title`: "your role"). A template may declare its own text per token. A value
+  `{{`. `GET /api/email-templates/tokens?language=` lists the set with each token's default fallback in that language.
+- **Fallbacks.** Every token except `unsubscribe_url` has a built-in fallback in each of the UI's eight languages (in English
+  `given_name` and `name`: "there"; `account_name`: "your organisation"; `family_name`: "customer"; `rep_name`: "the team";
+  `job_title`: "your role"; the other seven are machine drafts, `rules::templates::FALLBACKS`), used in the template's language
+  (its primary subtag; `de-AT` takes German). A template that names no language takes the English ones, as templates written
+  before CRM-T169 do. A template in a language with no built-in fallbacks must declare its own for every token it uses (`422`
+  naming each), so no English word lands in, say, a Japanese message. A template may declare its own text per token. A value
   that is missing, empty or only white space renders as the fallback, so a message never carries an empty gap or a raw `{{token}}`.
   `unsubscribe_url` has no fallback and cannot be given one.
 - **Escaping.** A value is data, never markup. Rendering produces the plain text that is mailed (values as they are) and an HTML
@@ -792,7 +802,8 @@ recipient would get before anything is sent, and be certain every message carrie
   has already gone out is not changed, and a template missing at send time fails that delivery.
 - **Audit.** `created`, `updated` and `deleted` on the entity `email_template`, never the subject or body.
 - The UI has a templates page: a list, an editor with the token set, and a live preview that can blank each token. The campaigns page has a creation form: a name, an audience segment, and either a template or the campaign's own subject and message.
-- Not built: HTML-bodied email, attachments, per-recipient-language templates, template versions, and tokens from custom fields.
+- Not built: HTML-bodied email, attachments, choosing a template by the recipient's language (a template has one language;
+  a campaign sends one template), template versions, and tokens from custom fields.
 
 ## CRM-R37 — A contact's family name
 
@@ -810,7 +821,8 @@ recipient would get before anything is sent, and be certain every message carrie
 *As someone who keeps contact details, I can store a contact's given name and correct a contact's details after creating it.*
 
 - A contact has an optional `given_name`, given on `POST /api/contacts` and returned with the contact. The `given_name` merge token (CRM-R36) fills
-  from it; a contact without one still gets the first word of the display name, as before.
+  from it; a contact without one gets the token's fallback, never the first word of the display name, which is the family name in
+  family-name-first orders ("Wang Fang") and the whole name in a script without spaces (CRM-T169).
 - `PUT /api/contacts/{pid}` changes a contact's own fields: `display_name`, `given_name`, `family_name`, `job_title`, `owner_ref`, `account_pid` and
   `preferred_channel`. Only the members sent change; `null` clears an optional one; a blank `display_name`, an unknown member, an unknown account
   or an empty body is refused `422`. The `person_ref` still changes only by `repoint`, and consent only by its own endpoint. A caller needs write

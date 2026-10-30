@@ -114,8 +114,13 @@ own data, under the same data-protection rules as that data.
 
 - Fields are treated as independent, which over-states confidence when they
   are correlated (the same name and the same employer, say).
-- Names are English-centred: the nickname table, honorifics and name particles
-  are. Jaro–Winkler suits Latin scripts best.
+- The nickname classes, honorifics, name suffixes and legal-form words are
+  per-language data (`src/nicknames.rs`, `src/words.rs`): English and a dozen
+  other languages, including Arabic, Hindi, Russian, Chinese, Japanese and Korean
+  forms, all applied to every contact. They were drafted without a speaker of
+  each language checking them. The name particles are still European. A name
+  written without spaces (Chinese, Japanese, Korean) is not split into given and
+  family names, and Jaro–Winkler suits Latin scripts best.
 - Phones are compared as digits (typed in any Unicode decimal digit set or in full width); there is no country-code database beyond a table of which calling codes' plans have a trunk prefix (`0`, `8` or `06`) to drop from a national number, and a code not in it drops nothing.
 - No date of birth or address.
 - It is advice. It merges and deletes nothing.

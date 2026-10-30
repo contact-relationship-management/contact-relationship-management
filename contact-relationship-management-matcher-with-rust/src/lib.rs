@@ -49,6 +49,7 @@ mod contact;
 mod matcher;
 mod nicknames;
 mod normalize;
+mod words;
 
 pub use config::{ConfigError, FieldParameters, MatchConfig};
 pub use contact::Contact;

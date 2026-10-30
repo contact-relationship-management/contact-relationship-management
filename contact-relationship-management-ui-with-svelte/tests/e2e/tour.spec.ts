@@ -966,6 +966,41 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("template-list")).toContainText("Welcome");
   });
 
+  test("a template's fallbacks are in its language, and a language without them needs its own", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/templates");
+    await page.getByTestId("template-new").click();
+    // A new template is in the page's language.
+    await expect(page.getByTestId("template-language")).toHaveValue("en");
+    await page.getByTestId("template-subject").fill("{{account_name}}");
+    await page
+      .getByTestId("template-body")
+      .fill("{{given_name}} {{unsubscribe_url}}");
+    await page.getByTestId("blank-account_name").check();
+    await expect(page.getByTestId("preview-subject")).toHaveText(
+      "your organisation",
+    );
+    await page.getByTestId("template-language").fill("de");
+    await expect(page.getByTestId("preview-subject")).toHaveText(
+      "Ihre Organisation",
+    );
+    await expect(page.getByTestId("fallback-account_name")).toHaveAttribute(
+      "placeholder",
+      "Ihre Organisation",
+    );
+    // Japanese has no built-in fallbacks: the page says so, and saving needs the template's own.
+    await page.getByTestId("template-language").fill("ja");
+    await expect(page.getByTestId("template-no-built-in")).toBeVisible();
+    await expect(page.getByTestId("preview-problems")).toContainText(
+      "fallbacks/account_name",
+    );
+    await page.getByTestId("fallback-account_name").fill("御社");
+    await expect(page.getByTestId("preview-subject")).toHaveText("御社");
+    await expect(page.getByTestId("preview-problems")).toHaveCount(0);
+  });
+
   test("a campaign is made from a template and listed as a draft", async ({
     page,
   }) => {

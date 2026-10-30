@@ -10,6 +10,8 @@ extend-exclude = [
   "contact-relationship-management.github.io/node_modules/**",
   "contact-relationship-management.github.io/build/**",
   "contact-relationship-management.github.io/.svelte-kit/**",
+  # The import header names in eight languages (CRM-T169): a word list, not prose.
+  "contact-relationship-management-service-with-rust/src/rules/column_names.rs",
   "**/Cargo.lock",
   "**/pnpm-lock.yaml",
 ]
@@ -38,3 +40,10 @@ fils = "fils"
 oktober = "oktober"
 # Vai, the Liberian script whose decimal digits the matcher reads in a phone number (CRM-T170).
 vai = "vai"
+# German, Spanish and French template fallbacks and import headers (CRM-T169): "Ihre Funktion",
+# "cliente", "votre fonction", "E-Mail-Adresse", "entreprise".
+funktion = "funktion"
+cliente = "cliente"
+fonction = "fonction"
+adresse = "adresse"
+entreprise = "entreprise"

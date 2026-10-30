@@ -23,8 +23,9 @@ pub(crate) fn fold(text: &str) -> String {
     out
 }
 
-const HONORIFICS: &[&str] = &["mr", "mrs", "ms", "miss", "mx", "dr", "prof", "sir", "dame"];
-const NAME_SUFFIXES: &[&str] = &["jr", "sr", "ii", "iii", "iv", "phd", "md", "esq"];
+use crate::words::{
+    HONORIFIC_SET, JOINED_HONORIFIC_LIST, JOINED_LEGAL_LIST, LEGAL_SET, SUFFIX_SET, strip_joined,
+};
 
 /// A name split into the two parts the matcher compares, both folded.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -96,12 +97,17 @@ fn family_start(words: &[String]) -> usize {
         .map_or(words.len() - 1, |(i, _)| i)
 }
 
+/// The words of a folded name without honorifics before it and suffixes after it, in any of the
+/// languages of [`crate::words`]; a title joined to the end of a word (`王芳女士`) comes off too.
 fn strip_titles(folded: &str) -> Vec<String> {
-    let mut words: Vec<String> = folded.split_whitespace().map(str::to_string).collect();
-    while words.len() > 1 && HONORIFICS.contains(&words[0].as_str()) {
+    let mut words: Vec<String> = folded
+        .split_whitespace()
+        .map(|w| strip_joined(w, &JOINED_HONORIFIC_LIST, false))
+        .collect();
+    while words.len() > 1 && HONORIFIC_SET.contains(&words[0]) {
         words.remove(0);
     }
-    while words.len() > 1 && NAME_SUFFIXES.contains(&words[words.len() - 1].as_str()) {
+    while words.len() > 1 && SUFFIX_SET.contains(&words[words.len() - 1]) {
         words.pop();
     }
     words
@@ -346,35 +352,19 @@ pub(crate) fn same_phone(a: &Phone, b: &Phone) -> bool {
     national.len() >= MIN_PHONE_DIGITS && international.digits.ends_with(national)
 }
 
-const LEGAL_WORDS: &[&str] = &[
-    "inc",
-    "incorporated",
-    "llc",
-    "ltd",
-    "limited",
-    "corp",
-    "corporation",
-    "co",
-    "company",
-    "gmbh",
-    "ag",
-    "plc",
-    "sa",
-    "bv",
-    "nv",
-    "srl",
-    "pty",
-    "llp",
-    "lp",
-    "the",
-];
-
-/// An organisation name without punctuation or legal-form words.
+/// An organisation name without punctuation or legal-form words, in any of the languages of
+/// [`crate::words`]; a legal form joined to the start or end of a word (`株式会社`, `有限公司`)
+/// comes off too.
 pub(crate) fn organization(raw: &str) -> String {
     let folded = fold(&raw.replace('&', " and "));
-    let words: Vec<&str> = folded
+    let joined: Vec<String> = folded
         .split_whitespace()
-        .filter(|w| !LEGAL_WORDS.contains(w))
+        .map(|w| strip_joined(w, &JOINED_LEGAL_LIST, true))
+        .collect();
+    let words: Vec<&str> = joined
+        .iter()
+        .map(String::as_str)
+        .filter(|w| !LEGAL_SET.contains(*w))
         .collect();
     if words.is_empty() {
         folded
@@ -434,6 +424,21 @@ mod tests {
         // An explicit field wins over the display name.
         let n = name_of(Some("Anna"), None, Some("Ana Ruiz"));
         assert_eq!((n.given.as_str(), n.family.as_str()), ("anna", "ruiz"));
+        // Honorifics and suffixes in other languages (CRM-T169).
+        let n = name_of(None, None, Some("Frau Anna Schmidt"));
+        assert_eq!((n.given.as_str(), n.family.as_str()), ("anna", "schmidt"));
+        let n = name_of(None, None, Some("Mme Claire Dubois"));
+        assert_eq!((n.given.as_str(), n.family.as_str()), ("claire", "dubois"));
+        let n = name_of(None, None, Some("Sra. Lucía Pérez"));
+        assert_eq!((n.given.as_str(), n.family.as_str()), ("lucia", "perez"));
+        let n = name_of(None, None, Some("João Silva Filho"));
+        assert_eq!((n.given.as_str(), n.family.as_str()), ("joao", "silva"));
+        let n = name_of(None, None, Some("श्रीमती प्रिया शर्मा"));
+        assert_eq!(n.family, fold("शर्मा"));
+        let n = name_of(None, None, Some("السيد نور حداد"));
+        assert_eq!((n.given, n.family), (fold("نور"), fold("حداد")));
+        let n = name_of(None, None, Some("王芳女士"));
+        assert_eq!(n.given, "王芳");
         // A single word is a given name.
         let n = name_of(None, None, Some("Cher"));
         assert_eq!((n.given.as_str(), n.family.as_str()), ("cher", ""));
@@ -574,6 +579,17 @@ mod tests {
         assert_eq!(organization("The Acme Widgets, Inc."), "acme widgets");
         assert_eq!(organization("Smith & Sons Ltd"), "smith and sons");
         assert_eq!(organization("Inc"), "inc"); // never empty
+        // Other languages' legal forms (CRM-T169).
+        assert_eq!(
+            organization("Müller Maschinenbau GmbH & Co. KG"),
+            "muller maschinenbau and"
+        );
+        assert_eq!(organization("Tata Consultancy Pvt Ltd"), "tata consultancy");
+        assert_eq!(organization("Petronas Sdn Bhd"), "petronas");
+        assert_eq!(organization("ООО Ромашка"), "ромашка");
+        assert_eq!(organization("株式会社山田製作所"), "山田製作所");
+        assert_eq!(organization("北京王芳科技有限公司"), "北京王芳科技");
+        assert_eq!(organization("Kabushiki KK"), "kabushiki");
         assert_eq!(job_title("Sr. Eng Mgr"), "senior engineer manager");
         assert_eq!(job_title("VP, Sales"), "vice president sales");
     }

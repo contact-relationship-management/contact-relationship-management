@@ -4,6 +4,12 @@
 
 Breaking. The service keeps depending on 0.1.2 until this is published.
 
+- Words by language (CRM-T169): honorifics, name suffixes and legal-form words are per-language data in a new `words`
+  module (English and a dozen other languages, in Latin, Cyrillic, Arabic and Devanagari), and a script without spaces
+  has its joined honorifics (`女士`, `様`, `님`) and legal forms (`有限公司`, `株式会社`, `주식회사`) stripped from a word's end
+  or start. The nickname table adds German, Spanish, French, Italian, Portuguese, Russian (Latin and Cyrillic), Polish
+  and Dutch classes and the romanisations of some Arabic names. All lists apply to every contact. Drafted without a
+  speaker of each language checking them. Behaviour change, not an API change.
 - Phones in every script (CRM-T170): digits typed in ASCII, full width or any of 31 Unicode decimal digit sets (the
   workforce planning service's table, WPM-T382) are read, so the same line typed in Arabic-Indic and in ASCII digits
   agrees. With `default_calling_code`, a national number's trunk prefix is dropped only where the code's plan has one

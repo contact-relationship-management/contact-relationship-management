@@ -61,7 +61,8 @@ pub struct MatchConfig {
     /// is dropped only where that code's plan has one (`"44"` drops `0`,
     /// `"39"` keeps it).
     pub default_calling_code: Option<String>,
-    /// Extra nickname classes, on top of the built-in English ones. Each
+    /// Extra nickname classes, on top of the built-in ones (English and other
+    /// languages, `src/nicknames.rs`). Each
     /// class is a list of names that stand for the same person.
     pub nicknames: Vec<Vec<String>>,
 }

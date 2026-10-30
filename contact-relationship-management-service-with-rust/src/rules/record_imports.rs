@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
+use super::column_names::{Field, find};
 use super::forms::{valid_email, valid_name};
 use super::tokens;
 
@@ -62,42 +63,26 @@ pub struct AccountMapping {
 /// The index of each mapped field's column.
 pub type Columns = BTreeMap<&'static str, usize>;
 
-fn find(headers: &[String], names: &[&str]) -> Option<String> {
-    headers
-        .iter()
-        .find(|h| {
-            let h = h.to_lowercase().replace(['_', '-'], " ");
-            names.contains(&h.trim())
-        })
-        .cloned()
-}
-
-/// A contact mapping guessed from the header names.
+/// A contact mapping guessed from the header names, in any of the UI's languages (CRM-T169).
 #[must_use]
 pub fn suggest_contact(headers: &[String]) -> ContactMapping {
     ContactMapping {
-        display_name: find(headers, &["name", "full name", "display name", "contact"]),
-        email: find(headers, &["email", "e mail", "email address", "mail"]),
-        given_name: find(headers, &["first name", "given name", "forename"]),
-        family_name: find(headers, &["last name", "family name", "surname"]),
-        job_title: find(headers, &["title", "job title", "position", "role"]),
+        display_name: find(headers, &[Field::Name], &[]),
+        email: find(headers, &[Field::Email], &[]),
+        given_name: find(headers, &[Field::GivenName], &[]),
+        family_name: find(headers, &[Field::FamilyName], &[]),
+        job_title: find(headers, &[Field::JobTitle], &[]),
     }
 }
 
-/// An account mapping guessed from the header names.
+/// An account mapping guessed from the header names, in any of the UI's languages (CRM-T169).
 #[must_use]
 pub fn suggest_account(headers: &[String]) -> AccountMapping {
     AccountMapping {
-        display_name: find(
-            headers,
-            &["name", "company", "organization", "organisation", "account"],
-        ),
-        organization_ref: find(
-            headers,
-            &["organization ref", "organisation ref", "reference"],
-        ),
-        tier: find(headers, &["tier", "type"]),
-        industry: find(headers, &["industry", "sector"]),
+        display_name: find(headers, &[Field::Name, Field::Company], &["account"]),
+        organization_ref: find(headers, &[Field::OrganizationRef], &[]),
+        tier: find(headers, &[Field::Tier], &[]),
+        industry: find(headers, &[Field::Industry], &[]),
     }
 }
 

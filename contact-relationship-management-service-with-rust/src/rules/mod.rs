@@ -10,6 +10,7 @@ pub mod attachments;
 pub mod attribution;
 pub mod audit_chain;
 pub mod calendar;
+pub mod column_names;
 pub mod currency;
 pub mod custom_fields;
 pub mod employment_check;

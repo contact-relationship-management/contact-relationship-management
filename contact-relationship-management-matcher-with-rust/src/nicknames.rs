@@ -1,10 +1,122 @@
-//! English given-name nicknames.
+//! Given-name nicknames and spelling variants, by language (CRM-T169). Each row is one language
+//! (or, for `ar`, the romanisations of one name); the matcher does not know a contact's language,
+//! so every class applies to every contact. Drafted by the AI assistant from general knowledge and
+//! not checked by a speaker of each language; a deployer adds classes in the configuration.
 
 use std::collections::HashMap;
 
 use crate::normalize::fold;
 
-/// Each row is one class: names that stand for the same person.
+/// One class: names that stand for the same person.
+type Class = &'static [&'static str];
+
+/// The classes of each language other than English.
+const OTHER_LANGUAGES: &[(&str, &[Class])] = &[
+    (
+        "de",
+        &[
+            &["johannes", "hans", "hannes"],
+            &["josef", "sepp", "seppi"],
+            &["ulrich", "uli"],
+            &["friedrich", "fritz"],
+            &["elisabeth", "lisa", "liesl", "elli"],
+            &["katharina", "katrin", "kathi"],
+            &["margarete", "grete", "gretel"],
+            &["maximilian", "max"],
+        ],
+    ),
+    (
+        "es",
+        &[
+            &["josé", "pepe"],
+            &["francisco", "paco", "pancho", "curro"],
+            &["dolores", "lola"],
+            &["ignacio", "nacho"],
+            &["guadalupe", "lupe"],
+            &["manuel", "manolo"],
+            &["concepción", "concha", "conchita"],
+            &["enrique", "quique"],
+        ],
+    ),
+    (
+        "fr",
+        &[
+            &["nicolas", "nico"],
+            &["frédéric", "fred"],
+            &["isabelle", "isa"],
+            &["jacqueline", "jacky"],
+            &["dominique", "dom"],
+        ],
+    ),
+    (
+        "it",
+        &[
+            &["giuseppe", "beppe", "peppe", "pino"],
+            &["giovanni", "gianni"],
+            &["francesco", "franco", "cesco"],
+            &["salvatore", "totò"],
+            &["vincenzo", "enzo"],
+        ],
+    ),
+    (
+        "pt",
+        &[
+            &["josé", "zé"],
+            &["francisco", "chico"],
+            &["eduardo", "dudu"],
+        ],
+    ),
+    (
+        "ru",
+        &[
+            &[
+                "aleksandr",
+                "alexander",
+                "sasha",
+                "sanya",
+                "shura",
+                "александр",
+                "саша",
+            ],
+            &["mikhail", "misha", "михаил", "миша"],
+            &["dmitry", "dmitri", "dima", "дмитрий", "дима"],
+            &["nikolai", "kolya", "николай", "коля"],
+            &["ekaterina", "yekaterina", "katya", "екатерина", "катя"],
+            &["yelena", "elena", "lena", "елена", "лена"],
+            &["vladimir", "volodya", "vova", "владимир", "володя", "вова"],
+            &["anastasia", "nastya", "анастасия", "настя"],
+        ],
+    ),
+    (
+        "pl",
+        &[
+            &["aleksander", "olek"],
+            &["katarzyna", "kasia"],
+            &["małgorzata", "gosia"],
+            &["wojciech", "wojtek"],
+        ],
+    ),
+    (
+        "nl",
+        &[
+            &["johannes", "jan", "hans"],
+            &["cornelis", "kees"],
+            &["hendrik", "henk"],
+            &["jacobus", "koos", "jaap"],
+        ],
+    ),
+    (
+        "ar",
+        &[
+            &["muhammad", "mohammed", "mohamed", "mohammad", "muhammed"],
+            &["ahmad", "ahmed"],
+            &["abdullah", "abdallah"],
+            &["yusuf", "youssef", "yousef"],
+        ],
+    ),
+];
+
+/// English classes.
 const CLASSES: &[&[&str]] = &[
     &["alexander", "alex", "sandy", "xander"],
     &["andrew", "andy", "drew"],
@@ -65,6 +177,11 @@ impl Nicknames {
         let mut classes_of: HashMap<String, Vec<usize>> = HashMap::new();
         let built_in = CLASSES
             .iter()
+            .chain(
+                OTHER_LANGUAGES
+                    .iter()
+                    .flat_map(|(_, classes)| classes.iter()),
+            )
             .map(|c| c.iter().map(|s| (*s).to_string()).collect());
         let all: Vec<Vec<String>> = built_in.chain(extra.iter().cloned()).collect();
         for (index, class) in all.iter().enumerate() {
@@ -105,6 +222,22 @@ mod tests {
         assert!(!n.related("john", "jonathan"));
         assert!(!n.related("robert", "william"));
         assert!(!n.related("zed", "zed2"));
+    }
+
+    #[test]
+    fn other_languages_have_their_own_classes() {
+        let n = Nicknames::new(&[]);
+        assert!(n.related("pepe", "jose"), "accents are folded");
+        assert!(n.related("sepp", "josef"));
+        assert!(n.related("beppe", "giuseppe"));
+        assert!(n.related("ze", "jose"));
+        assert!(
+            n.related(&fold("Саша"), "aleksandr"),
+            "across scripts within a class"
+        );
+        assert!(n.related("mohamed", "muhammad"));
+        assert!(!n.related("pepe", "paco"));
+        assert!(OTHER_LANGUAGES.len() >= 5);
     }
 
     #[test]

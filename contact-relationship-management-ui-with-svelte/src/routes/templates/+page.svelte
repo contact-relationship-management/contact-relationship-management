@@ -17,10 +17,14 @@
     type EmailTemplate,
     type TemplatePreview,
   } from "#lib/api/crm.js";
-  import { t } from "#lib/i18n.svelte.js";
+  import { i18n, t } from "#lib/i18n.svelte.js";
 
   const list = resource(listTemplates);
-  const tokens = resource(mergeTokens);
+  // A new template is in the page's language unless changed (CRM-T169): its built-in fallbacks
+  // are in that language, and a language without them needs the template's own.
+  const pageLanguage = () => i18n.locale.split("-")[0] ?? "";
+  let language = $state(pageLanguage());
+  const tokens = resource(() => mergeTokens(language), { keepWhileLoading: true });
   const templates = $derived(list.value ?? []);
 
   let editing = $state<EmailTemplate | null>(null);
@@ -33,7 +37,8 @@
   let error = $state<string | null>(null);
   let previewError = $state<string | null>(null);
 
-  const withFallback = $derived((tokens.value ?? []).filter((x) => x.fallback !== null));
+  const withFallback = $derived((tokens.value ?? []).filter((x) => !x.required));
+  const noBuiltIn = $derived(withFallback.length > 0 && withFallback.every((x) => x.fallback === null));
 
   function open(template: EmailTemplate | null) {
     editing = template;
@@ -41,13 +46,14 @@
     subject = template?.subject ?? "";
     body = template?.body ?? "";
     fallbacks = { ...template?.fallbacks };
+    language = template ? (template.language ?? "") : pageLanguage();
     blank = [];
     error = null;
   }
 
   // Render the draft as it is typed, a moment after the last change.
   $effect(() => {
-    const draft = { subject, body, fallbacks: clean(fallbacks) };
+    const draft = { subject, body, fallbacks: clean(fallbacks), language: language.trim() || null };
     const missing = [...blank];
     const timer = setTimeout(async () => {
       try {
@@ -78,7 +84,13 @@
   const save = () =>
     act(
       () => {
-        const input = { name, subject, body, fallbacks: clean(fallbacks) };
+        const input = {
+          name,
+          subject,
+          body,
+          fallbacks: clean(fallbacks),
+          language: language.trim() || null,
+        };
         return editing ? replaceTemplate(editing.pid, input) : saveTemplate(input);
       },
       () => open(null),
@@ -110,6 +122,10 @@
   <section>
     {#if error}<p class="error" role="alert" data-testid="template-error">{error}</p>{/if}
     <label>{t("tpl.name")} <input data-testid="template-name" bind:value={name} /></label>
+    <label>
+      {t("tpl.language")}
+      <input data-testid="template-language" bind:value={language} maxlength="35" size="8" />
+    </label>
     <label>{t("tpl.subject")} <input data-testid="template-subject" bind:value={subject} /></label>
     <label>
       {t("tpl.body")}
@@ -130,6 +146,7 @@
     </p>
     <fieldset>
       <legend>{t("tpl.fallbacks")}</legend>
+      {#if noBuiltIn}<p class="muted small" data-testid="template-no-built-in">{t("tpl.noBuiltIn")}</p>{/if}
       {#each withFallback as token (token.name)}
         <label>
           {token.name}

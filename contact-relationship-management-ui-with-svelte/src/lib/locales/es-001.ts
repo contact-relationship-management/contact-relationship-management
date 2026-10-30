@@ -507,6 +507,9 @@ export default {
   "tpl.empty": "Aún no hay plantillas.",
   "tpl.problems": "Por corregir antes de guardar",
   "tpl.fellBack": "Se usó el texto alternativo para",
+  "tpl.language": "Idioma del mensaje",
+  "tpl.noBuiltIn":
+    "No hay textos alternativos incorporados en este idioma: indique uno para cada marcador que use.",
   "campaign.new": "Nueva campaña",
   "campaign.segment": "Audiencia (segmento)",
   "campaign.noSegment": "Ninguno todavía",

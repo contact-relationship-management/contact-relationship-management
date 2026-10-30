@@ -542,6 +542,8 @@ export interface EmailTemplate {
   subject: string;
   body: string;
   fallbacks: Record<string, string>;
+  /** The BCP 47 tag of the language it is written in; null names none (English fallbacks). */
+  language?: string | null;
   /** Campaigns and nurture steps that use it. */
   in_use: number;
   updated_at: string;
@@ -550,7 +552,7 @@ export interface EmailTemplate {
 /** What is sent to save or replace a template. */
 export type EmailTemplateInput = Pick<
   EmailTemplate,
-  "name" | "subject" | "body" | "fallbacks"
+  "name" | "subject" | "body" | "fallbacks" | "language"
 >;
 
 /** One merge token; `unsubscribe_url` is required in every body and has no fallback. */
@@ -576,9 +578,18 @@ export function listTemplates(init?: FetchLike): Promise<EmailTemplate[]> {
   return api("/email-templates", init);
 }
 
-/** The merge tokens and their default fallbacks. */
-export function mergeTokens(init?: FetchLike): Promise<MergeToken[]> {
-  return api("/email-templates/tokens", init);
+/** The merge tokens and their default fallbacks in `language` (none: English) (CRM-T169). */
+export function mergeTokens(
+  language?: string | null,
+  init?: FetchLike,
+): Promise<MergeToken[]> {
+  const tag = language?.trim();
+  return api(
+    tag
+      ? `/email-templates/tokens?language=${encodeURIComponent(tag)}`
+      : "/email-templates/tokens",
+    init,
+  );
 }
 
 /** Save a new template. */

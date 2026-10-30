@@ -225,9 +225,11 @@ async fn a_campaign_and_a_nurture_step_are_made_from_a_template() {
         let sent = recorder.sent();
         assert_eq!(sent.len(), 1);
         let message = &sent[0];
-        assert_eq!(message.subject, "News for Ada");
+        // No given name on file, so `given_name` falls back too: it is never the first word of
+        // the display name (CRM-T169).
+        assert_eq!(message.subject, "News for there");
         // No account or owner on this contact, so those fall back (the template's own, then the default).
-        assert!(message.text.starts_with("Hi Ada at your team,\n\nFrom the team."), "{}", message.text);
+        assert!(message.text.starts_with("Hi there at your team,\n\nFrom the team."), "{}", message.text);
         let link = message.unsubscribe_url.as_deref().expect("a link");
         assert_eq!(message.text.matches(link).count(), 1, "the template's link, no extra footer");
         assert!(!message.text.contains("To stop receiving"));
@@ -275,7 +277,8 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
         use sea_orm::ConnectionTrait;
         let (recorder, _restore) = recording();
         let mut pids = Vec::new();
-        for (name, family) in [("Ada Lovelace", Some("Lovelace")), ("Grace Hopper", None)] {
+        // Wang Fang writes the family name first and has no parts on file (CRM-T169).
+        for (name, family) in [("Ada Lovelace", Some("Lovelace")), ("Wang Fang", None)] {
             let mut body = json!({ "person_ref": super::a_person(), "display_name": name });
             if family.is_some() {
                 body["given_name"] = json!("Addie");
@@ -335,9 +338,10 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
             .assert_status_ok();
         let mut subjects: Vec<String> = recorder.sent().iter().map(|m| m.subject.clone()).collect();
         subjects.sort();
-        // Ada's given name on file wins over the first word of her display name. Grace has none
-        // recorded: her given name is the first word, and her family name is not guessed.
-        assert_eq!(subjects, ["Dear Addie Lovelace", "Dear Grace customer"]);
+        // Ada's given name on file is used. Wang Fang has none recorded: the given name is the
+        // fallback, not "Wang", the first word of a family-name-first display name, and the
+        // family name is not guessed either (CRM-T169).
+        assert_eq!(subjects, ["Dear Addie Lovelace", "Dear there customer"]);
 
         // Erasure clears it.
         request
@@ -364,6 +368,76 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
             row.try_get::<Option<String>>("", "family_name").unwrap(),
             None
         );
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn fallbacks_are_in_the_template_s_language() {
+    request::<App, _, _>(|request, _ctx| async move {
+        // The built-in fallbacks in the language asked for; none for a language without them.
+        let tokens: Vec<Value> = request
+            .get("/api/email-templates/tokens?language=de-AT")
+            .await
+            .json();
+        let given = tokens.iter().find(|t| t["name"] == "given_name").unwrap();
+        assert_eq!(given["fallback"], "zusammen");
+        let tokens: Vec<Value> = request
+            .get("/api/email-templates/tokens?language=ja")
+            .await
+            .json();
+        assert!(tokens.iter().all(|t| t["fallback"].is_null()), "{tokens:?}");
+        assert_eq!(
+            request
+                .get("/api/email-templates/tokens?language=english")
+                .await
+                .status_code(),
+            422
+        );
+
+        // A preview in Chinese fills a blank token with the Chinese fallback.
+        let shown: Value = request
+            .post("/api/email-templates/preview")
+            .json(&json!({ "subject": "{{given_name}}，{{account_name}}", "language": "zh-Hans",
+                           "body": "{{unsubscribe_url}}", "blank": ["given_name", "account_name"] }))
+            .await
+            .json();
+        assert_eq!(shown["subject"], "您好，贵机构", "{shown}");
+
+        // Japanese has no built-in fallbacks: a template must give its own for each token used.
+        let mut template = json!({ "name": "Japanese", "language": "ja",
+            "subject": "{{given_name}}様", "body": "{{name}}様\n{{unsubscribe_url}}" });
+        let refused = request.post("/api/email-templates").json(&template).await;
+        assert_eq!(refused.status_code(), 422);
+        let text = refused.text();
+        assert!(text.contains("fallbacks/given_name") && text.contains("fallbacks/name"), "{text}");
+        template["fallbacks"] = json!({ "given_name": "お客", "name": "お客" });
+        let made: Value = request.post("/api/email-templates").json(&template).await.json();
+        let one: Value = request
+            .get(&format!("/api/email-templates/{}", made["pid"].as_str().unwrap()))
+            .await
+            .json();
+        assert_eq!(one["language"], "ja");
+
+        // A bad tag is refused; a template naming no language keeps English and says so.
+        let bad = json!({ "name": "Bad", "language": "pt_BR", "subject": "s",
+                          "body": "{{unsubscribe_url}}" });
+        assert_eq!(
+            request.post("/api/email-templates").json(&bad).await.status_code(),
+            422
+        );
+        let plain: Value = request
+            .post("/api/email-templates")
+            .json(&json!({ "name": "Plain", "subject": "s", "body": "{{unsubscribe_url}}" }))
+            .await
+            .json();
+        let plain: Value = request
+            .get(&format!("/api/email-templates/{}", plain["pid"].as_str().unwrap()))
+            .await
+            .json();
+        assert!(plain["language"].is_null());
     })
     .await;
 }

@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  COLUMN_NAMES,
   DEMO_EMAIL,
+  TEMPLATE_FALLBACKS,
   MAX_DEMO_SESSIONS,
   demoHandle,
   demoHandleFor,
@@ -324,5 +326,68 @@ describe("the tour's data is in more than one shape (CRM-T176)", () => {
   it("names amounts in minor units, never pounds times a unit", () => {
     const source = readFileSync("src/lib/server/demo.ts", "utf8");
     expect(source).not.toMatch(/\bpounds\b/);
+  });
+});
+
+describe("template fallbacks and import columns in the UI's languages (CRM-T169)", () => {
+  const service = (path: string) =>
+    readFileSync(
+      `../contact-relationship-management-service-with-rust/src/rules/${path}`,
+      "utf8",
+    );
+
+  it("has the service's built-in fallbacks, language by language", () => {
+    const source = service("templates.rs");
+    const table = source.slice(
+      source.indexOf("pub const FALLBACKS"),
+      source.indexOf("];", source.indexOf("pub const FALLBACKS")),
+    );
+    const rows = [...table.matchAll(/"([a-z]{2})",\s*\[([^\]]*)\]/g)].map(
+      ([, code, list]) => [
+        code!,
+        [...list!.matchAll(/"([^"]*)"/g)].map((m) => m[1]!),
+      ],
+    );
+    expect(Object.fromEntries(rows)).toEqual(TEMPLATE_FALLBACKS);
+  });
+
+  it("gives the tokens' fallbacks in the language asked for, and none where it has none", () => {
+    const de = get("email-templates/tokens?language=de-AT").body as Array<{
+      name: string;
+      fallback: string | null;
+    }>;
+    expect(de.find((x) => x.name === "given_name")?.fallback).toBe("zusammen");
+    const ja = get("email-templates/tokens?language=ja").body as Array<{
+      fallback: string | null;
+    }>;
+    expect(ja.every((x) => x.fallback === null)).toBe(true);
+  });
+
+  it("refuses a template in a language with no built-in fallbacks until it has its own", () => {
+    const draft = {
+      name: "Japanese",
+      language: "ja",
+      subject: "{{given_name}}様",
+      body: "{{unsubscribe_url}}",
+    };
+    expect(post("email-templates", draft).status).toBe(422);
+    expect(
+      post("email-templates", { ...draft, fallbacks: { given_name: "お客" } })
+        .status,
+    ).toBe(200);
+  });
+
+  it("guesses import columns named in other languages, as the service does", () => {
+    const preview = post("lead-imports/preview", {
+      csv: "Vollständiger Name,E-Mail-Adresse,Firma\nAnna Schmidt,anna@example.org,Muster",
+    }).body as { suggested_mapping: Record<string, string | null> };
+    expect(preview.suggested_mapping).toEqual({
+      display_name: "Vollständiger Name",
+      email: "E-Mail-Adresse",
+      company: "Firma",
+    });
+    const source = service("column_names.rs");
+    for (const name of Object.values(COLUMN_NAMES).flat())
+      expect(source, name).toContain(`"${name}"`);
   });
 });

@@ -536,6 +536,9 @@ export default {
   "tpl.empty": "Dim templedi eto.",
   "tpl.problems": "I’w trwsio cyn cadw",
   "tpl.fellBack": "Defnyddiwyd y testun wrth gefn ar gyfer",
+  "tpl.language": "Iaith y neges",
+  "tpl.noBuiltIn":
+    "Does dim testunau wrth gefn wedi'u cynnwys yn yr iaith hon: rhowch un ar gyfer pob tocyn rydych yn ei ddefnyddio.",
   "campaign.new": "Ymgyrch newydd",
   "campaign.segment": "Cynulleidfa (segment)",
   "campaign.noSegment": "Dim eto",

@@ -512,6 +512,9 @@ export default {
   "tpl.empty": "Aucun modèle pour l’instant.",
   "tpl.problems": "À corriger avant d’enregistrer",
   "tpl.fellBack": "Texte de repli utilisé pour",
+  "tpl.language": "Langue du message",
+  "tpl.noBuiltIn":
+    "Il n’y a pas de textes de repli intégrés dans cette langue : indiquez-en un pour chaque jeton utilisé.",
   "campaign.new": "Nouvelle campagne",
   "campaign.segment": "Audience (segment)",
   "campaign.noSegment": "Aucun pour l’instant",

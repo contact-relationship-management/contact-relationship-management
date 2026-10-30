@@ -530,6 +530,9 @@ export default {
   "tpl.empty": "لا توجد قوالب بعد.",
   "tpl.problems": "يجب إصلاحه قبل الحفظ",
   "tpl.fellBack": "استُخدم النص البديل لـ",
+  "tpl.language": "لغة الرسالة",
+  "tpl.noBuiltIn":
+    "لا توجد نصوص بديلة مضمّنة لهذه اللغة: أدخل نصًا لكل رمز تستخدمه.",
   "campaign.new": "حملة جديدة",
   "campaign.segment": "الجمهور (شريحة)",
   "campaign.noSegment": "لا شيء بعد",

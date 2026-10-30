@@ -323,7 +323,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/email-templates/tokens",
         "marketing",
-        "The merge tokens with their default fallbacks",
+        "The merge tokens with their default fallbacks in ?language= (a BCP 47 tag; absent is English, the fallbacks of a template that names no language; a language with no built-in fallbacks gives none, and a template in it sets its own, CRM-T169)",
         Kind::Ok,
     ),
     (

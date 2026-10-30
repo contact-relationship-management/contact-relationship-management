@@ -77,22 +77,14 @@ pub fn parse(text: &str) -> Result<Table, String> {
     Ok(Table { headers, rows })
 }
 
-/// A mapping guessed from the header names.
+/// A mapping guessed from the header names, in any of the UI's languages (CRM-T169).
 #[must_use]
 pub fn suggest(headers: &[String]) -> Mapping {
-    let find = |names: &[&str]| {
-        headers
-            .iter()
-            .find(|h| {
-                let h = h.to_lowercase().replace(['_', '-'], " ");
-                names.contains(&h.trim())
-            })
-            .cloned()
-    };
+    use super::column_names::{Field, find};
     Mapping {
-        display_name: find(&["name", "full name", "display name", "lead", "contact"]),
-        email: find(&["email", "e mail", "email address", "mail"]),
-        company: find(&["company", "organization", "organisation", "employer"]),
+        display_name: find(headers, &[Field::Name], &["lead"]),
+        email: find(headers, &[Field::Email], &[]),
+        company: find(headers, &[Field::Company], &[]),
     }
 }
 

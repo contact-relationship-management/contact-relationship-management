@@ -8559,7 +8559,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The merge tokens with their default fallbacks */
+        /** The merge tokens with their default fallbacks in ?language= (a BCP 47 tag; absent is English, the fallbacks of a template that names no language; a language with no built-in fallbacks gives none, and a template in it sets its own, CRM-T169) */
         get: {
             parameters: {
                 query?: never;
@@ -19850,6 +19850,8 @@ export interface components {
              * @description How many live campaigns and nurture steps refer to it.
              */
             in_use: number;
+            /** @description The language it is written in; absent when it names none (English fallbacks). */
+            language: string | null;
             name: string;
             /** Format: uuid */
             pid: string;
@@ -19868,6 +19870,13 @@ export interface components {
             fallbacks: {
                 [key: string]: string;
             };
+            /**
+             * @description The language the template is written in, a BCP 47 tag (`ja`, `pt-BR`); its built-in
+             *     fallbacks are in that language. Absent: English fallbacks. A language without built-in
+             *     fallbacks needs the template's own for every token it uses (CRM-T169).
+             * @default null
+             */
+            language: string | null;
             /** @description Unique, ignoring case. */
             name: string;
             /** @description One line; may hold merge tokens except `{{unsubscribe_url}}`. */
@@ -19897,6 +19906,11 @@ export interface components {
             fallbacks: {
                 [key: string]: string;
             };
+            /**
+             * @description The draft's language, as on a template.
+             * @default null
+             */
+            language: string | null;
             subject: string;
         };
         /** @description `POST /api/bridges/wpm/employment-check` answer. */
@@ -20692,7 +20706,10 @@ export interface components {
         /** @description One merge token. */
         MergeToken: {
             description: string;
-            /** @description The text used when the contact has no value; absent for `unsubscribe_url`. */
+            /**
+             * @description The text used when the contact has no value, in the language asked for; absent for
+             *     `unsubscribe_url`, and for a language with no built-in fallbacks.
+             */
             fallback: string | null;
             name: string;
             /** @description Whether every template body must contain it. */

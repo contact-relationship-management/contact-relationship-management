@@ -458,6 +458,9 @@ export default {
   "tpl.empty": "还没有模板。",
   "tpl.problems": "保存前需修正",
   "tpl.fellBack": "已使用备用文本的字段",
+  "tpl.language": "消息语言",
+  "tpl.noBuiltIn":
+    "此语言没有内置的备用文本：请为您使用的每个合并标记填写一个。",
   "campaign.new": "新建活动",
   "campaign.segment": "受众（细分）",
   "campaign.noSegment": "暂无",
