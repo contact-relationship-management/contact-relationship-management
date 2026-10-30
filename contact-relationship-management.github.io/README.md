@@ -91,8 +91,9 @@ Every later publish is step 4 again.
 
 ## Not done
 
-- Not published, and the deploy workflow has never run. Its GitHub Pages actions (`configure-pages`,
-  `upload-pages-artifact`, `deploy-pages`) are pinned by tag, not by commit as the monorepo's own workflows are.
+- Not published, and the deploy workflow has never run. Every action in it is pinned to a commit SHA with its tag in
+  a comment, as the monorepo's own workflows are, but Dependabot does not watch it (the `github-actions` entry covers
+  the root `.github` only).
 - That GitHub Pages serves the native-script brief paths (`/ar-001/for/الرئيس-التنفيذي/`) was checked with
   `vite preview` only, not on GitHub Pages.
 - The documents other than the briefs are English only. The site's own words in Arabic, Welsh, Hindi and Chinese

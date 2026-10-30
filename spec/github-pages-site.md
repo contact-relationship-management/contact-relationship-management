@@ -83,8 +83,8 @@ and the site's [README](../contact-relationship-management.github.io/README.md#p
 
 ## Not built
 
-Not published (CRM-T178); the deploy workflow has never run, and its Pages actions are pinned by tag; GitHub Pages
-serving the native-script paths is unverified (only `vite preview` was run); the documents other than the briefs are
-English only, and the site's words in four languages are unreviewed drafts; only the `light` and `dark` themes; axe
-runs on 11 of the 121 briefs; the first paint (or a visit with JavaScript off) uses the light fallback tokens whatever
-the system preference.
+Not published (CRM-T178); the deploy workflow has never run (its actions are pinned by commit SHA, not watched by
+Dependabot); GitHub Pages serving the native-script paths is unverified (only `vite preview` was run); the documents
+other than the briefs are English only, and the site's words in four languages are unreviewed drafts; only the `light`
+and `dark` themes; axe runs on 11 of the 121 briefs; the first paint (or a visit with JavaScript off) uses the light
+fallback tokens whatever the system preference.
