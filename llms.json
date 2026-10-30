@@ -31,6 +31,12 @@
           "description": "Prerequisites, running the service and the UI, sending email, the guided tour, the whole-repo check."
         },
         {
+          "title": "Tutorial: the family bridges",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/docs/tutorial-family-bridges.md",
+          "path": "docs/tutorial-family-bridges.md",
+          "description": "Configure the bridges to the worker service: the environment variables, a signed hire event sent with curl, and the employment check."
+        },
+        {
           "title": "Specification index",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/index.md",
           "path": "spec/index.md",
@@ -63,13 +69,13 @@
           "title": "Requirements",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/requirements.md",
           "path": "spec/requirements.md",
-          "description": "Numbered requirements (CRM-R1 to CRM-R50) with acceptance criteria."
+          "description": "Numbered requirements (CRM-R1 to CRM-R94) with acceptance criteria."
         },
         {
           "title": "Tasks",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/tasks.md",
           "path": "spec/tasks.md",
-          "description": "The delivery checklist (CRM-T1 to CRM-T114) with resolutions, verification and stated limits."
+          "description": "The delivery checklist (CRM-T0 to CRM-T163) with resolutions, verification and stated limits."
         },
         {
           "title": "Architecture",
@@ -87,7 +93,7 @@
           "title": "Design decisions",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/design.md",
           "path": "spec/design.md",
-          "description": "Numbered design decisions (CRM-D)."
+          "description": "Numbered design decisions (CRM-D1 to CRM-D18)."
         },
         {
           "title": "Authentication and authorisation",
@@ -154,6 +160,24 @@
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/glossary.md",
           "path": "spec/glossary.md",
           "description": "Terms."
+        },
+        {
+          "title": "Special files for public repos",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/special-files-for-public-repos/index.md",
+          "path": "spec/special-files-for-public-repos/index.md",
+          "description": "The top-level files a public repository carries, and why."
+        },
+        {
+          "title": "Locales for global sharing",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/locales-for-global-sharing-with-svelte/index.md",
+          "path": "spec/locales-for-global-sharing-with-svelte/index.md",
+          "description": "How content, the interface and documents are offered in many locales."
+        },
+        {
+          "title": "Locales for roles",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/locales-x-for-roles/index.md",
+          "path": "spec/locales-x-for-roles/index.md",
+          "description": "How the role briefs in locales/ are laid out: one file per role per locale."
         }
       ]
     },
@@ -177,6 +201,35 @@
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/CHANGELOG.md",
           "path": "contact-relationship-management-service-with-rust/CHANGELOG.md",
           "description": "Changes to the service."
+        },
+        {
+          "title": "Service index",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/index.md",
+          "path": "contact-relationship-management-service-with-rust/index.md",
+          "description": "Documentation index for the service."
+        },
+        {
+          "title": "Service stack spec",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/spec/index.md",
+          "path": "contact-relationship-management-service-with-rust/spec/index.md",
+          "description": "Stack detail for the service; the cross-cutting spec stays in spec/."
+        }
+      ]
+    },
+    {
+      "name": "Contact matcher",
+      "links": [
+        {
+          "title": "Matcher README",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-matcher-with-rust/README.md",
+          "path": "contact-relationship-management-matcher-with-rust/README.md",
+          "description": "The published crate that scores whether two contact records are the same person, with a per-field explanation."
+        },
+        {
+          "title": "Matcher changelog",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-matcher-with-rust/CHANGELOG.md",
+          "path": "contact-relationship-management-matcher-with-rust/CHANGELOG.md",
+          "description": "Changes to the matcher."
         }
       ]
     },
@@ -200,6 +253,30 @@
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/CHANGELOG.md",
           "path": "contact-relationship-management-ui-with-svelte/CHANGELOG.md",
           "description": "Changes to the client."
+        },
+        {
+          "title": "UI index",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/index.md",
+          "path": "contact-relationship-management-ui-with-svelte/index.md",
+          "description": "Documentation index for the client."
+        },
+        {
+          "title": "UI stack spec",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/spec/index.md",
+          "path": "contact-relationship-management-ui-with-svelte/spec/index.md",
+          "description": "Stack detail for the client; the cross-cutting spec stays in spec/."
+        },
+        {
+          "title": "Translation register",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/spec/translation-register.md",
+          "path": "contact-relationship-management-ui-with-svelte/spec/translation-register.md",
+          "description": "Who wrote each locale's strings and whether a native speaker reviewed them."
+        },
+        {
+          "title": "Strings identical to English",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/spec/locale-review.md",
+          "path": "contact-relationship-management-ui-with-svelte/spec/locale-review.md",
+          "description": "Generated list of translated values that equal the English, for a reviewer."
         }
       ]
     },
@@ -267,6 +344,54 @@
           "description": "What to hand a prospective email provider and the people who sign for it (CRM-T39); picks no vendor."
         },
         {
+          "title": "DPIA",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/dpia.md",
+          "path": "spec/compliance/dpia.md",
+          "description": "The data protection impact assessment for the demo as built."
+        },
+        {
+          "title": "Personal data inventory",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/personal-data-inventory.md",
+          "path": "spec/compliance/personal-data-inventory.md",
+          "description": "Every personal-data field, where it is held and for how long."
+        },
+        {
+          "title": "Record of processing",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/record-of-processing.md",
+          "path": "spec/compliance/record-of-processing.md",
+          "description": "The GDPR Article 30 record for the demo."
+        },
+        {
+          "title": "Risk management",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/risk-management.md",
+          "path": "spec/compliance/risk-management.md",
+          "description": "A starting hazard analysis in the manner of ISO 14971, for an organisation that gives the software a medical purpose."
+        },
+        {
+          "title": "GDS API review",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/gds-api-review.md",
+          "path": "spec/compliance/gds-api-review.md",
+          "description": "A self-review of the API against the UK Government Digital Service standards (a draft)."
+        },
+        {
+          "title": "DTAC supporting statements",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/dtac-supporting.md",
+          "path": "spec/compliance/dtac-supporting.md",
+          "description": "Draft answers for the NHS DTAC v2.0 form."
+        },
+        {
+          "title": "DTAC assessment",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/index.md",
+          "path": "docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/index.md",
+          "description": "Self-assessment against the NHS Digital Technology Assessment Criteria v2.0, with its checklist."
+        },
+        {
+          "title": "DTAC checklist",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/checklist.md",
+          "path": "docs/united-kingdom/national-health-service/digital-technology-assessment-criteria/2.0/checklist.md",
+          "description": "The DTAC v2.0 questions the assessment answers."
+        },
+        {
           "title": "AI statement",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/AI_STATEMENT.md",
           "path": "AI_STATEMENT.md",
@@ -294,6 +419,24 @@
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/CHANGELOG.md",
           "path": "CHANGELOG.md",
           "description": "Repository-level changes."
+        },
+        {
+          "title": "News",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/NEWS.md",
+          "path": "NEWS.md",
+          "description": "Dated project updates."
+        },
+        {
+          "title": "RFC",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/RFC.md",
+          "path": "RFC.md",
+          "description": "Questions the project wants answered by people who build or run CRM systems."
+        },
+        {
+          "title": "Maintainers",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/MAINTAINERS.md",
+          "path": "MAINTAINERS.md",
+          "description": "Who maintains the project."
         },
         {
           "title": "Licence",
@@ -326,7 +469,7 @@
   ],
   "commands": {
     "full check": "scripts/ci-check.sh",
-    "service tests": "cd contact-relationship-management-service-with-rust && cargo test && cargo test -- --ignored",
+    "service tests (the --ignored ones need DATABASE_URL)": "cd contact-relationship-management-service-with-rust && cargo test --features keycloak && cargo test --features keycloak -- --ignored --test-threads=1",
     "ui tests": "cd contact-relationship-management-ui-with-svelte && pnpm install && pnpm test && pnpm exec playwright test",
     "ui live tests (need a running service on :5160)": "pnpm test:live",
     "guided tour (no service needed)": "cd contact-relationship-management-ui-with-svelte && pnpm dev, then sign in as example@example.com"

@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — llms.txt and llms.json list every current document (maintenance, 2026-10-30)
+
+Regenerated with `scripts/build-llms.py`, whose table now adds the bridges tutorial, the matcher, the service and UI index and stack-spec pages, the translation register, the DPIA, inventory, record of processing, risk management, GDS review and DTAC pages, NEWS, RFC and MAINTAINERS, and gives the current id ranges (CRM-R1 to R94, CRM-T0 to T163, CRM-D1 to D18). Left out on purpose: the per-locale role briefs (reached through `spec/locale/index.md`), the DTAC folder's README, and the AI-statement template under `spec/special-files-for-public-repos/`. There is no `*-skill` folder and no `*.github.io` folder for this repository, and none was made.
+
 ### Changed — the teams import asks the worker service for three fields only (CRM-T163, CRM-R73, CRM-D17)
 
 WPM's worker list takes `fields` since WPM-R216, so `POST /api/bridges/wpm/teams-import` now asks for `fields=pid,department,person_ref` (paging and `status=active` unchanged) and no longer receives workers' names, jobs or pay. A WPM from before WPM-R216 answers `422`; the import then fails with `502` and changes no team, and it never falls back to the whole record. The DPIA, record of processing, integrations table and tutorial say so.
