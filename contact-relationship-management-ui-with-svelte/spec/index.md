@@ -34,7 +34,8 @@ project-portfolio-management front-end's Kanban board, i18n, and
 ## Edition-specific implementation notes (as landed)
 
 - **Copy source**: the WPM front-end (BFF proxy, session seam, SPA
-  mode, i18n pattern; 45-key catalogue here).
+  mode, i18n pattern). The catalogue began with 45 keys; it has 703 per
+  locale as of CRM-T160 (CRM-T161 and CRM-T162 added none).
 - **Deal board**: stage columns from the pipeline's stage rows;
   the forward-move button drives `POST /deals/{pid}/stage` (a lost
   target carries a reason); the forecast strip re-reads
@@ -66,10 +67,14 @@ project-portfolio-management front-end's Kanban board, i18n, and
      work as CRM-T23, explicitly not done yet. -->
 CRM-T17/T18 **delivered 2026-07-18**; the front-end halves of CRM-T19
 (insight boards) and CRM-T20 (engagement/partners) **delivered
-2026-07-20** — see [../../spec/tasks.md](../../spec/tasks.md). CRM-T21/
-CRM-T22 (2026-08-28) were service-only; the matching front-end
-"Download my data" + confirm-gated Erase action is tracked as CRM-T23
-and **not yet started**.
+2026-07-20**; the "Download my data" + confirm-gated Erase action
+(CRM-T23) was resolved 2026-10-10. Later tasks carry their UI halves in
+[../../spec/tasks.md](../../spec/tasks.md): most recently the employment
+marker on a contact's page (CRM-T158), the employment-check button on
+`/quotas` (CRM-T160), `without_person_ref` in the teams-import type
+(CRM-T161, not shown on the page), and the tour's stand-in reading
+`worker:` as `person:` (CRM-T162). UI and locale prose still calls
+sellers "workers" (CRM-T162's "Not done").
 
 - [x] **CRM-T24: `/verify` crashed with a raw 500 when the authentication service was unreachable.** *(resolved 2026-09-06.)* `src/routes/verify/+page.server.ts` called `await verifyMagicLink(fetch, token)` with no `try`/`catch`. A network-level failure (the authentication service unreachable, timed out, connection reset) makes `fetch` throw rather than resolve — uncaught, that propagated out of `load` and SvelteKit rendered its generic 500 error page instead of this route's own friendly UI. The same bug class was found and fixed first in `place-front-end-with-svelte` (T-26) and `thing-front-end-with-svelte` (T-23); ported here.
   - **Resolved.** A `try`/`catch` around the call, a new `"serviceUnavailable"` error variant, and its message in `+page.svelte`.

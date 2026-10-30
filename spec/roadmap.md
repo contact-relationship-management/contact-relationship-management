@@ -2,9 +2,11 @@
 
 Beyond the v1 queue ([tasks.md](tasks.md)):
 
-- **Real ESP adapter** — the campaign/nurture send seam gains an
-  actual email-service-provider implementation (bounces,
-  deliverability, webhooks) behind the existing trait.
+- **Real ESP adapter** — SMTP and the Brevo, Mailjet, SES, Azure,
+  Mailgun and SendGrid adapters are built behind the send seam, with
+  bounce, complaint, open and click webhooks (CRM-T39, CRM-R58); none
+  has been tried with a live account, and the vendor, agreement and
+  legal review (CRM-G2) is open.
 - **Event-driven merge repointing** — consume upstream `merged`
   events on the durable bus to repoint contact/account wrappers
   automatically (manual endpoint in v1).

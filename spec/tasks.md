@@ -37,8 +37,11 @@ code + tests in one PR.
   CRM-D9; CRM-R3)
 - [x] CRM-T6 Pipeline + PipelineStage + Deal: stage-move validation,
   Kanban ordering with `FOR UPDATE` serialization, terminal
-  close/lost-reason/reasoned-reopen, stalled derivation. (CRM-D3,
-  CRM-D7, CRM-D9; CRM-R4)
+  close/lost-reason/reasoned-reopen. (CRM-D3,
+  CRM-D7, CRM-D9; CRM-R4) **Not built, found 2026-10-30:** the
+  stalled derivation this task listed; no code in the service or UI
+  derives or shows a stalled flag, and there is no setting for its
+  days (see CRM-R4).
 - [x] CRM-T7 Forecast: pure-core stage-weighted arithmetic,
   per-currency grouping, overflow refusal; month-end
   ForecastSnapshot job. (CRM-D4, CRM-D7, CRM-D8; CRM-R5)
@@ -581,7 +584,7 @@ parties outside the repository.
       SendGrid: ECDSA event signature not verified. Database test covers all
       four callbacks. **No live account was used.**
       **Still open:** `opened` and `clicked` events (so those counters stay 0 on
-      a real send), a timer for stalled campaigns and the nurture sweep, a live
+      a real send; *built since by CRM-T124, CRM-R58*), a timer for stalled campaigns and the nurture sweep, a live
       trial with each vendor, the address contract with the person service (the
       `email` field is assumed and unverified), and the vendor, agreement and
       legal review.
@@ -1745,14 +1748,12 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Scripts:** `pnpm lint` and `pnpm format` now cover `src`, `tests`, `scripts` and the top-level configuration files; `vite.config.ts` was the one file that was not formatted, and is now.
       - **Found on the way:** Vite hands a test the browser build of Prettier, which has no file functions, so the test loads Prettier with Node's own resolver.
       - **Not done:** `.svelte` formatting; Markdown formatting.
-
 - [x] CRM-T148 *(edge)* **Close a ticket left resolved.** (S)
       **Done (2026-10-28, not released):** requirement CRM-R82 first, then:
       - **Service:** migration `m20261028_000051_auto_close_days` (`sla_policies.auto_close_days`, checked 1 to 365); `PolicyPayload.auto_close_days` validated; `sweep_closing` in `support.rs` goes through the same `transition` as a person, with `via: auto_close`; `new_auto_closed` in the sweep's answer.
       - **Tests:** `a_policy_closes_a_ticket_left_resolved_for_its_days_and_no_other` (eight days closed, six not, no days not, reopened-and-resolved-again not, bad values refused, audit says `auto_close`, a second sweep closes nothing); the OpenAPI schema tests still pass.
       - **UI:** only the generated `schema.d.ts`; the UI has no policy form (the wait-limit fields have none either).
       - **Not done:** see CRM-R82's list.
-
 - [x] CRM-T149 *(edge)* **Close-day rates in the report builder.** (M)
       **Done (2026-10-28, not released):** requirement CRM-R83 first, then:
       - **Service:** `rate_basis` on the report spec; `check` refuses it without `convert_to`, with another value, with `rate_date`, or without a `won`/`lost` state filter; the plan groups by day when it is set (cap `MAX_DAY_CELLS`, no group limit that would cut a group's days short); `Cell.day`; `rules::fx::convert_rows_dated` and `fx_rates::convert_rows_dated` read the rates once.
@@ -1760,13 +1761,11 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a checkbox on `/reports` using the existing `clv.closeDay` label (no new strings), enabled only when the filter is `state` of won or lost; it disables the rate date; the tour mirrors the service.
       - **Found on the way:** (1) the OpenAPI unit test `mutating_operations_have_a_request_schema_or_are_bodyless` had been failing since CRM-T139, whose two bridge routes were never listed as bodyless; they now are. (2) The rates list on `/reports` was keyed by currency, so two rates for one currency (which close-day mode produces) crashed the page; it is keyed by currency, day and direction. The other pages that list rates convert at one date and cannot hit it.
       - **Not done:** see CRM-R83's list.
-
 - [x] CRM-T150 *(edge)* **A starting hazard analysis in the manner of ISO 14971.** (S)
       **Done (2026-10-28, not released):** requirement CRM-R84 first, then:
       - **Document:** `compliance/risk-management.md` (the process clause by clause, misuse, thirteen hazards with their controls, the risks the controls create, what an integrator still has to do); entries in the compliance index and `regulatory.md`.
       - **Checked:** the tests it names exist (`consent_withdrawn_between_runs_is_honoured`, `enrolment_rechecks_consent_inside_the_action`, `a_merge_moves_everything_and_is_recorded`, `subject_rights_round_trip`, the wait-limit and auto-close tests); the controls it calls Implemented are ones a test pins, and the ones it cannot say that of are marked Deployer or Gap.
       - **Not done:** review against the standard's text; see CRM-R84's list.
-
 - [x] CRM-T151 *(edge)* **Close-day rates in attribution.** (S)
       **Done (2026-10-28, not released):** requirement CRM-R85 first, then:
       - **Service:** `rate_basis` on the attribution query, validated; each share is kept with the day its deal closed (`Tally.dated`, `Shared`); `convert_credit` converts them with `fx_rates::convert_rows_dated` (from CRM-T149).
@@ -1774,7 +1773,6 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a checkbox on `/attribution` with the existing `clv.closeDay` label; the tour's per-day conversion is now one function shared with the report builder; a tour end-to-end test.
       - **Found on the way:** `cargo fmt --check` had been failing on four files from CRM-T148 and CRM-T149; they are formatted.
       - **Not done:** see CRM-R85's list.
-
 - [x] CRM-T152 *(edge)* **Close-day rates in a campaign's ROI; the bridge contracts checked.** (S)
       **Done (2026-10-28, not released):** requirement CRM-R86 first, then:
       - **Service:** `rate_basis` on the funnel query, validated; each foreign-currency won deal converted with `fx_rates::convert_dated`; `won_revenue_other_currencies` is what had no rate on its day.
@@ -1782,13 +1780,11 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a checkbox on `/campaigns` using the existing `clv.closeDay` label, enabled with the conversion; the rates list keyed by currency, day and direction.
       - **Bridge contracts checked against the sibling source (CRM-R72, CRM-R73):** PPM `create_idea` (`strategy.rs`) and WPM `list_workers` (`hr_core.rs`) match what `clients.rs` sends and reads. Two findings: WPM refuses an offset above 10,000, so the worker import reads at most 51 pages of 200 and stops with a reason of ours; and **neither call sends credentials**, so each reaches its service only while that has authentication off (recorded in both requirements; a service-to-service credential is not built). Neither was run against a live service.
       - **Not done:** see CRM-R86's list.
-
 - [x] CRM-T153 *(edge)* **A credential for the bridges.** Closes the gap CRM-T152 found. (S)
       **Done (2026-10-28, not released):** requirement CRM-R87 first, then:
       - **Service:** `Settings.ppm_service_token` and `worker_service_token`; `clients::with_credential` attaches a bearer token only to `https` or loopback `http`; both calls use it.
       - **Tests:** a unit test of the address rule (four addresses that get the token, four that do not, an error that holds neither token nor address, nothing attached without a token); a wire test against one stand-in (nothing attached without tokens, each service gets its own, a token is not sent to a plain-`http` remote address and the call fails with nothing sent).
       - **Not done:** see CRM-R87's list.
-
 - [x] CRM-T154 *(edge)* **A reply by e-mail resumes the ticket.** The last open part of the roadmap item "SLA clock refinements". (M)
       **Done (2026-10-28, not released):** requirement CRM-R88 first, then:
       - **Service:** `POST /webhooks/inbound-email` (`support::public_routes`, public in `auth::is_public_path`, documented in the public OpenAPI entries); `webhook::signed_request` shared with `/webhooks/email`; `reference` on `TicketDetail`; `recognise_reply` reuses `transition` with `via: inbound_mail`.
@@ -1796,43 +1792,37 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** the selected ticket shows its reference (`ticketReference`, the same rule, with a unit test using the service test's pid); one new string in the eight locales (machine drafts, 695 per locale in the register).
       - **Documents:** hazard H14 in `compliance/risk-management.md`; a processing activity in `compliance/record-of-processing.md`.
       - **Not done:** see CRM-R88's list; **not run against a real mail service**.
-
 - [x] CRM-T155 *(edge)* **Attribution settings.** A half-life for time decay and a delay under which an open does not count. (M)
       **Done (2026-10-28, not released):** requirement CRM-R89 first, then:
       - **Service:** `rules::attribution::{half_life_days, credit_with}` (`credit` is `credit_with` at the default); `half_life_days` and `min_open_seconds` on the attribution query, validated and echoed; the open condition is in the touch query (`ev.received_at >= e.sent_at + interval`).
       - **Tests:** unit tests (a chosen half-life, the default unchanged, the other models unmoved, the longest window at the shortest half-life still weighs every touch, the range); `an_open_too_soon_after_sending_is_left_out_and_the_decay_half_life_can_be_chosen` (a thirty-second open and a two-hour open; the setting with sends beside opens; 7 against 90 days; six refusals with their pointers).
       - **UI:** two inputs on `/attribution`, each disabled until it applies; the tour has one open twenty seconds after sending; two strings in the eight locales (machine drafts, 697 per locale); tour tests for both.
       - **Not done:** see CRM-R89's list.
-
 - [x] CRM-T156 *(edge)* **Position-model weights.** The share of each of the first and last touches can be chosen. (S)
       **Done (2026-10-29, not released):** requirement CRM-R90 first, then:
       - **Service:** `rules::attribution::{end_percent, credit_tuned}` (`credit_with` is `credit_tuned` at 40); `end_percent` on the attribution query, validated, echoed and audited.
       - **Tests:** a unit test (30, 40 and 49 percent, the default unchanged, other models unmoved, exact at every value, the range); the position request test now chooses 25 and checks three refusals with their pointers.
       - **UI:** one input on `/attribution`, disabled unless the model is position; one string in the eight locales (machine drafts, 698 per locale); the tour validates and applies it.
       - **Not done:** see CRM-R90's list.
-
 - [x] CRM-T157 *(edge)* **A delay for clicks.** The last open part of the roadmap item "attribution settings" besides weights. (S)
       **Done (2026-10-29, not released):** requirement CRM-R91 first, then:
       - **Service:** `min_click_seconds` on the attribution query, validated, echoed and audited; the click condition is in the touch query beside the open one.
       - **Tests:** `a_click_too_soon_after_sending_is_left_out_and_opens_are_not_touched` (a ten-second and an hour-old click, sends and opens untouched, four refusals with their pointers); passes against PostgreSQL with the other attribution tests.
       - **UI:** one input on `/attribution`, disabled unless clicks are counted; the tour has a click eight seconds after sending; one string in the eight locales (machine drafts, 699 per locale); a tour test.
       - **Not done:** see CRM-R91's list.
-
 - [x] CRM-T158 *(edge)* **The worker service's hire and leave events pause marketing.** The WPM → CRM half of the family bridges (WPM-R207, decided 2026-10-30). (M)
       **Done (2026-10-30, not released):** requirement CRM-R92 and decision CRM-D15 first, then:
       - **Service:** `POST /api/bridges/wpm/events`, outside the session check and signed (`CRM_WPM_WEBHOOK_SECRET`, `404` while unset; `401`, `400`, `413` at 16 KiB, `422`); the pure `rules::wpm_events` (signature in constant time with a five-minute window, parse, decide); `models::employments`; migration 000052 (`wpm_events`, the received ids; `contact_employments`, the pause). The segment facts gain `employee` and the evaluator leaves an employee out as it leaves out a contact without consent; a campaign skips them with a reason; the nurture sweep holds their enrolment. `employments` on the contact detail and in the subject-access export; erasure deletes them; `wpm_events` pruned with the event logs (CRM-R81). Each change audited with `via: wpm`.
       - **Tests:** 8 unit tests of the signature, parse and decision (WPM's algorithm, a stale or future time, a changed body, a repeated `t` or `v1`, the three kinds, no `data`, unknown kinds, wrong references or dates), one on the segment gate, one that only this route is public under `/api/bridges`, the settings floor; 4 request tests (`tests/requests/wpm_events.rs`: no secret is `404`; unsigned, wrong, stale, future and altered are `401` and change nothing, then `413`, `400`, `422`; a hire pauses once, a repeat is `duplicate`, a second hire is `already_paused`, a stranger leaves nothing, a campaign skips and nurture holds, a leave resumes under the old consent and never grants it; erasure deletes the employment). Service: 394 unit, 207 request and the other DB tests pass against PostgreSQL; clippy clean for both feature sets; fmt clean.
       - **UI:** "Employee — marketing paused" with the organization and date on a contact's page; one string in the eight locales (machine drafts, 700 per locale); the demo's contact detail carries `employments: []`; two stubbed Playwright tests; `schema.d.ts` regenerated.
       - **Spec:** a "Family bridges" table and the inbound contract in [integrations.md](integrations.md); the DPIA, inventory and record of processing cover the new data.
-      - **Not done / not verified:** no event from a **running WPM** was received; the tests sign requests with the same algorithm, read from WPM's source while WPM was adding `data`. See CRM-R92's "Not built" (a future `effective_on` applied at once, no ordering (since CRM-T159), contacts created after a hire not marked, the overlap-check client, secret rotation). The `worker:` versus `person:` mismatch in the teams import is unresolved. The `/followups` accessibility test fails (a colour-contrast node) at the commit before this one too, and is not touched here.
-
+      - **Not done / not verified:** no event from a **running WPM** was received; the tests sign requests with the same algorithm, read from WPM's source while WPM was adding `data`. See CRM-R92's "Not built" (a future `effective_on` applied at once, no ordering (since CRM-T159), contacts created after a hire not marked, the overlap-check client (built since: CRM-T160), secret rotation). The `worker:` versus `person:` mismatch in the teams import is unresolved *(resolved since by CRM-T161 and CRM-T162)*. The `/followups` accessibility test fails (a colour-contrast node) at the commit before this one too, and is not touched here.
 - [x] CRM-T159 *(edge)* **The worker service's events are put in order.** A hire retried after the leave that followed it no longer pauses the contact again. (S)
       **Done (2026-10-30, not released):** requirement CRM-R93 and an addition to CRM-D15 first, then:
       - **Service:** `rules::wpm_events::{Stamp, is_stale}` and `Handoff::occurred_at` (a hire or leave without an RFC 3339 `occurred_at` is `422`); migration 000053 (`employment_last_events`: per person and organization, the last kind, stamp and event id); `models::employments::{lock_order, last_applied, note_applied, last_events_of, forget_last_events}`; the route answers `stale` and changes nothing for an older event, under a transaction-scoped advisory lock. The subject-access export carries `employment_last_events`; erasure deletes them (audited as `employment_last_events_deleted`); the sweep prunes a leave's row after the event horizon and a hire's once no live contact carries the person.
       - **Tests:** 4 unit tests (`occurred_at` required for a hire or leave and not for the others; older is stale, a rehire is not; within one second the later effective day wins and an equal stamp is applied; a handoff's stamp); the log-rule test names the new table; `a_hire_older_than_the_leave_after_it_changes_nothing` (hire, leave, the retry `duplicate`, the same hire under a new id `stale` and recorded so, a same-second tie both ways, an old leave after a rehire `stale`, a leave that arrives before the older hire it follows, no order kept for a stranger, `422` without `occurred_at`); the erasure test checks the rows and the audit count. Service: 398 unit and 208 request tests pass, the request tests against a throwaway PostgreSQL database; clippy clean for both feature sets; fmt clean; `schema.d.ts` regenerated.
       - **Spec:** CRM-R93; CRM-D15 says why ordering is by person and by `occurred_at`; integrations.md; the inventory, retention schedule, DPIA and record of processing name the new table.
       - **Not done / not verified:** see CRM-R93's "Not built"; **not run against a running WPM** (its `occurred_at` format, whole seconds in UTC, was read from `rules/webhook.rs`). The UI does not show the order; it is in the export only.
-
 - [x] CRM-T160 *(edge)* **The worker service is asked which contacts are its employees.** The CRM client for WPM's overlap check (WPM-R208), so a contact who became one after their hire is marked too. (M)
       **Done (2026-10-30, not released):** requirement CRM-R94 and decision CRM-D16 (one HR token and one configured organization, not the caller's own token) first, then:
       - **Service:** `POST /api/bridges/wpm/employment-check` (admin only, stub-first, bodyless); the pure `rules::employment_check` (batches of at most 500 distinct `person:` references without the erasure tombstone, a strict reading of WPM's answer, and the decision: a no does nothing, a yes records unless the last event was a leave); `clients::overlap_check` (`CRM_WORKER_SERVICE_TOKEN`, CRM-R87's rules); `CRM_WPM_ORGANIZATION_REF` (an `organization:` URN or unset); `models::employments::{last_kind, live_person_refs}`. A yes writes the row a hire event writes (`since` the day of the check, `overlap:<check id>`), audited `employment_recorded` with `via: wpm`; the check is audited once by count.
@@ -1840,15 +1830,13 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **UI:** a button "Check with the worker service which contacts are employees" beside the teams import on `/quotas`, saying how many contacts were marked or, in the tour, how many would be asked about; the demo answers as the stub does; three strings in the eight locales (machine drafts, 703 per locale); a tour test; `schema.d.ts` regenerated. svelte-check clean, 201 vitest, lint clean, 177 of 178 Playwright tests (the `/followups` contrast failure is pre-existing).
       - **Spec:** CRM-R94, CRM-D16; the Family bridges table says the overlap client is built; INSTALL.md and the service spec name `CRM_WPM_ORGANIZATION_REF`; the DPIA (what is now sent to WPM, a risk row), the record of processing and the inventory follow.
       - **Not done / not verified:** **not run against a running WPM**; the token is one deployer-held HR token, not the caller's own as WPM-D135 asks (CRM-D16); see CRM-R94's "Not built" (no schedule, one organization, a no never ends a pause). A yes for a person whose leave's row was pruned (CRM-R93, 30 days) is recorded even if that leave takes effect later.
-
 - [x] CRM-T161 *(edge)* **Imported teams name their members by `person:` reference.** The teams import kept `worker:<pid>` while the family names a person by `person:` URN, so a team member and a contact could not be matched. (S)
       **Done (2026-10-30, not released):** CRM-R73 rewritten and decision CRM-D17 (members by `person_ref`; earlier imports replaced by the next, not migrated) first, then:
       - **Service:** the pure `rules::teams_import::{group, is_person_ref}`; `clients::UpstreamWorker` gains `person_ref` (still only `pid`, `department` and `person_ref` are read from WPM's whole worker record); the import stores members by `person_ref` and answers `without_person_ref`; a worker without a valid `person:` URN joins no team and never becomes `worker:`. WPM's `GET /api/workers` was read again (`hr_core.rs`, `list_workers`, which serialises the whole `workers` model, `person_ref` included, masked only by the `mask` obligation).
       - **Tests:** 5 unit tests of the mapping (members are `person:` references sorted and once each per department; a missing, empty, malformed, `worker:` or `organization:` reference is counted and never a member; a person with no department counted apart; trimming; nothing in, nothing out); `the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alone` now stubs WPM's list with whole records (pay, name, job, `person_ref`) and checks the members are exactly the `person_ref`s, three workers without a valid one counted, no pay, name or job in the answer, a `Support` team stored earlier with a `worker:` member replaced and a hand-set `worker:` team kept. Service: 409 unit and 209 request tests pass, the request tests against a throwaway PostgreSQL database (one run had `errors_are_problem_documents` fail once; it passed alone and in a full rerun); clippy clean for both feature sets; fmt clean.
       - **UI:** `TeamImport.without_person_ref`; the tour's stand-in answers it (it builds no `worker:` members: the tour's import is the stub); `schema.d.ts` regenerated. svelte-check clean, 201 vitest, lint clean, 177 of 178 Playwright tests (the `/followups` contrast failure is pre-existing; one earlier run also failed the informational `/partners` tour check, which passed alone and in the rerun).
       - **Spec:** CRM-R73, CRM-D17; integrations.md marks the mismatch resolved and records WPM's whole-record answer (pay included unless masked, no list audit) as a gap for WPM's owner; the DPIA (sources, minimisation), the inventory's `teams` row and the record of processing follow.
-      - **Not done / not verified:** **not run against a running WPM**; WPM's own spec still records the mismatch as open (not edited here). Quotas are owned by `worker:` references, so an imported team's roll-up (CRM-R67) matches no quota; no person-to-worker mapping; `PUT /api/quotas/teams` still takes `worker:` members only, so an imported team cannot be re-saved by hand; erasing a contact leaves its `person_ref` in an imported team; the `/quotas` page does not show `without_person_ref`.
-
+      - **Not done / not verified:** **not run against a running WPM**; WPM's own spec still records the mismatch as open (not edited here). Quotas are owned by `worker:` references, so an imported team's roll-up (CRM-R67) matches no quota; no person-to-worker mapping; `PUT /api/quotas/teams` still takes `worker:` members only, so an imported team cannot be re-saved by hand *(these three resolved by CRM-T162: users are `person:` references, CRM-D18)*; erasing a contact leaves its `person_ref` in an imported team; the `/quotas` page does not show `without_person_ref`.
 - [x] CRM-T162 *(edge)* **A CRM user is a `person:` reference.** The CRM wrote its signed-in user as `worker:<sub>` and took `worker:` for every owner, assignee and team member, while the family's sign-in subject is a person id (WPM matches it as `person:<sub>`), so quotas could not meet the `person:` members the teams import stores (CRM-T161). Traces to CRM-R59, CRM-R67, CRM-R73, CRM-D18. (M)
       **Done (2026-10-30, not released):** checked first, in all three apps, that the sign-in subject is a person id (CRM-D18 lists the evidence: WPM `controllers/me.rs`, `models/memberships.rs`, `auth.rs` and its `spec/auth.md`; PPM `discussion.rs`, `subjects.rs`; the CRM's own `$sub` ownership check; the shared design says only "user pid"), then CRM-D18 and CRM-R59, R67, R73 rewritten, then:
       - **Service:** the pure `rules::user_ref::{of_subject, normalise, normalise_opt, normalise_all}`; `owner_of` and the inbox give `person:<sub>`, the anonymous owner is the all-zero person; `Problems::{require_user, user_opt}` check a `person:` URN; every body and `owner_ref` filter that names a user rewrites `worker:<id>` to `person:<id>` first (contacts, accounts, activities, deals, tickets, SLA policies, the board, quotas, splits, clawbacks, territories, teams, notifications, workflow actions via `Action::normalise_user_refs`); the seed makes `person:` owners. Migration 54 rewrites stored `worker:<uuid>` user references in 23 columns, workflow actions and hand-set teams' members, leaves teams last set by the import, history and WPM subjects alone, skips a rewrite that would collide on a unique key, keeps `updated_at`, and rolls back.

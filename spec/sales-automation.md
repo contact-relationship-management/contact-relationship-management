@@ -30,8 +30,10 @@ breakdowns):
 | unsubscribe on record | −30 |
 
 Clamped to 0–100; thresholds `hot ≥ 70`, `warm ≥ 40` label the
-work queue. Weights are config-tunable; the rule *set* is fixed in
-v1.
+work queue. The rule *set* is fixed in v1. The weights are held in
+one struct (`rules::scoring::Weights`) so they could be tuned, but no
+setting reads them: the service always scores with the defaults above
+(checked 2026-10-30).
 
 **Conversion** (`qualified → converted`) creates or links the
 Contact (by `person:` URN) and optionally opens a Deal — one
@@ -47,7 +49,8 @@ audit + `deal_stage_changed` event, and entering a terminal stage
 sets `closed_at`/`won` (lost requires `lost_reason`). Closed deals
 are immutable except a reasoned reopen. **Stalled** = no stage move
 or activity for N days (config, default 14) — a derived flag on the
-board.
+board. *Not built (checked 2026-10-30): no stalled flag is derived or
+shown (CRM-R4).*
 
 ## Forecasting
 

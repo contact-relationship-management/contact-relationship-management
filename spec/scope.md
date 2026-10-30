@@ -34,7 +34,8 @@ default that the rest are adapted to. In practice:
 - Stage-weighted forecasting per period/owner.
 - Campaigns (email kind in v1) with segments, simulated sends,
   engagement counters; nurture sequences (ordered delayed steps)
-  advanced by a `bg_pg` scheduler; marketing consent + unsubscribe.
+  advanced by the `POST /api/nurture/advance` sweep (run by a caller,
+  not on a timer); marketing consent + unsubscribe.
 - Tickets with priority/assignment/lifecycle, SLA policies with
   derived first-response/resolution deadlines and breach flags;
   knowledge-base articles (draft → published, versioned).
@@ -56,12 +57,21 @@ default that the rest are adapted to. In practice:
   record.
 - Territory management, quota plans, commission calculation.
 
+These lists are the v1 scope as first drawn. Several out-of-scope items
+were built later and are now in scope: real email delivery and
+bounce handling through SMTP and provider adapters (CRM-T39; the legal
+and vendor review, CRM-G2, is still open), duplicate advice with the
+family matcher (CRM-R23; merging stays upstream for identities, the
+CRM merges only its own contact wrappers, CRM-R24), and quotas,
+commission plans and territories (CRM-R59, CRM-R68).
+
 ## Boundary with the family
 
 | Concern | Owner |
 |---|---|
 | Who a person/company *is* (demographics, dedup, merge) | person / organization services |
-| Sales rep & support agent identity | worker-service |
+| Sales rep & support agent identity | authentication-service (the sign-in subject, a person id; the CRM names a user `person:<sub>`, CRM-D18) |
+| Employment: departments, hires and leaves | worker-service (WPM), through the bridges (CRM-R73, CRM-R92–R94) |
 | Login, sessions, tokens, attributes | authentication-service |
 | The relationship, its state and history | **CRM (this project)** |
 

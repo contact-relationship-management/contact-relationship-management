@@ -15,6 +15,12 @@ security invariants.
 `marketing`, CRM-R29), `consent_changed_at`, cached display name. The other
 purposes (`newsletter`, `events`, `product_updates`) are rows of
 `contact_consents` (contact, purpose, state, changed_at); no row is `never`.
+An employment (CRM-R92, CRM-D15) is a row of `contact_employments` (contact pid, `person_ref`, the employer's
+`organization_ref`, `since`, and the WPM event id or `overlap:<check id>` that recorded it; one per contact and
+organization). While a contact has one, no segment, campaign or nurture step reaches them; a leave event deletes it.
+`employment_last_events` (CRM-R93) holds, per person and organization, the kind (`hired | left`), `occurred_at`,
+`effective_on` and id of the last hire or leave applied, kept only while the person is a contact; `wpm_events` holds
+each WPM event id received, its kind and outcome, and no personal data.
 A web form submission (CRM-R31) is a row of `form_submissions` (form slug, contact, lead, purpose, the
 nurture sequence to start on confirmation, when the confirmation mail went out and when the visitor confirmed). It holds no
 name and no address, and erasure deletes it.
@@ -30,7 +36,7 @@ An import of contacts or accounts (CRM-R43) is a row of `record_imports` (kind, 
 An attachment (CRM-R42) is a row of `attachments` (record kind and pid, cleaned name, content type, size, SHA-256, uploader); the bytes are a file in `CRM_ATTACHMENT_DIR` named by the row's pid.
 A custom field (CRM-R41) is a row of `custom_field_defs` (entity, key, label, kind, choices, sensitivity); its values are rows of `custom_field_values` keyed by field and record pid, as text, sealed when the field is `sensitive`.
 An exchange rate (CRM-R50) is a row of `fx_rates`: a pair of currencies, a rate held as an integer number of billionths (no floating point), the day it takes effect, its source in words and who set it; one per pair and day. A report may use them to show deal sums in one currency; a rate holds no personal data.
-A report (CRM-R48) is a row of `reports`: a name and a specification (kind, grouping, measure, filters, dates), owned by one worker and optionally shared; it holds no record data.
+A report (CRM-R48) is a row of `reports`: a name and a specification (kind, grouping, measure, filters, dates), owned by one user (a `person:` URN, CRM-D18) and optionally shared; it holds no record data.
 A tag (CRM-R47) is a row of `tags` (a name, unique in any case); a `tagging` puts one on a contact, account, lead or deal. Tags are personal data when they are on a person: masked, exported and erased with the contact.
 A business calendar (CRM-R45) is a row of `business_calendars` (time zone, working windows per weekday, holidays); an SLA policy may name one (`calendar_pid`), and the deadlines it derives are then in working time.
 A lead (CRM-R44) may have an `owner_ref`, given by a `lead_created` workflow's `assign_owner` action, which keeps a counter (`assign_cursor`) for its round-robin.

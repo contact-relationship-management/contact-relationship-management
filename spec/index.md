@@ -30,8 +30,10 @@ workforce-planning-management shape): it does not register identities
 itself. A contact is a [person-service](../../person/person-service-with-loco/)
 record; an account is an
 [organization-service](../../organization/organization-service-with-loco/)
-record; a sales rep or support agent is a
-[worker-service](../../worker/worker-service-with-loco/) record. CRM
+record; a sales rep or support agent is a signed-in user, named by
+`person:` URN, the sign-in subject (CRM-D18), and the
+[worker service](../../worker/worker-service-with-loco/) supplies
+departments for teams and hire and leave events (CRM-R73, CRM-R92). CRM
 owns only the **relationship and its operational state**: leads,
 deals, activities, campaigns, consent, tickets, articles, SLAs —
 always referencing identities by `EntityRef` URN, never duplicating
@@ -42,7 +44,7 @@ them.
 | Subproject                                                                                                         | Role                           | Stack                                   |
 | ------------------------------------------------------------------------------------------------------------------ | ------------------------------ | --------------------------------------- |
 | [contact-relationship-management-service-with-rust](../contact-relationship-management-service-with-rust/)         | Back-end JSON API              | Rust, Loco (Axum + SeaORM), PostgreSQL  |
-| [contact-relationship-management-ui-with-svelte](../contact-relationship-management-ui-with-svelte/) | Sales / marketing / support UI | SvelteKit 2, Svelte 5 runes, TypeScript |
+| [contact-relationship-management-ui-with-svelte](../contact-relationship-management-ui-with-svelte/) | Sales / marketing / support UI | SvelteKit 3, Svelte 5 runes, TypeScript |
 
 ## Specification (topic files)
 

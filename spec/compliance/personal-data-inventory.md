@@ -73,9 +73,9 @@ history remain under a pid that no longer identifies anyone.
 | `contacts` | Person reference, display, given and family name, job title, owner, preferred channel, marketing consent, stakeholder role | Contacts | `swept` | Identity fields scrubbed to a tombstone and the row soft-deleted |
 | `custom_field_defs` | Labels the deployer chose; may be set to sensitive | — | `manual` | Not applicable |
 | `custom_field_values` | Whatever the deployer's fields hold, by subject | Contacts, accounts | `manual` | Values of the contact deleted |
-| `deal_clawbacks` | Worker reference, amount, reason, who set it | Reps | `manual` | Not applicable: a rep, not a contact |
+| `deal_clawbacks` | The seller's `person:` reference (CRM-D18), amount, reason, who set it | Reps | `manual` | Not applicable: a rep, not a contact |
 | `deal_deliveries` | Deal pid, the idea's id in PPM, who opened it | Reps | `manual` | Not applicable |
-| `deal_splits` | Worker references and shares | Reps | `manual` | Not applicable |
+| `deal_splits` | The sellers' `person:` references (CRM-D18) and shares | Reps | `manual` | Not applicable |
 | `deals` | Name (may name a customer), amount, owner reference, primary contact pid, lost reason (free text) | Contacts, reps | `swept` | Kept: revenue records, keyed to a pid that no longer identifies anyone |
 | `email_deliveries` | Contact pid, message id, provider id, send state and error text | Contacts | `aged` | Kept |
 | `email_events` | Message id and the provider event (delivered, bounced, opened, clicked) | Contacts, through the message id | `aged` | Kept |
@@ -100,7 +100,7 @@ history remain under a pid that no longer identifies anyone.
 | `partnerships` | Account pid, kind, stage, free-text summary | Organizations | `swept` | Not applicable |
 | `pipeline_stages` | None | — | `swept` | Not applicable |
 | `pipelines` | None | — | `swept` | Not applicable |
-| `quotas` | Worker reference, period, amount, plan | Reps | `manual` | Not applicable |
+| `quotas` | The seller's `person:` reference (CRM-D18), period, amount, plan | Reps | `manual` | Not applicable |
 | `record_imports` | Who imported, source note, the pids created | Reps; contacts, leads | `manual` | Not applicable |
 | `reports` | Owner reference, name, the report's definition | Reps | `manual` | Not applicable |
 | `saved_views` | Owner reference, name, filters | Reps | `manual` | Not applicable |
@@ -118,8 +118,8 @@ history remain under a pid that no longer identifies anyone.
 | `workflow_runs` | Workflow name, the record it ran on, the outcome and steps | Contacts, through the record | `manual` | Kept |
 | `workflows` | None (rules) | — | `manual` | Not applicable |
 | `working_group_members` | Group and contact pid | Contacts | `manual` | Rows of the contact deleted |
-| `wpm_events` | None: the worker service's event id, kind and what was done (CRM-R92) | — | `aged` | Not applicable |
 | `working_groups` | None (group name and purpose) | — | `swept` | Not applicable |
+| `wpm_events` | None: the worker service's event id, kind and what was done (CRM-R92) | — | `aged` | Not applicable |
 
 ## Not in the database
 

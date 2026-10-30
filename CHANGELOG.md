@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — the specification matches the code after CRM-T158 to CRM-T162 (maintenance, 2026-10-30)
+
+Checked against the code with grep and reads, not by running anything: reps and agents are `person:<sub>` users, not worker-service records (index, integrations, scope, the inventory and record of processing); the WPM bridges, their audit rows and the `contact_employments`, `employment_last_events` and `wpm_events` tables are in the architecture, audit and domain model; the service spec's layout (54 migrations, the rules modules, the two background workers) and the UI spec's delivery state are current; SvelteKit 3 and 8 locales; CRM-R73's page limit is 51, not 100. Every CRM-R, CRM-D and CRM-T id is defined once (R1 to R94, D1 to D18, T0 to T162).
+
+**Found not built, and now said so:** the stalled-deal flag of CRM-R4 (CRM-T6 was marked done with it) and the config-tunable scoring weights of CRM-R3 (only the defaults are used). Whether to build them or drop the claims is not decided. Not audited: `plan.md` (a dated 2026-10-10 assessment); requirement titles that still call sellers "workers" were left as they are.
+
 ### Changed — dependencies updated (maintenance, 2026-10-30)
 
 Rust: `cargo update` in the service (aws-lc-rs 1.19, jsonschema 0.60.2, wasm-bindgen 0.2.130 and other patch releases; the matcher's lockfile was already current) and the service's minimum versions raised to what is locked (tokio 1.54, uuid 1.29, entity-ref 0.2.1, redis 1.8.0). loco-rs stays 1.2.0 (the latest), so sea-orm stays on 2.0. UI: `pnpm update` (svelte 5.57.3, typescript-eslint 8.72.1, @types/node 26.6.6) and two exact-pinned Lily packages moved up (svelte-locale-translations 0.4.0, svelte-picker-bar 0.5.1). Actions: every pin was already the newest release at least a week old (the Dependabot cooldown); the rust-cache and install-action comments now name the exact release (v2.9.3, v2.87.30) instead of `v2`.

@@ -61,7 +61,9 @@ Tags (CRM-R47) audit under the entity `tag` (`created`, `renamed`, `deleted` wit
 
 Business calendars (CRM-R45) audit under the entity `business_calendar` (`created`, `updated`, `deleted`); a policy changing calendar audits as `sla_policy` `calendar_set`.
 
-A lead given an owner by a workflow audits as `lead` `assigned` (CRM-R44), by the actor `workflow:<pid>`, with the worker and the strategy.
+A lead given an owner by a workflow audits as `lead` `assigned` (CRM-R44), by the actor `workflow:<pid>`, with the chosen owner (a `person:` URN) and the strategy.
+
+The worker service bridges (CRM-R73, CRM-R92–R94) audit with `via: wpm`. A hire or leave event audits on each contact it changes as `contact` `employment_recorded` or `employment_ended`, with no actor, the organization, `effective_on`, `occurred_at` and the event id; an event that is `stale`, `duplicate`, `ignored` or `no_contact` writes no audit row (its outcome is kept in `wpm_events`). The employment check audits each contact it marks as `employment_recorded` with `source: employment_check` and the check's id, by the caller, and the check once as `bridge` `employment_checked` with the organization and counts only, never a reference. The teams import audits each team it sets as `team` `set` with the members and `via: wpm`, as a team set by hand is audited without `via`. Erasing a contact counts the employments and `employment_last_events` rows it deleted in the erasure's own audit row.
 
 Workflows (CRM-R40) audit under the entity `workflow`: `created`, `updated`, `deleted` (trigger and on/off, never the actions' text) and `dry_run` (counts). Each run audits as `workflow_run` with `fired`, `failed` or `blocked`, the workflow, the record and the step count, and the actor `workflow:<pid>` is the actor of every write the run makes.
 

@@ -83,7 +83,7 @@ Loco-idiomatic layout, forbid-unsafe + clippy-pedantic, OpenAPI +
 Swagger, `Accepts-version`, OTLP + `/metrics.prom`, Podman, input
 caps, `404` mapping at `find_by_pid` call sites, enforcement tests
 that scope the settings they change (the OnceLock lesson), ETag-conditional
-dashboards, 13-locale i18n in the front-end from the start (the
+dashboards, eight-locale i18n in the front-end from the start (the
 PPM lesson).
 
 ## CRM-D13 — Declared data is never inferred

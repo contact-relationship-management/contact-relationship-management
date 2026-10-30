@@ -44,8 +44,8 @@ is hot.*
   transition).
 - Score 0–100 recomputed on every lead change from the fixed rule
   table ([sales-automation.md](sales-automation.md)); the response
-  carries the per-rule breakdown; `hot`/`warm` labels at the
-  configured thresholds; the lead queue sorts by score.
+  carries the per-rule breakdown; `hot`/`warm` labels at fixed
+  thresholds (70 and 40; no setting changes them or the weights); the lead queue sorts by score.
 - Conversion creates/links the Contact and optionally opens a Deal
   in one transaction, emitting `lead_converted`.
 
@@ -62,7 +62,9 @@ truthfully.*
   reopen to the prior stage; concurrent reorders serialize (one
   winner).
 - Stalled flag derived at N days (config, default 14) without stage
-  move or activity.
+  move or activity. **Not built** (checked 2026-10-30): neither the
+  service nor the UI derives or shows it, and no setting holds N,
+  though CRM-T6 was marked done with it.
 
 ## CRM-R5 — Forecasting
 
@@ -1135,7 +1137,6 @@ recipient would get before anything is sent, and be certain every message carrie
 - The tickets page lists them under the selected ticket.
 - Not built: suggesting as a ticket is typed (there is no new-ticket form in the client); other languages or stemming; the ticket's description and replies (a ticket has only a title); learning which suggestions were used; suggestions on the public help centre.
 
-
 ## CRM-R67 — Teams and their quota roll-up
 
 *As a sales manager, I can group workers into teams and see a team's attainment, so that I can read how a team is doing without adding up each person by hand.*
@@ -1203,7 +1204,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a sales manager, I can have teams made from the worker service's departments, so that a team's roll-up (CRM-R67) follows who is employed where without my keeping both lists.*
 
-- `POST /api/bridges/wpm/teams-import` (no body) reads the **active** workers of the worker service (WPM) — `GET {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=200&offset=`, page by page, at most 100 pages — and sets **a team per department**, named for it, holding that department's workers **by `person_ref`** (`person:<uuid>`, the family's name for a person, as contacts, employments and WPM's events and overlap check use; CRM-D17), as `PUT /api/quotas/teams` would (CRM-R67). Only each worker's `pid` (to recognise a worker row; not kept), `department` and `person_ref` are read; WPM sends the **whole worker record**, its name, job and pay included unless WPM's policy masks them, and everything else is dropped unread (a gap on WPM's side, recorded in integrations.md).
+- `POST /api/bridges/wpm/teams-import` (no body) reads the **active** workers of the worker service (WPM) — `GET {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=200&offset=`, page by page, at most 51 pages (10,200 workers; WPM refuses an offset above 10,000) — and sets **a team per department**, named for it, holding that department's workers **by `person_ref`** (`person:<uuid>`, the family's name for a person, as contacts, employments and WPM's events and overlap check use; CRM-D17), as `PUT /api/quotas/teams` would (CRM-R67). Only each worker's `pid` (to recognise a worker row; not kept), `department` and `person_ref` are read; WPM sends the **whole worker record**, its name, job and pay included unless WPM's policy masks them, and everything else is dropped unread (a gap on WPM's side, recorded in integrations.md).
 - **All the teams are set together or none**; each is audited with `via: wpm`. Teams the import does not name are left as they are; **nothing is written to the worker service**. Running it again replaces the same teams.
 - Left out and reported in `skipped`, with the reason: a department of **more than 50** workers (a team's limit); a department that differs from another only in case. A worker whose `person_ref` is missing or not a `person:` URN joins no team and is counted in `without_person_ref`; it **never falls back to a `worker:` reference**. Active workers with a person and no department are counted in `without_department`. A person in a department twice (two employments) is one member.
 - **Teams set by an earlier import hold `worker:<pid>` members** (WPM worker ids, not person ids); the next import replaces the members of every team it names (CRM-D17). Migration 54 leaves the members of a team whose latest set was the import alone and rewrites those of a team set by hand to `person:` (CRM-D18).
@@ -1412,7 +1413,7 @@ recipient would get before anything is sent, and be certain every message carrie
 *As a marketer, I want a contact who joins the organization to stop getting campaigns, and to be back where they were when they leave, so that we do not market to our own staff and do not lose a customer who once worked here.*
 
 - The worker service (WPM) posts its hire and leave events to `POST /api/bridges/wpm/events` (WPM-R151, WPM-R207). The body is `{id, kind, occurred_at, subject, data?}`; for `worker_hired`, `worker_terminated` and `worker_retired`, `data` holds `person_ref` (a `person:` URN), `organization_ref` (an `organization:` URN) and `effective_on` (a date), with `from` and `to` beside them for the endings, which are not read. Nothing else is read, and no name arrives.
-- **No session; a signature.** The route is outside the session check and is authenticated by `x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>`, with the secret in `CRM_WPM_WEBHOOK_SECRET` (32 characters or more, its own setting: the provider secret does not open it). The MAC is compared in constant time; a `t` more than five minutes from now either way is refused. Missing, wrong or stale: `401`. While the secret is unset the route answers `404`, as the other signed routes do. A body over 16 KiB is `413`; one that is not an event (no `id` or `kind`) is `400`; a hire or leave whose `data` is there but malformed (a reference of the wrong kind, a date that is not `YYYY-MM-DD`) is `422`. WPM gives up on a `4xx`, so these are not retried.
+- **No session; a signature.** The route is outside the session check and is authenticated by `x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>`, with the secret in `CRM_WPM_WEBHOOK_SECRET` (32 characters or more, its own setting: the provider secret does not open it). The MAC is compared in constant time; a `t` more than five minutes from now either way is refused. Missing, wrong or stale: `401`. While the secret is unset the route answers `404`, as the other signed routes do. A body over 16 KiB is `413`; one that is not an event (no `id` or `kind`, or an `id` empty or over 100 characters) is `400`; a hire or leave whose `data` is there but malformed (a reference of the wrong kind, a date that is not `YYYY-MM-DD`) is `422`. WPM gives up on a `4xx`, so these are not retried.
 - **Once per event.** The `id` is kept with the kind and what it did (`wpm_events`); the same `id` again answers `200` `duplicate` and changes nothing, however it is signed. WPM retries for at most about two days; the ids are pruned by the event-log horizon (30 days, never below 7; CRM-R81).
 - **What a hire does.** Every live contact whose `person_ref` is the event's is marked an employee of `organization_ref` (`contact_employments`: contact, person reference, organization reference, `since` = `effective_on`, the event id; nothing more). A second hire for the same contact and organization keeps the first record (`already_paused`). A person the CRM has no contact for is `no_contact` and **nothing is kept about them**.
 - **What it means.** While a contact has an employment, **no segment matches them** (the evaluator leaves them out, as it leaves out a contact without consent: CRM-D6), a campaign skips them with the reason "an employee, by the worker service: marketing paused", and a nurture enrolment is **held**, not exited: its step stays due and goes when the pause lifts. Their consent is not touched.
@@ -1433,7 +1434,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - An applied event replaces the stamp even when it changes no contact (a leave for a contact who was not paused, `not_paused`, still records the leave, so a late hire before it is `stale`).
 - Two events for the same person and organization are judged one after the other (a transaction-scoped lock), so two arriving together cannot both read the old stamp.
 - **Only for contacts.** The stamp is written only when a live contact carries the person; an event for anyone else is `no_contact` and leaves nothing, as in CRM-R92.
-- **Seen and erased.** The subject-access export carries `employment_last_events` (organization, kind, `occurred_at`, `effective_on`); erasing the contact deletes the rows of its person reference and those of the duplicates merged into it (audited as `employment_last_events_deleted`). The retention sweep deletes a leave's row once older than the event-log horizon (30 days, never below 7; WPM has stopped retrying by then) and a hire's row once that old and no live contact carries the person.
+- **Seen and erased.** The subject-access export carries `employment_last_events` (organization, kind, `occurred_at`, `effective_on`); erasing the contact deletes the rows of its person reference and those of the duplicates merged into it (counted as `employment_last_events_deleted` in the erasure's audit row). The retention sweep deletes a leave's row once older than the event-log horizon (30 days, never below 7; WPM has stopped retrying by then) and a hire's row once that old and no live contact carries the person.
 - A duplicate event id is still `duplicate` before ordering is looked at.
 - Not built: ordering by anything WPM does not send (it has no per-employment sequence number); judging an event that arrives more than the horizon after a leave (by then the leave's stamp may be pruned, and WPM retries for about two days).
 

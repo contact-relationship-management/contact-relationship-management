@@ -19,10 +19,21 @@
   (`FOR UPDATE`, one winner); nurture scheduler idempotency (rerun
   ⇒ no double-send); unknown-pid 404s (family lesson, pinned from
   day one).
-- **Enforcement binary** (own process — the OnceLock lesson): the
-  persona matrix (rep `$sub` ownership vs other-rep refusal,
+- **Enforcement tests** (`tests/requests/enforcement.rs`; they once
+  ran in their own process for the OnceLock lesson, and now set the
+  settings for their own length through `tests/support/scoped_auth.rs`
+  and share the request-test process): the persona matrix (rep `$sub` ownership vs other-rep refusal,
   manager team scope, marketing pipeline read-only, support scope,
   `mask` obligation on amounts/forecast).
+- **Bridges** (CRM-R72, CRM-R73, CRM-R92–R94): request tests against
+  stand-in PPM and WPM servers and requests signed as WPM signs
+  (`tests/requests/bridges.rs`, `wpm_events.rs`,
+  `employment_check.rs`); none is run against a running PPM or WPM.
+- **Migrations with data**: `scripts/migrate-with-data.sh` (migration
+  17), `scripts/migrate-consent-purposes.sh` (migration 21) and
+  `scripts/migrate-person-refs.sh` (migration 54, CRM-D18) migrate a
+  populated database forward and check the rows; the last two also roll
+  it back and forward again.
 - **Front-end**: vitest for the API client path map, `money()`,
   score-breakdown + SLA-countdown components; Playwright over a
   `page.route`-stubbed API (contract-mirroring, unstubbed =
