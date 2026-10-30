@@ -17,11 +17,13 @@ console.log(
     "either correct (a product name, a code, a loan word) or not yet translated; a native " +
     "reviewer decides which. English itself is the source and is not listed.\n",
 );
-for (const code of codes.filter((c) => c !== "en-001")) {
+const others = codes.filter((c) => c !== "en-001");
+for (const code of others) {
   const table = (await import(new URL(`${code}.ts`, dir))).default;
   const same = Object.keys(en).filter((key) => table[key] === en[key]);
   console.log(`## ${code} (${same.length} of ${Object.keys(en).length})\n`);
   for (const key of same)
     console.log(`- \`${key}\`: ${JSON.stringify(en[key])}`);
-  console.log("");
+  // A blank line between sections, none after the last (Markdown lint, MD012).
+  if (code !== others.at(-1)) console.log("");
 }

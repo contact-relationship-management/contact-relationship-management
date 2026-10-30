@@ -259,7 +259,7 @@ async fn a_customer_reply_resumes_a_waiting_ticket_and_leaves_the_others_alone()
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
-async fn a_ticket_left_waiting_past_its_policys_limit_is_flagged_once_and_cleared_on_leaving() {
+async fn a_ticket_left_waiting_past_its_policy_limit_is_flagged_once_and_cleared_on_leaving() {
     request::<App, _, _>(|request, ctx| async move {
         // `normal` allows 60 minutes of waiting; `high` has no limit.
         for (priority, limit) in [("normal", json!(60)), ("high", Value::Null)] {
