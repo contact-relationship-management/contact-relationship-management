@@ -18,7 +18,7 @@ history in one place.*
 
 - Contact CRUD wrapping a required `person:` URN (shape-validated;
   display name best-effort); Account CRUD wrapping a required
-  `organization:` URN; ownership by `worker:` URN; soft delete.
+  `organization:` URN; ownership by a user's `person:` URN (the sign-in subject, CRM-D18); soft delete.
 - The detail read returns the merged relationship **timeline**
   (activities + deals + campaign touches + tickets, chronological).
 - A manual repoint endpoint updates a wrapper's URN after an
@@ -30,7 +30,7 @@ history in one place.*
 any relationship object.*
 
 - Activity CRUD attached to contact / account / lead / deal /
-  ticket; task kind carries `due_on` + `done`; actor is a `worker:`
+  ticket; task kind carries `due_on` + `done`; actor is a user's `person:`
   URN; feeds appear in timelines and dashboards.
 
 ## CRM-R3 — Leads & scoring
@@ -122,7 +122,7 @@ themselves.*
 
 *As a support agent I track customer issues from open to closed.*
 
-- Ticket CRUD with contact/account, priority, `worker:` assignment,
+- Ticket CRUD with contact/account, priority, assignment to a user (`person:`, CRM-D18),
   channel; lifecycle `open → pending → resolved → closed`, reopen
   `resolved → open` (pure core); the assignee's first outbound
   call/email activity stamps `first_responded_at`.
@@ -614,11 +614,11 @@ address, and that bots and strangers cannot fill the CRM or use it to spam someo
 I see in my inbox when a reminder is due or a ticket of mine breaches its SLA, and only
 for records I am allowed to see.*
 
-- **Tasks.** An activity of kind `task` may carry an `assignee_ref` (a `worker:` URN) and a
+- **Tasks.** An activity of kind `task` may carry an `assignee_ref` (a user's `person:` URN, CRM-D18) and a
   `remind_at` time, when created (`POST /api/activities`) and when edited
   (`PUT /api/activities/{pid}`, which also takes them). Other kinds refuse both with `422`.
   Changing `remind_at` makes the task eligible for a new reminder.
-- **Notifications.** A notification is a row for one recipient (`worker:` URN): its kind
+- **Notifications.** A notification is a row for one recipient (a user's `person:` URN): its kind
   (`task_reminder` or `sla_breach`), the record it is about (kind and pid), the activity or
   ticket that caused it, when it was made and when it was read. It carries no record text, so
   nothing in it can leak what the record says; the inbox shows the kind and links to the record.
@@ -632,7 +632,7 @@ for records I am allowed to see.*
   `remind_at` it was made for, so a second sweep, a second replica, or a retry makes nothing more.
 - **Access is checked twice.**
   1. *When the notification would be written*, the access policy is asked whether the recipient may
-     read the record, as a subject known only by the `worker:` id and with no token attributes (the
+     read the record, as a subject known only by the id in its `person:` reference and with no token attributes (the
      sweep has no token; attributes exist only on a request). A record that is gone, or that the policy
      denies to that subject, makes no notification and counts as `suppressed`. This fails closed: a policy that needs
      an attribute to allow a read suppresses reminders for people whose attributes the sweep cannot see.
@@ -640,7 +640,7 @@ for records I am allowed to see.*
      notification about a record the caller may not read, or that is gone, is left out (and not counted as unread).
 - **The inbox.** `GET /api/notifications` (own notifications, newest first, paged; `?unread=true`),
   `PUT /api/notifications/{pid}/read`, `POST /api/notifications/read-all`. A notification of another
-  recipient is `404`. With sign-in off there is no caller, so `recipient=worker:…` names whose inbox is read.
+  recipient is `404`. With sign-in off there is no caller, so `recipient=person:…` names whose inbox is read (`worker:…` is read as `person:…`, CRM-D18).
   Marking your own notifications read is open to any signed-in caller, since it changes only your inbox.
   The UI has an inbox page and an unread count beside its navigation entry, in all eight locales.
 - **Audit.** A sweep that made or suppressed anything writes `notifications_swept` (counts only);
@@ -875,7 +875,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a sales manager, I want each new lead given an owner by a rule I can read, so that no lead waits for someone to notice it, and I can see why a lead went to a worker.*
 
-- A lead has an optional `owner_ref` (a `worker:` URN). It is returned with the lead, and carries over to the contact when the lead is converted.
+- A lead has an optional `owner_ref` (a user's `person:` URN, CRM-D18). It is returned with the lead, and carries over to the contact when the lead is converted.
 - A workflow (CRM-R40) can have the trigger `lead_created`: a lead was captured by `POST /api/leads` or a web form (CRM-R31). A lead brought in by a list import (CRM-R34) starts no workflow, as imported contacts start none (CRM-R43).
 - **Conditions** on a `lead_created` workflow are the lead's `sources` (`web`, `referral`, `event`, `import`, `campaign`; empty means any). The contact clauses (status, channel, tier) and `sources` cannot be mixed up: a clause that cannot apply to the trigger is refused `422`.
 - **The action `assign_owner`** (for `lead_created` only; `set_field` and `enrol_nurture` are refused there, as they are about a contact) takes a `pool` of one to twenty distinct workers, a `strategy` and `notify`.
@@ -1054,9 +1054,10 @@ recipient would get before anything is sent, and be certain every message carrie
 
 - **Admin only.** `/api/commission-plans`, `/api/quotas` and `GET /api/quotas/attainment` are for admin and service callers with any method, reads included: what a person is paid is neither theirs to set nor everyone's to read. Every write and every attainment read is audited.
 - **Plans.** `PUT /api/commission-plans` sets the plan of that name (unique in any case), replacing its tiers; `GET` lists them by name with how many quotas use each; `DELETE` removes one, `409` while a quota is paid under it. Tiers are **marginal**, like tax bands: 1 to 8, the first starting at `0`, each starting above the one before (at most 1000% of the quota), each paying a rate in **basis points** (`500` is 5%, at most `10000`) on the revenue between its start and the next one's.
-- **Quotas.** `PUT /api/quotas` sets a worker's (`worker:<id>`) quota for a period (at most 366 days, the end inclusive) in one currency, as an amount in minor units above zero, with an optional plan. Setting the exact same period replaces it; a period that overlaps another of the same worker and currency is `422` naming the member. `GET /api/quotas?owner_ref=` lists latest period first; `DELETE` removes one.
+- **Quotas.** `PUT /api/quotas` sets a seller's quota for a period (at most 366 days, the end inclusive) in one currency, as an amount in minor units above zero, with an optional plan. The seller is named by `owner_ref`, a `person:<id>` URN whose id is their sign-in subject (CRM-D18), as deal owners are. Setting the exact same period replaces it; a period that overlaps another of the same worker and currency is `422` naming the member. `GET /api/quotas?owner_ref=` lists latest period first; `DELETE` removes one.
 - **Attainment.** `GET /api/quotas/attainment?owner_ref=&at=` gives, for each quota whose period contains `at` (today when absent), the worker's **won revenue in the quota's currency** from deals closed in the period, the deals counted, `revenue ÷ quota` as a ratio with both numbers, what remains (zero once met), the commission and each band's revenue and commission. **Other currencies are listed and never converted or added in.**
 - **Exact.** Tier thresholds are whole minor units of the quota (rounded down) so the bands tile with no gap and no overlap; commission is integer arithmetic, rounded half to even once per band.
+- **Who a seller is (CRM-D18).** Quotas, deal owners, splits, clawbacks, territories and teams name a seller by `person:<id>`; the CRM's own record of who acted (`set_by`, a view's or report's owner) is `person:<sign-in subject>`. `worker:<id>` is still accepted on input, everywhere a user is named and in the `owner_ref` filters, and is stored and answered as `person:<id>` with the same id; nothing answers `worker:`. A list naming one person in both forms names them twice (`422`). Migration 54 rewrote the stored `worker:<uuid>` references the same way.
 - The UI has `/quotas` (admin) with the standing, the quotas and the plans.
 - Not built: territories; team and manager roll-ups; quotas by product or pipeline; accelerators that reach back to earlier revenue; clawbacks; splitting a deal between workers (built in CRM-R65); a quota in one currency measured from another through the exchange rates.
 
@@ -1117,7 +1118,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a sales manager, I can credit a deal to more than one worker, so that quota attainment and commission follow who did the work and not only who owns the record.*
 
-- `PUT /api/quotas/splits/{pid}` (the deal's pid) with `shares`: from 1 to 8 workers (`worker:<id>`) named once, each from 1 to 10000 basis points, adding up to exactly 10000. It replaces any earlier split. Anything else is `422` naming `/shares`; an unknown or deleted deal is `404`. Audited.
+- `PUT /api/quotas/splits/{pid}` (the deal's pid) with `shares`: from 1 to 8 sellers (`person:<id>`, CRM-D18) named once, each from 1 to 10000 basis points, adding up to exactly 10000. It replaces any earlier split. Anything else is `422` naming `/shares`; an unknown or deleted deal is `404`. Audited.
 - `GET /api/quotas/splits/{pid}` gives the shares (none when the deal is credited wholly to its owner); `DELETE` removes the split (`404` when there is none) and the owner is credited again. All three are admin only, like the quotas (CRM-R59).
 - **Attainment** (`GET /api/quotas/attainment`): a won deal that is split is credited to each worker named, **not** to its owner unless they are named; one that is not split is credited to its owner as before. A worker's share of the amount is exact: each share gets the floor of its proportion and the leftover minor units go one each to the largest remainders, the earliest share first on a tie, so the shares always add up to the amount. Currencies are never converted. A split deal counts once in each named worker's `won_deals`.
 - Splits are not retroactive bookkeeping: they change today's reading of attainment for any period the deal closed in.
@@ -1139,7 +1140,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a sales manager, I can group workers into teams and see a team's attainment, so that I can read how a team is doing without adding up each person by hand.*
 
-- `PUT /api/quotas/teams` with `name` (up to 80 characters) and `members`: from 1 to 50 workers (`worker:<id>`) named once. A team of that name in any case is replaced, not duplicated. Anything else is `422` naming `/name` or `/members`. Audited.
+- `PUT /api/quotas/teams` with `name` (up to 80 characters) and `members`: from 1 to 50 people (`person:<id>`, the sign-in subject, as quota owners are; `worker:<id>` is read as `person:<id>`, CRM-D18) named once. A team of that name in any case is replaced, not duplicated. Anything else is `422` naming `/name` or `/members`. Audited.
 - `GET /api/quotas/teams` lists the teams by name; `DELETE /api/quotas/teams/{pid}` removes one (`404` when there is none) and leaves its workers' quotas alone. Admin only, like the quotas (CRM-R59).
 - `GET /api/quotas/team-attainment?at=` (today when absent) adds the members' standings (CRM-R59, with splits, CRM-R65) **per currency**: quotas, credited won revenue, won deals, attainment as a ratio, what remains, and how many workers have a quota in that currency. Members with no quota containing the day are listed in `without_quota`; their revenue in a currency the team has no quota in is listed in `other_currencies`. Currencies are never added together or converted. An audited read.
 - The `/quotas` page keeps teams and shows each team's roll-up.
@@ -1149,7 +1150,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a sales manager, I can name the accounts that make up a territory, so that I can see what has been won in each one.*
 
-- `PUT /api/quotas/territories` with `name` (up to 80 characters), an optional `owner_ref` (`worker:<id>`) and `accounts`: from 1 to 200 organizations (`organization:<id>`, the `organization_ref` an account carries) named once. A territory of that name in any case is replaced. An account is in **at most one territory**: naming one that is in another territory is `422` naming `/accounts` and that territory. Anything else is `422` naming `/name`, `/owner_ref` or `/accounts`. Audited.
+- `PUT /api/quotas/territories` with `name` (up to 80 characters), an optional `owner_ref` (`person:<id>`, CRM-D18) and `accounts`: from 1 to 200 organizations (`organization:<id>`, the `organization_ref` an account carries) named once. A territory of that name in any case is replaced. An account is in **at most one territory**: naming one that is in another territory is `422` naming `/accounts` and that territory. Anything else is `422` naming `/name`, `/owner_ref` or `/accounts`. Audited.
 - `GET /api/quotas/territories` lists them by name with their accounts; `DELETE /api/quotas/territories/{pid}` removes one (`404` when there is none) and frees its accounts. Admin only, like the quotas (CRM-R59).
 - `GET /api/quotas/territory-attainment?from=&to=` (the 90 days to today when absent; `422` if `from` is after `to` or the period is over 366 days) adds up the **won, live deals closed in the period** whose account's `organization_ref` is in the territory: revenue and deals **per currency**, never added or converted. A deal counts **whole** in the territory that holds its account, whoever it is credited to (splits, CRM-R65, do not apply). Revenue on accounts in no territory, and on deals with no account, is listed as `unassigned`. An audited read.
 - A territory has no quota of its own; it reports what was won.
@@ -1161,7 +1162,7 @@ recipient would get before anything is sent, and be certain every message carrie
 *As a support lead, I choose what the sweep does with a ticket left waiting past its limit, so that a ticket stopped on the customer is dealt with and not only flagged.*
 
 - `POST /api/sla-policies` takes an optional `wait_limit_action` beside `max_wait_minutes` (CRM-R64): `flag` (the default and the earlier behaviour), `resolve` or `escalate`. An action other than `flag` needs a `max_wait_minutes` to act on; anything else is `422` naming `/wait_limit_action`.
-- `escalate` also takes `escalate_to`, a worker (`worker:<id>`), required for it and refused with any other action (`422` naming `/escalate_to`). The sweep flags the ticket as in CRM-R64 and **reassigns it to that worker**; it stays `pending` and its clock stays stopped. Audited as `ticket_escalated` with `via: wait_limit`.
+- `escalate` also takes `escalate_to`, a user (`person:<id>`, CRM-D18), required for it and refused with any other action (`422` naming `/escalate_to`). The sweep flags the ticket as in CRM-R64 and **reassigns it to that worker**; it stays `pending` and its clock stays stopped. Audited as `ticket_escalated` with `via: wait_limit`.
 - `resolve` resolves the ticket as a status change from `pending` does (CRM-R55): the clock resumes, `resolved_at` is set, audited with `via: wait_limit`. A customer reply cannot reopen a resolved ticket (CRM-R63), but a status change to `open` can. It is **resolved, not closed**: `closed` is final and can only follow `resolved`, so an automatic step stops short of it and a person closes the ticket.
 - Each ticket is acted on **once**, as before. `POST /api/sla/sweep` counts them in `new_wait_limits_exceeded`, with `new_wait_limit_resolved` and `new_wait_limit_escalated` saying how many of those were resolved or reassigned. `ticket_wait_limit_exceeded` is emitted for each, with the `action` taken.
 - Not built: closing a ticket automatically (see CRM-R82 for closing one left resolved); escalating by raising its priority; a limit or an action on an existing policy (a policy is created with them); a warning before the limit; telling the customer.
@@ -1181,7 +1182,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a sales manager, I can take an amount back from what a worker is credited for a won deal (a refund, a cancellation), so that attainment and commission do not pay for revenue that was returned.*
 
-- `PUT /api/quotas/clawbacks/{pid}` (the deal's pid) with `owner_ref` (`worker:<id>`), `amount_minor` and an optional `reason` (up to 200 characters). The amount is above zero and **no more than that worker's credit for the deal** (their whole amount, or their share of a split, CRM-R65); the deal must be **won** and credit that worker. Otherwise `422` naming `/amount_minor` or `/owner_ref`; an unknown or deleted deal is `404`. A worker has at most one clawback per deal: setting another **replaces** it. Audited. It answers every clawback on the deal.
+- `PUT /api/quotas/clawbacks/{pid}` (the deal's pid) with `owner_ref` (`person:<id>`, CRM-D18), `amount_minor` and an optional `reason` (up to 200 characters). The amount is above zero and **no more than that worker's credit for the deal** (their whole amount, or their share of a split, CRM-R65); the deal must be **won** and credit that worker. Otherwise `422` naming `/amount_minor` or `/owner_ref`; an unknown or deleted deal is `404`. A worker has at most one clawback per deal: setting another **replaces** it. Audited. It answers every clawback on the deal.
 - `GET /api/quotas/clawbacks/{pid}` lists them (`404` for an unknown deal); `DELETE /api/quotas/clawbacks/{pid}?owner_ref=` gives the credit back (`404` when there is none). All three are admin only, like the quotas (CRM-R59).
 - **Attainment** (`GET /api/quotas/attainment`): the worker's credit for the deal is reduced by the clawback, never below zero, **for them alone**; other workers on a split keep theirs. A deal whose credit to a worker is clawed back whole no longer counts in that worker's `won_deals`. Currencies are never converted.
 - The deal itself, its amount and its other uses (forecast, win rate, CLV) are untouched: a clawback is about what a worker is credited with.
@@ -1205,12 +1206,12 @@ recipient would get before anything is sent, and be certain every message carrie
 - `POST /api/bridges/wpm/teams-import` (no body) reads the **active** workers of the worker service (WPM) — `GET {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=200&offset=`, page by page, at most 100 pages — and sets **a team per department**, named for it, holding that department's workers **by `person_ref`** (`person:<uuid>`, the family's name for a person, as contacts, employments and WPM's events and overlap check use; CRM-D17), as `PUT /api/quotas/teams` would (CRM-R67). Only each worker's `pid` (to recognise a worker row; not kept), `department` and `person_ref` are read; WPM sends the **whole worker record**, its name, job and pay included unless WPM's policy masks them, and everything else is dropped unread (a gap on WPM's side, recorded in integrations.md).
 - **All the teams are set together or none**; each is audited with `via: wpm`. Teams the import does not name are left as they are; **nothing is written to the worker service**. Running it again replaces the same teams.
 - Left out and reported in `skipped`, with the reason: a department of **more than 50** workers (a team's limit); a department that differs from another only in case. A worker whose `person_ref` is missing or not a `person:` URN joins no team and is counted in `without_person_ref`; it **never falls back to a `worker:` reference**. Active workers with a person and no department are counted in `without_department`. A person in a department twice (two employments) is one member.
-- **Teams set by an earlier import hold `worker:<pid>` members**; the next import replaces the members of every team it names, and nothing is migrated (CRM-D17). A team the import no longer names, or one set by hand, keeps what it holds.
-- **A team's roll-up (CRM-R67) matches its members against quota owners, which are `worker:` references**, so an imported team's members are listed in `without_quota` until the CRM can tell which worker reference a person is; that mapping is not built. An imported team cannot be saved again through `PUT /api/quotas/teams` as it stands, which takes `worker:` members only.
+- **Teams set by an earlier import hold `worker:<pid>` members** (WPM worker ids, not person ids); the next import replaces the members of every team it names (CRM-D17). Migration 54 leaves the members of a team whose latest set was the import alone and rewrites those of a team set by hand to `person:` (CRM-D18).
+- **A team's roll-up (CRM-R67) meets the quotas of the same people** (CRM-D18): quota and deal owners are `person:<sign-in subject>`, WPM matches a sign-in subject as `person:<sub>`, so an imported member and the quota of the person who signs in as them are the same reference. An imported team can be saved again through `PUT /api/quotas/teams` as it is.
 - `502` when the worker service cannot be reached or answers something that is not a list. **Stub-first** and admin only, as CRM-R72: without `CRM_UPSTREAM_MODE=http` nothing is read and the answer is `mode: stub` with no teams.
 - WPM's contract (`GET /api/workers`) was read from its source and checked against it again on 2026-10-28, and on 2026-10-30 for `person_ref` (a bare JSON array of whole worker records ordered by id, with `pid`, `department` and `person_ref` members, `status=active` a real status, a page of at most 500, an offset of at most 10,000, so at most 51 pages of 200 are read); it is exercised against a stand-in, not a running WPM. A bearer token is sent when `CRM_WORKER_SERVICE_TOKEN` is set (CRM-R87); WPM filters the list by the caller's organizations when it has authentication on, so the import sees the workers that token may see, not necessarily all.
 - The `/quotas` page has a button to run it and says how many teams were set.
-- Not built: teams by manager and reports; removing a team when its department disappears; importing on a schedule; any other worker fields; a mapping from a person to the `worker:` reference quotas and deals are owned by; asking WPM for fewer fields.
+- Not built: teams by manager and reports; removing a team when its department disappears; importing on a schedule; any other worker fields; asking WPM for fewer fields. (A mapping from a person to a `worker:` reference is no longer needed: CRM-D18.)
 
 ## CRM-R74 — A personal-data inventory, a retention schedule, a DPIA and a record of processing
 

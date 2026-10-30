@@ -50,7 +50,7 @@
   let planPid = $state("");
   let error = $state<string | null>(null);
 
-  // Splitting a won deal between workers (CRM-R65): one "worker:percent" per line, adding up to 100.
+  // Splitting a won deal between workers (CRM-R65): one "person:percent" per line (a `person:` reference, CRM-D18), adding up to 100.
   let splitDeal = $state("");
   let splitShares = $state("");
   const wonDeals = resource(async () => (await listDeals()).filter((d) => d.won));

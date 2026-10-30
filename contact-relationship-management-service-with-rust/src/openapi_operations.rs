@@ -827,7 +827,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "put",
         "/api/quotas/territories",
         "insights",
-        "Set the territory of that name (any case), replacing its accounts and worker: from 1 to 200 organizations named once, each in at most one territory, else 422 naming /name, /owner_ref or /accounts; a write, audited. Admin only",
+        "Set the territory of that name (any case), replacing its accounts and owner: from 1 to 200 organizations named once, each in at most one territory, else 422 naming /name, /owner_ref or /accounts; a write, audited. Admin only",
         Kind::Ok,
     ),
     (

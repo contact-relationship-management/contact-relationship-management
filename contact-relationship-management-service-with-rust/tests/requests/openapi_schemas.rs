@@ -7,7 +7,7 @@ use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_person, a_worker, seed_contact, seed_pipeline};
+use super::{a_person, a_user, seed_contact, seed_pipeline};
 
 #[path = "../support/schema_check.rs"]
 pub(super) mod schema_check;
@@ -59,7 +59,7 @@ async fn responses_match_the_documented_schemas() {
                 "ActivityPayload",
                 json!({
                 "subject_kind": "contact", "subject_pid": contact_pid,
-                "kind": "note", "summary": "Schema note", "actor_ref": a_worker() }),
+                "kind": "note", "summary": "Schema note", "actor_ref": a_user() }),
             ),
             (
                 "/api/sla-policies",
@@ -201,7 +201,7 @@ async fn read_responses_match_the_documented_schemas() {
             .json(
                 &json!({ "subject_kind": "contact", "subject_pid": contact_pid,
                 "kind": "task", "summary": "Call back", "due_on": "2000-01-01",
-                "sentiment": "positive", "actor_ref": a_worker() }),
+                "sentiment": "positive", "actor_ref": a_user() }),
             )
             .await
             .assert_status_ok();
@@ -214,7 +214,7 @@ async fn read_responses_match_the_documented_schemas() {
         let ticket: Value = request
             .post("/api/tickets")
             .json(&json!({ "title": "Schema ticket", "priority": "high",
-                "contact_pid": contact_pid, "assignee_ref": a_worker() }))
+                "contact_pid": contact_pid, "assignee_ref": a_user() }))
             .await
             .json();
         let ticket_pid = ticket["pid"].as_str().unwrap().to_string();

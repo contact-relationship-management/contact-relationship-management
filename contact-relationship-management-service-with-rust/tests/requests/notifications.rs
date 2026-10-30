@@ -8,7 +8,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_worker, seed_contact};
+use super::{a_user, seed_contact};
 
 async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
     db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
@@ -60,7 +60,7 @@ macro_rules! inbox {
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_recipient_only() {
     request::<App, _, _>(|request, ctx| async move {
-        let (me, other) = (a_worker(), a_worker());
+        let (me, other) = (a_user(), a_user());
         let contact = seed_contact!(&request, "Reminded").await;
 
         // Not yet due, not a task, and finished tasks make nothing.
@@ -164,7 +164,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_gone_record_is_suppressed_an_sla_breach_notifies_the_assignee_and_erasure_clears_them() {
     request::<App, _, _>(|request, ctx| async move {
-        let me = a_worker();
+        let me = a_user();
         let gone = seed_contact!(&request, "Soon gone").await;
         let kept = seed_contact!(&request, "Kept").await;
         task!(request, gone, me, an_hour_ago());

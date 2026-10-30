@@ -9,7 +9,7 @@ use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_person, a_worker, seed_pipeline};
+use super::{a_person, a_user, seed_pipeline};
 
 #[tokio::test]
 #[serial]
@@ -91,7 +91,7 @@ async fn engagement_round_trip() {
             .json(
                 &json!({ "subject_kind": "contact", "subject_pid": contact_pid,
                             "kind": "meeting", "summary": "Kickoff",
-                            "actor_ref": a_worker(), "sentiment": "positive" }),
+                            "actor_ref": a_user(), "sentiment": "positive" }),
             )
             .await
             .assert_status_ok();

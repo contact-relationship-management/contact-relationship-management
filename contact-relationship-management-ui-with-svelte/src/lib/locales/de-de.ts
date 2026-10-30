@@ -757,7 +757,7 @@ export default {
   "quota.splitDeal": "Deal",
   "quota.splitShares": "Mitarbeitende und Anteile",
   "quota.splitHint":
-    "Pro Zeile eine Person und ein Prozentsatz, etwa worker:ada:60; zusammen 100. Der Betrag wird bis auf die kleinste Einheit verteilt.",
+    "Pro Zeile eine Person und ein Prozentsatz, etwa person:ada:60; zusammen 100. Der Betrag wird bis auf die kleinste Einheit verteilt.",
   "quota.splitSet": "Aufteilen",
   "quota.splitRemove": "Nur dem Eigentümer gutschreiben",
   "ticket.suggested": "Artikel, die helfen könnten",

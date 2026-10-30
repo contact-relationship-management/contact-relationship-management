@@ -35,7 +35,7 @@ impl Task for Seed {
             let account = accounts::ActiveModel {
                 pid: ActiveValue::set(Uuid::new_v4()),
                 organization_ref: ActiveValue::set(format!("organization:{}", Uuid::new_v4())),
-                owner_ref: ActiveValue::set(Some(format!("worker:{}", Uuid::new_v4()))),
+                owner_ref: ActiveValue::set(Some(format!("person:{}", Uuid::new_v4()))),
                 display_name: ActiveValue::set(format!("Demo Account {:02}", index + 1)),
                 tier: ActiveValue::set((*tier).to_string()),
                 industry: ActiveValue::set(Some("technology".to_string())),
@@ -109,7 +109,7 @@ impl Task for Seed {
                 pid: ActiveValue::set(Uuid::new_v4()),
                 account_pid: ActiveValue::set(Some(account_pids[i % account_pids.len()])),
                 primary_contact_pid: ActiveValue::set(None),
-                owner_ref: ActiveValue::set(Some(format!("worker:{}", Uuid::new_v4()))),
+                owner_ref: ActiveValue::set(Some(format!("person:{}", Uuid::new_v4()))),
                 pipeline_pid: ActiveValue::set(pipeline.pid),
                 stage_pid: ActiveValue::set(stage_pids[stage_index]),
                 name: ActiveValue::set(format!("Demo Deal {:02}", i + 1)),

@@ -7,7 +7,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::a_worker;
+use super::a_user;
 
 async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
     db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
@@ -54,7 +54,7 @@ fn assigning(name: &str, pool: &[&str], strategy: &str, conditions: Value) -> Va
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn leads_are_given_out_in_turn_and_the_worker_is_told() {
     request::<App, _, _>(|request, ctx| async move {
-        let (a, b) = (a_worker(), a_worker());
+        let (a, b) = (a_user(), a_user());
         let wf = workflow!(
             &request,
             assigning("Round robin", &[&a, &b], "round_robin", json!({}))
@@ -105,7 +105,7 @@ async fn leads_are_given_out_in_turn_and_the_worker_is_told() {
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn the_least_loaded_worker_gets_the_next_lead() {
     request::<App, _, _>(|request, _ctx| async move {
-        let (a, b) = (a_worker(), a_worker());
+        let (a, b) = (a_user(), a_user());
         workflow!(
             &request,
             assigning("By load", &[&a, &b], "least_open", json!({}))
@@ -126,7 +126,7 @@ async fn the_least_loaded_worker_gets_the_next_lead() {
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn only_leads_that_meet_the_conditions_are_assigned_and_imports_are_not() {
     request::<App, _, _>(|request, _ctx| async move {
-        let a = a_worker();
+        let a = a_user();
         workflow!(
             &request,
             assigning(
@@ -166,7 +166,7 @@ async fn only_leads_that_meet_the_conditions_are_assigned_and_imports_are_not() 
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_lead_workflow_is_refused_where_it_cannot_apply_and_a_dry_run_shows_the_turn() {
     request::<App, _, _>(|request, _ctx| async move {
-        let a = a_worker();
+        let a = a_user();
         for body in [
             // assign_owner on a contact trigger; a contact clause on a lead trigger; a source on a
             // contact trigger; a contact-only action on a lead trigger; a pool that is not workers.
@@ -189,7 +189,7 @@ async fn a_lead_workflow_is_refused_where_it_cannot_apply_and_a_dry_run_shows_th
 
         // Leads that exist before the workflow do; the dry run shows who would get the next one.
         let waiting = lead!(&request, "Waiting Lead", "web");
-        let b = a_worker();
+        let b = a_user();
         let wf = workflow!(&request, assigning("Dry", &[&a, &b], "round_robin", json!({})));
         let result: Value = request
             .post(&format!("/api/workflows/{wf}/dry-run"))

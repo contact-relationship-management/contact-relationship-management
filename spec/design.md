@@ -5,7 +5,8 @@ Numbered, stable; tasks ([tasks.md](tasks.md)) trace to them.
 ## CRM-D1 — Consumer application, identities by URN
 
 Contacts wrap `person:` records, accounts wrap `organization:`
-records, reps/agents are `worker:` URNs. CRM owns relationship
+records, reps/agents are `person:` URNs, the sign-in subject (CRM-D18; they
+were `worker:` URNs before). CRM owns relationship
 state only; dedup/merge of identities stays upstream, and wrappers
 repoint (manual v1, event-driven roadmap) after upstream merges.
 
@@ -201,7 +202,8 @@ roll-up (CRM-R67) cannot match an imported team's `person:` members to any quota
 `without_quota`. Whether the old `worker:<wpm pid>` members ever matched depended on the CRM's sign-in
 subject being WPM's worker id, which nothing guaranteed. The mapping from a person to the worker
 reference that owns deals is not built, and `PUT /api/quotas/teams` still takes `worker:` members
-only, so an imported team cannot be re-saved by hand.
+only, so an imported team cannot be re-saved by hand. *(Resolved by CRM-D18: the CRM's users are
+`person:` references, so quotas and imported members now meet.)*
 
 **What WPM sends is more than is read.** `GET /api/workers` answers whole worker records (name, job,
 manager, pay unless WPM's policy applies its `mask` obligation) to the import's token, and does not
@@ -209,3 +211,56 @@ audit a salary-bearing list as it audits a single read. The CRM keeps `departmen
 and reads `pid` only to recognise a row; the rest is dropped unread. Narrowing the answer is WPM's to
 decide (a field list or a bridge route), recorded for WPM's owner in the integrations table; WPM is
 not changed here.
+
+## CRM-D18 — A CRM user is named by `person:` URN, the sign-in subject; `worker:` is read as `person:` for now
+
+The CRM named its own users (owners, assignees, quota holders, team members, the recipient of a
+notification, whoever set something) `worker:<id>`, and wrote the signed-in caller as
+`worker:<sub>` (`owner_of`). **The family's sign-in subject is a person id**, and was checked in all
+three apps before this change:
+
+- The shared design (`agents/share/authentication-sessions.md` §5) says only that `sub` is the
+  authentication service's *user pid*; it does not say which entity that pid is.
+- **WPM** treats it as a person id everywhere: `/api/me` finds the caller's worker by
+  `person_ref = person:<sub>` (`controllers/me.rs`), organization memberships are keyed
+  `person:<sub>` (`models/memberships.rs`), as are organizations, expenses and announcements, and
+  its self rules are `resource.person = $sub` where `resource.person` is the bare id of a worker's
+  `person_ref` (`auth.rs`, WPM `spec/auth.md`, WPM-R8). A WPM worker pid is a separate id
+  (`tasks/seed.rs` gives each worker a `pid` and a different `person_ref`).
+- **PPM** addresses a `sub` as `person:<sub>` (`discussion.rs`, `sub_as_recipient`) and treats
+  `person:<id>` and `worker:<id>` with the same id as one person (`subjects.rs`, `approvals.rs`).
+- **The CRM** compared a deal's owner with `$sub` by the bare id (`auth/records.rs`), so for
+  ownership to work at all, `worker:<id>` had to carry the sign-in subject, a person id.
+
+So `worker:<sub>` was `person:<sub>` under the wrong prefix, and it could never meet what the WPM
+teams import stores (`person_ref`, CRM-D17). **Every field that names a CRM user now holds
+`person:<id>`** (contacts', accounts', leads', deals' and territories' owners; activities' actor
+and assignee; tickets' assignee and an SLA policy's `escalate_to`; notification recipients; quota,
+split and clawback holders; team members; workflow assignees, recipients and owner pools; `set_by`,
+a saved view's and a report's owner, `opened_by`), and `owner_of` gives `person:<sub>`
+(`rules::user_ref`).
+
+**`worker:<id>` is accepted on input and stored as `person:<id>`, the same id**, in every body and
+`owner_ref` filter that names a user, for a deprecation period. Answers only ever say `person:`.
+Accepting is faithful because in the CRM's API `worker:<id>` always meant the sign-in subject (the
+ownership check read it so), and it matches PPM, which takes both forms as one person. Rejected:
+refusing `worker:` with a `422` (it would break every client and stored workflow at once for a
+spelling); keeping `worker:` and mapping a person to a worker (CRM-D17's open gap: it needs a WPM
+call per person, and the id is the same anyway). A client sending a real WPM worker pid as
+`worker:<pid>` gets `person:<pid>`, which names nobody, exactly as it named nobody before. **When
+the alias is removed is not decided**; no `Deprecation` header is sent.
+
+**Stored data is rewritten by migration 54** in the columns above and in the user references
+inside workflow actions (only `assignee_ref`, `recipient_ref`, `pool` and a `set_field` of
+`owner_ref`; a task summary that happens to read `worker:…` is text and stays). **Teams:** the
+members of a team whose latest `set` audit says `via: wpm` are left alone, because an import before
+CRM-T161 stored `worker:<WPM worker pid>`, which is not a person id (the next import replaces them,
+CRM-D17); a team set by hand is rewritten, because its `worker:` members were validated against the
+same sign-in-subject convention. **Not rewritten:** history (the hash-chained audit log, the outbox,
+workflow run logs, stored idempotent answers) and WPM's own `worker:` event subjects, which do name
+WPM workers. A row whose rewrite would collide with an existing `person:` row on a unique key is
+left (none can come from the API). `updated_at` does not move: the reference is spelt differently,
+nobody edited the record. `down` reverses it except for the import's `person_ref` members.
+
+**A side effect:** the `{{rep_name}}` email-template value now asks the person service for the
+owner's name (it asked the worker service for `/api/workers/<sub>`, which is not a worker id).

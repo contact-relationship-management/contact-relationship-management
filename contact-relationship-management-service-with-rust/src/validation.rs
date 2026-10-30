@@ -125,6 +125,21 @@ impl Problems {
         }
     }
 
+    /// `field` must name a CRM user (a rep, an agent, a manager): a well-formed `person:` URN, the
+    /// sign-in subject (CRM-D18). The caller passes the value through
+    /// [`crate::rules::user_ref::normalise`] first, so a legacy `worker:<id>` arrives here as
+    /// `person:<id>`.
+    pub fn require_user(&mut self, field: &str, value: &str) {
+        self.require_ref(field, EntityType::Person, value);
+    }
+
+    /// Optional variant of [`Self::require_user`].
+    pub fn user_opt(&mut self, field: &str, value: Option<&str>) {
+        if let Some(v) = value {
+            self.require_user(field, v);
+        }
+    }
+
     /// A string list must respect the array and per-item caps, with no
     /// blank entries.
     pub fn cap_list(&mut self, field: &str, values: &[String]) {
@@ -219,11 +234,33 @@ mod tests {
         assert_eq!(p.into_vec().len(), 3);
     }
 
+    /// CRM-D18: a CRM user is a `person:` URN; a legacy `worker:` one is refused here unless the
+    /// caller normalised it first, which is what every controller does.
+    #[test]
+    fn a_user_is_a_person_reference_and_worker_is_accepted_only_once_normalised() {
+        let id = uuid::Uuid::new_v4();
+        let mut p = Problems::new();
+        p.require_user("owner_ref", &format!("person:{id}"));
+        p.user_opt("owner_ref", None);
+        p.require_user(
+            "owner_ref",
+            &crate::rules::user_ref::normalise(&format!("worker:{id}")),
+        );
+        assert!(p.into_vec().is_empty());
+        let mut p = Problems::new();
+        p.require_user("owner_ref", &format!("worker:{id}"));
+        p.require_user("owner_ref", &format!("organization:{id}"));
+        p.user_opt("owner_ref", Some("person:nope"));
+        let v = p.into_problems();
+        assert_eq!(v.len(), 3);
+        assert!(v.iter().all(|f| f.pointer.as_deref() == Some("/owner_ref")));
+        assert!(v[0].detail.contains("must reference a Person"), "{v:?}");
+    }
+
     /// CRM-T25: `require_ref` exercises the wrong-type branch for
-    /// `Worker` and `Organization` too, not just `Person` — the
-    /// controllers pass all three (`sales.rs`, `support.rs`,
-    /// `relationships.rs`), but this module's own tests previously only
-    /// ever checked `Person`.
+    /// `Worker` and `Organization` too, not just `Person`. (The
+    /// controllers no longer pass `Worker`: a CRM user is a `person:`
+    /// URN since CRM-D18, checked by `require_user`.)
     #[test]
     fn ref_rules_wrong_type_worker_and_organization() {
         // Worker: a well-formed ref of the *wrong* type is rejected...

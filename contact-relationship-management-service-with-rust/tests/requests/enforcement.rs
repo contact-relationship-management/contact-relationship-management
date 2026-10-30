@@ -206,7 +206,7 @@ async fn enforcement_gates_the_real_stack() {
         // the outcome, not just the default policy shape.
         let owner_sub = uuid::Uuid::new_v4();
         let owner = sign_as(&kid, &owner_sub.to_string(), &[]);
-        let owner_ref = format!("worker:{owner_sub}");
+        let owner_ref = format!("person:{owner_sub}");
 
         // A contact owned by `owner_sub`: the owner sees the real
         // `preferred_channel`; the stranger sees it masked.
@@ -633,7 +633,7 @@ async fn mcp_tool_calls_are_decided_as_the_caller() {
             .json(&json!({
                 "person_ref": format!("person:{}", uuid::Uuid::new_v4()),
                 "display_name": "Mcp Owned",
-                "owner_ref": format!("worker:{owner_sub}"),
+                "owner_ref": format!("person:{owner_sub}"),
                 "preferred_channel": "phone",
             }))
             .await
@@ -778,7 +778,7 @@ async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_rea
                 .add_header("authorization", bearer(&writer))
                 .json(&json!({
                     "subject_kind": "contact", "subject_pid": pid, "kind": "task",
-                    "summary": "Follow up", "assignee_ref": format!("worker:{assignee_sub}"),
+                    "summary": "Follow up", "assignee_ref": format!("person:{assignee_sub}"),
                     "remind_at": remind,
                 }))
                 .await
@@ -1799,7 +1799,7 @@ async fn no_read_a_masked_caller_may_make_returns_the_seeded_amount() {
             .json();
         request
             .put("/api/quotas")
-            .json(&json!({ "owner_ref": "worker:00000000-0000-0000-0000-0000000000aa",
+            .json(&json!({ "owner_ref": "person:00000000-0000-0000-0000-0000000000aa",
                            "period_from": "2026-01-01", "period_to": "2026-12-31",
                            "currency": "GBP", "amount_minor": MARKER, "plan_pid": plan["pid"] }))
             .await
@@ -1903,7 +1903,7 @@ async fn quotas_and_commission_plans_are_for_admin_and_service_callers_only() {
         let call = |method: &'static str, path: &'static str, token: String| {
             let request = &request;
             async move {
-                let body = json!({ "owner_ref": "worker:00000000-0000-0000-0000-000000000009",
+                let body = json!({ "owner_ref": "person:00000000-0000-0000-0000-000000000009",
                                    "period_from": "2026-01-01", "period_to": "2026-03-31",
                                    "currency": "GBP", "amount_minor": 1 });
                 let plan = json!({ "name": "P", "tiers": [{ "from_percent": 0, "rate_bps": 1 }] });

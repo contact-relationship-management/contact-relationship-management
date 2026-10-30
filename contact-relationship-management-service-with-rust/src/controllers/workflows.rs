@@ -116,6 +116,13 @@ fn view(row: &sea_orm::QueryResult) -> Result<WorkflowView> {
     })
 }
 
+/// The user references in the actions as the CRM stores them (CRM-D18).
+fn normalise(payload: &mut WorkflowPayload) {
+    for action in &mut payload.actions {
+        action.normalise_user_refs();
+    }
+}
+
 async fn validate<C: ConnectionTrait>(db: &C, payload: &WorkflowPayload) -> Result<()> {
     let mut problems = Problems::new();
     problems.require_text("name", &payload.name);
@@ -129,9 +136,7 @@ async fn validate<C: ConnectionTrait>(db: &C, payload: &WorkflowPayload) -> Resu
     }
     for (i, action) in payload.actions.iter().enumerate() {
         let at = format!("actions[{i}]");
-        let worker = |p: &mut Problems, value: Option<&str>| {
-            p.ref_opt(&at, entity_ref::EntityType::Worker, value);
-        };
+        let worker = |p: &mut Problems, value: Option<&str>| p.user_opt(&at, value);
         match action {
             Action::CreateTask { assignee_ref, .. } => {
                 worker(&mut problems, assignee_ref.as_deref());
@@ -204,8 +209,9 @@ async fn show(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Re
 async fn create(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<WorkflowPayload>,
+    Json(mut payload): Json<WorkflowPayload>,
 ) -> Result<Response> {
+    normalise(&mut payload);
     validate(&ctx.db, &payload).await?;
     let pid = Uuid::new_v4();
     let mut values = vec![pid.into()];
@@ -243,8 +249,9 @@ async fn replace(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(payload): Json<WorkflowPayload>,
+    Json(mut payload): Json<WorkflowPayload>,
 ) -> Result<Response> {
+    normalise(&mut payload);
     validate(&ctx.db, &payload).await?;
     let mut values = vec![pid.into()];
     values.extend(binds(&payload));

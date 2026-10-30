@@ -210,6 +210,14 @@ interface State {
 
 const PIPELINE = { pid: "pipe-1", name: "New business" };
 
+/** A CRM user reference as the service stores it: `worker:<id>` becomes `person:<id>` (CRM-D18). */
+export function userRef(value: string): string {
+  const v = value.trim();
+  return v.startsWith("worker:")
+    ? `person:${v.slice("worker:".length)}`
+    : value;
+}
+
 function build(): State {
   const accounts: Account[] = [
     ["acc-1", "Brightwater Energy", "strategic", "Energy"],
@@ -839,7 +847,7 @@ function build(): State {
     reports: [
       {
         pid: "rep-1",
-        owner_ref: "worker:demo",
+        owner_ref: "person:demo",
         mine: true,
         name: "Leads by source",
         spec: {
@@ -860,7 +868,7 @@ function build(): State {
           content_type: "application/pdf",
           size_bytes: 48213,
           sha256: "0".repeat(64),
-          uploaded_by: "worker:demo",
+          uploaded_by: "person:demo",
           created_at: "2026-10-25T09:00:00Z",
         },
       ],
@@ -907,7 +915,7 @@ function build(): State {
     views: [
       {
         pid: "view-1",
-        owner_ref: "worker:demo",
+        owner_ref: "person:demo",
         mine: false,
         kind: "ticket",
         name: "Urgent and open",
@@ -952,7 +960,7 @@ function build(): State {
           { from_percent: 100, rate_bps: 800 },
         ],
         quotas: 2,
-        set_by: "worker:demo",
+        set_by: "person:demo",
       },
     ],
     splits: {},
@@ -968,7 +976,7 @@ function build(): State {
         currency: "GBP",
         amount_minor: 5_000_000,
         plan_pid: "plan-1",
-        set_by: "worker:demo",
+        set_by: "person:demo",
       },
       {
         pid: "quota-2",
@@ -978,7 +986,7 @@ function build(): State {
         currency: "GBP",
         amount_minor: 10_000_000,
         plan_pid: "plan-1",
-        set_by: "worker:demo",
+        set_by: "person:demo",
       },
     ],
     kb: {
@@ -2378,7 +2386,7 @@ export function demoHandle(
       if (!input.name?.trim()) return problem(422, "name is required");
       const made: SavedView = {
         pid: `view-${state.views.length + 1}-${Date.now()}`,
-        owner_ref: "worker:demo",
+        owner_ref: "person:demo",
         mine: true,
         kind: input.kind ?? "contact",
         name: input.name.trim(),
@@ -3142,7 +3150,7 @@ function fxRate(
     rate,
     effective_on: day(daysAgo),
     source: "Tour sample rate",
-    set_by: "worker:demo",
+    set_by: "person:demo",
   };
 }
 
@@ -3193,7 +3201,7 @@ function fxRates(method: string, id: string | undefined, body: unknown) {
       rate,
       effective_on: input.effective_on,
       source,
-      set_by: "worker:demo",
+      set_by: "person:demo",
     };
     if (at >= 0) state.fxRates[at] = made;
     else state.fxRates.push(made);
@@ -3351,7 +3359,7 @@ function commissionPlans(
       name,
       tiers,
       quotas: 0,
-      set_by: "worker:demo",
+      set_by: "person:demo",
     };
     state.plans.push(made);
     return ok(made);
@@ -3687,7 +3695,7 @@ function dealSplits(
   }
   const shares = (
     (body ?? {}) as { shares?: { owner_ref: string; share_bps: number }[] }
-  ).shares;
+  ).shares?.map((s) => ({ ...s, owner_ref: userRef(s.owner_ref) }));
   if (
     !shares ||
     shares.length < 1 ||
@@ -3738,6 +3746,7 @@ function clawbackRoutes(
     amount_minor?: number;
     reason?: string | null;
   };
+  if (input.owner_ref) input.owner_ref = userRef(input.owner_ref);
   const amount = input.amount_minor ?? 0;
   if (!input.owner_ref || !(Number.isInteger(amount) && amount >= 1))
     return problem(422, "/amount_minor: above zero");
@@ -3756,7 +3765,7 @@ function clawbackRoutes(
     owner_ref: input.owner_ref,
     amount_minor: amount,
     reason: input.reason?.trim() || null,
-    set_by: "worker:demo",
+    set_by: "person:demo",
   };
   const at = list.findIndex((c) => c.owner_ref === input.owner_ref);
   if (at < 0) list.push(row);
@@ -3890,7 +3899,7 @@ function teamRoutes(
   }
   const input = (body ?? {}) as { name?: string; members?: string[] };
   const name = (input.name ?? "").trim();
-  const members = input.members ?? [];
+  const members = (input.members ?? []).map(userRef);
   if (!name || name.length > 80)
     return problem(422, "/name: 1 to 80 characters");
   if (
@@ -3911,7 +3920,7 @@ function teamRoutes(
     pid: `team-${state.teams.length + 1}-${name.length}`,
     name,
     members,
-    set_by: "worker:demo",
+    set_by: "person:demo",
   };
   state.teams.push(team);
   return ok(team);
@@ -3999,6 +4008,7 @@ function territoryRoutes(
     owner_ref?: string | null;
     accounts?: string[];
   };
+  if (input.owner_ref) input.owner_ref = userRef(input.owner_ref);
   const name = (input.name ?? "").trim();
   const accounts = input.accounts ?? [];
   if (!name || name.length > 80)
@@ -4031,7 +4041,7 @@ function territoryRoutes(
     name,
     owner_ref: input.owner_ref ?? null,
     accounts,
-    set_by: "worker:demo",
+    set_by: "person:demo",
   };
   state.territories.push(territory);
   return ok(territory);
@@ -4112,6 +4122,7 @@ function quotaRoutes(
   if (method === "GET" && !id) return ok(state.quotas);
   if (method === "PUT" && !id) {
     const input = (body ?? {}) as Partial<Quota>;
+    if (input.owner_ref) input.owner_ref = userRef(input.owner_ref);
     if (
       !input.owner_ref ||
       !input.currency ||
@@ -4164,7 +4175,7 @@ function quotaRoutes(
       currency: input.currency,
       amount_minor: input.amount_minor,
       plan_pid: input.plan_pid ?? null,
-      set_by: "worker:demo",
+      set_by: "person:demo",
     };
     state.quotas.push(made);
     return ok(made);
@@ -4508,7 +4519,7 @@ function reports(
     if (check.status !== 200) return check;
     const made: Report = {
       pid: `rep-${state.reports.length + 1}-${Date.now()}`,
-      owner_ref: "worker:demo",
+      owner_ref: "person:demo",
       mine: true,
       name: input.name.trim(),
       spec: input.spec as ReportSpec,
@@ -4586,7 +4597,7 @@ function attachmentList(pid: string, method: string, query: URLSearchParams) {
       content_type: "application/octet-stream",
       size_bytes: Number(query.get("size") ?? 0),
       sha256: "0".repeat(64),
-      uploaded_by: "worker:demo",
+      uploaded_by: "person:demo",
       created_at: new Date().toISOString(),
     };
     held.push(made);

@@ -748,7 +748,7 @@ export default {
   "quota.splitDeal": "Acuerdo",
   "quota.splitShares": "Personas y porcentajes",
   "quota.splitHint":
-    "Una persona y un porcentaje por línea, como worker:ada:60; suman 100. El importe se reparte hasta la unidad menor.",
+    "Una persona y un porcentaje por línea, como person:ada:60; suman 100. El importe se reparte hasta la unidad menor.",
   "quota.splitSet": "Dividir",
   "quota.splitRemove": "Acreditar solo al propietario",
   "ticket.suggested": "Artículos que pueden ayudar",

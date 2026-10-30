@@ -39,9 +39,9 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   pause and resume a contact's marketing (CRM-R92), tested with signed
   requests, not a running WPM; they are ordered by when WPM recorded them
   (CRM-R93), and WPM's overlap check (WPM-R208) finds the contacts the
-  events never told of (CRM-R94), against a stand-in only. The teams'
-  `worker:` references do not yet meet the events' `person:` ones, and the
-  check runs on a button, not on a schedule.
+  events never told of (CRM-R94), against a stand-in only. The teams,
+  quotas and deal owners are `person:` references like the events' (CRM-D18);
+  the check runs on a button, not on a schedule.
 - **FX beyond reports** — the report builder, attribution, campaign ROI,
   the live forecast and CLV convert from hand-entered rates (CRM-R50 to
   CRM-R54); the forecast snapshots and the trend still report per

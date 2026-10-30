@@ -7,7 +7,7 @@ use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_worker, seed_contact};
+use super::{a_user, seed_contact};
 
 #[tokio::test]
 #[serial]
@@ -36,7 +36,7 @@ async fn ticket_sla_journey() {
         assert_eq!(backwards.status_code(), 422);
 
         let contact = seed_contact!(&request, "Ticket Raiser").await;
-        let agent = a_worker();
+        let agent = a_user();
         let ticket: Value = request
             .post("/api/tickets")
             .json(&json!({
@@ -54,7 +54,7 @@ async fn ticket_sla_journey() {
             .json(&json!({
                 "subject_kind": "ticket", "subject_pid": ticket_pid,
                 "kind": "email", "summary": "bystander note",
-                "actor_ref": a_worker(),
+                "actor_ref": a_user(),
             }))
             .await
             .assert_status_ok();

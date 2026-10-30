@@ -22,6 +22,7 @@ use crate::models::audit_logs::Model as Audit;
 use crate::rules::analytics::Ratio;
 use crate::rules::fx;
 use crate::rules::quota::{self, Band, Tier};
+use crate::rules::user_ref;
 use crate::validation::Problems;
 
 /// Most rows listed.
@@ -195,7 +196,7 @@ async fn remove_plan(
 #[schemars(rename = "QuotaPayload")]
 #[serde(deny_unknown_fields)]
 pub(crate) struct QuotaPayload {
-    /// The worker, `worker:<id>`.
+    /// The user, `person:<id>` (`worker:` is read as `person:`, CRM-D18).
     owner_ref: String,
     /// First day of the period.
     period_from: NaiveDate,
@@ -264,7 +265,10 @@ async fn list_quotas(
                 "SELECT {QUOTA_COLUMNS} FROM quotas WHERE ($1::text IS NULL OR owner_ref = $1) \
                  ORDER BY period_from DESC, owner_ref, currency LIMIT $2"
             ),
-            [query.owner_ref.into(), MAX_LISTED.into()],
+            [
+                user_ref::normalise_opt(query.owner_ref).into(),
+                MAX_LISTED.into(),
+            ],
         ))
         .await?;
     format::json(rows.iter().map(quota_view).collect::<Result<Vec<_>>>()?)
@@ -276,14 +280,11 @@ async fn list_quotas(
 async fn set_quota(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<QuotaPayload>,
+    Json(mut payload): Json<QuotaPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
-    problems.require_ref(
-        "owner_ref",
-        entity_ref::EntityType::Worker,
-        &payload.owner_ref,
-    );
+    payload.owner_ref = user_ref::normalise(&payload.owner_ref);
+    problems.require_user("owner_ref", &payload.owner_ref);
     let currency = fx::currency(&payload.currency)
         .map_err(|why| problems.push_field("currency", why))
         .ok();
@@ -425,7 +426,7 @@ const MAX_SHARES: usize = 8;
 #[schemars(rename = "DealShare")]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Share {
-    /// The worker, `worker:<id>`.
+    /// The user, `person:<id>` (`worker:` is read as `person:`, CRM-D18).
     owner_ref: String,
     /// Their share in basis points, 1 to 10000.
     share_bps: u32,
@@ -494,14 +495,17 @@ async fn set_split(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(payload): Json<SplitPayload>,
+    Json(mut payload): Json<SplitPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     if payload.shares.is_empty() || payload.shares.len() > MAX_SHARES {
         problems.push_field("shares", format!("from 1 to {MAX_SHARES} workers"));
     }
+    for share in &mut payload.shares {
+        share.owner_ref = user_ref::normalise(&share.owner_ref);
+    }
     for share in &payload.shares {
-        problems.require_ref("shares", entity_ref::EntityType::Worker, &share.owner_ref);
+        problems.require_user("shares", &share.owner_ref);
         if !(1..=10_000).contains(&share.share_bps) {
             problems.push_field("shares", "a share is from 1 to 10000 basis points");
         }
@@ -595,7 +599,8 @@ const MAX_REASON: usize = 200;
 #[schemars(rename = "ClawbackPayload")]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ClawbackPayload {
-    /// The worker (`worker:<id>`) whose credit for the deal is reduced.
+    /// The user (`person:<id>`; `worker:` is read as `person:`, CRM-D18) whose credit for the deal
+    /// is reduced.
     owner_ref: String,
     /// What is taken back, in minor units: above zero and no more than their credit for the deal.
     amount_minor: i64,
@@ -685,14 +690,11 @@ async fn set_clawback(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(payload): Json<ClawbackPayload>,
+    Json(mut payload): Json<ClawbackPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
-    problems.require_ref(
-        "owner_ref",
-        entity_ref::EntityType::Worker,
-        &payload.owner_ref,
-    );
+    payload.owner_ref = user_ref::normalise(&payload.owner_ref);
+    problems.require_user("owner_ref", &payload.owner_ref);
     if payload.amount_minor < 1 {
         problems.push_field("amount_minor", "above zero");
     }
@@ -755,8 +757,9 @@ async fn remove_clawback(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    axum::extract::Query(query): axum::extract::Query<ClawbackQuery>,
+    axum::extract::Query(mut query): axum::extract::Query<ClawbackQuery>,
 ) -> Result<Response> {
+    query.owner_ref = user_ref::normalise(&query.owner_ref);
     let txn = ctx.db.begin().await?;
     let gone = txn
         .execute_raw(stmt(
@@ -964,7 +967,7 @@ async fn attainment(
     axum::extract::Query(query): axum::extract::Query<AttainmentQuery>,
 ) -> Result<Response> {
     let at = query.at.unwrap_or_else(|| chrono::Utc::now().date_naive());
-    let rows = standings(&ctx.db, at, query.owner_ref).await?;
+    let rows = standings(&ctx.db, at, user_ref::normalise_opt(query.owner_ref)).await?;
     Audit::record_read(
         &ctx.db,
         "quota",

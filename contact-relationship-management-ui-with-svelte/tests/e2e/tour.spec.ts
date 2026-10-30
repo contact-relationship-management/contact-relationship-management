@@ -1124,7 +1124,7 @@ test.describe("export, undo and search", () => {
       .getByTestId("workflow-actions")
       .getByRole("textbox")
       .fill(
-        "worker:00000000-0000-0000-0000-000000000001, worker:00000000-0000-0000-0000-000000000002",
+        "person:00000000-0000-0000-0000-000000000001, person:00000000-0000-0000-0000-000000000002",
       );
     await page.getByTestId("workflow-save").click();
     await expect(page.getByTestId("workflow-list")).toContainText(

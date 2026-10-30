@@ -9,7 +9,7 @@ security invariants.
 
 **Contact** — a person the business talks to.
 `person_ref` (`person:` URN, required), `account_pid` (nullable),
-`owner_ref` (`worker:` URN), `status` (`active | inactive`),
+`owner_ref` (a user's `person:` URN, CRM-D18), `status` (`active | inactive`),
 `job_title`, `preferred_channel`, `marketing_consent`
 (`granted | withdrawn | never | pending`; the state of the default purpose
 `marketing`, CRM-R29), `consent_changed_at`, cached display name. The other
@@ -18,7 +18,7 @@ purposes (`newsletter`, `events`, `product_updates`) are rows of
 A web form submission (CRM-R31) is a row of `form_submissions` (form slug, contact, lead, purpose, the
 nurture sequence to start on confirmation, when the confirmation mail went out and when the visitor confirmed). It holds no
 name and no address, and erasure deletes it.
-A task activity may carry `assignee_ref` (`worker:` URN) and `remind_at` (CRM-R32). A notification is a row of `notifications`
+A task activity may carry `assignee_ref` (a user's `person:` URN) and `remind_at` (CRM-R32). A notification is a row of `notifications`
 (recipient, kind `task_reminder | sla_breach`, the record it is about, the activity or ticket that caused it, a `source_key` that
 makes each fire once, `suppressed`, `read_at`); it holds no record text and erasure of the contact deletes it.
 A lead import (CRM-R34) is a row of `lead_imports`: who, where the list came from (`source_note`), the date it was obtained, counts,
@@ -38,7 +38,7 @@ A workflow (CRM-R40) is a row of `workflows`: a trigger, conditions in the segme
 An email template (CRM-R36) is a row of `email_templates`: a name (unique, any case), a subject, a plain-text body that holds merge tokens and
 must contain `{{unsubscribe_url}}`, and the template's own fallbacks (token to text). A campaign or nurture step may carry its `template_pid`
 instead of a subject and body.
-A saved view (CRM-R35) is a row of `saved_views`: owner (`worker:` URN), the list it is for, a name (unique per owner and list), a filter
+A saved view (CRM-R35) is a row of `saved_views`: owner (a user's `person:` URN), the list it is for, a name (unique per owner and list), a filter
 (field to values), an optional sort and columns, and whether it is shared. It holds no record data.
 
 **Account** — an organization relationship.
@@ -49,7 +49,7 @@ A saved view (CRM-R35) is a row of `saved_views`: owner (`worker:` URN), the lis
 **Activity** — one interaction, attachable to contact / account /
 lead / deal / ticket (`subject_kind` + `subject_pid`).
 `kind` (`call | email | meeting | note | task`), `occurred_at`,
-`actor_ref` (`worker:` URN), `summary`, `due_on` + `done` (task
+`actor_ref` (a user's `person:` URN), `summary`, `due_on` + `done` (task
 kind only).
 
 ## Sales
@@ -100,7 +100,7 @@ name the `purpose` they are sent under (default `marketing`).
 ## Support
 
 **Ticket** — `contact_pid`, `account_pid` (derived default),
-`assignee_ref` (`worker:` URN), `priority`
+`assignee_ref` (a user's `person:` URN), `priority`
 (`low | normal | high | urgent`), `channel`, `status`:
 `open → pending → resolved → closed` (reopen: `resolved → open`),
 `sla_policy_pid`, derived `first_response_due_at`,

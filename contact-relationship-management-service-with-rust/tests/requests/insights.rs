@@ -8,7 +8,7 @@ use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_person, a_worker, seed_contact, seed_pipeline};
+use super::{a_person, a_user, seed_contact, seed_pipeline};
 
 #[tokio::test]
 #[serial]
@@ -69,7 +69,7 @@ async fn insight_views_round_trip() {
             .post("/api/activities")
             .json(&json!({ "subject_kind": "deal", "subject_pid": moved_pid,
                             "kind": "call", "summary": "Chase the proposal",
-                            "actor_ref": a_worker(), "due_on": "2026-07-01" }))
+                            "actor_ref": a_user(), "due_on": "2026-07-01" }))
             .await
             .assert_status_ok();
 
@@ -84,7 +84,7 @@ async fn insight_views_round_trip() {
             .post("/api/tickets")
             .json(&json!({ "title": "Login broken", "priority": "high",
                             "contact_pid": contact_pid,
-                            "assignee_ref": a_worker() }))
+                            "assignee_ref": a_user() }))
             .await
             .assert_status_ok();
 

@@ -41,7 +41,8 @@ pub(crate) struct PolicyPayload {
     /// `resolve` it (a status change to `open` reopens it) or `escalate` it to `escalate_to`.
     #[serde(default)]
     wait_limit_action: Option<String>,
-    /// The worker (`worker:<id>`) an `escalate` reassigns the ticket to; only with `escalate`.
+    /// The user (`person:<id>`; `worker:` is read as `person:`, CRM-D18) an `escalate` reassigns
+    /// the ticket to; only with `escalate`.
     #[serde(default)]
     escalate_to: Option<String>,
     /// Days (1 to 365) a ticket may stay `resolved` before the sweep closes it (CRM-R82). Leave out
@@ -131,10 +132,11 @@ async fn targets_for<C: sea_orm::ConnectionTrait>(
 async fn create_policy(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<PolicyPayload>,
+    Json(mut payload): Json<PolicyPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("priority", tokens::PRIORITIES, &payload.priority);
+    payload.escalate_to = crate::rules::user_ref::normalise_opt(payload.escalate_to.take());
     if payload.first_response_minutes <= 0 || payload.resolution_minutes <= 0 {
         problems.push("SLA minutes must be positive".to_string());
     }
@@ -158,9 +160,7 @@ async fn create_policy(
     }
     if action == "escalate" {
         match payload.escalate_to.as_deref() {
-            Some(worker) => {
-                problems.require_ref("escalate_to", entity_ref::EntityType::Worker, worker);
-            }
+            Some(user) => problems.require_user("escalate_to", user),
             None => problems.push_field("escalate_to", "escalating needs a worker"),
         }
     } else if payload.escalate_to.is_some() {
@@ -247,17 +247,14 @@ async fn list_policies(State(ctx): State<AppContext>) -> Result<Response> {
 async fn create_ticket(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<TicketPayload>,
+    Json(mut payload): Json<TicketPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("title", &payload.title);
     problems.require_token("priority", tokens::PRIORITIES, &payload.priority);
     problems.require_token("channel", tokens::TICKET_CHANNELS, &payload.channel);
-    problems.ref_opt(
-        "assignee_ref",
-        entity_ref::EntityType::Worker,
-        payload.assignee_ref.as_deref(),
-    );
+    payload.assignee_ref = crate::rules::user_ref::normalise_opt(payload.assignee_ref.take());
+    problems.user_opt("assignee_ref", payload.assignee_ref.as_deref());
     problems.finish()?;
     let account_pid = if let Some(contact) = payload.contact_pid {
         records::find_contact(&ctx.db, contact).await?.account_pid

@@ -6,7 +6,7 @@ Lifecycle `open → pending → resolved → closed`, reopen
 `resolved → open` (pure-core machine; `closed` is terminal).
 `pending` means waiting-on-customer and **pauses no clock in v1**
 (24×7 clocks; business-hours/pause semantics are roadmap and
-documented as such). Assignment to a `worker:` URN; priority
+documented as such). Assignment to a user's `person:` URN (CRM-D18); priority
 changes re-derive SLA deadlines from the ticket's opened time and
 are audited with a reason. The first outbound activity of kind
 `call` / `email` by the assignee stamps `first_responded_at`.

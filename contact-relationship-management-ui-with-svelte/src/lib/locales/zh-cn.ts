@@ -716,7 +716,7 @@ export default {
   "quota.splitDeal": "交易",
   "quota.splitShares": "人员与份额",
   "quota.splitHint":
-    "每行一位人员和一个百分比，如 worker:ada:60；合计为 100。金额精确分到最小单位。",
+    "每行一位人员和一个百分比，如 person:ada:60；合计为 100。金额精确分到最小单位。",
   "quota.splitSet": "拆分",
   "quota.splitRemove": "仅记给所有者",
   "ticket.suggested": "可能有帮助的文章",

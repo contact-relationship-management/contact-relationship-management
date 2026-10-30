@@ -11,6 +11,7 @@ import {
   isDemoSession,
   resetDemo,
   startDemoSession,
+  userRef,
 } from "../../src/lib/server/demo";
 
 const get = (path: string) => {
@@ -21,6 +22,26 @@ const post = (path: string, body: unknown = null) =>
   demoHandle("POST", path, new URLSearchParams(), body);
 
 beforeEach(() => resetDemo());
+
+describe("a CRM user is a person: reference (CRM-D18)", () => {
+  const id = "3f2c6b7e-0000-4000-8000-000000000001";
+  it("reads a legacy worker: reference as person: with the same id", () => {
+    expect(userRef(`worker:${id}`)).toBe(`person:${id}`);
+    expect(userRef(` worker:${id} `)).toBe(`person:${id}`);
+    expect(userRef(`person:${id}`)).toBe(`person:${id}`);
+    expect(userRef("organization:x")).toBe("organization:x");
+  });
+  it("stores a team's legacy members as person:, as the service does", () => {
+    const put = demoHandle("PUT", "quotas/teams", new URLSearchParams(), {
+      name: "North",
+      members: [`worker:${id}`],
+    });
+    expect(put.status).toBe(200);
+    expect((put.body as { members: string[] }).members).toEqual([
+      `person:${id}`,
+    ]);
+  });
+});
 
 describe("the guided tour's identity", () => {
   it("accepts only example@example.com, ignoring case and spacing", () => {

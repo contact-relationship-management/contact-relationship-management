@@ -20,6 +20,7 @@ use crate::auth::MaybeAuthUser;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::quota;
+use crate::rules::user_ref;
 use crate::validation::Problems;
 
 /// Most accounts in a territory.
@@ -43,7 +44,7 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
 pub(crate) struct TerritoryPayload {
     /// Its name, up to 80 characters.
     name: String,
-    /// The worker (`worker:<id>`) it is assigned to, if any.
+    /// The user (`person:<id>`; `worker:` is read as `person:`, CRM-D18) it is assigned to, if any.
     owner_ref: Option<String>,
     /// The accounts in it (`organization:<id>`), from 1 to 200, each named once; an account is in
     /// at most one territory.
@@ -108,17 +109,14 @@ async fn list_territories(State(ctx): State<AppContext>) -> Result<Response> {
 async fn set_territory(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<TerritoryPayload>,
+    Json(mut payload): Json<TerritoryPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     let name = quota::name(&payload.name)
         .map_err(|why| problems.push_field("name", why.replace("a plan", "a territory")))
         .ok();
-    problems.ref_opt(
-        "owner_ref",
-        EntityType::Worker,
-        payload.owner_ref.as_deref(),
-    );
+    payload.owner_ref = user_ref::normalise_opt(payload.owner_ref.take());
+    problems.user_opt("owner_ref", payload.owner_ref.as_deref());
     if payload.accounts.is_empty() || payload.accounts.len() > MAX_ACCOUNTS {
         problems.push_field("accounts", format!("from 1 to {MAX_ACCOUNTS} accounts"));
     }

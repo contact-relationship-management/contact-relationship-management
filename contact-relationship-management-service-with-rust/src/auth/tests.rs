@@ -846,7 +846,7 @@ fn a_deal(
         pid: uuid::Uuid::new_v4(),
         account_pid: None,
         primary_contact_pid: None,
-        owner_ref: owner.map(|o| format!("worker:{o}")),
+        owner_ref: owner.map(|o| format!("person:{o}")),
         pipeline_pid: uuid::Uuid::new_v4(),
         stage_pid: uuid::Uuid::new_v4(),
         name: "Big Deal".to_string(),

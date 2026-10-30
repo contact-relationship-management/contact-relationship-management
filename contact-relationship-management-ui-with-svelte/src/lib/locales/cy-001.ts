@@ -746,7 +746,7 @@ export default {
   "quota.splitDeal": "Bargen",
   "quota.splitShares": "Gweithwyr a chyfrannau",
   "quota.splitHint":
-    "Un gweithiwr a chanran ar bob llinell, fel worker:ada:60; mae'r cyfrannau'n gwneud 100. Rhennir y swm i'r uned leiaf.",
+    "Un gweithiwr a chanran ar bob llinell, fel person:ada:60; mae'r cyfrannau'n gwneud 100. Rhennir y swm i'r uned leiaf.",
   "quota.splitSet": "Hollti",
   "quota.splitRemove": "Credydu'r perchennog yn unig",
   "ticket.suggested": "Erthyglau a allai helpu",

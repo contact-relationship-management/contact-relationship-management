@@ -739,7 +739,7 @@ export default {
   "quota.splitDeal": "Deal",
   "quota.splitShares": "Workers and shares",
   "quota.splitHint":
-    "One worker and a percentage per line, such as worker:ada:60; the shares add up to 100. The amount is shared to the minor unit.",
+    "One worker and a percentage per line, such as person:ada:60; the shares add up to 100. The amount is shared to the minor unit.",
   "quota.splitSet": "Split",
   "quota.splitRemove": "Credit the owner alone",
   "ticket.suggested": "Articles that may help",

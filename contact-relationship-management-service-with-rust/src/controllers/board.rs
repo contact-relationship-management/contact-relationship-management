@@ -70,7 +70,7 @@ pub(crate) struct ActivityEditPayload {
     due_on: Option<chrono::NaiveDate>,
     #[serde(default)]
     summary: Option<String>,
-    /// Who the task is for (a `worker:` URN); tasks only (CRM-R32).
+    /// Who the task is for (a `person:` URN, CRM-D18); tasks only (CRM-R32).
     #[serde(default)]
     assignee_ref: Option<String>,
     /// When to remind the assignee; tasks only. A new time makes a new reminder possible.
@@ -357,18 +357,15 @@ async fn edit_activity(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(payload): Json<ActivityEditPayload>,
+    Json(mut payload): Json<ActivityEditPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     if let Some(summary) = &payload.summary {
         problems.require_text("summary", summary);
         problems.cap_text("summary", summary);
     }
-    problems.ref_opt(
-        "assignee_ref",
-        entity_ref::EntityType::Worker,
-        payload.assignee_ref.as_deref(),
-    );
+    payload.assignee_ref = crate::rules::user_ref::normalise_opt(payload.assignee_ref.take());
+    problems.user_opt("assignee_ref", payload.assignee_ref.as_deref());
     problems.finish()?;
     if payload.due_on.is_none()
         && payload.summary.is_none()

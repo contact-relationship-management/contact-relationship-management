@@ -11,8 +11,8 @@ use super::{
 ///
 /// | Resource key | From | Example tokens |
 /// |---|---|---|
-/// | `resource.owner` | `Deal::owner_ref` | the bare worker uuid (enables `$sub` ownership) |
-/// | `resource.owner_ref` | `Deal::owner_ref` | the full `worker:` URN |
+/// | `resource.owner` | `Deal::owner_ref` | the bare person uuid, the sign-in subject (enables `$sub` ownership, CRM-D18) |
+/// | `resource.owner_ref` | `Deal::owner_ref` | the full `person:` URN |
 /// | `resource.status` | `won`/`closed_at` | `open`, `won`, `lost` |
 ///
 /// A deployment can then write e.g. "allow write only when
@@ -41,7 +41,7 @@ pub fn deal_resource_attrs(deal: &deals::Model) -> BTreeMap<String, Vec<String>>
 }
 
 /// Record-level resource attributes of a **contact**: `resource.owner`
-/// (bare worker uuid + full URN, when owned) and `resource.status`.
+/// (bare person uuid + full URN, when owned) and `resource.status`.
 #[must_use]
 pub fn contact_resource_attrs(contact: &contacts::Model) -> BTreeMap<String, Vec<String>> {
     let mut attrs = BTreeMap::new();
@@ -197,8 +197,9 @@ pub fn may_read(claims: &Claims, resource: &BTreeMap<String, Vec<String>>) -> bo
         .allowed
 }
 
-/// What the sweep knows of a worker who is not making a request: who they are and nothing else
-/// (a token's attributes exist only on a request). `worker_ref` is the `worker:` URN.
+/// What the sweep knows of a user who is not making a request: who they are and nothing else
+/// (a token's attributes exist only on a request). `worker_ref` is the user's `person:` URN
+/// (CRM-D18); its id is the sign-in subject.
 #[must_use]
 pub fn claims_for_worker(worker_ref: &str) -> Claims {
     Claims {

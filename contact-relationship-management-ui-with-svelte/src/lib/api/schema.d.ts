@@ -14070,7 +14070,7 @@ export interface paths {
                 };
             };
         };
-        /** Set the territory of that name (any case), replacing its accounts and worker: from 1 to 200 organizations named once, each in at most one territory, else 422 naming /name, /owner_ref or /accounts; a write, audited. Admin only */
+        /** Set the territory of that name (any case), replacing its accounts and owner: from 1 to 200 organizations named once, each in at most one territory, else 422 naming /name, /owner_ref or /accounts; a write, audited. Admin only */
         put: {
             parameters: {
                 query?: never;
@@ -18582,7 +18582,7 @@ export interface components {
         /** @description `PUT /api/activities/{pid}` body. */
         ActivityEditPayload: {
             /**
-             * @description Who the task is for (a `worker:` URN); tasks only (CRM-R32).
+             * @description Who the task is for (a `person:` URN, CRM-D18); tasks only (CRM-R32).
              * @default null
              */
             assignee_ref: string | null;
@@ -18605,7 +18605,7 @@ export interface components {
             /** @default null */
             actor_ref: string | null;
             /**
-             * @description Who a task is for (a `worker:` URN); tasks only (CRM-R32).
+             * @description Who a task is for (a `person:` URN, CRM-D18); tasks only (CRM-R32).
              * @default null
              */
             assignee_ref: string | null;
@@ -18995,7 +18995,10 @@ export interface components {
              * @description What is taken back, in minor units: above zero and no more than their credit for the deal.
              */
             amount_minor: number;
-            /** @description The worker (`worker:<id>`) whose credit for the deal is reduced. */
+            /**
+             * @description The user (`person:<id>`; `worker:` is read as `person:`, CRM-D18) whose credit for the deal
+             *     is reduced.
+             */
             owner_ref: string;
             /** @description Why, up to 200 characters. */
             reason: string | null;
@@ -19721,7 +19724,7 @@ export interface components {
         };
         /** @description One worker's share of a deal. */
         DealShare: {
-            /** @description The worker, `worker:<id>`. */
+            /** @description The user, `person:<id>` (`worker:` is read as `person:`, CRM-D18). */
             owner_ref: string;
             /**
              * Format: uint32
@@ -20877,7 +20880,8 @@ export interface components {
              */
             calendar_pid: string | null;
             /**
-             * @description The worker (`worker:<id>`) an `escalate` reassigns the ticket to; only with `escalate`.
+             * @description The user (`person:<id>`; `worker:` is read as `person:`, CRM-D18) an `escalate` reassigns
+             *     the ticket to; only with `escalate`.
              * @default null
              */
             escalate_to: string | null;
@@ -21008,7 +21012,7 @@ export interface components {
             amount_minor: number;
             /** @description Three capital letters. */
             currency: string;
-            /** @description The worker, `worker:<id>`. */
+            /** @description The user, `person:<id>` (`worker:` is read as `person:`, CRM-D18). */
             owner_ref: string;
             /**
              * Format: date
@@ -21799,7 +21803,10 @@ export interface components {
         };
         /** @description `PUT /api/quotas/teams` body: sets the team of that name (any case), replacing its workers. */
         TeamPayload: {
-            /** @description The workers on it (`worker:<id>`), from 1 to 50, each named once. */
+            /**
+             * @description The people on it (`person:<id>`, the sign-in subject; `worker:<id>` is read as
+             *     `person:<id>`, CRM-D18), from 1 to 50, each named once.
+             */
             members: string[];
             /** @description The team's name, up to 80 characters. */
             name: string;
@@ -21853,7 +21860,7 @@ export interface components {
             accounts: string[];
             /** @description Its name, up to 80 characters. */
             name: string;
-            /** @description The worker (`worker:<id>`) it is assigned to, if any. */
+            /** @description The user (`person:<id>`; `worker:` is read as `person:`, CRM-D18) it is assigned to, if any. */
             owner_ref: string | null;
         };
         /** @description Won revenue in one currency. */
@@ -22148,7 +22155,7 @@ export interface components {
         /** @description One thing a workflow does. The set is closed. */
         WorkflowAction: {
             /**
-             * @description Who it is for (a `worker:` URN).
+             * @description Who it is for (a `person:` URN, CRM-D18).
              * @default null
              */
             assignee_ref: string | null;
@@ -22163,7 +22170,7 @@ export interface components {
             /** @enum {string} */
             type: "create_task";
         } | {
-            /** @description The worker (a `worker:` URN). */
+            /** @description The user (a `person:` URN, CRM-D18). */
             recipient_ref: string;
             /** @enum {string} */
             type: "notify";
@@ -22196,7 +22203,7 @@ export interface components {
              * @default false
              */
             notify: boolean;
-            /** @description The workers to choose among (`worker:` URNs). */
+            /** @description The users to choose among (`person:` URNs, CRM-D18). */
             pool: string[];
             /**
              * @description One of [`ASSIGN_STRATEGIES`]: `round_robin` takes the pool in turn, `least_open` the

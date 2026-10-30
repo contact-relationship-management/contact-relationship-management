@@ -5,6 +5,7 @@
 use crate::controllers::PidPath;
 use crate::json::Json;
 use crate::models::live::FindLive;
+use crate::rules::user_ref;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
@@ -84,6 +85,16 @@ impl<T> Patch<T> {
         match self {
             Self::Set(v) => Some(v),
             _ => None,
+        }
+    }
+}
+
+impl Patch<String> {
+    /// A user reference being set, as the CRM stores it: `worker:<id>` becomes `person:<id>`
+    /// (CRM-D18).
+    fn normalise_user(&mut self) {
+        if let Self::Set(v) = self {
+            *v = user_ref::normalise(v);
         }
     }
 }
@@ -171,7 +182,7 @@ pub(crate) struct ActivityPayload {
     /// Optional recorded sentiment (`positive` / `neutral` / `negative`).
     #[serde(default)]
     sentiment: Option<String>,
-    /// Who a task is for (a `worker:` URN); tasks only (CRM-R32).
+    /// Who a task is for (a `person:` URN, CRM-D18); tasks only (CRM-R32).
     #[serde(default)]
     assignee_ref: Option<String>,
     /// When to remind the assignee; tasks only.
@@ -191,7 +202,7 @@ fn default_tier() -> String {
 async fn create_contact(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<ContactPayload>,
+    Json(mut payload): Json<ContactPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_ref(
@@ -200,11 +211,8 @@ async fn create_contact(
         &payload.person_ref,
     );
     problems.require_text("display_name", &payload.display_name);
-    problems.ref_opt(
-        "owner_ref",
-        entity_ref::EntityType::Worker,
-        payload.owner_ref.as_deref(),
-    );
+    payload.owner_ref = user_ref::normalise_opt(payload.owner_ref.take());
+    problems.user_opt("owner_ref", payload.owner_ref.as_deref());
     problems.require_token(
         "preferred_channel",
         tokens::CHANNELS,
@@ -275,7 +283,7 @@ async fn update_contact(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(change): Json<ContactChange>,
+    Json(mut change): Json<ContactChange>,
 ) -> Result<Response> {
     let contact = records::find_contact(&ctx.db, pid).await?;
     auth::authorize_record(
@@ -295,11 +303,8 @@ async fn update_contact(
     ] {
         problems.cap_opt(field, value.set().map(String::as_str));
     }
-    problems.ref_opt(
-        "owner_ref",
-        entity_ref::EntityType::Worker,
-        change.owner_ref.set().map(String::as_str),
-    );
+    change.owner_ref.normalise_user();
+    problems.user_opt("owner_ref", change.owner_ref.set().map(String::as_str));
     if let Some(channel) = &change.preferred_channel {
         problems.require_token("preferred_channel", tokens::CHANNELS, channel);
     }
@@ -895,7 +900,7 @@ async fn repoint_contact(
 async fn create_account(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<AccountPayload>,
+    Json(mut payload): Json<AccountPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_ref(
@@ -905,11 +910,8 @@ async fn create_account(
     );
     problems.require_text("display_name", &payload.display_name);
     problems.require_token("tier", tokens::ACCOUNT_TIERS, &payload.tier);
-    problems.ref_opt(
-        "owner_ref",
-        entity_ref::EntityType::Worker,
-        payload.owner_ref.as_deref(),
-    );
+    payload.owner_ref = user_ref::normalise_opt(payload.owner_ref.take());
+    problems.user_opt("owner_ref", payload.owner_ref.as_deref());
     problems.cap_opt("industry", payload.industry.as_deref());
     problems.finish()?;
     let txn = ctx.db.begin().await?;
@@ -949,7 +951,7 @@ async fn update_account(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(change): Json<AccountChange>,
+    Json(mut change): Json<AccountChange>,
 ) -> Result<Response> {
     let account = records::find_account(&ctx.db, pid).await?;
     let mut problems = Problems::new();
@@ -959,11 +961,8 @@ async fn update_account(
     if let Some(tier) = &change.tier {
         problems.require_token("tier", tokens::ACCOUNT_TIERS, tier);
     }
-    problems.ref_opt(
-        "owner_ref",
-        entity_ref::EntityType::Worker,
-        change.owner_ref.set().map(String::as_str),
-    );
+    change.owner_ref.normalise_user();
+    problems.user_opt("owner_ref", change.owner_ref.set().map(String::as_str));
     problems.cap_opt("industry", change.industry.set().map(String::as_str));
     problems.finish()?;
     let mut changed = Vec::new();
@@ -1102,7 +1101,7 @@ async fn get_account(
 async fn create_activity(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<ActivityPayload>,
+    Json(mut payload): Json<ActivityPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token(
@@ -1117,16 +1116,10 @@ async fn create_activity(
     );
     problems.require_token("kind", tokens::ACTIVITY_KINDS, &payload.kind);
     problems.require_text("summary", &payload.summary);
-    problems.ref_opt(
-        "actor_ref",
-        entity_ref::EntityType::Worker,
-        payload.actor_ref.as_deref(),
-    );
-    problems.ref_opt(
-        "assignee_ref",
-        entity_ref::EntityType::Worker,
-        payload.assignee_ref.as_deref(),
-    );
+    payload.actor_ref = user_ref::normalise_opt(payload.actor_ref.take());
+    payload.assignee_ref = user_ref::normalise_opt(payload.assignee_ref.take());
+    problems.user_opt("actor_ref", payload.actor_ref.as_deref());
+    problems.user_opt("assignee_ref", payload.assignee_ref.as_deref());
     if payload.kind != "task" && (payload.assignee_ref.is_some() || payload.remind_at.is_some()) {
         problems.push("only a task has an assignee or a reminder");
     }

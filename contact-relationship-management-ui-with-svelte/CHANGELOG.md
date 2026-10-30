@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — user references are `person:` (CRM-T162, CRM-D18)
+
+The tour's stand-in reads a `worker:` reference as `person:` on teams, quotas, splits, clawbacks and territories, as the service does (`userRef`, unit-tested), and its stand-in user is `person:demo`. The split hint's example reads `person:ada:60` in all eight locales (machine drafts; only the example changed, and the prose still says "worker" where it did). The API types are regenerated. The pages' wording still calls sellers workers.
+
 ### Changed — the teams import's answer (CRM-T161, CRM-R73, CRM-D17)
 
 `TeamImport` gains `without_person_ref` and the tour's stand-in answers it; the API types regenerated. Imported teams' members are now `person:` references. The `/quotas` page does not show the new count.

@@ -9,7 +9,7 @@ use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_person, a_worker, seed_pipeline};
+use super::{a_person, a_user, seed_pipeline};
 
 fn ago(days: i64) -> String {
     (Utc::now() - Duration::days(days)).to_rfc3339()
@@ -79,7 +79,7 @@ async fn the_activity_views_report_the_touches_they_were_given() {
         let c2 = contact("Rollup Two", Some(acc_a.clone())).await;
         let c3 = contact("Rollup Three", Some(acc_b.clone())).await;
         let c4 = contact("Rollup Four", None).await;
-        let (w1, w2) = (a_worker(), a_worker());
+        let (w1, w2) = (a_user(), a_user());
 
         activity("contact", c1.clone(), "call", 10, Some(w1.clone()), Some("positive"), None).await;
         activity("contact", c1.clone(), "meeting", 3, Some(w1.clone()), None, Some("2099-01-01")).await;

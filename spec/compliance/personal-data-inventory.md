@@ -10,8 +10,9 @@ and fails if a table exists in the database that is not listed, if a table is li
 exist, or if the tables marked `swept` are not exactly those the retention sweep deletes from
 (`SOFT_DELETED_TABLES`). A new table therefore cannot be added without being described here.
 
-Whose data: the CRM references identities held by other services (`person:`, `worker:`,
-`organization:` references) and keeps the relationship record, not the demographics. A contact's
+Whose data: the CRM references identities held by other services (`person:` and
+`organization:` references; the CRM's own users are `person:` references too, CRM-D18, and `worker:`
+appears only in history and in WPM's event subjects) and keeps the relationship record, not the demographics. A contact's
 name is held only as a display label; no email address is kept on a contact (a lead holds the
 address a web form or import gave it).
 
@@ -108,7 +109,7 @@ history remain under a pid that no longer identifies anyone.
 | `sla_policies` | None | — | `swept` | Not applicable |
 | `taggings` | Tag and subject pids | Contacts, accounts | `manual` | Taggings of the contact deleted |
 | `tags` | None (tag names) | — | `manual` | Not applicable |
-| `teams` | Team name and its workers' references: `worker:` set by hand, `person:` set by the worker service import (CRM-R73, CRM-D17) | Reps | `manual` | Not touched: erasing a contact whose `person_ref` is also an imported team's member leaves that reference in the team (a person reference only, no name); the next import rewrites the team from WPM |
+| `teams` | Team name and its members' `person:` references, set by hand or by the worker service import (CRM-R73, CRM-D17, CRM-D18); a team last set by an import before CRM-T161 may still hold `worker:<WPM worker id>` members until the next import | Reps | `manual` | Not touched: erasing a contact whose `person_ref` is also an imported team's member leaves that reference in the team (a person reference only, no name); the next import rewrites the team from WPM |
 | `territories` | Name, owner reference | Reps | `manual` | Not applicable |
 | `territory_accounts` | Organization reference | Organizations | `manual` | Not applicable |
 | `tickets` | Title (free text), contact pid, assignee reference, times | Contacts, reps | `swept` | Kept: keyed to a pid that no longer identifies anyone |

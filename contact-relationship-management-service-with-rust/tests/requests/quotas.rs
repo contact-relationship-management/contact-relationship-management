@@ -6,7 +6,7 @@ use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_worker, seed_pipeline};
+use super::{a_user, seed_pipeline};
 
 #[tokio::test]
 #[serial]
@@ -55,7 +55,7 @@ async fn a_plan_is_set_replaced_checked_and_cannot_be_removed_while_a_quota_uses
             .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
 
         // A quota paid under it keeps it from being removed.
-        let worker = a_worker();
+        let worker = a_user();
         let quota: Value = request
             .put("/api/quotas")
             .json(&json!({ "owner_ref": worker, "period_from": "2026-01-01",
@@ -90,7 +90,7 @@ async fn a_plan_is_set_replaced_checked_and_cannot_be_removed_while_a_quota_uses
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_quota_that_cannot_be_set_is_refused_naming_the_member() {
     request::<App, _, _>(|request, _ctx| async move {
-        let worker = a_worker();
+        let worker = a_user();
         let body = |extra: Value| {
             let mut base = json!({ "owner_ref": worker, "period_from": "2026-01-01",
                                    "period_to": "2026-03-31", "currency": "GBP",
@@ -176,7 +176,7 @@ async fn a_quota_that_cannot_be_set_is_refused_naming_the_member() {
 async fn attainment_is_the_workers_won_revenue_in_the_period_and_the_commission_its_plan_pays() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
-        let (ada, grace) = (a_worker(), a_worker());
+        let (ada, grace) = (a_user(), a_user());
         let win = |owner: String, name: &'static str, amount: i64, currency: &'static str| {
             let (request, pipeline, stage) = (&request, pipeline.clone(), stages[2].clone());
             async move {
@@ -305,7 +305,7 @@ async fn attainment_is_the_workers_won_revenue_in_the_period_and_the_commission_
 async fn a_split_deal_is_credited_in_shares_to_the_minor_unit_and_a_removed_split_gives_it_back() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
-        let (ada, grace) = (a_worker(), a_worker());
+        let (ada, grace) = (a_user(), a_user());
         let win = |owner: String, name: &'static str, amount: i64| {
             let (request, pipeline, stage) = (&request, pipeline.clone(), stages[2].clone());
             async move {
@@ -418,7 +418,7 @@ async fn a_split_deal_is_credited_in_shares_to_the_minor_unit_and_a_removed_spli
 async fn a_team_adds_its_workers_standings_per_currency_and_is_replaced_by_name_and_removed() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
-        let (ada, grace, idle) = (a_worker(), a_worker(), a_worker());
+        let (ada, grace, idle) = (a_user(), a_user(), a_user());
         for (owner, name, amount) in [(&ada, "Ada's", 30_000), (&grace, "Grace's", 20_000)] {
             let deal: Value = request
                 .post("/api/deals")
@@ -512,7 +512,7 @@ async fn a_team_adds_its_workers_standings_per_currency_and_is_replaced_by_name_
 async fn a_territory_holds_named_accounts_once_and_adds_the_revenue_won_on_them_per_currency() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
-        let ada = a_worker();
+        let ada = a_user();
         let org = || format!("organization:{}", uuid::Uuid::new_v4());
         let (north_org, south_org, spare_org) = (org(), org(), org());
         let account = |organization_ref: String| {
@@ -658,7 +658,7 @@ async fn a_territory_holds_named_accounts_once_and_adds_the_revenue_won_on_them_
 async fn a_clawback_takes_credit_back_from_one_worker_and_is_refused_beyond_what_they_hold() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
-        let (ada, grace, other) = (a_worker(), a_worker(), a_worker());
+        let (ada, grace, other) = (a_user(), a_user(), a_user());
         let make = |owner: String, amount: i64, win: bool| {
             let (request, pipeline, stage) = (&request, pipeline.clone(), stages[2].clone());
             async move {

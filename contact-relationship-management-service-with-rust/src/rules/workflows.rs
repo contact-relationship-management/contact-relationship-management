@@ -102,16 +102,16 @@ pub enum Action {
     CreateTask {
         /// What the task says.
         summary: String,
-        /// Who it is for (a `worker:` URN).
+        /// Who it is for (a `person:` URN, CRM-D18).
         #[serde(default)]
         assignee_ref: Option<String>,
         /// Due this many days from now.
         #[serde(default)]
         due_in_days: Option<u32>,
     },
-    /// Put a notification in a worker's inbox.
+    /// Put a notification in a user's inbox.
     Notify {
-        /// The worker (a `worker:` URN).
+        /// The user (a `person:` URN, CRM-D18).
         recipient_ref: String,
     },
     /// Set one field of the contact.
@@ -134,7 +134,7 @@ pub enum Action {
     },
     /// Give a new lead an owner from a pool of workers (`lead_created` only).
     AssignOwner {
-        /// The workers to choose among (`worker:` URNs).
+        /// The users to choose among (`person:` URNs, CRM-D18).
         pool: Vec<String>,
         /// One of [`ASSIGN_STRATEGIES`]: `round_robin` takes the pool in turn, `least_open` the
         /// worker with the fewest open leads and deals.
@@ -174,6 +174,23 @@ impl Action {
         }
     }
 
+    /// Rewrite every user reference the action names as the CRM stores it: `worker:<id>` becomes
+    /// `person:<id>` (CRM-D18). The assignee, the recipient, the pool, and an `owner_ref` being set.
+    pub fn normalise_user_refs(&mut self) {
+        use crate::rules::user_ref::{normalise, normalise_all, normalise_opt};
+        match self {
+            Self::CreateTask { assignee_ref, .. } => {
+                *assignee_ref = normalise_opt(assignee_ref.take());
+            }
+            Self::Notify { recipient_ref } => *recipient_ref = normalise(recipient_ref),
+            Self::AssignOwner { pool, .. } => normalise_all(pool),
+            Self::SetField { field, value } if field == "owner_ref" => {
+                *value = normalise_opt(value.take());
+            }
+            Self::SetField { .. } | Self::EnrolNurture { .. } | Self::SendWebhook { .. } => {}
+        }
+    }
+
     /// Whether the action can lead to mail being sent, so that consent must be re-checked inside it.
     #[must_use]
     pub fn leads_to_send(&self) -> bool {
@@ -190,7 +207,7 @@ fn is_event_name(event: &str) -> bool {
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
 }
 
-/// What would stop this workflow being saved, as `(field, message)` pairs. References (`worker:`
+/// What would stop this workflow being saved, as `(field, message)` pairs. References (`person:`
 /// URNs, the sequence) are checked by the caller, which can reach the database.
 #[must_use]
 pub fn check(
@@ -377,6 +394,51 @@ mod tests {
         }
     }
 
+    /// CRM-D18: every user reference an action names is stored as `person:`; a legacy `worker:`
+    /// keeps its id, and nothing else an action holds is touched.
+    #[test]
+    fn user_references_in_actions_are_normalised_and_nothing_else() {
+        let id = "3f2c6b7e-0000-4000-8000-000000000001";
+        let (old, new) = (format!("worker:{id}"), format!("person:{id}"));
+        let mut actions = vec![
+            Action::CreateTask {
+                summary: old.clone(),
+                assignee_ref: Some(old.clone()),
+                due_in_days: None,
+            },
+            Action::Notify {
+                recipient_ref: old.clone(),
+            },
+            Action::AssignOwner {
+                pool: vec![old.clone(), new.clone()],
+                strategy: "round_robin".into(),
+                notify: false,
+            },
+            Action::SetField {
+                field: "owner_ref".into(),
+                value: Some(old.clone()),
+            },
+            Action::SetField {
+                field: "job_title".into(),
+                value: Some(old.clone()),
+            },
+        ];
+        for a in &mut actions {
+            a.normalise_user_refs();
+        }
+        let json = serde_json::to_value(&actions).unwrap();
+        assert_eq!(json[0]["assignee_ref"], new.as_str());
+        assert_eq!(
+            json[0]["summary"],
+            old.as_str(),
+            "a summary is text, not a reference"
+        );
+        assert_eq!(json[1]["recipient_ref"], new.as_str());
+        assert_eq!(json[2]["pool"], serde_json::json!([new, new]));
+        assert_eq!(json[3]["value"], new.as_str());
+        assert_eq!(json[4]["value"], old.as_str(), "only owner_ref is a user");
+    }
+
     #[test]
     fn a_good_workflow_has_no_problems() {
         let found = check(
@@ -477,7 +539,7 @@ mod tests {
             sources: vec!["web".into()],
             ..Conditions::default()
         };
-        let a = [assign(&["worker:a", "worker:b"], "round_robin")];
+        let a = [assign(&["person:a", "person:b"], "round_robin")];
         assert!(check("lead_created", None, &c, &a).is_empty());
         // The source only makes sense for a lead, and the contact clauses only for a contact.
         assert!(!check("contact_created", None, &c, &[task("x")]).is_empty());
@@ -522,7 +584,7 @@ mod tests {
                 "lead_created",
                 None,
                 &none,
-                &[assign(&["worker:a", "worker:a"], "round_robin")]
+                &[assign(&["person:a", "person:a"], "round_robin")]
             )
             .is_empty()
         );
@@ -531,11 +593,11 @@ mod tests {
                 "lead_created",
                 None,
                 &none,
-                &[assign(&["worker:a"], "random")]
+                &[assign(&["person:a"], "random")]
             )
             .is_empty()
         );
-        let big: Vec<String> = (0..=MAX_POOL).map(|i| format!("worker:{i}")).collect();
+        let big: Vec<String> = (0..=MAX_POOL).map(|i| format!("person:{i}")).collect();
         let refs: Vec<&str> = big.iter().map(String::as_str).collect();
         assert!(!check("lead_created", None, &none, &[assign(&refs, "least_open")]).is_empty());
     }

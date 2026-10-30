@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — CRM users are `person:` references; migration 54 (CRM-T162, CRM-D18)
+
+`rules::user_ref` (pure): `of_subject`, `normalise` and friends. `owner_of` and the inbox give `person:<sub>`; `Problems::{require_user, user_opt}` replace the `Worker` checks; every user-naming body and `owner_ref` filter rewrites `worker:<id>` to `person:<id>` first, workflow actions through `Action::normalise_user_refs`. `PUT /api/quotas/teams` takes `person:` members, so an imported team can be saved again, and its roll-up meets its members' quotas. Migration 54 rewrites stored references (23 columns, workflow actions, hand-set teams), skips teams last set by the import and any rewrite that would collide on a unique key, does not move `updated_at` (it switches the touch trigger off for its own updates), and has a `down`. The seed makes `person:` owners; the request tests' helper is `a_user()`. `scripts/migrate-person-refs.sh` checks the migration against populated data. Not run against a live WPM or with real sign-ins; the `worker:` alias has no end date and no `Deprecation` header.
+
 ### Fixed — imported team members are `person:` references (CRM-T161, CRM-R73, CRM-D17)
 
 `rules::teams_import::{group, is_person_ref}` (pure); `clients::UpstreamWorker` gains `person_ref`; `POST /api/bridges/wpm/teams-import` stores members by `person_ref`, never `worker:`, and answers `without_person_ref`; the "not a reference" skip for a worker id is gone. No migration: the next import replaces the members of the teams it names. Not run against a live WPM; an imported team's roll-up matches no `worker:`-owned quota.

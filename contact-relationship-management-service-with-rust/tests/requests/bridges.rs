@@ -14,7 +14,7 @@ use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_person, a_worker, seed_pipeline};
+use super::{a_person, a_user, seed_pipeline};
 
 /// Puts the process-wide settings back when a test ends, even by panic.
 struct Restore;
@@ -240,17 +240,24 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
             worker(Some(&late), Some("sales")),
             // No person, a worker reference and a malformed one: counted, never a member.
             worker(None, Some("Support")),
-            worker(Some(&a_worker()), Some("Support")),
+            worker(
+                Some(&format!("worker:{}", uuid::Uuid::new_v4())),
+                Some("Support"),
+            ),
             worker(Some("person:nope"), None),
         ]);
-        let legacy = a_worker();
-        request
+        // A team set by hand with a legacy `worker:` member: stored as `person:`, same id (CRM-D18).
+        let legacy = a_user();
+        let set: Value = request
             .put("/api/quotas/teams")
-            .json(&json!({ "name": "Legacy", "members": [legacy] }))
+            .json(
+                &json!({ "name": "Legacy", "members": [legacy.replacen("person:", "worker:", 1)] }),
+            )
             .await
-            .assert_status_ok();
-        // A team an earlier import set by `worker:` reference: the next import replaces its members.
-        let old_member = a_worker();
+            .json();
+        assert_eq!(set["members"], json!([legacy]), "{set}");
+        // A team an earlier import set: the next import replaces its members.
+        let old_member = a_user();
         request
             .put("/api/quotas/teams")
             .json(&json!({ "name": "Support", "members": [old_member] }))
@@ -318,7 +325,7 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
             .map(|t| t["name"].as_str().unwrap())
             .collect();
         assert_eq!(all, ["Legacy", "Sales", "Support"], "{listed}");
-        // The hand-set team keeps its `worker:` member; the imported one no longer holds the old one.
+        // The hand-set team keeps its member; the imported one no longer holds the old one.
         let members = |name: &str| {
             listed
                 .as_array()
@@ -345,6 +352,119 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
             .post("/api/bridges/wpm/teams-import")
             .await
             .assert_status(axum::http::StatusCode::BAD_GATEWAY);
+    })
+    .await;
+}
+
+/// CRM-D18: a team the WPM import sets names its members by `person_ref`, and quotas and deal
+/// owners name the same people by `person:`, so the team's roll-up (CRM-R67) meets their quotas.
+/// A quota and a deal owner given in the legacy `worker:` form are stored as `person:` and count.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn an_imported_teams_roll_up_meets_the_quotas_set_for_the_same_people() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let _restore = Restore;
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        let (ada, grace, idle) = (a_person(), a_person(), a_person());
+        let legacy = |person: &str| person.replacen("person:", "worker:", 1);
+        for (owner, name, amount) in [
+            (ada.clone(), "Ada's", 30_000),
+            (legacy(&grace), "Grace's", 20_000),
+        ] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(
+                    &json!({ "name": name, "pipeline_pid": pipeline, "amount_minor": amount,
+                               "currency": "GBP", "owner_ref": owner }),
+                )
+                .await
+                .json();
+            request
+                .post(&format!(
+                    "/api/deals/{}/stage",
+                    deal["pid"].as_str().unwrap()
+                ))
+                .json(&json!({ "stage_pid": stages[2] }))
+                .await
+                .assert_status_ok();
+        }
+        let today = chrono::Utc::now().date_naive();
+        let (from, to) = (
+            today - chrono::Duration::days(10),
+            today + chrono::Duration::days(80),
+        );
+        for owner in [ada.clone(), legacy(&grace)] {
+            let quota: Value = request
+                .put("/api/quotas")
+                .json(
+                    &json!({ "owner_ref": owner, "period_from": from, "period_to": to,
+                               "currency": "GBP", "amount_minor": 100_000 }),
+                )
+                .await
+                .json();
+            assert!(
+                quota["owner_ref"]
+                    .as_str()
+                    .is_some_and(|o| o.starts_with("person:")),
+                "{quota}"
+            );
+            // Who set it is the caller as a person; with sign-in off, the all-zero one.
+            assert_eq!(
+                quota["set_by"], "person:00000000-0000-0000-0000-000000000000",
+                "{quota}"
+            );
+        }
+        // Filtering by the legacy form finds the same quota.
+        let listed: Value = request
+            .get(&format!("/api/quotas?owner_ref={}", legacy(&grace)))
+            .await
+            .json();
+        assert_eq!(listed.as_array().unwrap().len(), 1, "{listed}");
+        assert_eq!(listed[0]["owner_ref"], grace.as_str(), "{listed}");
+
+        let (base, _seen) = fake_wpm(vec![
+            worker(Some(&ada), Some("Sales")),
+            worker(Some(&grace), Some("Sales")),
+            worker(Some(&idle), Some("Sales")),
+        ])
+        .await;
+        settings::update(|s| {
+            s.upstream_mode = Mode::Http;
+            s.worker_service_url = Some(base.clone());
+        });
+        let done: Value = request.post("/api/bridges/wpm/teams-import").await.json();
+        let mut members = vec![ada.clone(), grace.clone(), idle.clone()];
+        members.sort();
+        assert_eq!(done["teams"][0]["members"], json!(members), "{done}");
+
+        // Grace's deal was given an owner in the legacy form; it counts, so it is hers as a person.
+        let report: Value = request.get("/api/quotas/team-attainment").await.json();
+        let row = report["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["name"] == "Sales")
+            .unwrap_or_else(|| panic!("{report}"))
+            .clone();
+        let gbp = &row["currencies"].as_array().unwrap()[0];
+        assert_eq!(gbp["quota_minor"], 200_000, "{row}");
+        assert_eq!(gbp["revenue_minor"], 50_000, "{row}");
+        assert_eq!(gbp["workers"], 2, "{row}");
+        assert_eq!(row["without_quota"], json!([idle]), "{row}");
+
+        // The imported team can be saved again by hand, as it is.
+        request
+            .put("/api/quotas/teams")
+            .json(&json!({ "name": "Sales", "members": members }))
+            .await
+            .assert_status_ok();
+        // Naming one person in both forms is naming them twice.
+        request
+            .put("/api/quotas/teams")
+            .json(&json!({ "name": "Sales", "members": [ada.clone(), legacy(&ada)] }))
+            .await
+            .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
     })
     .await;
 }

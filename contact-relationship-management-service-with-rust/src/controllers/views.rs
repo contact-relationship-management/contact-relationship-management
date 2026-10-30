@@ -21,7 +21,7 @@ use crate::rules::views as rules;
 use crate::validation::Problems;
 
 /// The owner used when sign-in is off and nobody is identified.
-const ANONYMOUS: &str = "worker:00000000-0000-0000-0000-000000000000";
+const ANONYMOUS: &str = "person:00000000-0000-0000-0000-000000000000";
 
 /// How a view sorts.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -83,9 +83,11 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
+/// The caller as a CRM user reference, `person:<sign-in subject>` (CRM-D18): what owns a view or a
+/// report and what `set_by` records. With sign-in off and no token, the all-zero person.
 pub(super) fn owner_of(caller: &MaybeAuthUser) -> Result<String> {
     match caller.actor() {
-        Some(sub) => Ok(format!("worker:{sub}")),
+        Some(sub) => Ok(crate::rules::user_ref::of_subject(sub)),
         None if auth::require_auth() => Err(Error::CustomError(
             StatusCode::UNAUTHORIZED,
             ErrorDetail::new("unauthorized", "missing bearer token"),

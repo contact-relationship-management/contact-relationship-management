@@ -243,6 +243,14 @@ result. Run it before shipping a migration that touches an existing table. On
 contacts (adding a nullable column is a metadata change in PostgreSQL, so it should not
 grow with table size; that is reasoning, not a measurement on a large table).
 
+Migration 54 (CRM users named by `person:`, CRM-D18) **rewrites rows** rather than adding a
+column: every owner, assignee, quota and team reference held as `worker:<uuid>`. It updates each
+column in one statement, so its time and its locks grow with the tables; it disables the
+`updated_at` trigger on seven tables for its own updates and turns it back on. On 2026-10-30
+`scripts/migrate-person-refs.sh` ran it up, down and up against 500 deals, contacts and tasks
+with all its checks passing; it has not been timed on a large table. Run it in a maintenance
+window on a large database.
+
 ## OAuth 2.0 in front of the service
 
 The GDS standard says to use OAuth 2.0, never basic authentication, and to

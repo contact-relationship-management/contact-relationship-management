@@ -7,7 +7,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_person, a_worker, seed_contact, seed_pipeline};
+use super::{a_person, a_user, seed_contact, seed_pipeline};
 
 async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
     db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
@@ -117,7 +117,7 @@ async fn a_task_is_made_when_conditions_are_met_and_the_run_says_why() {
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn notify_set_field_and_webhook_actions_each_do_their_one_thing() {
     request::<App, _, _>(|request, ctx| async move {
-        let who = a_worker();
+        let who = a_user();
         let wf = workflow!(
             &request,
             when_created(
@@ -469,7 +469,7 @@ async fn a_failing_action_undoes_the_run_and_spares_the_write_that_triggered_it(
                 json!({}),
                 json!([
                     { "type": "create_task", "summary": "First" },
-                    { "type": "notify", "recipient_ref": a_worker() },
+                    { "type": "notify", "recipient_ref": a_user() },
                 ])
             )
         );

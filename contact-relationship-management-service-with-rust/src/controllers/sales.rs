@@ -580,16 +580,13 @@ async fn list_pipelines(State(ctx): State<AppContext>) -> Result<Response> {
 async fn create_deal(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<DealPayload>,
+    Json(mut payload): Json<DealPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("name", &payload.name);
     problems.require_text("currency", &payload.currency);
-    problems.ref_opt(
-        "owner_ref",
-        entity_ref::EntityType::Worker,
-        payload.owner_ref.as_deref(),
-    );
+    payload.owner_ref = crate::rules::user_ref::normalise_opt(payload.owner_ref.take());
+    problems.user_opt("owner_ref", payload.owner_ref.as_deref());
     if payload.amount_minor < 0 {
         problems.push("amount_minor must be non-negative".to_string());
     }

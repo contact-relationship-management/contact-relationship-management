@@ -23,7 +23,10 @@ and the [record of processing](record-of-processing.md).
   service-level tracking, a help centre, and the analytics derived from them.
 - **Data subjects** *(system fact)*: contacts, leads (including web-form and imported ones), and
   ticket requesters; and the organization's own staff (reps, agents, assignees, owners) whose
-  references, quotas and activity the system records. [Deployer decides whether patients, citizens
+  references, quotas and activity the system records. Staff are named by the same `person:`
+  reference as anyone else, the sign-in subject (CRM-D18), so a member of staff who is also a
+  contact is one reference: erasing the contact does not remove it from owners, assignees, quotas
+  or teams. [Deployer decides whether patients, citizens
   or children can be contacts: if so the risk level rises and section 3 must be redone.]
 - **Data held** *(system fact)*: see the [inventory](personal-data-inventory.md), table by table.
   In short: a reference to the person (`person:<id>`; names and addresses live in the identity

@@ -20,6 +20,7 @@ use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::analytics::{self, Ratio};
 use crate::rules::quota;
+use crate::rules::user_ref;
 use crate::validation::Problems;
 
 /// Most workers on a team.
@@ -38,7 +39,8 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
 pub(crate) struct TeamPayload {
     /// The team's name, up to 80 characters.
     name: String,
-    /// The workers on it (`worker:<id>`), from 1 to 50, each named once.
+    /// The people on it (`person:<id>`, the sign-in subject; `worker:<id>` is read as
+    /// `person:<id>`, CRM-D18), from 1 to 50, each named once.
     members: Vec<String>,
 }
 
@@ -129,7 +131,7 @@ pub(super) async fn put_team<C: ConnectionTrait>(
 async fn set_team(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Json(payload): Json<TeamPayload>,
+    Json(mut payload): Json<TeamPayload>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     let name = quota::name(&payload.name)
@@ -138,8 +140,9 @@ async fn set_team(
     if payload.members.is_empty() || payload.members.len() > MAX_MEMBERS {
         problems.push_field("members", format!("from 1 to {MAX_MEMBERS} workers"));
     }
+    user_ref::normalise_all(&mut payload.members);
     for member in &payload.members {
-        problems.require_ref("members", entity_ref::EntityType::Worker, member);
+        problems.require_user("members", member);
     }
     let mut seen = std::collections::BTreeSet::new();
     if !payload.members.iter().all(|m| seen.insert(m.as_str())) {

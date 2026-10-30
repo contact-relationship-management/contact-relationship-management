@@ -43,8 +43,8 @@ pub(crate) struct InboxQuery {
     /// Only the unread.
     #[serde(default)]
     unread: bool,
-    /// Whose inbox, as a `worker:` URN. Used only when sign-in is off; with it on the inbox is
-    /// the caller's own.
+    /// Whose inbox, as a `person:` URN (`worker:` is accepted and read as `person:`, CRM-D18). Used
+    /// only when sign-in is off; with it on the inbox is the caller's own.
     #[serde(default)]
     recipient: Option<String>,
 }
@@ -53,12 +53,12 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
-/// Whose inbox this is: the caller's (`worker:<sub>`), or, with sign-in off, the one named.
+/// Whose inbox this is: the caller's (`person:<sub>`), or, with sign-in off, the one named.
 fn recipient_of(caller: &MaybeAuthUser, query: &InboxQuery) -> Result<String> {
     if auth::require_auth() {
         return caller
             .actor()
-            .map(|sub| format!("worker:{sub}"))
+            .map(crate::rules::user_ref::of_subject)
             .ok_or_else(|| {
                 Error::CustomError(
                     StatusCode::UNAUTHORIZED,
@@ -70,10 +70,11 @@ fn recipient_of(caller: &MaybeAuthUser, query: &InboxQuery) -> Result<String> {
         .recipient
         .as_deref()
         .ok_or_else(|| unprocessable("recipient is required when sign-in is off"))?;
+    let named = crate::rules::user_ref::normalise(named);
     let mut problems = crate::validation::Problems::new();
-    problems.require_ref("recipient", entity_ref::EntityType::Worker, named);
+    problems.require_user("recipient", &named);
     problems.finish()?;
-    Ok(named.to_string())
+    Ok(named)
 }
 
 /// Whether the caller may read the record this notification is about.

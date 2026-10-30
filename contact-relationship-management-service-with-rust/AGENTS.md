@@ -18,7 +18,9 @@ is the sales / marketing / support client.
 
 **Domain ownership.** CRM **owns relationship state** (its own
 tables) but **references identities**: contacts are person-service
-records, accounts organization-service, reps/agents worker-service —
+records, accounts organization-service, reps/agents the signed-in
+users, named by the person id of their sign-in subject (`person:<sub>`,
+CRM-D18; formerly `worker:`) —
 always as EntityRef URNs (`person:<uuid>`), never duplicated
 demographics. Dedup/merge of identities stays upstream. See the
 cross-cutting spec's [scope boundary](../spec/scope.md).

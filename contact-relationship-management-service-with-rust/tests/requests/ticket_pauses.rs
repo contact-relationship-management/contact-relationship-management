@@ -347,7 +347,7 @@ async fn a_ticket_left_waiting_past_its_policys_limit_is_flagged_once_and_cleare
 #[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
 async fn a_policy_can_resolve_or_escalate_a_ticket_left_waiting_past_its_limit() {
     request::<App, _, _>(|request, ctx| async move {
-        let worker = format!("worker:{}", uuid::Uuid::new_v4());
+        let worker = format!("person:{}", uuid::Uuid::new_v4());
         let policy = |priority: &'static str, action: Value, to: Value| {
             let request = &request;
             async move {

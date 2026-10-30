@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — a CRM user is a `person:` reference, so imported teams meet their quotas (CRM-T162, CRM-D18, CRM-R59, CRM-R67, CRM-R73)
+
+The family's sign-in subject is a person id: WPM matches it as `person:<sub>` and PPM addresses it so (checked in both apps' code and specs; CRM-D18 lists where). The CRM wrote it as `worker:<sub>`, so after CRM-T161 an imported team's `person:` members met no quota. Every field that names a CRM user (owners, assignees, the actor, notification recipients, quota, split and clawback holders, team members, workflow assignees and pools, `set_by`, a view's or report's owner) is now `person:<id>`, and the signed-in caller is `person:<sub>`. **`worker:<id>` is still accepted on input** and stored and answered as `person:<id>` (the same id), for a deprecation period with no end date yet. **Migration 54** rewrites stored `worker:<uuid>` user references, leaving alone teams last set by the WPM import (their members were WPM worker ids), history and WPM's event subjects; `updated_at` is kept. The `{{rep_name}}` template value now comes from the person service.
+
+**Not done or not verified:** not run against a running WPM or with real sign-ins (the request tests use a stand-in WPM with sign-in off; the migration was run against a populated throwaway database by `scripts/migrate-person-refs.sh`, not a production-sized one). No `Deprecation` header is sent for `worker:` input, and when the alias goes is not decided. A team last set by an import before CRM-T161 keeps its `worker:` members until the next import. History (audit log, outbox, workflow run logs) still says `worker:`. UI and locale prose still calls sellers "workers". WPM's spec still records the mismatch as open.
+
 ### Fixed — imported teams name their members by `person:` reference (CRM-T161, CRM-R73, CRM-D17)
 
 `POST /api/bridges/wpm/teams-import` now makes each team's members the workers' `person_ref` from WPM's list (validated as a `person:` URN), the reference contacts, employments and WPM's events use, instead of `worker:<pid>`. A worker without a valid one joins no team and is counted in the new `without_person_ref`; it never falls back to `worker:`. Teams an earlier import set with `worker:` members are replaced by the next import that names them; nothing is migrated. The import still keeps only `department` and `person_ref` (and reads `pid` to recognise a row).

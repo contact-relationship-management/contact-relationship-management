@@ -80,9 +80,9 @@ pub fn a_person() -> String {
     format!("person:{}", uuid::Uuid::new_v4())
 }
 
-/// A fresh synthetic `worker:` URN.
-pub fn a_worker() -> String {
-    format!("worker:{}", uuid::Uuid::new_v4())
+/// A fresh synthetic CRM user: a `person:` URN, as a sign-in subject is named (CRM-D18).
+pub fn a_user() -> String {
+    format!("person:{}", uuid::Uuid::new_v4())
 }
 
 /// Create the demo pipeline (3 open stages + Won + Lost). Expands to

@@ -21,8 +21,8 @@ One API; four typical policy personas expressed over `attrs`:
 
 ## Record-level attributes
 
-Handlers derive `resource.owner` (the owning worker URN, enabling
-`$sub` self-scope), `resource.status`, and `resource.tier` for the
+Handlers derive `resource.owner` (the bare id of the owner's `person:`
+URN, the sign-in subject, enabling `$sub` self-scope, CRM-D18), `resource.status`, and `resource.tier` for the
 second ABAC pass. The `mask` obligation redacts **deal amounts,
 forecast values, campaign costs/ROI, and contact channel details**
 while leaving structure (stages, counts, statuses) visible.
