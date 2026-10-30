@@ -178,3 +178,34 @@ whose last applied event was a leave is skipped (`left_by_event`), since WPM say
 leave's day while the CRM lifts the pause when the leave arrives. The check writes no order
 (`employment_last_events`): it has no event time, and a later leave must still apply. Rejected:
 mirroring WPM (a no ending the pause), which would make the check and the events fight.
+
+## CRM-D17 — Imported teams name their members by `person:` reference; old members are replaced, not migrated
+
+The teams import (CRM-R73) made each member `worker:<pid>` from WPM's worker id, while everything
+else in the family names a person by `person:` URN: CRM keys contacts and employments by
+`person_ref`, and WPM's hire and leave events and overlap check carry `person_ref`. WPM's list,
+which the import already reads, carries each worker's `person_ref`, so the import now keeps that
+(validated as a `person:` URN) and nothing else new. **A worker without a valid `person_ref` joins
+no team and is counted** (`without_person_ref`); it never falls back to `worker:`, since a team
+mixing the two kinds could not be compared with anything.
+
+**Teams already stored with `worker:` members are not migrated.** The next import replaces the
+members of every team it names, as it always has; a team set by hand, or one whose department WPM
+no longer lists, keeps what it holds. Rejected: a migration that asks WPM for each `worker:<pid>`'s
+person (a call from a migration, to a service that may be unreachable or unconfigured, to repair
+data the next import rewrites anyway); and a migration that deletes `worker:` members (it would
+empty hand-set teams, whose `worker:` members are what CRM-R67 asks for).
+
+**The cost, named:** quotas and deals are owned by `worker:` references (CRM-R59), so a team's
+roll-up (CRM-R67) cannot match an imported team's `person:` members to any quota and lists them in
+`without_quota`. Whether the old `worker:<wpm pid>` members ever matched depended on the CRM's sign-in
+subject being WPM's worker id, which nothing guaranteed. The mapping from a person to the worker
+reference that owns deals is not built, and `PUT /api/quotas/teams` still takes `worker:` members
+only, so an imported team cannot be re-saved by hand.
+
+**What WPM sends is more than is read.** `GET /api/workers` answers whole worker records (name, job,
+manager, pay unless WPM's policy applies its `mask` obligation) to the import's token, and does not
+audit a salary-bearing list as it audits a single read. The CRM keeps `department` and `person_ref`
+and reads `pid` only to recognise a row; the rest is dropped unread. Narrowing the answer is WPM's to
+decide (a field list or a bridge route), recorded for WPM's owner in the integrations table; WPM is
+not changed here.

@@ -108,7 +108,7 @@ history remain under a pid that no longer identifies anyone.
 | `sla_policies` | None | — | `swept` | Not applicable |
 | `taggings` | Tag and subject pids | Contacts, accounts | `manual` | Taggings of the contact deleted |
 | `tags` | None (tag names) | — | `manual` | Not applicable |
-| `teams` | Team name and its workers' references | Reps | `manual` | Not applicable |
+| `teams` | Team name and its workers' references: `worker:` set by hand, `person:` set by the worker service import (CRM-R73, CRM-D17) | Reps | `manual` | Not touched: erasing a contact whose `person_ref` is also an imported team's member leaves that reference in the team (a person reference only, no name); the next import rewrites the team from WPM |
 | `territories` | Name, owner reference | Reps | `manual` | Not applicable |
 | `territory_accounts` | Organization reference | Organizations | `manual` | Not applicable |
 | `tickets` | Title (free text), contact pid, assignee reference, times | Contacts, reps | `swept` | Kept: keyed to a pid that no longer identifies anyone |

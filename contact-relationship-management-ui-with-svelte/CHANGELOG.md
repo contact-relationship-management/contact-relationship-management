@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the teams import's answer (CRM-T161, CRM-R73, CRM-D17)
+
+`TeamImport` gains `without_person_ref` and the tour's stand-in answers it; the API types regenerated. Imported teams' members are now `person:` references. The `/quotas` page does not show the new count.
+
 ### Added — the employment check on `/quotas` (CRM-T160, CRM-R94)
 
 A button beside the teams import asks the worker service which contacts are employees and says how many were marked (in the tour, how many would be asked about); three strings in the eight locales (machine drafts, 703 per locale); a tour test; the API types regenerated.

@@ -294,14 +294,18 @@ pub async fn resolve_organization(name: &str) -> Result<String, String> {
     Ok(urn)
 }
 
-/// A worker as the worker service lists it: the only two things a team is made from. Everything
-/// else the service sends (pay, employment) is never read.
+/// A worker as the worker service lists it: the only three things the teams import reads (CRM-R73,
+/// CRM-D17). WPM sends the whole worker record (name, job, pay unless its policy masks it); every
+/// other member is dropped here, unread and unkept.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UpstreamWorker {
-    /// The worker's id there, which is the `worker:<id>` reference here.
+    /// The worker's id there; read only to tell a worker row from anything else, never kept.
     pub pid: String,
     /// The department the worker is in; empty when none.
     pub department: String,
+    /// The person the worker is (`person:<uuid>` when WPM is well formed), the team member's
+    /// reference; `None` when absent or not a string. Validated by `rules::teams_import`.
+    pub person_ref: Option<String>,
 }
 
 /// Workers asked for per page of the worker service's list.
@@ -398,9 +402,10 @@ pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Resu
 
 /// The active workers of the worker service, with their department (CRM-R73): `GET
 /// {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=&offset=`, read page by page. Checked
-/// against that service's source (`hr_core.rs`, `list_workers`: a bare JSON array, `pid` and
-/// `department` members, a page of at most 500, an offset of at most 10,000, `active` a real status)
-/// on 2026-10-28; not run against a live one. With `CRM_WORKER_SERVICE_TOKEN` set it sends that as a
+/// against that service's source (`hr_core.rs`, `list_workers`: a bare JSON array of whole worker
+/// records with `pid`, `department` and `person_ref` members, a page of at most 500, an offset of at
+/// most 10,000, `active` a real status) on 2026-10-28 and again on 2026-10-30; not run against a live
+/// one. Only `pid`, `department` and `person_ref` are read from each row. With `CRM_WORKER_SERVICE_TOKEN` set it sends that as a
 /// bearer credential (CRM-R87), and the list is then the one that token may see.
 ///
 /// # Errors
@@ -447,6 +452,7 @@ pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
                 workers.push(UpstreamWorker {
                     pid: pid.to_string(),
                     department: text("department").unwrap_or_default().trim().to_string(),
+                    person_ref: text("person_ref").map(str::to_string),
                 });
             }
         }

@@ -2063,12 +2063,14 @@ export function openDelivery(dealPid: string): Promise<DealDelivery> {
   return api(`/bridges/ppm/deals/${dealPid}`, { method: "POST" });
 }
 
-/** What a worker-service import did (CRM-R73). */
+/** What a worker-service import did (CRM-R73); members are `person:` references (CRM-D17). */
 export interface TeamImport {
   mode: "stub" | "http";
   teams: Team[];
   skipped: { department: string; reason: string }[];
   without_department: number;
+  /** Workers whose `person_ref` was missing or not a `person:` URN; they join no team. */
+  without_person_ref: number;
 }
 
 /** Set a team per department from the worker service's active workers. */

@@ -14,7 +14,7 @@ use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
-use super::{a_worker, seed_pipeline};
+use super::{a_person, a_worker, seed_pipeline};
 
 /// Puts the process-wide settings back when a test ends, even by panic.
 struct Restore;
@@ -108,9 +108,11 @@ async fn serve(app: Router) -> String {
     url
 }
 
-fn worker(pid: &str, department: Option<&str>) -> Value {
-    json!({ "pid": pid, "display_name": "Someone", "status": "active",
-            "department": department, "salary_minor": 9_999_999 })
+/// A worker as WPM's list serialises one: the whole record, pay included (CRM-D17).
+fn worker(person_ref: Option<&str>, department: Option<&str>) -> Value {
+    json!({ "pid": uuid::Uuid::new_v4().to_string(), "person_ref": person_ref,
+            "display_name": "Someone", "status": "active", "job_title": "Rep",
+            "department": department, "salary_minor": 9_999_999, "salary_currency": "EUR" })
 }
 
 #[tokio::test]
@@ -225,22 +227,33 @@ async fn a_won_deal_opens_one_delivery_idea_in_ppm_and_only_over_http() {
 async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alone() {
     request::<App, _, _>(|request, _ctx| async move {
         let _restore = Restore;
-        let id = || uuid::Uuid::new_v4().to_string();
-        let (a, b, c, late) = (id(), id(), id(), id());
+        let (a, b, c, late) = (a_person(), a_person(), a_person(), a_person());
         // 200 in one big department fill the first page, so the rest are only read from the second.
-        let mut workers: Vec<Value> = (0..200).map(|_| worker(&id(), Some("Bulk"))).collect();
+        let mut workers: Vec<Value> = (0..200)
+            .map(|_| worker(Some(&a_person()), Some("Bulk")))
+            .collect();
         workers.extend([
-            worker(&a, Some("Sales")),
-            worker(&b, Some("Sales")),
-            worker(&c, Some("Support")),
-            worker(&id(), None),
-            worker(&late, Some("sales")),
-            worker("not-a-uuid", Some("Support")),
+            worker(Some(&a), Some("Sales")),
+            worker(Some(&b), Some("Sales")),
+            worker(Some(&c), Some("Support")),
+            worker(Some(&a_person()), None),
+            worker(Some(&late), Some("sales")),
+            // No person, a worker reference and a malformed one: counted, never a member.
+            worker(None, Some("Support")),
+            worker(Some(&a_worker()), Some("Support")),
+            worker(Some("person:nope"), None),
         ]);
         let legacy = a_worker();
         request
             .put("/api/quotas/teams")
             .json(&json!({ "name": "Legacy", "members": [legacy] }))
+            .await
+            .assert_status_ok();
+        // A team an earlier import set by `worker:` reference: the next import replaces its members.
+        let old_member = a_worker();
+        request
+            .put("/api/quotas/teams")
+            .json(&json!({ "name": "Support", "members": [old_member] }))
             .await
             .assert_status_ok();
 
@@ -263,28 +276,32 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
             .map(|t| t["name"].as_str().unwrap())
             .collect();
         assert_eq!(names, ["Sales", "Support"], "{done}");
-        let sales = done["teams"][0]["members"].as_array().unwrap().len();
-        assert_eq!(sales, 2, "{done}");
+        let mut sales = vec![a.clone(), b.clone()];
+        sales.sort();
+        assert_eq!(done["teams"][0]["members"], json!(sales), "{done}");
+        assert_eq!(done["teams"][1]["members"], json!([c]), "{done}");
         assert_eq!(done["without_department"], 1, "{done}");
-        // Skipped, each with its reason: 200 is too many for a team, "sales" is "Sales" in another
-        // case, and a worker with no usable id.
+        assert_eq!(done["without_person_ref"], 3, "{done}");
+        // Nothing but the references is kept: no pay, name or job from WPM's record.
+        let text = done.to_string();
+        for leaked in ["9999999", "Someone", "\"Rep\"", "EUR"] {
+            assert!(!text.contains(leaked), "{leaked} in {done}");
+        }
+        // Skipped, each with its reason: 200 is too many for a team, and "sales" is "Sales" in
+        // another case.
         let skipped: Vec<String> = done["skipped"]
             .as_array()
             .unwrap()
             .iter()
             .map(|s| s["reason"].as_str().unwrap().to_string())
             .collect();
-        assert_eq!(skipped.len(), 3, "{done}");
+        assert_eq!(skipped.len(), 2, "{done}");
         assert!(
             skipped.iter().any(|r| r.contains("more than 50")),
             "{skipped:?}"
         );
         assert!(
             skipped.iter().any(|r| r.contains("another case")),
-            "{skipped:?}"
-        );
-        assert!(
-            skipped.iter().any(|r| r.contains("not a reference")),
             "{skipped:?}"
         );
 
@@ -301,6 +318,18 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
             .map(|t| t["name"].as_str().unwrap())
             .collect();
         assert_eq!(all, ["Legacy", "Sales", "Support"], "{listed}");
+        // The hand-set team keeps its `worker:` member; the imported one no longer holds the old one.
+        let members = |name: &str| {
+            listed
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|t| t["name"] == name)
+                .unwrap()["members"]
+                .clone()
+        };
+        assert_eq!(members("Legacy"), json!([legacy]));
+        assert_eq!(members("Support"), json!([c]));
 
         // Run again: the same teams, replaced and not added.
         request

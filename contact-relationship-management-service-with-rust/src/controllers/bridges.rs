@@ -11,9 +11,7 @@
 //! those the events never told of (CRM-R94).
 
 use std::collections::BTreeMap;
-use std::str::FromStr;
 
-use entity_ref::EntityRef;
 use loco_rs::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::Serialize;
@@ -167,18 +165,22 @@ pub(crate) struct Skipped {
 pub(crate) struct ImportView {
     /// `stub` (nothing was read) or `http`.
     mode: &'static str,
-    /// The teams set, one per department, by name.
+    /// The teams set, one per department, by name; each member is a worker's `person:` reference.
     teams: Vec<TeamView>,
     /// Departments left alone, with the reason.
     skipped: Vec<Skipped>,
-    /// Active workers with no department, who join no team.
+    /// Active workers with a person reference and no department, who join no team.
     without_department: usize,
+    /// Active workers whose `person_ref` is missing or not a `person:` URN, who join no team.
+    without_person_ref: usize,
 }
 
 /// `POST /api/bridges/wpm/teams-import` — read the active workers of the worker service and set a
-/// team per department, each team's workers being that department's (CRM-R73). All the teams are
-/// set together or none is; each is audited with `via: wpm`. Teams the import does not name are
-/// left as they are, and nothing is written to the worker service. `502` when it cannot be read.
+/// team per department, each team's members being that department's workers by `person:` reference
+/// (CRM-R73, CRM-D17). A worker without a valid `person_ref` joins no team and is counted. All the
+/// teams are set together or none is; each is audited with `via: wpm`. Teams the import does not
+/// name are left as they are, and nothing is written to the worker service. `502` when it cannot be
+/// read.
 #[debug_handler]
 async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
     if clients::mode() != Mode::Http {
@@ -187,36 +189,24 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
             teams: Vec::new(),
             skipped: Vec::new(),
             without_department: 0,
+            without_person_ref: 0,
         });
     }
     let workers = clients::active_workers()
         .await
         .map_err(|reason| unavailable(&reason))?;
-    let mut by_department: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    let mut without_department = 0;
+    let grouped = crate::rules::teams_import::group(
+        workers
+            .iter()
+            .map(|w| (w.department.as_str(), w.person_ref.as_deref())),
+    );
     let mut skipped = Vec::new();
-    for worker in workers {
-        let urn = format!("worker:{}", worker.pid);
-        if EntityRef::from_str(&urn).is_err() {
-            skipped.push(Skipped {
-                department: worker.department.clone(),
-                reason: "a worker with an id that is not a reference".to_string(),
-            });
-        } else if worker.department.is_empty() {
-            without_department += 1;
-        } else {
-            by_department
-                .entry(worker.department)
-                .or_default()
-                .push(urn);
-        }
-    }
     let who = owner_of(&caller)?;
     let txn = ctx.db.begin().await?;
     let mut teams = Vec::new();
     // Departments that differ only in case are one team, as team names are.
     let mut seen = BTreeMap::new();
-    for (department, mut members) in by_department {
+    for (department, members) in grouped.by_department {
         let name = match quota::name(&department) {
             Ok(name) => name.replace("a plan", "a team"),
             Err(why) => {
@@ -234,8 +224,6 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
             });
             continue;
         }
-        members.sort();
-        members.dedup();
         if members.len() > MAX_MEMBERS {
             skipped.push(Skipped {
                 department: name,
@@ -250,7 +238,8 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
         mode: "http",
         teams,
         skipped,
-        without_department,
+        without_department: grouped.without_department,
+        without_person_ref: grouped.without_person_ref,
     })
 }
 

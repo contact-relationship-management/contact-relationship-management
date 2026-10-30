@@ -4044,7 +4044,13 @@ function territoryRoutes(
 function bridgeRoutes(method: string, seg: string[]) {
   if (method !== "POST") return problem(405, "POST only");
   if (seg[1] === "wpm" && seg[2] === "teams-import")
-    return ok({ mode: "stub", teams: [], skipped: [], without_department: 0 });
+    return ok({
+      mode: "stub",
+      teams: [],
+      skipped: [],
+      without_department: 0,
+      without_person_ref: 0,
+    });
   // CRM-R94: nothing is sent; it says how many contacts' references would be asked about.
   if (seg[1] === "wpm" && seg[2] === "employment-check") {
     const asked = new Set(state.contacts.map((c) => c.person_ref)).size;

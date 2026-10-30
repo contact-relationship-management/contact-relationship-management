@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — imported teams name their members by `person:` reference (CRM-T161, CRM-R73, CRM-D17)
+
+`POST /api/bridges/wpm/teams-import` now makes each team's members the workers' `person_ref` from WPM's list (validated as a `person:` URN), the reference contacts, employments and WPM's events use, instead of `worker:<pid>`. A worker without a valid one joins no team and is counted in the new `without_person_ref`; it never falls back to `worker:`. Teams an earlier import set with `worker:` members are replaced by the next import that names them; nothing is migrated. The import still keeps only `department` and `person_ref` (and reads `pid` to recognise a row).
+
+**Not done or not verified:** not run against a running WPM (tested against a stand-in; WPM's `person_ref` was read from its source on 2026-10-30). Quotas are owned by `worker:` references, so an imported team's roll-up (CRM-R67) now matches no quota and lists its members in `without_quota`; no person-to-worker mapping is built, and `PUT /api/quotas/teams` still takes `worker:` members only, so an imported team cannot be re-saved by hand. Erasing a contact does not remove its `person_ref` from an imported team. WPM answers the import with whole worker records (pay included unless its policy masks it) and does not audit that list read: recorded for WPM's owner, WPM not changed, and WPM's own spec still calls the mismatch open. The `/quotas` page does not show `without_person_ref`.
+
 ### Added — the worker service is asked which contacts are its employees (CRM-T160, CRM-R94)
 
 `POST /api/bridges/wpm/employment-check` (admin only, stub-first) sends WPM's overlap check (WPM-R208) the `person:` references of the live contacts, at most 500 a call and never a name, for `CRM_WPM_ORGANIZATION_REF` under `CRM_WORKER_SERVICE_TOKEN`; each yes marks the contacts employees as a hire event would (audited with `via: wpm`), unless the last event applied was a leave; a no changes nothing. A button on `/quotas`. CRM-D16 records why one HR token and one configured organization.

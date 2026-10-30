@@ -40,7 +40,11 @@ and the [record of processing](record-of-processing.md).
   else; the identity services,
   which are asked for a display name or an address. [Deployer decides: hosting provider, backup
   provider, identity provider, and whether each is a processor.]
-- **Sources other than the user** *(system fact)*: the worker service (WPM) may post hire and leave
+- **Sources other than the user** *(system fact)*: when an admin runs the teams import (CRM-R73,
+  off unless `CRM_UPSTREAM_MODE=http`), the worker service's list of active workers, of which the
+  CRM keeps each worker's department and `person:` reference as a team's members (CRM-D17); WPM's
+  answer carries the whole worker record, pay included unless WPM's policy masks it, and the rest is
+  dropped unread and unlogged. The worker service (WPM) may also post hire and leave
   events (CRM-R92, off unless `CRM_WPM_WEBHOOK_SECRET` is set). From each the CRM keeps the event's
   id and kind, and, **only for a person who is already a contact**, the person reference, the
   employer's organization reference and the date: the fact that this contact is now an employee,
@@ -76,8 +80,10 @@ and the [record of processing](record-of-processing.md).
   campaign's purpose, checked again at send time, and every message carries a working unsubscribe;
   withdrawing stops it. Consent history is append-only.
 - **Minimisation** *(system fact)*: the CRM references identities by URN and keeps no address on a
-  contact; a bridge sends PPM only a deal's name, amount and tags; the worker import reads only a
-  worker's id and department and never pay; the hire and leave events bring a person reference, an
+  contact; a bridge sends PPM only a deal's name, amount and tags; the worker import keeps only a
+  worker's department and `person:` reference (and reads the id only to recognise a row), and
+  drops the rest of the record WPM answers, which includes name, job and pay unless WPM's policy
+  masks it (CRM-D17: WPM's to narrow); the hire and leave events bring a person reference, an
   organization reference and a date, and nothing is kept for a person who is not already a contact;
   the employment check sends only contacts' person references and the organization reference.
 - **Transparency:** [deployer decides: privacy notice location]. A tracking pixel (open and click

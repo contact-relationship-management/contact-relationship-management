@@ -21779,13 +21779,18 @@ export interface components {
             mode: string;
             /** @description Departments left alone, with the reason. */
             skipped: components["schemas"]["TeamImportSkipped"][];
-            /** @description The teams set, one per department, by name. */
+            /** @description The teams set, one per department, by name; each member is a worker's `person:` reference. */
             teams: components["schemas"]["Team"][];
             /**
              * Format: uint
-             * @description Active workers with no department, who join no team.
+             * @description Active workers with a person reference and no department, who join no team.
              */
             without_department: number;
+            /**
+             * Format: uint
+             * @description Active workers whose `person_ref` is missing or not a `person:` URN, who join no team.
+             */
+            without_person_ref: number;
         };
         /** @description A department the import did not turn into a team, and why. */
         TeamImportSkipped: {

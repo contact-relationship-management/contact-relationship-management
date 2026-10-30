@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — imported team members are `person:` references (CRM-T161, CRM-R73, CRM-D17)
+
+`rules::teams_import::{group, is_person_ref}` (pure); `clients::UpstreamWorker` gains `person_ref`; `POST /api/bridges/wpm/teams-import` stores members by `person_ref`, never `worker:`, and answers `without_person_ref`; the "not a reference" skip for a worker id is gone. No migration: the next import replaces the members of the teams it names. Not run against a live WPM; an imported team's roll-up matches no `worker:`-owned quota.
+
 ### Added — WPM employment check (CRM-T160, CRM-R94)
 
 `POST /api/bridges/wpm/employment-check`; `rules::employment_check` (batches, answer, decision); `clients::overlap_check`; `CRM_WPM_ORGANIZATION_REF`; `models::employments::{last_kind, live_person_refs}`. Tested against a stand-in WPM; not run against a live one.
