@@ -14,10 +14,10 @@
     funnel,
     listDeals,
     listPipelines,
-    money,
     moveDeal,
     placeCard,
   } from "#lib/api/crm.js";
+  import { minorToInput, minorToMajor, money, toMinor } from "#lib/money.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
   import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
@@ -69,7 +69,11 @@
       laneId: deal.owner_ref ?? UNASSIGNED,
       title: deal.name,
       values: {
-        amount: deal.amount_minor === null ? null : deal.amount_minor / 100,
+        // The amount as the page's own number format types it, in the deal's own minor unit.
+        amount:
+          deal.amount_minor === null
+            ? null
+            : minorToInput(deal.amount_minor, deal.currency, i18n.locale),
         close: deal.expected_close_on ?? null,
         currency: deal.currency,
       },
@@ -83,24 +87,32 @@
       .map((id) => ({ id, title: id === UNASSIGNED ? t("kanban.unassigned") : id })),
   );
 
-  // The amount shows with its own currency and edits in major units.
+  // The amount shows with its own currency and edits as text in the page's own number format
+  // ("1234,50" in German, "1500" yen), so a decimal comma is accepted (CRM-T167). A deal with no
+  // currency shows a dash: none is assumed (CRM-T168).
+  const minorOf = (value: unknown, currency: unknown) =>
+    typeof value === "string" && typeof currency === "string" && currency
+      ? toMinor(value, currency, i18n.locale)
+      : null;
   const fields = $derived<KanbanField[]>([
     {
       id: "amount",
       header: t("kanban.amount"),
-      type: "number",
+      type: "text",
       editable: true,
       format: (value: unknown, row: Record<string, unknown>) =>
-        value === null || value === undefined
-          ? "—"
-          : money(Math.round(Number(value) * 100), String(row.currency ?? "GBP"), i18n.locale),
+        money(minorOf(value, row.currency), String(row.currency ?? ""), i18n.locale),
+      validate: (value: unknown, values: Record<string, unknown>) =>
+        minorOf(value, values.currency) === null ? t("money.amountInvalid") : undefined,
     },
     { id: "close", header: t("kanban.closeOn"), type: "date", editable: true },
   ]);
 
   async function onEdit(edit: KanbanFieldEdit) {
-    if (edit.fieldId === "amount" && typeof edit.value === "number") {
-      await editDeal(edit.cardId, { amount_minor: Math.round(edit.value * 100) });
+    const currency = openDeals.find((deal) => deal.pid === edit.cardId)?.currency;
+    const minor = edit.fieldId === "amount" ? minorOf(edit.value, currency) : null;
+    if (minor !== null) {
+      await editDeal(edit.cardId, { amount_minor: minor });
     } else if (edit.fieldId === "close" && typeof edit.value === "string") {
       await editDeal(edit.cardId, { expected_close_on: edit.value });
     }
@@ -147,7 +159,9 @@
     applyFilter(deals ?? [], view).map((deal) => ({
       id: deal.pid,
       name: deal.name,
-      amount_minor: deal.amount_minor === null ? "" : deal.amount_minor / 100,
+      // Major units of the deal's own currency, so the column sorts as numbers.
+      amount_minor:
+        deal.amount_minor === null ? "" : minorToMajor(deal.amount_minor, deal.currency, i18n.locale),
       currency: deal.currency,
       state: deal.closed_at === null ? "open" : deal.won ? "won" : "lost",
       expected_close_on: deal.expected_close_on ?? "",

@@ -1,5 +1,5 @@
-// Typed CRM API surface over the BFF proxy, plus the family `money()`
-// formatter. Paths mirror the service routes one-to-one — the
+// Typed CRM API surface over the BFF proxy (money is formatted by
+// `src/lib/money.ts`). Paths mirror the service routes one-to-one — the
 // Playwright suite stubs these exact paths, so drift fails loudly.
 
 import { api, apiAll, apiUpload } from "#lib/api/client.js";
@@ -136,22 +136,6 @@ export interface Ratio {
   numerator: number;
   denominator: number;
   value: number | null;
-}
-
-/**
- * Format minor units + ISO-4217 as a locale-aware money string.
- * `null` renders as an em dash (the masked/absent state) — never 0.
- */
-export function money(
-  minor: number | null | undefined,
-  currency: string | null | undefined,
-  locale?: string,
-): string {
-  if (minor === null || minor === undefined || !currency) return "—";
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(minor / 100);
 }
 
 /** Contacts. */
@@ -795,6 +779,8 @@ export function listSegments(init?: FetchLike): Promise<Segment[]> {
 /** What is sent to make a campaign: a template, or its own subject and body. */
 export interface CampaignInput {
   name: string;
+  /** ISO 4217; required, never assumed (CRM-T168). */
+  currency: string;
   segment_pid?: string;
   template_pid?: string;
   subject?: string;

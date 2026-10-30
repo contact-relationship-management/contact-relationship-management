@@ -286,7 +286,7 @@ async fn a_hire_pauses_marketing_once_and_a_leave_restores_it_under_the_old_cons
         // A campaign skips her, saying why; a nurture enrolment is held, not ended.
         let campaign: Value = request
             .post("/api/campaigns")
-            .json(&json!({ "name": "Autumn", "segment_pid": segment_pid }))
+            .json(&json!({ "name": "Autumn", "currency": "EUR", "segment_pid": segment_pid }))
             .await
             .json();
         let campaign_pid = campaign["pid"].as_str().unwrap().to_string();

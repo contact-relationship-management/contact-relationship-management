@@ -10,6 +10,7 @@ mod board;
 mod bridges;
 mod business_calendars;
 mod consent_purposes;
+mod currencies;
 mod custom_fields;
 mod duplicates;
 mod email_delivery;

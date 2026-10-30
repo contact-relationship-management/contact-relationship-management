@@ -14,6 +14,7 @@
 // a visitor whose copy went starts again from the original data.
 
 import { matches } from "#lib/search.js";
+import { MINOR_UNITS } from "#lib/money.js";
 import type {
   Account,
   Activity,
@@ -321,7 +322,7 @@ function build(): State {
       name,
       pipeline_pid: PIPELINE.pid,
       stage_pid: stage,
-      amount_minor: pounds * 100,
+      amount_minor: pounds * Number(unitOf("GBP")),
       currency: "GBP",
       won: s.is_won,
       closed_at: closedDays === null ? null : iso(closedDays),
@@ -505,7 +506,7 @@ function build(): State {
     pid,
     name,
     status,
-    cost_minor: pounds * 100,
+    cost_minor: pounds * Number(unitOf("GBP")),
     currency: "GBP",
     recipients,
     delivered,
@@ -2568,11 +2569,15 @@ export function demoHandle(
     if (seg.length === 1 && post) {
       const input = (body ?? {}) as {
         name?: string;
+        currency?: string;
         template_pid?: string;
         subject?: string;
         body?: string;
       };
       if (!input.name?.trim()) return problem(422, "name is required");
+      // Required and checked, never assumed (CRM-T168).
+      if (!isCurrency(input.currency))
+        return problem(422, currencyProblem("currency"));
       if (input.template_pid && (input.subject || input.body))
         return problem(
           422,
@@ -2583,7 +2588,7 @@ export function demoHandle(
         name: input.name.trim(),
         status: "draft",
         cost_minor: 0,
-        currency: "GBP",
+        currency: input.currency,
         recipients: 0,
         delivered: 0,
         opened: 0,
@@ -2999,6 +3004,21 @@ function reportResult(spec: ReportSpec): DemoReply {
 const ONE = 1_000_000_000n;
 
 /** A rate such as `1.27` as billionths, or null when it is not a positive decimal below 1,000,000. */
+/** An ISO 4217 code the service accepts (CRM-T168): in the same table as its `rules::currency`. */
+function isCurrency(code: unknown): code is string {
+  return typeof code === "string" && MINOR_UNITS[code] !== undefined;
+}
+
+/** The text the service gives for a code it does not take. */
+function currencyProblem(field: string): string {
+  return `${field} is an ISO 4217 code: three capital letters, such as JPY, EUR or KWD`;
+}
+
+/** Ten to the power of `code`'s minor-unit exponent, as the service's conversion scales (CRM-T167). */
+function unitOf(code: string): bigint {
+  return 10n ** BigInt(MINOR_UNITS[code] ?? 2);
+}
+
 function ppbOf(text: string): bigint | null {
   if (!/^\d{1,6}(\.\d{1,9})?$/.test(text)) return null;
   const [whole, fraction = ""] = text.split(".");
@@ -3082,8 +3102,7 @@ function convertSums(
       rates: ReportRateUsed[];
       unconverted: ReportUnconverted[];
     } {
-  if (!/^[A-Z]{3}$/.test(target))
-    return "convert_to is three capital letters, such as GBP";
+  if (!isCurrency(target)) return currencyProblem("convert_to");
   const today = new Date().toISOString().slice(0, 10);
   const day = rateDate ?? today;
   if (day > today) return "rate_date is in the future";
@@ -3106,10 +3125,12 @@ function convertSums(
       }
       const ppb = ppbOf(picked.rate.rate)!;
       const amount = BigInt(row.value);
+      // Scaled by both currencies' own minor units, rounded once (CRM-T167).
+      const [up, down] = [unitOf(target), unitOf(currency)];
       value = Number(
         picked.inverted
-          ? divideRound(amount * ONE, ppb)
-          : divideRound(amount * ppb, ONE),
+          ? divideRound(amount * ONE * up, ppb * down)
+          : divideRound(amount * ppb * up, ONE * down),
       );
     }
     merged.set(row.group, (merged.get(row.group) ?? 0) + value);
@@ -3166,10 +3187,9 @@ function fxRates(method: string, id: string | undefined, body: unknown) {
     const input = bodyOf(body) as Partial<Record<string, string>>;
     const from = input.from ?? "";
     const to = input.to ?? "";
-    if (!/^[A-Z]{3}$/.test(from))
-      return problem(422, "from is three capital letters");
-    if (!/^[A-Z]{3}$/.test(to) || to === from)
-      return problem(422, "to is a different currency, three capital letters");
+    if (!isCurrency(from)) return problem(422, currencyProblem("from"));
+    if (!isCurrency(to) || to === from)
+      return problem(422, `${currencyProblem("to")}, and not the same as from`);
     if (!ppbOf(input.rate ?? ""))
       return problem(
         422,
@@ -4123,11 +4143,9 @@ function quotaRoutes(
   if (method === "PUT" && !id) {
     const input = (body ?? {}) as Partial<Quota>;
     if (input.owner_ref) input.owner_ref = userRef(input.owner_ref);
-    if (
-      !input.owner_ref ||
-      !input.currency ||
-      !(input.amount_minor && input.amount_minor > 0)
-    )
+    if (!isCurrency(input.currency))
+      return problem(422, currencyProblem("currency"));
+    if (!input.owner_ref || !(input.amount_minor && input.amount_minor > 0))
       return problem(
         422,
         "owner_ref, currency and an amount above zero are needed",

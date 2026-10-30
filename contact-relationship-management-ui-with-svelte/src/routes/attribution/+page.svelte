@@ -4,6 +4,7 @@
   campaign's credit is shown per currency, and the deals no campaign touched are shown apart.
 -->
 <script lang="ts">
+  import { money as formatMoney } from "#lib/money.js";
   import { errorMessage } from "#lib/errors.js";
   import { attribution, type Attribution, type AttributionAmount } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
@@ -59,10 +60,7 @@
     }
   }
 
-  const money = (a: AttributionAmount) =>
-    new Intl.NumberFormat(i18n.locale, { style: "currency", currency: a.currency }).format(
-      a.amount_minor / 100,
-    );
+  const money = (a: AttributionAmount) => formatMoney(a.amount_minor, a.currency, i18n.locale);
   // A bar is scaled within one currency, so one never dwarfs another.
   const widest = $derived((currency: string) =>
     Math.max(

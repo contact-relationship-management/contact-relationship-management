@@ -65,6 +65,7 @@ macro_rules! scheduled_campaign {
             .json();
         let mut payload = json!({
             "name": "Autumn news",
+            "currency": "GBP",
             "segment_pid": segment["pid"],
             "subject": "Autumn news for you",
         });

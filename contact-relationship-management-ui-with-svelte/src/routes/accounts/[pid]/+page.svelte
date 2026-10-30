@@ -1,7 +1,8 @@
 <script lang="ts">
   import { resource } from "#lib/resource.svelte.js";
   import { page } from "$app/state";
-  import { editAccount, getAccount, money } from "#lib/api/crm.js";
+  import { editAccount, getAccount } from "#lib/api/crm.js";
+  import { money } from "#lib/money.js";
   import ClvPanel from "#lib/components/ClvPanel.svelte";
   import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";

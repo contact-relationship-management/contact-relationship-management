@@ -29,12 +29,12 @@
     setTeam,
     teamAttainment,
     listQuotas,
-    money,
     quotaAttainment,
     setCommissionPlan,
     setQuota,
     type CommissionTier,
   } from "#lib/api/crm.js";
+  import { formMinor, money } from "#lib/money.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
   const today = new Date().toISOString().slice(0, 10);
@@ -45,7 +45,8 @@
   let ownerRef = $state("");
   let periodFrom = $state(today);
   let periodTo = $state(today);
-  let currency = $state("GBP");
+  // No currency is assumed (CRM-T168): the person types the quota's own.
+  let currency = $state("");
   let amount = $state("");
   let planPid = $state("");
   let error = $state<string | null>(null);
@@ -113,7 +114,8 @@
       });
     });
 
-  // Taking credit back from one worker on a won deal (CRM-R71); the amount is typed in major units.
+  // Taking credit back from one worker on a won deal (CRM-R71); the amount is typed in major units
+  // of the deal's currency, in the page's number format.
   let clawDeal = $state("");
   let clawOwner = $state("");
   let clawAmount = $state("");
@@ -121,9 +123,11 @@
 
   const saveClawback = () =>
     run(async () => {
+      // In the won deal's own currency and minor unit (CRM-T167).
+      const deal = wonList.find((d) => d.pid === clawDeal);
       await setClawback(clawDeal, {
         owner_ref: clawOwner.trim(),
-        amount_minor: Math.round(Number(clawAmount) * 100),
+        amount_minor: formMinor(clawAmount, deal?.currency, i18n.locale).minor,
         reason: clawReason.trim() || null,
       });
     });
@@ -186,14 +190,15 @@
 
   const saveQuota = () =>
     run(async () => {
-      // The amount is typed in major units and sent in minor units, exactly.
-      const minor = Math.round(Number(amount) * 100);
+      // The amount is typed in the page's own number format and sent in the currency's own minor
+      // unit, exactly (CRM-T167): 1500 yen is 1500, 12,50 euros in German is 1250.
+      const typed = formMinor(amount, currency, i18n.locale);
       await setQuota({
         owner_ref: ownerRef.trim(),
         period_from: periodFrom,
         period_to: periodTo,
-        currency: currency.trim().toUpperCase(),
-        amount_minor: minor,
+        currency: typed.currency,
+        amount_minor: typed.minor,
         plan_pid: planPid || null,
       });
       amount = "";

@@ -96,7 +96,7 @@ test("a deal's amount is edited on the board and the service has it", async ({
     currency: String(deal.currency),
   }).format(Number(deal.amount_minor) / 100);
   await board.getByRole("button", { name: shown }).first().click();
-  const editor = board.getByRole("spinbutton");
+  const editor = board.getByRole("textbox", { name: "Amount" });
   await editor.fill(String(target / 100));
   await editor.press("Enter");
   await expect(page.getByTestId("action-error")).toHaveCount(0);

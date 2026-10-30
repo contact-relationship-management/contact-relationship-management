@@ -493,6 +493,7 @@ export default {
   "campaign.template": "Templed e-bost",
   "campaign.ownMessage": "Ysgrifennu’r neges yma",
   "campaign.create": "Creu ymgyrch",
+  "campaign.currency": "Arian cyfred (ISO 4217)",
   "contact.edit": "Golygu'r manylion",
   "contact.editSave": "Cadw",
   "contact.editCancel": "Diddymu",
@@ -802,6 +803,9 @@ export default {
   "error.unavailable":
     "Methwyd cyrraedd y gwasanaeth neu nid yw ar gael. Rhowch gynnig arall arni cyn bo hir.",
   "error.fieldInvalid": "Heb ei dderbyn.",
+  "money.amountInvalid":
+    "Nid yw'r swm hwn yn rhif yn fformat rhifau'r dudalen hon.",
+  "money.currencyRequired": "Dewiswch arian cyfred. Ni thybir yr un.",
   "rpt.suppressed":
     "Gadawyd {count} grŵp â llai na {min} cofnod allan, fel na ellir adnabod neb o rif bach.",
 } satisfies Record<StringKey, string>;

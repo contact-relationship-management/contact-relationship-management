@@ -6,12 +6,12 @@
   import {
     editDeal,
     listDeals,
-    money,
     openDelivery,
     reopenDeal,
     type Deal,
     type DealDelivery,
   } from "#lib/api/crm.js";
+  import { formMinor, minorToInput, money } from "#lib/money.js";
   import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";
   import Tags from "#lib/components/Tags.svelte";
@@ -50,14 +50,17 @@
   let saved = $state(false);
   let formError = $state<string | null>(null);
   let name = $state("");
-  // A number input binds a number (or null when empty), so keep it loose.
-  let amount = $state<string | number | null>("");
+  // Typed in the page's own number format ("1234,50" in German), in the deal's own currency.
+  let amount = $state("");
   let closeOn = $state("");
 
   function startEdit(current: Deal) {
     name = current.name;
     // An amount the caller's policy masks arrives null and stays uneditable.
-    amount = current.amount_minor === null ? "" : String(current.amount_minor / 100);
+    amount =
+      current.amount_minor === null
+        ? ""
+        : minorToInput(current.amount_minor, current.currency, i18n.locale);
     closeOn = current.expected_close_on ?? "";
     formError = null;
     saved = false;
@@ -87,8 +90,15 @@
   async function save(current: Deal) {
     const fields: { name?: string; amount_minor?: number; expected_close_on?: string } = {};
     if (name.trim() !== current.name) fields.name = name.trim();
-    if (current.amount_minor !== null && String(amount ?? "").trim() !== "") {
-      const minor = Math.round(Number(amount) * 100);
+    if (current.amount_minor !== null && amount.trim() !== "") {
+      // The deal's own minor unit (CRM-T167): 1500 yen is 1500, not 150000.
+      let minor: number;
+      try {
+        minor = formMinor(amount, current.currency, i18n.locale).minor;
+      } catch (cause) {
+        formError = errorMessage(cause);
+        return;
+      }
       if (minor !== current.amount_minor) fields.amount_minor = minor;
     }
     if (closeOn && closeOn !== (current.expected_close_on ?? "")) fields.expected_close_on = closeOn;
@@ -191,13 +201,12 @@
       <label>
         {t("kanban.amount")}
         <input
-          type="number"
-          min="0"
-          step="0.01"
+          inputmode="decimal"
           bind:value={amount}
           disabled={deal.amount_minor === null}
           data-testid="deal-amount"
         />
+        <span class="muted">{deal.currency}</span>
       </label>
       <label>
         {t("kanban.closeOn")}

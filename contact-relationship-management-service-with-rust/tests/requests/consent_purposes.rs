@@ -73,7 +73,7 @@ macro_rules! campaign {
         let campaign: Value = $request
             .post("/api/campaigns")
             .json(&json!({
-                "name": "News", "segment_pid": segment["pid"], "subject": "News",
+                "name": "News", "currency": "INR", "segment_pid": segment["pid"], "subject": "News",
                 "body": "Hello", "purpose": $purpose,
             }))
             .await

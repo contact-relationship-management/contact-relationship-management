@@ -4,6 +4,7 @@
   per currency. A report can be saved, and shared like a saved view.
 -->
 <script lang="ts">
+  import { money } from "#lib/money.js";
   import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import {
@@ -149,10 +150,9 @@
   const widest = $derived((currency: string | null) =>
     Math.max(1, ...(result?.rows ?? []).filter((r) => r.currency === currency).map((r) => r.value)),
   );
+  // A count has no currency and shows as a plain number.
   const amount = (minor: number, currency: string | null) =>
-    currency
-      ? new Intl.NumberFormat(i18n.locale, { style: "currency", currency }).format(minor / 100)
-      : String(minor);
+    currency ? money(minor, currency, i18n.locale) : String(minor);
 </script>
 
 <h1>{t("rpt.title")}</h1>

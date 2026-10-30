@@ -64,6 +64,14 @@ impl Problems {
         });
     }
 
+    /// `field` must be an ISO 4217 currency code the CRM knows (CRM-T168): never assumed, never
+    /// any text.
+    pub fn currency(&mut self, field: &str, value: &str) {
+        if let Err(why) = crate::rules::currency::check(value) {
+            self.push_field(field, why);
+        }
+    }
+
     /// `field` must be non-blank and within [`MAX_TEXT_LEN`].
     pub fn require_text(&mut self, field: &str, value: &str) {
         if value.trim().is_empty() {

@@ -202,7 +202,7 @@ pub(crate) struct QuotaPayload {
     period_from: NaiveDate,
     /// Last day of the period, inclusive; at most 366 days after the first.
     period_to: NaiveDate,
-    /// Three capital letters.
+    /// An ISO 4217 code (CRM-T168).
     currency: String,
     /// What is to be won, in minor units; above zero.
     amount_minor: i64,

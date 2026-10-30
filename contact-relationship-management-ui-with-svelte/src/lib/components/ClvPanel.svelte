@@ -4,7 +4,8 @@
   comes from the service; amounts of different currencies are never added.
 -->
 <script lang="ts">
-  import { accountClv, money, type Clv } from "#lib/api/crm.js";
+  import { accountClv, type Clv } from "#lib/api/crm.js";
+  import { money } from "#lib/money.js";
   import { errorMessage } from "#lib/errors.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 

@@ -3,10 +3,10 @@
   import {
     followups,
     forecast,
-    money,
     salesDashboard,
     slaDashboard,
   } from "#lib/api/crm.js";
+  import { money } from "#lib/money.js";
   import { ratioLabel } from "#lib/format.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 

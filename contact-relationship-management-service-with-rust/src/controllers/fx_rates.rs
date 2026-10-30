@@ -26,7 +26,7 @@ const MAX_LISTED: i64 = 1000;
 #[schemars(rename = "FxRatePayload")]
 #[serde(deny_unknown_fields)]
 pub(crate) struct RatePayload {
-    /// The currency being bought with, three capital letters.
+    /// The currency being bought with, an ISO 4217 code (CRM-T168).
     from: String,
     /// The currency it buys.
     to: String,

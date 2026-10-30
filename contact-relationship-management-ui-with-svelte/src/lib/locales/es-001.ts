@@ -494,6 +494,7 @@ export default {
   "campaign.template": "Plantilla de correo",
   "campaign.ownMessage": "Escribir el mensaje aquí",
   "campaign.create": "Crear campaña",
+  "campaign.currency": "Moneda (ISO 4217)",
   "contact.edit": "Editar detalles",
   "contact.editSave": "Guardar",
   "contact.editCancel": "Cancelar",
@@ -804,6 +805,9 @@ export default {
   "error.unavailable":
     "No se pudo acceder al servicio o no está disponible. Inténtelo de nuevo en breve.",
   "error.fieldInvalid": "No aceptado.",
+  "money.amountInvalid":
+    "Ese importe no es un número en el formato numérico de esta página.",
+  "money.currencyRequired": "Elija una moneda. No se presupone ninguna.",
   "rpt.suppressed":
     "Se omitieron {count} grupos con menos de {min} registros, para que nadie pueda identificarse a partir de una cifra pequeña.",
 } satisfies Record<StringKey, string>;

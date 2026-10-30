@@ -487,6 +487,7 @@ export default {
   "campaign.template": "Email template",
   "campaign.ownMessage": "Write the message here",
   "campaign.create": "Create campaign",
+  "campaign.currency": "Currency (ISO 4217)",
   "contact.edit": "Edit details",
   "contact.editSave": "Save",
   "contact.editCancel": "Cancel",
@@ -794,6 +795,9 @@ export default {
   "error.unavailable":
     "The service could not be reached or is not available. Try again shortly.",
   "error.fieldInvalid": "Not accepted.",
+  "money.amountInvalid":
+    "That amount is not a number in this page's number format.",
+  "money.currencyRequired": "Choose a currency. None is assumed.",
   "rpt.suppressed":
     "{count} groups with fewer than {min} records were left out, so that no one can be picked out from a small number.",
 } as const;

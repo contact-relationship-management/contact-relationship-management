@@ -16,13 +16,13 @@
     getContactMerges,
     mergeContact,
     unmergeContact,
-    money,
     type MergeResult,
     recordConsent,
     type Duplicate,
     type MergeEntry,
     type UnmergeResult,
   } from "#lib/api/crm.js";
+  import { money } from "#lib/money.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
   let actionError = $state<string | null>(null);

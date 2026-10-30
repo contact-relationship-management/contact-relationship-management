@@ -21,7 +21,7 @@ pub(crate) struct CampaignPayload {
     kind: String,
     #[serde(default)]
     cost_minor: i64,
-    #[serde(default = "default_currency")]
+    /// The ISO 4217 code the cost and the ROI are in (CRM-T168): required, never assumed.
     currency: String,
     #[serde(default)]
     segment_pid: Option<Uuid>,
@@ -47,10 +47,6 @@ pub(super) fn default_kind() -> String {
     "email".to_string()
 }
 
-pub(super) fn default_currency() -> String {
-    "GBP".to_string()
-}
-
 /// `POST /api/campaigns`.
 #[debug_handler]
 pub(super) async fn create_campaign(
@@ -60,7 +56,7 @@ pub(super) async fn create_campaign(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("name", &payload.name);
-    problems.require_text("currency", &payload.currency);
+    problems.currency("currency", &payload.currency);
     problems.token_opt("purpose", tokens::PURPOSES, payload.purpose.as_deref());
     if payload.kind != "email" {
         problems.push("kind must be email (v1)".to_string());

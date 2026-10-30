@@ -55,7 +55,7 @@ struct AttributionQuery {
     from: Option<NaiveDate>,
     /// Last day a deal may have closed on.
     to: Option<NaiveDate>,
-    /// Show every figure in this currency (CRM-R51), three capital letters.
+    /// Show every figure in this currency (CRM-R51), an ISO 4217 code (CRM-T168).
     convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
     rate_date: Option<NaiveDate>,

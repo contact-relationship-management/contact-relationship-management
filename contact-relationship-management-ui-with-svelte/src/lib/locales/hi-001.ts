@@ -489,6 +489,7 @@ export default {
   "campaign.template": "ईमेल टेम्पलेट",
   "campaign.ownMessage": "संदेश यहाँ लिखें",
   "campaign.create": "अभियान बनाएँ",
+  "campaign.currency": "मुद्रा (ISO 4217)",
   "contact.edit": "विवरण संपादित करें",
   "contact.editSave": "सहेजें",
   "contact.editCancel": "रद्द करें",
@@ -796,6 +797,10 @@ export default {
   "error.unavailable":
     "सेवा तक पहुँचा नहीं जा सका या वह उपलब्ध नहीं है। थोड़ी देर में फिर कोशिश करें।",
   "error.fieldInvalid": "स्वीकार नहीं किया गया।",
+  "money.amountInvalid":
+    "यह राशि इस पृष्ठ के संख्या प्रारूप में कोई संख्या नहीं है।",
+  "money.currencyRequired":
+    "कोई मुद्रा चुनें। कोई भी मुद्रा मानकर नहीं चली जाती।",
   "rpt.suppressed":
     "{min} से कम रिकॉर्ड वाले {count} समूह छोड़ दिए गए, ताकि छोटी संख्या से किसी की पहचान न हो सके।",
 } satisfies Record<StringKey, string>;

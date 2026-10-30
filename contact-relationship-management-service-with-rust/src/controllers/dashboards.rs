@@ -195,7 +195,7 @@ pub(crate) struct ClvProjectionConverted {
 /// What `GET /api/accounts/{pid}/clv` may be asked.
 #[derive(Debug, Deserialize)]
 struct ClvQuery {
-    /// Also show the CLV in this currency, three capital letters (CRM-R54).
+    /// Also show the CLV in this currency, an ISO 4217 code (CRM-R54, CRM-T168).
     convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
     rate_date: Option<chrono::NaiveDate>,

@@ -502,6 +502,7 @@ export default {
   "campaign.template": "E-Mail-Vorlage",
   "campaign.ownMessage": "Nachricht hier schreiben",
   "campaign.create": "Kampagne anlegen",
+  "campaign.currency": "Währung (ISO 4217)",
   "contact.edit": "Details bearbeiten",
   "contact.editSave": "Speichern",
   "contact.editCancel": "Abbrechen",
@@ -814,6 +815,10 @@ export default {
   "error.unavailable":
     "Der Dienst ist nicht erreichbar oder nicht verfügbar. Versuchen Sie es gleich noch einmal.",
   "error.fieldInvalid": "Nicht angenommen.",
+  "money.amountInvalid":
+    "Dieser Betrag ist keine Zahl im Zahlenformat dieser Seite.",
+  "money.currencyRequired":
+    "Wählen Sie eine Währung. Es wird keine angenommen.",
   "rpt.suppressed":
     "{count} Gruppen mit weniger als {min} Datensätzen wurden weggelassen, damit niemand aus einer kleinen Zahl erkennbar wird.",
 } satisfies Record<StringKey, string>;

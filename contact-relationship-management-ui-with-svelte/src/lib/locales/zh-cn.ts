@@ -465,6 +465,7 @@ export default {
   "campaign.template": "邮件模板",
   "campaign.ownMessage": "在此撰写消息",
   "campaign.create": "创建活动",
+  "campaign.currency": "币种 (ISO 4217)",
   "contact.edit": "编辑详情",
   "contact.editSave": "保存",
   "contact.editCancel": "取消",
@@ -764,6 +765,8 @@ export default {
   "error.tooMany": "请求过多。请稍等片刻后重试。",
   "error.unavailable": "无法连接到服务，或服务不可用。请稍后重试。",
   "error.fieldInvalid": "未被接受。",
+  "money.amountInvalid": "该金额不是本页面数字格式中的数字。",
+  "money.currencyRequired": "请选择一种货币。系统不会默认任何货币。",
   "rpt.suppressed":
     "已省略 {count} 个记录少于 {min} 条的分组，以免从小数字中识别出个人。",
 } satisfies Record<StringKey, string>;

@@ -87,7 +87,7 @@ async fn responses_match_the_documented_schemas() {
             (
                 "/api/campaigns",
                 "CampaignPayload",
-                json!({ "name": "Schema campaign" }),
+                json!({ "name": "Schema campaign", "currency": "NGN" }),
             ),
         ];
         for (path, schema, body) in &posts {
@@ -226,7 +226,7 @@ async fn read_responses_match_the_documented_schemas() {
         let segment_pid = segment["pid"].as_str().unwrap().to_string();
         let campaign: Value = request
             .post("/api/campaigns")
-            .json(&json!({ "name": "Schema campaign", "segment_pid": segment_pid }))
+            .json(&json!({ "name": "Schema campaign", "currency": "NGN", "segment_pid": segment_pid }))
             .await
             .json();
         let campaign_pid = campaign["pid"].as_str().unwrap().to_string();

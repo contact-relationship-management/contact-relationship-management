@@ -455,7 +455,7 @@ test.describe("editing, order and rescheduling", () => {
     const board = page.getByTestId("deal-board");
     await expect(board).toContainText("£74,000.00");
     await board.getByRole("button", { name: /£74,000\.00/ }).click();
-    const editor = board.getByRole("spinbutton");
+    const editor = board.getByRole("textbox", { name: "Amount" });
     await editor.fill("80000");
     await editor.press("Enter");
     await expect(board).toContainText("£80,000.00");
@@ -550,7 +550,7 @@ test.describe("export, undo and search", () => {
     await page.goto("/deals");
     const board = page.getByTestId("deal-board");
     await board.getByRole("button", { name: /£74,000\.00/ }).click();
-    const editor = board.getByRole("spinbutton");
+    const editor = board.getByRole("textbox", { name: "Amount" });
     await editor.fill("81000");
     await editor.press("Enter");
     await expect(board).toContainText("£81,000.00");
@@ -957,6 +957,7 @@ test.describe("export, undo and search", () => {
     await page.goto("/campaigns");
     await page.getByTestId("campaign-new").click();
     await page.getByTestId("campaign-name").fill("Autumn push");
+    await page.getByTestId("campaign-currency").fill("EUR");
     await page.getByTestId("campaign-segment").selectOption("seg-1");
     await page.getByTestId("campaign-template").selectOption("template-1");
     // A template replaces the message fields.
@@ -1533,6 +1534,7 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("quota-standing-row")).toHaveCount(2);
     await expect(page.getByTestId("quota-row")).toHaveCount(2);
     await page.getByTestId("quota-owner").fill("owner-cy");
+    await page.getByTestId("quota-currency").fill("GBP");
     await page.getByTestId("quota-amount").fill("1000.00");
     await page.getByTestId("quota-set").click();
     await expect(page.getByTestId("quota-row")).toHaveCount(3);

@@ -488,6 +488,7 @@ export default {
   "campaign.template": "قالب البريد الإلكتروني",
   "campaign.ownMessage": "اكتب الرسالة هنا",
   "campaign.create": "إنشاء الحملة",
+  "campaign.currency": "العملة (ISO 4217)",
   "contact.edit": "تعديل التفاصيل",
   "contact.editSave": "حفظ",
   "contact.editCancel": "إلغاء",
@@ -791,6 +792,8 @@ export default {
   "error.unavailable":
     "تعذر الوصول إلى الخدمة أو أنها غير متاحة. حاول مرة أخرى بعد قليل.",
   "error.fieldInvalid": "غير مقبول.",
+  "money.amountInvalid": "هذا المبلغ ليس رقمًا بتنسيق الأرقام في هذه الصفحة.",
+  "money.currencyRequired": "اختر عملة. لا تُفترض أي عملة.",
   "rpt.suppressed":
     "استُبعدت {count} مجموعات تضم أقل من {min} سجلات حتى لا يمكن تمييز شخص بعينه من رقم صغير.",
 } satisfies Record<StringKey, string>;

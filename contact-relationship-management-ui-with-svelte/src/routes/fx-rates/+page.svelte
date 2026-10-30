@@ -9,8 +9,9 @@
   import { deleteFxRate, listFxRates, setFxRate } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
 
-  let from = $state("USD");
-  let to = $state("GBP");
+  // No pair is assumed (CRM-T168): the person types both codes.
+  let from = $state("");
+  let to = $state("");
   let rate = $state("");
   let effectiveOn = $state(new Date().toISOString().slice(0, 10));
   let source = $state("");

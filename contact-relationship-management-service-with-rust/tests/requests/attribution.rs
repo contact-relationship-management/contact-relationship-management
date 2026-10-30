@@ -48,7 +48,7 @@ macro_rules! campaign {
     ($request:expr, $segment:expr, $name:expr) => {
         $request
             .post("/api/campaigns")
-            .json(&json!({ "name": $name, "segment_pid": $segment, "subject": "Hi", "body": "Hi" }))
+            .json(&json!({ "name": $name, "currency": "BRL", "segment_pid": $segment, "subject": "Hi", "body": "Hi" }))
             .await
             .json::<Value>()["pid"]
             .as_str()

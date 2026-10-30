@@ -79,7 +79,9 @@ pub(crate) struct StagePayload {
 pub(crate) struct DealPayload {
     name: String,
     pipeline_pid: Uuid,
+    /// The amount in minor units of `currency` (0 places for JPY, 2 for EUR, 3 for KWD).
     amount_minor: i64,
+    /// An ISO 4217 code (CRM-T168): required, never assumed.
     currency: String,
     #[serde(default)]
     account_pid: Option<Uuid>,
@@ -310,7 +312,7 @@ pub(crate) struct Forecast {
 /// What `GET /api/forecast` may be asked.
 #[derive(Debug, Deserialize)]
 struct ForecastQuery {
-    /// Also show the forecast in this currency, three capital letters (CRM-R53).
+    /// Also show the forecast in this currency, an ISO 4217 code (CRM-R53, CRM-T168).
     convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
     rate_date: Option<chrono::NaiveDate>,
@@ -437,6 +439,9 @@ async fn lead_status(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_token("to", tokens::LEAD_STATUSES, &payload.to);
+    if let Some(deal) = payload.deal.as_ref() {
+        problems.currency("deal.currency", &deal.currency);
+    }
     problems.finish()?;
     let lead = records::find_lead(&ctx.db, pid).await?;
     lifecycle::check("lead", lifecycle::LEAD, &lead.status, &payload.to)
@@ -584,7 +589,7 @@ async fn create_deal(
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.require_text("name", &payload.name);
-    problems.require_text("currency", &payload.currency);
+    problems.currency("currency", &payload.currency);
     payload.owner_ref = crate::rules::user_ref::normalise_opt(payload.owner_ref.take());
     problems.user_opt("owner_ref", payload.owner_ref.as_deref());
     if payload.amount_minor < 0 {

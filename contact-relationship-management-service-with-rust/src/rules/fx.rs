@@ -2,7 +2,8 @@
 //! amount with it.
 //!
 //! Pure and DB-free, and free of floating point: a rate is a whole number of billionths, and an
-//! amount is converted with integer arithmetic, rounded half to even.
+//! amount is converted with integer arithmetic, scaled by the two currencies' own minor units
+//! (ISO 4217, [`super::currency`]) and rounded half to even.
 
 use chrono::NaiveDate;
 
@@ -15,17 +16,13 @@ const MAX_WHOLE: i64 = 1_000_000;
 /// Longest source.
 pub const MAX_SOURCE: usize = 80;
 
-/// A currency code: three capital letters.
+/// A currency code: an ISO 4217 code the [`super::currency`] table holds (CRM-T168).
 ///
 /// # Errors
 ///
 /// The reason, when it is not.
 pub fn currency(code: &str) -> Result<String, String> {
-    if code.len() == 3 && code.bytes().all(|b| b.is_ascii_uppercase()) {
-        Ok(code.to_string())
-    } else {
-        Err("a currency is three capital letters, such as GBP".to_string())
-    }
+    super::currency::check(code)
 }
 
 /// A source, tidied: it must say where the rate came from.
@@ -150,18 +147,36 @@ pub(crate) fn divide(numerator: i128, denominator: i128) -> i128 {
     }
 }
 
-/// `amount_minor` converted with a picked rate, to a minor unit, half to even.
+/// `amount_minor` converted with a picked rate, to a minor unit of the other currency, half to even.
+///
+/// The rate is between whole units (1 `from` buys `rate` `to`), so the amount is scaled by the two
+/// currencies' own exponents (CRM-T167): USD 1.00 (100 minor) at 150 is JPY 150 (150 minor), not
+/// 15,000. The scaling and the rate are applied in one division, so the result is rounded once.
+/// A code the table does not hold (stored before CRM-T168) counts as exponent 2.
 #[must_use]
 pub fn convert(amount_minor: i64, picked: &Picked) -> i64 {
+    use super::currency::stored_exponent;
     let (amount, ppb, one) = (
         i128::from(amount_minor),
         i128::from(picked.rate.ppb),
         i128::from(ONE),
     );
-    let converted = if picked.inverted {
-        divide(amount * one, ppb)
+    let (from, to) = (
+        stored_exponent(&picked.rate.from),
+        stored_exponent(&picked.rate.to),
+    );
+    // The currency the amount is in, and the one it becomes.
+    let (source, target) = if picked.inverted {
+        (to, from)
     } else {
-        divide(amount * ppb, one)
+        (from, to)
+    };
+    let (up, down) = (10_i128.pow(target), 10_i128.pow(source));
+    // |amount| < 2^63, ppb and ONE < 2^50, 10^4 < 2^14: every product fits in an i128.
+    let converted = if picked.inverted {
+        divide(amount * one * up, ppb * down)
+    } else {
+        divide(amount * ppb * up, one * down)
     };
     i64::try_from(converted).unwrap_or(if converted < 0 { i64::MIN } else { i64::MAX })
 }
@@ -417,8 +432,10 @@ mod tests {
 
     #[test]
     fn currencies_and_sources_are_checked() {
-        assert!(currency("GBP").is_ok());
-        for bad in ["gbp", "GB", "GBPP", "G2P", "", "£££"] {
+        for good in ["GBP", "JPY", "KWD", "CLF", "INR"] {
+            assert!(currency(good).is_ok(), "{good:?}");
+        }
+        for bad in ["gbp", "GB", "GBPP", "G2P", "", "£££", "ZZZ", "XAU"] {
             assert!(currency(bad).is_err(), "{bad:?}");
         }
         assert_eq!(
@@ -538,6 +555,71 @@ mod tests {
             convert(9_000_000_000_000_000, &ordinary),
             13_500_000_000_000_000
         );
+    }
+
+    fn picked(from: &str, to: &str, text: &str, inverted: bool) -> Picked {
+        Picked {
+            rate: rate(from, to, text, day(1, 1)),
+            inverted,
+        }
+    }
+
+    #[test]
+    fn conversion_scales_by_each_currencys_own_minor_unit() {
+        // USD 1.00 (100 cents) at 150 yen is ¥150 (150 minor; the yen has no minor unit), not ¥15,000.
+        assert_eq!(convert(100, &picked("USD", "JPY", "150", false)), 150);
+        // ¥150 back through the same rate, inverted, is USD 1.00.
+        assert_eq!(convert(150, &picked("USD", "JPY", "150", true)), 100);
+        // EUR 10.00 (1,000 cents) at 0.33 is KWD 3.300 (3,300 fils; three places).
+        assert_eq!(convert(1_000, &picked("EUR", "KWD", "0.33", false)), 3_300);
+        // KWD 1.000 (1,000 fils) at 3.03 is EUR 3.03 (303 cents).
+        assert_eq!(convert(1_000, &picked("KWD", "EUR", "3.03", false)), 303);
+        // KWD 1.000 at 490 yen is ¥490.
+        assert_eq!(convert(1_000, &picked("KWD", "JPY", "490", false)), 490);
+        // CLF 1.0000 (10,000 minor; four places) at 39,000 Chilean pesos (no minor unit) is CLP 39,000.
+        assert_eq!(
+            convert(10_000, &picked("CLF", "CLP", "39000", false)),
+            39_000
+        );
+        // USD 100.00 at 0.025 is CLF 2.5000 (25,000 minor).
+        assert_eq!(
+            convert(10_000, &picked("USD", "CLF", "0.025", false)),
+            25_000
+        );
+        // CLF 2.5000 back, inverted, is USD 100.00.
+        assert_eq!(
+            convert(25_000, &picked("USD", "CLF", "0.025", true)),
+            10_000
+        );
+        // Same exponent on both sides: unchanged from before (EUR 100.00 at 0.85 is GBP 85.00).
+        assert_eq!(convert(10_000, &picked("EUR", "GBP", "0.85", false)), 8_500);
+    }
+
+    #[test]
+    fn conversion_between_exponents_rounds_once_half_to_even_in_the_target_unit() {
+        // USD 0.50 at 1 is ¥0.5: half, to the even ¥0; USD 1.50 is ¥1.5: to the even ¥2.
+        assert_eq!(convert(50, &picked("USD", "JPY", "1", false)), 0);
+        assert_eq!(convert(150, &picked("USD", "JPY", "1", false)), 2);
+        // USD 0.01 at 150 is ¥1.5: to ¥2; USD 0.03 is ¥4.5: to ¥4.
+        assert_eq!(convert(1, &picked("USD", "JPY", "150", false)), 2);
+        assert_eq!(convert(3, &picked("USD", "JPY", "150", false)), 4);
+        // ¥1 at 1 USD = 150 JPY is USD 0.00666…: to the nearest cent, USD 0.01.
+        assert_eq!(convert(1, &picked("USD", "JPY", "150", true)), 1);
+        // JPY 1 at 0.0025 KWD is KWD 0.0025: half of a fils, to the even 2 fils; JPY 3 is 7.5 fils, to 8.
+        assert_eq!(convert(1, &picked("JPY", "KWD", "0.0025", false)), 2);
+        assert_eq!(convert(3, &picked("JPY", "KWD", "0.0025", false)), 8);
+        // KWD 0.001 (1 fils) at 3.25 EUR is EUR 0.00325: under half a cent, to EUR 0.00.
+        assert_eq!(convert(1, &picked("KWD", "EUR", "3.25", false)), 0);
+        // CLF 0.0001 at 39,000 is CLP 3.9: to CLP 4; negative amounts round the same way.
+        assert_eq!(convert(1, &picked("CLF", "CLP", "39000", false)), 4);
+        assert_eq!(convert(-150, &picked("USD", "JPY", "1", false)), -2);
+    }
+
+    #[test]
+    fn a_large_amount_into_a_four_place_currency_saturates_rather_than_wraps() {
+        let big = picked("JPY", "CLF", "999999.999999999", false);
+        assert_eq!(convert(i64::MAX, &big), i64::MAX);
+        assert_eq!(convert(i64::MIN + 1, &big), i64::MIN);
     }
 
     fn row(group: &str, currency: &str, value: i64) -> (String, String, i64) {

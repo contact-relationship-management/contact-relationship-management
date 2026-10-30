@@ -11,12 +11,12 @@
   import {
     executivePack,
     forecastTrends,
-    money,
     pipelineHygiene,
     staleDeals,
     type Finding,
     type StaleDeal,
   } from "#lib/api/crm.js";
+  import { money } from "#lib/money.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 
   type Pack = Awaited<ReturnType<typeof executivePack>>;

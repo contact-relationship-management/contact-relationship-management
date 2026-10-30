@@ -499,6 +499,7 @@ export default {
   "campaign.template": "Modèle d’e-mail",
   "campaign.ownMessage": "Écrire le message ici",
   "campaign.create": "Créer la campagne",
+  "campaign.currency": "Devise (ISO 4217)",
   "contact.edit": "Modifier les détails",
   "contact.editSave": "Enregistrer",
   "contact.editCancel": "Annuler",
@@ -812,6 +813,9 @@ export default {
   "error.unavailable":
     "Le service est injoignable ou indisponible. Réessayez dans un instant.",
   "error.fieldInvalid": "Non accepté.",
+  "money.amountInvalid":
+    "Ce montant n'est pas un nombre au format numérique de cette page.",
+  "money.currencyRequired": "Choisissez une devise. Aucune n'est supposée.",
   "rpt.suppressed":
     "{count} groupes de moins de {min} enregistrements ont été omis, afin que personne ne puisse être reconnu à partir d'un petit nombre.",
 } satisfies Record<StringKey, string>;

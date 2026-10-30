@@ -3,7 +3,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { money } from "../../src/lib/api/crm";
+import { money } from "../../src/lib/money";
 import {
   DEFAULT_LOCALE,
   LOCALES,

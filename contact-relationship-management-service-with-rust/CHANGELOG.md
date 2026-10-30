@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — conversion by each currency's own exponent; currency codes checked (CRM-T167, CRM-T168, CRM-R50)
+
+`rules::currency` (pure): the ISO 4217 minor-unit table, `exponent`, `stored_exponent` and `check`. `rules::fx::convert` multiplies by ten to the target's exponent less the source's in the same division as the rate, so USD 1.00 at 150 is JPY 150 and it still rounds half to even once. `fx::currency` and the new `Problems::currency` check codes against the table; deals, the deal of a lead conversion (`/deal/currency`, before the transaction), campaigns, quotas, rates and `convert_to` answer `422` for an unknown code. `CampaignPayload::currency` is required: the `GBP` default is gone. OpenAPI examples vary (EUR, JPY, INR). Tests: 7 new unit tests (422 in all), `tests/requests/currencies.rs` (3 request tests), and the campaign request bodies that relied on the default now name a currency. **Not done:** no database check on stored codes, and stored codes outside the table count as exponent 2; the seed is still GBP (CRM-T176); not run against the UI or a live deployment.
+
 ### Changed — the teams import's lean worker list (CRM-T163, CRM-R73)
 
 `clients::active_workers` sends `fields=pid,department,person_ref` (`WORKER_FIELDS`); the request tests' stand-in WPM projects `fields` and refuses an unknown name with `422`, and a new test shows a WPM without `fields` fails the import with `502` in one call and keeps the existing teams. Not run against a live WPM.

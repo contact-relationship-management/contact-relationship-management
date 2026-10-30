@@ -192,7 +192,7 @@ async fn a_campaign_and_a_nurture_step_are_made_from_a_template() {
             .await
             .json();
         for extra in [json!({ "body": "x" }), json!({ "subject": "x" })] {
-            let mut both = json!({ "name": "C", "segment_pid": segment["pid"], "template_pid": tpl });
+            let mut both = json!({ "name": "C", "currency": "JPY", "segment_pid": segment["pid"], "template_pid": tpl });
             both.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
             request
                 .post("/api/campaigns")
@@ -202,13 +202,13 @@ async fn a_campaign_and_a_nurture_step_are_made_from_a_template() {
         }
         request
             .post("/api/campaigns")
-            .json(&json!({ "name": "C", "template_pid": uuid::Uuid::new_v4() }))
+            .json(&json!({ "name": "C", "currency": "JPY", "template_pid": uuid::Uuid::new_v4() }))
             .await
             .assert_status_unprocessable_entity();
 
         let campaign: Value = request
             .post("/api/campaigns")
-            .json(&json!({ "name": "Autumn news", "segment_pid": segment["pid"], "template_pid": tpl }))
+            .json(&json!({ "name": "Autumn news", "currency": "JPY", "segment_pid": segment["pid"], "template_pid": tpl }))
             .await
             .json();
         let campaign = campaign["pid"].as_str().unwrap().to_string();
@@ -317,8 +317,10 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
             .json();
         let campaign: Value = request
             .post("/api/campaigns")
-            .json(&json!({ "name": "Formal", "segment_pid": segment["pid"],
-                           "template_pid": made["pid"] }))
+            .json(
+                &json!({ "name": "Formal", "currency": "JPY", "segment_pid": segment["pid"],
+                           "template_pid": made["pid"] }),
+            )
             .await
             .json();
         let campaign = campaign["pid"].as_str().unwrap().to_string();

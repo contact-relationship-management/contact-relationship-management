@@ -16,7 +16,8 @@
     KanbanColumn,
   } from "@lilydesignsystem/svelte-kanban-board";
   import { page } from "$app/state";
-  import { listDeals, listPipelines, moveDeal, money, placeCard } from "#lib/api/crm.js";
+  import { listDeals, listPipelines, moveDeal, placeCard } from "#lib/api/crm.js";
+  import { money } from "#lib/money.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
 

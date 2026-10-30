@@ -50,7 +50,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/accounts/{pid}/clv",
         "analytics",
-        "CLV per currency over won deals. ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60); ?retention_from=history in place of retention_bps takes each currency's retention from the year before, held at 100% (CRM-R61); with ?convert_to= the margin and the look-ahead are also converted and added (CRM-R62). ?rate_basis=close_day with ?convert_to= converts each won deal at the rate in force on the day it closed instead of all at one date, rounded once per deal; not with ?rate_date=, ?margin_bps= or a look-ahead (CRM-R70)",
+        "CLV per currency over won deals. ?convert_to=JPY with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the CLV left out for want of a rate (CRM-R54). ?margin_bps= adds the margin; ?retention_bps=&years= (and ?discount_bps=) adds a discounted look-ahead per currency (CRM-R60); ?retention_from=history in place of retention_bps takes each currency's retention from the year before, held at 100% (CRM-R61); with ?convert_to= the margin and the look-ahead are also converted and added (CRM-R62). ?rate_basis=close_day with ?convert_to= converts each won deal at the rate in force on the day it closed instead of all at one date, rounded once per deal; not with ?rate_date=, ?margin_bps= or a look-ahead (CRM-R70)",
         Kind::Ok,
     ),
     (
@@ -925,7 +925,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/attribution",
         "marketing",
-        "Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear|time_decay|position (default linear; time_decay halves a touch's weight every 7 days before the deal closed, position gives 40% to the first touch, 40% to the last and 20% shared among the rest; ?half_life_days=4..90 chooses the time_decay half-life, 7 by default, CRM-R89; ?end_percent=1..49 chooses the share of each of the first and last touches under position, 40 by default, CRM-R90), ?touches=sent|opened|clicked, comma-separated, with ?min_open_seconds=1..86400 leaving out opens reported sooner than that after sending (CRM-R89) and ?min_click_seconds=1..86400 doing the same for clicks (CRM-R91) (default sent; opens and clicks are what a mail provider reports, CRM-R58), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=GBP shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate; ?rate_basis=close_day converts each deal's share at the rate of the day it closed instead (CRM-R85). A caller with a masked collection read gets 403",
+        "Share the revenue of won deals among the campaigns that touched the buyer (CRM-R49): ?model=first|last|linear|time_decay|position (default linear; time_decay halves a touch's weight every 7 days before the deal closed, position gives 40% to the first touch, 40% to the last and 20% shared among the rest; ?half_life_days=4..90 chooses the time_decay half-life, 7 by default, CRM-R89; ?end_percent=1..49 chooses the share of each of the first and last touches under position, 40 by default, CRM-R90), ?touches=sent|opened|clicked, comma-separated, with ?min_open_seconds=1..86400 leaving out opens reported sooner than that after sending (CRM-R89) and ?min_click_seconds=1..86400 doing the same for clicks (CRM-R91) (default sent; opens and clicks are what a mail provider reports, CRM-R58), ?window_days=1..365 (default 90), ?from= and ?to= (days the deal closed on). Per campaign and per currency, exact to the minor unit; deals with no touch are listed apart. ?convert_to=EUR shows every figure in one currency with the rates in force on ?rate_date= (today when absent; CRM-R51), naming the rates used and the credit left out for want of a rate; ?rate_basis=close_day converts each deal's share at the rate of the day it closed instead (CRM-R85). A caller with a masked collection read gets 403",
         Kind::Ok,
     ),
     (
@@ -1325,7 +1325,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/forecast",
         "sales",
-        "Live stage-weighted forecast per currency (derived, never typed). ?convert_to=GBP with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the totals left out for want of a rate (CRM-R53)",
+        "Live stage-weighted forecast per currency (derived, never typed). ?convert_to=INR with ?rate_date= (today when absent) adds the total in one currency, naming the rates used and the totals left out for want of a rate (CRM-R53)",
         Kind::Ok,
     ),
     (

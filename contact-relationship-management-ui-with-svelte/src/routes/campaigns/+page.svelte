@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { errorMessage } from "#lib/errors.js";
+  import { PageError, errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import CampaignTimeline from "#lib/components/CampaignTimeline.svelte";
   import DataTable from "#lib/components/DataTable.svelte";
@@ -10,9 +10,9 @@
     listCampaigns,
     listSegments,
     listTemplates,
-    money,
     runCampaign,
   } from "#lib/api/crm.js";
+  import { currencyCode, money } from "#lib/money.js";
   import { ratioPercent } from "#lib/format.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
   import type { Campaign, Ratio, ReportRateUsed, ReportUnconverted } from "#lib/api/crm.js";
@@ -74,19 +74,24 @@
   let templatePid = $state("");
   let subject = $state("");
   let body = $state("");
+  // The currency its cost and ROI are in: required, never assumed (CRM-T168).
+  let currency = $state("");
 
   async function create() {
     actionError = null;
     try {
+      const code = currencyCode(currency);
+      if (code === null) throw new PageError(t("money.currencyRequired"));
       await createCampaign({
         name,
+        currency: code,
         ...(segmentPid ? { segment_pid: segmentPid } : {}),
         ...(templatePid
           ? { template_pid: templatePid }
           : { subject: subject || undefined, body: body || undefined }),
       });
       creating = false;
-      name = segmentPid = templatePid = subject = body = "";
+      name = segmentPid = templatePid = subject = body = currency = "";
       await list.reload();
     } catch (cause) {
       actionError = errorMessage(cause);
@@ -130,6 +135,10 @@
     }}
   >
     <label>{t("common.name")} <input data-testid="campaign-name" bind:value={name} required /></label>
+    <label>
+      {t("campaign.currency")}
+      <input data-testid="campaign-currency" bind:value={currency} required maxlength="3" size="4" />
+    </label>
     <label>
       {t("campaign.segment")}
       <select data-testid="campaign-segment" bind:value={segmentPid}>
