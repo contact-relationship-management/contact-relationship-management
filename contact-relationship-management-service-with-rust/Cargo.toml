@@ -52,6 +52,8 @@ chrono-tz = { version = "0.10" }
 url = "2.5"
 thiserror = "2"
 csv = "1"
+# A combining mark stays in a search word (CRM-T170); already in the tree through the matcher.
+unicode-normalization = "0.1.26"
 uuid = { version = "1.29", features = ["v4", "serde"] }
 # Request schemas for the OpenAPI document come from the payload structs themselves (CRM-T83).
 schemars = { version = "1", features = ["uuid1", "chrono04"] }

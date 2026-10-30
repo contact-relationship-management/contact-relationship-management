@@ -83,6 +83,11 @@ app's `governance/worldwide-equity-audit.md` (WW-1, against its `spec/02-scope.m
   currencies with 0, 2 and 3 decimal places, its six rates come from five bases, and its contacts' names are in seven scripts and both
   orders, some with the parts stored and some without; the tour adds a yen and a dinar deal, three rates from other bases and five
   contacts in Han, Devanagari, Vietnamese, Arabic and Japanese, and its helpers take minor units. Details: [tasks.md](tasks.md).
+- [x] (2026-10-30) CRM-T170 **Phone digits and search in every script.** Done: code rows 24 and 25. The matcher reads a phone
+  number typed in any of 31 Unicode decimal digit sets or full width (WPM-T382's table) and drops a trunk prefix only by a table of
+  calling codes' plans (none for Italy and the other closed plans; unknown codes drop nothing). Search keeps combining marks in a word
+  and searches scripts without spaces by character pairs (migration `000055`, `search_ngrams`), so part of a Chinese, Japanese,
+  Korean or Thai name is found; the choice of n-grams over a segmenter is justified in CRM-R33. Details: [tasks.md](tasks.md).
 - **Found while doing CRM-T167 (for the three apps to settle together):** `Intl`'s digits come from CLDR, which differs from ISO 4217 for
   16 codes (AFN, ALL, COP, HUF, IDR, IQD, IRR, KPW, LAK, LBP, MGA, MMK, PKR, SOS, SYP, YER: CLDR 0 places, ISO 4217 2, or 3 for IQD).
   The project portfolio and workforce planning UIs take the exponent from `Intl` while the project portfolio service (`src/currency.rs`)
@@ -156,8 +161,8 @@ or a translation depends on, so it is left to its task.
 | 21 | Names | API contact entity; `requirements.md` CRM-R37 | One `display_name`, optional `given_name` and `family_name`, no title, no first/last field | **Right** | — |
 | 22 | Phone, address | API `src/rules/tokens.rs:9` (channels `email`, `phone`, `post`, `none`) | The CRM stores no phone number or address: they belong to the person and organization registries | **Right**: nothing here assumes a shape (the registries are not audited) | — |
 | 23 | Phone (matcher) | matcher `src/config.rs:61,82` | `default_calling_code` is unset by default | **Right**: no country's code is the default | — |
-| 24 | Phone (matcher) | matcher `src/normalize.rs:150-180` | Only ASCII digits are kept; with a default calling code a leading `0` is dropped as a trunk prefix (and `1` gets the NANP ten-digit rule) | **Partial**: a number in Arabic-Indic or Devanagari digits is read as no number; dropping the `0` is wrong where it is part of the number (Italy) | T170 |
-| 25 | Search | API `src/search.rs:15-19`, `src/rules/search.rs:13-21` | Words are runs of Unicode letters and digits; PostgreSQL's `simple` configuration with `unaccent` | **Partial**: neutral for scripts that separate words with spaces; Chinese, Japanese and Thai text is one "word", so a part of a name is not found | T170 |
+| 24 | Phone (matcher) | matcher `src/normalize.rs:150-180` | Only ASCII digits are kept; with a default calling code a leading `0` is dropped as a trunk prefix (and `1` gets the NANP ten-digit rule) | **Partial**: a number in Arabic-Indic or Devanagari digits is read as no number; dropping the `0` is wrong where it is part of the number (Italy) **Fixed 2026-10-30** | T170 (done) |
+| 25 | Search | API `src/search.rs:15-19`, `src/rules/search.rs:13-21` | Words are runs of Unicode letters and digits; PostgreSQL's `simple` configuration with `unaccent` | **Partial**: neutral for scripts that separate words with spaces; Chinese, Japanese and Thai text is one "word", so a part of a name is not found **Fixed 2026-10-30** | T170 (done) |
 | 26 | Business hours | API `src/rules/calendar.rs:33-58,100-108` | Windows per weekday `mon` to `sun`, an IANA zone (summer time followed), explicit holiday dates | **Right**: any weekend, any working week, any holiday set | — |
 | 27 | Today (API) | API `src/controllers/quotas.rs:969`, `src/controllers/sales.rs:977` | "Today" for attainment and the forecast snapshot day is the UTC date | **Gap**: the wrong day near midnight far from UTC; there is no organization time zone | T171 |
 | 28 | Periods | API `src/rules/reports.rs:130-215` | `date_trunc('month', …)` in the database session's zone; months only | **Gap**: no fiscal year or quarter, no zone chosen by the organization (spec row 16) | T171 |

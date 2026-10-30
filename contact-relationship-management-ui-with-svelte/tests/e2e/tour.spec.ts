@@ -135,6 +135,19 @@ test("the address names the language, and unknown languages are 404", async ({
   expect(missing?.status()).toBe(404);
 });
 
+test("search finds part of a name written without spaces, and one ideograph is enough", async ({
+  page,
+}) => {
+  await startTour(page);
+  // 芳 is the given name in 王芳; the service searches such scripts by character pairs (CRM-T170).
+  await page.goto("/search?q=" + encodeURIComponent("芳"));
+  await expect(page.getByTestId("search-nav.contacts")).toContainText("王芳");
+  await page.goto("/search?q=" + encodeURIComponent("वेंकट"));
+  await expect(page.getByTestId("search-nav.contacts")).toContainText(
+    "प्रिया वेंकटरमन",
+  );
+});
+
 test("the kanban board needs a session", async ({ page }) => {
   await page.goto("/en-001/kanban");
   await expect(page).toHaveURL(/\/signin$/);

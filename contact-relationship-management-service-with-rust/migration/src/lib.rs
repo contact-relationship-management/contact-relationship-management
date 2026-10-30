@@ -66,6 +66,7 @@ mod m20261028_000051_auto_close_days;
 mod m20261030_000052_wpm_employments;
 mod m20261030_000053_employment_last_events;
 mod m20261030_000054_person_user_refs;
+mod m20261030_000055_search_ngrams;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -130,6 +131,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261030_000052_wpm_employments::Migration),
             Box::new(m20261030_000053_employment_last_events::Migration),
             Box::new(m20261030_000054_person_user_refs::Migration),
+            Box::new(m20261030_000055_search_ngrams::Migration),
             // inject-above (do not remove this comment)
         ]
     }

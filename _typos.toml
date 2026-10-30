@@ -36,3 +36,5 @@ jod = "jod"
 fils = "fils"
 # German test data: "Oktober" is the German month name a German date is checked against (CRM-T172).
 oktober = "oktober"
+# Vai, the Liberian script whose decimal digits the matcher reads in a phone number (CRM-T170).
+vai = "vai"

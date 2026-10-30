@@ -57,7 +57,9 @@ pub struct MatchConfig {
     pub fold_gmail: bool,
     /// Calling code (`"44"`, `"1"`) for phone numbers written nationally.
     /// Without it, a national number only matches an international one that
-    /// ends with the same digits.
+    /// ends with the same digits. With it, the national number's trunk prefix
+    /// is dropped only where that code's plan has one (`"44"` drops `0`,
+    /// `"39"` keeps it).
     pub default_calling_code: Option<String>,
     /// Extra nickname classes, on top of the built-in English ones. Each
     /// class is a list of names that stand for the same person.

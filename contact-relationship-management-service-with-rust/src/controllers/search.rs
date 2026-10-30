@@ -46,9 +46,9 @@ async fn search(
 ) -> Result<Response> {
     let typed = query.q.trim();
     let length = typed.chars().count();
-    if !(rules::MIN_LEN..=rules::MAX_LEN).contains(&length) {
+    if !rules::long_enough(typed) || length > rules::MAX_LEN {
         return Err(unprocessable(&format!(
-            "q must be {} to {} characters",
+            "q must be {} to {} characters, or one ideograph",
             rules::MIN_LEN,
             rules::MAX_LEN
         )));

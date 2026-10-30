@@ -4,6 +4,13 @@
 
 Breaking. The service keeps depending on 0.1.2 until this is published.
 
+- Phones in every script (CRM-T170): digits typed in ASCII, full width or any of 31 Unicode decimal digit sets (the
+  workforce planning service's table, WPM-T382) are read, so the same line typed in Arabic-Indic and in ASCII digits
+  agrees. With `default_calling_code`, a national number's trunk prefix is dropped only where the code's plan has one
+  (`TRUNK_PREFIXES`: `0`, `8` or `06`, or none for Italy, Spain, Portugal, Greece, Poland, Czechia, Denmark, Norway and
+  the other closed plans listed); a code not in the table drops nothing (it dropped a leading `0` for every code). The
+  table is from public summaries of national plans and was not checked against each regulator. Behaviour change, not an
+  API change.
 - `ConfigError` is now a `#[non_exhaustive]` enum (`OutOfRange`, `ThresholdsOutOfOrder`,
   `SimilarityBandsOutOfOrder`, `NotDiscriminating`, `CallingCode`), where it was a tuple struct holding a
   `String`. Its `Display` text is unchanged.

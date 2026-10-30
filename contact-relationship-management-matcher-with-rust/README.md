@@ -116,7 +116,7 @@ own data, under the same data-protection rules as that data.
   are correlated (the same name and the same employer, say).
 - Names are English-centred: the nickname table, honorifics and name particles
   are. Jaro–Winkler suits Latin scripts best.
-- Phones are compared as digits; there is no country-code database.
+- Phones are compared as digits (typed in any Unicode decimal digit set or in full width); there is no country-code database beyond a table of which calling codes' plans have a trunk prefix (`0`, `8` or `06`) to drop from a national number, and a code not in it drops nothing.
 - No date of birth or address.
 - It is advice. It merges and deletes nothing.
 

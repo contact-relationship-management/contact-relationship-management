@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — search keeps other scripts' marks and takes one ideograph (CRM-T170)
+
+`src/lib/search.ts`'s `fold` drops marks only from Latin, Greek and Cyrillic letters (it dropped every mark, so a Devanagari vowel sign or a Thai tone mark was lost and `प्र` matched `पर`); `longEnough` is the service's rule (two characters, or one ideograph or kana), used by the search page and the tour's stand-in. Tests: 3 in `tests/unit/search.test.ts`; a tour test finds `王芳` by `芳` and `प्रिया वेंकटरमन` by `वेंकट`. **Not done:** the list filters elsewhere in the UI were not changed.
+
 ### Changed — the tour carries a yen and a dinar deal, rates from other bases and names in other scripts (CRM-T176)
 
 The stand-in's `deal()` and `campaign()` take minor units (the `pounds` parameters and their `* unitOf("GBP")` are gone); "Depot routing platform" is ¥14,500,000 and "Developer tooling licences" KWD 9,600.500; EUR→JPY, KWD→EUR and INR→KWD rates join the three GBP ones; five contacts are 王芳, प्रिया वेंकटरमन, Nguyễn Thị Lan, نور حداد and 田中 博 (four with given and family names stored) and two leads 김민준 and Oluwaseun Adeyemi. The stand-in's forecast and forecast trend total each currency apart (they put every deal under GBP). Tests: 4 in `tests/unit/demo.test.ts` (exponents 0, 2 and 3; three rate bases; four scripts and a family-name-first order; no `pounds`); in the tour, the board's yen and dinar amounts and a deal report converted to euros through three bases; the forecast, report and rate-list expectations follow the data. 284 vitest, 189 Playwright. **Not done:** the won deals stay GBP; no native speaker checked the names.

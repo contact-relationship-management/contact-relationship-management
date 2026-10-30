@@ -13,7 +13,7 @@
 // `MAX_DEMO_SESSIONS` copies are kept; the least recently used goes first, and
 // a visitor whose copy went starts again from the original data.
 
-import { matches } from "#lib/search.js";
+import { longEnough, matches } from "#lib/search.js";
 import { MINOR_UNITS } from "#lib/money.js";
 import type {
   Account,
@@ -2430,7 +2430,7 @@ export function demoHandle(
     return recordImports(head === "contact-imports", method, id, tail, body);
   if (head === "search" && get) {
     const q = query.get("q") ?? "";
-    if (q.trim().length < 2) return ok([]);
+    if (!longEnough(q)) return ok([]);
     const hit = (
       kind: string,
       pid: string,

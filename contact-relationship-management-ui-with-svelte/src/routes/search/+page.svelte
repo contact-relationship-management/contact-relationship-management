@@ -7,6 +7,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { searchRecords, type SearchHit } from "#lib/api/crm.js";
+  import { longEnough } from "#lib/search.js";
   import { t, type StringKey, tn } from "#lib/i18n.svelte.js";
 
   type Hit = { id: string; title: string; detail: string; href: string };
@@ -44,8 +45,8 @@
 
   $effect(() => {
     const current = query;
-    // The service wants two characters or more; fewer is no search.
-    if (current.length < 2) {
+    // The service wants two characters or more, or one ideograph; less is no search.
+    if (!longEnough(current)) {
       groups = [];
       failed = false;
       loading = false;

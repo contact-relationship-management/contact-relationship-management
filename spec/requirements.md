@@ -299,7 +299,12 @@ that two contact records are the same person, and why.*
   contacts and returns the probability that they are one person, a verdict
   (match, review, non-match) and each field's contribution to it.
 - The fields are given and family name (case, accents, nicknames, initials and
-  swapped order tolerated), email, phone, organisation and job title. A field
+  swapped order tolerated), email, phone, organisation and job title. A phone
+  number's digits may be typed in any Unicode decimal digit set or in full width;
+  with a default calling code, a national number loses its trunk prefix only where
+  that code's plan has one (`0` for most, `8` for Russia, Kazakhstan and Belarus,
+  `06` for Hungary, none for Italy, Spain and the other plans in the matcher's
+  table), and a code not in the table loses nothing (CRM-T170). A field
   empty on either side counts for nothing, so a sparse record is not punished.
 - The same `person_ref` is a certain match. A different one is no evidence.
 - It compares one contact with many and ranks the answer, in a stable order.
@@ -663,8 +668,21 @@ allowed to see.*
   trigram similarity (`pg_trgm`), both over text folded with `unaccent` and lower-cased, so `zoe` finds
   `Zoë` and `lovelase` finds `Lovelace`. Both are indexed (migration `000024` enables the two extensions,
   so the database role that runs migrations must be allowed to).
-- `q` is 2 to 100 characters; only letters and digits of at most eight words are used. Anything else is
-  `422`. Results are `{ kind, pid, title, detail }`, best match first, paged like the other lists
+- **Every script (CRM-T170).** A word keeps its combining marks, so a Devanagari or Thai word is not cut
+  at a vowel sign. Scripts written without spaces between words (Chinese, Japanese, Korean names, Thai,
+  Lao, Khmer, Myanmar; the ranges are `UNSPACED` in the migration crate's `search_docs`) are searched by
+  character n-grams: the full-text index (rebuilt by migration `000055`) holds the text plus each such
+  run's single characters and overlapping pairs (`search_ngrams`), and a query's run becomes the same
+  pairs, all required (at most 16 terms), so `芳` finds `王芳` and `科技` finds `北京王芳科技有限公司`.
+  **Why n-grams and not a segmenter:** PostgreSQL has no word segmenter built in; an extension for one
+  (`zhparser`, `pg_bigm`, `pg_jieba`) is one more thing every deployer must install and is per language;
+  and a dictionary segmenter splits a name it does not know unpredictably, where pairs find any part of
+  two characters or more and a single ideograph, with no dictionary, in every one of those scripts. The
+  cost is a larger index for those scripts and some matches on pairs that are not words; ranking still
+  puts the closer text first. The browser's `Intl.Segmenter` is not used either: the search is the
+  service's, and the UI's own list filter matches by substring, which already finds such a part.
+- `q` is 2 to 100 characters, or one ideograph or kana (one can be a whole given name); only letters,
+  digits and their marks of at most eight words are used. Anything else is `422`. Results are `{ kind, pid, title, detail }`, best match first, paged like the other lists
   (`limit`, `cursor`); a hit carries no more than the name and one plain descriptor (job title, industry,
   status, or an address domain).
 - **Access.** A record the caller may not read (the record-level policy for contacts and deals) is left

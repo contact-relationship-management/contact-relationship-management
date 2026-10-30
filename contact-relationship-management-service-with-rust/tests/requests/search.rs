@@ -178,3 +178,75 @@ async fn results_are_paged_best_first() {
     })
     .await;
 }
+
+/// `q`, percent-encoded for the query string.
+fn encoded(q: &str) -> String {
+    url::form_urlencoded::byte_serialize(q.as_bytes()).collect()
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn search_finds_part_of_a_name_in_a_script_without_spaces() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let mut pids = std::collections::BTreeMap::new();
+        for name in [
+            "王芳",
+            "田中 博",
+            "たなか ひろし",
+            "สมศรี ใจดี",
+            "김민준",
+            "प्रिया वेंकटरमन",
+            "نور حداد",
+            "北京王芳科技有限公司",
+        ] {
+            let made: Value = request
+                .post("/api/contacts")
+                .json(&json!({ "person_ref": a_person(), "display_name": name }))
+                .await
+                .json();
+            pids.insert(name, made["pid"].as_str().unwrap().to_string());
+        }
+        let found =
+            |hits: &[Value], name: &str| hits.iter().any(|h| h["pid"] == pids[name].as_str());
+        // A part of a name, at its start, in its middle or at its end; one ideograph is enough.
+        for (q, name) in [
+            ("芳", "王芳"),
+            ("王芳", "王芳"),
+            ("芳科技", "北京王芳科技有限公司"),
+            ("有限公司", "北京王芳科技有限公司"),
+            ("田中", "田中 博"),
+            ("なか", "たなか ひろし"),
+            ("ศรี", "สมศรี ใจดี"),
+            ("ใจดี", "สมศรี ใจดี"),
+            ("민준", "김민준"),
+            ("प्रिया", "प्रिया वेंकटरमन"),
+            ("वेंकट", "प्रिया वेंकटरमन"),
+            ("حداد", "نور حداد"),
+        ] {
+            let hits = find!(request, encoded(q));
+            assert!(found(&hits, name), "{q} finds {name}: {hits:?}");
+        }
+        // Pairs must all be there: a name holding only one of the query's characters is not found.
+        let hits = find!(request, encoded("芳华"));
+        assert!(!found(&hits, "王芳"), "{hits:?}");
+        assert!(
+            find!(request, encoded("科学"))
+                .iter()
+                .all(|h| h["pid"] != pids["北京王芳科技有限公司"].as_str())
+        );
+        // One letter of an alphabet is still too short; one ideograph is not.
+        assert_eq!(
+            request
+                .get(&format!("/api/search?q={}", encoded("ส")))
+                .await
+                .status_code(),
+            422
+        );
+        request
+            .get(&format!("/api/search?q={}", encoded("博")))
+            .await
+            .assert_status_ok();
+    })
+    .await;
+}

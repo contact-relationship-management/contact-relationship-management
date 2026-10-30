@@ -14972,7 +14972,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Find records by name or title (CRM-R33): full text and typo-tolerant, accent-blind; ?q= is 2 to 100 characters; records the caller may not read are left out; the audit row records a count, not the text */
+        /** Find records by name or title (CRM-R33): full text and typo-tolerant, accent-blind, any script (a script written without spaces is matched by character pairs, CRM-T170); ?q= is 2 to 100 characters, or one ideograph; records the caller may not read are left out; the audit row records a count, not the text */
         get: {
             parameters: {
                 query?: never;

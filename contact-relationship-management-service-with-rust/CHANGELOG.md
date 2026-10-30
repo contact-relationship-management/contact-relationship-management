@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — search in every script (CRM-T170, CRM-R33)
+
+`rules::search::words` keeps combining marks; `terms` makes the overlapping character pairs of a word in a script without spaces (`migration::search_docs::UNSPACED`), all required in the `tsquery` (at most 16); `long_enough` takes one ideograph or kana. Migration `000055` creates the immutable `search_ngrams(text)` and rebuilds the seven full-text indexes over it (`search_docs::ngram_index_statements`); the query (`src/search.rs`) reads the same expression; the trigram indexes are unchanged. `unicode-normalization` 0.1.26 is now a direct dependency (it was already in the lockfile). Tests: 3 unit, 1 in the migration crate, and the request test `search_finds_part_of_a_name_in_a_script_without_spaces`; the whole request suite on a fresh PostgreSQL 18 database; migration `000055` up, down and up on a seeded one. **Not done:** no measurement of the index's size or speed; pairs can match across two Thai words; no transliteration.
+
 ### Changed — the seed is in more than one currency, rate base and name shape (CRM-T176)
 
 `tasks::seed` takes its deals from `DEAL_AMOUNTS` (GBP, JPY, KWD, EUR, INR, BRL, each in its own minor unit), inserts the six `RATES` for today from five bases (USD, EUR, INR, KWD, JPY; `ON CONFLICT DO NOTHING`, source "synthetic demo rate"), and names the 15 contacts from `CONTACT_NAMES` in Latin, Han, Arabic, Devanagari, Hangul, Cyrillic and Thai, both orders, with `given_name` and `family_name` stored for some and not others. Three unit tests hold the shapes. Run once with `cargo run -- task seed` on a throwaway PostgreSQL 18 database. **Not done:** the accounts, deals and leads keep their "Demo …" names; the request tests do not run the seed; the names were not checked by a speaker of each language.
