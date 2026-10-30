@@ -13,7 +13,8 @@
       Nth entry's copy is `tour.s{N}.*`. `href` is the app screen to open.
 -->
 <script lang="ts">
-  import { t, type StringKey } from "#lib/i18n.svelte.js";
+  import { t, tf, type StringKey } from "#lib/i18n.svelte.js";
+  import { arrow } from "#lib/locale-format.js";
 
   let { sections }: { sections: { href: string }[] } = $props();
 
@@ -65,7 +66,7 @@
           <p class="summary">{t(key(`${s.prefix}.summary`))}</p>
           <ol class="steps">
             {#each STEPS as n (n)}
-              <li>{t(key(`${s.prefix}.step.${n}`))}</li>
+              <li>{tf(key(`${s.prefix}.step.${n}`), { arrow: arrow() })}</li>
             {/each}
           </ol>
           <p class="section-links">

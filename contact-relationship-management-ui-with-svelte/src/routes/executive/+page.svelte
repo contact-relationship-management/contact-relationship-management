@@ -18,6 +18,7 @@
   } from "#lib/api/crm.js";
   import { money } from "#lib/money.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { formatDateRange } from "#lib/locale-format.js";
 
   type Pack = Awaited<ReturnType<typeof executivePack>>;
   type Trends = Awaited<ReturnType<typeof forecastTrends>>;
@@ -88,7 +89,7 @@
 {#if error}<p class="error" data-testid="error">{error}</p>{/if}
 
 {#if pack}
-  <p class="muted">window {pack.window.from} → {pack.window.to} · {pack.note}</p>
+  <p class="muted">window {formatDateRange(pack.window.from, pack.window.to)} · {pack.note}</p>
   <section class="tiles" data-testid="exec-tiles">
     <div class="tile"><strong>{pack.deals_won}</strong><span>won</span></div>
     <div class="tile"><strong>{pack.deals_lost}</strong><span>lost</span></div>

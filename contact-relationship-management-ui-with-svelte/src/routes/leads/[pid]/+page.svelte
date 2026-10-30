@@ -7,6 +7,7 @@
   import Tags from "#lib/components/Tags.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { t } from "#lib/i18n.svelte.js";
+  import { backArrow } from "#lib/locale-format.js";
 
   const pid = $derived(page.params.pid ?? "");
   const record = resource(() => getLead(pid));
@@ -14,7 +15,7 @@
   const error = $derived(record.error);
 </script>
 
-<p><a href="/leads">← {t("nav.leads")}</a></p>
+<p><a href="/leads"><span aria-hidden="true">{backArrow()}</span> {t("nav.leads")}</a></p>
 {#if error}
   <p class="error" data-testid="error">{t("common.error")}: {error}</p>
 {:else if detail === null}

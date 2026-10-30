@@ -9,6 +9,7 @@
   import Tags from "#lib/components/Tags.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { backArrow } from "#lib/locale-format.js";
   import { errorMessage, fieldErrors } from "#lib/errors.js";
 
   const pid = $derived(page.params.pid ?? "");
@@ -52,7 +53,7 @@
   }
 </script>
 
-<p><a href="/accounts">← {t("nav.accounts")}</a></p>
+<p><a href="/accounts"><span aria-hidden="true">{backArrow()}</span> {t("nav.accounts")}</a></p>
 {#if error}
   <p class="error" data-testid="error">{t("common.error")}: {error}</p>
 {:else if detail === null}

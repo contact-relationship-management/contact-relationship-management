@@ -2,7 +2,7 @@
 // spec/worldwide.md code rows 31 to 35, CRM-R95, CRM-D19). Money is `money.ts`.
 //
 // SHARED IN BEHAVIOUR with the workforce planning management UI's `src/lib/locale-format.ts`
-// (WPM-T375), from which this file is ported: the same functions, names, rules and fallbacks, so the
+// (WPM-T375, WPM-T377), from which this file is ported: the same functions, names, rules and fallbacks, so the
 // family formats alike; copy a fix to the other (there is no shared package, by the family convention
 // of copy-adapting between front-ends). The project portfolio management UI has no such module yet.
 // The CRM's differences: its locales are its own eight (`de-de`, `zh-cn` and six `-001`), and WPM's
@@ -17,7 +17,7 @@
 // `tests/unit/locale-format.test.ts` fails on new hand-rolled formatting in `src/` (`toFixed`,
 // `toLocale*`, a percent sign glued to a number, a timestamp sliced to a date).
 
-import { i18n } from "./i18n.svelte.js";
+import { i18n, isRtl } from "./i18n.svelte.js";
 import { parseAmount } from "./money.js";
 
 /** What an absent or unknown figure shows. */
@@ -214,6 +214,81 @@ export function formatMonth(
   return dtf(locale(loc), { month, year: "numeric", timeZone: "UTC" }).format(
     date,
   );
+}
+
+// Ranges and arrows (CRM-T174, as WPM-T377). A literal "→" between two dates points the wrong way on a right-to-left page, so a
+// range of dates is `Intl.DateTimeFormat#formatRange` in the page's locale ("1–30 Sept 2026", "1 Sept – 30 Oct 2026"),
+// whose separator is the locale's own and has no direction; an end that is not known is "…". An arrow that means
+// "becomes" (3 → 4, a stage to the next) is `arrow()`, which points along the page's writing direction.
+
+/** The end of a range that is not known. */
+export const OPEN_END = "…";
+
+/** The separator between two ends when `formatRange` cannot be used (an unknown or non-ISO end): an en dash, no direction. */
+const RANGE_SEPARATOR = " – ";
+
+/**
+ * Two ISO dates (or two timestamps) as one range in the page's locale: "1–30 Sept 2026" in en-001, "01.–30.09.2026"
+ * in de-001. A missing end is "…"; a value that is not an ISO date is shown as given, with an en dash between.
+ * Both civil dates are formatted in UTC (the same day everywhere); two timestamps in the reader's time zone.
+ */
+export function formatDateRange(
+  start: string | null | undefined,
+  end: string | null | undefined,
+  style: "short" | "medium" | "long" | "full" = "medium",
+  loc?: string,
+): string {
+  const a = start ? instant(start) : null;
+  const b = end ? instant(end) : null;
+  if (a && b && a.civil === b.civil && a.date.getTime() <= b.date.getTime()) {
+    const f = dtf(locale(loc), {
+      dateStyle: style,
+      ...(a.civil ? { timeZone: "UTC" } : {}),
+    });
+    return f.formatRange(a.date, b.date);
+  }
+  const side = (v: string | null | undefined) =>
+    v === null || v === undefined || v === ""
+      ? OPEN_END
+      : formatDate(v, style, loc);
+  return `${side(start)}${RANGE_SEPARATOR}${side(end)}`;
+}
+
+/**
+ * Two ISO timestamps as one date-and-time range in the page's locale and the reader's time zone ("1 Sept 2026,
+ * 09:00 – 17:00"). A missing or non-timestamp end falls back to `formatDateTime` on each side.
+ */
+export function formatDateTimeRange(
+  start: string | null | undefined,
+  end: string | null | undefined,
+  loc?: string,
+): string {
+  const a = start ? instant(start) : null;
+  const b = end ? instant(end) : null;
+  if (a && b && !a.civil && !b.civil && a.date.getTime() <= b.date.getTime()) {
+    return dtf(locale(loc), {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).formatRange(a.date, b.date);
+  }
+  const side = (v: string | null | undefined) =>
+    v === null || v === undefined || v === ""
+      ? OPEN_END
+      : formatDateTime(v, loc);
+  return `${side(start)}${RANGE_SEPARATOR}${side(end)}`;
+}
+
+/** An arrow meaning "becomes" or "goes to", pointing along the page's writing direction: "→", or "←" in Arabic. */
+export function arrow(loc?: string): string {
+  return isRtl(locale(loc)) ? "←" : "→";
+}
+
+/**
+ * The arrow of a link back to where the reader came from, pointing against the page's writing
+ * direction: "←", or "→" in Arabic. The CRM's own (WPM has no back links); the same rule as `arrow()`.
+ */
+export function backArrow(loc?: string): string {
+  return isRtl(locale(loc)) ? "→" : "←";
 }
 
 // Typed numbers. The parsing core is `money.ts`'s `parseAmount`, so a decimal typed into any field is read the same

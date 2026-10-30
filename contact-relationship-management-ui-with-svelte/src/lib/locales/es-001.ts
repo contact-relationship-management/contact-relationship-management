@@ -477,7 +477,7 @@ export default {
   "tour.s5.step.2":
     "Vigila el recuento de Incumplido en la parte superior de la cola para ver los tickets que ya han superado un plazo.",
   "tour.s5.step.3":
-    "Selecciona un ticket para abrir su panel y elige un botón de flecha como → pending o → resolved para pasarlo a su siguiente estado.",
+    "Selecciona un ticket para abrir su panel y elige un botón de flecha como {arrow} pending o {arrow} resolved para pasarlo a su siguiente estado.",
   "tour.s5.step.4":
     "Elige Tablero para trabajar los mismos tickets como columnas Open, Pending, Resolved y Closed, arrastrando tarjetas entre ellas.",
   "tour.s6.title": "Revisar resultados y privacidad",

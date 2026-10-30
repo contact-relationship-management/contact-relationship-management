@@ -429,7 +429,7 @@ export default {
     "打开工单，查看每张工单的优先级、状态和应答期限；用筛选栏过滤队列。",
   "tour.s5.step.2": "留意队列顶部的已超时数量，它表示已经错过期限的工单。",
   "tour.s5.step.3":
-    "选中一张工单打开其面板，再选择 → pending 或 → resolved 之类的箭头按钮，把它移到下一个状态。",
+    "选中一张工单打开其面板，再选择 {arrow} pending 或 {arrow} resolved 之类的箭头按钮，把它移到下一个状态。",
   "tour.s5.step.4":
     "选择看板，把同样的工单按 Open、Pending、Resolved、Closed 列来处理，并在列之间拖动卡片。",
   "tour.s6.title": "查看结果与隐私",

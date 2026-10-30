@@ -482,7 +482,7 @@ export default {
   "tour.s5.step.2":
     "Surveillez le compteur Dépassé en haut de la file pour repérer les tickets qui ont déjà manqué une échéance.",
   "tour.s5.step.3":
-    "Sélectionnez un ticket pour ouvrir son panneau, puis choisissez un bouton fléché comme → pending ou → resolved pour le passer à son statut suivant.",
+    "Sélectionnez un ticket pour ouvrir son panneau, puis choisissez un bouton fléché comme {arrow} pending ou {arrow} resolved pour le passer à son statut suivant.",
   "tour.s5.step.4":
     "Choisissez Tableau pour traiter les mêmes tickets en colonnes Open, Pending, Resolved et Closed, en faisant glisser les cartes entre elles.",
   "tour.s6.title": "Consulter les résultats et la confidentialité",

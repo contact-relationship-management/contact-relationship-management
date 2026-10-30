@@ -17,6 +17,7 @@
   import Tags from "#lib/components/Tags.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { backArrow } from "#lib/locale-format.js";
 
   const pid = $derived(page.params.pid ?? "");
   // There is no single-deal read; the list is already scoped by the caller's rights.
@@ -120,7 +121,7 @@
   }
 </script>
 
-<p><a href="/deals">← {t("nav.deals")}</a></p>
+<p><a href="/deals"><span aria-hidden="true">{backArrow()}</span> {t("nav.deals")}</a></p>
 {#if error}
   <p class="error" data-testid="error">{t("common.error")}: {error}</p>
 {:else if deal === null}

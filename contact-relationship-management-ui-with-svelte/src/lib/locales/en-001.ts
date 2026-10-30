@@ -460,7 +460,7 @@ export default {
   "tour.s5.step.2":
     "Watch the Breached count at the top of the queue for tickets that have already missed a deadline.",
   "tour.s5.step.3":
-    "Select a ticket to open its panel, then choose an arrow button such as → pending or → resolved to move it to its next status.",
+    "Select a ticket to open its panel, then choose an arrow button such as {arrow} pending or {arrow} resolved to move it to its next status.",
   "tour.s5.step.4":
     "Choose Board to work the same tickets as Open, Pending, Resolved and Closed columns, dragging cards between them.",
   "tour.s6.title": "Review results and privacy",

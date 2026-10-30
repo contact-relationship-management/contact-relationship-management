@@ -15,7 +15,7 @@
   import { currencyCode, money } from "#lib/money.js";
   import { ratioPercent } from "#lib/format.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
-  import { formatDate, formatDecimalText } from "#lib/locale-format.js";
+  import { arrow, formatDate, formatDecimalText, formatInteger } from "#lib/locale-format.js";
   import type { Campaign, Ratio, ReportRateUsed, ReportUnconverted } from "#lib/api/crm.js";
 
   const list = resource(listCampaigns);
@@ -114,7 +114,9 @@
       id: c.pid,
       name: c.name,
       status: c.status,
-      recipients: `${c.recipients} → ${c.delivered} → ${c.opened} → ${c.clicked}`,
+      recipients: [c.recipients, c.delivered, c.opened, c.clicked]
+        .map((n) => formatInteger(n))
+        .join(` ${arrow()} `),
     })),
   );
 </script>

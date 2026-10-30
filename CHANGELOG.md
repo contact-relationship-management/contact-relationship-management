@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — the UI mirrors on the Arabic page (CRM-T174, 2026-10-30)
+
+Logical CSS properties replace the physical left sides, and arrows and date ranges follow the page's writing direction, as the workforce planning UI's do; a scan test and an Arabic Playwright check with axe keep it so. **Not done:** the Lily components' own styles were not audited. Details: the [UI changelog](contact-relationship-management-ui-with-svelte/CHANGELOG.md).
+
 ### Fixed — the UI's plural forms follow each language's rules (CRM-T173, 2026-10-30)
 
 Strings that fill a count choose their form with `Intl.PluralRules`, as the workforce planning UI's do, and each locale holds exactly its language's CLDR forms (six in Arabic and Welsh, one in Chinese), held there by a parity test. **Not done:** native review of the forms. Details: the [UI changelog](contact-relationship-management-ui-with-svelte/CHANGELOG.md).

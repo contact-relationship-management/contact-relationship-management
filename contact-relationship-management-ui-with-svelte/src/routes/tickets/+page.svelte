@@ -14,7 +14,7 @@
   import { breachedCount, slaBreached } from "#lib/format.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
-  import { formatDateTime } from "#lib/locale-format.js";
+  import { arrow, formatDateTime } from "#lib/locale-format.js";
 
   /** The forward move(s) a ticket offers per status. */
   const NEXT: Record<string, string[]> = {
@@ -110,7 +110,7 @@
     <div class="panel">
       <strong>{selected.title}</strong>
       {#each NEXT[selected.status] ?? [] as to (to)}
-        <button onclick={() => void move(selected.pid, to)}>→ {to}</button>
+        <button onclick={() => void move(selected.pid, to)}>{arrow()} {to}</button>
       {/each}
       {#if selected.status === "pending"}
         <button onclick={() => void replied(selected.pid)} data-testid="ticket-replied">{t("ticket.replied")}</button>

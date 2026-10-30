@@ -132,7 +132,7 @@ table {
 }
 th,
 td {
-  text-align: left;
+  text-align: start;
   padding: 0.4rem 0.6rem;
   border-bottom: 1px solid var(--line);
 }
@@ -343,7 +343,7 @@ th {
 .bed-card {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-left: 6px solid var(--muted);
+  border-inline-start: 6px solid var(--muted);
   border-radius: 8px;
   padding: 0.55rem 0.7rem;
   display: flex;
@@ -352,22 +352,22 @@ th {
   min-height: 7.2rem;
 }
 .bed-card.state-available {
-  border-left-color: var(--state-available);
+  border-inline-start-color: var(--state-available);
 }
 .bed-card.state-reserved {
-  border-left-color: var(--state-reserved);
+  border-inline-start-color: var(--state-reserved);
 }
 .bed-card.state-occupied {
-  border-left-color: var(--state-occupied);
+  border-inline-start-color: var(--state-occupied);
 }
 .bed-card.state-awaiting_clean {
-  border-left-color: var(--state-awaiting);
+  border-inline-start-color: var(--state-awaiting);
 }
 .bed-card.state-cleaning {
-  border-left-color: var(--state-cleaning);
+  border-inline-start-color: var(--state-cleaning);
 }
 .bed-card.state-closed {
-  border-left-color: var(--state-closed);
+  border-inline-start-color: var(--state-closed);
   background: color-mix(in oklch, var(--state-closed) 8%, var(--panel));
 }
 .bed-card .head {

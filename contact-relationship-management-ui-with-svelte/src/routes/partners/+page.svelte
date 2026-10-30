@@ -13,6 +13,7 @@
     stakeholdersView,
   } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
+  import { arrow } from "#lib/locale-format.js";
 
   type Stakeholders = Awaited<ReturnType<typeof stakeholdersView>>;
   type Partnerships = Awaited<ReturnType<typeof partnershipsRegister>>;
@@ -102,7 +103,7 @@
   <h3>Power–interest grid</h3>
   <table class="matrix" data-testid="stakeholder-grid">
     <thead>
-      <tr><th>influence ↓ / interest →</th>{#each SCALE as interest (interest)}<th>{interest}</th>{/each}</tr>
+      <tr><th>influence ↓ / interest {arrow()}</th>{#each SCALE as interest (interest)}<th>{interest}</th>{/each}</tr>
     </thead>
     <tbody>
       {#each [...SCALE].reverse() as influence (influence)}

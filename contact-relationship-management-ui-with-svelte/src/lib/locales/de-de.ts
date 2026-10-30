@@ -476,7 +476,7 @@ export default {
   "tour.s5.step.2":
     "Beobachten Sie die Anzahl „Verletzt“ oben in der Warteschlange für Tickets, die eine Frist bereits verpasst haben.",
   "tour.s5.step.3":
-    "Wählen Sie ein Ticket, um sein Feld zu öffnen, und dann eine Pfeilschaltfläche wie „→ pending“ oder „→ resolved“, um es in den nächsten Status zu versetzen.",
+    "Wählen Sie ein Ticket, um sein Feld zu öffnen, und dann eine Pfeilschaltfläche wie „{arrow} pending“ oder „{arrow} resolved“, um es in den nächsten Status zu versetzen.",
   "tour.s5.step.4":
     "Wählen Sie „Board“, um dieselben Tickets als Spalten „Open“, „Pending“, „Resolved“ und „Closed“ zu bearbeiten und Karten dazwischen zu ziehen.",
   "tour.s6.title": "Ergebnisse und Datenschutz prüfen",

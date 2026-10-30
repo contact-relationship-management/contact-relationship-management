@@ -9,6 +9,7 @@
   import { errorMessage } from "#lib/errors.js";
   import { kbArticle, kbFeedback, type KbArticle } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
+  import { backArrow } from "#lib/locale-format.js";
 
   let article = $state<KbArticle | null>(null);
   let missing = $state(false);
@@ -43,7 +44,7 @@
 
 <svelte:head><title>{article?.title ?? t("help.title")} · CRM</title></svelte:head>
 
-<p><a href="/help">← {t("help.title")}</a></p>
+<p><a href="/help"><span aria-hidden="true">{backArrow()}</span> {t("help.title")}</a></p>
 
 {#if missing}
   <p data-testid="help-missing">{t("help.missing")}</p>

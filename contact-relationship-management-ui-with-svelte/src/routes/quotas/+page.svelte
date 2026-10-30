@@ -37,6 +37,7 @@
   import { formMinor, money } from "#lib/money.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
   import {
+    arrow,
     formatBasisPoints,
     formatDate,
     formatPercentValue,
@@ -628,7 +629,7 @@
           <td>{plan.name}</td>
           <td>
             {plan.tiers
-              .map((tier) => `${formatPercentValue(tier.from_percent)} → ${formatBasisPoints(tier.rate_bps)}`)
+              .map((tier) => `${formatPercentValue(tier.from_percent)} ${arrow()} ${formatBasisPoints(tier.rate_bps)}`)
               .join(", ")}
           </td>
           <td>{plan.quotas}</td>

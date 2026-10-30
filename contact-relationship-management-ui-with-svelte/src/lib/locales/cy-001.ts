@@ -506,7 +506,7 @@ export default {
   "tour.s5.step.2":
     "Gwyliwch y cyfrif Torrwyd ar frig y ciw am docynnau sydd eisoes wedi methu terfyn amser.",
   "tour.s5.step.3":
-    "Dewiswch docyn i agor ei banel, yna dewiswch fotwm saeth fel → pending neu → resolved i'w symud i'w statws nesaf.",
+    "Dewiswch docyn i agor ei banel, yna dewiswch fotwm saeth fel {arrow} pending neu {arrow} resolved i'w symud i'w statws nesaf.",
   "tour.s5.step.4":
     "Dewiswch Bwrdd i weithio'r un tocynnau fel colofnau Open, Pending, Resolved a Closed, gan lusgo cardiau rhyngddynt.",
   "tour.s6.title": "Adolygu canlyniadau a phreifatrwydd",
