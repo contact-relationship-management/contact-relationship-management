@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — dependency update (maintenance, 2026-10-30)
+
+`cargo update`; minimum versions tokio 1.54, uuid 1.29, entity-ref 0.2.1, redis 1.8.0. The axum-test comment said it was the version loco's testing feature uses; it is not (loco uses 17.x, this crate 21.x), and the comment now says so. axum-test 22 is a release candidate and was not taken. Not run: the image build.
+
 ### Changed — CRM users are `person:` references; migration 54 (CRM-T162, CRM-D18)
 
 `rules::user_ref` (pure): `of_subject`, `normalise` and friends. `owner_of` and the inbox give `person:<sub>`; `Problems::{require_user, user_opt}` replace the `Worker` checks; every user-naming body and `owner_ref` filter rewrites `worker:<id>` to `person:<id>` first, workflow actions through `Action::normalise_user_refs`. `PUT /api/quotas/teams` takes `person:` members, so an imported team can be saved again, and its roll-up meets its members' quotas. Migration 54 rewrites stored references (23 columns, workflow actions, hand-set teams), skips teams last set by the import and any rewrite that would collide on a unique key, does not move `updated_at` (it switches the touch trigger off for its own updates), and has a `down`. The seed makes `person:` owners; the request tests' helper is `a_user()`. `scripts/migrate-person-refs.sh` checks the migration against populated data. Not run against a live WPM or with real sign-ins; the `worker:` alias has no end date and no `Deprecation` header.

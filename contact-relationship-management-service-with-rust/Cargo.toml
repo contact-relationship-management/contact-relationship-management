@@ -28,7 +28,7 @@ loco-rs = { version = "1.2.0", default-features = false, features = ["cli", "wit
 loco-rs = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip", "arbitrary_precision"] }
-tokio = { version = "1.53", default-features = false, features = [
+tokio = { version = "1.54", default-features = false, features = [
   "rt-multi-thread",
   "net",
   "fs",
@@ -52,7 +52,7 @@ chrono-tz = { version = "0.10" }
 url = "2.5"
 thiserror = "2"
 csv = "1"
-uuid = { version = "1.26", features = ["v4", "serde"] }
+uuid = { version = "1.29", features = ["v4", "serde"] }
 # Request schemas for the OpenAPI document come from the payload structs themselves (CRM-T83).
 schemars = { version = "1", features = ["uuid1", "chrono04"] }
 mimalloc = { version = "0.1.52" }
@@ -84,12 +84,12 @@ lettre = { version = "0.11", default-features = false, features = [
 
 # Cross-service entity references (EntityRef URN + entity-type registry):
 # people/workers/organizations/courses are referenced, never duplicated.
-entity-ref = "0.2.0"
+entity-ref = "0.2.1"
 
 # Offline PASETO v4.public verification + the shared ABAC engine.
 authentication-verifier = { version = "0.9.1", default-features = false }
 aes-gcm = "0.11"
-redis = { version = "1.7.1", default-features = false, features = ["tokio-comp", "connection-manager", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
+redis = { version = "1.8.0", default-features = false, features = ["tokio-comp", "connection-manager", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
 
 [features]
 # PASETO bearer verification (the family default): `Verifier`, the boot key
@@ -111,11 +111,12 @@ required-features = []
 # token through the real guard without a Keycloak container. Tests only.
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
 loco-rs = { workspace = true, features = ["testing"] }
-# Name the `TestServer` type in shared request-test helpers (same
-# version loco's testing feature uses internally).
+# `TestServer` for the unit tests that serve a bare router (src/controllers).
+# Not the version loco's testing feature uses internally (17.x), so the request
+# tests do not name loco's `TestServer` type (see tests/requests/mod.rs).
 axum-test = { version = "21.1.0" }
 # Drive a single middleware with `oneshot` in its unit tests.
-tokio = { version = "1.53", default-features = false, features = [
+tokio = { version = "1.54", default-features = false, features = [
   "rt-multi-thread",
   "macros",
   "net",

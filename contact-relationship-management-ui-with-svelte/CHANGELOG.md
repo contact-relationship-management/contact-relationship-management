@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — dependency update (maintenance, 2026-10-30)
+
+`pnpm update` (svelte 5.57.3, typescript-eslint 8.72.1, @types/node 26.6.6); `@lilydesignsystem/svelte-locale-translations` 0.4.0 and `@lilydesignsystem/svelte-picker-bar` 0.5.1, still pinned exactly. Check, vitest, build, lint and Playwright pass. **Held back:** TypeScript 7.0.2, which `svelte-kit sync` (SvelteKit 3.1.0) cannot load the tsconfig with, and which openapi-typescript 7.13 does not support (it asks for ^5). Not run: the image build.
+
 ### Changed — user references are `person:` (CRM-T162, CRM-D18)
 
 The tour's stand-in reads a `worker:` reference as `person:` on teams, quotas, splits, clawbacks and territories, as the service does (`userRef`, unit-tested), and its stand-in user is `person:demo`. The split hint's example reads `person:ada:60` in all eight locales (machine drafts; only the example changed, and the prose still says "worker" where it did). The API types are regenerated. The pages' wording still calls sellers workers.
