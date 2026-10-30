@@ -185,6 +185,7 @@ export default {
   "dash.forecast": "Prévision",
   "dash.noData": "Pas encore de données",
   "contact.consent": "Consentement marketing",
+  "contact.employee": "Employé — marketing suspendu",
   "contact.timeline": "Chronologie",
   "contact.grant": "Accorder le consentement",
   "contact.withdraw": "Retirer",

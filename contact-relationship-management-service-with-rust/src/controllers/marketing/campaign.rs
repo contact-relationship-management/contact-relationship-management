@@ -261,6 +261,9 @@ pub(super) async fn skip_reason(
     if deliveries::is_suppressed(db, contact_pid).await? {
         return Ok(Some("mailbox suppressed after a bounce or complaint"));
     }
+    if crate::models::employments::is_employee(db, contact_pid).await? {
+        return Ok(Some("an employee, by the worker service: marketing paused"));
+    }
     if !audience.contains(&contact_pid) {
         return Ok(Some("no longer in the segment"));
     }

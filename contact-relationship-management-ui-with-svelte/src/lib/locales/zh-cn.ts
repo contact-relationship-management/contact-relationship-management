@@ -177,6 +177,7 @@ export default {
   "dash.forecast": "预测",
   "dash.noData": "暂无数据",
   "contact.consent": "营销同意",
+  "contact.employee": "员工 — 营销已暂停",
   "contact.timeline": "时间线",
   "contact.grant": "授予同意",
   "contact.withdraw": "撤回",

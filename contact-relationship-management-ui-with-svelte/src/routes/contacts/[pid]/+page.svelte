@@ -312,6 +312,12 @@
       {t("contact.consent")}:
       <strong data-testid="consent">{detail.contact.marketing_consent}</strong>
     </p>
+    {#each detail.employments ?? [] as job (job.organization_ref)}
+      <p data-testid="employment">
+        <span class="chip">{t("contact.employee")}</span>
+        {job.organization_ref} · {job.since}
+      </p>
+    {/each}
     {#if detail.contact.marketing_consent === "granted"}
       <button onclick={() => void consent("withdrawn")}>{t("contact.withdraw")}</button>
     {:else}

@@ -475,6 +475,9 @@ pub(crate) struct ContactDetail {
     tickets: Vec<serde_json::Value>,
     /// Which lists were cut at 200 rows (newest first).
     truncated: Truncated,
+    /// The organizations the worker service says the contact works for (CRM-R92). While there is
+    /// one, the contact gets no marketing; their consent is unchanged.
+    employments: Vec<crate::models::employments::Employment>,
 }
 
 /// `GET /api/accounts/{pid}`: the account with its contacts and deals.
@@ -633,6 +636,7 @@ async fn get_contact(
         deals: deals_json,
         tickets: tickets_json,
         truncated,
+        employments: crate::models::employments::of_contact(&ctx.db, contact.pid).await?,
     })
 }
 

@@ -180,6 +180,7 @@ export default {
   "dash.forecast": "Rhagolwg",
   "dash.noData": "Dim data eto",
   "contact.consent": "Caniatâd marchnata",
+  "contact.employee": "Gweithiwr — marchnata wedi'i oedi",
   "contact.timeline": "Llinell amser",
   "contact.grant": "Rhoi caniatâd",
   "contact.withdraw": "Tynnu'n ôl",

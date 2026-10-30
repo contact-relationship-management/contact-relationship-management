@@ -1620,6 +1620,8 @@ function contactDetail(pid: string): DemoReply {
       .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)),
     deals: state.deals.filter((d) => link.deals.includes(d.pid)),
     tickets: state.tickets.filter((t) => link.tickets.includes(t.pid)),
+    // The worker service tells the service of hires (CRM-R92); the tour has none.
+    employments: [],
   });
 }
 

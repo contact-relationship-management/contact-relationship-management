@@ -879,6 +879,39 @@ test.describe("contact subject rights", () => {
     expect(erased).toBe(true);
   });
 
+  test("a contact the worker service says is an employee shows marketing paused", async ({
+    page,
+  }) => {
+    await page.route("**/api/proxy/contacts/c1", (route) =>
+      route.fulfill({
+        json: {
+          contact: CONTACT,
+          activities: [],
+          deals: [],
+          tickets: [],
+          employments: [
+            {
+              organization_ref:
+                "organization:0c4f1e2a-0000-4000-8000-0000000000aa",
+              since: "2026-11-02",
+            },
+          ],
+        },
+      }),
+    );
+    await page.goto("/contacts/c1");
+    const employment = page.getByTestId("employment");
+    await expect(employment).toContainText("Employee — marketing paused");
+    await expect(employment).toContainText("2026-11-02");
+  });
+
+  test("a contact with no employment shows no pause", async ({ page }) => {
+    await stubContact(page);
+    await page.goto("/contacts/c1");
+    await expect(page.getByTestId("consent")).toBeVisible();
+    await expect(page.getByTestId("employment")).toHaveCount(0);
+  });
+
   test("declining the confirm does not erase", async ({ page }) => {
     await stubContact(page);
     let erased = false;

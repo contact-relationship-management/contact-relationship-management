@@ -182,6 +182,8 @@ fn meets(conditions: &Conditions, contact: &contacts::Model, tier: Option<String
             account_tier: tier,
             // A workflow does not look at tags (CRM-R47).
             tags: Vec::new(),
+            // Nor at employment: an action that leads to a send checks it (CRM-R92).
+            employee: false,
         },
     )
 }

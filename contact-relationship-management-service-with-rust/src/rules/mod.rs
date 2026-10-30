@@ -33,3 +33,4 @@ pub mod tokens;
 pub mod views;
 pub mod webhooks;
 pub mod workflows;
+pub mod wpm_events;

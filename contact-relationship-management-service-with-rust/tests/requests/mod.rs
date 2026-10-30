@@ -49,6 +49,7 @@ mod views;
 mod web_forms;
 mod webhooks;
 mod workflows;
+mod wpm_events;
 
 /// A fresh synthetic `person:` URN.
 /// Switches small-cell suppression (CRM-R78) off for a test that checks a report's arithmetic on

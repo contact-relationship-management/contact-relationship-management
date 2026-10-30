@@ -63,6 +63,7 @@ mod m20261028_000048_clawbacks;
 mod m20261028_000049_deal_deliveries;
 mod m20261028_000050_link_tokens;
 mod m20261028_000051_auto_close_days;
+mod m20261030_000052_wpm_employments;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -124,6 +125,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261028_000049_deal_deliveries::Migration),
             Box::new(m20261028_000050_link_tokens::Migration),
             Box::new(m20261028_000051_auto_close_days::Migration),
+            Box::new(m20261030_000052_wpm_employments::Migration),
             // inject-above (do not remove this comment)
         ]
     }

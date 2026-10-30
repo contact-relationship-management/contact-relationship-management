@@ -23,7 +23,7 @@ address a web form or import gave it).
 | `evidence` | Append-only compliance evidence, kept on purpose and never altered. | Until the deployer's own archive rule |
 | `ttl` | Deleted automatically when it is old enough. | 24 hours for `idempotency_keys`; a week after it expires or is spent for `link_tokens` |
 | `manual` | Kept until a person removes it through the API, or until its contact is erased (the last column). Most of these are configuration or hold no personal data. | No automatic period |
-| `aged` | A delivery or event log. Rows that are **finished with** are hard-deleted by the same sweep once they are older than their own horizon; a row something may still act on is never touched (see below). | `CRM_EVENT_RETENTION_DAYS` for the event outbox and webhook deliveries (**30 by default, never below 7**); `CRM_MAIL_RETENTION_DAYS` for email deliveries and events (**730 by default, never below 400**: attribution looks back 365 days) |
+| `aged` | A delivery or event log. Rows that are **finished with** are hard-deleted by the same sweep once they are older than their own horizon; a row something may still act on is never touched (see below). | `CRM_EVENT_RETENTION_DAYS` for the event outbox, webhook deliveries and the worker service's event ids (**30 by default, never below 7**); `CRM_MAIL_RETENTION_DAYS` for email deliveries and events (**730 by default, never below 400**: attribution looks back 365 days) |
 | `gap` | Holds personal data or identifiers and **has no deletion path today**. | None: a deployer must archive or delete these by its own means until a task closes the gap |
 
 **What `aged` deletes, and what it never does** (CRM-R81). Email deliveries: only a delivery
@@ -31,7 +31,13 @@ that was sent, or failed for good (five attempts), of a campaign that has comple
 cancelled, or of no campaign (a nurture step); a pending, retryable or running-campaign delivery
 stays. Email events: any older than the horizon. The event outbox: only an event that has been
 published **and** handed to the webhooks; one still owed stays. Webhook deliveries: any that is no
-longer pending. A row is never deleted for being old alone if something may still act on it.
+longer pending. The worker service's event ids (`wpm_events`): any older than the horizon; WPM
+stops retrying an event within about two days, so an id is no longer needed by then. A row is never deleted for being old alone if something may still act on it.
+
+`contact_employments` has no period of its own: a row lives while the worker service says the
+person is employed, and goes when WPM sends the leave, or when the contact is erased. If WPM never
+sends the leave (a subscription removed, a delivery that gave up), the row stays and the contact
+stays out of marketing: the failure is the safe way round, and a person can see it on the contact.
 
 **Gaps.** None are open at the moment: every table that holds personal data has a deletion path or
 is kept as evidence on purpose. A new table has to be classed here before it exists (the test).
@@ -57,6 +63,7 @@ history remain under a pid that no longer identifies anyone.
 | `commission_plans` | None (tiers) | — | `manual` | Not applicable |
 | `consent_events` | Contact pid, purpose, action, source, time: the consent history | Contacts | `evidence` | Kept as evidence, keyed to a pid that no longer identifies anyone |
 | `contact_consents` | Contact pid, purpose, state | Contacts | `manual` | Every purpose withdrawn; rows kept |
+| `contact_employments` | Contact pid, person reference, employer's organization reference, first day, the WPM event id (CRM-R92) | Contacts who are employees | `manual` | Rows of the contact deleted |
 | `contact_merges` | Surviving and merged contact pids, the merged person reference, actor | Contacts, reps | `manual` | The merged person reference is replaced by a tombstone |
 | `contacts` | Person reference, display, given and family name, job title, owner, preferred channel, marketing consent, stakeholder role | Contacts | `swept` | Identity fields scrubbed to a tombstone and the row soft-deleted |
 | `custom_field_defs` | Labels the deployer chose; may be set to sensitive | — | `manual` | Not applicable |
@@ -105,6 +112,7 @@ history remain under a pid that no longer identifies anyone.
 | `workflow_runs` | Workflow name, the record it ran on, the outcome and steps | Contacts, through the record | `manual` | Kept |
 | `workflows` | None (rules) | — | `manual` | Not applicable |
 | `working_group_members` | Group and contact pid | Contacts | `manual` | Rows of the contact deleted |
+| `wpm_events` | None: the worker service's event id, kind and what was done (CRM-R92) | — | `aged` | Not applicable |
 | `working_groups` | None (group name and purpose) | — | `swept` | Not applicable |
 
 ## Not in the database

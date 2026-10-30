@@ -121,3 +121,22 @@ longer identifies anyone, and the retention sweep (floored horizon,
 soft-deleted rows past that horizon — it never bulk-anonymises a
 contact, because a contact carries the erasure gate above and the
 sweep has no way to evaluate it per row.
+
+## CRM-D15 — Employment pauses marketing; it is not consent
+
+A contact who becomes an employee (CRM-R92) is kept out of marketing by **a fact beside consent,
+not by changing consent**. Withdrawing consent on a hire would have to be undone on leaving, and
+the CRM could not then tell a withdrawal the person made from one it made for them; granting it
+again on leaving would be marketing without a consent the person gave. So the hire writes a row
+(`contact_employments`) and the leave deletes it; the segment evaluator and the send path read it
+the way they read consent and suppression, and consent history is never written by the bridge.
+
+**A future `effective_on` takes effect at once.** WPM emits the hire when HR records it, which may be
+before the first day. The CRM pauses marketing on arrival and records the date as `since`. The
+alternative, storing the event and applying it when due, needs a sweep and an answer to what a
+leave before the start means; pausing a few days early costs a marketer a few sends to someone who
+has accepted a job, and is the honest simple choice. The same holds for a leave: marketing may
+resume from the day the event arrives.
+
+**Only contacts the CRM already has are marked**, and nothing is kept for a person it has no
+contact for: WPM's events would otherwise make the CRM a copy of the employee list.

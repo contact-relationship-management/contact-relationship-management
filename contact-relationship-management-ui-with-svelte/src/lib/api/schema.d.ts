@@ -3069,6 +3069,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bridges/wpm/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** No session: signed by the worker service (x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256 of "<t>.<body>"> with CRM_WPM_WEBHOOK_SECRET; five minutes either way) (CRM-R92). worker_hired marks the contacts with that person_ref employees of organization_ref, which leaves them out of segments, campaigns and nurture steps; worker_terminated and worker_retired lift it, restoring no consent; each change audited with via: wpm. Other kinds, and a hire or leave without data, are 200 ignored; a repeated id is 200 duplicate and changes nothing. 404 while the secret is unset, 401 bad, missing or stale signature, 400 not an event, 413 over 16 KiB, 422 malformed data */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["WpmEvent"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WpmEventResult"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bridges/wpm/teams-import": {
         parameters: {
             query?: never;
@@ -19136,6 +19224,11 @@ export interface components {
             activities: components["schemas"]["Activity"][];
             contact: components["schemas"]["Contact"];
             deals: components["schemas"]["Deal"][];
+            /**
+             * @description The organizations the worker service says the contact works for (CRM-R92). While there is
+             *     one, the contact gets no marketing; their consent is unchanged.
+             */
+            employments: components["schemas"]["ContactEmployment"][];
             tickets: components["schemas"]["Ticket"][];
             /** @description Which lists were cut at 200 rows (newest first). */
             truncated: components["schemas"]["ContactDetailTruncated"];
@@ -19183,6 +19276,16 @@ export interface components {
             contact_pid: string;
             duplicates: components["schemas"]["ContactDuplicate"][];
             truncated: boolean;
+        };
+        /** @description One employment, as the contact's page and the subject-access export show it. */
+        ContactEmployment: {
+            /** @description The employer, an `organization:` URN. */
+            organization_ref: string;
+            /**
+             * Format: date
+             * @description The first day of employment WPM gave.
+             */
+            since: string;
         };
         /** @description `POST /api/contact-imports` body. */
         ContactImportCommitPayload: {
@@ -21443,6 +21546,8 @@ export interface components {
             custom_fields: unknown[];
             deals_as_primary_contact: components["schemas"]["Deal"][];
             email_deliveries: components["schemas"]["EmailDelivery"][];
+            /** @description The employments the worker service told the CRM of (CRM-R92): the organization and the date. */
+            employments: components["schemas"]["ContactEmployment"][];
             /** @description What the export does not cover, and where to ask for it. */
             exclusions: string[];
             external_links: components["schemas"]["ExternalLink"][];
@@ -22140,6 +22245,45 @@ export interface components {
             end: string;
             /** @description When work starts, `HH:MM`. */
             start: string;
+        };
+        /** @description `POST /api/bridges/wpm/events` body, as WPM sends it (WPM-R151, WPM-R207). */
+        WpmEvent: {
+            /**
+             * @description For the three kinds above: `person_ref`, `organization_ref`, `effective_on` (and `from` and
+             *     `to` for the endings, not read). Absent from a WPM from before WPM-R207.
+             */
+            data?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description The event id; the same on every retry. */
+            id: string;
+            /**
+             * @description `worker_hired`, `worker_terminated` and `worker_retired` are acted on; any other is
+             *     acknowledged and ignored.
+             */
+            kind: string;
+            occurred_at: string;
+            /** @description `worker:<pid>`; not read. */
+            subject: string;
+        };
+        /** @description `POST /api/bridges/wpm/events` answer. */
+        WpmEventResult: {
+            /**
+             * Format: uint
+             * @description How many contacts changed.
+             */
+            contacts: number;
+            /**
+             * @description Why an event was ignored: `no_data` (a WPM from before WPM-R207), `not_used` or
+             *     `unknown_kind`; `null` otherwise.
+             */
+            reason: string | null;
+            /**
+             * @description `paused` (a hire marked contacts as employees), `already_paused`, `resumed` (a leave lifted
+             *     the pause), `not_paused`, `no_contact` (no live contact carries the person), `duplicate`
+             *     (this event id was received before; nothing changed), or `ignored`.
+             */
+            result: string;
         };
     };
     responses: never;

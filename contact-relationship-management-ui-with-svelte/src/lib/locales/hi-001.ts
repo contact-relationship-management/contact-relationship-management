@@ -177,6 +177,7 @@ export default {
   "dash.forecast": "पूर्वानुमान",
   "dash.noData": "अभी कोई डेटा नहीं",
   "contact.consent": "विपणन सहमति",
+  "contact.employee": "कर्मचारी — मार्केटिंग रुकी हुई है",
   "contact.timeline": "समयरेखा",
   "contact.grant": "सहमति दें",
   "contact.withdraw": "वापस लें",

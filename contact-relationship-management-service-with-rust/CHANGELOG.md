@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — WPM hire and leave events (CRM-T158, CRM-R92)
+
+`POST /api/bridges/wpm/events` (public to the session check, signed with `CRM_WPM_WEBHOOK_SECRET`); `rules::wpm_events` (signature, parse, decide); `models::employments`; migration 000052 (`wpm_events`, `contact_employments`); the segment facts gain `employee`; a campaign skips and a nurture sweep holds an employee; `employments` on the contact detail and the subject-access export; erasure deletes them; `wpm_events` pruned with the event logs. Not run against a live WPM.
+
 ### Added — a delay for clicks (CRM-T157, CRM-R91)
 
 `min_click_seconds` on `GET /api/attribution`, validated, echoed and audited.

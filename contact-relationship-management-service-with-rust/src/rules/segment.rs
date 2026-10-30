@@ -1,7 +1,8 @@
 //! Segment evaluation (CRM-R7, CRM-D6): a declarative filter over
 //! contact facts, evaluated in pure code, with the **consent
 //! AND-gate built into the evaluator** — a segment cannot be
-//! expressed that bypasses `marketing_consent = granted`.
+//! expressed that bypasses `marketing_consent = granted`. A contact the
+//! worker service says is an employee (CRM-R92) is left out the same way.
 
 use serde::{Deserialize, Serialize};
 
@@ -36,6 +37,9 @@ pub struct ContactFacts {
     pub account_tier: Option<String>,
     /// The names of the contact's tags.
     pub tags: Vec<String>,
+    /// Whether the worker service says the contact is an employee (CRM-R92): their marketing is
+    /// paused, whatever their consent.
+    pub employee: bool,
 }
 
 /// Whether the contact is in the segment. **Consent is `ANDed`
@@ -43,7 +47,7 @@ pub struct ContactFacts {
 /// the filter says.
 #[must_use]
 pub fn matches(filter: &Filter, facts: &ContactFacts) -> bool {
-    facts.consent == "granted" && clauses_match(filter, facts)
+    facts.consent == "granted" && !facts.employee && clauses_match(filter, facts)
 }
 
 /// Whether the facts satisfy the filter's clauses, **without** the consent gate. Workflow
@@ -79,7 +83,34 @@ mod tests {
             channel: "email".to_string(),
             account_tier: Some("customer".to_string()),
             tags: vec!["VIP".to_string()],
+            employee: false,
         }
+    }
+
+    /// An employee is left out of every segment, as a contact without consent is, and is back in
+    /// when the employment ends, with the consent they had (CRM-R92).
+    #[test]
+    fn an_employee_is_in_no_segment_whatever_the_filter() {
+        let mut employee = facts("granted");
+        employee.employee = true;
+        assert!(!matches(&Filter::default(), &employee));
+        assert!(!matches(
+            &Filter {
+                tags: vec!["vip".to_string()],
+                ..Filter::default()
+            },
+            &employee
+        ));
+        // The clauses alone (what a workflow condition uses) do not look at it.
+        assert!(clauses_match(&Filter::default(), &employee));
+        employee.employee = false;
+        assert!(matches(&Filter::default(), &employee));
+        let mut withdrawn = facts("withdrawn");
+        withdrawn.employee = false;
+        assert!(
+            !matches(&Filter::default(), &withdrawn),
+            "leaving restores no consent"
+        );
     }
 
     /// The consent gate is structural: no filter matches a withdrawn

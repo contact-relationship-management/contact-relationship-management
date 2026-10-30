@@ -277,7 +277,7 @@ impl Hooks for App {
             use sea_orm::ConnectionTrait;
             ctx.db
                 .execute_unprepared(
-                    "TRUNCATE fx_rates, reports, taggings, tags, record_imports, attachments, custom_field_values, custom_field_defs, workflow_runs, workflows, email_templates, saved_views, lead_imports, notifications, form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
+                    "TRUNCATE wpm_events, contact_employments, fx_rates, reports, taggings, tags, record_imports, attachments, custom_field_values, custom_field_defs, workflow_runs, workflows, email_templates, saved_views, lead_imports, notifications, form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
                      email_deliveries, email_events, email_suppressions",
                 )
                 .await?;

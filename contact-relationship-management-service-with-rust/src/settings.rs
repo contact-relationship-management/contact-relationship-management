@@ -67,6 +67,9 @@ pub struct Settings {
     pub mail_batch: i64,
     /// `CRM_WEBHOOK_SECRET`, only when long enough ([`MIN_WEBHOOK_SECRET`]).
     pub webhook_secret: Option<String>,
+    /// `CRM_WPM_WEBHOOK_SECRET`: the secret the worker service signs its events with (CRM-R92),
+    /// only when long enough ([`MIN_WEBHOOK_SECRET`]). Unset, `POST /api/bridges/wpm/events` is `404`.
+    pub wpm_webhook_secret: Option<String>,
     /// `CRM_MAILGUN_SIGNING_KEY`, when not blank.
     pub mailgun_signing_key: Option<String>,
     /// `CRM_MAIL_DEV_DOMAIN`: development catch-all domain for stub-mode addresses.
@@ -215,6 +218,8 @@ impl Settings {
                 .and_then(|v| v.trim().parse::<i64>().ok())
                 .map_or(200, |n| n.clamp(1, 5000)),
             webhook_secret: get("CRM_WEBHOOK_SECRET").filter(|s| s.len() >= MIN_WEBHOOK_SECRET),
+            wpm_webhook_secret: get("CRM_WPM_WEBHOOK_SECRET")
+                .filter(|s| s.len() >= MIN_WEBHOOK_SECRET),
             mailgun_signing_key: text("CRM_MAILGUN_SIGNING_KEY"),
             mail_dev_domain: text("CRM_MAIL_DEV_DOMAIN").map(|v| v.trim().to_string()),
             paseto_keys: text("CRM_PASETO_KEYS"),
@@ -347,6 +352,7 @@ mod tests {
         assert_eq!(s.event_transport, EventTransport::Memory);
         assert_eq!(s.mail_batch, 200);
         assert_eq!(s.webhook_secret, None);
+        assert_eq!(s.wpm_webhook_secret, None);
         assert_eq!(s.paseto_keys, None);
     }
 
@@ -431,6 +437,17 @@ mod tests {
         assert_eq!(
             Settings::from_lookup(&lookup(&[("CRM_WEBHOOK_SECRET", &long)])).webhook_secret,
             Some(long.clone())
+        );
+        // The worker service's secret is its own setting, with the same floor (CRM-R92).
+        let wpm = |v: &str| {
+            Settings::from_lookup(&lookup(&[("CRM_WPM_WEBHOOK_SECRET", v)])).wpm_webhook_secret
+        };
+        assert_eq!(wpm(&short), None);
+        assert_eq!(wpm(&long), Some(long.clone()));
+        assert_eq!(
+            Settings::from_lookup(&lookup(&[("CRM_WEBHOOK_SECRET", &long)])).wpm_webhook_secret,
+            None,
+            "the provider secret does not open the worker service's route"
         );
     }
 

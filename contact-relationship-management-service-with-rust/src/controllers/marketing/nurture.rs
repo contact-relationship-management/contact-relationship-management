@@ -362,6 +362,38 @@ pub(crate) struct NurtureSweep {
     held: u64,
 }
 
+/// What the send-time checks say of a due step.
+enum Gate {
+    /// No consent for the sequence's purpose: the enrolment ends (CRM-D6).
+    Exit,
+    /// An employee, by the worker service: the step waits, and goes on when the employment ends
+    /// (CRM-R92), under the consent they still have.
+    Hold,
+    /// Send it.
+    Go,
+}
+
+/// The send-time checks for a step of `sequence_pid` to `contact`: consent for the sequence's
+/// purpose, then employment.
+async fn send_gate(
+    txn: &sea_orm::DatabaseTransaction,
+    contact: &contacts::Model,
+    sequence_pid: Uuid,
+) -> Result<Gate> {
+    let purpose = nurture_sequences::Entity::find()
+        .filter(nurture_sequences::Column::Pid.eq(sequence_pid))
+        .one(txn)
+        .await?
+        .map_or_else(|| tokens::DEFAULT_PURPOSE.to_string(), |q| q.purpose);
+    if crate::consents::state_of(txn, contact, &purpose).await? != "granted" {
+        return Ok(Gate::Exit);
+    }
+    if crate::models::employments::is_employee(txn, contact.pid).await? {
+        return Ok(Gate::Hold);
+    }
+    Ok(Gate::Go)
+}
+
 /// `POST /api/nurture/advance` — the **idempotent advance sweep**
 /// (CRM-R9, CRM-D8): for each active enrolment past its `next_due_at`,
 /// simulate the step send (touch activity + `nurture_step_sent`),
@@ -404,13 +436,13 @@ pub(super) async fn advance_nurture(
         }
         // Send-time consent re-check (CRM-D6).
         let contact = records::find_contact(&txn, row.contact_pid).await?;
-        let purpose = nurture_sequences::Entity::find()
-            .filter(nurture_sequences::Column::Pid.eq(row.sequence_pid))
-            .one(&txn)
-            .await?
-            .map_or_else(|| tokens::DEFAULT_PURPOSE.to_string(), |q| q.purpose);
-        if crate::consents::state_of(&txn, &contact, &purpose).await? != "granted" {
-            exit_enrollment(row, &txn).await?;
+        let gate = send_gate(&txn, &contact, row.sequence_pid).await?;
+        if !matches!(gate, Gate::Go) {
+            if matches!(gate, Gate::Exit) {
+                exit_enrollment(row, &txn).await?;
+            } else {
+                held += 1;
+            }
             txn.commit().await?;
             continue;
         }

@@ -4,6 +4,10 @@
 //! Both sit under the admin-only `/api/bridges` prefix, since they send deal data out and read
 //! people in. Both are **stub-first** like the other upstream clients: unless
 //! `CRM_UPSTREAM_MODE=http`, nothing leaves the process and the answer says what would have.
+//!
+//! The third bridge runs the other way (CRM-R92): WPM posts its hire and leave events to
+//! `/api/bridges/wpm/events`, which is public to the session check and authenticated by the
+//! event's signature instead.
 
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -249,10 +253,158 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
     })
 }
 
+/// `POST /api/bridges/wpm/events` answer.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "WpmEventResult")]
+pub(crate) struct WpmEventView {
+    /// `paused` (a hire marked contacts as employees), `already_paused`, `resumed` (a leave lifted
+    /// the pause), `not_paused`, `no_contact` (no live contact carries the person), `duplicate`
+    /// (this event id was received before; nothing changed), or `ignored`.
+    result: &'static str,
+    /// Why an event was ignored: `no_data` (a WPM from before WPM-R207), `not_used` or
+    /// `unknown_kind`; `null` otherwise.
+    reason: Option<&'static str>,
+    /// How many contacts changed.
+    contacts: usize,
+}
+
+/// `POST /api/bridges/wpm/events` body, as WPM sends it (WPM-R151, WPM-R207).
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[schemars(rename = "WpmEvent")]
+#[allow(
+    dead_code,
+    reason = "documents the body; it is read by rules::wpm_events"
+)]
+pub(crate) struct WpmEventPayload {
+    /// The event id; the same on every retry.
+    id: String,
+    /// `worker_hired`, `worker_terminated` and `worker_retired` are acted on; any other is
+    /// acknowledged and ignored.
+    kind: String,
+    occurred_at: String,
+    /// `worker:<pid>`; not read.
+    subject: String,
+    /// For the three kinds above: `person_ref`, `organization_ref`, `effective_on` (and `from` and
+    /// `to` for the endings, not read). Absent from a WPM from before WPM-R207.
+    #[schemars(with = "Option<serde_json::Map<String, serde_json::Value>>")]
+    data: Option<serde_json::Value>,
+}
+
+/// `POST /api/bridges/wpm/events` — a hire or leave event from the worker service (CRM-R92).
+/// `404` while `CRM_WPM_WEBHOOK_SECRET` is unset; `401` for a missing, wrong or stale
+/// `x-wpm-signature`; `400` for a body that is not an event; `413` past 16 KiB; `422` for a hire or
+/// leave whose `data` is malformed. Every other event answers `200` with what it did, so WPM does
+/// not retry one the CRM was right to ignore; a repeated `id` changes nothing.
+#[debug_handler]
+async fn wpm_event(
+    State(ctx): State<AppContext>,
+    headers: axum::http::HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<Response> {
+    use crate::models::employments;
+    use crate::rules::wpm_events::{self, Decision};
+    use axum::http::StatusCode;
+    let Some(secret) = crate::settings::current().wpm_webhook_secret.clone() else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+    let signature = headers
+        .get("x-wpm-signature")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default();
+    if !wpm_events::verify(
+        secret.as_bytes(),
+        signature,
+        &body,
+        chrono::Utc::now().timestamp(),
+    ) {
+        return Ok(StatusCode::UNAUTHORIZED.into_response());
+    }
+    let Ok(event) = wpm_events::parse(&body) else {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    };
+    let decision = wpm_events::decide(&event).map_err(|why| super::unprocessable(&why))?;
+    let txn = ctx.db.begin().await?;
+    // The id is claimed first, in the same transaction as the change: a retry that arrives while
+    // this one runs waits on the row, then finds it.
+    if !employments::claim_event(&txn, &event.id, &event.kind).await? {
+        txn.commit().await?;
+        return format::json(WpmEventView {
+            result: "duplicate",
+            reason: None,
+            contacts: 0,
+        });
+    }
+    let (result, reason, changed) = match &decision {
+        Decision::Ignored(why) => ("ignored", Some(*why), 0),
+        Decision::Hired(h) | Decision::Left(h) => {
+            let hired = matches!(decision, Decision::Hired(_));
+            let pids = employments::contacts_of(&txn, &h.person_ref).await?;
+            let mut changed = 0;
+            for pid in &pids {
+                let done = if hired {
+                    employments::record(
+                        &txn,
+                        *pid,
+                        &h.person_ref,
+                        &h.organization_ref,
+                        h.effective_on,
+                        &event.id,
+                    )
+                    .await?
+                } else {
+                    employments::end(&txn, *pid, &h.organization_ref).await?
+                };
+                if done {
+                    changed += 1;
+                    Audit::record(
+                        &txn,
+                        "contact",
+                        *pid,
+                        if hired {
+                            "employment_recorded"
+                        } else {
+                            "employment_ended"
+                        },
+                        None,
+                        Some(serde_json::json!({
+                            "via": "wpm",
+                            "organization_ref": h.organization_ref,
+                            "effective_on": h.effective_on,
+                            "event_id": event.id,
+                        })),
+                    )
+                    .await?;
+                }
+            }
+            let result = match (pids.is_empty(), hired, changed > 0) {
+                (true, ..) => "no_contact",
+                (false, true, true) => "paused",
+                (false, true, false) => "already_paused",
+                (false, false, true) => "resumed",
+                (false, false, false) => "not_paused",
+            };
+            (result, None, changed)
+        }
+    };
+    employments::settle_event(&txn, &event.id, result).await?;
+    txn.commit().await?;
+    format::json(WpmEventView {
+        result,
+        reason,
+        contacts: changed,
+    })
+}
+
 /// The routes.
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api")
         .add("/bridges/ppm/deals/{pid}", post(open_delivery))
         .add("/bridges/wpm/teams-import", post(import_teams))
+        .add(
+            "/bridges/wpm/events",
+            post(wpm_event).layer(axum::extract::DefaultBodyLimit::max(
+                crate::rules::wpm_events::MAX_BODY,
+            )),
+        )
 }

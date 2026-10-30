@@ -36,6 +36,19 @@ emits `merged {pid, merged_from}`, CRM repoints its wrappers —
 manual repoint endpoint in v1, event-driven on the durable bus as
 roadmap.
 
+## Family bridges
+
+The bridges between the CRM, the project portfolio service (PPM) and the worker service (WPM), as of
+2026-10-30. Each carries references and the few facts named, never records.
+
+| Bridge | Direction | Contract | State in the CRM |
+|---|---|---|---|
+| Won deal → delivery idea | CRM → PPM | `POST {CRM_PPM_SERVICE_URL}/api/ideas`; CRM-R72, token CRM-R87 | Built (`POST /api/bridges/ppm/deals/{pid}`), admin only, stub-first; tested against a stand-in |
+| Teams from departments | CRM ← WPM (CRM reads) | `GET {CRM_WORKER_SERVICE_URL}/api/workers`; CRM-R73, token `CRM_WORKER_SERVICE_TOKEN` (CRM-R87) | Built (`POST /api/bridges/wpm/teams-import`), admin only, stub-first; tested against a stand-in. **Unresolved:** the teams hold `worker:<pid>` references while the hire and leave events and WPM's overlap check speak of `person:` references, so a team member and a contact cannot be matched; WPM's spec names the same mismatch (WPM cross-app-bridges, "What CRM was read to say") |
+| Hire and leave | WPM → CRM (WPM posts) | WPM's outbound webhooks (WPM-R151) with the handoff of WPM-R207; [below](#inbound-wpm-hire-and-leave-events-crm-r92) | Built (`POST /api/bridges/wpm/events`, CRM-R92); tested with requests signed as WPM signs, not with a running WPM |
+| Pool link, demand and supply | PPM ↔ WPM | WPM-R210 to R213, WPM-D138 to D141 | Not the CRM's: built in PPM and WPM |
+| Overlap check | CRM → WPM | `POST {WPM}/api/bridges/overlap` (WPM-R208): up to 500 `person:` refs in, a yes or no per ref out, under an HR caller's token | Available in WPM; **the CRM client is not built** (next: it would find contacts who were employees before CRM-R92 was running, or who became contacts after their hire) |
+
 ## Events
 
 Family envelope via the `CRM_EVENT_TRANSPORT` seam (default
@@ -66,6 +79,22 @@ Why at least once and not exactly once: a send can succeed and its record fail t
 written. Receivers dedupe on `webhook-id`, which is the event id and is the same on every
 retry; `webhook-timestamp` changes per attempt, so a replayed capture is refused by a
 receiver that checks the timestamp window.
+
+## Inbound: WPM hire and leave events (CRM-R92)
+
+WPM's `webhook_deliver` task posts each queued event to the subscription's address with
+`content-type: application/json`, `x-wpm-event` (the kind), `x-wpm-delivery` (the delivery's id,
+new per subscription) and `x-wpm-signature: t=<unix>,v1=<hex>`, the HMAC-SHA256 of `"<t>.<raw
+body>"` under the subscription's secret (WPM reads it from `WPM_WEBHOOK_SECRET_<NAME>`; the CRM from
+`CRM_WPM_WEBHOOK_SECRET`; the deployer sets both to the same value). It retries a 5xx, 408, 429 or
+network failure with a doubling back-off up to a day, at most ten attempts, re-signing each time,
+and gives up on any other 4xx. So the CRM answers `200` for every well-formed event it does not act
+on, and dedupes on the body's `id` (the event id, the same on every retry), not on `x-wpm-delivery`.
+
+To wire it: in WPM, an administrator creates a webhook subscription to
+`https://<crm>/api/bridges/wpm/events` for the kinds `worker_hired`, `worker_terminated` and
+`worker_retired`; in the CRM, `CRM_WPM_WEBHOOK_SECRET` is set. Not done here: running the two
+together.
 
 ## MCP for AI agents (CRM-R30)
 

@@ -87,7 +87,12 @@ fn operation(method: &str, path: &str, public: &Value) -> Option<Value> {
             "422": { "description": "Illegal transition (names the current state)" }
         }),
     };
-    Some(json!({ "tags": [tag], "summary": summary, "responses": responses }))
+    let mut operation = json!({ "tags": [tag], "summary": summary, "responses": responses });
+    // Signed by the worker service, not sent with a bearer token (CRM-R92).
+    if path == "/api/bridges/wpm/events" {
+        operation["security"] = json!([]);
+    }
+    Some(operation)
 }
 
 /// The full `OpenAPI` document, served at `/api-docs/openapi.json`.

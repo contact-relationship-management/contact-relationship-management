@@ -38,6 +38,15 @@ and the [record of processing](record-of-processing.md).
   worker service (WPM), which is only read (CRM-R73) and receives nothing; the identity services,
   which are asked for a display name or an address. [Deployer decides: hosting provider, backup
   provider, identity provider, and whether each is a processor.]
+- **Sources other than the user** *(system fact)*: the worker service (WPM) may post hire and leave
+  events (CRM-R92, off unless `CRM_WPM_WEBHOOK_SECRET` is set). From each the CRM keeps the event's
+  id and kind, and, **only for a person who is already a contact**, the person reference, the
+  employer's organization reference and the date: the fact that this contact is now an employee,
+  which stops marketing to them until a leave event lifts it. No name, role, department, pay or
+  worker number is received or kept; a person who is not a contact leaves nothing behind but the
+  event id. [Deployer decides: whether telling the CRM who is employed is compatible with the
+  purpose for which WPM holds it; the intent is to *stop* marketing to staff, which is to the
+  person's benefit.]
 - **Retention** *(system fact)*: the [schedule](personal-data-inventory.md#retention-schedule).
   Soft-deleted rows are hard-deleted by an operator-run sweep after `CRM_RETENTION_DAYS` (365,
   never below 30); consent history and the audit log are kept as evidence; a 24-hour cache expires
@@ -55,7 +64,8 @@ and the [record of processing](record-of-processing.md).
   withdrawing stops it. Consent history is append-only.
 - **Minimisation** *(system fact)*: the CRM references identities by URN and keeps no address on a
   contact; a bridge sends PPM only a deal's name, amount and tags; the worker import reads only a
-  worker's id and department and never pay.
+  worker's id and department and never pay; the hire and leave events bring a person reference, an
+  organization reference and a date, and nothing is kept for a person who is not already a contact.
 - **Transparency:** [deployer decides: privacy notice location]. A tracking pixel (open and click
   tracking at the email provider) is a matter of its own and is the deployer's to disclose before
   it is turned on.
@@ -81,6 +91,8 @@ Rated for the software as shipped. **L** = likelihood, **S** = severity, each Lo
 | Marketing without consent | L | H | Consent gate in the send path and again at send time; segments require `consent = granted`; suppression survives; unsubscribe in every message | L |
 | Special-category data in free text | M | H | Policy and training (deployer); the system cannot detect it; erasure scrubs activity summaries and a lead's name | M, **High if patients or citizens are contacts** |
 | Data sent to another service by a bridge | L | M | Admin only; stub unless `CRM_UPSTREAM_MODE=http`; only a deal's name, amount and tags are sent, once per deal; every opening is audited | L |
+| A forged or replayed employment event (CRM-R92) | L | M | The route is off without `CRM_WPM_WEBHOOK_SECRET` (32+ characters); each event is HMAC-signed with a five-minute window and compared in constant time; an event id is applied once; the effect is only to pause or resume marketing, never to grant consent; every change is audited with `via: wpm`. A leaked secret lets someone pause or un-pause a contact's marketing, not read anything | L |
+| Employment status kept on a contact | L | L | Only the employer's reference and a date; shown on the contact and in the subject-access export; deleted on leave or erasure; nothing kept for non-contacts | L |
 | Re-identification from small analytics groups | M | M | Aggregates and money are masked for callers who may not read them; the report builder **leaves out any group with fewer than `CRM_MIN_CELL_SIZE` records** (5 by default) and says how many it left out (CRM-R78); **primary suppression only**: two differently asked reports can still be compared, and the fixed dashboards, attribution and attainment views are not suppressed | L–M |
 | Processor failure or breach | [ ] | [ ] | [Deployer decides: contracts, monitoring, breach process; the runbook has incident response] | [ ] |
 | Loss of availability | L | M | Backups and restore tests are the deployer's (runbook); the data model has no single store that cannot be rebuilt from the database | L |
@@ -97,5 +109,6 @@ date: [at least yearly, and when a bridge, a provider or the schedule changes].
 
 - A new table, or a new use of an existing one: the inventory test fails until it is described, and
   this assessment is revisited.
-- Turning on real email, open and click tracking, or either bridge.
+- Turning on real email, open and click tracking, either outbound bridge, or the worker service's
+  hire and leave events.
 - Treating the software as a system of record for a regulated population.

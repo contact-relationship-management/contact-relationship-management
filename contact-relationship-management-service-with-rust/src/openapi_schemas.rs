@@ -57,6 +57,7 @@ fn generated() -> serde_json::Map<String, Value> {
     document!(
         requests:
         relationships::ContactPayload,
+        bridges::WpmEventPayload,
         relationships::ContactChange,
         relationships::AccountPayload,
         relationships::AccountChange,
@@ -214,6 +215,8 @@ fn generated() -> serde_json::Map<String, Value> {
         bridges::DeliveryView,
         bridges::Skipped,
         bridges::ImportView,
+        bridges::WpmEventView,
+        crate::models::employments::Employment,
         quotas::SplitView,
         quotas::AttainmentReport,
         crate::rules::quota::Tier,
@@ -308,6 +311,7 @@ fn base_schemas() -> Value {
 pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
     Some(match (method, path) {
         ("post", "/api/contacts") => "ContactPayload",
+        ("post", "/api/bridges/wpm/events") => "WpmEvent",
         ("put", "/api/contacts/{pid}") => "ContactChange",
         ("post", "/api/contacts/{pid}/repoint") => "RepointPayload",
         ("post", "/api/contacts/{pid}/consent") => "ConsentPayload",
@@ -430,6 +434,7 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("put", "/api/quotas/territories") => "Territory",
         ("post", "/api/bridges/ppm/deals/{pid}") => "DealDelivery",
         ("post", "/api/bridges/wpm/teams-import") => "TeamImport",
+        ("post", "/api/bridges/wpm/events") => "WpmEventResult",
         ("get", "/api/quotas/territory-attainment") => "TerritoryAttainmentReport",
         ("get" | "put", "/api/quotas/splits/{pid}") => "DealSplit",
         ("get", "/api/quotas/attainment") => "QuotaAttainmentReport",

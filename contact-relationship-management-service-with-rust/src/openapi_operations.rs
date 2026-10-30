@@ -859,6 +859,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         Kind::Ok,
     ),
     (
+        "post",
+        "/api/bridges/wpm/events",
+        "insights",
+        "No session: signed by the worker service (x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256 of \"<t>.<body>\"> with CRM_WPM_WEBHOOK_SECRET; five minutes either way) (CRM-R92). worker_hired marks the contacts with that person_ref employees of organization_ref, which leaves them out of segments, campaigns and nurture steps; worker_terminated and worker_retired lift it, restoring no consent; each change audited with via: wpm. Other kinds, and a hire or leave without data, are 200 ignored; a repeated id is 200 duplicate and changes nothing. 404 while the secret is unset, 401 bad, missing or stale signature, 400 not an event, 413 over 16 KiB, 422 malformed data",
+        Kind::Ok,
+    ),
+    (
         "get",
         "/api/quotas/clawbacks/{pid}",
         "insights",

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — "Employee — marketing paused" on a contact (CRM-T158, CRM-R92)
+
+The contact's page shows each employment the service reports, with the organization reference and the date; one string in the eight locales (machine drafts, 700 per locale); two stubbed Playwright tests; the API types regenerated.
+
 ### Added — the click delay on the page (CRM-T157, CRM-R91)
 
 One input on `/attribution`, disabled unless clicks are counted; one string in the eight locales.

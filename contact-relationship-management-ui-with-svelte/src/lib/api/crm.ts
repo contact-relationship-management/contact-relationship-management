@@ -173,6 +173,8 @@ export function getContact(
   activities: Activity[];
   deals: Deal[];
   tickets: Ticket[];
+  /** The organizations the worker service says the contact works for (CRM-R92): marketing paused. */
+  employments?: { organization_ref: string; since: string }[];
 }> {
   return api(`/contacts/${pid}`, init);
 }

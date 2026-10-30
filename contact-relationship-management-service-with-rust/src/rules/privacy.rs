@@ -129,6 +129,13 @@ pub fn log_rules(max_attempts: i32) -> Vec<LogRule> {
             condition: "status <> 'pending' AND updated_at < now() - interval '{days} days'"
                 .to_string(),
         },
+        // The ids of the worker service's events (CRM-R92): needed only while WPM may still retry
+        // one, which it stops doing within two days, and the floor is seven.
+        LogRule {
+            table: "wpm_events",
+            horizon: Horizon::Event,
+            condition: "received_at < now() - interval '{days} days'".to_string(),
+        },
     ]
 }
 
@@ -254,7 +261,8 @@ mod tests {
                 "email_deliveries",
                 "email_events",
                 "event_outbox",
-                "webhook_deliveries"
+                "webhook_deliveries",
+                "wpm_events"
             ]
         );
         for rule in &rules {

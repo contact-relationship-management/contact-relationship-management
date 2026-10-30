@@ -45,6 +45,7 @@ service refuses to start with a bad combination.
 | `CRM_UNSUBSCRIBE_SECRET` | 32+ characters; signs the unsubscribe link in every message. Required with `smtp` |
 | `CRM_PUBLIC_URL` | The address recipients reach this service at, for the link (`https` in production). Required with `smtp` |
 | `CRM_WEBHOOK_SECRET` | 32+ characters; enables `POST /webhooks/email` for provider outcomes (delivered, hard or soft bounce, complaint). Requests carry `X-CRM-Timestamp` and `X-CRM-Signature: sha256=` (HMAC-SHA256 of `timestamp.body`); five-minute window |
+| `CRM_WPM_WEBHOOK_SECRET` | 32+ characters; enables `POST /api/bridges/wpm/events`, where the worker service (WPM) posts hire and leave events that pause and resume a contact's marketing (CRM-R92). Set the same value as WPM's `WPM_WEBHOOK_SECRET_<NAME>` for the subscription; requests carry `x-wpm-signature: t=<unix>,v1=<hex>` (HMAC-SHA256 of `t.body`); five-minute window. Unset, the route is `404` |
 | `CRM_MAIL_ALLOW_PRODUCTION` | Required to use any real mode in production, because the vendor, agreement and legal review is open (CRM-T39) |
 | `CRM_MAIL_DEV_DOMAIN` | Development only: in `stub` upstream mode, mail goes to `<person id>@<domain>` |
 

@@ -277,6 +277,7 @@ fn enforce_on_allows_public_paths() {
         "/unsubscribe/sometoken",
         "/forms/newsletter",
         "/kb/articles",
+        "/api/bridges/wpm/events",
     ] {
         assert!(
             enforce(
@@ -290,6 +291,31 @@ fn enforce_on_allows_public_paths() {
             .is_ok(),
             "{path} should be public"
         );
+    }
+}
+
+/// Only the worker service's event route is public under `/api/bridges` (CRM-R92): the rest of the
+/// prefix, and a path that only starts like it, still need a token.
+#[test]
+fn only_the_wpm_event_route_is_public_under_bridges() {
+    let (keys, _) = test_keys_and_kid();
+    let verifier = Verifier::from_paseto_keys_value(&keys, ISSUER, AUDIENCE).unwrap();
+    let policy = policy();
+    for path in [
+        "/api/bridges/wpm/teams-import",
+        "/api/bridges/wpm/events/x",
+        "/api/bridges/wpm/eventsx",
+        "/api/bridges/ppm/deals/x",
+    ] {
+        let got = enforce(
+            true,
+            &Method::POST,
+            path,
+            &HeaderMap::new(),
+            &verifier,
+            &policy,
+        );
+        assert_eq!(got.unwrap_err().0, StatusCode::UNAUTHORIZED, "{path}");
     }
 }
 

@@ -69,6 +69,8 @@ pub(crate) struct SubjectAccessExport {
     attachments: Vec<super::attachments::AttachmentView>,
     /// The names of the tags on the contact, on contacts merged into it and on its leads (CRM-R47).
     tags: Vec<String>,
+    /// The employments the worker service told the CRM of (CRM-R92): the organization and the date.
+    employments: Vec<crate::models::employments::Employment>,
     /// What the export does not cover, and where to ask for it.
     exclusions: [&'static str; 3],
 }
@@ -120,6 +122,7 @@ async fn subject_access(
         custom_fields: super::custom_fields::export_for(db, cpid).await?,
         attachments: super::attachments::export_for(db, cpid).await?,
         tags: super::tags::export_for(db, cpid).await?,
+        employments: crate::models::employments::of_contact(db, cpid).await?,
         exclusions: [
             "campaign delivery/open/click counters: aggregate counters. Which messages were \
              sent to this contact is in email_deliveries (state, time and message id, no \
@@ -295,6 +298,11 @@ async fn erase(
             "DELETE FROM link_tokens WHERE contact_pid = '{cpid}' OR contact_pid IN \
              (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
         ),
+        // What the worker service said of this person's employment, which names them (CRM-R92).
+        format!(
+            "DELETE FROM contact_employments WHERE contact_pid = '{cpid}' OR contact_pid IN \
+             (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
+        ),
     ];
     let custom = super::custom_fields::erase_sql(cpid);
     let mut affected = Vec::new();
@@ -321,6 +329,7 @@ async fn erase(
             "merged_duplicates_scrubbed": affected[7],
             "purposes_withdrawn": affected[9],
             "link_tokens_deleted": affected[10],
+            "employments_deleted": affected[11],
             "custom_field_values_deleted": affected[affected.len() - 1],
             "attachments_deleted": files.len(),
             "taggings_deleted": tags_removed,

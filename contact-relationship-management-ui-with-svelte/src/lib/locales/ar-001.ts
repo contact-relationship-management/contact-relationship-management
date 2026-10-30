@@ -179,6 +179,7 @@ export default {
   "dash.forecast": "التوقعات",
   "dash.noData": "لا توجد بيانات بعد",
   "contact.consent": "موافقة تسويقية",
+  "contact.employee": "موظف — التسويق متوقف مؤقتًا",
   "contact.timeline": "الجدول الزمني",
   "contact.grant": "منح الموافقة",
   "contact.withdraw": "سحب",

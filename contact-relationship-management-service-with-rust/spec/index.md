@@ -29,7 +29,8 @@ OTLP, Podman.
   URLs (`CRM_PERSON_SERVICE_URL`, `CRM_ORGANIZATION_SERVICE_URL`,
   `CRM_WORKER_SERVICE_URL`, `CRM_PPM_SERVICE_URL` for the bridges of
   CRM-R72 and CRM-R73; `CRM_PPM_SERVICE_TOKEN` and `CRM_WORKER_SERVICE_TOKEN`
-  are the bearer tokens sent to them, CRM-R87), `CRM_UPSTREAM_MODE` (default `stub`), `CRM_MIN_CELL_SIZE` (smallest group a
+  are the bearer tokens sent to them, CRM-R87; `CRM_WPM_WEBHOOK_SECRET`
+  is the secret WPM signs its hire and leave events with, CRM-R92), `CRM_UPSTREAM_MODE` (default `stub`), `CRM_MIN_CELL_SIZE` (smallest group a
   report shows, default 5),
   `CRM_STALLED_DAYS` (default 14), scoring weight overrides.
 - **Identifiers**: public UUID `pid` on every owned record; EntityRef

@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — the worker service's hire and leave events pause marketing (CRM-T158, CRM-R92)
+
+`POST /api/bridges/wpm/events` takes WPM's signed `worker_hired`, `worker_terminated` and `worker_retired` events (`CRM_WPM_WEBHOOK_SECRET`; `404` while unset). A hire marks the contacts with that `person_ref` employees of the organization, which leaves them out of segments, campaigns and nurture steps; a leave lifts it under the consent they already had. Applied once per event id, audited with `via: wpm`, shown on the contact's page. The spec has a "Family bridges" table in integrations.md, CRM-D15, and the DPIA, inventory and record of processing cover the new data.
+
+**Not done or not verified:** no delivery from a running WPM was received (the tests sign requests with the same algorithm, and WPM was adding `data` in parallel); a future `effective_on` takes effect at once rather than when due; events are not ordered (a retried hire after a leave re-pauses); contacts created after their hire are not marked, and the client for WPM's overlap check (WPM-R208) that would find them is not built; the `worker:` versus `person:` reference mismatch in the teams import is unresolved.
+
 ### Added — a delay for clicks (CRM-T157, CRM-R91)
 
 `GET /api/attribution` takes `min_click_seconds` (1 to 86,400, with `clicked` counted): clicks reported sooner after sending do not count; echoed in the answer.
