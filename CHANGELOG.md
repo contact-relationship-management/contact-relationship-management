@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — the deal list fits a phone again with three forecast currencies (CRM-T176 follow-up, 2026-10-30)
+
+CRM-T176 gave the tour three forecast currencies; their totals were joined by non-breaking spaces, so `/deals` scrolled sideways at 360px in CI (Linux Chromium). They now wrap. Details: the [UI changelog](contact-relationship-management-ui-with-svelte/CHANGELOG.md).
+
 ### Fixed — phone numbers and search in every script (CRM-T170, 2026-10-30)
 
 The matcher read only ASCII digits, so a phone typed in Arabic-Indic or Devanagari digits was no number, and with a default calling code it dropped a leading `0` everywhere, which is wrong where the `0` is part of the number (Italy). It now reads any of 31 Unicode decimal digit sets and full width (the workforce planning service's table, WPM-T382) and drops a trunk prefix only by a table of 90 calling codes' plans (`0`, `8`, `06` or none); an unknown code drops nothing. Search cut Devanagari and Thai words at each vowel sign and treated a Chinese, Japanese or Thai name as one word, so part of it was not found; words now keep their marks, and scripts written without spaces are indexed and queried as character pairs (migration `000055`, `search_ngrams`), so `芳` finds `王芳`. Why n-grams and not a segmenter is in CRM-R33. **Not done or verified:** the trunk table is from public summaries, not each regulator; the service keeps the published matcher 0.1.2 until 0.2.0 is published, so the duplicate check does not yet use the new phone rules; the n-gram index was not measured for size or speed; no transliteration across scripts. Details: the [service](contact-relationship-management-service-with-rust/CHANGELOG.md) and [UI](contact-relationship-management-ui-with-svelte/CHANGELOG.md) changelogs and the matcher's.

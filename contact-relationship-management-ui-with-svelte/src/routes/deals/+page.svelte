@@ -210,7 +210,7 @@
 <p data-testid="forecast">
   {t("dash.forecast")}:
   {#each Object.entries(totals) as [currency, minor] (currency)}
-    <strong>{money(minor, currency, i18n.locale)}</strong>&nbsp;
+    <strong>{money(minor, currency, i18n.locale)}</strong>{" "}
   {:else}
     <span class="muted">{t("dash.noData")}</span>
   {/each}

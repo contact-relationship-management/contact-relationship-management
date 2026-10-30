@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — per-currency totals wrap on a phone (CRM-T176 follow-up, CRM-R46)
+
+The deal list's forecast and the executive page's won value joined each currency's total to the next with a non-breaking space, so with the tour's three forecast currencies (CRM-T176) the line could not wrap and `/deals` scrolled sideways by 21px at 360px in CI's Chromium on Linux (not on macOS). A plain space now separates them. Checked locally: `/deals` overflowed by 14px at 330px and 44px at 300px before, 0 after; the 360px test passes. **Not verified:** on Linux before the push (CI is the check).
+
 ### Fixed — search keeps other scripts' marks and takes one ideograph (CRM-T170)
 
 `src/lib/search.ts`'s `fold` drops marks only from Latin, Greek and Cyrillic letters (it dropped every mark, so a Devanagari vowel sign or a Thai tone mark was lost and `प्र` matched `पर`); `longEnough` is the service's rule (two characters, or one ideograph or kana), used by the search page and the tour's stand-in. Tests: 3 in `tests/unit/search.test.ts`; a tour test finds `王芳` by `芳` and `प्रिया वेंकटरमन` by `वेंकट`. **Not done:** the list filters elsewhere in the UI were not changed.
