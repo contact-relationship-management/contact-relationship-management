@@ -23,7 +23,8 @@ every page round-trips through the API.
    especially [auth](../spec/auth.md) (personas + masking) and
    [analytics-reporting](../spec/analytics-reporting.md) (honesty
    rules). Task queue: [`../spec/tasks.md`](../spec/tasks.md)
-   (CRM-T17/T18, plus this edition's halves of CRM-T19/T20).
+   (CRM-T* ids); this subproject's [`spec/`](spec/index.md) adds UI
+   detail only.
 2. **Family front-end conventions.** SvelteKit 3 in
    SPA mode (`ssr = false`) on `adapter-node`, with a same-origin BFF, **Svelte 5 runes
    only** (no legacy stores/`$:`), TypeScript strict. Tables, boards,
@@ -52,18 +53,23 @@ every page round-trips through the API.
    fr-001, hi-001, zh-cn`) with the full-coverage parity test; a
    language in the address (`/de-de/contacts`) sets the language.
    Translations are unreviewed by native speakers.
-7. **Tests.** vitest for the API client, `money()`, search, the
-   critical path and the locale matcher; Playwright over the tour
-   layer and a `page.route`-stubbed API mirroring the endpoint
-   contract (unstubbed = 404-loud); `pnpm test:live` drives the
-   boards and calendar against a running service on :5160 and reads
-   each change back from it.
+7. **Tests.** vitest (`tests/unit/`) for the API client, `money()`,
+   search, the critical path, the locale matcher, auth and sign-in,
+   idempotency, paging, views and the translation register; Playwright
+   (`tests/e2e/`, against the production build on :4373) over the
+   demo tour (`tour`), a `page.route`-stubbed API mirroring the
+   endpoint contract (`smoke`; unstubbed calls 404 loudly) and axe-core
+   WCAG A/AA on every page (`a11y.spec.ts`; the page list is
+   `a11y-routes.ts`, held to the route tree by a unit test);
+   `pnpm test:live` (`tests/live/`) drives the boards, calendar,
+   records, links and duplicates against a running service on :5160
+   and reads each change back from it.
 
 ## Running
 
 ```bash
 pnpm install
-pnpm dev           # expects the Loco sibling (stub mode) on its default port
+pnpm dev           # :5173; the service at CRM_API_URL (default http://localhost:5150)
 pnpm test          # vitest
 pnpm exec playwright test
 pnpm test:live     # against a running service (creates records)

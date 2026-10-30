@@ -20,9 +20,10 @@ is the sales / marketing / support client.
 tables) but **references identities**: contacts are person-service
 records, accounts organization-service, reps/agents the signed-in
 users, named by the person id of their sign-in subject (`person:<sub>`,
-CRM-D18; formerly `worker:`) —
-always as EntityRef URNs (`person:<uuid>`), never duplicated
-demographics. Dedup/merge of identities stays upstream. See the
+CRM-D18; `worker:<sub>` is still accepted as input and rewritten,
+`src/rules/user_ref.rs`) — always as EntityRef URNs (`person:<uuid>`),
+never duplicated demographics. Imported teams name their members by
+`person:` too (CRM-R73). Dedup/merge of identities stays upstream. See the
 cross-cutting spec's [scope boundary](../spec/scope.md).
 
 > ⚠️ Demo software, not a production CRM; no real email is sent.
@@ -40,14 +41,19 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
    (`src/controllers/`), `#![forbid(unsafe_code)]`, thiserror,
    tracing + OTLP, OpenAPI/Swagger, header API versioning
    (`Accepts-version`), Podman not Docker, PostgreSQL not SQLite,
-   `worker` (Postgres-backed) jobs, in-memory loco cache. See
-   [rust-loco-stack](../../agents/share/rust-loco-stack.md).
+   `worker` (Postgres-backed) jobs, in-memory loco cache (Redis
+   optional, `CRM_REDIS_URL`). The family notes cited in comments as
+   `agents/share/*.md` (for example `rust-loco-stack.md`, `jwt.md`,
+   `event-bus.md`) live in the `main-x-service` repository, not here.
 3. **Pure core.** Every lifecycle machine (lead, deal, campaign,
    ticket, article), the scoring rule table + breakdown, forecast /
-   ROI / CLV / win-rate arithmetic, SLA deadline + breach
-   derivation, and segment evaluation live in DB-free `src/rules/`
-   modules with exhaustive unit tests; controllers only wire them
-   ([design](../spec/design.md) CRM-D3–D5).
+   ROI / CLV / win-rate / attribution arithmetic, SLA deadline +
+   breach derivation, segment evaluation, and the family-bridge
+   decisions (WPM event signature, meaning and ordering in
+   `wpm_events.rs`; the employment-check batches and answers in
+   `employment_check.rs`; the teams import in `teams_import.rs`) live
+   in DB-free `src/rules/` modules with exhaustive unit tests;
+   controllers only wire them ([design](../spec/design.md) CRM-D3–D5).
 4. **Consent gates sends.** The campaign job and nurture scheduler
    re-check `marketing_consent` at send time; segments AND
    `consent = granted` structurally; ConsentEvent history is
@@ -64,7 +70,12 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
 ## Running
 
 ```bash
-cargo run -- db migrate && cargo run -- task seed && cargo run -- start
-cargo test                    # DB-free unit tests
-cargo test -- --ignored       # request tests (needs Postgres)
+cargo run -- db migrate && cargo run -- task seed && cargo run -- start   # :5150
+cargo test --features keycloak                     # DB-free unit tests
+DATABASE_URL=postgres://… cargo test --features keycloak -- --ignored --test-threads=1
 ```
+
+The request tests (`--ignored`) need PostgreSQL with the `uuid-ossp`,
+`citext` and `unaccent` extensions; the Redis ones also need
+`CRM_REDIS_URL`. From the repository root, `scripts/ci-check.sh
+<fmt|clippy|test|test-db|…>` runs exactly what CI runs.

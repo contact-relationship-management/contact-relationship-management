@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — the agent guides match the code (maintenance, 2026-10-30)
+
+The service's `AGENTS.md` linked `../../agents/share/rust-loco-stack.md`, which is not in this repository (the family notes are in `main-x-service`); it now says where they are. It names the bridge rule modules, the `worker:` alias and how to run the database tests; the UI's names its test folders and ports and drops the T17 to T20 wording. Sizes: service 4,165 bytes, UI 3,749 bytes. There is no root `AGENTS.md` or `CLAUDE.md`, and none was added. The code comments that cite `agents/share/*.md` were not changed.
+
 ### Fixed — the specification matches the code after CRM-T158 to CRM-T162 (maintenance, 2026-10-30)
 
 Checked against the code with grep and reads, not by running anything: reps and agents are `person:<sub>` users, not worker-service records (index, integrations, scope, the inventory and record of processing); the WPM bridges, their audit rows and the `contact_employments`, `employment_last_events` and `wpm_events` tables are in the architecture, audit and domain model; the service spec's layout (54 migrations, the rules modules, the two background workers) and the UI spec's delivery state are current; SvelteKit 3 and 8 locales; CRM-R73's page limit is 51, not 100. Every CRM-R, CRM-D and CRM-T id is defined once (R1 to R94, D1 to D18, T0 to T162).
