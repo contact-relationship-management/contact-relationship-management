@@ -52,7 +52,7 @@ The service reads these settings from the environment once, on first use
 | `CRM_UPSTREAM_MODE` | PPM, teams import, employment check | `http` (any case) sends real requests. Anything else, or unset, means stub mode |
 | `CRM_PPM_SERVICE_URL` | PPM bridge | The PPM base URL. The CRM posts `{title, pitch, tags}` to `{url}/api/ideas` |
 | `CRM_PPM_SERVICE_TOKEN` | PPM bridge | Optional bearer token, sent only to PPM (CRM-R87, CRM-T153) |
-| `CRM_WORKER_SERVICE_URL` | teams import, employment check | The WPM base URL. The CRM calls `GET {url}/api/workers?status=active&limit=200&offset=…` and `POST {url}/api/bridges/overlap` |
+| `CRM_WORKER_SERVICE_URL` | teams import, employment check | The WPM base URL. The CRM calls `GET {url}/api/workers?status=active&fields=pid,department,person_ref&limit=200&offset=…` (a WPM without `fields`, from before WPM-R216, answers `422` and the import fails) and `POST {url}/api/bridges/overlap` |
 | `CRM_WORKER_SERVICE_TOKEN` | teams import, employment check | Bearer token, sent only to WPM. The overlap check needs it to belong to an HR identity of the organization below (CRM-D16) |
 | `CRM_WPM_ORGANIZATION_REF` | employment check | The `organization:` URN to ask WPM about. A value that is not an `organization:` URN counts as unset |
 | `CRM_WPM_WEBHOOK_SECRET` | events | The shared HMAC secret, at least 32 characters (a shorter value counts as unset). While it is unset, the events route answers `404`. Set the same value as WPM's `WPM_WEBHOOK_SECRET_<NAME>` for the subscription |

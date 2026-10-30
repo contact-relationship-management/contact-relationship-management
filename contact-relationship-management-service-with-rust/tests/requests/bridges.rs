@@ -44,31 +44,82 @@ async fn fake_ppm() -> (String, Seen) {
     (serve(app).await, seen)
 }
 
-/// A stand-in WPM that lists `workers` 200 at a time, as the real one pages by `offset`.
-async fn fake_wpm(workers: Vec<Value>) -> (String, Seen) {
+/// The worker fields WPM's list lets a caller name (WPM-R216, `rules::worker_fields::LIST_FIELDS`).
+const WPM_LIST_FIELDS: [&str; 20] = [
+    "pid",
+    "person_ref",
+    "upstream_worker_ref",
+    "organization_ref",
+    "worker_number",
+    "display_name",
+    "status",
+    "employment_type",
+    "fte_percent",
+    "department",
+    "job_title",
+    "location",
+    "manager_pid",
+    "salary_minor",
+    "salary_currency",
+    "hired_on",
+    "terminated_on",
+    "engagement_ends_on",
+    "created_at",
+    "updated_at",
+];
+
+/// A stand-in WPM that lists `workers` 200 at a time, as the real one pages by `offset`. As WPM
+/// does since WPM-R216, `fields` keeps only the named fields of each row and an unknown name is
+/// `422`; with `lean: false` it is a WPM from before that, which refuses `fields` outright.
+async fn fake_wpm_with(workers: Vec<Value>, lean: bool) -> (String, Seen) {
     let seen: Seen = Arc::default();
     let app = Router::new()
         .route(
             "/api/workers",
             get(
-                |State((seen, workers)): State<(Seen, Arc<Vec<Value>>)>,
-                 Query(q): Query<HashMap<String, String>>| async move {
+                move |State((seen, workers)): State<(Seen, Arc<Vec<Value>>)>,
+                      Query(q): Query<HashMap<String, String>>| async move {
                     seen.lock().unwrap().push(json!(q));
+                    let fields: Option<Vec<String>> = q
+                        .get("fields")
+                        .map(|f| f.split(',').map(|n| n.trim().to_string()).collect());
+                    if let Some(names) = &fields
+                        && (!lean || names.iter().any(|n| !WPM_LIST_FIELDS.contains(&n.as_str())))
+                    {
+                        return (
+                            axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+                            Json(json!({})),
+                        );
+                    }
                     let offset: usize = q["offset"].parse().unwrap();
                     let limit: usize = q["limit"].parse().unwrap();
-                    Json(
-                        workers
-                            .iter()
-                            .skip(offset)
-                            .take(limit)
-                            .cloned()
-                            .collect::<Vec<_>>(),
-                    )
+                    let page = workers
+                        .iter()
+                        .skip(offset)
+                        .take(limit)
+                        .map(|w| match &fields {
+                            None => w.clone(),
+                            Some(names) => Value::Object(
+                                w.as_object()
+                                    .unwrap()
+                                    .iter()
+                                    .filter(|(k, _)| names.contains(k))
+                                    .map(|(k, v)| (k.clone(), v.clone()))
+                                    .collect(),
+                            ),
+                        })
+                        .collect::<Vec<_>>();
+                    (axum::http::StatusCode::OK, Json(json!(page)))
                 },
             ),
         )
         .with_state((seen.clone(), Arc::new(workers)));
     (serve(app).await, seen)
+}
+
+/// A stand-in WPM that supports `fields` (WPM-R216).
+async fn fake_wpm(workers: Vec<Value>) -> (String, Seen) {
+    fake_wpm_with(workers, true).await
 }
 
 /// A stand-in that records the `Authorization` header of every call it gets.
@@ -108,7 +159,8 @@ async fn serve(app: Router) -> String {
     url
 }
 
-/// A worker as WPM's list serialises one: the whole record, pay included (CRM-D17).
+/// A worker as WPM holds one: the whole record, pay included (CRM-D17). The stand-in sends only the
+/// fields asked for, as WPM does since WPM-R216.
 fn worker(person_ref: Option<&str>, department: Option<&str>) -> Value {
     json!({ "pid": uuid::Uuid::new_v4().to_string(), "person_ref": person_ref,
             "display_name": "Someone", "status": "active", "job_title": "Rep",
@@ -289,7 +341,7 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
         assert_eq!(done["teams"][1]["members"], json!([c]), "{done}");
         assert_eq!(done["without_department"], 1, "{done}");
         assert_eq!(done["without_person_ref"], 3, "{done}");
-        // Nothing but the references is kept: no pay, name or job from WPM's record.
+        // Nothing but the references reaches the answer: no pay, name or job from WPM's record.
         let text = done.to_string();
         for leaked in ["9999999", "Someone", "\"Rep\"", "EUR"] {
             assert!(!text.contains(leaked), "{leaked} in {done}");
@@ -317,6 +369,13 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
         assert_eq!(asked.len(), 2, "{asked:?}");
         assert_eq!(asked[1]["offset"], "200");
         assert!(asked.iter().all(|q| q["status"] == "active"));
+        // Only the three fields the import reads were asked for (WPM-R216), on every page.
+        assert!(
+            asked
+                .iter()
+                .all(|q| q["fields"] == "pid,department,person_ref"),
+            "{asked:?}"
+        );
         let listed: Value = request.get("/api/quotas/teams").await.json();
         let all: Vec<&str> = listed
             .as_array()
@@ -352,6 +411,46 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
             .post("/api/bridges/wpm/teams-import")
             .await
             .assert_status(axum::http::StatusCode::BAD_GATEWAY);
+    })
+    .await;
+}
+
+/// WPM-R216: a WPM from before the lean list answers `fields` with `422`. The import then fails with
+/// that status and changes no team; it never falls back to asking for the whole record.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_worker_service_without_the_lean_list_fails_the_import_and_changes_nothing() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let _restore = Restore;
+        let kept = a_user();
+        request
+            .put("/api/quotas/teams")
+            .json(&json!({ "name": "Sales", "members": [kept] }))
+            .await
+            .assert_status_ok();
+        let (base, seen) =
+            fake_wpm_with(vec![worker(Some(&a_person()), Some("Sales"))], false).await;
+        settings::update(|s| {
+            s.upstream_mode = Mode::Http;
+            s.worker_service_url = Some(base.clone());
+        });
+        let failed = request.post("/api/bridges/wpm/teams-import").await;
+        failed.assert_status(axum::http::StatusCode::BAD_GATEWAY);
+        assert!(failed.text().contains("422"), "{}", failed.text());
+        // One call, with `fields`, and no retry without it.
+        let asked = seen.lock().unwrap().clone();
+        assert_eq!(asked.len(), 1, "{asked:?}");
+        assert_eq!(asked[0]["fields"], "pid,department,person_ref");
+        let listed: Value = request.get("/api/quotas/teams").await.json();
+        let sales = listed
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["name"] == "Sales")
+            .unwrap_or_else(|| panic!("{listed}"))
+            .clone();
+        assert_eq!(sales["members"], json!([kept]), "{listed}");
     })
     .await;
 }

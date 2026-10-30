@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the teams import asks the worker service for three fields only (CRM-T163, CRM-R73, CRM-D17)
+
+WPM's worker list takes `fields` since WPM-R216, so `POST /api/bridges/wpm/teams-import` now asks for `fields=pid,department,person_ref` (paging and `status=active` unchanged) and no longer receives workers' names, jobs or pay. A WPM from before WPM-R216 answers `422`; the import then fails with `502` and changes no team, and it never falls back to the whole record. The DPIA, record of processing, integrations table and tutorial say so.
+
+**Not done or not verified:** not run against a running WPM (the stand-in projects `fields` as WPM's source does).
+
 ### Added — a tutorial for the family bridges; the docs checked against the code (maintenance, 2026-10-30)
 
 `docs/tutorial-family-bridges.md`: the four bridges, their environment variables, a signed WPM hire and leave sent with `openssl` and `curl`, the ordering of events, and the employment check. INSTALL.md has a "Family bridges" section (the two WPM settings were in the email table), the service README's route list is rebuilt from `app.rs` and the controllers and its quick start creates the database first, and the UI README's views, environment and test tables match `src/routes`, the config and the scripts; stale test counts were removed rather than recounted.

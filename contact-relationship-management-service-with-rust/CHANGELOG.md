@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the teams import's lean worker list (CRM-T163, CRM-R73)
+
+`clients::active_workers` sends `fields=pid,department,person_ref` (`WORKER_FIELDS`); the request tests' stand-in WPM projects `fields` and refuses an unknown name with `422`, and a new test shows a WPM without `fields` fails the import with `502` in one call and keeps the existing teams. Not run against a live WPM.
+
 ### Changed — dependency update (maintenance, 2026-10-30)
 
 `cargo update`; minimum versions tokio 1.54, uuid 1.29, entity-ref 0.2.1, redis 1.8.0. The axum-test comment said it was the version loco's testing feature uses; it is not (loco uses 17.x, this crate 21.x), and the comment now says so. axum-test 22 is a release candidate and was not taken. Not run: the image build.

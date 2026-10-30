@@ -45,9 +45,10 @@ and the [record of processing](record-of-processing.md).
   provider, identity provider, and whether each is a processor.]
 - **Sources other than the user** *(system fact)*: when an admin runs the teams import (CRM-R73,
   off unless `CRM_UPSTREAM_MODE=http`), the worker service's list of active workers, of which the
-  CRM keeps each worker's department and `person:` reference as a team's members (CRM-D17); WPM's
-  answer carries the whole worker record, pay included unless WPM's policy masks it, and the rest is
-  dropped unread and unlogged. The worker service (WPM) may also post hire and leave
+  CRM keeps each worker's department and `person:` reference as a team's members (CRM-D17). The
+  CRM asks for only `pid`, `department` and `person_ref` (`fields`, WPM-R216), so a WPM that
+  supports it sends no name, job or pay; one that does not answers `422` and the import fails
+  without receiving any record. Anything else a row carries is dropped unread and unlogged. The worker service (WPM) may also post hire and leave
   events (CRM-R92, off unless `CRM_WPM_WEBHOOK_SECRET` is set). From each the CRM keeps the event's
   id and kind, and, **only for a person who is already a contact**, the person reference, the
   employer's organization reference and the date: the fact that this contact is now an employee,

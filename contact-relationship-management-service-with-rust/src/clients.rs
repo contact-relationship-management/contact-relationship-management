@@ -295,8 +295,8 @@ pub async fn resolve_organization(name: &str) -> Result<String, String> {
 }
 
 /// A worker as the worker service lists it: the only three things the teams import reads (CRM-R73,
-/// CRM-D17). WPM sends the whole worker record (name, job, pay unless its policy masks it); every
-/// other member is dropped here, unread and unkept.
+/// CRM-D17), and the only three it asks for (`fields=pid,department,person_ref`, WPM-R216). Any other
+/// member a row carries anyway is dropped here, unread and unkept.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UpstreamWorker {
     /// The worker's id there; read only to tell a worker row from anything else, never kept.
@@ -308,6 +308,8 @@ pub struct UpstreamWorker {
     pub person_ref: Option<String>,
 }
 
+/// The fields of each worker the teams import asks for (WPM-R216), and the only ones it reads.
+const WORKER_FIELDS: &str = "pid,department,person_ref";
 /// Workers asked for per page of the worker service's list.
 const WORKER_PAGE: usize = 200;
 /// Most pages read in one import, so a runaway answer cannot loop forever. The worker service
@@ -401,11 +403,13 @@ pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Resu
 }
 
 /// The active workers of the worker service, with their department (CRM-R73): `GET
-/// {CRM_WORKER_SERVICE_URL}/api/workers?status=active&limit=&offset=`, read page by page. Checked
-/// against that service's source (`hr_core.rs`, `list_workers`: a bare JSON array of whole worker
-/// records with `pid`, `department` and `person_ref` members, a page of at most 500, an offset of at
-/// most 10,000, `active` a real status) on 2026-10-28 and again on 2026-10-30; not run against a live
-/// one. Only `pid`, `department` and `person_ref` are read from each row. With `CRM_WORKER_SERVICE_TOKEN` set it sends that as a
+/// {CRM_WORKER_SERVICE_URL}/api/workers?status=active&fields=pid,department,person_ref&limit=&offset=`,
+/// read page by page. Checked against that service's source (`hr_core.rs`, `list_workers`: a bare
+/// JSON array of worker records, a page of at most 500, an offset of at most 10,000, `active` a real
+/// status; since WPM-R216 `fields` limits each row to the named fields, so no name, job or pay is
+/// sent) on 2026-10-28 and again on 2026-10-30; not run against a live one. A WPM older than
+/// WPM-R216 answers `fields` with `422`, which fails the import with that status; the whole record
+/// is never asked for. Only `pid`, `department` and `person_ref` are read from each row. With `CRM_WORKER_SERVICE_TOKEN` set it sends that as a
 /// bearer credential (CRM-R87), and the list is then the one that token may see.
 ///
 /// # Errors
@@ -423,7 +427,7 @@ pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
     for page in 0..MAX_WORKER_PAGES {
         let response = with_credential(
             client.get(format!(
-                "{}/api/workers?status=active&limit={WORKER_PAGE}&offset={}",
+                "{}/api/workers?status=active&fields={WORKER_FIELDS}&limit={WORKER_PAGE}&offset={}",
                 base.trim_end_matches('/'),
                 page * WORKER_PAGE
             )),

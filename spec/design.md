@@ -205,12 +205,13 @@ reference that owns deals is not built, and `PUT /api/quotas/teams` still takes 
 only, so an imported team cannot be re-saved by hand. *(Resolved by CRM-D18: the CRM's users are
 `person:` references, so quotas and imported members now meet.)*
 
-**What WPM sends is more than is read.** `GET /api/workers` answers whole worker records (name, job,
-manager, pay unless WPM's policy applies its `mask` obligation) to the import's token, and does not
-audit a salary-bearing list as it audits a single read. The CRM keeps `department` and `person_ref`
-and reads `pid` only to recognise a row; the rest is dropped unread. Narrowing the answer is WPM's to
-decide (a field list or a bridge route), recorded for WPM's owner in the integrations table; WPM is
-not changed here.
+**What WPM sends is what is read.** `GET /api/workers` used to answer whole worker records (name,
+job, manager, pay unless WPM's policy masks it) to the import's token. Since WPM-R216 the list takes
+`fields`, and the import asks for `pid,department,person_ref` only, so WPM sends no name, job or pay
+and records no salary read. The CRM keeps `department` and `person_ref` and reads `pid` only to
+recognise a row; anything more is dropped unread. A WPM from before WPM-R216 answers `422`; the
+import then fails rather than asking for the whole record, which is the trade-off chosen: a failed
+import is visible and safe, a silent fallback would bring the pay back.
 
 ## CRM-D18 — A CRM user is named by `person:` URN, the sign-in subject; `worker:` is read as `person:` for now
 
