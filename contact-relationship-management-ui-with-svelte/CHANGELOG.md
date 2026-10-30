@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the employment check on `/quotas` (CRM-T160, CRM-R94)
+
+A button beside the teams import asks the worker service which contacts are employees and says how many were marked (in the tour, how many would be asked about); three strings in the eight locales (machine drafts, 703 per locale); a tour test; the API types regenerated.
+
 ### Added — "Employee — marketing paused" on a contact (CRM-T158, CRM-R92)
 
 The contact's page shows each employment the service reports, with the organization reference and the date; one string in the eight locales (machine drafts, 700 per locale); two stubbed Playwright tests; the API types regenerated.

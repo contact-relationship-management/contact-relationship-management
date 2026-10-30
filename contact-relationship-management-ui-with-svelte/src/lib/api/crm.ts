@@ -2076,6 +2076,23 @@ export function importTeams(): Promise<TeamImport> {
   return api("/bridges/wpm/teams-import", { method: "POST" });
 }
 
+/** What an employment check against the worker service did (CRM-R94). */
+export interface EmploymentCheck {
+  mode: "stub" | "http";
+  organization_ref: string | null;
+  asked: number;
+  batches: number;
+  workers: number;
+  recorded: number;
+  already_paused: number;
+  left_by_event: number;
+}
+
+/** Ask the worker service which contacts are its workers, and pause their marketing. */
+export function checkEmployment(): Promise<EmploymentCheck> {
+  return api("/bridges/wpm/employment-check", { method: "POST" });
+}
+
 /** Credit taken back from one worker on a won deal (CRM-R71). */
 export interface Clawback {
   owner_ref: string;

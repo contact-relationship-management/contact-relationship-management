@@ -785,6 +785,11 @@ export default {
   "quota.teamImportStub":
     "Ni ddarllenwyd dim: nid yw'r bont i'r gwasanaeth gweithwyr wedi'i throi ymlaen",
   "quota.teamImportDone": "Timau wedi'u gosod o adrannau",
+  "quota.employmentCheck":
+    "Gwirio gyda'r gwasanaeth gweithwyr pa gysylltiadau sy'n weithwyr",
+  "quota.employmentCheckStub":
+    "Ni anfonwyd dim: nid yw'r bont i'r gwasanaeth gweithwyr wedi'i throi ymlaen. Cysylltiadau y byddid yn holi amdanynt",
+  "quota.employmentCheckDone": "Cysylltiadau wedi'u nodi'n weithwyr",
   "error.generic": "Aeth rhywbeth o'i le.",
   "error.invalid":
     "Ni chafodd hynny ei dderbyn. Gwiriwch beth a roesoch a rhowch gynnig arall arni.",

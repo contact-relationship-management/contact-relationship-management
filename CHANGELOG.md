@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — the worker service is asked which contacts are its employees (CRM-T160, CRM-R94)
+
+`POST /api/bridges/wpm/employment-check` (admin only, stub-first) sends WPM's overlap check (WPM-R208) the `person:` references of the live contacts, at most 500 a call and never a name, for `CRM_WPM_ORGANIZATION_REF` under `CRM_WORKER_SERVICE_TOKEN`; each yes marks the contacts employees as a hire event would (audited with `via: wpm`), unless the last event applied was a leave; a no changes nothing. A button on `/quotas`. CRM-D16 records why one HR token and one configured organization.
+
+**Not done or not verified:** not run against a running WPM (tested against a stand-in); the token is not the caller's own, as WPM-D135 asks; no schedule; one organization; a no never ends a pause, by design.
+
 ### Fixed — the worker service's events are put in order (CRM-T159, CRM-R93)
 
 A hire or leave from WPM that is older (by `occurred_at`, then `effective_on`) than the last one applied for the same person and organization is answered `stale` and changes nothing, so a hire retried after the leave that followed it no longer pauses the contact again. The last kind and time are kept per person and organization while the person is a contact, shown in the subject-access export, deleted on erasure and pruned after a leave.

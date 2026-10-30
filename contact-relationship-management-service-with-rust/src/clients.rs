@@ -457,6 +457,55 @@ pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
     Err("the worker service has more workers than one import reads".to_string())
 }
 
+/// Ask the worker service which of `person_refs` (at most 500) are workers of `organization_ref`
+/// today (CRM-R94, WPM-R208): `POST {CRM_WORKER_SERVICE_URL}/api/bridges/overlap` with
+/// `{"organization_ref", "person_refs"}`, answered `{"organization_ref", "results": [{"person_ref",
+/// "worker"}]}`. Checked against that service's source (`controllers/bridges.rs`, `rules/bridge.rs`)
+/// on 2026-10-30; not run against a live one. WPM requires an HR caller of the organization, so
+/// `CRM_WORKER_SERVICE_TOKEN` is sent as the bearer credential (CRM-R87, CRM-D16). Only references
+/// are sent, never a name.
+///
+/// # Errors
+///
+/// A short reason, naming no reference, when the service is unconfigured, unreachable, refuses
+/// the call or answers something that is not JSON.
+pub async fn overlap_check(
+    organization_ref: &str,
+    person_refs: &[String],
+) -> Result<serde_json::Value, String> {
+    let settings = crate::settings::current();
+    let base = settings
+        .worker_service_url
+        .clone()
+        .ok_or_else(|| "CRM_WORKER_SERVICE_URL is not set".to_string())?;
+    let response = with_credential(
+        bridge_client()?
+            .post(format!(
+                "{}/api/bridges/overlap",
+                base.trim_end_matches('/')
+            ))
+            .json(&serde_json::json!({
+                "organization_ref": organization_ref,
+                "person_refs": person_refs,
+            })),
+        &base,
+        settings.worker_service_token.as_deref(),
+    )?
+    .send()
+    .await
+    .map_err(|_| "the worker service could not be reached".to_string())?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "the worker service answered {}",
+            response.status().as_u16()
+        ));
+    }
+    response
+        .json()
+        .await
+        .map_err(|_| "the worker service answer was not JSON".to_string())
+}
+
 /// The mailbox in a person record. The accepted shapes are `{"email": "a@b"}`
 /// and `{"emails": [...]}` where each entry is a string or an object with an
 /// `address`, `email` or `value` member; an entry marked `primary` (or

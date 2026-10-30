@@ -751,6 +751,10 @@ export default {
   "quota.teamImport": "根据人员服务的部门设置团队",
   "quota.teamImportStub": "未读取任何内容：到人员服务的桥接未启用",
   "quota.teamImportDone": "已按部门设置团队",
+  "quota.employmentCheck": "向人员服务核对哪些联系人是员工",
+  "quota.employmentCheckStub":
+    "未发送任何内容：到人员服务的桥接未启用。将被询问的联系人",
+  "quota.employmentCheckDone": "已标记为员工的联系人",
   "error.generic": "出了点问题。",
   "error.invalid": "未被接受。请检查输入的内容后重试。",
   "error.unauthorized": "您需要重新登录。",

@@ -152,3 +152,29 @@ applied, so two events WPM cannot tell apart behave as before (the last to arriv
 ordering by arrival (the bug), by `effective_on` first (a rehire can take effect before an earlier
 leave was recorded), and keeping the ended employment row with an end date (every reader of
 `contact_employments` would have to learn to skip it; a separate row keeps "a row is a pause").
+
+## CRM-D16 — The employment check asks under one HR token, for one configured organization
+
+The employment check (CRM-R94) calls WPM's overlap check (WPM-R208), which answers only a privileged
+caller of the organization (HR), and WPM-D135 says an inbound call acts under **the caller's own
+token**. The CRM does not forward its caller's token: that token is issued for the CRM's audience
+(`CRM_TOKEN_AUDIENCE`), so WPM's verifier would refuse it, and a token good for both would let any
+CRM caller act in WPM. Like the teams import (CRM-R73, CRM-R87), the check sends
+**`CRM_WORKER_SERVICE_TOKEN`**, which the deployer obtains for an **HR identity of the organization
+in WPM**; WPM's own policy then decides, and the CRM's side is admin only and audited. This is
+closer to WPM-D135 than a shared key and **not the same as it**; the gap is named in the integrations
+table and in WPM's spec.
+
+**The organization is a setting, `CRM_WPM_ORGANIZATION_REF`**, not a field of the request, because
+the token belongs to HR of one organization: asking about another would be refused by WPM, and a
+field would invite asking anyway. It is the CRM operator's own employer, whose staff are not to be
+marketed to.
+
+**A yes records; a no does nothing.** A yes writes the same `contact_employments` row a hire event
+writes, dated the day of the check, with `overlap:<check id>` in place of an event id. A no never
+ends an employment: one recorded from a hire event is ended by its leave event, and a no today may
+be a hire whose first day has not come (CRM-D15 pauses from the hire's arrival). A yes for a person
+whose last applied event was a leave is skipped (`left_by_event`), since WPM says "worker" until the
+leave's day while the CRM lifts the pause when the leave arrives. The check writes no order
+(`employment_last_events`): it has no event time, and a later leave must still apply. Rejected:
+mirroring WPM (a no ending the pause), which would make the check and the events fight.

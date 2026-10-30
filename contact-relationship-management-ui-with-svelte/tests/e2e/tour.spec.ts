@@ -1601,6 +1601,11 @@ test.describe("export, undo and search", () => {
     await page.goto("/quotas");
     await page.getByTestId("team-import").click();
     await expect(page.getByTestId("team-import-result")).toBeVisible();
+    // The employment check (CRM-R94) sends nothing either, and says how many it would ask about.
+    await page.getByTestId("employment-check").click();
+    await expect(page.getByTestId("employment-check-result")).toContainText(
+      /: \d+$/,
+    );
   });
 
   test("credit can be clawed back from one worker and given back", async ({

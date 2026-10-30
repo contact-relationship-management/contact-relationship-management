@@ -18,6 +18,8 @@
     deleteTeam,
     importTeams,
     type TeamImport,
+    checkEmployment,
+    type EmploymentCheck,
     deleteTerritory,
     listTerritories,
     setTerritory,
@@ -131,6 +133,13 @@
   const importFromWorkerService = () =>
     run(async () => {
       imported = await importTeams();
+    });
+
+  // Contacts the worker service says are its workers (CRM-R94).
+  let checked = $state<EmploymentCheck | null>(null);
+  const checkWithWorkerService = () =>
+    run(async () => {
+      checked = await checkEmployment();
     });
 
   const plans = resource(listCommissionPlans);
@@ -394,6 +403,22 @@
       {imported.mode === "stub"
         ? t("quota.teamImportStub")
         : `${t("quota.teamImportDone")}: ${imported.teams.length}`}
+    </span>
+  {/if}
+</p>
+<p>
+  <button
+    type="button"
+    onclick={() => void checkWithWorkerService()}
+    data-testid="employment-check"
+  >
+    {t("quota.employmentCheck")}
+  </button>
+  {#if checked}
+    <span role="status" data-testid="employment-check-result">
+      {checked.mode === "stub"
+        ? `${t("quota.employmentCheckStub")}: ${checked.asked}`
+        : `${t("quota.employmentCheckDone")}: ${checked.recorded}`}
     </span>
   {/if}
 </p>

@@ -302,3 +302,43 @@ pub async fn forget_last_events<C: ConnectionTrait>(db: &C, person_refs: &[Strin
     }
     Ok(deleted)
 }
+
+/// The kind (`hired` or `left`) of the last hire or leave applied for `person_ref` by
+/// `organization_ref`, if one is kept (CRM-R93).
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn last_kind<C: ConnectionTrait>(
+    db: &C,
+    person_ref: &str,
+    organization_ref: &str,
+) -> Result<Option<String>> {
+    let row = db
+        .query_one_raw(stmt(
+            "SELECT kind FROM employment_last_events \
+             WHERE person_ref = $1 AND organization_ref = $2",
+            [person_ref.into(), organization_ref.into()],
+        ))
+        .await?;
+    Ok(row.map(|row| row.try_get("", "kind")).transpose()?)
+}
+
+/// The distinct person references of the live contacts, sorted (for the employment check,
+/// CRM-R94).
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn live_person_refs<C: ConnectionTrait>(db: &C) -> Result<Vec<String>> {
+    let rows = db
+        .query_all_raw(stmt(
+            "SELECT DISTINCT person_ref FROM contacts WHERE deleted_at IS NULL \
+             ORDER BY person_ref",
+            [],
+        ))
+        .await?;
+    rows.iter()
+        .map(|row| Ok(row.try_get("", "person_ref")?))
+        .collect()
+}

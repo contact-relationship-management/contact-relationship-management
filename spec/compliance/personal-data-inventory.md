@@ -38,7 +38,8 @@ horizon, and a hire older than it whose person no live contact carries; a hire o
 stays, since it orders the employment that pauses their marketing. A row is never deleted for being old alone if something may still act on it.
 
 `contact_employments` has no period of its own: a row lives while the worker service says the
-person is employed, and goes when WPM sends the leave, or when the contact is erased. If WPM never
+person is employed, and goes when WPM sends the leave, or when the contact is erased. A row the
+employment check made (CRM-R94) goes the same ways; a later check that says "no" does not delete it. If WPM never
 sends the leave (a subscription removed, a delivery that gave up), the row stays and the contact
 stays out of marketing: the failure is the safe way round, and a person can see it on the contact.
 
@@ -66,7 +67,7 @@ history remain under a pid that no longer identifies anyone.
 | `commission_plans` | None (tiers) | — | `manual` | Not applicable |
 | `consent_events` | Contact pid, purpose, action, source, time: the consent history | Contacts | `evidence` | Kept as evidence, keyed to a pid that no longer identifies anyone |
 | `contact_consents` | Contact pid, purpose, state | Contacts | `manual` | Every purpose withdrawn; rows kept |
-| `contact_employments` | Contact pid, person reference, employer's organization reference, first day, the WPM event id (CRM-R92) | Contacts who are employees | `manual` | Rows of the contact deleted |
+| `contact_employments` | Contact pid, person reference, employer's organization reference, first day (or the day of the employment check), the WPM event id or `overlap:<check id>` (CRM-R92, CRM-R94) | Contacts who are employees | `manual` | Rows of the contact deleted |
 | `contact_merges` | Surviving and merged contact pids, the merged person reference, actor | Contacts, reps | `manual` | The merged person reference is replaced by a tombstone |
 | `contacts` | Person reference, display, given and family name, job title, owner, preferred channel, marketing consent, stakeholder role | Contacts | `swept` | Identity fields scrubbed to a tombstone and the row soft-deleted |
 | `custom_field_defs` | Labels the deployer chose; may be set to sensitive | — | `manual` | Not applicable |

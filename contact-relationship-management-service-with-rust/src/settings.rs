@@ -59,6 +59,10 @@ pub struct Settings {
     pub ppm_service_token: Option<String>,
     /// `CRM_WORKER_SERVICE_TOKEN`: the same for the worker service (CRM-R87).
     pub worker_service_token: Option<String>,
+    /// `CRM_WPM_ORGANIZATION_REF`: the organization the employment check asks the worker service
+    /// about (CRM-R94), an `organization:` URN; anything else is taken as unset. It is the
+    /// organization whose HR identity holds `CRM_WORKER_SERVICE_TOKEN` (CRM-D16).
+    pub wpm_organization_ref: Option<String>,
     /// `CRM_EVENT_TRANSPORT`: `memory` (default) or `outbox`.
     pub event_transport: EventTransport,
     /// `CRM_RETENTION_DAYS`, raw (parsed and clamped by the retention rules).
@@ -212,6 +216,12 @@ impl Settings {
             worker_service_url: text("CRM_WORKER_SERVICE_URL"),
             ppm_service_token: text("CRM_PPM_SERVICE_TOKEN"),
             worker_service_token: text("CRM_WORKER_SERVICE_TOKEN"),
+            wpm_organization_ref: text("CRM_WPM_ORGANIZATION_REF")
+                .map(|v| v.trim().to_string())
+                .filter(|v| {
+                    <entity_ref::EntityRef as std::str::FromStr>::from_str(v)
+                        .is_ok_and(|r| r.entity_type == entity_ref::EntityType::Organization)
+                }),
             event_transport: EventTransport::parse(&get("CRM_EVENT_TRANSPORT").unwrap_or_default()),
             retention_days: get("CRM_RETENTION_DAYS"),
             mail_batch: get("CRM_MAIL_BATCH")
@@ -353,6 +363,7 @@ mod tests {
         assert_eq!(s.mail_batch, 200);
         assert_eq!(s.webhook_secret, None);
         assert_eq!(s.wpm_webhook_secret, None);
+        assert_eq!(s.wpm_organization_ref, None);
         assert_eq!(s.paseto_keys, None);
     }
 
@@ -485,5 +496,18 @@ mod tests {
         holder.update(|s| s.require_auth = true);
         assert!(!before.require_auth);
         assert!(holder.current().require_auth);
+    }
+
+    #[test]
+    fn the_employment_checks_organization_must_be_an_organization_reference() {
+        let org = |v: &str| {
+            Settings::from_lookup(&lookup(&[("CRM_WPM_ORGANIZATION_REF", v)])).wpm_organization_ref
+        };
+        let good = "organization:0c4f1e2a-0000-4000-8000-0000000000aa";
+        assert_eq!(org(good), Some(good.to_string()));
+        assert_eq!(org(&format!("  {good} ")), Some(good.to_string()));
+        assert_eq!(org("person:0c4f1e2a-0000-4000-8000-0000000000aa"), None);
+        assert_eq!(org("Acme Ltd"), None);
+        assert_eq!(org("  "), None);
     }
 }

@@ -35,7 +35,9 @@ and the [record of processing](record-of-processing.md).
   default**: the simulated sender sends nothing); the receivers of webhook subscriptions the
   deployer registers; the project portfolio service (PPM), which is sent a deal's name, amount and
   currency when an admin opens a delivery idea (CRM-R72, off unless `CRM_UPSTREAM_MODE=http`); the
-  worker service (WPM), which is only read (CRM-R73) and receives nothing; the identity services,
+  worker service (WPM), which is read (CRM-R73) and, when an admin runs the employment check
+  (CRM-R94, off unless `CRM_UPSTREAM_MODE=http`), is sent contacts' `person:` references and nothing
+  else; the identity services,
   which are asked for a display name or an address. [Deployer decides: hosting provider, backup
   provider, identity provider, and whether each is a processor.]
 - **Sources other than the user** *(system fact)*: the worker service (WPM) may post hire and leave
@@ -45,7 +47,15 @@ and the [record of processing](record-of-processing.md).
   which stops marketing to them until a leave event lifts it. To put the events in order (CRM-R93)
   it also keeps, per person and organization, whether the last one applied was a hire or a leave,
   when WPM recorded it and the day it took effect; a leave's is pruned after the event horizon, and
-  erasure deletes them. No name, role, department, pay or
+  erasure deletes them.
+- **Sent to the worker service** *(system fact)*: when an administrator runs the employment check
+  (CRM-R94, stub unless `CRM_UPSTREAM_MODE=http`), the CRM sends WPM the `person:` references of
+  its live contacts, at most 500 a call, with the organization reference, and receives a yes or no
+  for each. **No name, address or other field is sent**; WPM answers only about references it is
+  sent, only to an HR identity of that organization, and audits each call by count. From a yes the
+  CRM keeps the same employment record a hire event leaves (dated the day of the check); a no
+  leaves nothing. [Deployer decides: whether disclosing to WPM which of its people are CRM contacts
+  is acceptable; of a reference WPM does not hold it learns only an opaque id.] No name, role, department, pay or
   worker number is received or kept; a person who is not a contact leaves nothing behind but the
   event id. [Deployer decides: whether telling the CRM who is employed is compatible with the
   purpose for which WPM holds it; the intent is to *stop* marketing to staff, which is to the
@@ -68,7 +78,8 @@ and the [record of processing](record-of-processing.md).
 - **Minimisation** *(system fact)*: the CRM references identities by URN and keeps no address on a
   contact; a bridge sends PPM only a deal's name, amount and tags; the worker import reads only a
   worker's id and department and never pay; the hire and leave events bring a person reference, an
-  organization reference and a date, and nothing is kept for a person who is not already a contact.
+  organization reference and a date, and nothing is kept for a person who is not already a contact;
+  the employment check sends only contacts' person references and the organization reference.
 - **Transparency:** [deployer decides: privacy notice location]. A tracking pixel (open and click
   tracking at the email provider) is a matter of its own and is the deployer's to disclose before
   it is turned on.
@@ -94,6 +105,7 @@ Rated for the software as shipped. **L** = likelihood, **S** = severity, each Lo
 | Marketing without consent | L | H | Consent gate in the send path and again at send time; segments require `consent = granted`; suppression survives; unsubscribe in every message | L |
 | Special-category data in free text | M | H | Policy and training (deployer); the system cannot detect it; erasure scrubs activity summaries and a lead's name | M, **High if patients or citizens are contacts** |
 | Data sent to another service by a bridge | L | M | Admin only; stub unless `CRM_UPSTREAM_MODE=http`; only a deal's name, amount and tags are sent, once per deal; every opening is audited | L |
+| Contact references sent to the worker service by the employment check (CRM-R94) | L | M | Admin only; stub unless `CRM_UPSTREAM_MODE=http`; references only, never names; the token goes only over `https` or to this machine; WPM answers only HR of the organization and only about the references sent; the check is audited by count in the CRM and in WPM; a no never ends an employment | L |
 | A forged or replayed employment event (CRM-R92) | L | M | The route is off without `CRM_WPM_WEBHOOK_SECRET` (32+ characters); each event is HMAC-signed with a five-minute window and compared in constant time; an event id is applied once; the effect is only to pause or resume marketing, never to grant consent; every change is audited with `via: wpm`. A leaked secret lets someone pause or un-pause a contact's marketing, not read anything | L |
 | Employment status kept on a contact | L | L | Only the employer's reference and a date; shown on the contact and in the subject-access export; deleted on leave or erasure; nothing kept for non-contacts. The last hire or leave (for ordering, CRM-R93) is in the export, pruned 30 days after a leave and deleted on erasure | L |
 | Re-identification from small analytics groups | M | M | Aggregates and money are masked for callers who may not read them; the report builder **leaves out any group with fewer than `CRM_MIN_CELL_SIZE` records** (5 by default) and says how many it left out (CRM-R78); **primary suppression only**: two differently asked reports can still be compared, and the fixed dashboards, attribution and attainment views are not suppressed | L–M |
@@ -112,6 +124,6 @@ date: [at least yearly, and when a bridge, a provider or the schedule changes].
 
 - A new table, or a new use of an existing one: the inventory test fails until it is described, and
   this assessment is revisited.
-- Turning on real email, open and click tracking, either outbound bridge, or the worker service's
-  hire and leave events.
+- Turning on real email, open and click tracking, either outbound bridge, the worker service's
+  hire and leave events, or its employment check.
 - Treating the software as a system of record for a regulated population.

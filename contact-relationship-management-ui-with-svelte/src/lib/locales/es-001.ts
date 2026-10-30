@@ -788,6 +788,11 @@ export default {
   "quota.teamImportStub":
     "No se leyó nada: el puente al servicio de personal no está activado",
   "quota.teamImportDone": "Equipos definidos desde los departamentos",
+  "quota.employmentCheck":
+    "Comprobar con el servicio de personal qué contactos son empleados",
+  "quota.employmentCheckStub":
+    "No se envió nada: el puente al servicio de personal no está activado. Contactos por los que se preguntaría",
+  "quota.employmentCheckDone": "Contactos marcados como empleados",
   "error.generic": "Algo salió mal.",
   "error.invalid": "No se aceptó. Revise lo que escribió e inténtelo de nuevo.",
   "error.unauthorized": "Debe iniciar sesión de nuevo.",

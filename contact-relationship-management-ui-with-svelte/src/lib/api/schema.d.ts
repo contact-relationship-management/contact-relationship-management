@@ -3069,6 +3069,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bridges/wpm/employment-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask the worker service (WPM-R208, POST {CRM_WORKER_SERVICE_URL}/api/bridges/overlap) which live contacts are its workers today, sending their person: references only, at most 500 a call, for CRM_WPM_ORGANIZATION_REF under CRM_WORKER_SERVICE_TOKEN (CRM-R94, CRM-D16); each yes marks the contacts employees of that organization as a hire event would (audited with via: wpm), unless the last event applied for them was a leave; a no changes nothing and never ends an employment. All answers are read before anything is written; 502 when WPM cannot be reached, refuses or answers badly, or the organization is unset. Without CRM_UPSTREAM_MODE=http nothing is sent and the answer says how many would be asked. Admin only */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EmploymentCheck"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bridges/wpm/events": {
         parameters: {
             query?: never;
@@ -19807,6 +19891,43 @@ export interface components {
                 [key: string]: string;
             };
             subject: string;
+        };
+        /** @description `POST /api/bridges/wpm/employment-check` answer. */
+        EmploymentCheck: {
+            /**
+             * Format: uint
+             * @description Contacts who were already marked employees of the organization.
+             */
+            already_paused: number;
+            /**
+             * Format: uint
+             * @description The distinct person references of live contacts asked about (in `stub` mode, that would be).
+             */
+            asked: number;
+            /**
+             * Format: uint
+             * @description How many calls of at most 500 references that took (or would).
+             */
+            batches: number;
+            /**
+             * Format: uint
+             * @description Workers left alone because the last event applied for them was a leave.
+             */
+            left_by_event: number;
+            /** @description `stub` (nothing was sent) or `http`. */
+            mode: string;
+            /** @description The organization asked about (`CRM_WPM_ORGANIZATION_REF`); `null` when it is unset. */
+            organization_ref: string | null;
+            /**
+             * Format: uint
+             * @description Contacts newly marked employees, which pauses their marketing.
+             */
+            recorded: number;
+            /**
+             * Format: uint
+             * @description How many of them the worker service says are workers today.
+             */
+            workers: number;
         };
         /**
          * @description The last hire or leave applied for a person by an organization (CRM-R93), as the

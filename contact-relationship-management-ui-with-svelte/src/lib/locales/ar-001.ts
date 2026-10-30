@@ -776,6 +776,11 @@ export default {
   "quota.teamImport": "تعيين الفرق من أقسام خدمة العاملين",
   "quota.teamImportStub": "لم يُقرأ شيء: الجسر إلى خدمة العاملين غير مفعّل",
   "quota.teamImportDone": "تم تعيين الفرق من الأقسام",
+  "quota.employmentCheck":
+    "التحقق لدى خدمة العاملين من جهات الاتصال التي هي من الموظفين",
+  "quota.employmentCheckStub":
+    "لم يُرسل شيء: الجسر إلى خدمة العاملين غير مفعّل. جهات الاتصال التي كان سيُسأل عنها",
+  "quota.employmentCheckDone": "جهات الاتصال المعلّمة كموظفين",
   "error.generic": "حدث خطأ ما.",
   "error.invalid": "لم يُقبل ذلك. تحقق مما أدخلته وحاول مرة أخرى.",
   "error.unauthorized": "عليك تسجيل الدخول مرة أخرى.",

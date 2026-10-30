@@ -796,6 +796,11 @@ export default {
   "quota.teamImportStub":
     "Rien n'a été lu : le pont vers le service du personnel n'est pas activé",
   "quota.teamImportDone": "Équipes définies depuis les départements",
+  "quota.employmentCheck":
+    "Vérifier auprès du service du personnel quels contacts sont employés",
+  "quota.employmentCheckStub":
+    "Rien n'a été envoyé : le pont vers le service du personnel n'est pas activé. Contacts sur lesquels on interrogerait",
+  "quota.employmentCheckDone": "Contacts marqués comme employés",
   "error.generic": "Une erreur s'est produite.",
   "error.invalid":
     "Cela n'a pas été accepté. Vérifiez ce que vous avez saisi et réessayez.",

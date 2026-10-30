@@ -4038,13 +4038,27 @@ function territoryRoutes(
 }
 
 /**
- * The tour's bridges (CRM-R72, CRM-R73). The tour has no other services, so it answers as the
+ * The tour's bridges (CRM-R72, CRM-R73, CRM-R94). The tour has no other services, so it answers as the
  * service does without `CRM_UPSTREAM_MODE=http`: nothing is sent or read, and it says what would be.
  */
 function bridgeRoutes(method: string, seg: string[]) {
   if (method !== "POST") return problem(405, "POST only");
   if (seg[1] === "wpm" && seg[2] === "teams-import")
     return ok({ mode: "stub", teams: [], skipped: [], without_department: 0 });
+  // CRM-R94: nothing is sent; it says how many contacts' references would be asked about.
+  if (seg[1] === "wpm" && seg[2] === "employment-check") {
+    const asked = new Set(state.contacts.map((c) => c.person_ref)).size;
+    return ok({
+      mode: "stub",
+      organization_ref: null,
+      asked,
+      batches: Math.ceil(asked / 500),
+      workers: 0,
+      recorded: 0,
+      already_paused: 0,
+      left_by_event: 0,
+    });
+  }
   if (seg[1] === "ppm" && seg[2] === "deals") {
     const deal = state.deals.find((d) => d.pid === seg[3]);
     if (!deal) return problem(404, "deal not found");

@@ -796,6 +796,11 @@ export default {
   "quota.teamImportStub":
     "Nichts gelesen: die Brücke zum Personaldienst ist nicht eingeschaltet",
   "quota.teamImportDone": "Teams aus Abteilungen gesetzt",
+  "quota.employmentCheck":
+    "Beim Personaldienst prüfen, welche Kontakte Beschäftigte sind",
+  "quota.employmentCheckStub":
+    "Nichts gesendet: die Brücke zum Personaldienst ist nicht eingeschaltet. Kontakte, nach denen gefragt würde",
+  "quota.employmentCheckDone": "Als Beschäftigte markierte Kontakte",
   "error.generic": "Etwas ist schiefgelaufen.",
   "error.invalid":
     "Das wurde nicht angenommen. Prüfen Sie Ihre Eingabe und versuchen Sie es erneut.",

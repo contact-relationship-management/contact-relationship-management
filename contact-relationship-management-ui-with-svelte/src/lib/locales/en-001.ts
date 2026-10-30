@@ -778,6 +778,11 @@ export default {
   "quota.teamImportStub":
     "Nothing was read: the bridge to the worker service is not switched on",
   "quota.teamImportDone": "Teams set from departments",
+  "quota.employmentCheck":
+    "Check with the worker service which contacts are employees",
+  "quota.employmentCheckStub":
+    "Nothing was sent: the bridge to the worker service is not switched on. Contacts that would be asked about",
+  "quota.employmentCheckDone": "Contacts marked as employees",
   "error.generic": "Something went wrong.",
   "error.invalid":
     "That was not accepted. Check what you entered and try again.",

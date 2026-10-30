@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — WPM employment check (CRM-T160, CRM-R94)
+
+`POST /api/bridges/wpm/employment-check`; `rules::employment_check` (batches, answer, decision); `clients::overlap_check`; `CRM_WPM_ORGANIZATION_REF`; `models::employments::{last_kind, live_person_refs}`. Tested against a stand-in WPM; not run against a live one.
+
 ### Fixed — WPM events ordered (CRM-T159, CRM-R93)
 
 `rules::wpm_events::{Stamp, is_stale}`; migration 000053 (`employment_last_events`); `stale` on `POST /api/bridges/wpm/events`; `422` for a hire or leave without `occurred_at`; `employment_last_events` in the subject-access export, deleted on erasure, pruned by the sweep (`aged`). Not run against a live WPM.

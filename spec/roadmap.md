@@ -37,9 +37,11 @@ Beyond the v1 queue ([tasks.md](tasks.md)):
   ideas), teams by manager, rep identity beyond ids, and running either
   on a schedule or on an event are not built. WPM's hire and leave events
   pause and resume a contact's marketing (CRM-R92), tested with signed
-  requests, not a running WPM; the client for WPM's overlap check
-  (WPM-R208) is next, and the teams' `worker:` references do not yet meet
-  the events' `person:` ones.
+  requests, not a running WPM; they are ordered by when WPM recorded them
+  (CRM-R93), and WPM's overlap check (WPM-R208) finds the contacts the
+  events never told of (CRM-R94), against a stand-in only. The teams'
+  `worker:` references do not yet meet the events' `person:` ones, and the
+  check runs on a button, not on a schedule.
 - **FX beyond reports** — the report builder, attribution, campaign ROI,
   the live forecast and CLV convert from hand-entered rates (CRM-R50 to
   CRM-R54); the forecast snapshots and the trend still report per

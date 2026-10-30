@@ -7,7 +7,8 @@
 //!
 //! The third bridge runs the other way (CRM-R92): WPM posts its hire and leave events to
 //! `/api/bridges/wpm/events`, which is public to the session check and authenticated by the
-//! event's signature instead.
+//! event's signature instead. The fourth asks WPM which contacts are its workers today, to find
+//! those the events never told of (CRM-R94).
 
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -433,12 +434,143 @@ async fn apply_handoff<C: ConnectionTrait>(
     ))
 }
 
+/// `POST /api/bridges/wpm/employment-check` answer.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "EmploymentCheck")]
+pub(crate) struct EmploymentCheckView {
+    /// `stub` (nothing was sent) or `http`.
+    mode: &'static str,
+    /// The organization asked about (`CRM_WPM_ORGANIZATION_REF`); `null` when it is unset.
+    organization_ref: Option<String>,
+    /// The distinct person references of live contacts asked about (in `stub` mode, that would be).
+    asked: usize,
+    /// How many calls of at most 500 references that took (or would).
+    batches: usize,
+    /// How many of them the worker service says are workers today.
+    workers: usize,
+    /// Contacts newly marked employees, which pauses their marketing.
+    recorded: usize,
+    /// Contacts who were already marked employees of the organization.
+    already_paused: usize,
+    /// Workers left alone because the last event applied for them was a leave.
+    left_by_event: usize,
+}
+
+/// `POST /api/bridges/wpm/employment-check` — ask the worker service which live contacts are its
+/// workers today, and mark them employees of the organization as a hire event would (CRM-R94,
+/// WPM-R208). Sends the contacts' `person:` references, never a name, at most 500 a call, for
+/// `CRM_WPM_ORGANIZATION_REF`, under `CRM_WORKER_SERVICE_TOKEN` (CRM-D16). A "no" changes nothing;
+/// in particular it never ends an employment. All the answers are read before anything is written;
+/// one bad answer or failed call is `502` and records nothing. Admin only; stub-first.
+#[debug_handler]
+async fn employment_check(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+) -> Result<Response> {
+    use crate::models::employments;
+    use crate::rules::employment_check::{self as rules, Action, LastEvent};
+    let organization_ref = crate::settings::current().wpm_organization_ref.clone();
+    let refs = employments::live_person_refs(&ctx.db).await?;
+    let batches = rules::batches(refs, super::privacy::TOMBSTONE_PERSON);
+    let asked = batches.iter().map(Vec::len).sum();
+    let mut view = EmploymentCheckView {
+        mode: "stub",
+        organization_ref: organization_ref.clone(),
+        asked,
+        batches: batches.len(),
+        workers: 0,
+        recorded: 0,
+        already_paused: 0,
+        left_by_event: 0,
+    };
+    if clients::mode() != Mode::Http {
+        return format::json(view);
+    }
+    view.mode = "http";
+    let organization_ref = organization_ref.ok_or_else(|| {
+        unavailable("CRM_WPM_ORGANIZATION_REF is not set to an organization: reference")
+    })?;
+    let mut workers = std::collections::BTreeSet::new();
+    for batch in &batches {
+        let answer = clients::overlap_check(&organization_ref, batch)
+            .await
+            .map_err(|reason| unavailable(&reason))?;
+        workers.extend(
+            rules::workers_in(batch, &organization_ref, &answer)
+                .map_err(|reason| unavailable(&reason))?,
+        );
+    }
+    view.workers = workers.len();
+    let check_id = Uuid::new_v4();
+    let source = format!("overlap:{check_id}");
+    let today = chrono::Utc::now().date_naive();
+    let txn = ctx.db.begin().await?;
+    for person_ref in &workers {
+        employments::lock_order(&txn, person_ref, &organization_ref).await?;
+        let last = match employments::last_kind(&txn, person_ref, &organization_ref)
+            .await?
+            .as_deref()
+        {
+            Some("hired") => LastEvent::Hired,
+            Some(_) => LastEvent::Left,
+            None => LastEvent::None,
+        };
+        if rules::decide(true, last) != Action::Record {
+            view.left_by_event += 1;
+            continue;
+        }
+        for pid in employments::contacts_of(&txn, person_ref).await? {
+            if employments::record(&txn, pid, person_ref, &organization_ref, today, &source).await?
+            {
+                view.recorded += 1;
+                Audit::record(
+                    &txn,
+                    "contact",
+                    pid,
+                    "employment_recorded",
+                    caller.actor(),
+                    Some(serde_json::json!({
+                        "via": "wpm",
+                        "source": "employment_check",
+                        "organization_ref": organization_ref,
+                        "since": today,
+                        "check_id": check_id,
+                    })),
+                )
+                .await?;
+            } else {
+                view.already_paused += 1;
+            }
+        }
+    }
+    // The check itself, by count: no reference is in it.
+    Audit::record(
+        &txn,
+        "bridge",
+        check_id,
+        "employment_checked",
+        caller.actor(),
+        Some(serde_json::json!({
+            "via": "wpm",
+            "organization_ref": organization_ref,
+            "asked": view.asked,
+            "batches": view.batches,
+            "workers": view.workers,
+            "recorded": view.recorded,
+        })),
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(view)
+}
+
 /// The routes.
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api")
         .add("/bridges/ppm/deals/{pid}", post(open_delivery))
         .add("/bridges/wpm/teams-import", post(import_teams))
+        .add("/bridges/wpm/employment-check", post(employment_check))
         .add(
             "/bridges/wpm/events",
             post(wpm_event).layer(axum::extract::DefaultBodyLimit::max(
