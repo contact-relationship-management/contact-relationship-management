@@ -272,3 +272,57 @@ describe("the tour's notifications inbox (CRM-R32)", () => {
     ).toBe(404);
   });
 });
+
+describe("the tour's data is in more than one shape (CRM-T176)", () => {
+  const exponent = (code: string) =>
+    new Intl.NumberFormat("en", {
+      style: "currency",
+      currency: code,
+    }).resolvedOptions().maximumFractionDigits;
+
+  it("has deals in a zero-exponent and a three-exponent currency, totalled apart", () => {
+    const deals = get("deals").body as Array<{ currency: string }>;
+    const codes = new Set(deals.map((d) => d.currency));
+    expect([...codes].map(exponent)).toEqual(expect.arrayContaining([0, 2, 3]));
+    const forecast = get("forecast").body as {
+      totals_minor: Record<string, number>;
+    };
+    expect(Object.keys(forecast.totals_minor).sort()).toEqual([
+      "GBP",
+      "JPY",
+      "KWD",
+    ]);
+  });
+
+  it("has rates from more than one base", () => {
+    const rates = get("fx-rates").body as Array<{ from: string }>;
+    expect(new Set(rates.map((r) => r.from)).size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("has names in more than one script and order, parts never derived", () => {
+    const contacts = get("contacts").body as Array<{
+      display_name: string;
+      given_name: string | null;
+      family_name: string | null;
+    }>;
+    const scripts = ["Han", "Arabic", "Devanagari", "Latin"].filter((s) =>
+      contacts.some((c) =>
+        new RegExp(`\\p{Script=${s}}`, "u").test(c.display_name),
+      ),
+    );
+    expect(scripts).toHaveLength(4);
+    // Family name first, as stored.
+    expect(
+      contacts.some(
+        (c) => c.family_name && c.display_name.startsWith(c.family_name),
+      ),
+    ).toBe(true);
+    // A name with no parts stored keeps them empty.
+    expect(contacts.some((c) => c.given_name === null)).toBe(true);
+  });
+
+  it("names amounts in minor units, never pounds times a unit", () => {
+    const source = readFileSync("src/lib/server/demo.ts", "utf8");
+    expect(source).not.toMatch(/\bpounds\b/);
+  });
+});

@@ -102,6 +102,9 @@ test("/<locale>/kanban shows the deal board and moves a card", async ({
   await expect(board).toContainText("Qualification 10%");
   await expect(board).toContainText("Smart-meter analytics rollout");
   await expect(board).toContainText("£184,000.00");
+  // Each deal in its own currency's unit: whole yen, and dinars to three places.
+  await expect(board).toContainText("¥14,500,000");
+  await expect(board).toContainText("KWD 9,600.500");
 
   // Move a card with the keyboard-reachable menu; the move is saved.
   await page
@@ -1439,10 +1442,13 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("forecast-converted")).toContainText(
       "1 GBP = 1.3 USD",
     );
-    // No pound-to-yen rate: no total, and the pounds are listed as left out.
+    // No pound-to-yen rate: the pounds are listed as left out, and the total is the yen deal's
+    // weighted amount alone, in whole yen (¥14,500,000 at 50%).
     await page.getByTestId("forecast-convert").fill("JPY");
     await expect(page.getByTestId("forecast-converted")).toContainText("GBP");
-    await expect(page.getByTestId("forecast-converted")).toContainText("¥0");
+    await expect(page.getByTestId("forecast-converted")).toContainText(
+      "¥7,250,000",
+    );
   });
 
   test("a deal report is shown in one currency, with the rates it used and what it could not convert", async ({
@@ -1455,10 +1461,11 @@ test.describe("export, undo and search", () => {
     await page.getByTestId("report-group").selectOption("state");
     await page.getByTestId("report-convert").fill("USD");
     await page.getByTestId("report-run").click();
-    // The latest pound-to-dollar rate: 859,200 of open deals at 1.30.
-    await expect(page.getByTestId("report-result")).toContainText(
-      "1,116,960.00",
-    );
+    // The latest pound-to-dollar rate: 731,500 of open deals at 1.30; the yen and dinar deals have
+    // no rate to the dollar and are left out.
+    await expect(page.getByTestId("report-result")).toContainText("950,950.00");
+    await expect(page.getByTestId("report-unconverted")).toContainText("JPY");
+    await expect(page.getByTestId("report-unconverted")).toContainText("KWD");
     await expect(page.getByTestId("report-rates")).toContainText(
       "1 GBP = 1.3 USD",
     );
@@ -1468,17 +1475,35 @@ test.describe("export, undo and search", () => {
       .slice(0, 10);
     await page.getByTestId("report-rate-date").fill(earlier);
     await page.getByTestId("report-run").click();
-    await expect(page.getByTestId("report-result")).toContainText(
-      "1,091,184.00",
-    );
+    await expect(page.getByTestId("report-result")).toContainText("929,005.00");
     await expect(page.getByTestId("report-rates")).toContainText(
       "1 GBP = 1.27 USD",
     );
-    // No pound-to-yen rate: nothing is converted, and the pounds are listed as left out.
+    // No pound-to-yen rate: only the yen deal is in yen, and the pounds are listed as left out.
     await page.getByTestId("report-convert").fill("JPY");
     await page.getByTestId("report-run").click();
-    await expect(page.getByTestId("report-none")).toBeVisible();
+    await expect(page.getByTestId("report-result")).toContainText("14,500,000");
     await expect(page.getByTestId("report-unconverted")).toContainText("GBP");
+  });
+
+  test("a deal report in euros uses rates from more than one base, each currency in its own unit", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/reports");
+    await page.getByTestId("report-kind").selectOption("deal");
+    await page.getByTestId("report-measure").selectOption("sum_amount");
+    await page.getByTestId("report-group").selectOption("state");
+    await page.getByTestId("report-convert").fill("EUR");
+    await page.getByTestId("report-run").click();
+    // Pounds at 1.17, dinars (three places) at 2.79, and yen (none) by the euro-to-yen rate
+    // inverted: 855,855.00 + 26,785.40 + 89,230.77 = 971,871.17.
+    await expect(page.getByTestId("report-result")).toContainText("971,871.17");
+    await expect(page.getByTestId("report-rates")).toContainText(
+      "1 KWD = 2.79 EUR",
+    );
+    await expect(page.getByTestId("report-rates")).toContainText("JPY");
+    await expect(page.getByTestId("report-unconverted")).toHaveCount(0);
   });
 
   test("attribution can convert each deal's share at the rate of the day it closed", async ({
@@ -1756,13 +1781,14 @@ test.describe("export, undo and search", () => {
   }) => {
     await startTour(page);
     await page.goto("/fx-rates");
-    await expect(page.getByTestId("fx-row")).toHaveCount(3);
+    // Six rates, from four bases (GBP, EUR, KWD, INR), not all from the pound.
+    await expect(page.getByTestId("fx-row")).toHaveCount(6);
     await page.getByTestId("fx-from").fill("EUR");
     await page.getByTestId("fx-to").fill("GBP");
     await page.getByTestId("fx-rate").fill("0.8600");
     await page.getByTestId("fx-source").fill("Board budget rate");
     await page.getByTestId("fx-set").click();
-    await expect(page.getByTestId("fx-row")).toHaveCount(4);
+    await expect(page.getByTestId("fx-row")).toHaveCount(7);
     await expect(page.getByTestId("fx-list")).toContainText("0.86");
     await expect(page.getByTestId("fx-list")).toContainText(
       "Board budget rate",
@@ -1770,7 +1796,7 @@ test.describe("export, undo and search", () => {
     // The same pair and day replaces.
     await page.getByTestId("fx-rate").fill("0.87");
     await page.getByTestId("fx-set").click();
-    await expect(page.getByTestId("fx-row")).toHaveCount(4);
+    await expect(page.getByTestId("fx-row")).toHaveCount(7);
     await expect(page.getByTestId("fx-list")).toContainText("0.87");
     await page.getByTestId("fx-rate").fill("abc");
     await page.getByTestId("fx-set").click();
@@ -1780,6 +1806,6 @@ test.describe("export, undo and search", () => {
       .filter({ hasText: "Board budget rate" })
       .getByRole("button")
       .click();
-    await expect(page.getByTestId("fx-row")).toHaveCount(3);
+    await expect(page.getByTestId("fx-row")).toHaveCount(6);
   });
 });

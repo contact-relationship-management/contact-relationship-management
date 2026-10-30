@@ -235,22 +235,19 @@ function build(): State {
     industry: industry!,
   }));
 
+  // Names in more than one order and script (CRM-T176, CRM-R95): given name first and family name
+  // first, Latin, Han, Arabic, Devanagari and Kana-less Japanese, some with the parts stored
+  // (`parts` below) and some with the display name only, which is never split (CRM-R37).
   const people: Array<[string, string, string, string, string]> = [
     // pid, name, account, title, consent
     ["con-1", "Imogen Hartley", "acc-1", "Head of Procurement", "granted"],
     ["con-2", "Rafael Okonkwo", "acc-1", "Operations Director", "granted"],
-    ["con-3", "Saoirse Lindqvist", "acc-2", "Fleet Manager", "granted"],
+    ["con-3", "王芳", "acc-2", "Fleet Manager", "granted"],
     ["con-4", "Tobias Marchetti", "acc-2", "Finance Lead", "withdrawn"],
-    [
-      "con-5",
-      "Priya Venkataraman",
-      "acc-3",
-      "Digital Programme Lead",
-      "granted",
-    ],
+    ["con-5", "प्रिया वेंकटरमन", "acc-3", "Digital Programme Lead", "granted"],
     [
       "con-6",
-      "Elias Bergstrom",
+      "Nguyễn Thị Lan",
       "acc-3",
       "Chief Clinical Information Officer",
       "granted",
@@ -258,7 +255,7 @@ function build(): State {
     ["con-7", "Wren Callaghan", "acc-4", "Product Director", "granted"],
     ["con-8", "Dara Whitlock", "acc-4", "Engineering Manager", "granted"],
     ["con-9", "Lucien Ashdown", "acc-5", "Managing Partner", "unknown"],
-    ["con-10", "Noor Haddad", "acc-5", "Practice Manager", "granted"],
+    ["con-10", "نور حداد", "acc-5", "Practice Manager", "granted"],
     [
       "con-11",
       "Gethin Prosser",
@@ -266,17 +263,18 @@ function build(): State {
       "Head of Customer Services",
       "granted",
     ],
-    [
-      "con-12",
-      "Odette Fairweather",
-      "acc-6",
-      "Transformation Lead",
-      "withdrawn",
-    ],
+    ["con-12", "田中 博", "acc-6", "Transformation Lead", "withdrawn"],
     // A near-duplicate of con-1 (a misspelt surname), so the duplicates
     // section has something to show. Fictitious like the rest.
     ["con-13", "Imogen Hartly", "acc-1", "Procurement Head", "unknown"],
   ];
+  // Given and family names where they are known; the order of the display name is the person's.
+  const parts: Record<string, [string, string]> = {
+    "con-3": ["芳", "王"],
+    "con-6": ["Lan", "Nguyễn"],
+    "con-10": ["نور", "حداد"],
+    "con-12": ["博", "田中"],
+  };
   const contacts: Contact[] = people.map(
     ([pid, name, account, title, consent], i) => ({
       pid,
@@ -284,8 +282,8 @@ function build(): State {
       account_pid: account,
       owner_ref: i % 2 === 0 ? "owner-ayo" : "owner-bea",
       display_name: name,
-      given_name: null,
-      family_name: null,
+      given_name: parts[pid]?.[0] ?? null,
+      family_name: parts[pid]?.[1] ?? null,
       status: "active",
       job_title: title,
       preferred_channel: i % 3 === 0 ? "phone" : "email",
@@ -309,12 +307,14 @@ function build(): State {
     is_lost: is_lost as boolean,
   }));
 
+  // Amounts are in the currency's own minor unit (CRM-R50): pence, whole yen, fils (a thousandth).
   const deal = (
     pid: string,
     name: string,
     stage: string,
-    pounds: number,
+    amountMinor: number,
     closedDays: number | null = null,
+    currency = "GBP",
   ): Deal => {
     const s = stages.find((x) => x.pid === stage)!;
     return {
@@ -322,8 +322,8 @@ function build(): State {
       name,
       pipeline_pid: PIPELINE.pid,
       stage_pid: stage,
-      amount_minor: pounds * Number(unitOf("GBP")),
-      currency: "GBP",
+      amount_minor: amountMinor,
+      currency,
       won: s.is_won,
       closed_at: closedDays === null ? null : iso(closedDays),
       owner_ref:
@@ -332,18 +332,27 @@ function build(): State {
     };
   };
   const deals: Deal[] = [
-    deal("deal-1", "Smart-meter analytics rollout", "stg-4", 184_000),
-    deal("deal-2", "Depot routing platform", "stg-3", 96_500),
-    deal("deal-3", "Clinical records integration", "stg-3", 242_000),
-    deal("deal-4", "Customer portal refresh", "stg-2", 58_000),
-    deal("deal-5", "Developer tooling licences", "stg-2", 31_200),
-    deal("deal-6", "Case-management upgrade", "stg-1", 74_000),
-    deal("deal-7", "Field-service mobile app", "stg-1", 45_500),
-    deal("deal-8", "Grid-edge sensors pilot", "stg-4", 128_000),
-    deal("deal-9", "Document automation", "stg-5", 52_000, -12),
-    deal("deal-10", "Fleet telematics renewal", "stg-5", 88_000, -30),
-    deal("deal-11", "Appointment reminders", "stg-5", 27_500, -45),
-    deal("deal-12", "Procurement data warehouse", "stg-6", 66_000, -20),
+    deal("deal-1", "Smart-meter analytics rollout", "stg-4", 18_400_000),
+    // ¥14,500,000: yen have no minor unit.
+    deal("deal-2", "Depot routing platform", "stg-3", 14_500_000, null, "JPY"),
+    deal("deal-3", "Clinical records integration", "stg-3", 24_200_000),
+    deal("deal-4", "Customer portal refresh", "stg-2", 5_800_000),
+    // KWD 9,600.500: a dinar is 1,000 fils.
+    deal(
+      "deal-5",
+      "Developer tooling licences",
+      "stg-2",
+      9_600_500,
+      null,
+      "KWD",
+    ),
+    deal("deal-6", "Case-management upgrade", "stg-1", 7_400_000),
+    deal("deal-7", "Field-service mobile app", "stg-1", 4_550_000),
+    deal("deal-8", "Grid-edge sensors pilot", "stg-4", 12_800_000),
+    deal("deal-9", "Document automation", "stg-5", 5_200_000, -12),
+    deal("deal-10", "Fleet telematics renewal", "stg-5", 8_800_000, -30),
+    deal("deal-11", "Appointment reminders", "stg-5", 2_750_000, -45),
+    deal("deal-12", "Procurement data warehouse", "stg-6", 6_600_000, -20),
   ];
 
   const links: Record<string, Link> = {
@@ -454,19 +463,12 @@ function build(): State {
       64,
       "contacted",
     ),
-    lead(
-      "lead-3",
-      "event",
-      "Anselm Kowalczyk",
-      "anselm@example.org",
-      52,
-      "new",
-    ),
+    lead("lead-3", "event", "김민준", "anselm@example.org", 52, "new"),
     lead("lead-4", "web form", "Tamsin Reyes", null, 41, "contacted"),
     lead(
       "lead-5",
       "webinar",
-      "Jericho Abara",
+      "Oluwaseun Adeyemi",
       "jericho@example.org",
       33,
       "new",
@@ -496,7 +498,7 @@ function build(): State {
     pid: string,
     name: string,
     status: string,
-    pounds: number,
+    costMinor: number,
     recipients: number,
     delivered: number,
     opened: number,
@@ -506,7 +508,7 @@ function build(): State {
     pid,
     name,
     status,
-    cost_minor: pounds * Number(unitOf("GBP")),
+    cost_minor: costMinor,
     currency: "GBP",
     recipients,
     delivered,
@@ -519,7 +521,7 @@ function build(): State {
       "camp-1",
       "Spring product update",
       "completed",
-      2400,
+      240_000,
       1200,
       1168,
       612,
@@ -530,18 +532,18 @@ function build(): State {
       "camp-2",
       "Customer webinar series",
       "running",
-      5200,
+      520_000,
       860,
       842,
       405,
       96,
       { created_at: ago(30), updated_at: ago(2) },
     ),
-    campaign("camp-3", "Renewal reminders", "scheduled", 800, 340, 0, 0, 0, {
+    campaign("camp-3", "Renewal reminders", "scheduled", 80_000, 340, 0, 0, 0, {
       created_at: ago(10),
       updated_at: ago(6),
     }),
-    campaign("camp-4", "Autumn roadmap preview", "draft", 1500, 0, 0, 0, 0, {
+    campaign("camp-4", "Autumn roadmap preview", "draft", 150_000, 0, 0, 0, 0, {
       created_at: ago(3),
       updated_at: ago(3),
     }),
@@ -844,6 +846,10 @@ function build(): State {
       fxRate("fx-1", "GBP", "USD", "1.27", -300),
       fxRate("fx-2", "GBP", "EUR", "1.17", -300),
       fxRate("fx-3", "GBP", "USD", "1.3", -20),
+      // Rates from other bases, so not every pair runs through the pound (CRM-T176).
+      fxRate("fx-4", "EUR", "JPY", "162.5", -20),
+      fxRate("fx-5", "KWD", "EUR", "2.79", -20),
+      fxRate("fx-6", "INR", "KWD", "0.0037", -20),
     ],
     reports: [
       {
@@ -1116,16 +1122,18 @@ function forecastNow(query?: URLSearchParams): DemoReply {
 function forecastTotals() {
   const prob = new Map(state.stages.map((s) => [s.pid, s.probability_percent]));
   const open_ = openDeals();
-  const total = open_.reduce(
-    (sum, d) =>
-      sum +
-      Math.round(((d.amount_minor ?? 0) * (prob.get(d.stage_pid) ?? 0)) / 100),
-    0,
-  );
+  // One total per currency, never summed across them (CRM-R5), as the service does.
+  const totals: Record<string, number> = {};
+  for (const d of open_) {
+    const code = d.currency ?? "";
+    totals[code] =
+      (totals[code] ?? 0) +
+      Math.round(((d.amount_minor ?? 0) * (prob.get(d.stage_pid) ?? 0)) / 100);
+  }
   return {
     as_of: new Date().toISOString(),
     open_deals: open_.length,
-    totals_minor: { GBP: total },
+    totals_minor: totals,
   };
 }
 
@@ -1293,13 +1301,18 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         note: NOTE,
       });
     case "forecast-trends": {
-      const base = forecastTotals().totals_minor.GBP ?? 0;
+      const base = forecastTotals().totals_minor;
       return ok({
         as_of,
         note: NOTE,
         series: [-35, -28, -21, -14, -7, 0].map((offset, i) => ({
           taken_on: day(offset),
-          totals: { GBP: Math.round(base * (0.62 + i * 0.075)) },
+          totals: Object.fromEntries(
+            Object.entries(base).map(([code, value]) => [
+              code,
+              Math.round(value * (0.62 + i * 0.075)),
+            ]),
+          ),
         })),
       });
     }

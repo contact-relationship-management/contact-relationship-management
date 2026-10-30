@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the seed is in more than one currency, rate base and name shape (CRM-T176)
+
+`tasks::seed` takes its deals from `DEAL_AMOUNTS` (GBP, JPY, KWD, EUR, INR, BRL, each in its own minor unit), inserts the six `RATES` for today from five bases (USD, EUR, INR, KWD, JPY; `ON CONFLICT DO NOTHING`, source "synthetic demo rate"), and names the 15 contacts from `CONTACT_NAMES` in Latin, Han, Arabic, Devanagari, Hangul, Cyrillic and Thai, both orders, with `given_name` and `family_name` stored for some and not others. Three unit tests hold the shapes. Run once with `cargo run -- task seed` on a throwaway PostgreSQL 18 database. **Not done:** the accounts, deals and leads keep their "Demo …" names; the request tests do not run the seed; the names were not checked by a speaker of each language.
+
 ### Fixed — conversion by each currency's own exponent; currency codes checked (CRM-T167, CRM-T168, CRM-R50)
 
 `rules::currency` (pure): the ISO 4217 minor-unit table, `exponent`, `stored_exponent` and `check`. `rules::fx::convert` multiplies by ten to the target's exponent less the source's in the same division as the rate, so USD 1.00 at 150 is JPY 150 and it still rounds half to even once. `fx::currency` and the new `Problems::currency` check codes against the table; deals, the deal of a lead conversion (`/deal/currency`, before the transaction), campaigns, quotas, rates and `convert_to` answer `422` for an unknown code. `CampaignPayload::currency` is required: the `GBP` default is gone. OpenAPI examples vary (EUR, JPY, INR). Tests: 7 new unit tests (422 in all), `tests/requests/currencies.rs` (3 request tests), and the campaign request bodies that relied on the default now name a currency. **Not done:** no database check on stored codes, and stored codes outside the table count as exponent 2; the seed is still GBP (CRM-T176); not run against the UI or a live deployment.

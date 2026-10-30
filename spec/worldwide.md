@@ -79,6 +79,10 @@ app's `governance/worldwide-equity-audit.md` (WW-1, against its `spec/02-scope.m
   `backArrow()` replace every literal arrow, so arrows point along (or, for a back link, against) the page's direction and a range of
   dates is `Intl`'s `formatRange`. A scan test fails on a physical left/right style or a literal arrow; Playwright checks the Arabic
   page's table, back link and date range, with axe. Details and what was not done: [tasks.md](tasks.md).
+- [x] (2026-10-30) CRM-T176 **Seed and demo data in more than one shape.** Done: code row 43. The service seed's deals are in six
+  currencies with 0, 2 and 3 decimal places, its six rates come from five bases, and its contacts' names are in seven scripts and both
+  orders, some with the parts stored and some without; the tour adds a yen and a dinar deal, three rates from other bases and five
+  contacts in Han, Devanagari, Vietnamese, Arabic and Japanese, and its helpers take minor units. Details: [tasks.md](tasks.md).
 - **Found while doing CRM-T167 (for the three apps to settle together):** `Intl`'s digits come from CLDR, which differs from ISO 4217 for
   16 codes (AFN, ALL, COP, HUF, IDR, IQD, IRR, KPW, LAK, LBP, MGA, MMK, PKR, SOS, SYP, YER: CLDR 0 places, ISO 4217 2, or 3 for IQD).
   The project portfolio and workforce planning UIs take the exponent from `Intl` while the project portfolio service (`src/currency.rs`)
@@ -171,7 +175,7 @@ or a translation depends on, so it is left to its task.
 | 40 | Locales | UI `src/lib/i18n.svelte.ts:21-30`, `spec/translation-register.md:20-28` | Eight locales; six are `-001` (world), but German is `de-de` and Chinese `zh-cn`, so an Austrian or Swiss reader is labelled "Deutschland" and Traditional Chinese readers get Simplified; seven of eight are unreviewed drafts | **Partial** | T175 |
 | 41 | Locales | UI `tests/unit/translation-register.test.ts` | Every locale holds every key and the same placeholders as English | **Right** | — |
 | 42 | Locales | UI `src/routes/deals/+page.svelte:142,160-162` and seven more files (57 `header: "…"` literals in 8 files), `src/routes/partners/+page.svelte:105` | Data-grid column headers and a matrix label are English literals outside the catalogue | **Gap**: every non-English locale shows English headers | T175 |
-| 43 | Seed and demo | API `src/tasks/seed.rs:117`; UI `src/lib/server/demo.ts:315-324,498-508,843-845,1127,1284` | Every seeded deal is GBP; the tour's helpers take `pounds` and multiply by 100; the rates are from GBP | **Gap**: the demo has one currency (exponent 2), so no exponent bug can show in it | T176 |
+| 43 | Seed and demo | API `src/tasks/seed.rs:117`; UI `src/lib/server/demo.ts:315-324,498-508,843-845,1127,1284` | Every seeded deal is GBP; the tour's helpers take `pounds` and multiply by 100; the rates are from GBP | **Gap**: the demo has one currency (exponent 2), so no exponent bug can show in it **Fixed 2026-10-30** | T176 (done) |
 | 44 | Holidays | API `src/rules/calendar.rs:100-150` | Holidays are a list of up to 400 dates per calendar; no pack ships | **Right** in shape (any calendar's holidays can be entered as dates); no pack is a limit | — |
 | 45 | Tax | API, UI (searched for `tax`, `vat`) | No tax rule anywhere | **Right**: out of scope (spec row 18) | — |
 

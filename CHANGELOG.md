@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the seed and the tour carry more than one currency, rate base and name shape (CRM-T176, 2026-10-30)
+
+The service's seed made every deal in GBP with English placeholder names, and the tour's stand-in typed amounts as pounds times a hundred with every rate from GBP, so no exponent or name-order bug could show in a demo. The seed's deals are now in GBP, JPY (no decimals), KWD (three), EUR, INR and BRL, it sets six rates from five bases, and its contacts are named in seven scripts, given name first and family name first, some with the parts stored and some without. The tour adds a yen and a dinar deal, three rates from other bases and five contacts in Han, Devanagari, Vietnamese, Arabic and Japanese; its helpers take minor units, and its forecast totals each currency apart, as the service does. **Not done or verified:** the names were not checked by a speaker of each language; the won deals (attribution, executive) stay GBP; the request tests do not run the seed (it was run once on a throwaway database). Details: the [service](contact-relationship-management-service-with-rust/CHANGELOG.md) and [UI](contact-relationship-management-ui-with-svelte/CHANGELOG.md) changelogs.
+
 ### Fixed — the UI mirrors on the Arabic page (CRM-T174, 2026-10-30)
 
 Logical CSS properties replace the physical left sides, and arrows and date ranges follow the page's writing direction, as the workforce planning UI's do; a scan test and an Arabic Playwright check with axe keep it so. **Not done:** the Lily components' own styles were not audited. Details: the [UI changelog](contact-relationship-management-ui-with-svelte/CHANGELOG.md).
