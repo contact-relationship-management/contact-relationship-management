@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed — per-currency totals wrap on a phone (CRM-T176 follow-up, CRM-R46)
 
-The deal list's forecast and the executive page's won value joined each currency's total to the next with a non-breaking space, so with the tour's three forecast currencies (CRM-T176) the line could not wrap and `/deals` scrolled sideways by 21px at 360px in CI's Chromium on Linux (not on macOS). A plain space now separates them. Checked locally: `/deals` overflowed by 14px at 330px and 44px at 300px before, 0 after; the 360px test passes. **Not verified:** on Linux before the push (CI is the check).
+The deal list's forecast and the executive page's won value joined each currency's total to the next with a non-breaking space, so with the tour's three forecast currencies (CRM-T176) the line could not wrap and `/deals` scrolled sideways by 21px at 360px in CI's Chromium on Linux (not on macOS). Each total is now followed by a non-breaking space and a `<wbr>`, so the line can break between currencies and the text still reads with a space between them. (The first attempt, a `{" "}` expression, failed ESLint's `svelte/no-useless-mustaches` in CI and was replaced.) Checked locally: `/deals` overflowed by 14px at 330px and 44px at 300px before, 0 at 360px and 300px after; ESLint clean. **Not verified:** on Linux before the push (CI is the check).
 
 ### Fixed — search keeps other scripts' marks and takes one ideograph (CRM-T170)
 

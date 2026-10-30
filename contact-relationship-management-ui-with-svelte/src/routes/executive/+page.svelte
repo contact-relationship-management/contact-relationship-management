@@ -101,7 +101,7 @@
   <p data-testid="exec-won-value">
     Won value:
     {#each Object.entries(pack.won_value_by_currency_minor) as [currency, minor] (currency)}
-      <strong>{money(minor, currency, i18n.locale)}</strong>{" "}
+      <strong>{money(minor, currency, i18n.locale)}</strong>&nbsp;<wbr />
     {:else}
       <span class="muted">none in window</span>
     {/each}
