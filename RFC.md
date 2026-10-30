@@ -10,8 +10,10 @@ run CRM systems.
 - Are the scoring, forecasting, SLA, and ROI rules explainable and realistic?
 - Are the consent-first marketing rules adequate for GDPR and PECR in your
   jurisdiction? (See [spec/regulatory.md](spec/regulatory.md).)
-- How should it integrate with identity, email, and calendar systems?
-  (See [spec/integrations.md](spec/integrations.md).)
+- How should it integrate with identity, email, and calendar systems, and
+  with the family's project portfolio and worker services? (See
+  [spec/integrations.md](spec/integrations.md) and the
+  [family bridges tutorial](docs/tutorial-family-bridges.md).)
 - Is the API ergonomic for a front end you would build?
 
 ## Constructive feedback that helps most

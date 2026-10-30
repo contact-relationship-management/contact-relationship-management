@@ -6,7 +6,13 @@ analytics.
 
 ## Start here
 
-- **[README.md](README.md)** — what this is, status, target surface.
+- **[README.md](README.md)** — what this is, quick start, surface,
+  configuration.
+- **[../INSTALL.md](../INSTALL.md)** — running the service, sending
+  email, the bridge settings.
+- **[Family bridges tutorial](../docs/tutorial-family-bridges.md)** —
+  the PPM and WPM bridges, a signed WPM event with `openssl` and
+  `curl`, and the employment check.
 - **[../spec/](../spec/index.md)** — the cross-cutting specification
   (single source of truth: domain model, the four modules, auth,
   audit).
@@ -17,6 +23,9 @@ analytics.
 ## The task queue
 
 Live delivery checklist: [../spec/tasks.md](../spec/tasks.md)
-(CRM-T*, phased; production gates CRM-G*). This edition:
-CRM-T1–T16 (2026-07-18), CRM-T19 insight views (2026-07-20),
-CRM-T20 engagement/partnership round (2026-07-20).
+(CRM-T1 to CRM-T162, phased; production gates CRM-G1 and CRM-G2). Most
+tasks touch this edition; the latest are the family bridges: CRM-T139
+(PPM delivery ideas, WPM teams), CRM-T153 (bridge credentials),
+CRM-T158 to CRM-T160 (WPM hire and leave events, their order, the
+employment check) and CRM-T161 and CRM-T162 (imported teams and CRM
+users named by `person:` reference).

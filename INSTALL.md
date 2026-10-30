@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Rust 1.99 (see `rust-toolchain.toml`)
+- Rust 1.99.1 (pinned in `rust-toolchain.toml`)
 - PostgreSQL 18 (or `podman compose`)
 - Node.js and pnpm, for the front end
 
@@ -45,8 +45,6 @@ service refuses to start with a bad combination.
 | `CRM_UNSUBSCRIBE_SECRET` | 32+ characters; signs the unsubscribe link in every message. Required with `smtp` |
 | `CRM_PUBLIC_URL` | The address recipients reach this service at, for the link (`https` in production). Required with `smtp` |
 | `CRM_WEBHOOK_SECRET` | 32+ characters; enables `POST /webhooks/email` for provider outcomes (delivered, hard or soft bounce, complaint). Requests carry `X-CRM-Timestamp` and `X-CRM-Signature: sha256=` (HMAC-SHA256 of `timestamp.body`); five-minute window |
-| `CRM_WPM_WEBHOOK_SECRET` | 32+ characters; enables `POST /api/bridges/wpm/events`, where the worker service (WPM) posts hire and leave events that pause and resume a contact's marketing (CRM-R92). Set the same value as WPM's `WPM_WEBHOOK_SECRET_<NAME>` for the subscription; requests carry `x-wpm-signature: t=<unix>,v1=<hex>` (HMAC-SHA256 of `t.body`); five-minute window. Unset, the route is `404` |
-| `CRM_WPM_ORGANIZATION_REF` | An `organization:` URN: the organization `POST /api/bridges/wpm/employment-check` asks the worker service about (CRM-R94). Set `CRM_WORKER_SERVICE_TOKEN` to a token of an HR identity of that organization in WPM, which WPM's overlap check requires. Anything that is not an `organization:` URN is taken as unset; unset, the check answers `502` in `http` mode and sends nothing |
 | `CRM_MAIL_ALLOW_PRODUCTION` | Required to use any real mode in production, because the vendor, agreement and legal review is open (CRM-T39) |
 | `CRM_MAIL_DEV_DOMAIN` | Development only: in `stub` upstream mode, mail goes to `<person id>@<domain>` |
 
@@ -112,6 +110,33 @@ Mail lands in the `crm@crm.test` mailbox; read it over JMAP at
 ports. Details are in
 `contact-relationship-management-service-with-rust/compose.email.yaml`.
 
+## Family bridges
+
+The CRM has four bridges to its sibling services, the project portfolio
+service (PPM) and the worker service (WPM), under `/api/bridges`. They are
+admin only, except the events route, which is authenticated by its signature:
+
+- a won deal opens a delivery idea in PPM;
+- WPM's departments become teams, whose members are `person:` references;
+- WPM posts signed hire and leave events that pause and resume a contact's
+  marketing;
+- the employment check asks WPM which contacts are its workers today.
+
+The outbound bridges are stub-first: nothing leaves the process unless
+`CRM_UPSTREAM_MODE=http` is set.
+
+| Variable | Meaning |
+|---|---|
+| `CRM_UPSTREAM_MODE` | `http` sends the outbound calls; unset (or anything else) is stub mode |
+| `CRM_PPM_SERVICE_URL`, `CRM_PPM_SERVICE_TOKEN` | PPM's base URL and an optional bearer token |
+| `CRM_WORKER_SERVICE_URL`, `CRM_WORKER_SERVICE_TOKEN` | WPM's base URL and a bearer token. A token is sent only over `https` or to this machine |
+| `CRM_WPM_ORGANIZATION_REF` | The `organization:` URN the employment check asks about (CRM-R94). `CRM_WORKER_SERVICE_TOKEN` must belong to an HR identity of that organization in WPM. A value that is not an `organization:` URN counts as unset; unset, the check answers `502` in `http` mode |
+| `CRM_WPM_WEBHOOK_SECRET` | 32+ characters; enables `POST /api/bridges/wpm/events` (CRM-R92). Set the same value as WPM's `WPM_WEBHOOK_SECRET_<NAME>` for the subscription. Requests carry `x-wpm-signature: t=<unix>,v1=<hex>` (HMAC-SHA256 of `t.body`), with a five-minute window. Unset, the route is `404` |
+
+The [family bridges tutorial](docs/tutorial-family-bridges.md) walks through a
+signed hire and leave with `openssl` and `curl`, and through the employment
+check. None of the bridges has been run against a running WPM or PPM.
+
 ## Svelte front end
 
 **Guided tour:** start the UI and sign in as `example@example.com`. No email
@@ -124,6 +149,19 @@ cd contact-relationship-management-ui-with-svelte
 pnpm install
 pnpm dev
 ```
+
+To use a running service instead of the tour, point the UI at the service's
+`/api` path. The proxy appends the path after `/api/proxy/` to this value, so
+the code default, `http://localhost:5150`, without `/api`, does not reach the
+service's routes:
+
+```bash
+CRM_API_URL=http://localhost:5150/api AUTH_API_URL=http://localhost:<auth port> pnpm dev
+```
+
+Signing in that way needs the family authentication service at `AUTH_API_URL`
+(the UI calls its `/api/auth/magic-link` and `/api/auth/token`). The CRM
+service does not provide those routes.
 
 See its [README](contact-relationship-management-ui-with-svelte/README.md).
 

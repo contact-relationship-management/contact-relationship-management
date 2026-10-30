@@ -5,7 +5,7 @@ for the Loco JSON API sibling.
 
 ## Start here
 
-- **[README.md](README.md)** — what this is, status, planned views.
+- **[README.md](README.md)** — what this is, status, environment variables, views.
 - **[../spec/](../spec/index.md)** — the cross-cutting specification
   (single source of truth).
 - **[spec/](spec/index.md)** — this edition's stack-specific spec.
@@ -15,5 +15,6 @@ for the Loco JSON API sibling.
 ## The task queue
 
 Live delivery checklist: [../spec/tasks.md](../spec/tasks.md)
-(this edition: CRM-T17/T18, plus the front-end halves of CRM-T19
-insight views and CRM-T20 engagement/partnership round).
+(CRM-T1 to CRM-T162). The client began with CRM-T17 and CRM-T18 and
+has the front-end halves of later tasks, recorded in
+[CHANGELOG.md](CHANGELOG.md).

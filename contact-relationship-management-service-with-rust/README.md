@@ -16,14 +16,12 @@ provides the sales, marketing, and support client.
 > (delivery is simulated); synthetic data only. See
 > [spec/regulatory](../spec/regulatory.md).
 
-**Status: implemented (CRM-T1–T16, T19, T20; 2026-07-18 through
-2026-07-20).** Builds; 64 DB-free unit tests + 7 request tests + the
-enforcement matrix (8 total under `cargo test -- --ignored`) pass
-against Postgres 18; clippy-pedantic clean; live smoke verified
-(seed → forecast → ETag 304 → win rate). Remaining in
-[../spec/tasks.md](../spec/tasks.md): the CRM-G1/CRM-G2 production
-gates (auth activation + GDPR/PECR review) before any non-demo
-exposure — not a code gap.
+**Status.** The delivery record is
+[../spec/tasks.md](../spec/tasks.md) (CRM-T1 to CRM-T162), which says
+what each task verified and what it did not. The CRM-G1 and CRM-G2
+production gates (activating authentication, and the GDPR/PECR review
+of the real send path) are still open, so this is not for exposure
+beyond a demo.
 
 ## Quick start
 
@@ -31,9 +29,16 @@ exposure — not a code gap.
 # PostgreSQL and Redis in Podman (disposable; the database is in memory).
 podman compose -f compose.test.yaml up -d
 export DATABASE_URL=postgres://loco:loco@localhost:5432/contact_relationship_management_development
+cargo run -- db create     # the container creates only contact_relationship_management_test
 cargo run -- db migrate && cargo run -- task seed && cargo run -- start
 curl localhost:5150/api/forecast | jq .
 ```
+
+The server listens on port 5150 (`config/development.yaml`). Without
+`DATABASE_URL`, development uses the database named above. `cargo test`
+runs the DB-free tests; `cargo test -- --ignored` runs the request tests
+against `contact_relationship_management_test` (`config/test.yaml`),
+which the compose file creates.
 
 ## What it answers
 
@@ -49,17 +54,57 @@ curl localhost:5150/api/forecast | jq .
 
 ## Surface
 
-Contacts / accounts / activities + timelines · leads + scoring ·
-pipelines / stages / deals + Kanban · forecast + snapshots ·
-consent + segments + campaigns + nurture · tickets + SLA policies ·
-articles · dashboards · seven `/insights/*` derived views
-(stale-deals, follow-ups, pipeline-hygiene, executive pack,
-forecast-trends, SLA, DPO) · engagement/partnership data
-(stakeholder typing, activity sentiment, partnerships, memberships,
-working groups) + nine more derived views · audits ·
-`/events/recent` · OpenAPI + Swagger · `/metrics.prom`.
+Every route is in the OpenAPI document at `/api-docs/openapi.json`
+(Swagger UI at `/swagger-ui`). By area, under `/api` unless noted:
 
-Auth enforcement defaults **off** (`CRM_REQUIRE_AUTH` is the family
-activation gate; optional `keycloak` cargo feature also accepts Keycloak
-access tokens via `CRM_KEYCLOAK_URL` / `_REALM` / `_AUDIENCES` / `_ROLE_MAP[_FILE]`); upstream lookups will default to **stub mode**;
-events default to the in-memory transport.
+- **Relationships:** contacts, accounts, activities and timelines;
+  duplicates, merge and unmerge; tags, custom fields, external links,
+  attachments; contact and account imports; search.
+- **Sales:** leads and scoring, lead imports, pipelines, deals, boards,
+  forecast and snapshots, quotas, commission plans, teams, territories,
+  FX rates.
+- **Marketing:** consent, segments, campaigns, nurture sequences, email
+  templates, attribution; public `/unsubscribe`, `/confirm`,
+  `/preferences` and `/forms` pages; provider callbacks at
+  `/webhooks/email` and `/webhooks/email/{provider}`.
+- **Support:** tickets, SLA policies, business calendars, articles;
+  the public knowledge base at `/kb/articles`; email replies at
+  `/webhooks/inbound-email`.
+- **Analytics:** dashboards, reports, saved views, and sixteen
+  `/api/insights/*` derived views (stale-deals, followups,
+  pipeline-hygiene, executive, forecast-trends, sla, dpo, cadence,
+  engagement, funnel, members, consent-by-account, stakeholders,
+  partnerships, memberships, kb-deflection).
+- **Engagement:** groups, partnerships.
+- **Bridges** to the family's other services (`/api/bridges`, admin
+  only, except the signed events route): a won deal opens a delivery idea in the project portfolio
+  service; the worker service's departments become teams; the worker
+  service's signed hire and leave events pause and resume a contact's
+  marketing; and the employment check. See the
+  [family bridges tutorial](../docs/tutorial-family-bridges.md).
+- **Operations and compliance:** workflows, notifications, outbound
+  webhook subscriptions, audits, `/api/events/recent`, privacy (subject
+  access, erasure, retention sweep), break-glass, `/mcp`, `/metrics.prom`, `/_health`,
+  `/_ping`.
+
+A CRM user (owner, assignee, quota holder, team member) is named
+`person:<sign-in subject>` (CRM-D18). `worker:<id>` is still accepted on
+input and is stored as `person:<id>`.
+
+## Configuration
+
+- **Auth** enforcement is **off** by default. `CRM_REQUIRE_AUTH` is the
+  family activation gate. The optional `keycloak` cargo feature also
+  accepts Keycloak access tokens, configured by `CRM_KEYCLOAK_URL`,
+  `CRM_KEYCLOAK_REALM`, `CRM_KEYCLOAK_AUDIENCES` and
+  `CRM_KEYCLOAK_ROLE_MAP` or `CRM_KEYCLOAK_ROLE_MAP_FILE`.
+- **Upstream** lookups and the outbound bridges are in **stub mode**
+  unless `CRM_UPSTREAM_MODE=http`.
+- **Events** use the in-memory transport unless
+  `CRM_EVENT_TRANSPORT=outbox`.
+- **Email** is simulated unless `CRM_MAIL_MODE` says otherwise; see
+  [INSTALL.md](../INSTALL.md#sending-email).
+- **Bridges:** `CRM_PPM_SERVICE_URL`, `CRM_PPM_SERVICE_TOKEN`,
+  `CRM_WORKER_SERVICE_URL`, `CRM_WORKER_SERVICE_TOKEN`,
+  `CRM_WPM_ORGANIZATION_REF` and `CRM_WPM_WEBHOOK_SECRET`; see
+  [INSTALL.md](../INSTALL.md#family-bridges).

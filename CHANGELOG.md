@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a tutorial for the family bridges; the docs checked against the code (maintenance, 2026-10-30)
+
+`docs/tutorial-family-bridges.md`: the four bridges, their environment variables, a signed WPM hire and leave sent with `openssl` and `curl`, the ordering of events, and the employment check. INSTALL.md has a "Family bridges" section (the two WPM settings were in the email table), the service README's route list is rebuilt from `app.rs` and the controllers and its quick start creates the database first, and the UI README's views, environment and test tables match `src/routes`, the config and the scripts; stale test counts were removed rather than recounted.
+
+**Not done or not verified:** the tutorial's `curl` calls were not run, and nothing was run against a running WPM or PPM (the `openssl` signature was checked against the RFC 4231 vector the unit tests use). Found and not fixed: the UI's `CRM_API_URL` default (`http://localhost:5150`, also in `.env.example`) lacks the `/api` the proxy needs, so the docs say to set it; `compose.test.yaml` mentions a `scripts/test-db.sh` that does not exist.
+
 ### Fixed — the agent guides match the code (maintenance, 2026-10-30)
 
 The service's `AGENTS.md` linked `../../agents/share/rust-loco-stack.md`, which is not in this repository (the family notes are in `main-x-service`); it now says where they are. It names the bridge rule modules, the `worker:` alias and how to run the database tests; the UI's names its test folders and ports and drops the T17 to T20 wording. Sizes: service 4,165 bytes, UI 3,749 bytes. There is no root `AGENTS.md` or `CLAUDE.md`, and none was added. The code comments that cite `agents/share/*.md` were not changed.
