@@ -6,7 +6,7 @@
 // SHARED IN BEHAVIOUR with the workforce planning management UI's `src/lib/reader-calendar.ts`
 // (WPM-T378, WPM-D149), from which this file is ported unchanged but for this header: the same
 // region order, the same `Intl` source and the same fallback table, so the family's calendars agree;
-// copy a fix to the other. The project portfolio management UI has no such module yet.
+// copy a fix to the other. The project portfolio management UI has no reader-calendar module yet.
 //
 // Region, in order: the page locale's own country (`de-de`, `zh-cn`); else the first country among
 // the browser's languages (`navigator.languages`); else the page locale itself, whose `001` (world)
