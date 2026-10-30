@@ -1,0 +1,9 @@
+{
+  "extends": "$app/tsconfig",
+  "compilerOptions": {
+    "sourceMap": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "include": ["src", "tests", "scripts", "playwright.config.ts"]
+}

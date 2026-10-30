@@ -53,6 +53,17 @@ updates:
     # A release is trusted after it has been out a week, not on the day it is published.
     cooldown:
       default-days: 7
+  # The GitHub Pages site (spec/github-pages-site.md).
+  - package-ecosystem: npm
+    directory: /contact-relationship-management.github.io
+    schedule:
+      interval: weekly
+    # A release is trusted after it has been out a week, not on the day it is published.
+    cooldown:
+      default-days: 7
+    groups:
+      npm-site:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

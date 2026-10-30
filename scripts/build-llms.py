@@ -39,10 +39,11 @@ SECTIONS = [
         ("Scope", "spec/scope.md", "What is in and out."),
         ("Regulatory position", "spec/regulatory.md", "Why this is demo software and what that means."),
         ("Worldwide by design", "spec/worldwide.md", "The worldwide equity requirement and decision (proposed), the audit of the spec and the code, and its tasks."),
+        ("GitHub Pages site", "spec/github-pages-site.md", "The static documentation site built from these documents and the role briefs: pages, locales and direction, tests, and how it is published."),
     ]),
     ("Specification", [
         ("Requirements", "spec/requirements.md", "Numbered requirements (CRM-R1 to CRM-R94) with acceptance criteria."),
-        ("Tasks", "spec/tasks.md", "The delivery checklist (CRM-T0 to CRM-T163) with resolutions, verification and stated limits."),
+        ("Tasks", "spec/tasks.md", "The delivery checklist (CRM-T0 to CRM-T178) with resolutions, verification and stated limits."),
         ("Architecture", "spec/architecture.md", "Components and data flow."),
         ("Domain model", "spec/domain-model.md", "Entities and relationships, held as relationship wrappers over upstream URNs."),
         ("Design decisions", "spec/design.md", "Numbered design decisions (CRM-D1 to CRM-D18)."),
@@ -74,6 +75,7 @@ SECTIONS = [
     ]),
     ("Svelte client", [
         ("UI README", "contact-relationship-management-ui-with-svelte/README.md", "Status, environment variables, stack, tests."),
+        ("GitHub Pages site README", "contact-relationship-management.github.io/README.md", "The documentation site: what it shows, the content copy, build and test, and the steps to publish it."),
         ("UI agent guide", "contact-relationship-management-ui-with-svelte/AGENTS.md", "Working agreements for the client (Svelte 5 runes, Lily components, BFF auth, i18n)."),
         ("UI changelog", "contact-relationship-management-ui-with-svelte/CHANGELOG.md", "Changes to the client."),
         ("UI index", "contact-relationship-management-ui-with-svelte/index.md", "Documentation index for the client."),

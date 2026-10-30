@@ -1,0 +1,44 @@
+{
+  "name": "contact-relationship-management.github.io",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "=26"
+  },
+  "description": "The Contact Relationship Management documentation site for GitHub Pages: a static SvelteKit build of the repository's documents.",
+  "license": "MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only",
+  "scripts": {
+    "sync": "node scripts/sync-content.mjs",
+    "sync:check": "node scripts/sync-content.mjs --check",
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@lilydesignsystem/svelte-headless": "0.6.1",
+    "@lilydesignsystem/svelte-locale-picker": "0.3.1",
+    "@lilydesignsystem/svelte-text-size-picker": "0.3.0",
+    "@lilydesignsystem/svelte-theme-picker": "0.3.0",
+    "@lilydesignsystem/themes": "0.6.0",
+    "marked": "18.1.2"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
+    "@sveltejs/adapter-static": "^4.0.1",
+    "@sveltejs/kit": "^3.1.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/node": "^26.6.6",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.7",
+    "typescript": "6.0.3",
+    "vite": "8.3.5"
+  },
+  "imports": {
+    "#lib": "./src/lib/index.js",
+    "#lib/*": "./src/lib/*"
+  }
+}

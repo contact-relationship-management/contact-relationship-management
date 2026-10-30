@@ -1,0 +1,28 @@
+#!/bin/sh
+# Publish the GitHub Pages site: push the subdirectory contact-relationship-management.github.io/ to the `main` branch
+# of the remote named `github-pages` with git subtree. That remote's repository
+# (contact-relationship-management/contact-relationship-management.github.io) is a read-only export: never work in it
+# directly; change the site here and run this again. See contact-relationship-management.github.io/README.md.
+#
+# Usage: make github-pages   (or: bin/make-github-pages)
+set -eu
+
+prefix=contact-relationship-management.github.io
+cd "$(dirname "$0")/.."
+
+if ! git remote get-url github-pages >/dev/null 2>&1; then
+  echo "make-github-pages: there is no git remote named github-pages." >&2
+  echo "Add it once (see $prefix/README.md, \"Publishing\"):" >&2
+  echo "  git remote add github-pages git@github.com:contact-relationship-management/contact-relationship-management.github.io.git" >&2
+  exit 1
+fi
+
+# The site carries its own copy of the documents it shows; refuse to publish a stale copy.
+node "$prefix/scripts/sync-content.mjs" --check
+
+if [ -n "$(git status --porcelain -- "$prefix")" ]; then
+  echo "make-github-pages: $prefix/ has uncommitted changes; commit them first (subtree pushes commits only)." >&2
+  exit 1
+fi
+
+git subtree push --prefix="$prefix" github-pages main

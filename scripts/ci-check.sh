@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | e2e | scripts | lint | mutants | supply-chain | semver | api-types | coverage
+#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | mutants | supply-chain | semver | api-types | coverage
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 SVC=contact-relationship-management-service-with-rust
 FE=contact-relationship-management-ui-with-svelte
 MATCHER=contact-relationship-management-matcher-with-rust
+SITE=contact-relationship-management.github.io
 # `keycloak` gates the optional Keycloak bearer path and the `test-idp`
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|scripts|lint|mutants|supply-chain|semver|api-types|coverage>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|mutants|supply-chain|semver|api-types|coverage>}"
 
 case "${stage}" in
   fmt)
@@ -99,6 +100,18 @@ case "${stage}" in
     pnpm install --frozen-lockfile
     pnpm exec playwright install --with-deps chromium
     pnpm exec playwright test
+    ;;
+  site)
+    # The GitHub Pages site (spec/github-pages-site.md): its copy of the documents is current, then
+    # svelte-check, the static build (every page prerendered; a broken link or anchor fails it), and
+    # Playwright with axe over the built pages (light and dark, right to left, the locale switch).
+    cd "${SITE}"
+    node scripts/sync-content.mjs --check
+    pnpm install --frozen-lockfile
+    pnpm run check
+    pnpm run build
+    pnpm exec playwright install --with-deps chromium
+    CI=true pnpm exec playwright test
     ;;
   scripts)
     # Warnings and errors only; the style and info notes are not gated.

@@ -1,0 +1,162 @@
+:root {
+  /* The family's documentation-site tokens, as the project portfolio site has them (the PPM UI's palette with its
+     contrast fix, audited with axe in light and dark), mapped like the CRM UI's own tokens
+     (contact-relationship-management-ui-with-svelte/src/app.css) onto the same Lily theme tokens
+     (`--color-*`) that the active theme stylesheet defines (ThemePicker loads light or dark from the system
+     preference), with the original values as fallbacks for first paint. */
+  --mxi-color-bg: var(--color-base-100, #fafafa);
+  --mxi-color-fg: var(--color-base-content, #111827);
+  /* 88%, not 78%: Lily themes 0.6 made the base text colour lighter, and 78% fell to 4.07:1 (needs 4.5:1). */
+  --mxi-color-muted: color-mix(
+    in oklch,
+    var(--color-base-content, #6b7280) 88%,
+    var(--color-base-100, #fafafa)
+  );
+  --mxi-color-border: var(--color-base-300, #e5e7eb);
+  /* The UI's contrast fix (commit 49675dc): the primary colour as a fill behind --mxi-color-primary-fg is mixed 80/20
+     with the theme's neutral (the dark theme's own primary measured 4.14:1 under its primary-content text; this is
+     5.9:1 there and 8.6:1 in light). */
+  --mxi-color-primary: color-mix(
+    in oklch,
+    var(--color-primary, #2563eb) 80%,
+    var(--color-neutral, #111827)
+  );
+  /* The primary colour as text (links): mixed 70/30 with the theme's text colour. The dark theme's primary measured
+     3.4:1 as link text; this is 5.6:1 in dark and 10.8:1 in light. */
+  --mxi-color-link: color-mix(
+    in oklch,
+    var(--color-primary, #2563eb) 70%,
+    var(--color-base-content, #111827)
+  );
+  --mxi-color-primary-fg: var(--color-primary-content, #ffffff);
+  --mxi-color-surface: var(--color-base-200, #ffffff);
+  --mxi-radius: var(--radius-field, 6px);
+  --mxi-spacing: 1rem;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  line-height: 1.55;
+  color: var(--mxi-color-fg);
+  background: var(--mxi-color-bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Lily TextSizePicker writes `data-text-size` on <html>; the same seven steps as the UI. */
+:root[data-text-size="smallest"] {
+  font-size: 75%;
+}
+:root[data-text-size="smaller"] {
+  font-size: 87.5%;
+}
+:root[data-text-size="small"] {
+  font-size: 93.75%;
+}
+:root[data-text-size="large"] {
+  font-size: 112.5%;
+}
+:root[data-text-size="larger"] {
+  font-size: 125%;
+}
+:root[data-text-size="largest"] {
+  font-size: 150%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--mxi-color-bg);
+  color: var(--mxi-color-fg);
+}
+
+a {
+  color: var(--mxi-color-link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+/* A link in running text must not rely on colour alone (WCAG 1.4.1). */
+main p a,
+main li a,
+main td a,
+main th a,
+footer p a {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--mxi-color-link);
+  outline-offset: 2px;
+}
+
+/* Rendered Markdown. Only logical properties (margin-inline, padding-inline, border-inline-start, text-align:
+   start), so a right-to-left page mirrors without a separate stylesheet. */
+.doc {
+  overflow-wrap: anywhere;
+}
+.doc h1,
+.doc h2,
+.doc h3,
+.doc h4 {
+  line-height: 1.25;
+  margin-block: 1.5em 0.5em;
+}
+.doc h1 {
+  margin-block-start: 0;
+}
+.doc ul,
+.doc ol {
+  padding-inline-start: 1.5em;
+}
+.doc blockquote {
+  margin-inline: 0;
+  padding-inline-start: 1em;
+  border-inline-start: 4px solid var(--mxi-color-border);
+  color: var(--mxi-color-muted);
+}
+.doc code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--mxi-color-surface);
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
+}
+.doc pre {
+  overflow-x: auto;
+  background: var(--mxi-color-surface);
+  border: 1px solid var(--mxi-color-border);
+  border-radius: var(--mxi-radius);
+  padding: 0.75em 1em;
+  /* Code reads left to right in every locale. */
+  direction: ltr;
+  text-align: left;
+}
+.doc pre code {
+  background: none;
+  padding: 0;
+  overflow-wrap: normal;
+}
+.doc .table-scroll {
+  overflow-x: auto;
+  margin-block: 1em;
+}
+.doc table {
+  border-collapse: collapse;
+}
+.doc th,
+.doc td {
+  border: 1px solid var(--mxi-color-border);
+  padding: 0.35em 0.6em;
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: normal;
+}
+.doc th {
+  background: var(--mxi-color-surface);
+}

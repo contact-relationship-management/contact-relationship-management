@@ -65,6 +65,12 @@
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/worldwide.md",
           "path": "spec/worldwide.md",
           "description": "The worldwide equity requirement and decision (proposed), the audit of the spec and the code, and its tasks."
+        },
+        {
+          "title": "GitHub Pages site",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/github-pages-site.md",
+          "path": "spec/github-pages-site.md",
+          "description": "The static documentation site built from these documents and the role briefs: pages, locales and direction, tests, and how it is published."
         }
       ]
     },
@@ -81,7 +87,7 @@
           "title": "Tasks",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/tasks.md",
           "path": "spec/tasks.md",
-          "description": "The delivery checklist (CRM-T0 to CRM-T163) with resolutions, verification and stated limits."
+          "description": "The delivery checklist (CRM-T0 to CRM-T178) with resolutions, verification and stated limits."
         },
         {
           "title": "Architecture",
@@ -247,6 +253,12 @@
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/README.md",
           "path": "contact-relationship-management-ui-with-svelte/README.md",
           "description": "Status, environment variables, stack, tests."
+        },
+        {
+          "title": "GitHub Pages site README",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management.github.io/README.md",
+          "path": "contact-relationship-management.github.io/README.md",
+          "description": "The documentation site: what it shows, the content copy, build and test, and the steps to publish it."
         },
         {
           "title": "UI agent guide",

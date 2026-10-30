@@ -5,6 +5,11 @@ extend-exclude = [
   "locales/**",
   "contact-relationship-management-ui-with-svelte/src/lib/locales/**",
   "contact-relationship-management-ui-with-svelte/src/lib/api/schema.d.ts",
+  # The site's copy of the documents (the briefs in every language) and its own installed packages.
+  "contact-relationship-management.github.io/src/content/**",
+  "contact-relationship-management.github.io/node_modules/**",
+  "contact-relationship-management.github.io/build/**",
+  "contact-relationship-management.github.io/.svelte-kit/**",
   "**/Cargo.lock",
   "**/pnpm-lock.yaml",
 ]

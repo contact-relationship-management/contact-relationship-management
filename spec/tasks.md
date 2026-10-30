@@ -1917,3 +1917,27 @@ Each task traces to CRM-R95 and CRM-D19 (both proposed) and names the rows of th
 - [ ] CRM-T176 **Seed and demo data in more than one shape.** (CRM-R95, CRM-D19; code row 43) The seed and the tour carry deals in at
       least one zero-exponent and one three-exponent currency, rates not all from GBP, and names in more than one order and script; the
       `pounds` helpers take minor units. (S)
+
+## GitHub Pages site ([github-pages-site.md](github-pages-site.md))
+
+- [x] CRM-T177 **A GitHub Pages documentation site, built here and not published.** (CRM-R95 for the locales and
+      direction; the family pattern of the workforce planning repository's `spec/monorepo-github-pages/`) (M)
+      **Done (2026-10-30, not published):** `contact-relationship-management.github.io/`, adapted from the project
+      portfolio site (its GP-1): SvelteKit 3 with `adapter-static` (137 prerendered pages), Svelte 5 runes, Lily
+      `ThemePicker`, `TextSizePicker` and, on the briefs, `LocalePicker` at the CRM UI's pinned versions. Pages from
+      README, INSTALL, the family-bridges tutorial, the spec index, the locale status and the 121 role briefs (11
+      locales); briefs matched across scripts by `.locale-peer-id`; the Arabic pages `dir="rtl"`; the site's own words in
+      the page's language by the UI's approach (English, Arabic, Welsh, Hindi, Chinese; machine drafts). Content copied
+      by `scripts/sync-content.mjs` (`--check` in CI). `make github-pages` runs `bin/make-github-pages` (checks, then
+      `git subtree push --prefix=contact-relationship-management.github.io github-pages main`); it was run once and
+      refused, as it should, for want of the remote. `scripts/ci-check.sh site` and the CI job `site`: content check,
+      svelte-check, build, 66 Playwright tests with axe (no violation of any impact, light and dark, right to left, the
+      locale switch). A Dependabot entry; the root README says what the owner must do to publish.
+      **Not done / not verified:** no `github-pages` remote, no exported repository, no push (CRM-T178); the deploy
+      workflow has never run and its Pages actions are pinned by tag; GitHub Pages serving the native-script paths;
+      the documents other than the briefs are English; the site's words in four languages are unreviewed; two themes;
+      axe on 11 of the 121 briefs.
+- [ ] CRM-T178 **Publish the site.** *(The owner's.)* Create
+      `contact-relationship-management/contact-relationship-management.github.io`, set its Pages source to GitHub Actions,
+      add the `github-pages` remote and run `make github-pages`; then check the deployed pages, the native-script paths
+      among them. Steps: the root README, "GitHub Pages site". (S)
