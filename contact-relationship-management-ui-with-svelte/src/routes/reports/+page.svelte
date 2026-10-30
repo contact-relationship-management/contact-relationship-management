@@ -17,6 +17,7 @@
     type ReportSpec,
   } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { formatDate, formatDateTime, formatDecimalText } from "#lib/locale-format.js";
 
   // What the service lets each kind be grouped and filtered by.
   const FIELDS: Record<ReportSpec["kind"], string[]> = {
@@ -240,7 +241,7 @@
 {#if result}
   <div class="panel" data-testid="report-result">
     <p class="muted">
-      {t("rpt.asOf")}: {new Date(result.as_of).toLocaleString(i18n.locale)}
+      {t("rpt.asOf")}: {formatDateTime(result.as_of)}
     </p>
     {#if result.rows.length === 0}
       <p data-testid="report-none">{t("rpt.none")}</p>
@@ -280,10 +281,10 @@
     {/if}
     {#if result.rates.length > 0}
       <p class="muted small" data-testid="report-rates">
-        {t("rpt.ratesUsed")}{result.rate_date ? ` (${result.rate_date})` : ""}:
-        {#each result.rates as used (`${used.from}|${used.effective_on}|${used.inverted}`)}
+        {t("rpt.ratesUsed")}{result.rate_date ? ` (${formatDate(result.rate_date)})` : ""}:
+        {#each result.rates as used ([used.from, used.effective_on, used.inverted].join("|"))}
           <span class="chip">
-            1 {used.from} = {used.rate} {used.to}, {used.effective_on}, {used.source}
+            1 {used.from} = {formatDecimalText(used.rate)} {used.to}, {formatDate(used.effective_on)}, {used.source}
             {#if used.inverted}({t("rpt.inverted")}){/if}
           </span>
         {/each}

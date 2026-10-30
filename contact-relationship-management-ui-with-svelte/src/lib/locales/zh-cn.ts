@@ -766,6 +766,7 @@ export default {
   "error.unavailable": "无法连接到服务，或服务不可用。请稍后重试。",
   "error.fieldInvalid": "未被接受。",
   "money.amountInvalid": "该金额不是本页面数字格式中的数字。",
+  "number.invalid": "这不是本页数字格式中的数字。",
   "money.currencyRequired": "请选择一种货币。系统不会默认任何货币。",
   "rpt.suppressed":
     "已省略 {count} 个记录少于 {min} 条的分组，以免从小数字中识别出个人。",

@@ -1523,7 +1523,10 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("report-result")).toBeVisible();
     await expect(page.getByTestId("report-error")).toHaveCount(0);
     // No one day stands for the answer, so none is shown beside the rates.
-    await expect(page.getByTestId("report-rates")).not.toContainText("(20");
+    // (A day is written in the page's format, "26 Oct 2026", so the check is for any bracketed date.)
+    await expect(page.getByTestId("report-rates")).not.toContainText(
+      /\(\d{1,2} \w+ \d{4}\)/,
+    );
   });
 
   test("quotas show where each worker stands, and a plan in use cannot be deleted", async ({

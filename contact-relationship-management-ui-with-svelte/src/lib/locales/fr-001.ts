@@ -815,6 +815,7 @@ export default {
   "error.fieldInvalid": "Non accepté.",
   "money.amountInvalid":
     "Ce montant n'est pas un nombre au format numérique de cette page.",
+  "number.invalid": "Ce n’est pas un nombre au format numérique de cette page.",
   "money.currencyRequired": "Choisissez une devise. Aucune n'est supposée.",
   "rpt.suppressed":
     "{count} groupes de moins de {min} enregistrements ont été omis, afin que personne ne puisse être reconnu à partir d'un petit nombre.",

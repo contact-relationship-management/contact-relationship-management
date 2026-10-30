@@ -15,6 +15,7 @@
   import { currencyCode, money } from "#lib/money.js";
   import { ratioPercent } from "#lib/format.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { formatDate, formatDecimalText } from "#lib/locale-format.js";
   import type { Campaign, Ratio, ReportRateUsed, ReportUnconverted } from "#lib/api/crm.js";
 
   const list = resource(listCampaigns);
@@ -225,11 +226,11 @@
         </p>
         {#if funnel.rates.length > 0}
           <p class="muted small" data-testid="funnel-rates">
-            {t("rpt.ratesUsed")}{funnel.rate_date ? ` (${funnel.rate_date})` : ""}:
-            {#each funnel.rates as used (`${used.from}|${used.effective_on}|${used.inverted}`)}
+            {t("rpt.ratesUsed")}{funnel.rate_date ? ` (${formatDate(funnel.rate_date)})` : ""}:
+            {#each funnel.rates as used ([used.from, used.effective_on, used.inverted].join("|"))}
               <span class="chip">
-                1 {used.from} = {used.rate}
-                {used.to}, {used.effective_on}, {used.source}
+                1 {used.from} = {formatDecimalText(used.rate)}
+                {used.to}, {formatDate(used.effective_on)}, {used.source}
                 {#if used.inverted}({t("rpt.inverted")}){/if}
               </span>
             {/each}

@@ -797,6 +797,7 @@ export default {
   "error.fieldInvalid": "Not accepted.",
   "money.amountInvalid":
     "That amount is not a number in this page's number format.",
+  "number.invalid": "That is not a number in this page's number format.",
   "money.currencyRequired": "Choose a currency. None is assumed.",
   "rpt.suppressed":
     "{count} groups with fewer than {min} records were left out, so that no one can be picked out from a small number.",

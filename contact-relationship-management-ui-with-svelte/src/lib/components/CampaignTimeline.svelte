@@ -14,11 +14,13 @@
   import type { Campaign } from "#lib/api/crm.js";
   import { criticalPath } from "#lib/critical-path.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { isoDateIn, todayIso } from "#lib/reader-calendar.js";
 
   let { campaigns }: { campaigns: Campaign[] } = $props();
 
-  const day = (iso: string) => iso.slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
+  // A timestamp's day and today are the reader's, in their own time zone (CRM-T172), not UTC's.
+  const day = (iso: string) => isoDateIn(new Date(iso));
+  const today = todayIso();
   const addDays = (iso: string, n: number) =>
     new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000)
       .toISOString()

@@ -8,12 +8,14 @@
   import { resource } from "#lib/resource.svelte.js";
   import { deleteFxRate, listFxRates, setFxRate } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
+  import { todayIso } from "#lib/reader-calendar.js";
+  import { formatDate, formatDecimalText, parseNumber } from "#lib/locale-format.js";
 
   // No pair is assumed (CRM-T168): the person types both codes.
   let from = $state("");
   let to = $state("");
   let rate = $state("");
-  let effectiveOn = $state(new Date().toISOString().slice(0, 10));
+  let effectiveOn = $state(todayIso());
   let source = $state("");
   let error = $state<string | null>(null);
 
@@ -22,11 +24,17 @@
 
   async function save() {
     error = null;
+    // A rate typed in the page's format ("0,86" in German) is sent as the API's decimal text.
+    const typed = parseNumber(rate);
+    if (typed === null) {
+      error = t("number.invalid");
+      return;
+    }
     try {
       await setFxRate({
         from: from.trim().toUpperCase(),
         to: to.trim().toUpperCase(),
-        rate: rate.trim(),
+        rate: String(typed),
         effective_on: effectiveOn,
         source,
       });
@@ -104,8 +112,8 @@
         <tr data-testid="fx-row">
           <td>{row.from}</td>
           <td>{row.to}</td>
-          <td>{row.rate}</td>
-          <td>{row.effective_on}</td>
+          <td>{formatDecimalText(row.rate)}</td>
+          <td>{formatDate(row.effective_on)}</td>
           <td>{row.source}</td>
           <td>{row.set_by}</td>
           <td>

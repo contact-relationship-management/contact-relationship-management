@@ -19,6 +19,7 @@
   } from "#lib/api/crm.js";
   import { minorToInput, minorToMajor, money, toMinor } from "#lib/money.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { formatDate, formatDecimalText } from "#lib/locale-format.js";
   import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
   import ViewBar from "#lib/components/ViewBar.svelte";
@@ -224,8 +225,8 @@
     <strong>{money(converted.value.converted_minor, converted.value.convert_to!, i18n.locale)}</strong>
     {#each converted.value.rates as used (used.from)}
       <span class="chip muted small">
-        1 {used.from} = {used.rate}
-        {used.to}, {used.effective_on}, {used.source}
+        1 {used.from} = {formatDecimalText(used.rate)}
+        {used.to}, {formatDate(used.effective_on)}, {used.source}
         {#if used.inverted}({t("rpt.inverted")}){/if}
       </span>
     {/each}

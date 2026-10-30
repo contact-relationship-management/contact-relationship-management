@@ -10,6 +10,7 @@
   import DataTable from "#lib/components/DataTable.svelte";
   import { cadence, engagementWorkload, membersHealth } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
+  import { formatDate } from "#lib/locale-format.js";
 
   type Cadence = Awaited<ReturnType<typeof cadence>>;
   type Workload = Awaited<ReturnType<typeof engagementWorkload>>;
@@ -92,7 +93,7 @@
       id: row.pid,
       account: row.display_name,
       membership: row.membership
-        ? `${row.membership.status} since ${row.membership.joined_on}`
+        ? `${row.membership.status} since ${formatDate(row.membership.joined_on)}`
         : "—",
       contacts: row.contacts,
       days: row.days_since_touch,

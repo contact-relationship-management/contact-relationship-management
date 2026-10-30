@@ -20,6 +20,7 @@
   import { money } from "#lib/money.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { stageLabel } from "#lib/format.js";
 
   const board = resource(async () => {
     const first = (await listPipelines())[0];
@@ -42,7 +43,7 @@
   });
 
   const columns = $derived<KanbanColumn[]>(
-    stages.map((s) => ({ id: s.pid, title: `${s.name} ${s.probability_percent}%` })),
+    stages.map((s) => ({ id: s.pid, title: stageLabel(s) })),
   );
   const cards = $derived<KanbanCard[]>(
     (deals ?? []).map((d) => ({

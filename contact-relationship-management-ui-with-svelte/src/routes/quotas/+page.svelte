@@ -4,7 +4,7 @@
   revenue in the quota's currency; other currencies are shown, never converted.
 -->
 <script lang="ts">
-  import { errorMessage } from "#lib/errors.js";
+  import { PageError, errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import { ratioPercent } from "#lib/format.js";
   import {
@@ -36,8 +36,22 @@
   } from "#lib/api/crm.js";
   import { formMinor, money } from "#lib/money.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import {
+    formatBasisPoints,
+    formatDate,
+    formatPercentValue,
+    parseNumber,
+    parseScaled,
+  } from "#lib/locale-format.js";
+  import { todayIso } from "#lib/reader-calendar.js";
 
-  const today = new Date().toISOString().slice(0, 10);
+  /** A number the person typed, or a translated refusal when it is not one in the page's format. */
+  function typedNumber(n: number | null): number {
+    if (n === null) throw new PageError(t("number.invalid"));
+    return n;
+  }
+
+  const today = todayIso();
 
   let planName = $state("");
   // One tier per line: "from_percent:rate_bps", e.g. "0:500" then "100:800".
@@ -67,8 +81,8 @@
           const at = line.lastIndexOf(":");
           return {
             owner_ref: line.slice(0, at).trim(),
-            // A percentage typed as 12.5 is 1250 basis points.
-            share_bps: Math.round(Number(line.slice(at + 1)) * 100),
+            // A percentage typed in the page's format (12.5, or 12,5 in German) is 1250 basis points.
+            share_bps: typedNumber(parseScaled(line.slice(at + 1), 2)),
           };
         });
       await setDealSplit(splitDeal, shares);
@@ -170,8 +184,8 @@
       .map((line) => line.trim())
       .filter(Boolean)
       .map((line) => {
-        const [from = NaN, rate = NaN] = line.split(":").map((part) => Number(part.trim()));
-        return { from_percent: from, rate_bps: rate };
+        const [from = "", rate = ""] = line.split(":");
+        return { from_percent: typedNumber(parseNumber(from)), rate_bps: typedNumber(parseNumber(rate)) };
       });
   }
 
@@ -306,8 +320,8 @@
       {#each quotaList as row (row.pid)}
         <tr data-testid="quota-row">
           <td>{row.owner_ref}</td>
-          <td>{row.period_from}</td>
-          <td>{row.period_to}</td>
+          <td>{formatDate(row.period_from)}</td>
+          <td>{formatDate(row.period_to)}</td>
           <td>{money(row.amount_minor, row.currency, i18n.locale)}</td>
           <td>{planName_(row.plan_pid)}</td>
           <td>
@@ -613,7 +627,9 @@
         <tr data-testid="plan-row">
           <td>{plan.name}</td>
           <td>
-            {plan.tiers.map((tier) => `${tier.from_percent}% → ${tier.rate_bps / 100}%`).join(", ")}
+            {plan.tiers
+              .map((tier) => `${formatPercentValue(tier.from_percent)} → ${formatBasisPoints(tier.rate_bps)}`)
+              .join(", ")}
           </td>
           <td>{plan.quotas}</td>
           <td>

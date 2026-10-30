@@ -3,7 +3,8 @@
   import DataTable from "#lib/components/DataTable.svelte";
   import { listBreakGlass, reviewBreakGlass } from "#lib/api/crm.js";
   import type { BreakGlassGrant } from "#lib/api/crm.js";
-  import { i18n, t } from "#lib/i18n.svelte.js";
+  import { t } from "#lib/i18n.svelte.js";
+  import { formatDateTime } from "#lib/locale-format.js";
   import { createIntents } from "#lib/intent.js";
 
   const MIN_NOTE = 10;
@@ -44,7 +45,7 @@
   }
 
   function when(value: string): string {
-    return new Date(value).toLocaleString(i18n.locale);
+    return formatDateTime(value);
   }
 
   let selectedPid = $state<string | null>(null);

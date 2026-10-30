@@ -805,6 +805,7 @@ export default {
   "error.fieldInvalid": "Heb ei dderbyn.",
   "money.amountInvalid":
     "Nid yw'r swm hwn yn rhif yn fformat rhifau'r dudalen hon.",
+  "number.invalid": "Nid yw hwnnw'n rhif yn fformat rhifau'r dudalen hon.",
   "money.currencyRequired": "Dewiswch arian cyfred. Ni thybir yr un.",
   "rpt.suppressed":
     "Gadawyd {count} grŵp â llai na {min} cofnod allan, fel na ellir adnabod neb o rif bach.",

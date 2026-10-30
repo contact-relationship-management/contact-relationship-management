@@ -807,6 +807,8 @@ export default {
   "error.fieldInvalid": "No aceptado.",
   "money.amountInvalid":
     "Ese importe no es un número en el formato numérico de esta página.",
+  "number.invalid":
+    "Eso no es un número en el formato numérico de esta página.",
   "money.currencyRequired": "Elija una moneda. No se presupone ninguna.",
   "rpt.suppressed":
     "Se omitieron {count} grupos con menos de {min} registros, para que nadie pueda identificarse a partir de una cifra pequeña.",

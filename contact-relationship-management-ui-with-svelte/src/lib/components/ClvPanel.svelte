@@ -8,6 +8,7 @@
   import { money } from "#lib/money.js";
   import { errorMessage } from "#lib/errors.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { formatBasisPoints, formatDateTime, parseNumber, parseScaled } from "#lib/locale-format.js";
 
   let { pid }: { pid: string } = $props();
 
@@ -26,20 +27,26 @@
     closeDay && !!convertTo.trim() && !margin.trim() && !retention.trim() && !fromHistory,
   );
 
-  /** A percentage typed as `12.5` is 1250 basis points. */
-  const bps = (percent: string) => Math.round(Number(percent) * 100);
+  /** A percentage typed in the page's format (`12.5`, or `12,5` in German) is 1250 basis points. */
+  const bps = (percent: string) => parseScaled(percent, 2);
 
   async function run() {
     error = null;
+    const typed = [margin, retention, discount].filter((x) => x.trim()).map(bps);
+    const typedYears = years.trim() ? parseNumber(years) : 0;
+    if (typed.includes(null) || typedYears === null) {
+      error = t("number.invalid");
+      return;
+    }
     try {
       result = await accountClv(pid, {
-        marginBps: margin.trim() ? bps(margin) : undefined,
-        retentionBps: !fromHistory && retention.trim() ? bps(retention) : undefined,
+        marginBps: margin.trim() ? (bps(margin) ?? undefined) : undefined,
+        retentionBps: !fromHistory && retention.trim() ? (bps(retention) ?? undefined) : undefined,
         retentionFromHistory: fromHistory,
         convertTo: convertTo.trim().toUpperCase() || undefined,
         rateBasis: closeDayAllowed ? "close_day" : undefined,
-        years: fromHistory || retention.trim() ? Number(years) : undefined,
-        discountBps: discount.trim() ? bps(discount) : undefined,
+        years: fromHistory || retention.trim() ? typedYears : undefined,
+        discountBps: discount.trim() ? (bps(discount) ?? undefined) : undefined,
       });
     } catch (cause) {
       error = errorMessage(cause);
@@ -100,7 +107,7 @@
           <p data-testid="clv-history-retention">
             {t("clv.historyRetention")}:
             {#each Object.entries(result.projection.retention_history_bps) as [currency, bps] (currency)}
-              <span class="chip">{currency} {bps === null ? "—" : `${bps / 100}%`}</span>
+              <span class="chip">{currency} {formatBasisPoints(bps)}</span>
             {/each}
           </p>
         {/if}
@@ -127,6 +134,6 @@
         </p>
       {/if}
     {/if}
-    <p class="muted small">{new Date(result.as_of).toLocaleString(i18n.locale)}</p>
+    <p class="muted small">{formatDateTime(result.as_of)}</p>
   {/if}
 </section>

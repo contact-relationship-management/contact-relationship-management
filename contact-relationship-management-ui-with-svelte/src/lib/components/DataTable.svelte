@@ -44,6 +44,7 @@
     DataGridSortDirection,
   } from "@lilydesignsystem/svelte-data-grid";
   import { i18n, t, type StringKey } from "#lib/i18n.svelte.js";
+  import { formatNumber } from "#lib/locale-format.js";
 
   // `kind` is one of "chip" | "flag" | "number" | "money" (a plain string so
   // pages can declare their columns without widening trouble).
@@ -190,10 +191,7 @@
     if (values.length === 0) return "";
     const sum = values.reduce((a, b) => a + b, 0);
     const value = c.total === "avg" ? sum / values.length : sum;
-    return `${t(c.total === "avg" ? "grid.average" : "grid.total")}: ${new Intl.NumberFormat(
-      i18n.locale,
-      { maximumFractionDigits: 1 },
-    ).format(value)}`;
+    return `${t(c.total === "avg" ? "grid.average" : "grid.total")}: ${formatNumber(value, { maximumFractionDigits: 1 })}`;
   }
 
   function activate(_row: DataGridRow, id: string) {

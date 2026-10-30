@@ -68,7 +68,7 @@
     findings.map((f, index) => ({ id: String(index), rule: f.rule, detail: f.detail })),
   );
   const trendColumns = [
-    { id: "taken", header: "Taken" },
+    { id: "taken", kind: "date", header: "Taken" },
     { id: "totals", header: "Totals" },
   ];
   const trendRows = $derived(

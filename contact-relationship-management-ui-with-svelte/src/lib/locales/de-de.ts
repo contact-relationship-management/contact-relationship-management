@@ -817,6 +817,7 @@ export default {
   "error.fieldInvalid": "Nicht angenommen.",
   "money.amountInvalid":
     "Dieser Betrag ist keine Zahl im Zahlenformat dieser Seite.",
+  "number.invalid": "Das ist keine Zahl im Zahlenformat dieser Seite.",
   "money.currencyRequired":
     "Wählen Sie eine Währung. Es wird keine angenommen.",
   "rpt.suppressed":

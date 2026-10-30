@@ -21,6 +21,7 @@
     type LinkKind,
   } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
+  import { formatNumber } from "#lib/locale-format.js";
 
   let { kind, pid }: { kind: LinkKind; pid: string } = $props();
 
@@ -36,8 +37,13 @@
   let busy = $state(false);
   let error = $state<string | null>(null);
 
+  // A file's size in the page's number format and unit names ("1,5 MB" in German).
   const size = (bytes: number) =>
-    bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+    bytes < 1024
+      ? formatNumber(bytes, { style: "unit", unit: "byte", unitDisplay: "short" })
+      : bytes < 1048576
+        ? formatNumber(bytes / 1024, { style: "unit", unit: "kilobyte", maximumFractionDigits: 0 })
+        : formatNumber(bytes / 1048576, { style: "unit", unit: "megabyte", maximumFractionDigits: 1 });
 
   async function pick(event: Event) {
     const input = event.currentTarget as HTMLInputElement;

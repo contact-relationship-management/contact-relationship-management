@@ -16,6 +16,8 @@
     type LeadImportPreview,
   } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
+  import { formatPercent } from "#lib/locale-format.js";
+  import { todayIso } from "#lib/reader-calendar.js";
 
   const MAX_BYTES = 1_000_000;
 
@@ -23,7 +25,7 @@
   let preview = $state<LeadImportPreview | null>(null);
   let mapping = $state<LeadImportMapping>({});
   let sourceNote = $state("");
-  let obtainedOn = $state(new Date().toISOString().slice(0, 10));
+  let obtainedOn = $state(todayIso());
   let skipDuplicates = $state(false);
   let done = $state<LeadImport | null>(null);
   let undone = $state<{ removed: number; kept: number } | null>(null);
@@ -93,7 +95,7 @@
       name: r.name ?? "",
       reason: r.reason ?? "",
       looks: r.likely_duplicates
-        .map((d) => `${d.name} (${Math.round(d.probability * 100)}%)`)
+        .map((d) => `${d.name} (${formatPercent(d.probability)})`)
         .join(", "),
     })),
   );

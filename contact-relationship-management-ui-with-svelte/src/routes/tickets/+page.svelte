@@ -14,6 +14,7 @@
   import { breachedCount, slaBreached } from "#lib/format.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { t } from "#lib/i18n.svelte.js";
+  import { formatDateTime } from "#lib/locale-format.js";
 
   /** The forward move(s) a ticket offers per status. */
   const NEXT: Record<string, string[]> = {
@@ -52,9 +53,7 @@
       priority: x.priority,
       status: x.status,
       channel: x.channel ?? "",
-      due: x.first_response_due_at
-        ? new Date(x.first_response_due_at).toLocaleString()
-        : "",
+      due: x.first_response_due_at ? formatDateTime(x.first_response_due_at) : "",
       breach: [
         slaBreached(x) ? t("ticket.breached") : x.paused_at ? t("ticket.paused") : "",
         x.wait_limit_exceeded_at ? t("ticket.waitExceeded") : "",

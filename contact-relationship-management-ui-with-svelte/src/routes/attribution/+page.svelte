@@ -8,6 +8,7 @@
   import { errorMessage } from "#lib/errors.js";
   import { attribution, type Attribution, type AttributionAmount } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { formatDate, formatDateTime, formatDecimalText } from "#lib/locale-format.js";
 
   let model = $state<"first" | "last" | "linear" | "time_decay" | "position">("linear");
   let windowDays = $state(90);
@@ -196,7 +197,7 @@
 {#if result}
   <div class="panel" data-testid="attribution-result">
     <p class="muted">
-      {t("attr.asOf")}: {new Date(result.as_of).toLocaleString(i18n.locale)} ·
+      {t("attr.asOf")}: {formatDateTime(result.as_of)} ·
       {t("attr.deals")}: {result.deals}
     </p>
     {#if result.campaigns.length === 0}
@@ -243,10 +244,10 @@
     {#if result.truncated}<p class="muted">{t("attr.truncated")}</p>{/if}
     {#if result.rates.length > 0}
       <p class="muted small" data-testid="attribution-rates">
-        {t("rpt.ratesUsed")}{result.rate_date ? ` (${result.rate_date})` : ""}:
-        {#each result.rates as used (`${used.from}|${used.effective_on}|${used.inverted}`)}
+        {t("rpt.ratesUsed")}{result.rate_date ? ` (${formatDate(result.rate_date)})` : ""}:
+        {#each result.rates as used ([used.from, used.effective_on, used.inverted].join("|"))}
           <span class="chip">
-            1 {used.from} = {used.rate} {used.to}, {used.effective_on}, {used.source}
+            1 {used.from} = {formatDecimalText(used.rate)} {used.to}, {formatDate(used.effective_on)}, {used.source}
             {#if used.inverted}({t("rpt.inverted")}){/if}
           </span>
         {/each}

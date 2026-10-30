@@ -19,6 +19,8 @@
     type RecordImportPreview,
   } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
+  import { formatPercent } from "#lib/locale-format.js";
+  import { todayIso } from "#lib/reader-calendar.js";
 
   let { kind }: { kind: ImportKind } = $props();
 
@@ -45,7 +47,7 @@
   let preview = $state<RecordImportPreview | null>(null);
   let mapping = $state<RecordImportMapping>({});
   let sourceNote = $state("");
-  let obtainedOn = $state(new Date().toISOString().slice(0, 10));
+  let obtainedOn = $state(todayIso());
   let skipDuplicates = $state(false);
   let done = $state<RecordImport | null>(null);
   let undone = $state<{ removed: number; kept: number } | null>(null);
@@ -116,7 +118,7 @@
       name: r.name ?? "",
       reason: r.reason ?? "",
       looks: r.likely_duplicates
-        .map((d) => `${d.name} (${Math.round(d.probability * 100)}%)`)
+        .map((d) => `${d.name} (${formatPercent(d.probability)})`)
         .join(", "),
     })),
   );

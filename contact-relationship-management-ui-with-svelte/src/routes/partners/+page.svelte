@@ -52,7 +52,7 @@
   const renewalColumns = [
     { id: "account", header: "Account" },
     { id: "status", header: "Status" },
-    { id: "renewal", header: "Renewal" },
+    { id: "renewal", kind: "date", header: "Renewal" },
   ];
   const renewalRows = $derived(
     (memberships?.renewals_due ?? []).map((row) => ({

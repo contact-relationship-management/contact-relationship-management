@@ -14,6 +14,8 @@
   } from "@lilydesignsystem/svelte-calendar";
   import { editFollowup, followups } from "#lib/api/crm.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { formatDate } from "#lib/locale-format.js";
+  import { browserLanguages, calendarLocale, todayIso, weekInfo } from "#lib/reader-calendar.js";
 
   let kindFilter = $state("");
   const list = resource(() => followups(kindFilter || undefined));
@@ -44,7 +46,12 @@
     })),
   );
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Today in the reader's own time zone, not UTC; the week's first day and weekend from CLDR for the
+  // reader's region (CRM-T172, as WPM-T378). The Lily calendar reads the first day from the locale
+  // tag, so it gets the page's locale with the CLDR `fw` keyword set; the weekend it takes as numbers.
+  const today = todayIso();
+  const week = $derived(weekInfo(i18n.locale, browserLanguages()));
+  const calendarTag = $derived(calendarLocale(i18n.locale, week));
   let view = $state<CalendarViewMode>("month");
   let anchorDate = $state(today);
 
@@ -69,7 +76,7 @@
       end: t("cal.exportEnd"),
     },
     eventMoveAnnouncement: (e: CalendarEvent, toDate: string) =>
-      t("cal.moved").replace("{title}", String(e.title ?? "")).replace("{date}", toDate),
+      t("cal.moved").replace("{title}", String(e.title ?? "")).replace("{date}", formatDate(toDate)),
     weekView: t("cal.week"),
     fourWeekView: t("cal.fourWeeks"),
     monthView: t("cal.month"),
@@ -77,7 +84,7 @@
     next: () => t("cal.next"),
     today: t("cal.today"),
     periodAnnouncement: (_v: CalendarViewMode, start: string, end: string) =>
-      t("cal.showing").replace("{start}", start).replace("{end}", end),
+      t("cal.showing").replace("{start}", formatDate(start)).replace("{end}", formatDate(end)),
     weekday: (wd: number) => fmt({ weekday: "long" }).format(weekdayDate(wd)),
     weekdayAbbr: (wd: number) =>
       fmt({ weekday: "short" }).format(weekdayDate(wd)),
@@ -155,10 +162,10 @@
       {events}
       {onEventMove}
       {today}
-      locale={i18n.locale}
+      locale={calendarTag}
       labels={calendarLabels}
       showWeekNumbers
-      weekendDays={[0, 6]}
+      weekendDays={week.weekend}
       maxEvents={3}
       exportFilename="follow-ups"
     >

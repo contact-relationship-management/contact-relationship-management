@@ -1,7 +1,8 @@
 <script lang="ts">
   import { errorMessage } from "#lib/errors.js";
   import { requestBreakGlass } from "#lib/api/crm.js";
-  import { i18n, t } from "#lib/i18n.svelte.js";
+  import { t } from "#lib/i18n.svelte.js";
+  import { formatDateTime } from "#lib/locale-format.js";
   import { createIntent } from "#lib/intent.js";
 
   const MIN_REASON = 20;
@@ -28,7 +29,7 @@
         intent.keyFor(content),
       );
       intent.done();
-      until = new Date(grant.expires_at).toLocaleString(i18n.locale);
+      until = formatDateTime(grant.expires_at);
       reason = "";
     } catch (cause) {
       error = errorMessage(cause);

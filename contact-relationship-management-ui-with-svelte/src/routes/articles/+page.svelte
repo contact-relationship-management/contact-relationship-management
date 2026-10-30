@@ -3,6 +3,7 @@
   import DataTable from "#lib/components/DataTable.svelte";
   import { articleStatus, kbDeflection, listArticles } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
+  import { formatPercent } from "#lib/locale-format.js";
   import type { Article } from "#lib/api/crm.js";
 
   let query = $state("");
@@ -21,7 +22,7 @@
   const deflection = resource(() => kbDeflection(30));
   const stats = $derived(deflection.value);
   const percent = (r: { value: number | null }) =>
-    r.value === null ? "—" : `${Math.round(r.value * 100)}%`;
+    formatPercent(r.value);
 
   let selectedPid = $state<string | null>(null);
   const selected = $derived(

@@ -12,7 +12,8 @@
     notifications,
     type Notification,
   } from "#lib/api/crm.js";
-  import { i18n, t } from "#lib/i18n.svelte.js";
+  import { t } from "#lib/i18n.svelte.js";
+  import { formatDateTime } from "#lib/locale-format.js";
 
   let unreadOnly = $state(false);
   const inbox = resource(() => notifications(unreadOnly), { keepWhileLoading: true });
@@ -33,10 +34,7 @@
     };
     return base[n.subject_kind] ? `/${base[n.subject_kind]}/${n.subject_pid}` : null;
   };
-  const when = (iso: string) =>
-    new Intl.DateTimeFormat(i18n.locale, { dateStyle: "medium", timeStyle: "short" }).format(
-      new Date(iso),
-    );
+  const when = (iso: string) => formatDateTime(iso);
 
   async function act(work: () => Promise<unknown>) {
     actionError = null;

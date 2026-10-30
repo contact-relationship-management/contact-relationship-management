@@ -24,6 +24,7 @@
   } from "#lib/api/crm.js";
   import { money } from "#lib/money.js";
   import { i18n, t } from "#lib/i18n.svelte.js";
+  import { formatDate, formatDateTime, formatPercent } from "#lib/locale-format.js";
 
   let actionError = $state<string | null>(null);
 
@@ -165,9 +166,7 @@
   // Rounded down, so a near-certain match never reads as "100%": only a
   // shared person record is certain.
   const percent = (d: Duplicate) =>
-    new Intl.NumberFormat(i18n.locale, { style: "percent", maximumFractionDigits: 0 }).format(
-      d.deterministic ? 1 : Math.floor(d.probability * 100) / 100,
-    );
+    formatPercent(d.deterministic ? 1 : Math.floor(d.probability * 100) / 100);
   // Only fields the CRM can supply are named; the matcher also reports phone,
   // which is always missing here.
   const FIELD_LABELS = {
@@ -271,7 +270,7 @@
     (detail?.activities ?? []).map((a) => ({
       id: a.pid,
       at: a.occurred_at,
-      when: new Date(a.occurred_at).toLocaleString(),
+      when: formatDateTime(a.occurred_at),
       kind: a.kind,
       summary: a.summary,
     })),
@@ -315,7 +314,7 @@
     {#each detail.employments ?? [] as job (job.organization_ref)}
       <p data-testid="employment">
         <span class="chip">{t("contact.employee")}</span>
-        {job.organization_ref} · {job.since}
+        {job.organization_ref} · {formatDate(job.since)}
       </p>
     {/each}
     {#if detail.contact.marketing_consent === "granted"}
@@ -455,7 +454,7 @@
         {#each merges as entry (entry.merged_pid)}
           <li data-testid="merged-entry">
             {entry.merged_name} · {t("contact.mergedOn")}
-            {new Date(entry.merged_at).toLocaleDateString(i18n.locale)}
+            {formatDate(entry.merged_at)}
             {#if entry.undoable}
               <button
                 onclick={() => void startUndo(entry)}

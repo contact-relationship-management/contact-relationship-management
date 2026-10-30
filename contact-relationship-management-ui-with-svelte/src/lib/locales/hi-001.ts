@@ -799,6 +799,7 @@ export default {
   "error.fieldInvalid": "स्वीकार नहीं किया गया।",
   "money.amountInvalid":
     "यह राशि इस पृष्ठ के संख्या प्रारूप में कोई संख्या नहीं है।",
+  "number.invalid": "यह इस पृष्ठ के संख्या प्रारूप में कोई संख्या नहीं है।",
   "money.currencyRequired":
     "कोई मुद्रा चुनें। कोई भी मुद्रा मानकर नहीं चली जाती।",
   "rpt.suppressed":

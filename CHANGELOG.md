@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — the UI's dates, numbers, percentages and week follow the reader's locale (CRM-T172, 2026-10-30)
+
+One formatter (`locale-format.ts`) and one calendar module (`reader-calendar.ts`) in the UI, shared in behaviour with the workforce planning UI's: numbers, percentages and dates in the page's locale, typed numbers with the locale's decimal mark, today in the reader's time zone, and the week's first day and weekend from CLDR for the reader's region. A scan test fails on hand-rolled formatting. **Not done:** the service's "today" and an organization time zone (CRM-T171). Details: the [UI changelog](contact-relationship-management-ui-with-svelte/CHANGELOG.md).
+
 ### Changed — the Pages site's deploy actions pinned by commit; TypeScript 7 held back there too (maintenance, 2026-10-30)
 
 The site's `deploy.yml` now pins `actions/configure-pages` v6.0.0, `actions/upload-pages-artifact` v5.0.0 and `actions/deploy-pages` v5.0.1 to their commit SHAs with the tag in a comment, the workforce planning site's pins and the latest releases (published 2026-03-25, 2026-04-10 and 2026-09-01, so past the week's cooldown); before they were the tags v5, v3 and v4. The upload action's v4 drops dotfiles from the artifact; the build has none. The site's README and spec say so. Dependabot's first site PR (#32) was TypeScript 6.0.3 to 7.0.2 only, and `pnpm outdated` lists nothing else: with 7.0.2 in a scratch copy, `svelte-kit sync` (SvelteKit 3.1) fails with "Cannot read properties of undefined (reading 'readFile')" in `load_tsconfig`, so check and build both fail. The PR is left open with that reason and the lockfile is unchanged. **Gates run locally:** the content check, svelte-check, build, the 66 Playwright tests with axe, and `scripts/ci-check.sh lint`. **Not done or verified:** the deploy workflow has still never run; Dependabot does not watch it (the `github-actions` entry covers the root `.github` only); zizmor still flags its workflow-level `pages: write` and `id-token: write` (as in the workforce planning site); no Dependabot ignore rule was added for TypeScript 7.

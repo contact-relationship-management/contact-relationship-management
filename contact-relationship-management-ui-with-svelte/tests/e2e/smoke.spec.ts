@@ -830,7 +830,7 @@ test.describe("signed-in smoke coverage", () => {
       page.getByTestId("partnership-register").getByText("Joint ML lab"),
     ).toBeVisible();
     await expect(
-      page.getByTestId("membership-renewals").getByText("2026-08-01"),
+      page.getByTestId("membership-renewals").getByText("1 Aug 2026"),
     ).toBeVisible();
   });
 });
@@ -902,7 +902,7 @@ test.describe("contact subject rights", () => {
     await page.goto("/contacts/c1");
     const employment = page.getByTestId("employment");
     await expect(employment).toContainText("Employee — marketing paused");
-    await expect(employment).toContainText("2026-11-02");
+    await expect(employment).toContainText("2 Nov 2026");
   });
 
   test("a contact with no employment shows no pause", async ({ page }) => {
@@ -1132,7 +1132,7 @@ test.describe("masked amounts (CRM-T32)", () => {
     await expect(page.getByTestId("funnel")).toContainText("£1,160.00");
     expect(asked.at(-1)).toContain("convert=true");
     await expect(page.getByTestId("funnel-rates")).toContainText(
-      "(2026-10-26)",
+      "(26 Oct 2026)",
     );
     // Each deal at the rate of the day it closed: the request says so, and no one day is shown.
     await page.getByTestId("funnel-close-day").check();
@@ -1140,7 +1140,9 @@ test.describe("masked amounts (CRM-T32)", () => {
     await expect(page.getByTestId("funnel-rates")).toContainText(
       "1 USD = 0.8 GBP",
     );
-    await expect(page.getByTestId("funnel-rates")).not.toContainText("(20");
+    await expect(page.getByTestId("funnel-rates")).not.toContainText(
+      "(26 Oct 2026)",
+    );
     await page.getByTestId("funnel-convert").uncheck();
     await expect(page.getByTestId("funnel-close-day")).toBeDisabled();
   });

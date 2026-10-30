@@ -34,3 +34,5 @@ wrk = "wrk"
 # ISO 4217: the Jordanian dinar code, and the fils, the dinar's minor unit (CRM-T167).
 jod = "jod"
 fils = "fils"
+# German test data: "Oktober" is the German month name a German date is checked against (CRM-T172).
+oktober = "oktober"
