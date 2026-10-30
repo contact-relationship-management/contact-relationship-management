@@ -1,12 +1,19 @@
 # Postgres for this service's DB-gated test suite.
 #
-#   scripts/test-db.sh up   contact-relationship-management/contact-relationship-management-service-with-rust
-#   scripts/ci-check.sh test-db contact-relationship-management/contact-relationship-management-service-with-rust
-#   scripts/test-db.sh down contact-relationship-management/contact-relationship-management-service-with-rust
+#   podman compose -f compose.test.yaml up -d --wait   # from this directory
+#   scripts/ci-check.sh test-db                         # from the repository root
+#   podman compose -f compose.test.yaml down
 #
-# Podman, not Docker (agents/share/rust-loco-stack.md). The file is plain
-# Compose spec, so `podman compose -f compose.test.yaml up -d` drives it
-# directly if you would rather not use the script.
+# Podman, not Docker (agents/share/rust-loco-stack.md). There is no wrapper
+# script: the file is plain Compose spec, and `--wait` waits on the health
+# checks below. A local PostgreSQL instead of this file works too:
+# `scripts/ci-check.sh test-db` reads PG_HOST, PG_PORT, PG_USER and
+# PG_PASSWORD, so a server without the `loco` role takes
+# `PG_USER=postgres PG_PASSWORD=<its password>` (a superuser, for the
+# extensions). The stage drops and recreates its own `ci_*` database each run.
+# Seen on macOS: three webhook request tests failed against this container
+# and passed against a local PostgreSQL, likely because the podman VM's clock
+# runs a few milliseconds ahead of the host's.
 #
 # The connection details deliberately match what CI provides
 # (.github/workflows/ci.yml `test-db`): superuser `loco`/`loco` on 5432.
@@ -27,7 +34,8 @@ services:
       POSTGRES_DB: contact_relationship_management_test
     ports:
       # Override to run two services' databases side by side:
-      #   TEST_DB_PORT=5433 scripts/test-db.sh up <crate>
+      #   TEST_DB_PORT=5433 podman compose -f compose.test.yaml up -d --wait
+      # (then PG_PORT=5433 scripts/ci-check.sh test-db)
       - "${TEST_DB_PORT:-5432}:5432"
     volumes:
       # One shared init script rather than a copy per service; it enables
@@ -42,7 +50,7 @@ services:
       # every `up` should start from a clean initdb.
       - /var/lib/postgresql
     healthcheck:
-      # `scripts/test-db.sh up` waits on this, so a test run cannot start
+      # `up --wait` waits on this, so a test run cannot start
       # against a database that is still initialising.
       test: ["CMD-SHELL", "pg_isready -U loco -d contact_relationship_management_test"]
       interval: 2s

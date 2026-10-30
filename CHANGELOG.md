@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — `compose.test.yaml` names commands that exist (maintenance, 2026-10-30)
+
+The file and `scripts/ci-check.sh` pointed at a `scripts/test-db.sh` that was never added. They now give `podman compose -f compose.test.yaml up -d --wait`, `scripts/ci-check.sh test-db` and `down`, and say that a local PostgreSQL without the `loco` role works with `PG_USER=postgres` (the stage already reads `PG_*` and makes its own `ci_*` database). No script was added: only these comments named it, the README and INSTALL.md already use `podman compose`, and the stage already does what the script would. Checked: `up -d --wait` on ports 5433 and 6380, then `PG_PORT=5433 REDIS_PORT=6380 scripts/ci-check.sh test-db` (208 passed, 3 webhook tests failed; those 8 webhook tests pass against a local PostgreSQL, so likely the podman VM's clock, not investigated further), and `PG_USER=postgres REDIS_PORT=6380 scripts/ci-check.sh test-db` on a local PostgreSQL 18.4 (all 218 passed). **Not done:** the stage leaves its `ci_*` database behind, as before; nothing was run on Linux or with Docker.
+
 ### Fixed — the UI's default `CRM_API_URL` reaches the service (maintenance, 2026-10-30)
 
 The default and `.env.example` are now `http://localhost:5150/api`, the base the BFF proxy needs, so a default local setup reaches the service; a trailing slash is dropped and no `/api` is added to a value without it. A unit test pins the default and the upstream URL; INSTALL.md and the UI README say so. **Not verified:** the proxy against a running service.
