@@ -569,8 +569,14 @@ body.kiosk button {
   border: 1px solid currentColor;
   overflow: hidden;
 }
+/* A day outside the shown month: a dashed border and a light, italic day number. Not opacity,
+   which faded its events below the WCAG AA contrast ratio (4.35:1 on a weekend). */
 .calendar-view-table td[data-outside-period] {
-  opacity: 0.6;
+  border-style: dashed;
+}
+.calendar-view-table td[data-outside-period] .calendar-day-number {
+  font-weight: 400;
+  font-style: italic;
 }
 .calendar-view-table td[aria-selected="true"],
 .calendar-view-table td[data-selected] {

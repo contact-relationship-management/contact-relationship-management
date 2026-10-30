@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `/followups` passes the WCAG AA contrast check again (CRM-R77)
+
+A calendar day outside the shown month was drawn at 60% opacity, which faded a follow-up on a weekend in it to 4.35:1 (#747476 on #f7f7f7), under AA's 4.5:1, and the axe gate on `/followups` failed. Such a day now has a dashed border and a light, italic day number instead, at full contrast. The a11y suite (40 pages) and the whole Playwright run pass. Checked in the default light theme only; the other Lily themes and dark mode were not scanned.
+
 ### Changed — dependency update (maintenance, 2026-10-30)
 
 `pnpm update` (svelte 5.57.3, typescript-eslint 8.72.1, @types/node 26.6.6); `@lilydesignsystem/svelte-locale-translations` 0.4.0 and `@lilydesignsystem/svelte-picker-bar` 0.5.1, still pinned exactly. Check, vitest, build, lint and Playwright pass. **Held back:** TypeScript 7.0.2, which `svelte-kit sync` (SvelteKit 3.1.0) cannot load the tsconfig with, and which openapi-typescript 7.13 does not support (it asks for ^5). Not run: the image build.
