@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — the worker service's events are put in order (CRM-T159, CRM-R93)
+
+A hire or leave from WPM that is older (by `occurred_at`, then `effective_on`) than the last one applied for the same person and organization is answered `stale` and changes nothing, so a hire retried after the leave that followed it no longer pauses the contact again. The last kind and time are kept per person and organization while the person is a contact, shown in the subject-access export, deleted on erasure and pruned after a leave.
+
+**Not done or not verified:** not run against a running WPM; an event arriving after the leave's row was pruned (30 days by default, WPM retries for about two) is not ordered; a hire or leave without `occurred_at` is now `422`.
+
 ### Added — the worker service's hire and leave events pause marketing (CRM-T158, CRM-R92)
 
 `POST /api/bridges/wpm/events` takes WPM's signed `worker_hired`, `worker_terminated` and `worker_retired` events (`CRM_WPM_WEBHOOK_SECRET`; `404` while unset). A hire marks the contacts with that `person_ref` employees of the organization, which leaves them out of segments, campaigns and nurture steps; a leave lifts it under the consent they already had. Applied once per event id, audited with `via: wpm`, shown on the contact's page. The spec has a "Family bridges" table in integrations.md, CRM-D15, and the DPIA, inventory and record of processing cover the new data.

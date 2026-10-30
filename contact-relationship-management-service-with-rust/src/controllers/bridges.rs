@@ -259,7 +259,9 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
 pub(crate) struct WpmEventView {
     /// `paused` (a hire marked contacts as employees), `already_paused`, `resumed` (a leave lifted
     /// the pause), `not_paused`, `no_contact` (no live contact carries the person), `duplicate`
-    /// (this event id was received before; nothing changed), or `ignored`.
+    /// (this event id was received before; nothing changed), `stale` (a hire or leave older than
+    /// the last one applied for the same person and organization; nothing changed, CRM-R93), or
+    /// `ignored`.
     result: &'static str,
     /// Why an event was ignored: `no_data` (a WPM from before WPM-R207), `not_used` or
     /// `unknown_kind`; `null` otherwise.
@@ -281,6 +283,7 @@ pub(crate) struct WpmEventPayload {
     /// `worker_hired`, `worker_terminated` and `worker_retired` are acted on; any other is
     /// acknowledged and ignored.
     kind: String,
+    /// RFC 3339. Orders a hire or leave against the last one applied (CRM-R93); required for them.
     occurred_at: String,
     /// `worker:<pid>`; not read.
     subject: String,
@@ -293,7 +296,8 @@ pub(crate) struct WpmEventPayload {
 /// `POST /api/bridges/wpm/events` — a hire or leave event from the worker service (CRM-R92).
 /// `404` while `CRM_WPM_WEBHOOK_SECRET` is unset; `401` for a missing, wrong or stale
 /// `x-wpm-signature`; `400` for a body that is not an event; `413` past 16 KiB; `422` for a hire or
-/// leave whose `data` is malformed. Every other event answers `200` with what it did, so WPM does
+/// leave whose `data` or `occurred_at` is malformed. A hire or leave older than the last one applied
+/// for its person and organization is `stale` and changes nothing (CRM-R93). Every other event answers `200` with what it did, so WPM does
 /// not retry one the CRM was right to ignore; a repeated `id` changes nothing.
 #[debug_handler]
 async fn wpm_event(
@@ -338,51 +342,7 @@ async fn wpm_event(
         Decision::Ignored(why) => ("ignored", Some(*why), 0),
         Decision::Hired(h) | Decision::Left(h) => {
             let hired = matches!(decision, Decision::Hired(_));
-            let pids = employments::contacts_of(&txn, &h.person_ref).await?;
-            let mut changed = 0;
-            for pid in &pids {
-                let done = if hired {
-                    employments::record(
-                        &txn,
-                        *pid,
-                        &h.person_ref,
-                        &h.organization_ref,
-                        h.effective_on,
-                        &event.id,
-                    )
-                    .await?
-                } else {
-                    employments::end(&txn, *pid, &h.organization_ref).await?
-                };
-                if done {
-                    changed += 1;
-                    Audit::record(
-                        &txn,
-                        "contact",
-                        *pid,
-                        if hired {
-                            "employment_recorded"
-                        } else {
-                            "employment_ended"
-                        },
-                        None,
-                        Some(serde_json::json!({
-                            "via": "wpm",
-                            "organization_ref": h.organization_ref,
-                            "effective_on": h.effective_on,
-                            "event_id": event.id,
-                        })),
-                    )
-                    .await?;
-                }
-            }
-            let result = match (pids.is_empty(), hired, changed > 0) {
-                (true, ..) => "no_contact",
-                (false, true, true) => "paused",
-                (false, true, false) => "already_paused",
-                (false, false, true) => "resumed",
-                (false, false, false) => "not_paused",
-            };
+            let (result, changed) = apply_handoff(&txn, hired, h, &event.id).await?;
             (result, None, changed)
         }
     };
@@ -393,6 +353,84 @@ async fn wpm_event(
         reason,
         contacts: changed,
     })
+}
+
+/// Apply a hire (`hired`) or leave to the live contacts carrying its person (CRM-R92), unless an
+/// event at least as new has been applied for that person and organization (CRM-R93: `stale`).
+/// The result and how many contacts changed.
+async fn apply_handoff<C: ConnectionTrait>(
+    txn: &C,
+    hired: bool,
+    h: &crate::rules::wpm_events::Handoff,
+    event_id: &str,
+) -> Result<(&'static str, usize)> {
+    use crate::models::employments;
+    let pids = employments::contacts_of(txn, &h.person_ref).await?;
+    if pids.is_empty() {
+        // Nothing is kept about a person who is not a contact, not even the order.
+        return Ok(("no_contact", 0));
+    }
+    employments::lock_order(txn, &h.person_ref, &h.organization_ref).await?;
+    let last = employments::last_applied(txn, &h.person_ref, &h.organization_ref).await?;
+    if crate::rules::wpm_events::is_stale(last, h.stamp()) {
+        return Ok(("stale", 0));
+    }
+    employments::note_applied(
+        txn,
+        &h.person_ref,
+        &h.organization_ref,
+        if hired { "hired" } else { "left" },
+        h.stamp(),
+        event_id,
+    )
+    .await?;
+    let mut changed = 0;
+    for pid in &pids {
+        let done = if hired {
+            employments::record(
+                txn,
+                *pid,
+                &h.person_ref,
+                &h.organization_ref,
+                h.effective_on,
+                event_id,
+            )
+            .await?
+        } else {
+            employments::end(txn, *pid, &h.organization_ref).await?
+        };
+        if done {
+            changed += 1;
+            Audit::record(
+                txn,
+                "contact",
+                *pid,
+                if hired {
+                    "employment_recorded"
+                } else {
+                    "employment_ended"
+                },
+                None,
+                Some(serde_json::json!({
+                    "via": "wpm",
+                    "organization_ref": h.organization_ref,
+                    "effective_on": h.effective_on,
+                    "occurred_at": h.occurred_at,
+                    "event_id": event_id,
+                })),
+            )
+            .await?;
+        }
+    }
+    Ok((
+        match (hired, changed > 0) {
+            (true, true) => "paused",
+            (true, false) => "already_paused",
+            (false, true) => "resumed",
+            (false, false) => "not_paused",
+        },
+        changed,
+    ))
 }
 
 /// The routes.

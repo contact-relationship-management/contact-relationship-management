@@ -25,17 +25,36 @@ impl Drop for Restore {
 }
 
 fn event(id: &str, kind: &str, person_ref: &str, data: bool) -> String {
+    event_at(
+        id,
+        kind,
+        person_ref,
+        data,
+        "2026-10-30T12:00:00Z",
+        "2026-11-02",
+    )
+}
+
+/// An event recorded by WPM at `occurred_at`, taking effect on `effective_on` (CRM-R93).
+fn event_at(
+    id: &str,
+    kind: &str,
+    person_ref: &str,
+    data: bool,
+    occurred_at: &str,
+    effective_on: &str,
+) -> String {
     let mut body = json!({
         "id": id,
         "kind": kind,
-        "occurred_at": "2026-10-30T12:00:00Z",
+        "occurred_at": occurred_at,
         "subject": format!("worker:{}", uuid::Uuid::new_v4()),
     });
     if data {
         body["data"] = json!({
             "person_ref": person_ref,
             "organization_ref": ORG,
-            "effective_on": "2026-11-02",
+            "effective_on": effective_on,
         });
         if kind != "worker_hired" {
             body["data"]["from"] = json!("active");
@@ -389,6 +408,11 @@ async fn erasing_a_contact_deletes_what_wpm_said_of_them() {
             .await
             .json();
         assert_eq!(export["employments"][0]["organization_ref"], ORG);
+        assert_eq!(
+            export["employment_last_events"],
+            json!([{ "organization_ref": ORG, "kind": "hired",
+                     "occurred_at": "2026-10-30T12:00:00Z", "effective_on": "2026-11-02" }])
+        );
         request
             .post(&format!("/api/contacts/{ada}/erase"))
             .await
@@ -406,6 +430,201 @@ async fn erasing_a_contact_deletes_what_wpm_said_of_them() {
             count(&ctx.db, "SELECT count(*) AS n FROM contact_employments").await,
             0
         );
+        // The order of their events goes too (CRM-R93).
+        assert_eq!(
+            count(&ctx.db, "SELECT count(*) AS n FROM employment_last_events").await,
+            0
+        );
+        assert_eq!(
+            count(
+                &ctx.db,
+                "SELECT count(*) AS n FROM audit_logs WHERE action = 'erased' \
+                 AND (snapshot->>'employment_last_events_deleted')::int = 1"
+            )
+            .await,
+            1
+        );
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_hire_older_than_the_leave_after_it_changes_nothing() {
+    let _restore = Restore;
+    settings::update(|s| s.wpm_webhook_secret = Some(SECRET.to_string()));
+    request::<App, _, _>(|request, ctx| async move {
+        let ada = seed_contact!(&request, "Ada Lovelace").await;
+        let detail: Value = request.get(&format!("/api/contacts/{ada}")).await.json();
+        let person = detail["contact"]["person_ref"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let employments = || async {
+            request
+                .get(&format!("/api/contacts/{ada}"))
+                .await
+                .json::<Value>()["employments"]
+                .clone()
+        };
+        let hire = |id: &str| {
+            event_at(
+                id,
+                "worker_hired",
+                &person,
+                true,
+                "2026-10-30T09:00:00Z",
+                "2026-11-02",
+            )
+        };
+        let leave = event_at(
+            "e-leave",
+            "worker_terminated",
+            &person,
+            true,
+            "2026-10-30T15:00:00Z",
+            "2026-11-30",
+        );
+
+        // Hire, then leave: paused, then resumed.
+        let hired: Value = deliver!(&request, hire("e-hire")).json();
+        assert_eq!(hired["result"], "paused");
+        let left: Value = deliver!(&request, leave.clone()).json();
+        assert_eq!(left["result"], "resumed");
+        assert_eq!(employments().await, json!([]));
+
+        // The hire retried: its id was applied, so nothing changes.
+        let retried: Value = deliver!(&request, hire("e-hire")).json();
+        assert_eq!(retried["result"], "duplicate");
+        // The same hire under an id the CRM has not seen (its first delivery lost, or sent twice by
+        // WPM): older than the leave, so it changes nothing, and is kept as stale.
+        let late: Value = deliver!(&request, hire("e-hire-late")).json();
+        assert_eq!(
+            late,
+            json!({ "result": "stale", "reason": null, "contacts": 0 })
+        );
+        assert_eq!(employments().await, json!([]), "the leave stands");
+        assert_eq!(
+            count(
+                &ctx.db,
+                "SELECT count(*) AS n FROM wpm_events WHERE event_id = 'e-hire-late' \
+                 AND outcome = 'stale'"
+            )
+            .await,
+            1
+        );
+        assert_eq!(
+            count(
+                &ctx.db,
+                "SELECT count(*) AS n FROM audit_logs WHERE action = 'employment_recorded'"
+            )
+            .await,
+            1,
+            "only the first hire was audited"
+        );
+
+        // Within one second the later effective day wins: a hire recorded in the leave's second
+        // but taking effect earlier is stale; one taking effect later is a rehire.
+        let same_second = |id: &str, on: &str| {
+            event_at(
+                id,
+                "worker_hired",
+                &person,
+                true,
+                "2026-10-30T15:00:00Z",
+                on,
+            )
+        };
+        let earlier: Value = deliver!(&request, same_second("e-tie-1", "2026-11-29")).json();
+        assert_eq!(earlier["result"], "stale");
+        let rehire: Value = deliver!(&request, same_second("e-tie-2", "2026-12-01")).json();
+        assert_eq!(rehire["result"], "paused");
+        assert_eq!(
+            employments().await,
+            json!([{ "organization_ref": ORG, "since": "2026-12-01" }])
+        );
+        // Now the leave, delivered again under a new id, is older than the rehire.
+        let old_leave = leave.replace("e-leave", "e-leave-again");
+        let again: Value = deliver!(&request, old_leave).json();
+        assert_eq!(again["result"], "stale");
+        assert_eq!(employments().await.as_array().unwrap().len(), 1);
+
+        // A newer leave lifts it. The order is kept once per person and organization.
+        let final_leave: Value = deliver!(
+            &request,
+            event_at(
+                "e-leave-2",
+                "worker_retired",
+                &person,
+                true,
+                "2026-12-31T08:00:00Z",
+                "2026-12-31"
+            )
+        )
+        .json();
+        assert_eq!(final_leave["result"], "resumed");
+        assert_eq!(
+            count(
+                &ctx.db,
+                "SELECT count(*) AS n FROM employment_last_events WHERE kind = 'left' \
+                 AND event_id = 'e-leave-2'"
+            )
+            .await,
+            1
+        );
+        assert_eq!(
+            count(&ctx.db, "SELECT count(*) AS n FROM employment_last_events").await,
+            1
+        );
+
+        // A leave that arrives before an older hire it follows (the hire's delivery late): the
+        // hire, when it comes, is stale; and a person who is not a contact leaves no order behind.
+        let grace = seed_contact!(&request, "Grace Hopper").await;
+        let detail: Value = request.get(&format!("/api/contacts/{grace}")).await.json();
+        let grace_person = detail["contact"]["person_ref"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let first: Value = deliver!(
+            &request,
+            event_at(
+                "g-leave",
+                "worker_terminated",
+                &grace_person,
+                true,
+                "2026-10-30T15:00:00Z",
+                "2026-11-30"
+            )
+        )
+        .json();
+        assert_eq!(first["result"], "not_paused");
+        let then: Value = deliver!(
+            &request,
+            event_at(
+                "g-hire",
+                "worker_hired",
+                &grace_person,
+                true,
+                "2026-10-30T09:00:00Z",
+                "2026-11-02"
+            )
+        )
+        .json();
+        assert_eq!(then["result"], "stale");
+        let stranger: Value =
+            deliver!(&request, event("s-hire", "worker_hired", &a_person(), true)).json();
+        assert_eq!(stranger["result"], "no_contact");
+        assert_eq!(
+            count(&ctx.db, "SELECT count(*) AS n FROM employment_last_events").await,
+            2,
+            "Ada's and Grace's, nobody else's"
+        );
+
+        // A hire or leave without a time it occurred is refused, as other malformed data is.
+        let mut untimed: Value = serde_json::from_str(&hire("e-untimed")).unwrap();
+        untimed.as_object_mut().unwrap().remove("occurred_at");
+        assert_eq!(deliver!(&request, untimed.to_string()).status_code(), 422);
     })
     .await;
 }

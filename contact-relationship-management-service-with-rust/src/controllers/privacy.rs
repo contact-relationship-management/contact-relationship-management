@@ -71,6 +71,9 @@ pub(crate) struct SubjectAccessExport {
     tags: Vec<String>,
     /// The employments the worker service told the CRM of (CRM-R92): the organization and the date.
     employments: Vec<crate::models::employments::Employment>,
+    /// The last hire or leave the worker service told the CRM of, by organization, kept to put
+    /// its events in order (CRM-R93).
+    employment_last_events: Vec<crate::models::employments::LastEvent>,
     /// What the export does not cover, and where to ask for it.
     exclusions: [&'static str; 3],
 }
@@ -123,6 +126,8 @@ async fn subject_access(
         attachments: super::attachments::export_for(db, cpid).await?,
         tags: super::tags::export_for(db, cpid).await?,
         employments: crate::models::employments::of_contact(db, cpid).await?,
+        employment_last_events: crate::models::employments::last_events_of(db, &contact.person_ref)
+            .await?,
         exclusions: [
             "campaign delivery/open/click counters: aggregate counters. Which messages were \
              sent to this contact is in email_deliveries (state, time and message id, no \
@@ -244,6 +249,21 @@ async fn erase(
         ));
     }
     let txn = ctx.db.begin().await?;
+    // The person references of this contact and the duplicates merged into it, read before they
+    // are scrubbed: the order of their employment events is kept by reference (CRM-R93).
+    let mut person_refs = vec![contact.person_ref.clone()];
+    for row in txn
+        .query_all_raw(sea_orm::Statement::from_sql_and_values(
+            sea_orm::DatabaseBackend::Postgres,
+            "SELECT person_ref FROM contacts WHERE merged_into_pid = $1",
+            [cpid.into()],
+        ))
+        .await?
+    {
+        person_refs.push(row.try_get("", "person_ref")?);
+    }
+    let employment_events_deleted =
+        crate::models::employments::forget_last_events(&txn, &person_refs).await?;
     // Identity fields scrubbed in place; the row soft-deleted.
     let scrubbed = scrub(contact);
     scrubbed.update(&txn).await?;
@@ -330,6 +350,7 @@ async fn erase(
             "purposes_withdrawn": affected[9],
             "link_tokens_deleted": affected[10],
             "employments_deleted": affected[11],
+            "employment_last_events_deleted": employment_events_deleted,
             "custom_field_values_deleted": affected[affected.len() - 1],
             "attachments_deleted": files.len(),
             "taggings_deleted": tags_removed,

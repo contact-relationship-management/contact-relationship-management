@@ -140,3 +140,15 @@ resume from the day the event arrives.
 
 **Only contacts the CRM already has are marked**, and nothing is kept for a person it has no
 contact for: WPM's events would otherwise make the CRM a copy of the employee list.
+
+**Events are put in order by when WPM recorded them** (CRM-R93). WPM retries a failed delivery for
+up to two days, so a hire can arrive after the leave that followed it. The CRM keeps, per person and
+organization, the stamp of the last hire or leave it applied (`occurred_at`, then `effective_on`
+for two in the same second, since WPM sends whole seconds) and an event with an older stamp changes
+nothing (`stale`). The order is kept **by person, not by contact**, because that is what an event is
+about, but **only while the person is a contact**: an event for anyone else still leaves nothing
+behind, and erasing the contact deletes the rows of its person references. An equal stamp is
+applied, so two events WPM cannot tell apart behave as before (the last to arrive wins). Rejected:
+ordering by arrival (the bug), by `effective_on` first (a rehire can take effect before an earlier
+leave was recorded), and keeping the ended employment row with an end date (every reader of
+`contact_employments` would have to learn to skip it; a separate row keeps "a row is a pause").

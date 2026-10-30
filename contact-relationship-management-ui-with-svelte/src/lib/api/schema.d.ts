@@ -3078,7 +3078,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** No session: signed by the worker service (x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256 of "<t>.<body>"> with CRM_WPM_WEBHOOK_SECRET; five minutes either way) (CRM-R92). worker_hired marks the contacts with that person_ref employees of organization_ref, which leaves them out of segments, campaigns and nurture steps; worker_terminated and worker_retired lift it, restoring no consent; each change audited with via: wpm. Other kinds, and a hire or leave without data, are 200 ignored; a repeated id is 200 duplicate and changes nothing. 404 while the secret is unset, 401 bad, missing or stale signature, 400 not an event, 413 over 16 KiB, 422 malformed data */
+        /** No session: signed by the worker service (x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256 of "<t>.<body>"> with CRM_WPM_WEBHOOK_SECRET; five minutes either way) (CRM-R92). worker_hired marks the contacts with that person_ref employees of organization_ref, which leaves them out of segments, campaigns and nurture steps; worker_terminated and worker_retired lift it, restoring no consent; each change audited with via: wpm. Other kinds, and a hire or leave without data, are 200 ignored; a repeated id is 200 duplicate and changes nothing; a hire or leave older (occurred_at, then effective_on) than the last applied for its person and organization is 200 stale and changes nothing (CRM-R93). 404 while the secret is unset, 401 bad, missing or stale signature, 400 not an event, 413 over 16 KiB, 422 malformed data or occurred_at */
         post: {
             parameters: {
                 query?: never;
@@ -19808,6 +19808,26 @@ export interface components {
             };
             subject: string;
         };
+        /**
+         * @description The last hire or leave applied for a person by an organization (CRM-R93), as the
+         *     subject-access export shows it.
+         */
+        EmploymentLastEvent: {
+            /**
+             * Format: date
+             * @description The day it took effect.
+             */
+            effective_on: string;
+            /** @description `hired` or `left`. */
+            kind: string;
+            /**
+             * Format: date-time
+             * @description When WPM recorded it.
+             */
+            occurred_at: string;
+            /** @description The employer, an `organization:` URN. */
+            organization_ref: string;
+        };
         /** @description `GET /api/insights/engagement`. */
         EngagementView: {
             /** Format: date-time */
@@ -21546,6 +21566,11 @@ export interface components {
             custom_fields: unknown[];
             deals_as_primary_contact: components["schemas"]["Deal"][];
             email_deliveries: components["schemas"]["EmailDelivery"][];
+            /**
+             * @description The last hire or leave the worker service told the CRM of, by organization, kept to put
+             *     its events in order (CRM-R93).
+             */
+            employment_last_events: components["schemas"]["EmploymentLastEvent"][];
             /** @description The employments the worker service told the CRM of (CRM-R92): the organization and the date. */
             employments: components["schemas"]["ContactEmployment"][];
             /** @description What the export does not cover, and where to ask for it. */
@@ -22262,6 +22287,7 @@ export interface components {
              *     acknowledged and ignored.
              */
             kind: string;
+            /** @description RFC 3339. Orders a hire or leave against the last one applied (CRM-R93); required for them. */
             occurred_at: string;
             /** @description `worker:<pid>`; not read. */
             subject: string;
@@ -22281,7 +22307,9 @@ export interface components {
             /**
              * @description `paused` (a hire marked contacts as employees), `already_paused`, `resumed` (a leave lifted
              *     the pause), `not_paused`, `no_contact` (no live contact carries the person), `duplicate`
-             *     (this event id was received before; nothing changed), or `ignored`.
+             *     (this event id was received before; nothing changed), `stale` (a hire or leave older than
+             *     the last one applied for the same person and organization; nothing changed, CRM-R93), or
+             *     `ignored`.
              */
             result: string;
         };

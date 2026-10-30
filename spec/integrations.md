@@ -45,7 +45,7 @@ The bridges between the CRM, the project portfolio service (PPM) and the worker 
 |---|---|---|---|
 | Won deal → delivery idea | CRM → PPM | `POST {CRM_PPM_SERVICE_URL}/api/ideas`; CRM-R72, token CRM-R87 | Built (`POST /api/bridges/ppm/deals/{pid}`), admin only, stub-first; tested against a stand-in |
 | Teams from departments | CRM ← WPM (CRM reads) | `GET {CRM_WORKER_SERVICE_URL}/api/workers`; CRM-R73, token `CRM_WORKER_SERVICE_TOKEN` (CRM-R87) | Built (`POST /api/bridges/wpm/teams-import`), admin only, stub-first; tested against a stand-in. **Unresolved:** the teams hold `worker:<pid>` references while the hire and leave events and WPM's overlap check speak of `person:` references, so a team member and a contact cannot be matched; WPM's spec names the same mismatch (WPM cross-app-bridges, "What CRM was read to say") |
-| Hire and leave | WPM → CRM (WPM posts) | WPM's outbound webhooks (WPM-R151) with the handoff of WPM-R207; [below](#inbound-wpm-hire-and-leave-events-crm-r92) | Built (`POST /api/bridges/wpm/events`, CRM-R92); tested with requests signed as WPM signs, not with a running WPM |
+| Hire and leave | WPM → CRM (WPM posts) | WPM's outbound webhooks (WPM-R151) with the handoff of WPM-R207; [below](#inbound-wpm-hire-and-leave-events-crm-r92) | Built (`POST /api/bridges/wpm/events`, CRM-R92), ordered by `occurred_at` (CRM-R93); tested with requests signed as WPM signs, not with a running WPM |
 | Pool link, demand and supply | PPM ↔ WPM | WPM-R210 to R213, WPM-D138 to D141 | Not the CRM's: built in PPM and WPM |
 | Overlap check | CRM → WPM | `POST {WPM}/api/bridges/overlap` (WPM-R208): up to 500 `person:` refs in, a yes or no per ref out, under an HR caller's token | Available in WPM; **the CRM client is not built** (next: it would find contacts who were employees before CRM-R92 was running, or who became contacts after their hire) |
 
@@ -90,6 +90,11 @@ body>"` under the subscription's secret (WPM reads it from `WPM_WEBHOOK_SECRET_<
 network failure with a doubling back-off up to a day, at most ten attempts, re-signing each time,
 and gives up on any other 4xx. So the CRM answers `200` for every well-formed event it does not act
 on, and dedupes on the body's `id` (the event id, the same on every retry), not on `x-wpm-delivery`.
+
+Because a retry can arrive after a later event, each hire or leave is also ordered by its
+`occurred_at` (then `effective_on`) against the last one applied for the same person and
+organization; an older one is answered `stale` and changes nothing (CRM-R93). WPM's queue does not
+say it delivers in order, and its retries make sure it does not.
 
 To wire it: in WPM, an administrator creates a webhook subscription to
 `https://<crm>/api/bridges/wpm/events` for the kinds `worker_hired`, `worker_terminated` and

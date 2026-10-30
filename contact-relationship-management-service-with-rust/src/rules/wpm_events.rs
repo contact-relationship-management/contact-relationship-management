@@ -5,10 +5,14 @@
 //! `worker_terminated` and `worker_retired`, `data` holds `person_ref`, `organization_ref` and
 //! `effective_on` (and `from` and `to` for the two endings, which are not read). This module checks
 //! the signature and says what an event means for the CRM; the controller only applies it.
+//!
+//! WPM may deliver events out of order (a retry of a hire can arrive after the leave that followed
+//! it), so a hire or leave also carries a [`Stamp`], and [`is_stale`] says whether it is older than
+//! the last one applied for the same person and organization (CRM-R93).
 
 use std::str::FromStr;
 
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use entity_ref::{EntityRef, EntityType};
 use hmac::{Hmac, KeyInit, Mac};
 use serde::Deserialize;
@@ -94,6 +98,10 @@ pub struct Event {
     pub id: String,
     /// The event kind.
     pub kind: String,
+    /// When WPM recorded the change, RFC 3339 to the second. Read for a hire or leave (CRM-R93).
+    /// Kept as JSON so that a kind which does not read it is not refused for its shape.
+    #[serde(default)]
+    pub occurred_at: Option<serde_json::Value>,
     /// `worker:<pid>`; not used.
     #[serde(default)]
     pub subject: Option<String>,
@@ -122,6 +130,39 @@ pub struct Handoff {
     pub organization_ref: String,
     /// The first day of employment, or the day it ends.
     pub effective_on: NaiveDate,
+    /// When WPM recorded the change.
+    pub occurred_at: DateTime<Utc>,
+}
+
+/// When a hire or leave happened, for ordering (CRM-R93): first by when WPM recorded it, then, for
+/// two recorded in the same second (WPM sends whole seconds), by the day it takes effect. The
+/// derived order compares the fields in that order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Stamp {
+    /// When WPM recorded the change.
+    pub occurred_at: DateTime<Utc>,
+    /// The day it takes effect.
+    pub effective_on: NaiveDate,
+}
+
+impl Handoff {
+    /// The event's place in the order of its person's employment by its organization.
+    #[must_use]
+    pub const fn stamp(&self) -> Stamp {
+        Stamp {
+            occurred_at: self.occurred_at,
+            effective_on: self.effective_on,
+        }
+    }
+}
+
+/// Whether an event stamped `event` is older than the last one applied for the same person and
+/// organization (`last`; `None` when none has been), and so must change nothing (CRM-R93). An
+/// event with the same stamp as the last is **not** stale: it is applied, so of two events WPM
+/// cannot tell apart the one that arrives last wins, as before ordering existed.
+#[must_use]
+pub fn is_stale(last: Option<Stamp>, event: Stamp) -> bool {
+    last.is_some_and(|last| event < last)
 }
 
 /// Read a body as an event. `Err` names the problem; the body is not valid JSON, or has no `id`
@@ -152,7 +193,8 @@ fn urn_of(value: Option<&serde_json::Value>, wanted: EntityType) -> Option<Strin
 
 /// What an event means (CRM-R92). A hire or leave without `data` (a WPM from before WPM-R207) is
 /// ignored, not refused, and so is every other kind. `Err` is a hire or leave whose `data` is
-/// there but wrong: a reference of the wrong kind, or a date that is not one.
+/// there but wrong (a reference of the wrong kind, or a date that is not one), or whose
+/// `occurred_at` is missing or not a time (CRM-R93).
 ///
 /// # Errors
 ///
@@ -176,10 +218,18 @@ pub fn decide(event: &Event) -> Result<Decision, String> {
         .and_then(serde_json::Value::as_str)
         .and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
         .ok_or("data.effective_on is not a date (YYYY-MM-DD)")?;
+    let occurred_at = event
+        .occurred_at
+        .as_ref()
+        .and_then(serde_json::Value::as_str)
+        .and_then(|t| DateTime::parse_from_rfc3339(t).ok())
+        .map(|t| t.with_timezone(&Utc))
+        .ok_or("occurred_at is not a time (RFC 3339)")?;
     let handoff = Handoff {
         person_ref,
         organization_ref,
         effective_on,
+        occurred_at,
     };
     Ok(if hired {
         Decision::Hired(handoff)
@@ -317,6 +367,9 @@ mod tests {
             person_ref: P.to_string(),
             organization_ref: O.to_string(),
             effective_on: NaiveDate::from_ymd_opt(2026, 11, 2).unwrap(),
+            occurred_at: DateTime::parse_from_rfc3339("2026-10-30T12:00:00Z")
+                .unwrap()
+                .with_timezone(&Utc),
         };
         assert_eq!(
             decide(&event("worker_hired", Some(handoff()))),
@@ -383,5 +436,81 @@ mod tests {
         let mut missing = handoff();
         missing.as_object_mut().unwrap().remove("effective_on");
         assert!(decide(&event("worker_hired", Some(missing))).is_err());
+    }
+
+    #[test]
+    fn a_hire_or_leave_needs_a_time_it_occurred() {
+        let at = |occurred_at: serde_json::Value| {
+            let mut body = json!({
+                "id": "e1", "kind": "worker_hired", "data": handoff(),
+            });
+            if !occurred_at.is_null() {
+                body["occurred_at"] = occurred_at;
+            }
+            decide(&parse(body.to_string().as_bytes()).unwrap())
+        };
+        assert!(at(json!(null)).is_err(), "missing");
+        assert!(at(json!("2026-10-30")).is_err(), "a date is not a time");
+        assert!(at(json!("yesterday")).is_err());
+        assert!(at(json!(1_800_000_000)).is_err());
+        // Another offset is the same instant in UTC.
+        let Ok(Decision::Hired(h)) = at(json!("2026-10-30T14:00:00+02:00")) else {
+            panic!("an offset time is a time");
+        };
+        assert_eq!(h.occurred_at.to_rfc3339(), "2026-10-30T12:00:00+00:00");
+        // Kinds that are ignored do not need one.
+        let body = json!({ "id": "e2", "kind": "worker_activated" });
+        assert_eq!(
+            decide(&parse(body.to_string().as_bytes()).unwrap()),
+            Ok(Decision::Ignored("not_used"))
+        );
+    }
+
+    fn stamp(at: &str, on: (i32, u32, u32)) -> Stamp {
+        Stamp {
+            occurred_at: DateTime::parse_from_rfc3339(at)
+                .unwrap()
+                .with_timezone(&Utc),
+            effective_on: NaiveDate::from_ymd_opt(on.0, on.1, on.2).unwrap(),
+        }
+    }
+
+    #[test]
+    fn an_event_older_than_the_last_applied_is_stale() {
+        let hire = stamp("2026-10-30T09:00:00Z", (2026, 11, 2));
+        let leave = stamp("2026-10-30T15:00:00Z", (2026, 11, 30));
+        // Nothing applied yet: nothing is stale.
+        assert!(!is_stale(None, hire));
+        // Hire, then leave: the leave is newer.
+        assert!(!is_stale(Some(hire), leave));
+        // Hire, leave, then the hire retried: older than the leave, so it changes nothing.
+        assert!(is_stale(Some(leave), hire));
+        // A rehire recorded after the leave is newer, whatever day it takes effect.
+        let rehire = stamp("2026-12-01T09:00:00Z", (2026, 11, 1));
+        assert!(!is_stale(Some(leave), rehire));
+        // An earlier second is older even if it takes effect later.
+        let early = stamp("2026-10-30T14:59:59Z", (2027, 1, 1));
+        assert!(is_stale(Some(leave), early));
+    }
+
+    #[test]
+    fn within_one_second_the_later_effective_day_wins_and_an_equal_stamp_is_applied() {
+        let at = "2026-10-30T12:00:00Z";
+        let starts = stamp(at, (2026, 11, 2));
+        let ends = stamp(at, (2026, 11, 3));
+        assert!(!is_stale(Some(starts), ends));
+        assert!(is_stale(Some(ends), starts));
+        // The same stamp (two events WPM cannot tell apart): applied, the last to arrive wins.
+        assert!(!is_stale(Some(starts), starts));
+        // The order is by time first, then by day.
+        assert!(stamp("2026-10-30T12:00:01Z", (2000, 1, 1)) > ends);
+    }
+
+    #[test]
+    fn a_handoff_stamps_itself_with_its_time_and_day() {
+        let Ok(Decision::Left(h)) = decide(&event("worker_retired", Some(handoff()))) else {
+            panic!("a leave");
+        };
+        assert_eq!(h.stamp(), stamp("2026-10-30T12:00:00Z", (2026, 11, 2)));
     }
 }

@@ -136,6 +136,18 @@ pub fn log_rules(max_attempts: i32) -> Vec<LogRule> {
             horizon: Horizon::Event,
             condition: "received_at < now() - interval '{days} days'".to_string(),
         },
+        // The last hire or leave per person and organization (CRM-R93): a leave is needed only
+        // while a retry of an older hire may still arrive, and a hire only while a live contact
+        // carries the person (the employment it ordered is theirs).
+        LogRule {
+            table: "employment_last_events",
+            horizon: Horizon::Event,
+            condition: "applied_at < now() - interval '{days} days' AND (kind = 'left' \
+                        OR NOT EXISTS (SELECT 1 FROM contacts c \
+                        WHERE c.person_ref = employment_last_events.person_ref \
+                        AND c.deleted_at IS NULL))"
+                .to_string(),
+        },
     ]
 }
 
@@ -262,7 +274,8 @@ mod tests {
                 "email_events",
                 "event_outbox",
                 "webhook_deliveries",
-                "wpm_events"
+                "wpm_events",
+                "employment_last_events"
             ]
         );
         for rule in &rules {
@@ -285,6 +298,9 @@ mod tests {
         assert!(by("event_outbox").contains("published_at IS NOT NULL"));
         assert!(by("event_outbox").contains("webhook_fanned_out_at IS NOT NULL"));
         assert!(by("webhook_deliveries").contains("status <> 'pending'"));
+        // The order of a live contact's employment is kept while they are employed.
+        assert!(by("employment_last_events").contains("kind = 'left'"));
+        assert!(by("employment_last_events").contains("c.deleted_at IS NULL"));
         assert_eq!(rules[0].horizon, Horizon::Mail);
         assert_eq!(rules[2].horizon, Horizon::Event);
     }

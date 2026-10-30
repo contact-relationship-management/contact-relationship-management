@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — WPM events ordered (CRM-T159, CRM-R93)
+
+`rules::wpm_events::{Stamp, is_stale}`; migration 000053 (`employment_last_events`); `stale` on `POST /api/bridges/wpm/events`; `422` for a hire or leave without `occurred_at`; `employment_last_events` in the subject-access export, deleted on erasure, pruned by the sweep (`aged`). Not run against a live WPM.
+
 ### Added — WPM hire and leave events (CRM-T158, CRM-R92)
 
 `POST /api/bridges/wpm/events` (public to the session check, signed with `CRM_WPM_WEBHOOK_SECRET`); `rules::wpm_events` (signature, parse, decide); `models::employments`; migration 000052 (`wpm_events`, `contact_employments`); the segment facts gain `employee`; a campaign skips and a nurture sweep holds an employee; `employments` on the contact detail and the subject-access export; erasure deletes them; `wpm_events` pruned with the event logs. Not run against a live WPM.

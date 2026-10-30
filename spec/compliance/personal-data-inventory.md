@@ -23,7 +23,7 @@ address a web form or import gave it).
 | `evidence` | Append-only compliance evidence, kept on purpose and never altered. | Until the deployer's own archive rule |
 | `ttl` | Deleted automatically when it is old enough. | 24 hours for `idempotency_keys`; a week after it expires or is spent for `link_tokens` |
 | `manual` | Kept until a person removes it through the API, or until its contact is erased (the last column). Most of these are configuration or hold no personal data. | No automatic period |
-| `aged` | A delivery or event log. Rows that are **finished with** are hard-deleted by the same sweep once they are older than their own horizon; a row something may still act on is never touched (see below). | `CRM_EVENT_RETENTION_DAYS` for the event outbox, webhook deliveries and the worker service's event ids (**30 by default, never below 7**); `CRM_MAIL_RETENTION_DAYS` for email deliveries and events (**730 by default, never below 400**: attribution looks back 365 days) |
+| `aged` | A delivery or event log. Rows that are **finished with** are hard-deleted by the same sweep once they are older than their own horizon; a row something may still act on is never touched (see below). | `CRM_EVENT_RETENTION_DAYS` for the event outbox, webhook deliveries, the worker service's event ids and the last hire or leave per person (**30 by default, never below 7**); `CRM_MAIL_RETENTION_DAYS` for email deliveries and events (**730 by default, never below 400**: attribution looks back 365 days) |
 | `gap` | Holds personal data or identifiers and **has no deletion path today**. | None: a deployer must archive or delete these by its own means until a task closes the gap |
 
 **What `aged` deletes, and what it never does** (CRM-R81). Email deliveries: only a delivery
@@ -32,7 +32,10 @@ cancelled, or of no campaign (a nurture step); a pending, retryable or running-c
 stays. Email events: any older than the horizon. The event outbox: only an event that has been
 published **and** handed to the webhooks; one still owed stays. Webhook deliveries: any that is no
 longer pending. The worker service's event ids (`wpm_events`): any older than the horizon; WPM
-stops retrying an event within about two days, so an id is no longer needed by then. A row is never deleted for being old alone if something may still act on it.
+stops retrying an event within about two days, so an id is no longer needed by then. The last hire
+or leave per person and organization (`employment_last_events`, CRM-R93): a leave older than the
+horizon, and a hire older than it whose person no live contact carries; a hire of a live contact
+stays, since it orders the employment that pauses their marketing. A row is never deleted for being old alone if something may still act on it.
 
 `contact_employments` has no period of its own: a row lives while the worker service says the
 person is employed, and goes when WPM sends the leave, or when the contact is erased. If WPM never
@@ -76,6 +79,7 @@ history remain under a pid that no longer identifies anyone.
 | `email_events` | Message id and the provider event (delivered, bounced, opened, clicked) | Contacts, through the message id | `aged` | Kept |
 | `email_suppressions` | Contact pid and the reason a mailbox is suppressed | Contacts | `manual` | Kept: a suppression must survive |
 | `email_templates` | None (template text) | — | `manual` | Not applicable |
+| `employment_last_events` | Person reference, employer's organization reference, whether the last event was a hire or a leave, when WPM recorded it, the day it took effect, the WPM event id (CRM-R93) | Contacts who are or were employees | `aged` | Rows of the contact's person references deleted |
 | `event_outbox` | Event payloads: record pids, actor, field values the event carries | Contacts, reps | `aged` | Kept |
 | `external_links` | URL, external id, label, who created it, by subject | Contacts, accounts, deals | `manual` | Links of the contact deleted |
 | `forecast_snapshots` | None (totals per day) | — | `swept` | Not applicable |

@@ -217,6 +217,7 @@ fn generated() -> serde_json::Map<String, Value> {
         bridges::ImportView,
         bridges::WpmEventView,
         crate::models::employments::Employment,
+        crate::models::employments::LastEvent,
         quotas::SplitView,
         quotas::AttainmentReport,
         crate::rules::quota::Tier,
