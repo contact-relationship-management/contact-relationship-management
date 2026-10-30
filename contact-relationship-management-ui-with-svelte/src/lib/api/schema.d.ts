@@ -15262,6 +15262,138 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/organization": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's calendar (CRM-T171): the IANA time zone of today and of report months, the month the fiscal year starts, and today there */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrganizationSettings"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Set the organization's time zone and fiscal year start (an administrator's; 422 names the member; audited). A caller may name its own zone for today with the CRM-Time-Zone header */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["OrganizationSettingsPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrganizationSettings"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sla-policies": {
         parameters: {
             query?: never;
@@ -20817,6 +20949,38 @@ export interface components {
             /** Format: uint64 */
             sent: number;
         };
+        /** @description The organization's calendar as the API shows it. */
+        OrganizationSettings: {
+            /**
+             * Format: uint32
+             * @description The month (1 to 12) the fiscal year starts in (1 until one is set).
+             */
+            fiscal_year_start_month: number;
+            /** @description Who changed them last; absent while they are the starting values. */
+            set_by: string | null;
+            /** @description The IANA time zone of "today" and of report periods (`UTC` until one is set). */
+            time_zone: string;
+            /**
+             * Format: date
+             * @description "Today" in the organization's zone.
+             */
+            today: string;
+            /**
+             * Format: date-time
+             * @description When they were last changed.
+             */
+            updated_at: string;
+        };
+        /** @description `PUT /api/settings/organization` body. */
+        OrganizationSettingsPayload: {
+            /**
+             * Format: int64
+             * @description The month (1 to 12) the fiscal year starts in.
+             */
+            fiscal_year_start_month: number;
+            /** @description An IANA time zone, such as `Asia/Tokyo`. */
+            time_zone: string;
+        };
         /** @description `POST /api/accounts/{pid}/partnerships` body. */
         PartnershipPayload: {
             kind: string;
@@ -21185,6 +21349,11 @@ export interface components {
              */
             as_of: string;
             /**
+             * Format: uint32
+             * @description The month the fiscal year starts in, for fiscal quarters and years.
+             */
+            fiscal_year_start_month: number;
+            /**
              * Format: int64
              * @description Groups with fewer records than this are left out (CRM-R78); `0` when none are.
              */
@@ -21206,6 +21375,8 @@ export interface components {
              * @description How many cells (or, with `convert_to`, groups) were left out for being that small.
              */
             suppressed: number;
+            /** @description The time zone of the months, fiscal periods and `from`/`to` days (CRM-T171). */
+            time_zone: string;
             /** @description There were more groups than are returned. */
             truncated: boolean;
             /** @description With `convert_to`: sums that had no rate in force and were left out, never taken at 1.0. */

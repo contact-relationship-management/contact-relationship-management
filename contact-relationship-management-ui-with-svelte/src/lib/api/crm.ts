@@ -1686,6 +1686,35 @@ export interface ReportResult {
   /** How many were left out. */
   suppressed: number;
   note: string;
+  /** The IANA zone of its months, fiscal periods and from/to days (CRM-T171). */
+  time_zone: string;
+  /** The month (1 to 12) the fiscal year starts in. */
+  fiscal_year_start_month: number;
+}
+
+/** The organization's calendar (CRM-T171). */
+export interface OrganizationSettings {
+  time_zone: string;
+  fiscal_year_start_month: number;
+  updated_at: string;
+  set_by: string | null;
+  /** Today in the organization's zone. */
+  today: string;
+}
+
+/** The organization's time zone and fiscal year start. */
+export function organizationSettings(
+  init?: FetchLike,
+): Promise<OrganizationSettings> {
+  return api("/settings/organization", init);
+}
+
+/** Set them (an administrator's). */
+export function setOrganizationSettings(input: {
+  time_zone: string;
+  fiscal_year_start_month: number;
+}): Promise<OrganizationSettings> {
+  return api("/settings/organization", { method: "PUT", body: input });
 }
 
 /** A saved report. */

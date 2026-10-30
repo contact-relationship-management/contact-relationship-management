@@ -467,6 +467,15 @@ fn derive_action_matrix() {
         Action::Write
     );
     assert_eq!(derive_action(&Method::PUT, "/api/wards/1"), Action::Write);
+    // The organization's calendar is an administrator's to set, and anyone's to read (CRM-T171).
+    assert_eq!(
+        derive_action(&Method::PUT, "/api/settings/organization"),
+        Action::Destructive
+    );
+    assert_eq!(
+        derive_action(&Method::GET, "/api/settings/organization"),
+        Action::Read
+    );
     assert_eq!(derive_action(&Method::PATCH, "/api/wards/1"), Action::Write);
     // Webhook subscriptions decide where change notifications go (CRM-R28): every method is the
     // admin/service tier, and a lookalike prefix is not caught.

@@ -21,6 +21,7 @@ pub mod fx;
 pub mod imports;
 pub mod lifecycle;
 pub mod merge;
+pub mod periods;
 pub mod privacy;
 pub mod public_text;
 pub mod quota;

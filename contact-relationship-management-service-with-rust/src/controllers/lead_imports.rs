@@ -384,12 +384,14 @@ async fn find_import(db: &sea_orm::DatabaseConnection, pid: Uuid) -> Result<Impo
 async fn commit(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
+    headers: axum::http::HeaderMap,
     Json(payload): Json<CommitPayload>,
 ) -> Result<Response> {
+    let today = super::organization::caller_today(&ctx.db, &headers).await?;
     let mut problems = Problems::new();
     problems.require_text("source_note", &payload.source_note);
     problems.cap_text("source_note", &payload.source_note);
-    if payload.obtained_on > chrono::Utc::now().date_naive() {
+    if payload.obtained_on > today {
         problems.push_field("obtained_on", "cannot be in the future");
     }
     problems.finish()?;

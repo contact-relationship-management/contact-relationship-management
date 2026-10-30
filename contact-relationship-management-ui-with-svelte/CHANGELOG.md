@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the organization's calendar on the reports page; the reader's zone sent with every request (CRM-T171)
+
+`client.ts` sends `CRM-Time-Zone` (the browser's zone, `readerZone()`) with every API request, so the service's "today" is the reader's. The reports page groups by fiscal quarter and fiscal year as well as month, says which zone and fiscal start a result used, and has a form for the organization's time zone and fiscal start month (refused for a non-administrator by the service). `organizationSettings` and `setOrganizationSettings` in `crm.ts`; `schema.d.ts` regenerated; 12 strings in all 8 locales (machine drafts). The stand-in serves the settings and the fiscal groups. Tests: `tests/unit/reader-zone.test.ts` (2), 2 in `demo.test.ts`, a tour test. **Not done:** the form is on the reports page, not a settings page of its own; the stand-in's months are UTC months.
+
 ### Changed — grid headers and five pages in the catalogue; a review record per locale (CRM-T175)
 
 Every `header: "…"` literal (58) and the English text of the executive, partners, engagement, DPO and follow-ups pages are catalogue strings in all 8 locales (110 new English keys, 7 of them plural groups; machine drafts); column arrays that call `t()` are `$derived`. Visible English changes: a count of one reads "1 contact", "1 touch", "Next 1 day", and two counts are no longer bold. `spec/reviews/<locale>.md` is one review record per locale (none reviewed; `de-de` and `zh-cn` kept as regional codes, with the reason). Tests: `catalogue-literals.test.ts` (3), `review-records.test.ts` (3); `right-to-left.spec.ts` finds the executive range by `data-testid="exec-window"`. 296 vitest, 191 Playwright. **Not done:** literals elsewhere were not scanned; follow-up activity kinds, the export name and format names stay; four tour texts still say "Funnel" in English; `scripts/update-translation-register.mjs` writes English's count to every row.

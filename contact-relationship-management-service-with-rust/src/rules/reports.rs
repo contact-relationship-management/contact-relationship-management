@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
+use super::periods::{self as period, Periods};
 use super::tokens;
 
 /// The records a report can be about.
@@ -126,10 +127,9 @@ fn table(kind: &str) -> Option<Table> {
                     "coalesce((SELECT a.tier FROM accounts a WHERE a.pid = c.account_pid), '(no account)')",
                 ),
                 ("owner", "coalesce(c.owner_ref, '(none)')"),
-                (
-                    "created_month",
-                    "to_char(date_trunc('month', c.created_at), 'YYYY-MM')",
-                ),
+                ("created_month", "@month(c.created_at)"),
+                ("created_fiscal_quarter", "@fiscal_quarter(c.created_at)"),
+                ("created_fiscal_year", "@fiscal_year(c.created_at)"),
             ],
             taggable: true,
             money: None,
@@ -143,10 +143,9 @@ fn table(kind: &str) -> Option<Table> {
                 ("tier", "a.tier"),
                 ("industry", "coalesce(a.industry, '(none)')"),
                 ("owner", "coalesce(a.owner_ref, '(none)')"),
-                (
-                    "created_month",
-                    "to_char(date_trunc('month', a.created_at), 'YYYY-MM')",
-                ),
+                ("created_month", "@month(a.created_at)"),
+                ("created_fiscal_quarter", "@fiscal_quarter(a.created_at)"),
+                ("created_fiscal_year", "@fiscal_year(a.created_at)"),
             ],
             taggable: true,
             money: None,
@@ -160,10 +159,9 @@ fn table(kind: &str) -> Option<Table> {
                 ("source", "l.source"),
                 ("status", "l.status"),
                 ("owner", "coalesce(l.owner_ref, '(none)')"),
-                (
-                    "created_month",
-                    "to_char(date_trunc('month', l.created_at), 'YYYY-MM')",
-                ),
+                ("created_month", "@month(l.created_at)"),
+                ("created_fiscal_quarter", "@fiscal_quarter(l.created_at)"),
+                ("created_fiscal_year", "@fiscal_year(l.created_at)"),
             ],
             taggable: true,
             money: None,
@@ -188,14 +186,12 @@ fn table(kind: &str) -> Option<Table> {
                     "coalesce((SELECT p.name FROM pipelines p WHERE p.pid = d.pipeline_pid), '(unknown)')",
                 ),
                 ("owner", "coalesce(d.owner_ref, '(none)')"),
-                (
-                    "created_month",
-                    "to_char(date_trunc('month', d.created_at), 'YYYY-MM')",
-                ),
-                (
-                    "closed_month",
-                    "coalesce(to_char(date_trunc('month', d.closed_at), 'YYYY-MM'), '(open)')",
-                ),
+                ("created_month", "@month(d.created_at)"),
+                ("created_fiscal_quarter", "@fiscal_quarter(d.created_at)"),
+                ("created_fiscal_year", "@fiscal_year(d.created_at)"),
+                ("closed_month", "@month(d.closed_at)"),
+                ("closed_fiscal_quarter", "@fiscal_quarter(d.closed_at)"),
+                ("closed_fiscal_year", "@fiscal_year(d.closed_at)"),
             ],
             taggable: true,
             money: Some(("d.amount_minor", "d.currency")),
@@ -210,10 +206,9 @@ fn table(kind: &str) -> Option<Table> {
                 ("priority", "k.priority"),
                 ("channel", "k.channel"),
                 ("assignee", "coalesce(k.assignee_ref, '(none)')"),
-                (
-                    "opened_month",
-                    "to_char(date_trunc('month', k.opened_at), 'YYYY-MM')",
-                ),
+                ("opened_month", "@month(k.opened_at)"),
+                ("opened_fiscal_quarter", "@fiscal_quarter(k.opened_at)"),
+                ("opened_fiscal_year", "@fiscal_year(k.opened_at)"),
             ],
             taggable: false,
             money: None,
@@ -254,8 +249,30 @@ fn token_set(kind: &str, field: &str) -> Option<&'static [&'static str]> {
     }
 }
 
-fn is_month(field: &str) -> bool {
+/// Whether `field` is a period (a month, fiscal quarter or fiscal year), which groups but does
+/// not filter: `from` and `to` choose the days.
+fn is_period(field: &str) -> bool {
     field.ends_with("_month")
+        || field.ends_with("_fiscal_quarter")
+        || field.ends_with("_fiscal_year")
+}
+
+/// A field's SQL. A period is written `@month(column)`, `@fiscal_quarter(column)` or
+/// `@fiscal_year(column)` in the table and resolved here in the organization's zone and fiscal
+/// year (CRM-T171); a missing timestamp (an open deal's close) is `(open)`.
+#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
+fn resolve(expr: &str, periods: &Periods) -> String {
+    let Some(marker) = expr.strip_prefix('@') else {
+        return expr.to_string();
+    };
+    let (kind, rest) = marker.split_once('(').unwrap_or((marker, ""));
+    let column = rest.trim_end_matches(')');
+    let sql = match kind {
+        "month" => period::month_expr(column, periods),
+        "fiscal_quarter" => period::fiscal_quarter_expr(column, periods),
+        _ => period::fiscal_year_expr(column, periods),
+    };
+    format!("coalesce({sql}, '(open)')")
 }
 
 /// Everything wrong with a specification, as `(member, message)`.
@@ -280,7 +297,7 @@ fn check(spec: &Spec, table: &Table) -> Vec<(String, String)> {
         add("measure", "only a deal report can sum amounts".to_string());
     }
     for (field, values) in &spec.filter {
-        if is_month(field) || !allowed.contains(&field.as_str()) {
+        if is_period(field) || !allowed.contains(&field.as_str()) {
             add(
                 "filter",
                 format!("a {} report cannot filter by {field}", spec.kind),
@@ -354,6 +371,17 @@ fn check(spec: &Spec, table: &Table) -> Vec<(String, String)> {
 ///
 /// Every problem found.
 pub fn plan(spec: &Spec) -> Result<Plan, Vec<(String, String)>> {
+    plan_in(spec, &Periods::default())
+}
+
+/// [`plan`] with the organization's time zone and fiscal year for periods and for `from`/`to`
+/// (CRM-T171).
+///
+/// # Errors
+///
+/// Every problem found.
+#[allow(clippy::too_many_lines)] // one linear build of the query
+pub fn plan_in(spec: &Spec, periods: &Periods) -> Result<Plan, Vec<(String, String)>> {
     let Some(table) = table(&spec.kind) else {
         return Err(vec![(
             "kind".to_string(),
@@ -379,17 +407,26 @@ pub fn plan(spec: &Spec) -> Result<Plan, Vec<(String, String)>> {
             ));
         } else if let Some((_, expr)) = table.fields.iter().find(|(name, _)| name == field) {
             conditions.push(format!(
-                "{expr} IN (SELECT jsonb_array_elements_text(${n}::jsonb))"
+                "{} IN (SELECT jsonb_array_elements_text(${n}::jsonb))",
+                resolve(expr, periods)
             ));
         }
     }
     if let Some(from) = spec.from {
         binds.push(Bind::Day(from));
-        conditions.push(format!("{}::date >= ${}", table.created, binds.len()));
+        conditions.push(format!(
+            "{}::date >= ${}",
+            period::local(table.created, periods),
+            binds.len()
+        ));
     }
     if let Some(to) = spec.to {
         binds.push(Bind::Day(to));
-        conditions.push(format!("{}::date <= ${}", table.created, binds.len()));
+        conditions.push(format!(
+            "{}::date <= ${}",
+            period::local(table.created, periods),
+            binds.len()
+        ));
     }
 
     let by_tag = spec.group_by == "tag";
@@ -408,7 +445,7 @@ pub fn plan(spec: &Spec) -> Result<Plan, Vec<(String, String)>> {
             .iter()
             .find(|(name, _)| *name == spec.group_by)
             .map_or("''", |(_, expr)| *expr);
-        (String::new(), expr.to_string())
+        (String::new(), resolve(expr, periods))
     };
     let sum = spec.measure == "sum_amount";
     let by_day = sum && spec.rate_basis.is_some();
@@ -657,8 +694,10 @@ mod tests {
         assert_eq!(p.binds.len(), 4);
         assert!(p.sql.contains("$1::jsonb") && p.sql.contains("$2::jsonb"));
         assert!(
-            p.sql.contains("c.created_at::date >= $3")
-                && p.sql.contains("c.created_at::date <= $4")
+            p.sql
+                .contains("(c.created_at AT TIME ZONE 'UTC')::date >= $3")
+                && p.sql
+                    .contains("(c.created_at AT TIME ZONE 'UTC')::date <= $4")
         );
         assert!(p.uses_tags);
     }
@@ -851,5 +890,42 @@ mod tests {
         let (kept, left) = suppress(cells, 5, true);
         assert_eq!(kept.iter().filter(|c| c.group == "won").count(), 2);
         assert_eq!(left, 1, "one group, not one cell, is counted");
+    }
+
+    #[test]
+    fn periods_are_in_the_organization_s_zone_and_fiscal_year() {
+        let periods = Periods {
+            zone: crate::rules::periods::zone("Asia/Tokyo").unwrap(),
+            fiscal_start_month: 4,
+        };
+        let p = plan_in(&spec("deal", "closed_fiscal_quarter"), &periods).unwrap();
+        assert!(p.sql.contains("AT TIME ZONE 'Asia/Tokyo'"), "{}", p.sql);
+        assert!(p.sql.contains("interval '3 months'"), "{}", p.sql);
+        assert!(p.sql.contains("'(open)'"));
+        let mut ranged = spec("ticket", "opened_month");
+        ranged.from = NaiveDate::from_ymd_opt(2026, 4, 1);
+        let p = plan_in(&ranged, &periods).unwrap();
+        assert!(
+            p.sql
+                .contains("(k.opened_at AT TIME ZONE 'Asia/Tokyo')::date >= $1"),
+            "{}",
+            p.sql
+        );
+        for kind in KINDS {
+            assert!(
+                fields(kind).iter().any(|f| f.ends_with("_fiscal_quarter")),
+                "{kind}"
+            );
+            assert!(
+                fields(kind).iter().any(|f| f.ends_with("_fiscal_year")),
+                "{kind}"
+            );
+        }
+        // A period groups; it does not filter.
+        let mut filtered = spec("lead", "source");
+        filtered
+            .filter
+            .insert("created_fiscal_year".into(), vec!["2026".into()]);
+        assert!(plan(&filtered).is_err());
     }
 }

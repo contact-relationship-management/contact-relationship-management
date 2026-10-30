@@ -238,9 +238,13 @@ pub(crate) struct TeamReport {
 async fn team_attainment(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
+    headers: axum::http::HeaderMap,
     axum::extract::Query(query): axum::extract::Query<TeamQuery>,
 ) -> Result<Response> {
-    let at = query.at.unwrap_or_else(|| chrono::Utc::now().date_naive());
+    let at = match query.at {
+        Some(at) => at,
+        None => super::organization::caller_today(&ctx.db, &headers).await?,
+    };
     let teams = ctx
         .db
         .query_all_raw(stmt(

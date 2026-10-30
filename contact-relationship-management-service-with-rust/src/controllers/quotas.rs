@@ -964,9 +964,14 @@ pub(super) async fn standings<C: ConnectionTrait>(
 async fn attainment(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
+    headers: axum::http::HeaderMap,
     axum::extract::Query(query): axum::extract::Query<AttainmentQuery>,
 ) -> Result<Response> {
-    let at = query.at.unwrap_or_else(|| chrono::Utc::now().date_naive());
+    // Today in the caller's zone, else the organization's (CRM-T171), not UTC's.
+    let at = match query.at {
+        Some(at) => at,
+        None => super::organization::caller_today(&ctx.db, &headers).await?,
+    };
     let rows = standings(&ctx.db, at, user_ref::normalise_opt(query.owner_ref)).await?;
     Audit::record_read(
         &ctx.db,

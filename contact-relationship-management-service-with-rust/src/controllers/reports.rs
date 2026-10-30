@@ -84,6 +84,10 @@ pub(crate) struct ReportResult {
     suppressed: usize,
     /// What the figures mean, in a line.
     note: &'static str,
+    /// The time zone of the months, fiscal periods and `from`/`to` days (CRM-T171).
+    time_zone: String,
+    /// The month the fiscal year starts in, for fiscal quarters and years.
+    fiscal_year_start_month: u32,
 }
 
 /// What a conversion made of the rows of a report.
@@ -170,7 +174,9 @@ fn problems_of(found: Vec<(String, String)>) -> Result<()> {
 
 /// Answer a specification as the caller.
 async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<ReportResult> {
-    let plan = rules::plan(&spec).map_err(|found| match problems_of(found) {
+    // Months, fiscal quarters and years in the organization's calendar (CRM-T171).
+    let periods = super::organization::periods(&ctx.db).await?;
+    let plan = rules::plan_in(&spec, &periods).map_err(|found| match problems_of(found) {
         Err(error) => error,
         Ok(()) => unprocessable("the report cannot be run"),
     })?;
@@ -240,6 +246,8 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
     )
     .await?;
     Ok(ReportResult {
+        time_zone: periods.zone.name().to_string(),
+        fiscal_year_start_month: periods.fiscal_start_month,
         spec,
         as_of: chrono::Utc::now(),
         rows,

@@ -276,9 +276,13 @@ fn too_large() -> Error {
 async fn territory_attainment(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
+    headers: axum::http::HeaderMap,
     axum::extract::Query(query): axum::extract::Query<TerritoryQuery>,
 ) -> Result<Response> {
-    let to = query.to.unwrap_or_else(|| chrono::Utc::now().date_naive());
+    let to = match query.to {
+        Some(to) => to,
+        None => super::organization::caller_today(&ctx.db, &headers).await?,
+    };
     let from = query
         .from
         .unwrap_or_else(|| to - chrono::Duration::days(DEFAULT_PERIOD_DAYS));

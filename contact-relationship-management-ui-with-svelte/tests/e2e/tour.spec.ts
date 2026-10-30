@@ -1262,6 +1262,33 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("report-result")).toContainText("referral");
   });
 
+  test("the organization's calendar sets the report's fiscal quarters and zone", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/reports");
+    await expect(page.getByTestId("org-zone")).toHaveValue("UTC");
+    await page.getByTestId("org-zone").fill("Asia/Kolkata");
+    await page.getByTestId("org-fiscal-start").selectOption("4");
+    await page.getByTestId("org-save").click();
+    await expect(page.getByTestId("org-error")).toHaveCount(0);
+    await page.getByTestId("report-kind").selectOption("deal");
+    await page
+      .getByTestId("report-group")
+      .selectOption("created_fiscal_quarter");
+    await page.getByTestId("report-run").click();
+    // October 2026 is the third quarter of a year that starts in April.
+    await expect(page.getByTestId("report-result")).toContainText("2026/27-Q3");
+    await expect(page.getByTestId("report-periods")).toContainText(
+      "Asia/Kolkata",
+    );
+    await expect(page.getByTestId("report-periods")).toContainText("April");
+    // A zone that is not one is refused.
+    await page.getByTestId("org-zone").fill("Kolkata");
+    await page.getByTestId("org-save").click();
+    await expect(page.getByTestId("org-error")).toBeVisible();
+  });
+
   test("a report leaves out a group of one and says so", async ({ page }) => {
     await startTour(page);
     await page.goto("/reports");

@@ -68,6 +68,7 @@ pub fn app_routes() -> AppRoutes {
         .add_route(controllers::record_imports::routes())
         .add_route(controllers::docs::routes())
         .add_route(controllers::metrics::routes())
+        .add_route(controllers::organization::routes())
 }
 
 /// The loco.rs application hooks for

@@ -733,6 +733,20 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         Kind::Ok,
     ),
     (
+        "get",
+        "/api/settings/organization",
+        "insights",
+        "The organization's calendar (CRM-T171): the IANA time zone of today and of report months, the month the fiscal year starts, and today there",
+        Kind::Ok,
+    ),
+    (
+        "put",
+        "/api/settings/organization",
+        "insights",
+        "Set the organization's time zone and fiscal year start (an administrator's; 422 names the member; audited). A caller may name its own zone for today with the CRM-Time-Zone header",
+        Kind::Ok,
+    ),
+    (
         "put",
         "/api/fx-rates",
         "insights",

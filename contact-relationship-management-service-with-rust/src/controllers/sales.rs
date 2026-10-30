@@ -976,10 +976,12 @@ async fn forecast_snapshot(
         });
     }
     let totals = analytics::forecast_by_currency(&inputs).map_err(|e| unprocessable(&e))?;
+    // The day in the organization's zone, not UTC's (CRM-T171).
+    let taken_on = super::organization::organization_today(&ctx.db).await?;
     let txn = ctx.db.begin().await?;
     let row = forecast_snapshots::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
-        taken_on: ActiveValue::set(chrono::Utc::now().date_naive()),
+        taken_on: ActiveValue::set(taken_on),
         totals: ActiveValue::set(serde_json::to_value(&totals).unwrap_or_default()),
         deleted_at: ActiveValue::set(None),
         ..Default::default()

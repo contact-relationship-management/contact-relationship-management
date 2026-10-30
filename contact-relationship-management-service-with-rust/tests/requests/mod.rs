@@ -34,6 +34,7 @@ mod mcp;
 mod merge;
 mod notifications;
 mod openapi_schemas;
+mod organization_settings;
 mod pagination;
 mod privacy;
 mod quotas;

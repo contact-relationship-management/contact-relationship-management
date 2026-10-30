@@ -207,6 +207,13 @@ interface State {
     empty: number;
   };
   grants: Grant[];
+  /** The organization's calendar (CRM-T171). */
+  organization: {
+    time_zone: string;
+    fiscal_year_start_month: number;
+    set_by: string | null;
+    updated_at: string;
+  };
 }
 
 const PIPELINE = { pid: "pipe-1", name: "New business" };
@@ -1004,6 +1011,12 @@ function build(): State {
       empty: 9,
     },
     grants,
+    organization: {
+      time_zone: "UTC",
+      fiscal_year_start_month: 1,
+      set_by: null,
+      updated_at: "2026-10-01T00:00:00Z",
+    },
   };
 }
 
@@ -2445,6 +2458,8 @@ export function demoHandle(
   if (head === "tags" && !id && method === "GET") return ok(demoTags());
   if (head === "reports") return reports(method, id, tail, body);
   if (head === "fx-rates") return fxRates(method, id, body);
+  if (head === "settings" && id === "organization")
+    return organizationSettings(method, body);
   if (head === "attribution" && get) return attributionAnswer(query);
   if (tail === "tags" && id) return recordTags(id, method, body);
   if (head === "attachments" && id && method === "DELETE")
@@ -3033,6 +3048,18 @@ function reportRows(spec: ReportSpec): SizedRow[] | string {
     channel: (r) => text(r.channel),
     assignee: (r) => text(r.assignee_ref),
     opened_month: () => "2026-10",
+    created_fiscal_quarter: () => fiscalLabel("2026-10", true),
+    created_fiscal_year: () => fiscalLabel("2026-10", false),
+    closed_fiscal_quarter: (r) =>
+      r.closed_at
+        ? fiscalLabel(String(r.closed_at).slice(0, 7), true)
+        : "(open)",
+    closed_fiscal_year: (r) =>
+      r.closed_at
+        ? fiscalLabel(String(r.closed_at).slice(0, 7), false)
+        : "(open)",
+    opened_fiscal_quarter: () => fiscalLabel("2026-10", true),
+    opened_fiscal_year: () => fiscalLabel("2026-10", false),
   };
   const group = (r: Rec): string[] =>
     spec.group_by === "tag"
@@ -3151,7 +3178,73 @@ function reportResult(spec: ReportSpec): DemoReply {
     min_cell_size: DEMO_MIN_CELL,
     suppressed,
     note: "counted over the records that exist now; sums are per currency and never added across currencies",
+    time_zone: state.organization.time_zone,
+    fiscal_year_start_month: state.organization.fiscal_year_start_month,
   } satisfies ReportResult);
+}
+
+/**
+ * A month's fiscal year or quarter label, as the service's `rules::periods` writes it: `2026` and
+ * `2026-Q4` with a January start, `2026/27` and `2026/27-Q3` with an April one (CRM-T171). The
+ * stand-in's months are UTC months; the service's are the organization's zone's.
+ */
+export function fiscalLabel(
+  month: string,
+  quarter: boolean,
+  start = state.organization.fiscal_year_start_month,
+): string {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  const year = m >= start ? y : y - 1;
+  const label =
+    start === 1
+      ? String(year)
+      : `${year}/${String((year + 1) % 100).padStart(2, "0")}`;
+  return quarter
+    ? `${label}-Q${Math.floor(((m + 12 - start) % 12) / 3) + 1}`
+    : label;
+}
+
+function organizationSettings(method: string, body: unknown): DemoReply {
+  const view = () => ({
+    ...state.organization,
+    today: new Intl.DateTimeFormat("en-CA", {
+      timeZone: state.organization.time_zone,
+    }).format(new Date()),
+  });
+  if (method === "GET") return ok(view());
+  if (method !== "PUT") return problem(405, "method not allowed");
+  const input = (body ?? {}) as {
+    time_zone?: unknown;
+    fiscal_year_start_month?: unknown;
+  };
+  const zone =
+    typeof input.time_zone === "string" ? input.time_zone.trim() : "";
+  let zoneOk = /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)*$/.test(zone);
+  if (zoneOk) {
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: zone });
+    } catch {
+      zoneOk = false;
+    }
+  }
+  const month = Number(input.fiscal_year_start_month);
+  if (!zoneOk)
+    return problem(
+      422,
+      "/time_zone: is an IANA time zone such as Asia/Tokyo or America/Sao_Paulo",
+    );
+  if (!Number.isInteger(month) || month < 1 || month > 12)
+    return problem(
+      422,
+      "/fiscal_year_start_month: is a month from 1 (January) to 12 (December)",
+    );
+  state.organization = {
+    time_zone: zone,
+    fiscal_year_start_month: month,
+    set_by: "person:demo",
+    updated_at: new Date().toISOString(),
+  };
+  return ok(view());
 }
 
 const ONE = 1_000_000_000n;

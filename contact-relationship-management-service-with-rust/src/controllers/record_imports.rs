@@ -405,11 +405,15 @@ async fn preview_accounts(
 }
 
 /// What a commit needs checked before it starts.
-fn check_commit(source_note: &str, obtained_on: chrono::NaiveDate) -> Result<()> {
+fn check_commit(
+    source_note: &str,
+    obtained_on: chrono::NaiveDate,
+    today: chrono::NaiveDate,
+) -> Result<()> {
     let mut problems = Problems::new();
     problems.require_text("source_note", source_note);
     problems.cap_text("source_note", source_note);
-    if obtained_on > chrono::Utc::now().date_naive() {
+    if obtained_on > today {
         problems.push_field("obtained_on", "cannot be in the future");
     }
     problems.finish()
@@ -603,9 +607,11 @@ fn select_rows<T>(
 async fn commit_contacts(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
+    headers: axum::http::HeaderMap,
     Json(payload): Json<ContactCommitPayload>,
 ) -> Result<Response> {
-    check_commit(&payload.source_note, payload.obtained_on)?;
+    let today = super::organization::caller_today(&ctx.db, &headers).await?;
+    check_commit(&payload.source_note, payload.obtained_on, today)?;
     let table = read(&payload.csv)?;
     let (reports, judged) = analyse_contacts(&ctx, &caller, &table, &payload.mapping).await?;
     let invalid = reports.iter().filter(|r| r.status == "invalid").count();
@@ -670,9 +676,11 @@ async fn commit_contacts(
 async fn commit_accounts(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
+    headers: axum::http::HeaderMap,
     Json(payload): Json<AccountCommitPayload>,
 ) -> Result<Response> {
-    check_commit(&payload.source_note, payload.obtained_on)?;
+    let today = super::organization::caller_today(&ctx.db, &headers).await?;
+    check_commit(&payload.source_note, payload.obtained_on, today)?;
     let table = read(&payload.csv)?;
     let (reports, judged) = analyse_accounts(&ctx, &table, &payload.mapping).await?;
     let invalid = reports.iter().filter(|r| r.status == "invalid").count();

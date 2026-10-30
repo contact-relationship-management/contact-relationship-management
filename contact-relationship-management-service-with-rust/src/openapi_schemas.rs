@@ -40,8 +40,9 @@ fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         attachments, attribution, audits, board, break_glass, bridges, calendars, custom_fields,
         dashboards, engagement, external_links, fx_rates, insights, kb, lead_imports, marketing,
-        merge, notifications, privacy, quotas, record_imports, relationships, reports, sales,
-        search, support, tags, teams, templates, territories, unmerge, views, webhooks, workflows,
+        merge, notifications, organization, privacy, quotas, record_imports, relationships,
+        reports, sales, search, support, tags, teams, templates, territories, unmerge, views,
+        webhooks, workflows,
     };
     // A request is read as the service deserializes it (an optional member may be left out); a
     // response is written as it serializes (an optional member is always there, as `null`).
@@ -224,6 +225,8 @@ fn generated() -> serde_json::Map<String, Value> {
         crate::rules::quota::Tier,
         crate::rules::quota::Band,
         fx_rates::RatePayload,
+        organization::SettingsPayload,
+        organization::SettingsView,
         fx_rates::RateView,
         fx_rates::RateUsed,
         fx_rates::Unconverted,
@@ -364,6 +367,7 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
         ("post", "/api/reports/run") => "ReportSpec",
         ("post", "/api/reports") | ("put", "/api/reports/{pid}") => "ReportPayload",
         ("put", "/api/fx-rates") => "FxRatePayload",
+        ("put", "/api/settings/organization") => "OrganizationSettingsPayload",
         ("put", "/api/commission-plans") => "CommissionPlanPayload",
         ("put", "/api/quotas") => "QuotaPayload",
         ("put", "/api/quotas/teams") => "TeamPayload",
@@ -429,6 +433,7 @@ pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
         ("post", "/api/reports/run") | ("get", "/api/reports/{pid}/run") => "ReportResult",
         ("get", "/api/attribution") => "Attribution",
         ("put", "/api/fx-rates") => "FxRate",
+        ("get" | "put", "/api/settings/organization") => "OrganizationSettings",
         ("put", "/api/commission-plans") => "CommissionPlan",
         ("put", "/api/quotas") => "Quota",
         ("put", "/api/quotas/teams") => "Team",

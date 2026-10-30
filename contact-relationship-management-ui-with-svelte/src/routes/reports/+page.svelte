@@ -8,6 +8,8 @@
   import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import {
+    organizationSettings,
+    setOrganizationSettings,
     deleteReport,
     listReports,
     runReport,
@@ -16,16 +18,26 @@
     type ReportResult,
     type ReportSpec,
   } from "#lib/api/crm.js";
-  import { i18n, t, tn } from "#lib/i18n.svelte.js";
+  import { i18n, t, tf, tn } from "#lib/i18n.svelte.js";
   import { formatDate, formatDateTime, formatDecimalText } from "#lib/locale-format.js";
+
+  function periods(base: string): string[] {
+    return [`${base}_month`, `${base}_fiscal_quarter`, `${base}_fiscal_year`];
+  }
+  const isPeriod = (f: string) => /_(month|fiscal_quarter|fiscal_year)$/.test(f);
+  const monthName = (month: number) =>
+    new Intl.DateTimeFormat(i18n.locale, { month: "long", timeZone: "UTC" }).format(
+      new Date(Date.UTC(2026, month - 1, 1)),
+    );
 
   // What the service lets each kind be grouped and filtered by.
   const FIELDS: Record<ReportSpec["kind"], string[]> = {
-    contact: ["status", "marketing_consent", "account_tier", "owner", "created_month", "tag"],
-    account: ["tier", "industry", "owner", "created_month", "tag"],
-    lead: ["source", "status", "owner", "created_month", "tag"],
-    deal: ["stage", "state", "currency", "pipeline", "owner", "created_month", "closed_month", "tag"],
-    ticket: ["status", "priority", "channel", "assignee", "opened_month"],
+    // Each period is a month, a fiscal quarter or a fiscal year, in the organization's calendar (CRM-T171).
+    contact: ["status", "marketing_consent", "account_tier", "owner", ...periods("created"), "tag"],
+    account: ["tier", "industry", "owner", ...periods("created"), "tag"],
+    lead: ["source", "status", "owner", ...periods("created"), "tag"],
+    deal: ["stage", "state", "currency", "pipeline", "owner", ...periods("created"), ...periods("closed"), "tag"],
+    ticket: ["status", "priority", "channel", "assignee", ...periods("opened")],
   };
   const KIND_LABEL = {
     contact: "nav.contacts",
@@ -52,6 +64,27 @@
   let error = $state<string | null>(null);
 
   const saved = resource(listReports);
+  // The organization's calendar (CRM-T171): anyone may read it, an administrator may set it.
+  const calendar = resource(organizationSettings);
+  let zoneInput = $state("");
+  let startMonth = $state(1);
+  let calendarError = $state<string | null>(null);
+  $effect(() => {
+    if (calendar.value) {
+      zoneInput = calendar.value.time_zone;
+      startMonth = calendar.value.fiscal_year_start_month;
+    }
+  });
+  async function saveCalendar(event: SubmitEvent) {
+    event.preventDefault();
+    calendarError = null;
+    try {
+      await setOrganizationSettings({ time_zone: zoneInput.trim(), fiscal_year_start_month: Number(startMonth) });
+      await calendar.reload();
+    } catch (cause) {
+      calendarError = errorMessage(cause);
+    }
+  }
   const reports = $derived(saved.value ?? []);
 
   // A kind change picks a grouping that kind has, and drops what it cannot do.
@@ -194,7 +227,7 @@
     {t("rpt.filterField")}
     <select bind:value={filterField} data-testid="report-filter-field">
       <option value=""></option>
-      {#each FIELDS[kind].filter((f) => !f.endsWith("_month")) as option (option)}
+      {#each FIELDS[kind].filter((f) => !isPeriod(f)) as option (option)}
         <option value={option}>{field(option)}</option>
       {/each}
     </select>
@@ -243,6 +276,11 @@
     <p class="muted">
       {t("rpt.asOf")}: {formatDateTime(result.as_of)}
     </p>
+    {#if result.time_zone}
+      <p class="muted small" data-testid="report-periods">
+        {tf("rpt.periodsIn", { zone: result.time_zone, month: monthName(result.fiscal_year_start_month) })}
+      </p>
+    {/if}
     {#if result.rows.length === 0}
       <p data-testid="report-none">{t("rpt.none")}</p>
     {:else}
@@ -330,6 +368,27 @@
     {/each}
   </ul>
 {/if}
+
+<h2>{t("org.calendar")}</h2>
+<form class="panel" onsubmit={saveCalendar} data-testid="org-calendar">
+  <label>
+    {t("org.timeZone")}
+    <input bind:value={zoneInput} maxlength="64" data-testid="org-zone" />
+  </label>
+  <label>
+    {t("org.fiscalStart")}
+    <select bind:value={startMonth} data-testid="org-fiscal-start">
+      {#each [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as month (month)}
+        <option value={month}>{monthName(month)}</option>
+      {/each}
+    </select>
+  </label>
+  <button type="submit" data-testid="org-save">{t("org.save")}</button>
+  {#if calendar.value}
+    <p class="muted small" data-testid="org-today">{tf("org.today", { date: formatDate(calendar.value.today) })}</p>
+  {/if}
+  {#if calendarError}<p class="error" role="alert" data-testid="org-error">{calendarError}</p>{/if}
+</form>
 
 <style>
   .bar {

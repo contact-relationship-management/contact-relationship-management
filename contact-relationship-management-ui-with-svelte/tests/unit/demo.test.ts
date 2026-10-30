@@ -4,6 +4,7 @@ import {
   COLUMN_NAMES,
   DEMO_EMAIL,
   TEMPLATE_FALLBACKS,
+  fiscalLabel,
   MAX_DEMO_SESSIONS,
   demoHandle,
   demoHandleFor,
@@ -389,5 +390,42 @@ describe("template fallbacks and import columns in the UI's languages (CRM-T169)
     const source = service("column_names.rs");
     for (const name of Object.values(COLUMN_NAMES).flat())
       expect(source, name).toContain(`"${name}"`);
+  });
+});
+
+describe("the organization's calendar (CRM-T171)", () => {
+  it("labels fiscal years and quarters from any start month, as the service does", () => {
+    expect(fiscalLabel("2026-03", true, 1)).toBe("2026-Q1");
+    expect(fiscalLabel("2026-03", true, 4)).toBe("2025/26-Q4");
+    expect(fiscalLabel("2026-04", false, 4)).toBe("2026/27");
+    expect(fiscalLabel("2026-12", true, 10)).toBe("2026/27-Q1");
+    expect(fiscalLabel("2026-06", true, 7)).toBe("2025/26-Q4");
+  });
+
+  it("is set and checked, and the reports follow it", () => {
+    expect(
+      demoHandle("PUT", "settings/organization", new URLSearchParams(), {
+        time_zone: "Tokyo",
+        fiscal_year_start_month: 4,
+      }).status,
+    ).toBe(422);
+    const set = demoHandle(
+      "PUT",
+      "settings/organization",
+      new URLSearchParams(),
+      {
+        time_zone: "Asia/Kolkata",
+        fiscal_year_start_month: 4,
+      },
+    );
+    expect(set.status).toBe(200);
+    const run = post("reports/run", {
+      kind: "deal",
+      group_by: "created_fiscal_quarter",
+      measure: "count",
+      filter: {},
+    }).body as { time_zone: string; rows: Array<{ group: string }> };
+    expect(run.time_zone).toBe("Asia/Kolkata");
+    expect(run.rows.map((r) => r.group)).toContain("2026/27-Q3");
   });
 });

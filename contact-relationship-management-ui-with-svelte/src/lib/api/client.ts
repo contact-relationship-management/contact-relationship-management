@@ -99,6 +99,15 @@ export function newIdempotencyKey(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** The reader's IANA time zone, as the browser reports it; `null` when it does not. */
+export function readerZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Identical POSTs currently in flight, so a double click sends one request. */
 const inflight = new Map<string, Promise<unknown>>();
 
@@ -147,6 +156,9 @@ async function send<T>(
   const url = `${API_BASE_URL}${path}`;
   const headers: Record<string, string> = {};
   if (init?.body !== undefined) headers["content-type"] = "application/json";
+  // The reader's own time zone, for the service's "today" (CRM-T171).
+  const zone = readerZone();
+  if (zone) headers["crm-time-zone"] = zone;
   if (method === "POST") {
     headers["idempotency-key"] = init?.idempotencyKey ?? newIdempotencyKey();
   }
