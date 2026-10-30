@@ -38,6 +38,7 @@ SECTIONS = [
         ("Purpose", "spec/purpose.md", "The problem and what the CRM provides."),
         ("Scope", "spec/scope.md", "What is in and out."),
         ("Regulatory position", "spec/regulatory.md", "Why this is demo software and what that means."),
+        ("Worldwide by design", "spec/worldwide.md", "The worldwide equity requirement and decision (proposed), the audit of the spec and the code, and its tasks."),
     ]),
     ("Specification", [
         ("Requirements", "spec/requirements.md", "Numbered requirements (CRM-R1 to CRM-R94) with acceptance criteria."),

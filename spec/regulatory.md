@@ -20,16 +20,22 @@
   so links stay as written). If an operator turns tracking on at the
   provider, the service records an open or a click only while the
   contact's consent for the campaign's purpose is `granted` and the
-  mailbox is not suppressed (CRM-R58). A tracking pixel is a PECR/GDPR
-  matter of its own (lawful basis, disclosure in the privacy notice) and
-  is the operator's to settle before turning it on.
+  mailbox is not suppressed (CRM-R58). A tracking pixel is a matter of its
+  own under the e-privacy and data-protection law where the mail is read
+  (in the UK, PECR and the UK GDPR; in the EU, the GDPR and the national
+  e-privacy rules; other regions not yet read, see [worldwide.md](worldwide.md)):
+  lawful basis, disclosure in the privacy notice. It is the operator's to
+  settle before turning it on.
 - **Auditability** — mutations + consent history + sensitive reads.
 - **Synthetic data only** in seeds and tests.
 
 ## Production would additionally require
 
-- UK/EU GDPR + PECR (e-privacy) compliance for the real send path:
-  lawful basis per channel, soft opt-in rules, sender
+- Compliance with the data-protection and e-marketing law of each
+  jurisdiction the deployer sends to, for the real send path (read so far:
+  the UK GDPR, the EU GDPR and the UK's PECR; every other region is not yet
+  read, see [worldwide.md](worldwide.md)):
+  lawful basis per channel, soft opt-in rules where a regime has them, sender
   identification, working unsubscribe in every message; ESP
   contract terms (processor agreements); retention schedules for
   leads/activities/tickets; subject-access and erasure coordinated

@@ -22,7 +22,7 @@ describe this software and can be reused as written.
   sent by default.
 - **Retention:** `CRM_RETENTION_DAYS` (default 365, floor 30) for soft-deleted
   rows; consent history is retained as compliance evidence. *(system fact)*
-- **Transfers outside the UK/EEA:** [none / safeguards].
+- **Transfers outside the deployer's jurisdiction** (for a UK or EU controller, outside the UK/EEA): [none / safeguards].
 
 ## 2. Necessity and proportionality
 

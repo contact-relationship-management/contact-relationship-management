@@ -59,6 +59,12 @@
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/regulatory.md",
           "path": "spec/regulatory.md",
           "description": "Why this is demo software and what that means."
+        },
+        {
+          "title": "Worldwide by design",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/worldwide.md",
+          "path": "spec/worldwide.md",
+          "description": "The worldwide equity requirement and decision (proposed), the audit of the spec and the code, and its tasks."
         }
       ]
     },

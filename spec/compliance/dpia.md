@@ -74,7 +74,7 @@ and the [record of processing](record-of-processing.md).
   by itself; email delivery and event rows are pruned by their own horizon (730 days by default,
   never below 400) and the event outbox and webhook deliveries by another (30 days, never below 7),
   only when finished with (CRM-R81).
-- **Transfers outside the UK/EEA:** [deployer decides]. The software adds none of its own; the
+- **Transfers outside the deployer's jurisdiction** (for a UK or EU controller, outside the UK/EEA): [deployer decides]. The software adds none of its own; the
   email provider, the hosting and any bridge target are where a transfer would arise.
 
 ## 2. Necessity and proportionality

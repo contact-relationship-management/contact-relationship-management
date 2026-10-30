@@ -104,11 +104,11 @@ traffic from real mailbox providers.
 | A per-recipient delivery record (campaign, contact, provider message id, state, time) | Subject access, complaint handling, idempotent retries, honest funnel numbers | Done (`email_deliveries`); no address or body stored |
 | Idempotent send per (campaign, contact) | A retry must never email twice | Done for campaigns (atomic claim per row); nurture steps are idempotent per (enrolment, step) but simulated |
 | Asynchronous send with retry and back-off | A real send takes minutes and the provider will throttle or fail | A background job sends batch after batch; no back-off, and a stalled campaign waits for the next `run` |
-| One-click unsubscribe: a link in the body and the `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058) | Bulk-sender rules at the large mailbox providers, and PECR | Built; not yet tried against a large mailbox provider |
+| One-click unsubscribe: a link in the body and the `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058) | Bulk-sender rules at the large mailbox providers, and e-marketing law (in the UK, PECR; other regions not yet read) | Built; not yet tried against a large mailbox provider |
 | An unsubscribe endpoint that writes a `withdrawn` consent event immediately | The consent log is the source of truth | Built: signed link, public endpoint, tested |
 | A suppression list the send path checks, filled by bounces, complaints and unsubscribes | Never mail an address that bounced hard or complained | Built per contact; unsubscribes also suppress through consent |
 | Signed, authenticated webhooks for delivered, bounced, complained, opened and clicked | The provider reports outcomes asynchronously | None |
-| Sender identification and a postal or contact address in each message | PECR and equivalent rules | None |
+| Sender identification and a postal or contact address in each message | PECR in the UK and equivalent rules elsewhere (not yet read; see [worldwide.md](../worldwide.md)) | None |
 | SPF, DKIM and DMARC aligned for the sending domain | Delivery and anti-spoofing | A deployer task |
 | Message content and recipient data held for a stated period, then deleted | Data minimisation | Not defined |
 
@@ -119,8 +119,8 @@ traffic from real mailbox providers.
    for abuse prevention or deliverability analytics)? Provide the standard
    terms and the sub-processor list.
 2. **Data location and transfers.** Where is recipient data stored and
-   processed? Which transfer mechanism covers any transfer out of the UK or
-   EEA?
+   processed? Which transfer mechanism covers any transfer out of the
+   deployer's jurisdiction (for a UK or EU controller, out of the UK or EEA)?
 3. **Retention.** How long do you keep message bodies, recipient addresses
    and event data? Can we set it and delete on request?
 4. **Security evidence.** ISO 27001 or SOC 2 report, penetration-test summary,

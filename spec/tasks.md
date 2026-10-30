@@ -1849,3 +1849,61 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
       - **Tests:** the request tests' stand-in WPM projects `fields` as WPM's source does (`rules::worker_fields`, read 2026-10-30) and refuses an unknown name with `422`; the import test checks every page asked for exactly `pid,department,person_ref`; `a_worker_service_without_the_lean_list_fails_the_import_and_changes_nothing` (a stand-in from before WPM-R216: one call, `502`, the hand-set team kept).
       - **Spec:** CRM-R73, CRM-D17, integrations.md (the WPM gap marked resolved), the DPIA and the record of processing (no name, job or pay received from a WPM that supports `fields`); the bridges tutorial.
       - **Not done / not verified:** not run against a running WPM; an older WPM without `fields` now fails the import (accepted, and said in CRM-R73).
+
+## Worldwide equity (from the 2026-10-30 audit, [worldwide.md](worldwide.md))
+
+Each task traces to CRM-R95 and CRM-D19 (both proposed) and names the rows of the audit it closes ("spec" rows are the spec audit,
+"code" rows the code and UI check).
+
+- [x] CRM-T164 **Worldwide equity audit.** (CRM-R95, CRM-D19) (M)
+      **Done (2026-10-30):** 64 findings (16 right, 23 partial, 25 gaps) in [worldwide.md](worldwide.md), with file and line; the gaps
+      are CRM-T165 to CRM-T176. Wording fixed in [regulatory.md](regulatory.md), [index.md](index.md), the email-provider brief and the
+      DPIA and its template (regimes named; other regions *not yet read*); no behaviour changed.
+      **Not done / not verified:** no law of any region was read; nothing was run; the identity registries, the role briefs, the
+      `@lilydesignsystem/*` packages and the wording of each translation were not audited (worldwide.md, "Not audited").
+- [ ] CRM-T165 **Regulatory register and compliance mapping by region.** (CRM-R95, CRM-D19; spec rows 2 to 10, 19; code rows 6, 7)
+      [regulatory.md](regulatory.md) gets a register by region (international standards, the EU, the UK, the US, Canada, Latin America,
+      Africa, the Middle East and the Gulf, South Asia, East Asia, South-East Asia and Oceania), each *not yet read* until read; the
+      control mapping gains a row or column per regime read; the DPIA and record of processing say what a non-GDPR deployer uses
+      instead; the `docs/<country-or-body>/` convention is stated beside a generic assurance mapping; CRM-G2's scope is put to the
+      product owner (each jurisdiction sent to, not GDPR/PECR only); the retention defaults and the "GDPR subject-access export" text
+      name whose value or right they are. (M)
+- [ ] CRM-T166 **Consent and e-marketing rules as jurisdiction profiles.** (CRM-R95, CRM-D19; spec row 12; code rows 1, 4) A design
+      first: a consent regime per contact or per send (opt-in only as today, soft opt-in for existing customers, implied consent with an
+      expiry, opt-out), purposes an administrator can edit, consent per channel; and a sender identification and postal address the
+      deployer sets, carried in each commercial message. Tests with two differently shaped profiles. (L)
+- [ ] CRM-T167 **Money uses the currency's own exponent.** (CRM-R95, CRM-D19; spec row 11; code rows 8 to 11) In the UI, one
+      formatter and parser with the behaviour of the sibling apps' shared `src/lib/money.ts` (project portfolio commit `956d9ed`,
+      workforce planning WPM-T373: the exponent from `Intl.NumberFormat#resolvedOptions().maximumFractionDigits`, `money`,
+      `minorToInput`, `parseAmount`, `toMinor`, a decimal comma accepted); the two hand-made formatters and every `* 100` and `/ 100` on
+      money replaced. In the service, `rules::fx::convert` scales by the two currencies' exponents (an ISO 4217 table). CRM-R50's
+      "a minor unit is taken as a hundredth" is rewritten. Tests with JPY (0), KWD (3) and CLF (4), and a scan that fails on a fixed
+      `* 100` or `/ 100` on a money name. (M)
+- [ ] CRM-T168 **No built-in currency; currency codes checked against ISO 4217.** (CRM-R95, CRM-D19; code rows 13 to 15) A campaign
+      without a currency is `422`, not GBP; the quota and rate forms start empty; a deal row without a currency shows a dash; deals and
+      campaigns check the code as rates do, against the ISO 4217 list; the error text's example varies. (S)
+- [ ] CRM-T169 **Names and template text in any language.** (CRM-R95, CRM-D19; spec row 15; code rows 16 to 20) The `given_name`
+      token without a stored given name uses its fallback, not the first word; token fallbacks are translated or set per template
+      language; the matcher's honorifics, nicknames and legal-form words become per-language data with more than English entries;
+      import column guesses in the UI locales. (M)
+- [ ] CRM-T170 **Phone digits and search in every script.** (CRM-R95, CRM-D19; code rows 24, 25) The matcher reads any Unicode
+      decimal digit and drops a trunk prefix only where the calling code's plan has one; search finds part of a Chinese, Japanese or
+      Thai name (a segmenter, or n-grams for scripts without spaces). (M)
+- [ ] CRM-T171 **Time zones, "today" and reporting periods.** (CRM-R95, CRM-D19; spec row 16; code rows 27 to 29) An organization time
+      zone (and a user's) for "today" in the API and the UI and for report months; a fiscal year start and fiscal quarters as report
+      groups; the forecast snapshot's day in that zone. (M)
+- [ ] CRM-T172 **UI dates, numbers, percentages and weekends through the locale.** (CRM-R95, CRM-D19; code rows 31 to 35) One date and
+      number helper on `Intl` with `i18n.locale` (as WPM-T375's `locale-format.ts`): no `toLocaleString()` without a locale, no
+      hand-made percentages, decimal commas accepted; the calendar's weekend and week start from the locale's region (or an
+      organization setting), not `[0, 6]`. (M)
+- [ ] CRM-T173 **Plural rules.** (CRM-R95, CRM-D19; code row 36) A `tn(key, count)` on `Intl.PluralRules(i18n.locale)` with a CLDR
+      category per form (as WPM-T374); the board's `count === 1` and the 10 `{count}` strings first; each locale holds its language's
+      categories. (S)
+- [ ] CRM-T174 **Right-to-left layout.** (CRM-R95, CRM-D19; code rows 38, 39) Logical CSS (`text-align: start`, `border-inline-start`)
+      in `app.css`; direction-neutral or mirrored arrows; an Arabic Playwright check of a table and a back link. (S)
+- [ ] CRM-T175 **Locales equal.** (CRM-R95, CRM-D19; spec row 17; code rows 5, 40, 42) The confirmation, preference and unsubscribe
+      pages in the contact's language; the 57 English grid headers and other literals into the catalogue; `de-de` and `zh-cn` either
+      made world locales (`de-001`, `zh-Hans`) or the regional choice recorded as a limit with a reason; a review record per locale. (M)
+- [ ] CRM-T176 **Seed and demo data in more than one shape.** (CRM-R95, CRM-D19; code row 43) The seed and the tour carry deals in at
+      least one zero-exponent and one three-exponent currency, rates not all from GBP, and names in more than one order and script; the
+      `pounds` helpers take minor units. (S)

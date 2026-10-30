@@ -1453,3 +1453,11 @@ recipient would get before anything is sent, and be certain every message carrie
 - The `/quotas` page, beside the teams import, has a button to run it and says how many contacts were marked (or, in the tour, how many would be asked about).
 - WPM's contract was read from its source on 2026-10-30 (`controllers/bridges.rs`, `rules/bridge.rs`); it is exercised against a stand-in that answers only an HR bearer token, **not a running WPM**.
 - Not built: running it on a schedule or after a contact is created; asking about one contact; ending an employment on a no; more than one organization; the caller's own token (WPM-D135).
+
+## CRM-R95 — Equitable capability worldwide
+
+*Proposed, needs product-owner confirmation (2026-10-30).* *As a deployer in any country, federation or region, I can configure and run the CRM without a code change and without a lesser experience than a UK or US deployer.*
+
+- Every standard, protocol, convention, locale, format and regulation the CRM adopts has equitable capability for countries, regions and federations worldwide; no jurisdiction is the default, the first-class case or the only case that works. The full text, the decision that implements it (CRM-D19) and the audit against it are in [worldwide.md](worldwide.md).
+- Where coverage is uneven today it is a gap with a task (CRM-T165 to CRM-T176), not a design.
+- Not built: everything in those tasks. This requirement adds no behaviour by itself.

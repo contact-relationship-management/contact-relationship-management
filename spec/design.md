@@ -265,3 +265,12 @@ nobody edited the record. `down` reverses it except for the import's `person_ref
 
 **A side effect:** the `{{rep_name}}` email-template value now asks the person service for the
 owner's name (it asked the worker service for `/api/workers/<sub>`, which is not a worker id).
+
+## CRM-D19 — Jurisdiction is data, never code; a standard is adopted as a profile, never as the only shape
+
+*Proposed, needs product-owner confirmation* (drafted 2026-10-30 by the AI assistant; implements CRM-R95; mirrors WPM-D143 and the
+project portfolio app's spec §2.0). A rule that comes from a law takes the jurisdiction's parameters as an input and names no country;
+federations and regions are first-class; names, phone numbers, dates, time zones, working weeks, reporting periods and money (the ISO 4217
+exponent, no built-in currency) follow the locale or the jurisdiction; international standards first, national ones as profiles; locales
+are equal, including what a data subject reads; claims name their jurisdiction; and a jurisdiction-specific rule is tested with a second,
+differently shaped profile. The full text is in [worldwide.md](worldwide.md#decision).

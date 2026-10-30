@@ -17,6 +17,7 @@
 - [Purpose](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/purpose.md): The problem and what the CRM provides.
 - [Scope](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/scope.md): What is in and out.
 - [Regulatory position](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/regulatory.md): Why this is demo software and what that means.
+- [Worldwide by design](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/worldwide.md): The worldwide equity requirement and decision (proposed), the audit of the spec and the code, and its tasks.
 
 ## Specification
 

@@ -62,7 +62,8 @@ them.
 | [audit.md](audit.md)                               | Audit trail, events, consent history                                    |
 | [architecture.md](architecture.md)                 | Editions, layering, pure-core rules, persistence                        |
 | [testing.md](testing.md)                           | Test strategy per edition                                               |
-| [regulatory.md](regulatory.md)                     | Demo status; GDPR / e-privacy (marketing consent) posture               |
+| [regulatory.md](regulatory.md)                     | Demo status; data-protection and e-privacy (marketing consent) posture  |
+| [worldwide.md](worldwide.md)                       | Worldwide equity: CRM-R95, CRM-D19 (proposed), the audit, its tasks     |
 | [roadmap.md](roadmap.md)                           | Beyond the v1 queue                                                     |
 | [glossary.md](glossary.md)                         | SFA, MQL/SQL, drip, CLV, SLA, …                                         |
 
