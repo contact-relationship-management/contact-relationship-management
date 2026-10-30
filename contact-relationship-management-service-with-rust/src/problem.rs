@@ -97,12 +97,22 @@ pub fn document(status: StatusCode, instance: &str, body: &[u8]) -> Value {
     Value::Object(out)
 }
 
-/// Rewrite every error response as a problem document.
+/// Marks a response as a public HTML page for a person in a browser (the unsubscribe, confirm and
+/// preference pages), which [`problem_mw`] leaves as it is (CRM-T175).
+#[derive(Debug, Clone, Copy)]
+pub struct PublicPage;
+
+/// Rewrite every error response as a problem document, except a [`PublicPage`].
 pub async fn problem_mw(req: Request, next: Next) -> Response {
     let instance = req.uri().path().to_string();
     let response = next.run(req).await;
     let status = response.status();
     if !(status.is_client_error() || status.is_server_error()) {
+        return response;
+    }
+    // A public page (unsubscribe, confirm, preferences) answers a person in a browser, so its
+    // HTML is kept: turned into JSON, the person would read a problem document (CRM-T175).
+    if response.extensions().get::<PublicPage>().is_some() {
         return response;
     }
     let (mut parts, body) = response.into_parts();

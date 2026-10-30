@@ -40,7 +40,7 @@
     { id: "title", header: t("common.name") },
     { id: "priority", kind: "chip", header: t("ticket.priority") },
     { id: "status", kind: "chip", header: t("common.status") },
-    { id: "channel", header: "Channel" },
+    { id: "channel", header: t("rpt.field.channel") },
     { id: "due", header: t("ticket.due") },
     { id: "breach", kind: "flag", header: t("ticket.breached") },
   ]);

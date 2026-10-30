@@ -169,7 +169,8 @@ test.describe("right-to-left on the Arabic page", () => {
     page,
   }) => {
     await page.goto("/ar-001/executive");
-    const line = page.locator("p.muted").filter({ hasText: "window" });
+    // The window line is in Arabic now (CRM-T175), so it is found by its test id, not the English word.
+    const line = page.getByTestId("exec-window");
     await expect(line).toBeVisible();
     await expect(line).not.toContainText("→");
     await expect(line).not.toContainText("←");

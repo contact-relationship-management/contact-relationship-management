@@ -21,7 +21,7 @@
     },
     { id: "tier", kind: "chip", header: t("account.tier") },
     { id: "industry", header: t("account.industry") },
-    { id: "pid", header: "pid" },
+    { id: "pid", header: t("col.pid") },
   ]);
 
   let view = $state<SavedView | null>(null);

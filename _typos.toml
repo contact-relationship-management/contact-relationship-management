@@ -12,6 +12,8 @@ extend-exclude = [
   "contact-relationship-management.github.io/.svelte-kit/**",
   # The import header names in eight languages (CRM-T169): a word list, not prose.
   "contact-relationship-management-service-with-rust/src/rules/column_names.rs",
+  # The public consent pages' words in eight languages (CRM-T175): translations, not prose.
+  "contact-relationship-management-service-with-rust/src/rules/public_text.rs",
   "**/Cargo.lock",
   "**/pnpm-lock.yaml",
 ]
@@ -47,3 +49,5 @@ cliente = "cliente"
 fonction = "fonction"
 adresse = "adresse"
 entreprise = "entreprise"
+# German formal address, named in the de-de review record (CRM-T175).
+sie = "sie"

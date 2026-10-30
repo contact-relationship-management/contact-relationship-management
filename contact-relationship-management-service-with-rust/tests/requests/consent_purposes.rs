@@ -745,3 +745,91 @@ async fn a_link_token_works_once_even_when_used_twice_at_once_expires_and_goes_w
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn the_public_pages_are_in_the_reader_s_language() {
+    use axum::http::{HeaderName, HeaderValue};
+    request::<App, _, _>(|request, _ctx| async move {
+        let (_recorder, _restore) = recording();
+        let accept = HeaderName::from_static("accept-language");
+        let pid = seed_contact!(&request, "Sprache").await;
+        let requested = request_consent!(request, pid, "newsletter");
+        let path = path_of(requested["confirm_url"].as_str().unwrap());
+
+        // The browser's language, by weight: German, with the purpose in German.
+        let page = request
+            .get(&path)
+            .add_header(
+                accept.clone(),
+                HeaderValue::from_static("ja, de-CH;q=0.9, en;q=0.5"),
+            )
+            .await;
+        page.assert_status_ok();
+        let html = page.text();
+        assert!(html.contains("<html lang=\"de\" dir=\"ltr\">"), "{html}");
+        assert!(html.contains("Bestätigen: Der Newsletter"), "{html}");
+        assert!(
+            html.contains(&format!("action=\"{path}?lang=de\"")),
+            "{html}"
+        );
+        assert_eq!(page.header("content-language"), "de");
+        assert!(
+            page.header("vary")
+                .to_str()
+                .unwrap()
+                .contains("Accept-Language")
+        );
+        // Every page links to itself in the other languages, each named in its own.
+        assert!(
+            html.contains(&format!(
+                "href=\"{path}?lang=ar\" hreflang=\"ar\" lang=\"ar\">العربية</a>"
+            )),
+            "{html}"
+        );
+
+        // Arabic is right to left; the address's choice wins over the browser's.
+        let html = request
+            .get(&format!("{path}?lang=ar"))
+            .add_header(accept.clone(), HeaderValue::from_static("de"))
+            .await
+            .text();
+        assert!(html.contains("<html lang=\"ar\" dir=\"rtl\">"), "{html}");
+        assert!(html.contains("تأكيد: النشرة الإخبارية"), "{html}");
+
+        // The answer to the button is in the language the form carried.
+        let done = request.post(&format!("{path}?lang=zh")).await.text();
+        assert!(done.contains("谢谢。您将收到：新闻通讯。"), "{done}");
+
+        // A language the pages lack, or none, is English.
+        let html = request
+            .get("/confirm/garbage")
+            .add_header(accept.clone(), HeaderValue::from_static("ko"))
+            .await
+            .text();
+        assert!(
+            html.contains("<html lang=\"en\" dir=\"ltr\">")
+                && html.contains("This link is not valid or has expired."),
+            "{html}"
+        );
+        let html = request
+            .get("/unsubscribe/garbage")
+            .add_header(accept, HeaderValue::from_static("cy"))
+            .await
+            .text();
+        assert!(html.contains("Nid yw'r ddolen hon yn ddilys."), "{html}");
+
+        // The preference page, in French.
+        let link: Value = request
+            .post(&format!("/api/contacts/{pid}/preferences-link"))
+            .await
+            .json();
+        let prefs = path_of(link["url"].as_str().unwrap());
+        let html = request.get(&format!("{prefs}?lang=fr")).await.text();
+        assert!(html.contains("Ce que vous souhaitez recevoir"), "{html}");
+        assert!(html.contains("Vous ne les recevez pas."), "{html}");
+        assert!(next_path(&html).ends_with("?lang=fr"));
+    })
+    .await;
+}

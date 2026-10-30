@@ -515,9 +515,20 @@ was sent to it.*
   does not carry over.
 - Erasure (CRM-R20) withdraws every purpose of the contact and of contacts
   merged into it.
-- Not built: sending the confirmation or preference mail, translating the public
-  pages, a purpose list an administrator can edit (the four are fixed in code),
-  and consent per channel.
+- **The public pages in the reader's language (CRM-T175).** The confirmation,
+  preference and unsubscribe pages are in the language the reader's browser asks
+  for (`Accept-Language`, by its `q` weights), or the one chosen from the links
+  every page carries to itself in the others (`?lang=`, kept by its form), among
+  the UI's eight (`rules::public_text`; machine drafts but English, unreviewed);
+  any other language is English. The page carries `<html lang dir>` (Arabic is
+  right to left), `Content-Language` and `Vary: Accept-Language`. The contact's
+  language is not stored: the browser says it on every visit, and storing it would
+  keep one more piece of personal data for no other use. A page that answers an
+  error (an invalid link, a refused choice) stays HTML; it is no longer turned into
+  a JSON problem document.
+- Not built: sending the confirmation or preference mail, a language beyond the
+  UI's eight on the public pages, a purpose list an administrator can edit (the
+  four are fixed in code), and consent per channel.
 
 ## CRM-R30 — Let an AI agent use the CRM as the person who runs it
 

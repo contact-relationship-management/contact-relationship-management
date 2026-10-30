@@ -22,6 +22,7 @@ pub mod imports;
 pub mod lifecycle;
 pub mod merge;
 pub mod privacy;
+pub mod public_text;
 pub mod quota;
 pub mod record_imports;
 pub mod reports;

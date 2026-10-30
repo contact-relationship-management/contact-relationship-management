@@ -99,13 +99,13 @@
     },
   });
 
-  const overdueColumns = [
-    { id: "due", kind: "date", header: "Due" },
-    { id: "days", kind: "number", header: "Overdue (days)" },
-    { id: "kind", kind: "chip", header: "Kind" },
-    { id: "summary", header: "Summary" },
-    { id: "recorder", header: "Recorder" },
-  ];
+  const overdueColumns = $derived([
+    { id: "due", kind: "date", header: t("col.due") },
+    { id: "days", kind: "number", header: t("col.overdueDays") },
+    { id: "kind", kind: "chip", header: t("col.kind") },
+    { id: "summary", header: t("col.summary") },
+    { id: "recorder", header: t("col.recorder") },
+  ]);
   const overdueRows = $derived(
     (overdue ?? []).map((i) => ({
       id: i.pid,
@@ -134,26 +134,26 @@
         kindFilter = event.currentTarget.value;
       }}
     >
-      <option value="">(all kinds)</option>
+      <option value="">{t("fu.allKinds")}</option>
       {#each ["call", "email", "meeting", "note", "task"] as kind (kind)}
         <option value={kind}>{kind}</option>
       {/each}
     </select>
-    <span class="muted">renewals convention: due-dated task activities</span>
+    <span class="muted">{t("fu.renewalsConvention")}</span>
   </label>
 </p>
 
 {#if overdue !== null}
-  <h2>Overdue</h2>
+  <h2>{t("fu.overdue")}</h2>
   <DataTable
-    label="Overdue follow-ups"
+    label={t("dash.overdue")}
     columns={overdueColumns}
     rows={overdueRows}
     testid="followups-overdue"
-    empty="Nothing overdue."
+    empty={t("fu.nothingOverdue")}
   />
 
-  <h2>Next 30 days</h2>
+  <h2>{tn("fu.nextDays", 30, { count: 30 })}</h2>
   <div class="calendar-wrap" data-testid="followups-calendar">
     <CalendarView
       label={t("cal.label")}

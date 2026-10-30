@@ -9,7 +9,7 @@
   import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { cadence, engagementWorkload, membersHealth } from "#lib/api/crm.js";
-  import { t } from "#lib/i18n.svelte.js";
+  import { t, tf, tn } from "#lib/i18n.svelte.js";
   import { formatDate } from "#lib/locale-format.js";
 
   type Cadence = Awaited<ReturnType<typeof cadence>>;
@@ -29,26 +29,26 @@
   const members = $derived<Members | null>(data.value?.members ?? null);
   const error = $derived(data.error);
 
-  const contactColumns = [
-    { id: "contact", header: "Contact" },
-    { id: "role", header: "Role" },
-    { id: "days", kind: "number", header: "Days since touch" },
-    { id: "next", header: "Next touch?" },
-  ];
+  const contactColumns = $derived([
+    { id: "contact", header: t("col.contact") },
+    { id: "role", header: t("col.role") },
+    { id: "days", kind: "number", header: t("col.daysSinceTouch") },
+    { id: "next", header: t("col.nextTouch") },
+  ]);
   const contactRows = $derived(
     (aging?.untouched_contacts ?? []).map((row) => ({
       id: row.pid,
       contact: row.display_name,
       role: row.stakeholder_role ?? "—",
       days: row.days_since_touch,
-      next: row.has_next_touch ? "yes" : "no",
+      next: row.has_next_touch ? t("common.yes") : t("common.no"),
     })),
   );
-  const accountColumns = [
-    { id: "account", header: "Account" },
-    { id: "role", header: "Role" },
-    { id: "days", kind: "number", header: "Days since touch" },
-  ];
+  const accountColumns = $derived([
+    { id: "account", header: t("col.account") },
+    { id: "role", header: t("col.role") },
+    { id: "days", kind: "number", header: t("col.daysSinceTouch") },
+  ]);
   const accountRows = $derived(
     (aging?.untouched_accounts ?? []).map((row) => ({
       id: row.pid,
@@ -57,10 +57,10 @@
       days: row.days_since_touch,
     })),
   );
-  const kindColumns = [
-    { id: "kind", header: "Kind" },
-    { id: "touches", kind: "number", total: "sum", header: "Touches" },
-  ];
+  const kindColumns = $derived([
+    { id: "kind", header: t("col.kind") },
+    { id: "touches", kind: "number", total: "sum", header: t("attr.touches") },
+  ]);
   const kindRows = $derived(
     Object.entries(workload?.per_kind ?? {}).map(([kind, count]) => ({
       id: kind,
@@ -68,10 +68,10 @@
       touches: count,
     })),
   );
-  const sentimentColumns = [
-    { id: "sentiment", header: "Sentiment" },
-    { id: "touches", kind: "number", total: "sum", header: "Touches" },
-  ];
+  const sentimentColumns = $derived([
+    { id: "sentiment", header: t("col.sentiment") },
+    { id: "touches", kind: "number", total: "sum", header: t("attr.touches") },
+  ]);
   const sentimentRows = $derived(
     Object.entries(workload?.sentiment ?? {}).map(([key, count]) => ({
       id: key,
@@ -79,27 +79,30 @@
       touches: count,
     })),
   );
-  const memberColumns = [
-    { id: "account", header: "Account" },
-    { id: "membership", header: "Membership" },
-    { id: "contacts", kind: "number", total: "sum", header: "Contacts" },
-    { id: "days", kind: "number", header: "Days since touch" },
-    { id: "followups", kind: "number", total: "sum", header: "Open follow-ups" },
-    { id: "tickets", kind: "number", total: "sum", header: "Open tickets" },
-    { id: "silent", kind: "chip", header: "Silent?" },
-  ];
+  const memberColumns = $derived([
+    { id: "account", header: t("col.account") },
+    { id: "membership", header: t("col.membership") },
+    { id: "contacts", kind: "number", total: "sum", header: t("nav.contacts") },
+    { id: "days", kind: "number", header: t("col.daysSinceTouch") },
+    { id: "followups", kind: "number", total: "sum", header: t("col.openFollowups") },
+    { id: "tickets", kind: "number", total: "sum", header: t("col.openTickets") },
+    { id: "silent", kind: "chip", header: t("col.silent") },
+  ]);
   const memberRows = $derived(
     (members?.accounts ?? []).map((row) => ({
       id: row.pid,
       account: row.display_name,
       membership: row.membership
-        ? `${row.membership.status} since ${formatDate(row.membership.joined_on)}`
+        ? tf("engage.since", {
+            status: row.membership.status,
+            date: formatDate(row.membership.joined_on),
+          })
         : "—",
       contacts: row.contacts,
       days: row.days_since_touch,
       followups: row.open_followups,
       tickets: row.open_tickets,
-      silent: row.silent ? "yes" : "no",
+      silent: row.silent ? t("common.yes") : t("common.no"),
     })),
   );
 </script>
@@ -110,37 +113,48 @@
 {#if error}<p class="error" data-testid="error">{error}</p>{/if}
 
 {#if aging}
-  <h2>Relationship cadence</h2>
-  <p class="muted">{aging.derivation} · threshold {aging.threshold_days}d</p>
-  <p data-testid="cadence-coverage">
-    <strong>{aging.contacts_without_next_touch}</strong> contacts with no planned next touch
+  <h2>{t("engage.cadence")}</h2>
+  <p class="muted">
+    {aging.derivation} · {tf("engage.threshold", { days: aging.threshold_days })}
   </p>
-  <h3>Untouched contacts</h3>
+  <p data-testid="cadence-coverage">
+    {tn("engage.noNextTouch", aging.contacts_without_next_touch, {
+      count: aging.contacts_without_next_touch,
+    })}
+  </p>
+  <h3>{t("engage.untouchedContacts")}</h3>
   <DataTable
-    label="Untouched contacts"
+    label={t("engage.untouchedContacts")}
     columns={contactColumns}
     rows={contactRows}
     testid="cadence-contacts"
-    empty="Everyone touched within the threshold."
+    empty={t("engage.everyoneTouched")}
   />
-  <h3>Untouched accounts</h3>
+  <h3>{t("engage.untouchedAccounts")}</h3>
   <DataTable
-    label="Untouched accounts"
+    label={t("engage.untouchedAccounts")}
     columns={accountColumns}
     rows={accountRows}
     testid="cadence-accounts"
-    empty="Every account touched within the threshold."
+    empty={t("engage.everyAccountTouched")}
   />
 {/if}
 
 {#if workload}
-  <h2>Workload ({workload.window_days}d)</h2>
+  <h2>{tf("engage.workload", { days: workload.window_days })}</h2>
   <p class="muted">{workload.note}</p>
-  <p data-testid="workload-touches"><strong>{workload.touches}</strong> touches</p>
+  <p data-testid="workload-touches">
+    {tn("engage.touches", workload.touches, { count: workload.touches })}
+  </p>
   <div class="cols">
-    <DataTable label="Touches by kind" columns={kindColumns} rows={kindRows} testid="workload-kinds" />
     <DataTable
-      label="Touches by sentiment"
+      label={t("engage.byKind")}
+      columns={kindColumns}
+      rows={kindRows}
+      testid="workload-kinds"
+    />
+    <DataTable
+      label={t("engage.bySentiment")}
       columns={sentimentColumns}
       rows={sentimentRows}
       testid="workload-sentiment"
@@ -149,16 +163,20 @@
 {/if}
 
 {#if members}
-  <h2>Member health</h2>
+  <h2>{t("engage.memberHealth")}</h2>
   <p class="muted">
-    {members.derivation} · {members.silent_accounts} silent (over {members.threshold_days}d)
+    {members.derivation} ·
+    {tn("engage.silent", members.silent_accounts, {
+      count: members.silent_accounts,
+      days: members.threshold_days,
+    })}
   </p>
   <DataTable
-    label="Member health"
+    label={t("engage.memberHealth")}
     columns={memberColumns}
     rows={memberRows}
     testid="member-health"
-    empty="No accounts yet."
+    empty={t("engage.noAccounts")}
   />
 {/if}
 

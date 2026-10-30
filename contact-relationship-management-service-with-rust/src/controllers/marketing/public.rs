@@ -6,24 +6,78 @@ use super::{
     deliveries, format, records, tokens,
 };
 
+use axum::extract::Query;
+
+use crate::rules::public_text::{self, Text};
+
+/// `?lang=` on a public page: the language the reader chose from the page's language links.
+#[derive(Debug, Default, serde::Deserialize)]
+pub(super) struct PageLanguage {
+    lang: Option<String>,
+}
+
+/// The language of a public page (CRM-T175): the address's `?lang=`, else the reader's
+/// `Accept-Language`, else English ([`public_text::negotiate`]).
+pub(super) fn page_text(chosen: &PageLanguage, headers: &axum::http::HeaderMap) -> &'static Text {
+    let accept = headers
+        .get(axum::http::header::ACCEPT_LANGUAGE)
+        .and_then(|v| v.to_str().ok());
+    public_text::negotiate(chosen.lang.as_deref(), accept)
+}
+
+/// The page's links to the same page in each other language.
+fn language_links(text: &Text, path: &str) -> String {
+    use std::fmt::Write as _;
+    let mut links = String::new();
+    for other in public_text::TEXTS.iter().filter(|t| t.lang != text.lang) {
+        let _ = write!(
+            links,
+            " <a href=\"{path}?lang={lang}\" hreflang=\"{lang}\" lang=\"{lang}\">{name}</a>",
+            lang = other.lang,
+            name = other.endonym
+        );
+    }
+    format!(
+        "<footer><nav aria-label=\"{label}\">{label}:{links}</nav></footer>",
+        label = text.other_languages
+    )
+}
+
 /// A public page with the headers every one of them needs: nothing cached, no referrer, no
-/// script, no styles, and any form may post only to this origin.
-pub(super) fn public_page(status: axum::http::StatusCode, title: &str, body: &str) -> Response {
+/// script, no styles, and any form may post only to this origin. It is in `text`'s language and
+/// direction, with links to the page at `path` in the others.
+pub(super) fn public_page(
+    status: axum::http::StatusCode,
+    text: &Text,
+    path: &str,
+    title: &str,
+    body: &str,
+) -> Response {
     use axum::http::{HeaderValue, header};
     use axum::response::IntoResponse;
     let html = format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
+        "<!doctype html><html lang=\"{lang}\" dir=\"{dir}\"><head><meta charset=\"utf-8\">\
          <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\
          <meta name=\"robots\" content=\"noindex\"><title>{title}</title></head>\
-         <body><main>{body}</main></body></html>"
+         <body><main>{body}</main>{links}</body></html>",
+        lang = text.lang,
+        dir = text.dir,
+        links = language_links(text, path)
     );
     let mut response = (status, html).into_response();
+    // Kept as HTML even when it is an error: a person reads it, not a client (CRM-T175).
+    response.extensions_mut().insert(crate::problem::PublicPage);
     let headers = response.headers_mut();
     headers.insert(
         header::CONTENT_TYPE,
         HeaderValue::from_static("text/html; charset=utf-8"),
     );
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    // The answer depends on the reader's language.
+    headers.insert(header::VARY, HeaderValue::from_static("Accept-Language"));
+    if let Ok(lang) = HeaderValue::from_str(text.lang) {
+        headers.insert(header::CONTENT_LANGUAGE, lang);
+    }
     headers.insert(
         header::REFERRER_POLICY,
         HeaderValue::from_static("no-referrer"),
@@ -35,19 +89,32 @@ pub(super) fn public_page(status: axum::http::StatusCode, title: &str, body: &st
     response
 }
 
-/// The unsubscribe pages: a heading and, optionally, the button that posts to `form`.
+/// The unsubscribe pages: a heading and, when `form`, the button that posts to the page itself.
 pub(super) fn unsubscribe_page(
     status: axum::http::StatusCode,
+    text: &Text,
+    token: &str,
     heading: &str,
-    form: Option<&str>,
+    form: bool,
 ) -> Response {
-    let form = form.map_or_else(String::new, |action| {
+    let path = format!("/unsubscribe/{token}");
+    let form = if form {
         format!(
-            "<form method=\"post\" action=\"{action}\"><button type=\"submit\">\
-             Unsubscribe</button></form>"
+            "<form method=\"post\" action=\"{path}?lang={lang}\"><button type=\"submit\">\
+             {button}</button></form>",
+            lang = text.lang,
+            button = text.unsubscribe_button
         )
-    });
-    public_page(status, "Unsubscribe", &format!("<h1>{heading}</h1>{form}"))
+    } else {
+        String::new()
+    };
+    public_page(
+        status,
+        text,
+        &path,
+        text.unsubscribe_title,
+        &format!("<h1>{heading}</h1>{form}"),
+    )
 }
 
 /// Check a link's token. The same answer for a forged, malformed or
@@ -59,17 +126,26 @@ pub(super) fn link_contact(token: &str) -> Option<(Uuid, Uuid)> {
 /// `GET /unsubscribe/{token}` — the page a recipient reaches from the link.
 /// It changes nothing, because mail scanners follow links; the button posts.
 #[debug_handler]
-pub(super) async fn unsubscribe_page_get(Path(token): Path<String>) -> Response {
+pub(super) async fn unsubscribe_page_get(
+    Path(token): Path<String>,
+    Query(chosen): Query<PageLanguage>,
+    headers: axum::http::HeaderMap,
+) -> Response {
+    let text = page_text(&chosen, &headers);
     match link_contact(&token) {
         Some(_) => unsubscribe_page(
             axum::http::StatusCode::OK,
-            "Stop receiving marketing email?",
-            Some(&format!("/unsubscribe/{token}")),
+            text,
+            &token,
+            text.unsubscribe_ask,
+            true,
         ),
         None => unsubscribe_page(
             axum::http::StatusCode::NOT_FOUND,
-            "This link is not valid.",
-            None,
+            text,
+            &token,
+            text.link_not_valid,
+            false,
         ),
     }
 }
@@ -82,12 +158,17 @@ pub(super) async fn unsubscribe_page_get(Path(token): Path<String>) -> Response 
 pub(super) async fn unsubscribe_post(
     State(ctx): State<AppContext>,
     Path(token): Path<String>,
+    Query(chosen): Query<PageLanguage>,
+    headers: axum::http::HeaderMap,
 ) -> Response {
+    let text = page_text(&chosen, &headers);
     let Some((contact_pid, message_pid)) = link_contact(&token) else {
         return unsubscribe_page(
             axum::http::StatusCode::NOT_FOUND,
-            "This link is not valid.",
-            None,
+            text,
+            &token,
+            text.link_not_valid,
+            false,
         );
     };
     let outcome: Result<()> = async {
@@ -117,13 +198,21 @@ pub(super) async fn unsubscribe_post(
     }
     .await;
     match outcome {
-        Ok(()) => unsubscribe_page(axum::http::StatusCode::OK, "You are unsubscribed.", None),
+        Ok(()) => unsubscribe_page(
+            axum::http::StatusCode::OK,
+            text,
+            &token,
+            text.unsubscribed,
+            false,
+        ),
         Err(error) => {
             tracing::error!(%error, "unsubscribe failed");
             unsubscribe_page(
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "Something went wrong. Please try again.",
-                None,
+                text,
+                &token,
+                text.went_wrong,
+                false,
             )
         }
     }
@@ -356,11 +445,13 @@ pub(super) async fn provider_webhook(
 }
 
 /// What the confirm and preference pages say for a link that does not work.
-fn invalid_link() -> Response {
+fn invalid_link(text: &Text, path: &str) -> Response {
     public_page(
         axum::http::StatusCode::NOT_FOUND,
-        "Link not valid",
-        "<h1>This link is not valid or has expired.</h1>",
+        text,
+        path,
+        text.link_title,
+        &format!("<h1>{}</h1>", text.link_expired),
     )
 }
 
@@ -378,15 +469,9 @@ async fn confirm_target(
     ))
 }
 
-/// The words for a purpose on the public pages.
+/// The English words for a purpose (the web form's own answer, which is not yet translated).
 pub(crate) fn purpose_label(purpose: &str) -> &'static str {
-    match purpose {
-        "marketing" => "Marketing messages",
-        "newsletter" => "The newsletter",
-        "events" => "Invitations to events",
-        "product_updates" => "Product updates",
-        _ => "Messages",
-    }
+    public_text::english().purpose(purpose)
 }
 
 /// `GET /confirm/{token}` — the page a confirmation message links to. It changes nothing,
@@ -395,17 +480,27 @@ pub(crate) fn purpose_label(purpose: &str) -> &'static str {
 pub(super) async fn confirm_page_get(
     State(ctx): State<AppContext>,
     Path(token): Path<String>,
+    Query(chosen): Query<PageLanguage>,
+    headers: axum::http::HeaderMap,
 ) -> Response {
+    let text = page_text(&chosen, &headers);
+    let path = format!("/confirm/{token}");
     let Some((_, purpose)) = confirm_target(&ctx.db, &token).await else {
-        return invalid_link();
+        return invalid_link(text, &path);
     };
     public_page(
         axum::http::StatusCode::OK,
-        "Confirm",
+        text,
+        &path,
+        text.confirm_title,
         &format!(
-            "<h1>Confirm: {}</h1><form method=\"post\" action=\"/confirm/{token}\">\
-             <button type=\"submit\">Yes, send me these</button></form>",
-            purpose_label(purpose)
+            "<h1>{heading}</h1><form method=\"post\" action=\"{path}?lang={lang}\">\
+             <button type=\"submit\">{button}</button></form>",
+            heading = text
+                .confirm_heading
+                .replace("{purpose}", text.purpose(purpose)),
+            lang = text.lang,
+            button = text.confirm_button
         ),
     )
 }
@@ -417,8 +512,12 @@ pub(super) async fn confirm_page_get(
 pub(super) async fn confirm_post(
     State(ctx): State<AppContext>,
     Path(token): Path<String>,
+    Query(chosen): Query<PageLanguage>,
+    headers: axum::http::HeaderMap,
 ) -> Response {
     use axum::http::StatusCode;
+    let text = page_text(&chosen, &headers);
+    let path = format!("/confirm/{token}");
     // The token is spent in the same transaction as the confirmation, so a failure leaves it
     // usable and a second request, even a simultaneous one, finds it spent (CRM-R79).
     let mut purpose = "";
@@ -455,19 +554,23 @@ pub(super) async fn confirm_post(
     match outcome {
         Ok(Some(_)) => public_page(
             StatusCode::OK,
-            "Confirmed",
+            text,
+            &path,
+            text.confirmed_title,
             &format!(
-                "<h1>Thank you. You will receive: {}.</h1>",
-                purpose_label(purpose)
+                "<h1>{}</h1>",
+                text.confirmed.replace("{purpose}", text.purpose(purpose))
             ),
         ),
-        Ok(None) => invalid_link(),
+        Ok(None) => invalid_link(text, &path),
         Err(error) => {
             tracing::error!(%error, "confirmation failed");
             public_page(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Confirm",
-                "<h1>Something went wrong. Please try again.</h1>",
+                text,
+                &path,
+                text.confirm_title,
+                &format!("<h1>{}</h1>", text.went_wrong),
             )
         }
     }
@@ -484,6 +587,7 @@ async fn preferences_contact(db: &sea_orm::DatabaseConnection, token: &str) -> O
 /// The preference page: each purpose with the choice that is not the current one.
 async fn preferences_html(
     db: &sea_orm::DatabaseConnection,
+    text: &Text,
     contact_pid: Uuid,
     token: &str,
 ) -> Result<Response> {
@@ -492,30 +596,33 @@ async fn preferences_html(
     let mut rows = String::new();
     for entry in crate::consents::all(db, &contact).await? {
         let (action, label) = if entry.state == "granted" {
-            ("withdrawn", "Stop")
+            ("withdrawn", text.stop)
         } else {
-            ("granted", "Start")
+            ("granted", text.start)
         };
         let status = match entry.state.as_str() {
-            "granted" => "You receive these.",
-            "pending" => "Waiting for you to confirm.",
-            _ => "You do not receive these.",
+            "granted" => text.receiving,
+            "pending" => text.pending,
+            _ => text.not_receiving,
         };
         let _ = write!(
             rows,
             "<li><strong>{}</strong> {status} \
-             <form method=\"post\" action=\"/preferences/{token}\">\
+             <form method=\"post\" action=\"/preferences/{token}?lang={lang}\">\
              <input type=\"hidden\" name=\"purpose\" value=\"{}\">\
              <input type=\"hidden\" name=\"action\" value=\"{action}\">\
              <button type=\"submit\">{label}</button></form></li>",
-            purpose_label(&entry.purpose),
-            entry.purpose
+            text.purpose(&entry.purpose),
+            entry.purpose,
+            lang = text.lang
         );
     }
     Ok(public_page(
         axum::http::StatusCode::OK,
-        "Your preferences",
-        &format!("<h1>What you would like to receive</h1><ul>{rows}</ul>"),
+        text,
+        &format!("/preferences/{token}"),
+        text.preferences_title,
+        &format!("<h1>{}</h1><ul>{rows}</ul>", text.preferences_heading),
     ))
 }
 
@@ -524,13 +631,17 @@ async fn preferences_html(
 pub(super) async fn preferences_page_get(
     State(ctx): State<AppContext>,
     Path(token): Path<String>,
+    Query(chosen): Query<PageLanguage>,
+    headers: axum::http::HeaderMap,
 ) -> Response {
+    let text = page_text(&chosen, &headers);
+    let path = format!("/preferences/{token}");
     let Some(contact) = preferences_contact(&ctx.db, &token).await else {
-        return invalid_link();
+        return invalid_link(text, &path);
     };
-    preferences_html(&ctx.db, contact, &token)
+    preferences_html(&ctx.db, text, contact, &token)
         .await
-        .unwrap_or_else(|_| invalid_link())
+        .unwrap_or_else(|_| invalid_link(text, &path))
 }
 
 /// `POST /preferences/{token}` form.
@@ -546,21 +657,26 @@ pub(super) struct PreferenceChoice {
 pub(super) async fn preferences_post(
     State(ctx): State<AppContext>,
     Path(token): Path<String>,
+    Query(chosen): Query<PageLanguage>,
+    headers: axum::http::HeaderMap,
     axum::extract::Form(choice): axum::extract::Form<PreferenceChoice>,
 ) -> Response {
-    let Some(purpose) = tokens::PURPOSES.iter().find(|p| **p == choice.purpose) else {
-        return public_page(
+    let text = page_text(&chosen, &headers);
+    let path = format!("/preferences/{token}");
+    let not_available = || {
+        public_page(
             axum::http::StatusCode::UNPROCESSABLE_ENTITY,
-            "Your preferences",
-            "<h1>That choice is not available.</h1>",
-        );
+            text,
+            &path,
+            text.preferences_title,
+            &format!("<h1>{}</h1>", text.not_available),
+        )
+    };
+    let Some(purpose) = tokens::PURPOSES.iter().find(|p| **p == choice.purpose) else {
+        return not_available();
     };
     if !tokens::CONSENT_ACTIONS.contains(&choice.action.as_str()) {
-        return public_page(
-            axum::http::StatusCode::UNPROCESSABLE_ENTITY,
-            "Your preferences",
-            "<h1>That choice is not available.</h1>",
-        );
+        return not_available();
     }
     // A choice is made with a link that works once: it is spent here, with the change, and the
     // page that answers carries a fresh one, for the next choice, that expires when the first
@@ -570,7 +686,7 @@ pub(super) async fn preferences_post(
         let Some(spent) =
             crate::link_tokens::consume(&txn, crate::link_tokens::PREFERENCES, &token).await?
         else {
-            return Ok(invalid_link());
+            return Ok(invalid_link(text, &path));
         };
         let contact = records::find_contact(&txn, spent.contact).await?;
         if crate::consents::state_of(&txn, &contact, purpose).await? != choice.action {
@@ -593,11 +709,11 @@ pub(super) async fn preferences_post(
         )
         .await?;
         txn.commit().await?;
-        preferences_html(&ctx.db, spent.contact, &next).await
+        preferences_html(&ctx.db, text, spent.contact, &next).await
     }
     .await;
     outcome.unwrap_or_else(|error| {
         tracing::error!(%error, "preference change failed");
-        invalid_link()
+        invalid_link(text, &path)
     })
 }

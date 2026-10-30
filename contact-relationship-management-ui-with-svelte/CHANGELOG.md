@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — grid headers and five pages in the catalogue; a review record per locale (CRM-T175)
+
+Every `header: "…"` literal (58) and the English text of the executive, partners, engagement, DPO and follow-ups pages are catalogue strings in all 8 locales (110 new English keys, 7 of them plural groups; machine drafts); column arrays that call `t()` are `$derived`. Visible English changes: a count of one reads "1 contact", "1 touch", "Next 1 day", and two counts are no longer bold. `spec/reviews/<locale>.md` is one review record per locale (none reviewed; `de-de` and `zh-cn` kept as regional codes, with the reason). Tests: `catalogue-literals.test.ts` (3), `review-records.test.ts` (3); `right-to-left.spec.ts` finds the executive range by `data-testid="exec-window"`. 296 vitest, 191 Playwright. **Not done:** literals elsewhere were not scanned; follow-up activity kinds, the export name and format names stay; four tour texts still say "Funnel" in English; `scripts/update-translation-register.mjs` writes English's count to every row.
+
 ### Changed — a template's language, and import columns in other languages (CRM-T169)
 
 The templates page has a language field (a new template starts in the page's language); the tokens' placeholders come from `GET /api/email-templates/tokens?language=`, every token can be given its own fallback (a token without a built-in one was hidden), and a note says when the language has none built in. `mergeTokens(language)`; `EmailTemplate.language`; `schema.d.ts` regenerated. Two strings, `tpl.language` and `tpl.noBuiltIn`, in all 8 locales (machine drafts); the register and the locale review regenerated. The tour's stand-in mirrors the service's per-language fallbacks (`TEMPLATE_FALLBACKS`, held to the service's table by a test) and guesses lead columns from a part of the service's per-language header names (`COLUMN_NAMES`). Tests: 4 vitest, 1 tour test. **Not done:** the language field is free text, with no picker; the Svelte autofixer was not run on the page.

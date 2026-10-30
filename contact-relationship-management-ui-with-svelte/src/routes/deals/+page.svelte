@@ -18,7 +18,7 @@
     placeCard,
   } from "#lib/api/crm.js";
   import { minorToInput, minorToMajor, money, toMinor } from "#lib/money.js";
-  import { i18n, t } from "#lib/i18n.svelte.js";
+  import { i18n, t, tf } from "#lib/i18n.svelte.js";
   import { formatDate, formatDecimalText } from "#lib/locale-format.js";
   import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
   import type { Deal, Stage } from "#lib/api/crm.js";
@@ -152,7 +152,7 @@
       href: (row: Record<string, unknown>) => `/deals/${row.id}`,
     },
     { id: "amount_minor", kind: "number", header: t("kanban.amount") },
-    { id: "currency", header: "Currency" },
+    { id: "currency", header: t("rpt.currency") },
     { id: "state", kind: "chip", header: t("common.status") },
     { id: "expected_close_on", kind: "date", header: t("kanban.closeOn") },
   ]);
@@ -171,11 +171,11 @@
   const shaped = $derived(applyShape(dealRows, dealColumns, view));
   const headings = $derived(Object.fromEntries(dealColumns.map((c) => [c.id, c.header])));
 
-  const funnelColumns = [
-    { id: "stage", header: "Stage" },
-    { id: "entered", kind: "number", header: "Entered" },
-    { id: "conversion", header: "Conversion" },
-  ];
+  const funnelColumns = $derived([
+    { id: "stage", header: t("deal.stage") },
+    { id: "entered", kind: "number", header: t("col.entered") },
+    { id: "conversion", header: t("col.conversion") },
+  ]);
   const funnelRows = $derived(
     (stageFunnel?.stages ?? []).map((row) => ({
       id: row.stage,
@@ -270,10 +270,10 @@
 {/if}
 
 {#if stageFunnel}
-  <h2>Funnel — {stageFunnel.pipeline.name}</h2>
+  <h2>{tf("deal.funnelHeading", { name: stageFunnel.pipeline.name })}</h2>
   <p class="muted">{stageFunnel.derivation}</p>
   <DataTable
-    label="Stage funnel"
+    label={t("deal.stageFunnel")}
     columns={funnelColumns}
     rows={funnelRows}
     testid="deal-funnel"

@@ -9,7 +9,7 @@
   import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
   import { consentByAccount, dpo } from "#lib/api/crm.js";
-  import { t } from "#lib/i18n.svelte.js";
+  import { t, tf } from "#lib/i18n.svelte.js";
 
   type DpoView = Awaited<ReturnType<typeof dpo>>;
   type ByAccount = Awaited<ReturnType<typeof consentByAccount>>;
@@ -21,10 +21,10 @@
   const byAccount = $derived<ByAccount | null>(data.value?.byAccount ?? null);
   const error = $derived(data.error);
 
-  const sourceColumns = [
-    { id: "source", header: "Source" },
-    { id: "events", header: "Events" },
-  ];
+  const sourceColumns = $derived([
+    { id: "source", header: t("lead.source") },
+    { id: "events", header: t("col.events") },
+  ]);
   const sourceRows = $derived(
     Object.entries(view?.consent_events_by_source ?? {}).map(([source, count]) => ({
       id: source,
@@ -33,11 +33,11 @@
     })),
   );
   const accountColumns = $derived([
-    { id: "account", header: "Account" },
-    { id: "coverage", header: "Coverage" },
+    { id: "account", header: t("col.account") },
+    { id: "coverage", header: t("col.coverage") },
     {
       id: "withdrawals", kind: "number",
-      header: `Withdrawals (${byAccount?.window_days ?? ""}d)`,
+      header: tf("col.withdrawals", { days: byAccount?.window_days ?? "" }),
     },
   ]);
   const accountRows = $derived(
@@ -47,14 +47,14 @@
       coverage:
         Object.entries(row.consent_coverage)
           .map(([state, count]) => `${state}: ${count}`)
-          .join("  ") || "no contacts",
+          .join("  ") || t("dpo.noContacts"),
       withdrawals: row.withdrawals_in_window,
     })),
   );
-  const duplicateColumns = [
-    { id: "person", header: "Person URN" },
-    { id: "contacts", header: "Contacts" },
-  ];
+  const duplicateColumns = $derived([
+    { id: "person", header: t("col.personUrn") },
+    { id: "contacts", header: t("nav.contacts") },
+  ]);
   const duplicateRows = $derived(
     (view?.duplicate_person_refs ?? []).map((group) => ({
       id: group.person_ref,
@@ -72,42 +72,42 @@
 {#if view}
   <p class="muted">{view.note}</p>
   <section class="tiles" data-testid="dpo-tiles">
-    <div class="tile"><strong>{view.contacts}</strong><span>contacts</span></div>
+    <div class="tile"><strong>{view.contacts}</strong><span>{t("dpo.contacts")}</span></div>
     {#each Object.entries(view.consent_coverage) as [state, count] (state)}
-      <div class="tile"><strong>{count}</strong><span>consent: {state}</span></div>
+      <div class="tile"><strong>{count}</strong><span>{tf("dpo.consentState", { state })}</span></div>
     {/each}
     <div class="tile">
       <strong>{view.withdrawals_in_window}</strong>
-      <span>withdrawals ({view.window_days}d)</span>
+      <span>{tf("dpo.withdrawals", { days: view.window_days })}</span>
     </div>
   </section>
 
-  <h2>Consent events by source</h2>
+  <h2>{t("dpo.bySource")}</h2>
   <DataTable
-    label="Consent events by source"
+    label={t("dpo.bySource")}
     columns={sourceColumns}
     rows={sourceRows}
     testid="dpo-sources"
-    empty="No consent events recorded."
+    empty={t("dpo.noEvents")}
   />
 
-  <h2>Consent by account</h2>
+  <h2>{t("dpo.byAccount")}</h2>
   {#if byAccount}
     <DataTable
-      label="Consent by account"
+      label={t("dpo.byAccount")}
       columns={accountColumns}
       rows={accountRows}
       testid="dpo-by-account"
-      empty="No accounts."
+      empty={t("dpo.noAccounts")}
     />
   {/if}
 
-  <h2>Duplicate contact rows</h2>
+  <h2>{t("dpo.duplicates")}</h2>
   <DataTable
-    label="Duplicate contact rows"
+    label={t("dpo.duplicates")}
     columns={duplicateColumns}
     rows={duplicateRows}
     testid="dpo-duplicates"
-    empty="No duplicates — one row per person."
+    empty={t("dpo.noDuplicates")}
   />
 {/if}

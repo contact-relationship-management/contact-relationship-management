@@ -12,7 +12,7 @@
     partnershipsRegister,
     stakeholdersView,
   } from "#lib/api/crm.js";
-  import { t } from "#lib/i18n.svelte.js";
+  import { t, tf, tn } from "#lib/i18n.svelte.js";
   import { arrow } from "#lib/locale-format.js";
 
   type Stakeholders = Awaited<ReturnType<typeof stakeholdersView>>;
@@ -35,12 +35,12 @@
   const SCALE = [1, 2, 3, 4, 5] as const;
   const cell = (p: number, i: number) => stakeholders?.grid[`p${p}i${i}`] ?? 0;
 
-  const partnershipColumns = [
-    { id: "account", header: "Account" },
-    { id: "kind", header: "Kind" },
-    { id: "stage", header: "Stage" },
-    { id: "summary", header: "Summary" },
-  ];
+  const partnershipColumns = $derived([
+    { id: "account", header: t("col.account") },
+    { id: "kind", header: t("col.kind") },
+    { id: "stage", header: t("deal.stage") },
+    { id: "summary", header: t("col.summary") },
+  ]);
   const partnershipRows = $derived(
     (partnerships?.register ?? []).map((row) => ({
       id: row.pid,
@@ -50,11 +50,11 @@
       summary: row.summary,
     })),
   );
-  const renewalColumns = [
-    { id: "account", header: "Account" },
-    { id: "status", header: "Status" },
-    { id: "renewal", kind: "date", header: "Renewal" },
-  ];
+  const renewalColumns = $derived([
+    { id: "account", header: t("col.account") },
+    { id: "status", header: t("common.status") },
+    { id: "renewal", kind: "date", header: t("col.renewal") },
+  ]);
   const renewalRows = $derived(
     (memberships?.renewals_due ?? []).map((row) => ({
       id: row.pid,
@@ -71,7 +71,7 @@
 {#if error}<p class="error" data-testid="error">{error}</p>{/if}
 
 {#if stakeholders}
-  <h2>Stakeholder register</h2>
+  <h2>{t("partner.register")}</h2>
   <p class="muted">{stakeholders.note}</p>
   <div class="cols" data-testid="stakeholder-register">
     {#each Object.entries(stakeholders.by_role) as [role, rows] (role)}
@@ -83,10 +83,10 @@
               <li>
                 {row.display_name}
                 <span class="muted">
-                  {row.days_since_touch}d ·
+                  {tf("common.daysShort", { days: row.days_since_touch })} ·
                   {row.influence !== null && row.interest !== null
-                    ? `P${row.influence}/I${row.interest}`
-                    : "no grid scores"}
+                    ? tf("partner.gridScore", { influence: row.influence, interest: row.interest })
+                    : t("partner.noGridScores")}
                 </span>
               </li>
             {/each}
@@ -96,14 +96,18 @@
     {/each}
   </div>
   <p class="muted">
-    {stakeholders.undeclared_contacts} contacts undeclared ·
-    {stakeholders.stakeholders_without_grid_scores} declared without grid scores
+    {tn("partner.undeclared", stakeholders.undeclared_contacts, {
+      count: stakeholders.undeclared_contacts,
+    })} ·
+    {tn("partner.withoutScores", stakeholders.stakeholders_without_grid_scores, {
+      count: stakeholders.stakeholders_without_grid_scores,
+    })}
   </p>
 
-  <h3>Power–interest grid</h3>
+  <h3>{t("partner.grid")}</h3>
   <table class="matrix" data-testid="stakeholder-grid">
     <thead>
-      <tr><th>influence ↓ / interest {arrow()}</th>{#each SCALE as interest (interest)}<th>{interest}</th>{/each}</tr>
+      <tr><th>{tf("partner.gridAxes", { arrow: arrow() })}</th>{#each SCALE as interest (interest)}<th>{interest}</th>{/each}</tr>
     </thead>
     <tbody>
       {#each [...SCALE].reverse() as influence (influence)}
@@ -119,34 +123,39 @@
 {/if}
 
 {#if partnerships}
-  <h2>Innovation partnerships</h2>
+  <h2>{t("partner.partnerships")}</h2>
   <p class="muted">
     {#each Object.entries(partnerships.by_stage) as [stage, count] (stage)}
       {stage}: {count}&nbsp;
     {/each}
   </p>
   <DataTable
-    label="Innovation partnerships"
+    label={t("partner.partnerships")}
     columns={partnershipColumns}
     rows={partnershipRows}
     testid="partnership-register"
-    empty="No partnership records."
+    empty={t("partner.noPartnerships")}
   />
 {/if}
 
 {#if memberships}
-  <h2>Memberships</h2>
-  <p class="muted">{memberships.memberships} recorded · window {memberships.window_days}d</p>
-  <h3>Renewals due</h3>
+  <h2>{t("partner.memberships")}</h2>
+  <p class="muted">
+    {tn("partner.recorded", memberships.memberships, {
+      count: memberships.memberships,
+      days: memberships.window_days,
+    })}
+  </p>
+  <h3>{t("partner.renewalsDue")}</h3>
   <DataTable
-    label="Renewals due"
+    label={t("partner.renewalsDue")}
     columns={renewalColumns}
     rows={renewalRows}
     testid="membership-renewals"
-    empty="No renewals due in the window."
+    empty={t("partner.noRenewals")}
   />
   {#if memberships.lapsed.length > 0}
-    <h3>Lapsed</h3>
+    <h3>{t("partner.lapsed")}</h3>
     <ul data-testid="membership-lapsed">
       {#each memberships.lapsed as row (row.pid)}
         <li>{row.account}</li>

@@ -259,13 +259,12 @@
     }
   }
 
-  // Tables have headers now (the lists were headerless); English literals, as on
-  // the other detail pages.
-  const timelineColumns = [
-    { id: "when", header: "When", accessor: (r: Record<string, unknown>) => r.at, format: (_v: unknown, r: Record<string, unknown>) => String(r.when) },
-    { id: "kind", kind: "chip", header: "Kind" },
-    { id: "summary", header: "Summary" },
-  ];
+  // Tables have headers now (the lists were headerless), from the catalogue (CRM-T175).
+  const timelineColumns = $derived([
+    { id: "when", header: t("col.when"), accessor: (r: Record<string, unknown>) => r.at, format: (_v: unknown, r: Record<string, unknown>) => String(r.when) },
+    { id: "kind", kind: "chip", header: t("col.kind") },
+    { id: "summary", header: t("col.summary") },
+  ]);
   const timelineRows = $derived(
     (detail?.activities ?? []).map((a) => ({
       id: a.pid,
@@ -275,11 +274,11 @@
       summary: a.summary,
     })),
   );
-  const dealColumns = [
-    { id: "deal", header: "Deal" },
-    { id: "amount", kind: "money", header: "Amount", accessor: (r: Record<string, unknown>) => r.minor, format: (_v: unknown, r: Record<string, unknown>) => String(r.amount) },
-    { id: "outcome", kind: "chip", header: "Outcome" },
-  ];
+  const dealColumns = $derived([
+    { id: "deal", header: t("col.deal") },
+    { id: "amount", kind: "money", header: t("common.amount"), accessor: (r: Record<string, unknown>) => r.minor, format: (_v: unknown, r: Record<string, unknown>) => String(r.amount) },
+    { id: "outcome", kind: "chip", header: t("col.outcome") },
+  ]);
   const dealRows = $derived(
     (detail?.deals ?? []).map((d) => ({
       id: d.pid,
@@ -289,10 +288,10 @@
       outcome: d.closed_at ? (d.won ? t("deal.won") : t("deal.lost")) : "",
     })),
   );
-  const ticketColumns = [
-    { id: "ticket", header: "Ticket" },
-    { id: "status", kind: "chip", header: "Status" },
-  ];
+  const ticketColumns = $derived([
+    { id: "ticket", header: t("col.ticket") },
+    { id: "status", kind: "chip", header: t("common.status") },
+  ]);
   const ticketRows = $derived(
     (detail?.tickets ?? []).map((x) => ({ id: x.pid, ticket: x.title, status: x.status })),
   );

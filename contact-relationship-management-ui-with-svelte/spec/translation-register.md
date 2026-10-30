@@ -20,14 +20,14 @@ counts differ by locale; `tests/unit/plurals.test.ts` checks each holds exactly 
 
 | Locale | Language | Status | Method | Reviewer | Reviewed on | Strings | Identical to English |
 |---|---|---|---|---|---|---|---|
-| `ar-001` | Arabic (Modern Standard, right-to-left) | `draft` | Written by Claude | — | — | 758 | 1 |
-| `cy-001` | Welsh | `draft` | Written by Claude | — | — | 758 | 10 |
-| `de-de` | German (Germany) | `draft` | Written by Claude | — | — | 718 | 32 |
-| `en-001` | English (international, Oxford spelling) | `source` | Written by the maintainers | — | — | 718 | 0 |
-| `es-001` | Spanish (Latin America and Spain) | `draft` | Written by Claude | — | — | 728 | 10 |
-| `fr-001` | French | `draft` | Written by Claude | — | — | 728 | 31 |
-| `hi-001` | Hindi | `draft` | Written by Claude | — | — | 718 | 2 |
-| `zh-cn` | Chinese (Simplified, China) | `draft` | Written by Claude | — | — | 708 | 1 |
+| `ar-001` | Arabic (Modern Standard, right-to-left) | `draft` | Written by Claude | — | — | 889 | 1 |
+| `cy-001` | Welsh | `draft` | Written by Claude | — | — | 889 | 10 |
+| `de-de` | German (Germany) | `draft` | Written by Claude | — | — | 821 | 34 |
+| `en-001` | English (international, Oxford spelling) | `source` | Written by the maintainers | — | — | 821 | 0 |
+| `es-001` | Spanish (Latin America and Spain) | `draft` | Written by Claude | — | — | 838 | 13 |
+| `fr-001` | French | `draft` | Written by Claude | — | — | 838 | 36 |
+| `hi-001` | Hindi | `draft` | Written by Claude | — | — | 821 | 2 |
+| `zh-cn` | Chinese (Simplified, China) | `draft` | Written by Claude | — | — | 804 | 1 |
 
 ## How a locale becomes `reviewed`
 
