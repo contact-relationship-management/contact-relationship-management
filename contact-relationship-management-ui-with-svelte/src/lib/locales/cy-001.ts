@@ -1,17 +1,27 @@
 // Welsh (`cy-001`). Loaded on demand by `i18n.svelte.ts`; the type keeps the key set
 // identical to English.
 
-import type { StringKey } from "../i18n.svelte";
+import type { LocaleStrings } from "../i18n.svelte";
 
 export default {
   "timeline.critical": "llwybr critigol",
-  "timeline.slack": "{count} diwrnod o ryddid",
+  "timeline.slack.zero": "{count} diwrnod o ryddid",
+  "timeline.slack.one": "{count} diwrnod o ryddid",
+  "timeline.slack.two": "{count} ddiwrnod o ryddid",
+  "timeline.slack.few": "{count} diwrnod o ryddid",
+  "timeline.slack.many": "{count} diwrnod o ryddid",
+  "timeline.slack.other": "{count} diwrnod o ryddid",
   "grid.columnMoved": "{header} yw colofn {position} o {count} nawr",
   "grid.shown": "A ddangosir",
   "grid.total": "Cyfanswm",
   "grid.average": "Cyfartaledd",
   "cal.moved": "Symudwyd {title} i {date}",
-  "kanban.movedMany": "Symudwyd {count} cerdyn i {column}",
+  "kanban.movedMany.zero": "Symudwyd {count} cerdyn i {column}",
+  "kanban.movedMany.one": "Symudwyd {count} cerdyn i {column}",
+  "kanban.movedMany.two": "Symudwyd {count} gerdyn i {column}",
+  "kanban.movedMany.few": "Symudwyd {count} cherdyn i {column}",
+  "kanban.movedMany.many": "Symudwyd {count} cherdyn i {column}",
+  "kanban.movedMany.other": "Symudwyd {count} cerdyn i {column}",
   "kanban.edited": "Newidiwyd {field} {title} i {text}",
   "kanban.editInvalid": "Nid yw {text} yn {field} dilys ar gyfer {title}",
   "kanban.editFailed": "Methu cadw’r newid. Mae’r bwrdd wedi’i adnewyddu.",
@@ -20,13 +30,28 @@ export default {
   "kanban.amount": "Swm",
   "kanban.closeOn": "Cau disgwyliedig",
   "grid.export": "Allforio",
-  "grid.exported": "Allforiwyd {count} rhes i {filename}",
+  "grid.exported.zero": "Allforiwyd {count} rhes i {filename}",
+  "grid.exported.one": "Allforiwyd {count} rhes i {filename}",
+  "grid.exported.two": "Allforiwyd {count} res i {filename}",
+  "grid.exported.few": "Allforiwyd {count} rhes i {filename}",
+  "grid.exported.many": "Allforiwyd {count} rhes i {filename}",
+  "grid.exported.other": "Allforiwyd {count} rhes i {filename}",
   "search.title": "Chwilio",
   "search.prompt":
     "Teipiwch yn y blwch chwilio ar y brig i chwilio ar draws cysylltiadau, cyfrifon, arweinwyr, bargeinion, tocynnau, ymgyrchoedd a’r sylfaen wybodaeth.",
-  "search.summary": "{count} canlyniad ar gyfer “{query}”",
+  "search.summary.zero": "{count} canlyniad ar gyfer “{query}”",
+  "search.summary.one": "{count} canlyniad ar gyfer “{query}”",
+  "search.summary.two": "{count} ganlyniad ar gyfer “{query}”",
+  "search.summary.few": "{count} chanlyniad ar gyfer “{query}”",
+  "search.summary.many": "{count} chanlyniad ar gyfer “{query}”",
+  "search.summary.other": "{count} canlyniad ar gyfer “{query}”",
   "search.failed": "Ni ellid chwilio rhai rhestrau.",
-  "cal.more": "+{count} arall",
+  "cal.more.zero": "+{count} arall",
+  "cal.more.one": "+{count} arall",
+  "cal.more.two": "+{count} arall",
+  "cal.more.few": "+{count} arall",
+  "cal.more.many": "+{count} arall",
+  "cal.more.other": "+{count} arall",
   "cal.day": "Diwrnod",
   "cal.agenda": "Agenda",
   "cal.agendaEmpty": "Dim dilyniannau yn y cyfnod hwn.",
@@ -49,7 +74,12 @@ export default {
   "kanban.collapse": "Cwympo {column}",
   "kanban.expand": "Ehangu {column}",
   "kanban.export": "Allforio",
-  "kanban.exported": "Allforiwyd {count} cerdyn i {filename}",
+  "kanban.exported.zero": "Allforiwyd {count} cerdyn i {filename}",
+  "kanban.exported.one": "Allforiwyd {count} cerdyn i {filename}",
+  "kanban.exported.two": "Allforiwyd {count} gerdyn i {filename}",
+  "kanban.exported.few": "Allforiwyd {count} cherdyn i {filename}",
+  "kanban.exported.many": "Allforiwyd {count} cherdyn i {filename}",
+  "kanban.exported.other": "Allforiwyd {count} cerdyn i {filename}",
   "kanban.title.col": "Cerdyn",
   "kanban.column.col": "Colofn",
   "cal.week": "Wythnos",
@@ -63,8 +93,12 @@ export default {
   "grid.pageOf": "Tudalen {page} o {pages}",
   "nav.kanban": "Kanban",
   "kanban.title": "Fy mwrdd Kanban",
-  "kanban.cards": "{count} cerdyn",
-  "kanban.cardsOne": "1 cerdyn",
+  "kanban.cards.zero": "{count} cerdyn",
+  "kanban.cards.one": "{count} cerdyn",
+  "kanban.cards.two": "{count} gerdyn",
+  "kanban.cards.few": "{count} cherdyn",
+  "kanban.cards.many": "{count} cherdyn",
+  "kanban.cards.other": "{count} cerdyn",
   "kanban.move": "Symud {title}",
   "kanban.menu": "Symud i golofn",
   "kanban.moved": "Symudwyd {title} i {column}",
@@ -75,7 +109,12 @@ export default {
   "grid.next": "Tudalen nesaf",
   "grid.page": "Tudalen {page} o {pages} ({rows} rhes)",
   "grid.sorted": "{header} wedi'i drefnu {direction}",
-  "grid.filtered": "{matches} o {total} rhes yn cyfateb",
+  "grid.filtered.zero": "{matches} o {total} rhes yn cyfateb",
+  "grid.filtered.one": "{matches} o {total} rhes yn cyfateb",
+  "grid.filtered.two": "{matches} o {total} res yn cyfateb",
+  "grid.filtered.few": "{matches} o {total} rhes yn cyfateb",
+  "grid.filtered.many": "{matches} o {total} rhes yn cyfateb",
+  "grid.filtered.other": "{matches} o {total} rhes yn cyfateb",
   "grid.select": "Dewis",
   "grid.selectRow": "Dewis {row}",
   "grid.ascending": "i fyny",
@@ -118,7 +157,17 @@ export default {
   "import.obtained": "Dyddiad cael y rhestr",
   "import.skipDup": "Hepgor rhesi sy'n edrych fel rhywun rydym yn ei adnabod",
   "import.commit": "Mewnforio'r rhesi dilys",
-  "import.done":
+  "import.done.zero":
+    "Mewnforiwyd {count} arweinydd. Ni chofnodir unrhyw gydsyniad ar eu cyfer.",
+  "import.done.one":
+    "Mewnforiwyd {count} arweinydd. Ni chofnodir unrhyw gydsyniad ar ei gyfer.",
+  "import.done.two":
+    "Mewnforiwyd {count} arweinydd. Ni chofnodir unrhyw gydsyniad ar eu cyfer.",
+  "import.done.few":
+    "Mewnforiwyd {count} arweinydd. Ni chofnodir unrhyw gydsyniad ar eu cyfer.",
+  "import.done.many":
+    "Mewnforiwyd {count} arweinydd. Ni chofnodir unrhyw gydsyniad ar eu cyfer.",
+  "import.done.other":
     "Mewnforiwyd {count} arweinydd. Ni chofnodir unrhyw gydsyniad ar eu cyfer.",
   "import.undo": "Dadwneud y mewnforio hwn",
   "import.undone":
@@ -807,6 +856,16 @@ export default {
     "Nid yw'r swm hwn yn rhif yn fformat rhifau'r dudalen hon.",
   "number.invalid": "Nid yw hwnnw'n rhif yn fformat rhifau'r dudalen hon.",
   "money.currencyRequired": "Dewiswch arian cyfred. Ni thybir yr un.",
-  "rpt.suppressed":
+  "rpt.suppressed.zero":
     "Gadawyd {count} grŵp â llai na {min} cofnod allan, fel na ellir adnabod neb o rif bach.",
-} satisfies Record<StringKey, string>;
+  "rpt.suppressed.one":
+    "Gadawyd {count} grŵp â llai na {min} cofnod allan, fel na ellir adnabod neb o rif bach.",
+  "rpt.suppressed.two":
+    "Gadawyd {count} grŵp â llai na {min} cofnod allan, fel na ellir adnabod neb o rif bach.",
+  "rpt.suppressed.few":
+    "Gadawyd {count} grŵp â llai na {min} cofnod allan, fel na ellir adnabod neb o rif bach.",
+  "rpt.suppressed.many":
+    "Gadawyd {count} grŵp â llai na {min} cofnod allan, fel na ellir adnabod neb o rif bach.",
+  "rpt.suppressed.other":
+    "Gadawyd {count} grŵp â llai na {min} cofnod allan, fel na ellir adnabod neb o rif bach.",
+} satisfies LocaleStrings;

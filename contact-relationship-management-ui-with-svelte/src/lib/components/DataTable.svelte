@@ -43,7 +43,7 @@
     DataGridRow,
     DataGridSortDirection,
   } from "@lilydesignsystem/svelte-data-grid";
-  import { i18n, t, type StringKey } from "#lib/i18n.svelte.js";
+  import { i18n, t, tf, tn } from "#lib/i18n.svelte.js";
   import { formatNumber } from "#lib/locale-format.js";
 
   // `kind` is one of "chip" | "flag" | "number" | "money" (a plain string so
@@ -103,11 +103,6 @@
     }
   }
 
-  const fill = (key: StringKey, values: Record<string, string | number>) =>
-    Object.entries(values).reduce(
-      (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
-      t(key),
-    );
 
   const showFilter = $derived(filter ?? rows.length >= 8);
   const size = $derived(pageSize ?? (rows.length > 25 ? 25 : undefined));
@@ -120,15 +115,15 @@
     exportCsv: "CSV",
     exportExcel: "Excel",
     exportAnnouncement: (_format: unknown, count: number, filename: string) =>
-      fill("grid.exported", { count, filename }),
+      tn("grid.exported", count, { count, filename }),
     previousPage: t("grid.previous"),
     nextPage: t("grid.next"),
     pageStatus: (page: number, pages: number, count: number) =>
-      fill("grid.page", { page, pages, rows: count }),
+      tf("grid.page", { page, pages, rows: count }),
     pageAnnouncement: (page: number, pages: number) =>
-      fill("grid.pageOf", { page, pages }),
+      tf("grid.pageOf", { page, pages }),
     sortAnnouncement: (header: string, direction: DataGridSortDirection) =>
-      fill("grid.sorted", {
+      tf("grid.sorted", {
         header,
         direction: t(
           direction === "ascending"
@@ -139,9 +134,9 @@
         ),
       }),
     filterAnnouncement: (matches: number, total: number) =>
-      fill("grid.filtered", { matches, total }),
+      tn("grid.filtered", total, { matches, total }),
     columnMoveAnnouncement: (header: string, position: number, count: number) =>
-      fill("grid.columnMoved", { header, position, count }),
+      tf("grid.columnMoved", { header, position, count }),
   });
 
   // Numbers sort numerically; text sorts with the UI language's collation, with

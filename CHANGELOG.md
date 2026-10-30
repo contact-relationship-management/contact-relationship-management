@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — the UI's plural forms follow each language's rules (CRM-T173, 2026-10-30)
+
+Strings that fill a count choose their form with `Intl.PluralRules`, as the workforce planning UI's do, and each locale holds exactly its language's CLDR forms (six in Arabic and Welsh, one in Chinese), held there by a parity test. **Not done:** native review of the forms. Details: the [UI changelog](contact-relationship-management-ui-with-svelte/CHANGELOG.md).
+
 ### Fixed — the UI's dates, numbers, percentages and week follow the reader's locale (CRM-T172, 2026-10-30)
 
 One formatter (`locale-format.ts`) and one calendar module (`reader-calendar.ts`) in the UI, shared in behaviour with the workforce planning UI's: numbers, percentages and dates in the page's locale, typed numbers with the locale's decimal mark, today in the reader's time zone, and the week's first day and weekend from CLDR for the reader's region. A scan test fails on hand-rolled formatting. **Not done:** the service's "today" and an organization time zone (CRM-T171). Details: the [UI changelog](contact-relationship-management-ui-with-svelte/CHANGELOG.md).

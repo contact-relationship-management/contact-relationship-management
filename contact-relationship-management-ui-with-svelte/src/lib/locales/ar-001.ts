@@ -1,17 +1,27 @@
 // Arabic (`ar-001`). Loaded on demand by `i18n.svelte.ts`; the type keeps the key set
 // identical to English.
 
-import type { StringKey } from "../i18n.svelte";
+import type { LocaleStrings } from "../i18n.svelte";
 
 export default {
   "timeline.critical": "المسار الحرج",
-  "timeline.slack": "فسحة {count} أيام",
+  "timeline.slack.zero": "فسحة {count} يوم",
+  "timeline.slack.one": "فسحة يوم واحد ({count})",
+  "timeline.slack.two": "فسحة يومين ({count})",
+  "timeline.slack.few": "فسحة {count} أيام",
+  "timeline.slack.many": "فسحة {count} يومًا",
+  "timeline.slack.other": "فسحة {count} يوم",
   "grid.columnMoved": "أصبح {header} العمود {position} من {count}",
   "grid.shown": "المعروض",
   "grid.total": "الإجمالي",
   "grid.average": "المتوسط",
   "cal.moved": "تم نقل {title} إلى {date}",
-  "kanban.movedMany": "تم نقل {count} بطاقات إلى {column}",
+  "kanban.movedMany.zero": "لم تُنقل أي بطاقة ({count}) إلى {column}",
+  "kanban.movedMany.one": "تم نقل بطاقة واحدة ({count}) إلى {column}",
+  "kanban.movedMany.two": "تم نقل بطاقتين ({count}) إلى {column}",
+  "kanban.movedMany.few": "تم نقل {count} بطاقات إلى {column}",
+  "kanban.movedMany.many": "تم نقل {count} بطاقةً إلى {column}",
+  "kanban.movedMany.other": "تم نقل {count} بطاقة إلى {column}",
   "kanban.edited": "تم تغيير {field} في {title} إلى {text}",
   "kanban.editInvalid": "{text} ليس {field} صالحًا في {title}",
   "kanban.editFailed": "تعذّر حفظ التغيير. تم تحديث اللوحة.",
@@ -20,13 +30,28 @@ export default {
   "kanban.amount": "المبلغ",
   "kanban.closeOn": "الإغلاق المتوقع",
   "grid.export": "تصدير",
-  "grid.exported": "تم تصدير {count} صفوف إلى {filename}",
+  "grid.exported.zero": "لم يُصدَّر أي صف ({count}) إلى {filename}",
+  "grid.exported.one": "تم تصدير صف واحد ({count}) إلى {filename}",
+  "grid.exported.two": "تم تصدير صفين ({count}) إلى {filename}",
+  "grid.exported.few": "تم تصدير {count} صفوف إلى {filename}",
+  "grid.exported.many": "تم تصدير {count} صفًا إلى {filename}",
+  "grid.exported.other": "تم تصدير {count} صف إلى {filename}",
   "search.title": "بحث",
   "search.prompt":
     "اكتب في مربع البحث أعلاه للبحث في جهات الاتصال والحسابات والعملاء المحتملين والصفقات والتذاكر والحملات وقاعدة المعرفة.",
-  "search.summary": "{count} نتيجة لـ «{query}»",
+  "search.summary.zero": "لا نتائج ({count}) لـ «{query}»",
+  "search.summary.one": "نتيجة واحدة ({count}) لـ «{query}»",
+  "search.summary.two": "نتيجتان ({count}) لـ «{query}»",
+  "search.summary.few": "{count} نتائج لـ «{query}»",
+  "search.summary.many": "{count} نتيجةً لـ «{query}»",
+  "search.summary.other": "{count} نتيجة لـ «{query}»",
   "search.failed": "تعذّر البحث في بعض القوائم.",
-  "cal.more": "+{count} أخرى",
+  "cal.more.zero": "+{count} أخرى",
+  "cal.more.one": "+{count} أخرى",
+  "cal.more.two": "+{count} أخريان",
+  "cal.more.few": "+{count} أخرى",
+  "cal.more.many": "+{count} أخرى",
+  "cal.more.other": "+{count} أخرى",
   "cal.day": "يوم",
   "cal.agenda": "جدول الأعمال",
   "cal.agendaEmpty": "لا توجد متابعات في هذه الفترة.",
@@ -49,7 +74,12 @@ export default {
   "kanban.collapse": "طيّ {column}",
   "kanban.expand": "توسيع {column}",
   "kanban.export": "تصدير",
-  "kanban.exported": "تم تصدير {count} بطاقات إلى {filename}",
+  "kanban.exported.zero": "لم تُصدَّر أي بطاقة ({count}) إلى {filename}",
+  "kanban.exported.one": "تم تصدير بطاقة واحدة ({count}) إلى {filename}",
+  "kanban.exported.two": "تم تصدير بطاقتين ({count}) إلى {filename}",
+  "kanban.exported.few": "تم تصدير {count} بطاقات إلى {filename}",
+  "kanban.exported.many": "تم تصدير {count} بطاقةً إلى {filename}",
+  "kanban.exported.other": "تم تصدير {count} بطاقة إلى {filename}",
   "kanban.title.col": "البطاقة",
   "kanban.column.col": "العمود",
   "cal.week": "أسبوع",
@@ -63,8 +93,12 @@ export default {
   "grid.pageOf": "الصفحة {page} من {pages}",
   "nav.kanban": "كانبان",
   "kanban.title": "لوحة كانبان الخاصة بي",
-  "kanban.cards": "{count} بطاقات",
-  "kanban.cardsOne": "بطاقة واحدة",
+  "kanban.cards.zero": "لا بطاقات ({count})",
+  "kanban.cards.one": "بطاقة واحدة ({count})",
+  "kanban.cards.two": "بطاقتان ({count})",
+  "kanban.cards.few": "{count} بطاقات",
+  "kanban.cards.many": "{count} بطاقةً",
+  "kanban.cards.other": "{count} بطاقة",
   "kanban.move": "نقل {title}",
   "kanban.menu": "نقل إلى العمود",
   "kanban.moved": "نُقلت {title} إلى {column}",
@@ -75,7 +109,12 @@ export default {
   "grid.next": "الصفحة التالية",
   "grid.page": "الصفحة {page} من {pages} ({rows} صفًا)",
   "grid.sorted": "{header} مرتّب {direction}",
-  "grid.filtered": "{matches} من {total} صفًا مطابقة",
+  "grid.filtered.zero": "{matches} من {total} صف مطابقة",
+  "grid.filtered.one": "{matches} من صف واحد ({total}) مطابق",
+  "grid.filtered.two": "{matches} من صفين ({total}) مطابقة",
+  "grid.filtered.few": "{matches} من {total} صفوف مطابقة",
+  "grid.filtered.many": "{matches} من {total} صفًا مطابقة",
+  "grid.filtered.other": "{matches} من {total} صف مطابقة",
   "grid.select": "تحديد",
   "grid.selectRow": "تحديد {row}",
   "grid.ascending": "تصاعديًا",
@@ -118,8 +157,17 @@ export default {
   "import.obtained": "تاريخ الحصول على القائمة",
   "import.skipDup": "استبعاد الصفوف التي تشبه شخصًا معروفًا",
   "import.commit": "استيراد الصفوف الصالحة",
-  "import.done":
-    "تم استيراد {count} من العملاء المحتملين. لا يُسجَّل لهم أي موافقة.",
+  "import.done.zero": "لم يُستورد أي عميل محتمل ({count}).",
+  "import.done.one":
+    "تم استيراد عميل محتمل واحد ({count}). لا تُسجَّل له أي موافقة.",
+  "import.done.two":
+    "تم استيراد عميلين محتملين ({count}). لا تُسجَّل لهما أي موافقة.",
+  "import.done.few":
+    "تم استيراد {count} عملاء محتملين. لا تُسجَّل لهم أي موافقة.",
+  "import.done.many":
+    "تم استيراد {count} عميلًا محتملًا. لا تُسجَّل لهم أي موافقة.",
+  "import.done.other":
+    "تم استيراد {count} عميل محتمل. لا تُسجَّل لهم أي موافقة.",
   "import.undo": "التراجع عن هذا الاستيراد",
   "import.undone": "أُزيل {removed} وبقي {kept} لأنه جرى العمل عليها.",
   "import.reason": "السبب",
@@ -795,6 +843,16 @@ export default {
   "money.amountInvalid": "هذا المبلغ ليس رقمًا بتنسيق الأرقام في هذه الصفحة.",
   "number.invalid": "هذا ليس رقمًا بتنسيق الأرقام في هذه الصفحة.",
   "money.currencyRequired": "اختر عملة. لا تُفترض أي عملة.",
-  "rpt.suppressed":
+  "rpt.suppressed.zero":
+    "لم تُستبعد أي مجموعة ({count}) تضم أقل من {min} سجلات.",
+  "rpt.suppressed.one":
+    "استُبعدت مجموعة واحدة ({count}) تضم أقل من {min} سجلات حتى لا يمكن تمييز شخص بعينه من رقم صغير.",
+  "rpt.suppressed.two":
+    "استُبعدت مجموعتان ({count}) تضمان أقل من {min} سجلات حتى لا يمكن تمييز شخص بعينه من رقم صغير.",
+  "rpt.suppressed.few":
     "استُبعدت {count} مجموعات تضم أقل من {min} سجلات حتى لا يمكن تمييز شخص بعينه من رقم صغير.",
-} satisfies Record<StringKey, string>;
+  "rpt.suppressed.many":
+    "استُبعدت {count} مجموعةً تضم أقل من {min} سجلات حتى لا يمكن تمييز شخص بعينه من رقم صغير.",
+  "rpt.suppressed.other":
+    "استُبعدت {count} مجموعة تضم أقل من {min} سجلات حتى لا يمكن تمييز شخص بعينه من رقم صغير.",
+} satisfies LocaleStrings;

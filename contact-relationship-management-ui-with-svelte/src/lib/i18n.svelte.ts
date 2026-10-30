@@ -116,6 +116,82 @@ export function loadLocale(locale: Locale): Promise<void> {
 /** The set of valid translation keys (derived from the English catalog). */
 export type StringKey = keyof typeof en;
 
+// Plural rules (CRM-T173; spec/worldwide.md code row 36, CRM-R95, CRM-D19). SHARED IN BEHAVIOUR with
+// the workforce planning management UI's `tn`, `translatePlural`, `pluralCategory` and
+// `pluralCategories` in its `i18n.svelte.ts` (WPM-T374), from which they are ported: the same names,
+// the same fallbacks and the same `Intl.PluralRules` choice, so the family pluralises alike; copy a
+// fix to the other. The project portfolio management UI has no plural helper yet. The CRM's
+// difference is only the shape of its catalogue: flat keys, so a plural group is the keys
+// `<base>.one`, `<base>.other` and so on side by side, where WPM nests them under `<base>`.
+
+/**
+ * The CLDR plural categories, in CLDR's order. A string that fills a count is a *plural group*: the
+ * keys `<base>.<category>`, `one` and `other` in English and all six in Arabic and Welsh. Each
+ * locale holds exactly the categories its language uses (`tests/unit/plurals.test.ts`).
+ */
+export const PLURAL_CATEGORIES = [
+  "zero",
+  "one",
+  "two",
+  "few",
+  "many",
+  "other",
+] as const;
+export type PluralCategory = (typeof PLURAL_CATEGORIES)[number];
+
+/** The base key of a plural group: `kanban.cards` for `kanban.cards.one` and `kanban.cards.other`. */
+type PluralBase<K> = K extends `${infer B}.other`
+  ? `${B}.one` extends StringKey
+    ? B
+    : never
+  : never;
+export type PluralKey = PluralBase<StringKey>;
+
+/** A key in a plural group, in any category (a locale need not hold every one). */
+export type PluralFormKey = `${PluralKey}.${PluralCategory}`;
+
+/**
+ * What a locale file holds: every key English has outside the plural groups, and of each plural
+ * group the forms its language uses (the parity test checks they are exactly those).
+ */
+export type LocaleStrings = Record<Exclude<StringKey, PluralFormKey>, string> &
+  Partial<Record<PluralFormKey, string>>;
+
+/** Every plural group's base key, from the English catalogue. */
+export const PLURAL_KEYS = Object.keys(en)
+  .filter((k) => k.endsWith(".other") && `${k.slice(0, -6)}.one` in en)
+  .map((k) => k.slice(0, -6)) as PluralKey[];
+
+/** Whether `key` is one form of a plural group (and so may be absent from a locale). */
+export function isPluralForm(key: string): boolean {
+  const dot = key.lastIndexOf(".");
+  return (
+    dot > 0 &&
+    (PLURAL_CATEGORIES as readonly string[]).includes(key.slice(dot + 1)) &&
+    (PLURAL_KEYS as string[]).includes(key.slice(0, dot))
+  );
+}
+
+/** The plural categories `locale` uses for whole and decimal counts (`Intl.PluralRules`): the forms its file must hold. */
+export function pluralCategories(locale: string): PluralCategory[] {
+  try {
+    const have = new Intl.PluralRules(locale).resolvedOptions()
+      .pluralCategories as string[];
+    return PLURAL_CATEGORIES.filter((c) => have.includes(c));
+  } catch {
+    return ["one", "other"];
+  }
+}
+
+/** The CLDR plural category of `count` in `locale`: "one" for 1 in English, "few" for 3 in Arabic, "other" for anything in Chinese. */
+export function pluralCategory(count: number, locale: string): PluralCategory {
+  try {
+    return new Intl.PluralRules(locale).select(count) as PluralCategory;
+  } catch {
+    return count === 1 ? "one" : "other";
+  }
+}
+
 /** Every translatable key, for the per-locale coverage test. */
 export const STRING_KEYS = Object.keys(en) as StringKey[];
 
@@ -187,4 +263,80 @@ export function translate(key: StringKey, locale: Locale = current): string {
 /** Reactive translation accessor for components: `t("dash.title")`. */
 export function t(key: StringKey): string {
   return translate(key, current);
+}
+
+/**
+ * The form of plural group `key` for `count` in `locale`: the locale's own category, then the
+ * group's `other`, and only then English (by English's rules). Pure — unit-testable without a
+ * component, once the locale is loaded (`loadLocale`).
+ */
+export function translatePlural(
+  key: PluralKey,
+  count: number,
+  locale: Locale = current,
+): string {
+  const table = loaded[locale] as Table | undefined;
+  if (table) {
+    const category = pluralCategory(count, locale);
+    for (const k of [`${key}.${category}`, `${key}.other`]) {
+      const found = table[k];
+      if (found !== undefined) return found;
+    }
+  }
+  const english = en as Table;
+  return (
+    english[`${key}.${pluralCategory(count, DEFAULT_LOCALE)}`] ??
+    english[`${key}.other`] ??
+    key
+  );
+}
+
+/**
+ * A placeholder's value as text in `locale`: a number through `Intl.NumberFormat` (grouping, the
+ * locale's decimal mark and digits: "1,234", "1.234"), anything else as written (as WPM's).
+ */
+export function placeholderText(
+  value: unknown,
+  locale: Locale = current,
+): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    try {
+      return new Intl.NumberFormat(locale).format(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+/** `text` with each `{name}` in `params` filled in, numbers in `locale`'s format. */
+export function fill(
+  text: string,
+  params: Record<string, unknown>,
+  locale: Locale = current,
+): string {
+  return text.replace(/\{(\w+)\}/g, (whole, name: string) =>
+    name in params ? placeholderText(params[name], locale) : whole,
+  );
+}
+
+/** Reactive translation with placeholders: `tf("grid.filtered", { matches, total })`. */
+export function tf(
+  key: StringKey,
+  params: Record<string, unknown> = {},
+): string {
+  return fill(translate(key, current), params, current);
+}
+
+/**
+ * Reactive plural translation: `tn("kanban.cards", n, { count: n })` picks the CLDR form for `n`
+ * in the page's locale and fills the placeholders (numbers in the page's format). The count is
+ * passed in `params` under the name the string uses; `count` only chooses the form.
+ */
+export function tn(
+  key: PluralKey,
+  count: number,
+  params: Record<string, unknown> = {},
+): string {
+  return fill(translatePlural(key, count, current), params, current);
 }

@@ -13,7 +13,7 @@
     type CalendarViewMode,
   } from "@lilydesignsystem/svelte-calendar";
   import { editFollowup, followups } from "#lib/api/crm.js";
-  import { i18n, t } from "#lib/i18n.svelte.js";
+  import { i18n, t, tn } from "#lib/i18n.svelte.js";
   import { formatDate } from "#lib/locale-format.js";
   import { browserLanguages, calendarLocale, todayIso, weekInfo } from "#lib/reader-calendar.js";
 
@@ -180,7 +180,7 @@
         {/each}
         {#if hiddenCount > 0}
           <span class="calendar-event muted"
-            >{t("cal.more").replace("{count}", String(hiddenCount))}</span
+            >{tn("cal.more", hiddenCount, { count: hiddenCount })}</span
           >
         {/if}
       {/snippet}

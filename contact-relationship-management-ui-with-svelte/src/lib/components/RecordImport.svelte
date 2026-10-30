@@ -18,7 +18,7 @@
     type RecordImportMapping,
     type RecordImportPreview,
   } from "#lib/api/crm.js";
-  import { t } from "#lib/i18n.svelte.js";
+  import { t, tn, tf } from "#lib/i18n.svelte.js";
   import { formatPercent } from "#lib/locale-format.js";
   import { todayIso } from "#lib/reader-calendar.js";
 
@@ -200,7 +200,7 @@
 
 {#if done}
   <p role="status" data-testid="done">
-    {t("import.done").replace("{count}", String(done.created_count))}
+    {tn("import.done", done.created_count, { count: done.created_count })}
   </p>
   <p class="muted" data-testid="done-detail">
     {t("import.leftOut")}: {done.skipped_count} · {t("import.lookupFailed")}: {done.failed_count}
@@ -209,9 +209,7 @@
     <button type="button" data-testid="undo" disabled={busy} onclick={undo}>{t("import.undo")}</button>
   {:else}
     <p role="status" data-testid="undone">
-      {t("import.undone")
-        .replace("{removed}", String(undone.removed))
-        .replace("{kept}", String(undone.kept))}
+      {tf("import.undone", { removed: undone.removed, kept: undone.kept })}
     </p>
   {/if}
 {/if}

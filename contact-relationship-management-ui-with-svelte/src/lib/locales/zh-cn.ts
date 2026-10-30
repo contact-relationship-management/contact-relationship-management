@@ -1,17 +1,17 @@
 // Simplified Chinese (China) (`zh-cn`). Loaded on demand by `i18n.svelte.ts`; the type keeps the key set
 // identical to English.
 
-import type { StringKey } from "../i18n.svelte";
+import type { LocaleStrings } from "../i18n.svelte";
 
 export default {
   "timeline.critical": "关键路径",
-  "timeline.slack": "{count} 天浮动时间",
+  "timeline.slack.other": "{count} 天浮动时间",
   "grid.columnMoved": "{header} 现在是第 {position} 列，共 {count} 列",
   "grid.shown": "当前显示",
   "grid.total": "合计",
   "grid.average": "平均",
   "cal.moved": "已将 {title} 移到 {date}",
-  "kanban.movedMany": "已将 {count} 张卡片移到 {column}",
+  "kanban.movedMany.other": "已将 {count} 张卡片移到 {column}",
   "kanban.edited": "{title} 的{field}已改为 {text}",
   "kanban.editInvalid": "{text} 不是 {title} 的有效{field}",
   "kanban.editFailed": "无法保存更改。看板已刷新。",
@@ -20,13 +20,13 @@ export default {
   "kanban.amount": "金额",
   "kanban.closeOn": "预计成交",
   "grid.export": "导出",
-  "grid.exported": "已将 {count} 行导出到 {filename}",
+  "grid.exported.other": "已将 {count} 行导出到 {filename}",
   "search.title": "搜索",
   "search.prompt":
     "在顶部搜索框中输入内容，可搜索联系人、客户、线索、商机、工单、营销活动和知识库。",
-  "search.summary": "“{query}”共有 {count} 条结果",
+  "search.summary.other": "“{query}”共有 {count} 条结果",
   "search.failed": "部分列表无法搜索。",
-  "cal.more": "另有 {count} 项",
+  "cal.more.other": "另有 {count} 项",
   "cal.day": "日",
   "cal.agenda": "日程",
   "cal.agendaEmpty": "此时段没有跟进。",
@@ -49,7 +49,7 @@ export default {
   "kanban.collapse": "折叠 {column}",
   "kanban.expand": "展开 {column}",
   "kanban.export": "导出",
-  "kanban.exported": "已将 {count} 张卡片导出到 {filename}",
+  "kanban.exported.other": "已将 {count} 张卡片导出到 {filename}",
   "kanban.title.col": "卡片",
   "kanban.column.col": "列",
   "cal.week": "周",
@@ -63,8 +63,7 @@ export default {
   "grid.pageOf": "第 {page} 页，共 {pages} 页",
   "nav.kanban": "看板",
   "kanban.title": "我的看板",
-  "kanban.cards": "{count} 张卡片",
-  "kanban.cardsOne": "1 张卡片",
+  "kanban.cards.other": "{count} 张卡片",
   "kanban.move": "移动 {title}",
   "kanban.menu": "移动到列",
   "kanban.moved": "{title} 已移至 {column}",
@@ -75,7 +74,7 @@ export default {
   "grid.next": "下一页",
   "grid.page": "第 {page} 页，共 {pages} 页（{rows} 行）",
   "grid.sorted": "{header} 已排序：{direction}",
-  "grid.filtered": "{total} 行中有 {matches} 行匹配",
+  "grid.filtered.other": "{total} 行中有 {matches} 行匹配",
   "grid.select": "选择",
   "grid.selectRow": "选择 {row}",
   "grid.ascending": "升序",
@@ -118,7 +117,7 @@ export default {
   "import.obtained": "名单获取日期",
   "import.skipDup": "跳过看起来像已知联系人的行",
   "import.commit": "导入有效行",
-  "import.done": "已导入 {count} 条线索。未为其记录任何同意。",
+  "import.done.other": "已导入 {count} 条线索。未为其记录任何同意。",
   "import.undo": "撤销此次导入",
   "import.undone": "已移除 {removed} 条，保留 {kept} 条（已有跟进）。",
   "import.reason": "原因",
@@ -768,6 +767,6 @@ export default {
   "money.amountInvalid": "该金额不是本页面数字格式中的数字。",
   "number.invalid": "这不是本页数字格式中的数字。",
   "money.currencyRequired": "请选择一种货币。系统不会默认任何货币。",
-  "rpt.suppressed":
+  "rpt.suppressed.other":
     "已省略 {count} 个记录少于 {min} 条的分组，以免从小数字中识别出个人。",
-} satisfies Record<StringKey, string>;
+} satisfies LocaleStrings;

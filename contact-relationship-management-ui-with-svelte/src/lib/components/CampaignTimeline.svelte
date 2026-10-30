@@ -13,7 +13,7 @@
   import type { GanttTask } from "@lilydesignsystem/svelte-gantt-chart";
   import type { Campaign } from "#lib/api/crm.js";
   import { criticalPath } from "#lib/critical-path.js";
-  import { i18n, t } from "#lib/i18n.svelte.js";
+  import { i18n, t, tn } from "#lib/i18n.svelte.js";
   import { isoDateIn, todayIso } from "#lib/reader-calendar.js";
 
   let { campaigns }: { campaigns: Campaign[] } = $props();
@@ -44,7 +44,7 @@
       const result = path.tasks.get(id);
       const note = result?.critical
         ? t("timeline.critical")
-        : t("timeline.slack").replace("{count}", String(result?.slack ?? 0));
+        : tn("timeline.slack", result?.slack ?? 0, { count: result?.slack ?? 0 });
       return {
         id,
         label: `${c.name} (${c.status}) · ${note}`,

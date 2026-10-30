@@ -37,7 +37,7 @@
     KanbanLane,
   } from "@lilydesignsystem/svelte-kanban-board";
   import type { Snippet } from "svelte";
-  import { i18n, t, type StringKey } from "#lib/i18n.svelte.js";
+  import { i18n, t, tf, tn } from "#lib/i18n.svelte.js";
 
   let {
     label,
@@ -73,48 +73,43 @@
   let collapsedColumns = $state<string[]>([]);
   let moveError = $state<string | null>(null);
 
-  const fill = (key: StringKey, values: Record<string, string | number>) =>
-    Object.entries(values).reduce(
-      (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
-      t(key),
-    );
 
   // The pack supplies the generic wording; what follows is the app's own and wins.
   const labels = $derived({
     ...packLabels("kanban-board", i18n.locale),
     cardCount: (count: number) =>
-      count === 1 ? t("kanban.cardsOne") : fill("kanban.cards", { count }),
-    moveButton: (card: KanbanCard) => fill("kanban.move", { title: card.title }),
+      tn("kanban.cards", count, { count }),
+    moveButton: (card: KanbanCard) => tf("kanban.move", { title: card.title }),
     moveMenuLabel: t("kanban.menu"),
     moveAnnouncement: (title: string, column: string) =>
-      fill("kanban.moved", { title, column }),
+      tf("kanban.moved", { title, column }),
     movePending: (title: string, column: string) =>
-      fill("kanban.pending", { title, column }),
+      tf("kanban.pending", { title, column }),
     moveFailed: (title: string, column: string) =>
-      fill("kanban.undone", { title, column }),
+      tf("kanban.undone", { title, column }),
     moveBlocked: (title: string, column: string) =>
-      fill("kanban.blocked", { title, column }),
+      tf("kanban.blocked", { title, column }),
     emptyColumn: () => t("kanban.emptyColumn"),
     search: t("kanban.search"),
     collapseColumn: (column: KanbanColumn, collapsed: boolean) =>
-      fill(collapsed ? "kanban.expand" : "kanban.collapse", {
+      tf(collapsed ? "kanban.expand" : "kanban.collapse", {
         column: column.title,
       }),
     laneCount: (_lane: KanbanLane, count: number) =>
-      count === 1 ? t("kanban.cardsOne") : fill("kanban.cards", { count }),
+      tn("kanban.cards", count, { count }),
     collapseLane: (lane: KanbanLane, collapsed: boolean) =>
-      fill(collapsed ? "kanban.expand" : "kanban.collapse", { column: lane.title }),
+      tf(collapsed ? "kanban.expand" : "kanban.collapse", { column: lane.title }),
     moveManyAnnouncement: (count: number, column: string) =>
-      fill("kanban.movedMany", { count, column }),
+      tn("kanban.movedMany", count, { count, column }),
     editAnnouncement: (title: string, field: string, text: string) =>
-      fill("kanban.edited", { title, field, text }),
+      tf("kanban.edited", { title, field, text }),
     editInvalid: (title: string, field: string) =>
-      fill("kanban.editInvalid", { title, field }),
+      tf("kanban.editInvalid", { title, field }),
     export: t("kanban.export"),
     exportCsv: "CSV",
     exportExcel: "Excel",
     exportAnnouncement: (_format: unknown, count: number, filename: string) =>
-      fill("kanban.exported", { count, filename }),
+      tn("kanban.exported", count, { count, filename }),
     exportHeaders: {
       title: t("kanban.title.col"),
       column: t("kanban.column.col"),
@@ -195,7 +190,7 @@
   allowLaneChange={false}
   showSearchLabel
   dragPreviewText={(dragged) =>
-    dragged.length === 1 ? dragged[0]!.title : fill("kanban.cards", { count: dragged.length })}
+    dragged.length === 1 ? dragged[0]!.title : tn("kanban.cards", dragged.length, { count: dragged.length })}
   onMoveError={handleError}
   {columnFooter}
   data-testid={testid}

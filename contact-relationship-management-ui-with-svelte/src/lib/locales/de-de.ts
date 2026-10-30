@@ -1,17 +1,19 @@
 // German (Germany) (`de-de`). Loaded on demand by `i18n.svelte.ts`; the type keeps the key set
 // identical to English.
 
-import type { StringKey } from "../i18n.svelte";
+import type { LocaleStrings } from "../i18n.svelte";
 
 export default {
   "timeline.critical": "kritischer Pfad",
-  "timeline.slack": "{count} Tage Puffer",
+  "timeline.slack.one": "{count} Tag Puffer",
+  "timeline.slack.other": "{count} Tage Puffer",
   "grid.columnMoved": "{header} ist jetzt Spalte {position} von {count}",
   "grid.shown": "Angezeigt",
   "grid.total": "Summe",
   "grid.average": "Durchschnitt",
   "cal.moved": "{title} auf {date} verschoben",
-  "kanban.movedMany": "{count} Karten nach {column} verschoben",
+  "kanban.movedMany.one": "{count} Karte nach {column} verschoben",
+  "kanban.movedMany.other": "{count} Karten nach {column} verschoben",
   "kanban.edited": "{field} von {title} auf {text} geändert",
   "kanban.editInvalid": "{text} ist kein gültiger Wert für {field} bei {title}",
   "kanban.editFailed":
@@ -22,13 +24,16 @@ export default {
   "kanban.amount": "Betrag",
   "kanban.closeOn": "Erwarteter Abschluss",
   "grid.export": "Exportieren",
-  "grid.exported": "{count} Zeilen nach {filename} exportiert",
+  "grid.exported.one": "{count} Zeile nach {filename} exportiert",
+  "grid.exported.other": "{count} Zeilen nach {filename} exportiert",
   "search.title": "Suche",
   "search.prompt":
     "Geben Sie oben im Suchfeld einen Begriff ein, um Kontakte, Konten, Leads, Deals, Tickets, Kampagnen und die Wissensdatenbank zu durchsuchen.",
-  "search.summary": "{count} Ergebnisse für „{query}“",
+  "search.summary.one": "{count} Ergebnis für „{query}“",
+  "search.summary.other": "{count} Ergebnisse für „{query}“",
   "search.failed": "Einige Listen konnten nicht durchsucht werden.",
-  "cal.more": "+{count} weitere",
+  "cal.more.one": "+{count} weitere",
+  "cal.more.other": "+{count} weitere",
   "cal.day": "Tag",
   "cal.agenda": "Agenda",
   "cal.agendaEmpty": "Keine Wiedervorlagen in diesem Zeitraum.",
@@ -52,7 +57,8 @@ export default {
   "kanban.collapse": "{column} einklappen",
   "kanban.expand": "{column} ausklappen",
   "kanban.export": "Exportieren",
-  "kanban.exported": "{count} Karten nach {filename} exportiert",
+  "kanban.exported.one": "{count} Karte nach {filename} exportiert",
+  "kanban.exported.other": "{count} Karten nach {filename} exportiert",
   "kanban.title.col": "Karte",
   "kanban.column.col": "Spalte",
   "cal.week": "Woche",
@@ -66,8 +72,8 @@ export default {
   "grid.pageOf": "Seite {page} von {pages}",
   "nav.kanban": "Kanban",
   "kanban.title": "Mein Kanban-Board",
-  "kanban.cards": "{count} Karten",
-  "kanban.cardsOne": "1 Karte",
+  "kanban.cards.one": "{count} Karte",
+  "kanban.cards.other": "{count} Karten",
   "kanban.move": "{title} verschieben",
   "kanban.menu": "In Spalte verschieben",
   "kanban.moved": "{title} nach {column} verschoben",
@@ -79,7 +85,8 @@ export default {
   "grid.next": "Nächste Seite",
   "grid.page": "Seite {page} von {pages} ({rows} Zeilen)",
   "grid.sorted": "{header} sortiert: {direction}",
-  "grid.filtered": "{matches} von {total} Zeilen passen",
+  "grid.filtered.one": "{matches} von {total} Zeile passt",
+  "grid.filtered.other": "{matches} von {total} Zeilen passen",
   "grid.select": "Auswählen",
   "grid.selectRow": "{row} auswählen",
   "grid.ascending": "aufsteigend",
@@ -122,7 +129,9 @@ export default {
   "import.obtained": "Datum, an dem die Liste beschafft wurde",
   "import.skipDup": "Zeilen auslassen, die jemandem Bekannten ähneln",
   "import.commit": "Gültige Zeilen importieren",
-  "import.done":
+  "import.done.one":
+    "{count} Lead importiert. Für ihn ist keine Einwilligung erfasst.",
+  "import.done.other":
     "{count} Leads importiert. Für sie ist keine Einwilligung erfasst.",
   "import.undo": "Import rückgängig machen",
   "import.undone":
@@ -820,6 +829,8 @@ export default {
   "number.invalid": "Das ist keine Zahl im Zahlenformat dieser Seite.",
   "money.currencyRequired":
     "Wählen Sie eine Währung. Es wird keine angenommen.",
-  "rpt.suppressed":
+  "rpt.suppressed.one":
+    "{count} Gruppe mit weniger als {min} Datensätzen wurde weggelassen, damit niemand aus einer kleinen Zahl erkennbar wird.",
+  "rpt.suppressed.other":
     "{count} Gruppen mit weniger als {min} Datensätzen wurden weggelassen, damit niemand aus einer kleinen Zahl erkennbar wird.",
-} satisfies Record<StringKey, string>;
+} satisfies LocaleStrings;

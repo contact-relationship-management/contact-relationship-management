@@ -1,17 +1,19 @@
 // Hindi (`hi-001`). Loaded on demand by `i18n.svelte.ts`; the type keeps the key set
 // identical to English.
 
-import type { StringKey } from "../i18n.svelte";
+import type { LocaleStrings } from "../i18n.svelte";
 
 export default {
   "timeline.critical": "क्रिटिकल पाथ",
-  "timeline.slack": "{count} दिन की गुंजाइश",
+  "timeline.slack.one": "{count} दिन की गुंजाइश",
+  "timeline.slack.other": "{count} दिन की गुंजाइश",
   "grid.columnMoved": "{header} अब {count} में से कॉलम {position} है",
   "grid.shown": "दिखाया गया",
   "grid.total": "कुल",
   "grid.average": "औसत",
   "cal.moved": "{title} को {date} पर ले जाया गया",
-  "kanban.movedMany": "{count} कार्ड {column} में ले जाए गए",
+  "kanban.movedMany.one": "{count} कार्ड {column} में ले जाया गया",
+  "kanban.movedMany.other": "{count} कार्ड {column} में ले जाए गए",
   "kanban.edited": "{title} का {field} बदलकर {text} किया गया",
   "kanban.editInvalid": "{text}, {title} के {field} के लिए मान्य नहीं है",
   "kanban.editFailed": "बदलाव सहेजा नहीं जा सका। बोर्ड ताज़ा कर दिया गया है।",
@@ -20,13 +22,16 @@ export default {
   "kanban.amount": "राशि",
   "kanban.closeOn": "अपेक्षित समापन",
   "grid.export": "निर्यात",
-  "grid.exported": "{count} पंक्तियाँ {filename} में निर्यात की गईं",
+  "grid.exported.one": "{count} पंक्ति {filename} में निर्यात की गई",
+  "grid.exported.other": "{count} पंक्तियाँ {filename} में निर्यात की गईं",
   "search.title": "खोज",
   "search.prompt":
     "संपर्कों, खातों, लीड, सौदों, टिकटों, अभियानों और ज्ञान आधार में खोजने के लिए ऊपर खोज बॉक्स में लिखें।",
-  "search.summary": "“{query}” के लिए {count} परिणाम",
+  "search.summary.one": "“{query}” के लिए {count} परिणाम",
+  "search.summary.other": "“{query}” के लिए {count} परिणाम",
   "search.failed": "कुछ सूचियों में खोज नहीं हो सकी।",
-  "cal.more": "+{count} और",
+  "cal.more.one": "+{count} और",
+  "cal.more.other": "+{count} और",
   "cal.day": "दिन",
   "cal.agenda": "एजेंडा",
   "cal.agendaEmpty": "इस अवधि में कोई फ़ॉलो-अप नहीं।",
@@ -49,7 +54,8 @@ export default {
   "kanban.collapse": "{column} समेटें",
   "kanban.expand": "{column} फैलाएँ",
   "kanban.export": "निर्यात",
-  "kanban.exported": "{count} कार्ड {filename} में निर्यात किए गए",
+  "kanban.exported.one": "{count} कार्ड {filename} में निर्यात किया गया",
+  "kanban.exported.other": "{count} कार्ड {filename} में निर्यात किए गए",
   "kanban.title.col": "कार्ड",
   "kanban.column.col": "कॉलम",
   "cal.week": "सप्ताह",
@@ -63,8 +69,8 @@ export default {
   "grid.pageOf": "पृष्ठ {page} / {pages}",
   "nav.kanban": "कानबन",
   "kanban.title": "मेरा कानबन बोर्ड",
-  "kanban.cards": "{count} कार्ड",
-  "kanban.cardsOne": "1 कार्ड",
+  "kanban.cards.one": "{count} कार्ड",
+  "kanban.cards.other": "{count} कार्ड",
   "kanban.move": "{title} को ले जाएँ",
   "kanban.menu": "कॉलम में ले जाएँ",
   "kanban.moved": "{title} को {column} में ले जाया गया",
@@ -75,7 +81,8 @@ export default {
   "grid.next": "अगला पृष्ठ",
   "grid.page": "पृष्ठ {page} / {pages} ({rows} पंक्तियाँ)",
   "grid.sorted": "{header} क्रमबद्ध: {direction}",
-  "grid.filtered": "{total} में से {matches} पंक्तियाँ मेल खाती हैं",
+  "grid.filtered.one": "{total} में से {matches} पंक्ति मेल खाती है",
+  "grid.filtered.other": "{total} में से {matches} पंक्तियाँ मेल खाती हैं",
   "grid.select": "चुनें",
   "grid.selectRow": "{row} चुनें",
   "grid.ascending": "आरोही",
@@ -118,7 +125,9 @@ export default {
   "import.obtained": "सूची प्राप्त करने की तारीख़",
   "import.skipDup": "जानी-पहचानी पंक्तियों जैसी पंक्तियाँ छोड़ें",
   "import.commit": "मान्य पंक्तियाँ आयात करें",
-  "import.done": "{count} लीड आयात हुईं। उनके लिए कोई सहमति दर्ज नहीं है।",
+  "import.done.one": "{count} लीड आयात हुई। उसके लिए कोई सहमति दर्ज नहीं है।",
+  "import.done.other":
+    "{count} लीड आयात हुईं। उनके लिए कोई सहमति दर्ज नहीं है।",
   "import.undo": "इस आयात को वापस लें",
   "import.undone": "{removed} हटाईं, {kept} रखीं क्योंकि उन पर काम हो चुका है।",
   "import.reason": "कारण",
@@ -802,6 +811,8 @@ export default {
   "number.invalid": "यह इस पृष्ठ के संख्या प्रारूप में कोई संख्या नहीं है।",
   "money.currencyRequired":
     "कोई मुद्रा चुनें। कोई भी मुद्रा मानकर नहीं चली जाती।",
-  "rpt.suppressed":
+  "rpt.suppressed.one":
+    "{min} से कम रिकॉर्ड वाला {count} समूह छोड़ दिया गया, ताकि छोटी संख्या से किसी की पहचान न हो सके।",
+  "rpt.suppressed.other":
     "{min} से कम रिकॉर्ड वाले {count} समूह छोड़ दिए गए, ताकि छोटी संख्या से किसी की पहचान न हो सके।",
-} satisfies Record<StringKey, string>;
+} satisfies LocaleStrings;

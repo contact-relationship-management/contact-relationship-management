@@ -1,6 +1,8 @@
 // The translation-review register (`spec/translation-register.md`) and the locales it describes:
 // every locale file has a row and the counts are true; a locale marked reviewed names who and when;
-// every locale has exactly English's keys; and no string changes the {placeholders} English has.
+// every locale has exactly English's keys outside the plural groups (a plural group holds its own
+// language's forms, CRM-T173, checked by `plurals.test.ts`); and no string changes the
+// {placeholders} English has.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,8 +12,13 @@ import {
   DEFAULT_LOCALE,
   LOCALES,
   STRING_KEYS,
+  isPluralForm,
   loadAllLocales,
 } from "../../src/lib/i18n.svelte";
+
+/** English's text for `key`, or for a plural form English lacks (`zero`, `few`…), its `other`. */
+const englishFor = (en: Record<string, string>, key: string) =>
+  en[key] ?? en[`${key.slice(0, key.lastIndexOf("."))}.other`];
 
 // Vitest runs from the project folder.
 const root = process.cwd();
@@ -80,11 +87,13 @@ describe("the translation-review register", () => {
     const en = tables[DEFAULT_LOCALE];
     for (const row of register()) {
       const table = tables[row.locale as keyof typeof tables];
+      const keys = Object.keys(table);
       const identical =
         row.locale === DEFAULT_LOCALE
           ? 0
-          : STRING_KEYS.filter((key) => table[key] === en[key]).length;
-      expect(row.strings, `${row.locale} strings`).toBe(STRING_KEYS.length);
+          : keys.filter((key) => table[key] === en[key as keyof typeof en])
+              .length;
+      expect(row.strings, `${row.locale} strings`).toBe(keys.length);
       expect(row.identical, `${row.locale} identical to English`).toBe(
         identical,
       );
@@ -93,17 +102,19 @@ describe("the translation-review register", () => {
 });
 
 describe("the locales", () => {
-  it("have exactly English's keys, each with a value", async () => {
+  it("have exactly English's keys outside the plural groups, each with a value", async () => {
     const tables = await loadAllLocales();
     for (const locale of LOCALES) {
       const table = tables[locale] as Record<string, string>;
       const keys = Object.keys(table);
       expect(
-        STRING_KEYS.filter((k) => !keys.includes(k)),
+        STRING_KEYS.filter((k) => !isPluralForm(k) && !keys.includes(k)),
         `${locale} lacks`,
       ).toEqual([]);
       expect(
-        keys.filter((k) => !(STRING_KEYS as string[]).includes(k)),
+        keys.filter(
+          (k) => !isPluralForm(k) && !(STRING_KEYS as string[]).includes(k),
+        ),
         `${locale} has keys English does not`,
       ).toEqual([]);
       expect(
@@ -119,8 +130,8 @@ describe("the locales", () => {
     const drift: string[] = [];
     for (const locale of LOCALES) {
       const table = tables[locale] as Record<string, string>;
-      for (const key of STRING_KEYS) {
-        const want = placeholders(en[key]!);
+      for (const key of Object.keys(table)) {
+        const want = placeholders(englishFor(en, key)!);
         const got = placeholders(table[key]!);
         if (want.join() !== got.join())
           drift.push(

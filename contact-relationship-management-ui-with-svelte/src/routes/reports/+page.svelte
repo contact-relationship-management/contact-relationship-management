@@ -16,7 +16,7 @@
     type ReportResult,
     type ReportSpec,
   } from "#lib/api/crm.js";
-  import { i18n, t } from "#lib/i18n.svelte.js";
+  import { i18n, t, tn } from "#lib/i18n.svelte.js";
   import { formatDate, formatDateTime, formatDecimalText } from "#lib/locale-format.js";
 
   // What the service lets each kind be grouped and filtered by.
@@ -274,9 +274,7 @@
     {#if result.truncated}<p class="muted">{t("rpt.truncated")}</p>{/if}
     {#if result.suppressed > 0}
       <p class="muted" data-testid="rpt-suppressed">
-        {t("rpt.suppressed")
-          .replace("{count}", String(result.suppressed))
-          .replace("{min}", String(result.min_cell_size))}
+        {tn("rpt.suppressed", result.suppressed, { count: result.suppressed, min: result.min_cell_size })}
       </p>
     {/if}
     {#if result.rates.length > 0}

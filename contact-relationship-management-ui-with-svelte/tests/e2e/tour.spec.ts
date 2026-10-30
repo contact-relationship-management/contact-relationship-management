@@ -1221,7 +1221,7 @@ test.describe("export, undo and search", () => {
     await expect(page.getByTestId("report-row")).toHaveCount(2);
     await expect(page.getByTestId("report-result")).not.toContainText("lost");
     await expect(page.getByTestId("rpt-suppressed")).toContainText(
-      "1 groups with fewer than 2 records were left out",
+      "1 group with fewer than 2 records was left out",
     );
   });
 

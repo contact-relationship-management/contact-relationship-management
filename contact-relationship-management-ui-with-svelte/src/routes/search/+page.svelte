@@ -7,7 +7,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { searchRecords, type SearchHit } from "#lib/api/crm.js";
-  import { t, type StringKey } from "#lib/i18n.svelte.js";
+  import { t, type StringKey, tn } from "#lib/i18n.svelte.js";
 
   type Hit = { id: string; title: string; detail: string; href: string };
   type Group = { key: StringKey; hits: Hit[] };
@@ -85,7 +85,7 @@
     {#if loading}
       {t("common.loading")}
     {:else}
-      {t("search.summary").replace("{count}", String(total)).replace("{query}", query)}
+      {tn("search.summary", total, { count: total, query })}
     {/if}
   </p>
   {#if failed && !loading}

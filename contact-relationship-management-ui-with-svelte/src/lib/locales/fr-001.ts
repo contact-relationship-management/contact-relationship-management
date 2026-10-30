@@ -1,18 +1,22 @@
 // French (`fr-001`). Loaded on demand by `i18n.svelte.ts`; the type keeps the key set
 // identical to English.
 
-import type { StringKey } from "../i18n.svelte";
+import type { LocaleStrings } from "../i18n.svelte";
 
 export default {
   "timeline.critical": "chemin critique",
-  "timeline.slack": "{count} jours de marge",
+  "timeline.slack.one": "{count} jour de marge",
+  "timeline.slack.many": "{count} de jours de marge",
+  "timeline.slack.other": "{count} jours de marge",
   "grid.columnMoved":
     "{header} est maintenant la colonne {position} sur {count}",
   "grid.shown": "Affiché",
   "grid.total": "Total",
   "grid.average": "Moyenne",
   "cal.moved": "{title} déplacé au {date}",
-  "kanban.movedMany": "{count} cartes déplacées vers {column}",
+  "kanban.movedMany.one": "{count} carte déplacée vers {column}",
+  "kanban.movedMany.many": "{count} de cartes déplacées vers {column}",
+  "kanban.movedMany.other": "{count} cartes déplacées vers {column}",
   "kanban.edited": "{field} de {title} changé en {text}",
   "kanban.editInvalid":
     "{text} n’est pas une valeur valide pour {field} de {title}",
@@ -23,13 +27,19 @@ export default {
   "kanban.amount": "Montant",
   "kanban.closeOn": "Clôture prévue",
   "grid.export": "Exporter",
-  "grid.exported": "{count} lignes exportées vers {filename}",
+  "grid.exported.one": "{count} ligne exportée vers {filename}",
+  "grid.exported.many": "{count} de lignes exportées vers {filename}",
+  "grid.exported.other": "{count} lignes exportées vers {filename}",
   "search.title": "Recherche",
   "search.prompt":
     "Saisissez un terme dans le champ de recherche en haut pour chercher dans les contacts, comptes, prospects, affaires, tickets, campagnes et la base de connaissances.",
-  "search.summary": "{count} résultats pour « {query} »",
+  "search.summary.one": "{count} résultat pour « {query} »",
+  "search.summary.many": "{count} de résultats pour « {query} »",
+  "search.summary.other": "{count} résultats pour « {query} »",
   "search.failed": "Certaines listes n’ont pas pu être consultées.",
-  "cal.more": "+{count} de plus",
+  "cal.more.one": "+{count} de plus",
+  "cal.more.many": "+{count} de plus",
+  "cal.more.other": "+{count} de plus",
   "cal.day": "Jour",
   "cal.agenda": "Agenda",
   "cal.agendaEmpty": "Aucune relance sur cette période.",
@@ -53,7 +63,9 @@ export default {
   "kanban.collapse": "Réduire {column}",
   "kanban.expand": "Développer {column}",
   "kanban.export": "Exporter",
-  "kanban.exported": "{count} cartes exportées vers {filename}",
+  "kanban.exported.one": "{count} carte exportée vers {filename}",
+  "kanban.exported.many": "{count} de cartes exportées vers {filename}",
+  "kanban.exported.other": "{count} cartes exportées vers {filename}",
   "kanban.title.col": "Carte",
   "kanban.column.col": "Colonne",
   "cal.week": "Semaine",
@@ -67,8 +79,9 @@ export default {
   "grid.pageOf": "Page {page} sur {pages}",
   "nav.kanban": "Kanban",
   "kanban.title": "Mon tableau Kanban",
-  "kanban.cards": "{count} cartes",
-  "kanban.cardsOne": "1 carte",
+  "kanban.cards.one": "{count} carte",
+  "kanban.cards.many": "{count} de cartes",
+  "kanban.cards.other": "{count} cartes",
   "kanban.move": "Déplacer {title}",
   "kanban.menu": "Déplacer vers la colonne",
   "kanban.moved": "{title} déplacée vers {column}",
@@ -80,7 +93,9 @@ export default {
   "grid.next": "Page suivante",
   "grid.page": "Page {page} sur {pages} ({rows} lignes)",
   "grid.sorted": "{header} trié : {direction}",
-  "grid.filtered": "{matches} lignes sur {total} correspondent",
+  "grid.filtered.one": "{matches} ligne sur {total} correspond",
+  "grid.filtered.many": "{matches} lignes sur {total} correspondent",
+  "grid.filtered.other": "{matches} lignes sur {total} correspondent",
   "grid.select": "Sélectionner",
   "grid.selectRow": "Sélectionner {row}",
   "grid.ascending": "croissant",
@@ -123,7 +138,11 @@ export default {
   "import.obtained": "Date d'obtention de la liste",
   "import.skipDup": "Écarter les lignes qui ressemblent à quelqu'un de connu",
   "import.commit": "Importer les lignes valides",
-  "import.done":
+  "import.done.one":
+    "{count} lead importé. Aucun consentement n'est enregistré pour lui.",
+  "import.done.many":
+    "{count} de leads importés. Aucun consentement n'est enregistré pour eux.",
+  "import.done.other":
     "{count} leads importés. Aucun consentement n'est enregistré pour eux.",
   "import.undo": "Annuler cet import",
   "import.undone": "{removed} supprimés, {kept} conservés car déjà traités.",
@@ -817,6 +836,10 @@ export default {
     "Ce montant n'est pas un nombre au format numérique de cette page.",
   "number.invalid": "Ce n’est pas un nombre au format numérique de cette page.",
   "money.currencyRequired": "Choisissez une devise. Aucune n'est supposée.",
-  "rpt.suppressed":
+  "rpt.suppressed.one":
+    "{count} groupe de moins de {min} enregistrements a été omis, afin que personne ne puisse être reconnu à partir d'un petit nombre.",
+  "rpt.suppressed.many":
+    "{count} de groupes de moins de {min} enregistrements ont été omis, afin que personne ne puisse être reconnu à partir d'un petit nombre.",
+  "rpt.suppressed.other":
     "{count} groupes de moins de {min} enregistrements ont été omis, afin que personne ne puisse être reconnu à partir d'un petit nombre.",
-} satisfies Record<StringKey, string>;
+} satisfies LocaleStrings;

@@ -13,19 +13,21 @@ erasure) and for right-to-left layout in Arabic.
 **Kept true by a test.** `tests/unit/translation-register.test.ts` fails if a locale file has no row,
 a row has no file, a count is out of date, a `reviewed` row has no reviewer or date, a locale lacks a
 key English has (or has one it does not), or a string uses different `{placeholders}` from the
-English one. The strings identical to English, for a reviewer to settle, are in
+English one. A string that fills a count is a plural group (CRM-T173): each locale holds the CLDR
+forms its own language uses (Arabic and Welsh six, Spanish and French three, Chinese one), so the
+counts differ by locale; `tests/unit/plurals.test.ts` checks each holds exactly its forms. The strings identical to English, for a reviewer to settle, are in
 [locale-review.md](locale-review.md) (`node scripts/identical-to-english.mjs > spec/locale-review.md`).
 
 | Locale | Language | Status | Method | Reviewer | Reviewed on | Strings | Identical to English |
 |---|---|---|---|---|---|---|---|
-| `ar-001` | Arabic (Modern Standard, right-to-left) | `draft` | Written by Claude | — | — | 707 | 1 |
-| `cy-001` | Welsh | `draft` | Written by Claude | — | — | 707 | 10 |
-| `de-de` | German (Germany) | `draft` | Written by Claude | — | — | 707 | 32 |
-| `en-001` | English (international, Oxford spelling) | `source` | Written by the maintainers | — | — | 707 | 0 |
-| `es-001` | Spanish (Latin America and Spain) | `draft` | Written by Claude | — | — | 707 | 10 |
-| `fr-001` | French | `draft` | Written by Claude | — | — | 707 | 31 |
-| `hi-001` | Hindi | `draft` | Written by Claude | — | — | 707 | 2 |
-| `zh-cn` | Chinese (Simplified, China) | `draft` | Written by Claude | — | — | 707 | 1 |
+| `ar-001` | Arabic (Modern Standard, right-to-left) | `draft` | Written by Claude | — | — | 756 | 1 |
+| `cy-001` | Welsh | `draft` | Written by Claude | — | — | 756 | 10 |
+| `de-de` | German (Germany) | `draft` | Written by Claude | — | — | 716 | 32 |
+| `en-001` | English (international, Oxford spelling) | `source` | Written by the maintainers | — | — | 716 | 0 |
+| `es-001` | Spanish (Latin America and Spain) | `draft` | Written by Claude | — | — | 726 | 10 |
+| `fr-001` | French | `draft` | Written by Claude | — | — | 726 | 31 |
+| `hi-001` | Hindi | `draft` | Written by Claude | — | — | 716 | 2 |
+| `zh-cn` | Chinese (Simplified, China) | `draft` | Written by Claude | — | — | 706 | 1 |
 
 ## How a locale becomes `reviewed`
 

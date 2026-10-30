@@ -12,6 +12,7 @@ import {
   loadAllLocales,
   loadLocale,
   i18n,
+  isPluralForm,
   isRtl,
   translate,
 } from "../../src/lib/i18n.svelte";
@@ -29,14 +30,19 @@ describe("money", () => {
 });
 
 describe("i18n", () => {
-  it("covers every key in every locale (parity)", async () => {
+  it("covers every key in every locale (parity; plural forms per language, plurals.test.ts)", async () => {
     const tables = await loadAllLocales();
+    const plain = STRING_KEYS.filter((key) => !isPluralForm(key));
     for (const locale of LOCALES) {
       const table = tables[locale];
-      for (const key of STRING_KEYS) {
+      for (const key of plain) {
         expect(table[key], `${locale} missing ${key}`).toBeTruthy();
       }
-      expect(Object.keys(table).sort()).toEqual([...STRING_KEYS].sort());
+      expect(
+        Object.keys(table)
+          .filter((key) => !isPluralForm(key))
+          .sort(),
+      ).toEqual([...plain].sort());
     }
   });
 
