@@ -623,3 +623,137 @@ async fn the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn the_form_s_refusals_are_in_the_language_of_the_request() {
+    // CRM-T182: the 422, 403, 429 and 503 answers follow the language the 202 does (CRM-T180):
+    // the form's `language`, else Accept-Language, else English. Their `error` code does not
+    // change with the language.
+    use contact_relationship_management::rules::public_text::{english, text_for};
+    request::<App, _, _>(|request, ctx| async move {
+        let (recorder, _restore) = arrange(vec![form("lang-refusals", "marketing", None)]);
+        // The answer's Content-Language is `lang`; its body.
+        macro_rules! in_lang {
+            ($answer:expr, $lang:expr) => {{
+                assert_eq!(
+                    $answer.header("content-language").to_str().unwrap(),
+                    $lang,
+                    "{}",
+                    $answer.text()
+                );
+                $answer.json::<Value>()
+            }};
+        }
+
+        // 422 by Accept-Language: Spanish texts for each field, the title too.
+        let answer = request
+            .post("/forms/lang-refusals")
+            .add_header("origin", ORIGIN)
+            .add_header("x-forwarded-for", "192.0.2.40")
+            .add_header("accept-language", "es-MX, en;q=0.3")
+            .json(&json!({ "name": " ", "email": "not-an-address" }))
+            .await;
+        assert_eq!(answer.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        let es = text_for("es").unwrap();
+        let body = in_lang!(answer, "es");
+        assert_eq!(body["error"], "validation", "{body}");
+        assert_eq!(body["title"], es.form_invalid_title, "{body}");
+        assert_eq!(
+            body["errors"],
+            json!([{ "pointer": "/name", "detail": es.form_name_invalid },
+                   { "pointer": "/email", "detail": es.form_email_invalid }]),
+            "{body}"
+        );
+        assert_eq!(
+            answer
+                .header("access-control-allow-origin")
+                .to_str()
+                .unwrap(),
+            ORIGIN
+        );
+
+        // 403 by the form's `language`, over the browser's.
+        let answer = request
+            .post("/forms/lang-refusals")
+            .add_header("origin", "https://evil.example")
+            .add_header("x-forwarded-for", "192.0.2.41")
+            .add_header("accept-language", "de")
+            .json(&json!({ "name": "Ada", "email": "ada@example.test", "language": "fr" }))
+            .await;
+        assert_eq!(answer.status_code(), StatusCode::FORBIDDEN);
+        let fr = text_for("fr").unwrap();
+        let body = in_lang!(answer, "fr");
+        assert_eq!(body["error"], "forbidden", "{body}");
+        assert_eq!(body["title"], fr.form_refused_title, "{body}");
+        assert_eq!(body["detail"], fr.form_refused, "{body}");
+
+        // 429 in Hindi, with its Retry-After.
+        settings::update(|s| s.web_form_client_limit = 1);
+        for expected in [StatusCode::ACCEPTED, StatusCode::TOO_MANY_REQUESTS] {
+            let answer = request
+                .post("/forms/lang-refusals")
+                .add_header("origin", ORIGIN)
+                .add_header("x-forwarded-for", "192.0.2.42")
+                .json(&json!({ "name": "Ada", "email": "ada@example.test", "language": "hi-IN" }))
+                .await;
+            assert_eq!(answer.status_code(), expected);
+            if expected == StatusCode::TOO_MANY_REQUESTS {
+                let hi = text_for("hi").unwrap();
+                assert!(answer.maybe_header("retry-after").is_some());
+                let body = in_lang!(answer, "hi");
+                assert_eq!(body["error"], "too_many_requests", "{body}");
+                assert_eq!(body["title"], hi.form_busy_title, "{body}");
+                assert_eq!(body["detail"], hi.form_busy, "{body}");
+            }
+        }
+        settings::update(|s| s.web_form_client_limit = 50);
+
+        // 503 in Chinese when the person service cannot be reached; nothing is created or sent.
+        settings::update(|s| {
+            s.upstream_mode = contact_relationship_management::clients::Mode::Http
+        });
+        let sent_before = recorder.sent().len();
+        let contacts_before = count(&ctx.db, "SELECT count(*) AS n FROM contacts").await;
+        let answer = request
+            .post("/forms/lang-refusals")
+            .add_header("origin", ORIGIN)
+            .add_header("x-forwarded-for", "192.0.2.43")
+            .add_header("accept-language", "zh-CN")
+            .json(&json!({ "name": "Lin", "email": "lin@example.test" }))
+            .await;
+        assert_eq!(answer.status_code(), StatusCode::SERVICE_UNAVAILABLE);
+        let zh = text_for("zh").unwrap();
+        let body = in_lang!(answer, "zh");
+        assert_eq!(body["error"], "unavailable", "{body}");
+        assert_eq!(body["title"], zh.form_unavailable_title, "{body}");
+        assert_eq!(body["detail"], zh.form_unavailable, "{body}");
+        assert_eq!(recorder.sent().len(), sent_before);
+        assert_eq!(
+            count(&ctx.db, "SELECT count(*) AS n FROM contacts").await,
+            contacts_before
+        );
+
+        // No language asked for: English, and the same codes.
+        settings::update(|s| {
+            s.upstream_mode = contact_relationship_management::clients::Mode::Stub
+        });
+        let answer = request
+            .post("/forms/lang-refusals")
+            .add_header("origin", ORIGIN)
+            .add_header("x-forwarded-for", "192.0.2.44")
+            .json(&json!({ "name": "Ada", "email": "nope" }))
+            .await;
+        assert_eq!(answer.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        let body = in_lang!(answer, "en");
+        assert_eq!(body["error"], "validation", "{body}");
+        assert_eq!(body["title"], english().form_invalid_title, "{body}");
+        assert_eq!(
+            body["errors"][0]["detail"],
+            english().form_email_invalid,
+            "{body}"
+        );
+    })
+    .await;
+}

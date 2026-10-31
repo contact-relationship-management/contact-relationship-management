@@ -102,6 +102,12 @@ pub fn document(status: StatusCode, instance: &str, body: &[u8]) -> Value {
 #[derive(Debug, Clone, Copy)]
 pub struct PublicPage;
 
+/// A problem's `title` in the request's language, set by a source that answers in it (the web
+/// form, CRM-T182); without it the title is the status's English reason phrase. The `error`
+/// code is never translated.
+#[derive(Debug, Clone, Copy)]
+pub struct Title(pub &'static str);
+
 /// Rewrite every error response as a problem document, except a [`PublicPage`].
 pub async fn problem_mw(req: Request, next: Next) -> Response {
     let instance = req.uri().path().to_string();
@@ -115,11 +121,15 @@ pub async fn problem_mw(req: Request, next: Next) -> Response {
     if response.extensions().get::<PublicPage>().is_some() {
         return response;
     }
+    let title = response.extensions().get::<Title>().copied();
     let (mut parts, body) = response.into_parts();
     let bytes = axum::body::to_bytes(body, MAX_ERROR_BODY)
         .await
         .unwrap_or_default();
-    let document = document(status, &instance, &bytes);
+    let mut document = document(status, &instance, &bytes);
+    if let Some(Title(title)) = title {
+        document["title"] = json!(title);
+    }
     parts
         .headers
         .insert(header::CONTENT_TYPE, HeaderValue::from_static(MEDIA_TYPE));

@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the web form's refusals in the language of the request (CRM-T182, 2026-10-31)
+
+The web form answered its accepted submissions in the request's language (CRM-T180) but refused in English. Its refusals (unusable name or address, another website, too many submissions, the person service unreachable) are now in the same language, with `Content-Language`; each refusal's machine-readable `error` code is unchanged. **Not done or verified:** every non-English text is an unreviewed machine draft; a body that is not the form's JSON shape is still refused in English before the form reads it; an unknown form's `404` has no text; request tests only, no browser. Details: the [service](contact-relationship-management-service-with-rust/CHANGELOG.md) and [UI](contact-relationship-management-ui-with-svelte/CHANGELOG.md) changelogs.
+
 ### Fixed — a deal closes on the organization's day, not UTC's (CRM-T181, 2026-10-31)
 
 A deal's close moment is stored with its time; the day it closed on was taken as its UTC date. It is now the day in the organization's time zone wherever a close day is used: converting each deal at the rate of the day it closed (an account's CLV, reports, attribution and a campaign's ROI), attribution's `from`/`to`, and the deals counted in a quota's or a territory's period. **Not done or verified:** quota and team attainment have no zone test of their own (they share the tested SQL); windows measured in elapsed time over the close moment were left as they are; the UI's tour stand-in still uses UTC dates; not run against a live service with the UI. Details: the [service changelog](contact-relationship-management-service-with-rust/CHANGELOG.md).

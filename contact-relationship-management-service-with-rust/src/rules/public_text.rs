@@ -70,6 +70,26 @@ pub struct Text {
     pub mail_body: &'static str,
     /// The web form's answer to every submission it accepts or ignores.
     pub form_received: &'static str,
+    // The web form's refusals (CRM-T182): its `422`, `403`, `429` and `503` answers' title and
+    // text. The problem document's `error` code stays the same in every language.
+    /// The title of the web form's `422` answer (CRM-T182).
+    pub form_invalid_title: &'static str,
+    /// The web form's name that cannot be used.
+    pub form_name_invalid: &'static str,
+    /// The web form's address that cannot be used.
+    pub form_email_invalid: &'static str,
+    /// The title of the web form's `403` answer (another website, or none).
+    pub form_refused_title: &'static str,
+    /// The web form's `403` answer.
+    pub form_refused: &'static str,
+    /// The title of the web form's `429` answer.
+    pub form_busy_title: &'static str,
+    /// The web form's `429` answer.
+    pub form_busy: &'static str,
+    /// The title of the web form's `503` answer.
+    pub form_unavailable_title: &'static str,
+    /// The web form's `503` answer.
+    pub form_unavailable: &'static str,
 }
 
 /// The pages' languages; English first, as the fallback.
@@ -110,6 +130,15 @@ pub const TEXTS: &[Text] = &[
         mail_subject: "Please confirm your subscription",
         mail_body: "Hello {name},\n\nSomeone asked for this address to receive: {purpose}.\nTo confirm, open this link and press the button:\n\n{link}\n\nThe link works for {days} days. If you did not ask for this, ignore this message and nothing will be sent to you.\n",
         form_received: "If the address is valid, a confirmation message is on its way.",
+        form_invalid_title: "Check the form",
+        form_name_invalid: "Please enter a name of at most 200 characters, on one line.",
+        form_email_invalid: "Please enter an email address that can receive mail.",
+        form_refused_title: "Not allowed",
+        form_refused: "This form cannot be sent from this website.",
+        form_busy_title: "Too many submissions",
+        form_busy: "Too many submissions. Please wait a little and try again.",
+        form_unavailable_title: "Not available",
+        form_unavailable: "The form cannot be sent just now. Please try again later.",
     },
     Text {
         lang: "ar",
@@ -147,6 +176,15 @@ pub const TEXTS: &[Text] = &[
         mail_subject: "يرجى تأكيد اشتراكك",
         mail_body: "مرحبًا {name}،\n\nطلب شخص ما أن يتلقى هذا العنوان: {purpose}.\nللتأكيد، افتح هذا الرابط واضغط على الزر:\n\n{link}\n\nيعمل الرابط مدة {days} أيام. إذا لم تطلب ذلك، فتجاهل هذه الرسالة ولن يُرسل إليك شيء.\n",
         form_received: "إذا كان العنوان صالحًا، فإن رسالة التأكيد في طريقها إليك.",
+        form_invalid_title: "تحقق من النموذج",
+        form_name_invalid: "يُرجى إدخال اسم لا يزيد على 200 حرف، في سطر واحد.",
+        form_email_invalid: "يُرجى إدخال عنوان بريد إلكتروني يمكنه تلقي الرسائل.",
+        form_refused_title: "غير مسموح",
+        form_refused: "لا يمكن إرسال هذا النموذج من هذا الموقع.",
+        form_busy_title: "عدد كبير جدًا من الطلبات",
+        form_busy: "عدد كبير جدًا من الطلبات. يُرجى الانتظار قليلًا والمحاولة مرة أخرى.",
+        form_unavailable_title: "غير متاح",
+        form_unavailable: "لا يمكن إرسال النموذج الآن. يُرجى المحاولة لاحقًا.",
     },
     Text {
         lang: "cy",
@@ -184,6 +222,15 @@ pub const TEXTS: &[Text] = &[
         mail_subject: "Cadarnhewch eich tanysgrifiad",
         mail_body: "Helo {name},\n\nGofynnodd rhywun i'r cyfeiriad hwn dderbyn: {purpose}.\nI gadarnhau, agorwch y ddolen hon a gwasgwch y botwm:\n\n{link}\n\nMae'r ddolen yn gweithio am {days} diwrnod. Os na wnaethoch ofyn am hyn, anwybyddwch y neges hon ac ni fydd dim yn cael ei anfon atoch.\n",
         form_received: "Os yw'r cyfeiriad yn ddilys, mae neges gadarnhau ar ei ffordd.",
+        form_invalid_title: "Gwiriwch y ffurflen",
+        form_name_invalid: "Rhowch enw o 200 nod ar y mwyaf, ar un llinell.",
+        form_email_invalid: "Rhowch gyfeiriad e-bost sy'n gallu derbyn post.",
+        form_refused_title: "Ni chaniateir",
+        form_refused: "Ni ellir anfon y ffurflen hon o'r wefan hon.",
+        form_busy_title: "Gormod o gyflwyniadau",
+        form_busy: "Gormod o gyflwyniadau. Arhoswch ychydig a rhowch gynnig arall arni.",
+        form_unavailable_title: "Ddim ar gael",
+        form_unavailable: "Ni ellir anfon y ffurflen ar hyn o bryd. Rhowch gynnig arall arni yn nes ymlaen.",
     },
     Text {
         lang: "de",
@@ -221,6 +268,15 @@ pub const TEXTS: &[Text] = &[
         mail_subject: "Bitte bestätigen Sie Ihr Abonnement",
         mail_body: "Hallo {name},\n\njemand hat angefragt, dass diese Adresse Folgendes erhält: {purpose}.\nZum Bestätigen öffnen Sie diesen Link und drücken Sie die Schaltfläche:\n\n{link}\n\nDer Link ist {days} Tage gültig. Wenn Sie das nicht angefragt haben, ignorieren Sie diese Nachricht; Ihnen wird dann nichts geschickt.\n",
         form_received: "Wenn die Adresse gültig ist, ist eine Bestätigungsnachricht unterwegs.",
+        form_invalid_title: "Formular prüfen",
+        form_name_invalid: "Bitte geben Sie einen Namen mit höchstens 200 Zeichen in einer Zeile ein.",
+        form_email_invalid: "Bitte geben Sie eine E-Mail-Adresse ein, die Nachrichten empfangen kann.",
+        form_refused_title: "Nicht erlaubt",
+        form_refused: "Dieses Formular kann von dieser Website aus nicht gesendet werden.",
+        form_busy_title: "Zu viele Anfragen",
+        form_busy: "Zu viele Anfragen. Bitte warten Sie kurz und versuchen Sie es erneut.",
+        form_unavailable_title: "Nicht verfügbar",
+        form_unavailable: "Das Formular kann gerade nicht gesendet werden. Bitte versuchen Sie es später erneut.",
     },
     Text {
         lang: "es",
@@ -258,6 +314,15 @@ pub const TEXTS: &[Text] = &[
         mail_subject: "Confirme su suscripción",
         mail_body: "Hola, {name}:\n\nAlguien pidió que esta dirección reciba: {purpose}.\nPara confirmarlo, abra este enlace y pulse el botón:\n\n{link}\n\nEl enlace funciona durante {days} días. Si usted no lo pidió, ignore este mensaje y no se le enviará nada.\n",
         form_received: "Si la dirección es válida, un mensaje de confirmación está en camino.",
+        form_invalid_title: "Revise el formulario",
+        form_name_invalid: "Introduzca un nombre de 200 caracteres como máximo, en una sola línea.",
+        form_email_invalid: "Introduzca una dirección de correo electrónico que pueda recibir mensajes.",
+        form_refused_title: "No permitido",
+        form_refused: "Este formulario no se puede enviar desde este sitio web.",
+        form_busy_title: "Demasiados envíos",
+        form_busy: "Demasiados envíos. Espere un poco y vuelva a intentarlo.",
+        form_unavailable_title: "No disponible",
+        form_unavailable: "El formulario no se puede enviar en este momento. Vuelva a intentarlo más tarde.",
     },
     Text {
         lang: "fr",
@@ -295,6 +360,15 @@ pub const TEXTS: &[Text] = &[
         mail_subject: "Veuillez confirmer votre abonnement",
         mail_body: "Bonjour {name},\n\nQuelqu’un a demandé que cette adresse reçoive : {purpose}.\nPour confirmer, ouvrez ce lien et appuyez sur le bouton :\n\n{link}\n\nLe lien fonctionne pendant {days} jours. Si vous n’avez rien demandé, ignorez ce message et rien ne vous sera envoyé.\n",
         form_received: "Si l’adresse est valide, un message de confirmation est en route.",
+        form_invalid_title: "Vérifiez le formulaire",
+        form_name_invalid: "Veuillez saisir un nom de 200 caractères au plus, sur une seule ligne.",
+        form_email_invalid: "Veuillez saisir une adresse e-mail qui peut recevoir des messages.",
+        form_refused_title: "Non autorisé",
+        form_refused: "Ce formulaire ne peut pas être envoyé depuis ce site.",
+        form_busy_title: "Trop d’envois",
+        form_busy: "Trop d’envois. Veuillez patienter un peu et réessayer.",
+        form_unavailable_title: "Indisponible",
+        form_unavailable: "Le formulaire ne peut pas être envoyé pour le moment. Veuillez réessayer plus tard.",
     },
     Text {
         lang: "hi",
@@ -332,6 +406,15 @@ pub const TEXTS: &[Text] = &[
         mail_subject: "कृपया अपनी सदस्यता की पुष्टि करें",
         mail_body: "नमस्ते {name},\n\nकिसी ने अनुरोध किया है कि इस पते पर यह भेजा जाए: {purpose}।\nपुष्टि करने के लिए यह लिंक खोलें और बटन दबाएँ:\n\n{link}\n\nयह लिंक {days} दिनों तक काम करता है। यदि आपने यह अनुरोध नहीं किया था, तो इस संदेश को अनदेखा करें और आपको कुछ नहीं भेजा जाएगा।\n",
         form_received: "यदि पता मान्य है, तो पुष्टि का संदेश आपके पास आ रहा है।",
+        form_invalid_title: "फ़ॉर्म जाँचें",
+        form_name_invalid: "कृपया अधिकतम 200 अक्षरों का नाम, एक ही पंक्ति में, दर्ज करें।",
+        form_email_invalid: "कृपया ऐसा ईमेल पता दर्ज करें जिस पर संदेश प्राप्त हो सकें।",
+        form_refused_title: "अनुमति नहीं है",
+        form_refused: "यह फ़ॉर्म इस वेबसाइट से नहीं भेजा जा सकता।",
+        form_busy_title: "बहुत अधिक अनुरोध",
+        form_busy: "बहुत अधिक अनुरोध। कृपया थोड़ा रुककर फिर से प्रयास करें।",
+        form_unavailable_title: "उपलब्ध नहीं",
+        form_unavailable: "फ़ॉर्म अभी नहीं भेजा जा सकता। कृपया बाद में फिर से प्रयास करें।",
     },
     Text {
         lang: "zh",
@@ -363,6 +446,15 @@ pub const TEXTS: &[Text] = &[
         mail_subject: "请确认您的订阅",
         mail_body: "{name}，您好：\n\n有人请求让此地址接收：{purpose}。\n如需确认，请打开以下链接并点击按钮：\n\n{link}\n\n该链接在 {days} 天内有效。如果您没有提出此请求，请忽略本邮件，我们不会向您发送任何内容。\n",
         form_received: "如果该地址有效，确认邮件正在发送中。",
+        form_invalid_title: "请检查表单",
+        form_name_invalid: "请输入不超过 200 个字符的姓名，且不要换行。",
+        form_email_invalid: "请输入能够接收邮件的电子邮件地址。",
+        form_refused_title: "不允许",
+        form_refused: "无法从此网站发送此表单。",
+        form_busy_title: "提交次数过多",
+        form_busy: "提交次数过多。请稍候再试。",
+        form_unavailable_title: "暂不可用",
+        form_unavailable: "目前无法发送表单。请稍后再试。",
     },
 ];
 
@@ -523,6 +615,15 @@ mod tests {
                 text.mail_subject,
                 text.mail_body,
                 text.form_received,
+                text.form_invalid_title,
+                text.form_name_invalid,
+                text.form_email_invalid,
+                text.form_refused_title,
+                text.form_refused,
+                text.form_busy_title,
+                text.form_busy,
+                text.form_unavailable_title,
+                text.form_unavailable,
             ];
             assert!(
                 all.iter()
@@ -560,6 +661,23 @@ mod tests {
                 assert_ne!(text.mail_subject, english.mail_subject, "{}", text.lang);
                 assert_ne!(text.mail_body, english.mail_body, "{}", text.lang);
                 assert_ne!(text.form_received, english.form_received, "{}", text.lang);
+                for (theirs, ours) in [
+                    (text.form_invalid_title, english.form_invalid_title),
+                    (text.form_name_invalid, english.form_name_invalid),
+                    (text.form_email_invalid, english.form_email_invalid),
+                    (text.form_refused_title, english.form_refused_title),
+                    (text.form_refused, english.form_refused),
+                    (text.form_busy_title, english.form_busy_title),
+                    (text.form_busy, english.form_busy),
+                    (text.form_unavailable_title, english.form_unavailable_title),
+                    (text.form_unavailable, english.form_unavailable),
+                ] {
+                    assert_ne!(
+                        theirs, ours,
+                        "{}: the form's refusals (CRM-T182)",
+                        text.lang
+                    );
+                }
             }
             assert_eq!(text.dir == "rtl", text.lang == "ar");
         }

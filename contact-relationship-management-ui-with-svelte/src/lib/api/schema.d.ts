@@ -18120,7 +18120,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Public web form (CRM-R31, CRM_WEB_FORMS): creates a contact and a source=web lead for the person the person service returns and asks for the form's consent purpose by double opt-in. The request's Origin must be on the form's list. Answers 202 with the same body whether or not anything was created. 403 origin not allowed, 404 no such form, 422 name or email unusable, 429 over the rate limit (Retry-After), 503 person service unavailable */
+        /** Public web form (CRM-R31, CRM_WEB_FORMS): creates a contact and a source=web lead for the person the person service returns and asks for the form's consent purpose by double opt-in. The request's Origin must be on the form's list. Answers 202 with the same body whether or not anything was created. 403 origin not allowed, 404 no such form, 422 name or email unusable, 429 over the rate limit (Retry-After), 503 person service unavailable. Every answer, these refusals too, is in the request's language (the body's language, else Accept-Language, else English; Content-Language): the problem document's title, detail and field details are translated, its error code is not (CRM-T182) */
         post: {
             parameters: {
                 query?: never;

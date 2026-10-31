@@ -71,21 +71,62 @@ fn header_text<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     headers.get(name).and_then(|v| v.to_str().ok())
 }
 
-/// The form and the origin it was posted from, or the response that refuses the request.
+/// The form and the origin it was posted from, or the response that refuses the request (a
+/// `403` in `text`'s language).
 fn admit<'a>(
     forms: &'a [WebForm],
     slug: &str,
     headers: &HeaderMap,
+    text: &Text,
 ) -> Result<(&'a WebForm, String), Box<Response>> {
     let Some(form) = forms.iter().find(|f| f.slug == slug) else {
         return Err(Box::new(StatusCode::NOT_FOUND.into_response()));
     };
     match header_text(headers, "origin") {
         Some(origin) if form.allows(origin) => Ok((form, origin.trim().to_string())),
-        _ => Err(Box::new(
-            (StatusCode::FORBIDDEN, "origin not allowed").into_response(),
-        )),
+        _ => Err(Box::new(refusal(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            text.form_refused,
+            text,
+        ))),
     }
+}
+
+/// Mark an answer as in `text`'s language: `Content-Language`, `Vary: Accept-Language`, and for
+/// a refusal the problem document's title (CRM-T182).
+fn in_language(mut response: Response, text: &Text) -> Response {
+    let title = match response.status() {
+        StatusCode::UNPROCESSABLE_ENTITY => Some(text.form_invalid_title),
+        StatusCode::FORBIDDEN => Some(text.form_refused_title),
+        StatusCode::TOO_MANY_REQUESTS => Some(text.form_busy_title),
+        StatusCode::SERVICE_UNAVAILABLE => Some(text.form_unavailable_title),
+        _ => None,
+    };
+    if let Some(title) = title {
+        response
+            .extensions_mut()
+            .insert(crate::problem::Title(title));
+    }
+    let headers = response.headers_mut();
+    headers.insert(header::VARY, HeaderValue::from_static("accept-language"));
+    if let Ok(lang) = HeaderValue::from_str(text.lang) {
+        headers.insert(header::CONTENT_LANGUAGE, lang);
+    }
+    response
+}
+
+/// A refusal in `text`'s language. `code` is the problem document's `error`, the same in every
+/// language, as it was before the answers were translated.
+fn refusal(status: StatusCode, code: &str, message: &str, text: &Text) -> Response {
+    in_language(
+        (
+            status,
+            axum::Json(serde_json::json!({ "error": code, "description": message })),
+        )
+            .into_response(),
+        text,
+    )
 }
 
 /// Let the browser read the answer for the one origin that posted.
@@ -102,7 +143,9 @@ fn with_cors(mut response: Response, origin: &str) -> Response {
 #[debug_handler]
 async fn preflight(Path(slug): Path<String>, headers: HeaderMap) -> Response {
     let forms = settings::current().web_forms.clone();
-    match admit(&forms, &slug, &headers) {
+    // A preflight has no body: its refusal follows `Accept-Language` alone.
+    let text = public_text::negotiate(None, header_text(&headers, "accept-language"));
+    match admit(&forms, &slug, &headers, text) {
         Ok((_, origin)) => {
             let mut response = StatusCode::NO_CONTENT.into_response();
             let out = response.headers_mut();
@@ -124,23 +167,19 @@ async fn preflight(Path(slug): Path<String>, headers: HeaderMap) -> Response {
     }
 }
 
-/// The one answer to every submission that was not an error.
 /// The one answer to every submission accepted or ignored, in the request's language.
 fn received(text: &Text) -> Response {
-    let mut response = (
-        StatusCode::ACCEPTED,
-        axum::Json(serde_json::json!({
-            "status": "received",
-            "message": text.form_received,
-        })),
+    in_language(
+        (
+            StatusCode::ACCEPTED,
+            axum::Json(serde_json::json!({
+                "status": "received",
+                "message": text.form_received,
+            })),
+        )
+            .into_response(),
+        text,
     )
-        .into_response();
-    let headers = response.headers_mut();
-    headers.insert(header::VARY, HeaderValue::from_static("accept-language"));
-    if let Ok(lang) = HeaderValue::from_str(text.lang) {
-        headers.insert(header::CONTENT_LANGUAGE, lang);
-    }
-    response
 }
 
 /// The language of the mail and the answer (CRM-T180): the form page's `language`, else the
@@ -153,14 +192,18 @@ fn language_of(payload: &FormPayload, headers: &HeaderMap) -> &'static Text {
     public_text::negotiate(payload.language.as_deref(), accept)
 }
 
-/// `429` with the seconds to wait.
-fn too_many(retry_after: u64) -> Response {
-    (
+/// `429` with the seconds to wait, in `text`'s language.
+fn too_many(retry_after: u64, text: &Text) -> Response {
+    let mut response = refusal(
         StatusCode::TOO_MANY_REQUESTS,
-        [(header::RETRY_AFTER, retry_after.to_string())],
-        "too many submissions",
-    )
-        .into_response()
+        "too_many_requests",
+        text.form_busy,
+        text,
+    );
+    if let Ok(seconds) = HeaderValue::from_str(&retry_after.to_string()) {
+        response.headers_mut().insert(header::RETRY_AFTER, seconds);
+    }
+    response
 }
 
 /// Count this submission against the form's limits.
@@ -193,25 +236,36 @@ async fn submit(
     crate::json::Json(payload): crate::json::Json<FormPayload>,
 ) -> Response {
     let forms = settings::current().web_forms.clone();
-    let (form, origin) = match admit(&forms, &slug, &headers) {
+    // Every answer, refusals too, is in the request's language (CRM-T180, CRM-T182).
+    let text = language_of(&payload, &headers);
+    let (form, origin) = match admit(&forms, &slug, &headers, text) {
         Ok(found) => found,
         Err(refused) => return *refused,
     };
     if let Err(retry_after) = within_limits(form, &headers) {
-        return with_cors(too_many(retry_after), &origin);
+        return with_cors(too_many(retry_after, text), &origin);
     }
-    let text = language_of(&payload, &headers);
     let response = match accept(&ctx, form, &payload, text).await {
         Ok(()) => received(text),
-        Err(error) => error.into_response(),
+        // A `422` and a `503` are in `text`'s words; any other error (a `500`) is not, so it is
+        // not marked as in that language.
+        Err(error) => {
+            let refused = error.into_response();
+            match refused.status() {
+                StatusCode::UNPROCESSABLE_ENTITY | StatusCode::SERVICE_UNAVAILABLE => {
+                    in_language(refused, text)
+                }
+                _ => refused,
+            }
+        }
     };
     with_cors(response, &origin)
 }
 
-fn unavailable() -> Error {
+fn unavailable(text: &Text) -> Error {
     Error::CustomError(
         StatusCode::SERVICE_UNAVAILABLE,
-        loco_rs::controller::ErrorDetail::new("unavailable", "please try again later"),
+        loco_rs::controller::ErrorDetail::new("unavailable", text.form_unavailable),
     )
 }
 
@@ -232,13 +286,10 @@ async fn accept(
     }
     let mut problems = Problems::new();
     if !rules::valid_name(&payload.name) {
-        problems.push_field(
-            "name",
-            "is required, at most 200 characters, with no line breaks",
-        );
+        problems.push_field("name", text.form_name_invalid);
     }
     if !rules::valid_email(payload.email.trim()) {
-        problems.push_field("email", "is not a usable email address");
+        problems.push_field("email", text.form_email_invalid);
     }
     problems.finish()?;
     let name = payload.name.trim();
@@ -247,7 +298,7 @@ async fn accept(
         .await
         .map_err(|reason| {
             tracing::warn!(form = %form.slug, %reason, "web form: person service failed");
-            unavailable()
+            unavailable(text)
         })?;
     let actor = format!("web_form:{}", form.slug);
     let txn = ctx.db.begin().await?;

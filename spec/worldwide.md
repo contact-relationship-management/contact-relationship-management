@@ -93,6 +93,9 @@ app's `governance/worldwide-equity-audit.md` (WW-1, against its `spec/02-scope.m
   language (the UI's eight; a language without them needs the template's own); the matcher's honorifics, suffixes, nicknames and
   legal forms are per-language data in several scripts; imports guess columns named in the UI's eight languages. Details:
   [tasks.md](tasks.md).
+- [x] (2026-10-31) CRM-T182 **The web form's refusals in the request's language.** Its `422`, `403`, `429` and `503` answers
+  follow the same language as its `202` (eight languages, machine drafts), with `Content-Language`; the `error` codes do not
+  change. Details: [tasks.md](tasks.md).
 - [x] (2026-10-31) CRM-T181 **The days deals close on.** The close day of a deal (close-day conversion in CLV, reports,
   attribution and the funnel; attribution's `from`/`to`; quota and territory periods) is `closed_at`'s day in the
   organization's zone, no longer its UTC date. Details: [tasks.md](tasks.md).

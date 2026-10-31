@@ -639,6 +639,15 @@ address, and that bots and strangers cannot fill the CRM or use it to spam someo
   link carries `?lang=` with that language, so the confirmation page opens in the language of
   the mail. The answer carries `Content-Language` and `Vary: Accept-Language`. Nothing about
   the language is stored (CRM-R29): it is in the request and in the link the person holds.
+- **The refusals' language (CRM-T182).** The `422` (name or address unusable), `403` (another
+  website, or none), `429` (over a limit, with `Retry-After`) and `503` (the person service
+  unreachable) answers are in the same language as the `202`, with `Content-Language` and
+  `Vary: Accept-Language`: the problem document's `title`, `detail` and each field's `detail`
+  are translated; its `error` code (`validation`, `forbidden`, `too_many_requests`,
+  `unavailable`) and the `pointer`s are the same in every language. A preflight's `403`
+  follows `Accept-Language` alone (it has no body). A body that is not the form's JSON shape
+  is refused by the JSON reader before the form sees it, in English, and a `404` (no such
+  form) has no text.
 - **Optional nurture enrolment** happens when the visitor confirms (in the same transaction
   as the grant), never before. A withdrawal before confirming means the link no longer works
   and nothing is enrolled.

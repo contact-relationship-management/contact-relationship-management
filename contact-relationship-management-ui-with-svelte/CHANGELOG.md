@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the review records cover the web form's refusals; `schema.d.ts` regenerated (CRM-T182)
+
+Each locale's record in `spec/reviews/` names the web form's refusals (the service's `rules::public_text`) among what a review covers; none is reviewed. `src/lib/api/schema.d.ts` regenerated for the `/forms/{slug}` description. No page changed.
+
 ### Changed — the review records cover the confirmation mail; `schema.d.ts` regenerated (CRM-T180)
 
 Each locale's record in `spec/reviews/` names the web form's confirmation mail and answer (the service's `rules::public_text`) among what a review covers; none is reviewed. `src/lib/api/schema.d.ts` regenerated for the form's new `language` field. No page changed.
