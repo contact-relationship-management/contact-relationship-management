@@ -20,6 +20,8 @@ subproject keeps a detailed changelog:
 - A root `compose.yaml` runs a demo from a fresh clone (PostgreSQL, Redis, the API; sign-in off and stated so, email
   simulated, loopback port, images pinned by digest), as PPM and WPM already had. Built and smoke-tested with Docker:
   `/_ping` 200, a contact created, the audit chain verified, the WPM bridge route `404` while unconfigured.
+- A root `AGENTS.md` (with `CLAUDE.md` including it) for agents and new contributors, as PPM and WPM have: the three projects, the
+  gates, and the rule that this repository must work without its siblings. `.rumdl.toml` excludes the one-line `CLAUDE.md`.
 - README: "Works on its own".
 
 ### Added — the tables for consent profiles, purposes and consent per channel (CRM-T166 step c, 2026-10-31)
