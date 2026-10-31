@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — matcher 0.2.0 (CRM-T87, CRM-T169, CRM-T170)
+
+`contact-relationship-management-matcher` `0.1.2` → `0.2.0` from crates.io; `Cargo.lock` updated (cargo also moved eight Windows-only `windows-sys` dependency lines from 0.59.0 to 0.61.2, both already in the lock). The breaking changes (`#[non_exhaustive]` on `Field`, `Outcome`, `Verdict`, `MatchResult` and `FieldScore`; `ConfigError` an enum) needed no code change: the service compares a `Verdict` with `==` and never matches any of them exhaustively, and never names `ConfigError`. The duplicate check, the import duplicate hints and relationships now use the matcher's per-language words and its phone rules. **Not done or verified:** no release; not run against a live service with the UI.
+
 ### Changed — the web form's `422`, `403`, `429` and `503` in the request's language (CRM-T182, CRM-R31)
 
 `rules::public_text::Text` gains `form_invalid_title`, `form_name_invalid`, `form_email_invalid`, `form_refused_title`, `form_refused`, `form_busy_title`, `form_busy`, `form_unavailable_title` and `form_unavailable` (eight languages, machine drafts but English). `controllers::forms` chooses the language before the origin check (`language_of`) and answers every refusal in it through `in_language` and `refusal`, with `Content-Language` and `Vary: Accept-Language`; the `error` codes stay `validation`, `forbidden`, `too_many_requests` and `unavailable`. `problem::Title` lets a response set the problem document's `title`. The preflight's `403` follows `Accept-Language`. OpenAPI's `/forms/{slug}` description updated. Request test `the_form_s_refusals_are_in_the_language_of_the_request`. **Not done or verified:** the translations are unreviewed; a body the JSON reader refuses is answered in English before the form sees it; the `404` of an unknown form has no text; no browser check.

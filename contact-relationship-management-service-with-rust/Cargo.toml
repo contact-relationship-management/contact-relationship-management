@@ -40,7 +40,7 @@ async-trait = { version = "0.1" }
 tower = { version = "0.5", features = ["util"] }
 axum = { version = "0.8" }
 tracing = { version = "0.1" }
-contact-relationship-management-matcher = "0.1.2"
+contact-relationship-management-matcher = "0.2.0"
 migration = { package = "contact-relationship-management-migration", version = "0.1.0", path = "migration" }
 sea-orm = { version = "2.0", features = [
   "sqlx-postgres",

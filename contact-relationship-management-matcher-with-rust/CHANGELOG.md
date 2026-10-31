@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.2.0 (not published yet)
+## 0.2.0
 
-Breaking. The service keeps depending on 0.1.2 until this is published.
+Breaking. Published to crates.io on 2026-10-31 by the maintainer; the service depends on it from the same day.
 
 - Words by language (CRM-T169): honorifics, name suffixes and legal-form words are per-language data in a new `words`
   module (English and a dozen other languages, in Latin, Cyrillic, Arabic and Devanagari), and a script without spaces
