@@ -79,7 +79,7 @@ export and an erasure path (CRM-R20); retention horizons the deployer sets, whos
 (`GET /api/retention` says so in `horizon_basis`); a hash-chained audit log; `List-Unsubscribe` and one-click unsubscribe (RFC 2369,
 RFC 8058); no cross-border transfer made by the software itself. What no row gets yet: a consent regime other than opt-in (soft opt-in,
 implied consent with an expiry, opt-out), consent per channel, and a sender identification and postal address in each message — the
-design is CRM-D21 (proposed, CRM-T166). Residency, transfer safeguards, breach notices, registration with a regulator, a local
+design is CRM-D21 (confirmed 2026-10-31, CRM-T166). Residency, transfer safeguards, breach notices, registration with a regulator, a local
 representative and the privacy notice are the deployer's in every row. How each row maps onto the CRM's controls is
 [compliance/control-mapping.md](compliance/control-mapping.md#by-region).
 
@@ -118,5 +118,6 @@ draft statements are [compliance/dtac-supporting.md](compliance/dtac-supporting.
 example a national health-software assessment) or a body that spans countries goes in a folder of its own beside it, and none is the
 default. No other folder exists yet.
 
-**CRM-G2's scope is the product owner's (open).** The production gate CRM-G2 reads "GDPR/PECR review of the real send path". The
-question put to the product owner is recorded with the gate in [tasks.md](tasks.md) (CRM-G2) and is not decided here.
+**CRM-G2's scope (answered by the product owner, 2026-10-31).** The production gate CRM-G2 covers the data-protection and
+e-marketing law of every jurisdiction the deployment sends to, as the deployer lists them, with the GDPR and PECR as the first
+worked case; each deployer passes the gate for its own recipients. The gate's text is in [tasks.md](tasks.md) (CRM-G2).

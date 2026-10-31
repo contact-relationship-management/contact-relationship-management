@@ -172,7 +172,7 @@ Reporting a vulnerability in the software itself: [SECURITY.md](../../SECURITY.m
 ## 8. Before go-live checklist
 
 - [ ] Authentication on; policy mounted; persona matrix tested (CRM-G1)
-- [ ] GDPR/PECR and send-path review complete (CRM-G2); ESP contract signed
+- [ ] Send-path review complete against the data-protection and e-marketing law of every jurisdiction this deployment sends to, GDPR and PECR first (CRM-G2); ESP contract signed
 - [ ] DPIA complete and signed off
 - [ ] Encryption at rest and in transit verified
 - [ ] Backup restore tested; audit chain verifies after restore

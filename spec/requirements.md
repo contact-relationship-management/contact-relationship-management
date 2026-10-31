@@ -87,8 +87,10 @@ typed into it.*
 
 ## CRM-R6 — Consent
 
-*As a compliance owner I can show every marketing touch was
-consented to.*
+*As a compliance owner I can show every marketing touch had a recorded
+basis under the profile in force; with no profile the only basis is
+opt-in consent.* (Reworded 2026-10-31 by the product owner's CRM-D21
+decision 12; was "every marketing touch was consented to".)
 
 - `marketing_consent` per contact with append-only ConsentEvent
   history; unsubscribe withdraws immediately, exits active nurture
@@ -1546,4 +1548,4 @@ recipient would get before anything is sent, and be certain every message carrie
 
 - Every standard, protocol, convention, locale, format and regulation the CRM adopts has equitable capability for countries, regions and federations worldwide; no jurisdiction is the default, the first-class case or the only case that works. The full text, the decision that implements it (CRM-D19) and the audit against it are in [worldwide.md](worldwide.md).
 - Where coverage is uneven today it is a gap with a task (CRM-T165 to CRM-T176), not a design.
-- Not built: CRM-T166 (consent rules as jurisdiction profiles; its design is CRM-D21, proposed and waiting on the product owner); CRM-T165 (the regulatory register by region) is done with every region *not yet read*; the other tasks are done, each with its own "not done" list. This requirement adds no behaviour by itself.
+- Not built: CRM-T166 (consent rules as jurisdiction profiles; its design is CRM-D21, confirmed by the product owner 2026-10-31, and is being built); CRM-T165 (the regulatory register by region) is done with every region *not yet read*; the other tasks are done, each with its own "not done" list. This requirement adds no behaviour by itself.

@@ -63,7 +63,7 @@ them.
 | [architecture.md](architecture.md)                 | Editions, layering, pure-core rules, persistence                        |
 | [testing.md](testing.md)                           | Test strategy per edition                                               |
 | [regulatory.md](regulatory.md)                     | Demo status; data-protection and e-privacy (marketing consent) posture  |
-| [worldwide.md](worldwide.md)                       | Worldwide equity: CRM-R95 (confirmed), CRM-D19 (confirmed), audit, tasks; CRM-D21 (proposed, in design.md) |
+| [worldwide.md](worldwide.md)                       | Worldwide equity: CRM-R95 (confirmed), CRM-D19 (confirmed), audit, tasks; CRM-D21 (confirmed, in design.md) |
 | [github-pages-site.md](github-pages-site.md)       | The documentation site for GitHub Pages: pages, locales, tests, publish |
 | [roadmap.md](roadmap.md)                           | Beyond the v1 queue                                                     |
 | [glossary.md](glossary.md)                         | SFA, MQL/SQL, drip, CLV, SLA, …                                         |

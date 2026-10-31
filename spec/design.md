@@ -306,9 +306,8 @@ The stale-deals insight (`/api/insights/stale-deals?days=`, days in the current 
 
 ## CRM-D21 — Consent and e-marketing rules are jurisdiction profiles; opt-in stays the default
 
-**Proposed, needs product-owner confirmation.** *Drafted 2026-10-31 by the AI assistant for CRM-T166 (CRM-R95, CRM-D19), as a design
-only: no code, migration or test is changed by it, and nothing below is built. The questions at the end are the product owner's.* Not
-legal advice: the regime shapes below are the ones the [register by region](regulatory.md#the-register-by-region) names as commonly
+**Confirmed by the product owner, 2026-10-31,** with all twelve recommended answers (listed at the end as decisions). *Drafted
+2026-10-31 by the AI assistant for CRM-T166 (CRM-R95, CRM-D19); built by CRM-T166.* Not legal advice: the regime shapes below are the ones the [register by region](regulatory.md#the-register-by-region) names as commonly
 described, and every region is *not yet read*.
 
 ### What exists today
@@ -372,7 +371,8 @@ and by the segment evaluator (which today ANDs `granted`; it would AND "has a ba
 In every regime, as today: a suppressed mailbox, an employment pause (CRM-D15), an erased contact and a withdrawal block the send; an
 unsubscribe withdraws the message's purpose (on its channel) at once; the double opt-in and the preference page work as they do. The
 delivery records its **basis** (`granted`, `soft_opt_in`, `implied` with the evidence's pid and expiry, or `opt_out`), so CRM-R6's
-evidence becomes "every marketing touch had a recorded basis under the profile in force" (question 12).
+evidence becomes "every marketing touch had a recorded basis under the profile in force; with no profile the only basis is opt-in
+consent" (decision 12).
 
 ### Purposes an administrator edits; consent per channel
 
@@ -416,7 +416,7 @@ Synthetic codes from the ISO 3166 user-assigned range, so no test names a countr
 - Both run against every regime row above, plus: the same contact under each profile and under none gets three different answers;
   a withdrawal blocks under all of them; no profile equals today.
 
-### Order of work (once confirmed)
+### Order of work
 
 1. Pure `rules::consent_regime` (the registry, `resolve` over a chain, `basis`), with the two profiles and the "no profile is today"
    test.
@@ -425,35 +425,36 @@ Synthetic codes from the ISO 3166 user-assigned range, so no test names a countr
 4. The sender settings and the footer.
 5. The UI: profiles, purposes, a contact's and a campaign's code, the preview by basis.
 
-### Questions for the product owner
+### Decisions (the product owner, 2026-10-31)
 
-Each with the assistant's recommendation; none is decided.
+Each question was put with the assistant's recommendation; the product owner chose the recommended answer for all twelve. The
+alternatives are kept as the record of what was not chosen.
 
-1. **Per contact or per send?** Recommended: the contact's `consent_jurisdiction` when set, else the campaign's or sequence's, else
+1. **Per contact or per send?** **Decided (recommended):** the contact's `consent_jurisdiction` when set, else the campaign's or sequence's, else
    none (opt-in). Alternatives: per send only; per contact only.
-2. **Combining layers for the regime.** Recommended: `strictest` (whichever layer is stricter wins, a state over a looser federation or a federation over a looser state).
+2. **Combining layers for the regime.** **Decided (recommended):** `strictest` (whichever layer is stricter wins, a state over a looser federation or a federation over a looser state).
    Alternative: `most_specific` (the deepest layer wins even if looser).
-3. **Where a contact's code comes from.** Recommended: set by staff, an import column or the web form's configuration, never
+3. **Where a contact's code comes from.** **Decided (recommended):** set by staff, an import column or the web form's configuration, never
    inferred from a phone prefix, address, language, name or IP. Alternative: also inferred, flagged as inferred (contrary to CRM-D13).
-4. **Who edits profiles and purposes.** Recommended: an administrator, every row audited and append-only. Alternatives: the deployer
+4. **Who edits profiles and purposes.** **Decided (recommended):** an administrator, every row audited and append-only. Alternatives: the deployer
    only (configuration files); an administrator with a second person's review.
-5. **What counts as an existing customer for a soft opt-in.** Recommended: a won deal naming the contact as primary contact, inside
+5. **What counts as an existing customer for a soft opt-in.** **Decided (recommended):** a won deal naming the contact as primary contact, inside
    the profile's window, for a purpose marked eligible. Alternatives: also an account of tier `customer`; also a negotiation (an open
    deal).
-6. **What counts as evidence for implied consent.** Recommended: the profile lists the kinds (`won_deal`, `inquiry`, the latter a web
+6. **What counts as evidence for implied consent.** **Decided (recommended):** the profile lists the kinds (`won_deal`, `inquiry`, the latter a web
    form submission or a ticket the contact opened), each with its own expiry. Alternative: one expiry for all evidence.
-7. **The channels.** Recommended: `email`, `sms`, `phone` and `post`; existing consent migrates as `email` only, the rest `never`.
+7. **The channels.** **Decided (recommended):** `email`, `sms`, `phone` and `post`; existing consent migrates as `email` only, the rest `never`.
    Alternative: `email` only until another channel is sent.
-8. **Sender identification and address.** Recommended: one set per organization, carried whenever set, required (send refused) only
+8. **Sender identification and address.** **Decided (recommended):** one set per organization, carried whenever set, required (send refused) only
    where the applicable profile says so. Alternatives: required for every commercial message once the feature ships (sends that work
    today would be refused until set); per campaign or per brand.
-9. **May an `example` or `unverified` profile loosen a send?** Recommended: yes, only after an administrator acknowledges that profile
+9. **May an `example` or `unverified` profile loosen a send?** **Decided (recommended):** yes, only after an administrator acknowledges that profile
    (audited), and the preview and each delivery show its status. Alternative: only `read` rows may loosen; the others may only tighten.
-10. **The demo seed.** Recommended: it loads `XA`- and `XB`-shaped example profiles under clearly synthetic codes and assigns them only
+10. **The demo seed.** **Decided (recommended):** it loads `XA`- and `XB`-shaped example profiles under clearly synthetic codes and assigns them only
     to newly seeded contacts, so the existing seeded contacts and the tour's sends give today's answers. Alternative: no profiles in
     the seed.
-11. **`pending` under a soft opt-in or implied regime.** Recommended: treated as `never` (a confirmation was asked for and not
+11. **`pending` under a soft opt-in or implied regime.** **Decided (recommended):** treated as `never` (a confirmation was asked for and not
     refused), so evidence can still give a basis. Alternative: `pending` always blocks, as today.
-12. **CRM-R6's wording.** Recommended: "every marketing touch had a recorded basis under the profile in force; with no profile the
+12. **CRM-R6's wording.** **Decided (recommended):** "every marketing touch had a recorded basis under the profile in force; with no profile the
     only basis is opt-in consent". Alternative: keep "consented to" and allow only `opt_in` and `soft_opt_in` (no `implied`, no
     `opt_out`).

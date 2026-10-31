@@ -61,7 +61,7 @@ controls for every other region are in [By region](#by-region) below.
 
 | Control | Reference | Status | Evidence / note |
 |---|---|---|---|
-| Lawful basis and consent for marketing | GDPR 6, 7; UK PECR | Implemented in the send path (consent gate, append-only history), opt-in only; other consent regimes are a Gap (CRM-D21, proposed, CRM-T166); legal review is Deployer | `rules/segment.rs`, CRM-G2 |
+| Lawful basis and consent for marketing | GDPR 6, 7; UK PECR | Implemented in the send path (consent gate, append-only history), opt-in only; other consent regimes are a Gap (CRM-D21, confirmed 2026-10-31, being built by CRM-T166); legal review is Deployer | `rules/segment.rs`, CRM-G2 |
 | Data minimisation | GDPR 5(1)(c) | Implemented | contacts are URN wrappers; identity data stays upstream |
 | Right of access | GDPR 15 | Implemented | `GET /api/contacts/{pid}/subject-access` (described as the right of access under the law that applies to the deployer, CRM-T165) |
 | Right to erasure | GDPR 17 | Implemented (anonymise, gated) | `POST /api/contacts/{pid}/erase`; coordination with identity services is Deployer |

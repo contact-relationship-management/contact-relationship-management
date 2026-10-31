@@ -150,29 +150,24 @@ code + tests in one PR.
   on a real deployment, and extending the enforcement matrix beyond
   the shipped reader/writer pins — is operational by design.
 
-- [~] CRM-G2 GDPR/PECR review of the real send path (ESP adapter,
-  lawful basis, unsubscribe in-message), retention schedules,
-  subject-access/erasure flows ([regulatory.md](regulatory.md)).
+- [~] CRM-G2 Review of the real send path (ESP adapter, lawful basis,
+  unsubscribe in-message), retention schedules and subject-access/erasure
+  flows against the data-protection and e-marketing law of every
+  jurisdiction the deployment sends to, as the deployer lists them, with
+  the GDPR and PECR as the first worked case
+  ([regulatory.md](regulatory.md)). The gate is passed per deployment:
+  each deployer passes it for its own recipients.
   **Subject-access/erasure/retention code side landed as CRM-T21
   (2026-08-28)**; the remaining items — the ESP-adapter/send-path
   legal review, jurisdiction-correct data residency, and coordination
   of subject rights with the upstream identity services — are
   operational/legal work, not code.
-  **Open question for the product owner (CRM-T165, 2026-10-31; not
-  decided).** CRM-G2's name and text are a review against the GDPR and
-  PECR only, so a deployment sending to recipients in Canada, the United
-  States, Brazil or anywhere else would pass the gate without the review
-  that applies there (worldwide audit spec row 9). The question:
-  *Should CRM-G2's scope be (a) the data-protection and e-marketing law of
-  every jurisdiction the deployment sends to, as the deployer lists them
-  (the [register by region](regulatory.md#the-register-by-region) names
-  examples, and CRM-D21's profiles, if confirmed, would hold them), with
-  the GDPR and PECR as the first worked case; or (b) the GDPR and PECR
-  only, as written, with every other jurisdiction left to each deployer
-  outside the gate? And under (a), is the gate passed once per deployment
-  by its deployer for its own recipients, or once for the project against
-  a named list of jurisdictions?* CRM-T165's text proposes (a); the gate's
-  name and text are unchanged until the product owner answers.
+  **Scope answered by the product owner (2026-10-31): option (a), passed
+  per deployment.** The question (CRM-T165) was whether the gate covers
+  (a) every jurisdiction the deployment sends to or (b) the GDPR and PECR
+  only, and under (a) whether it is passed per deployment or once for the
+  project; the answer is (a), per deployment, and the scope above is
+  rewritten to it. Nothing is reviewed by this: the gate stays open.
 
 - [x] CRM-T19 (2026-07-20) **Insight views + boards.** (CRM-R18;
   design CRM-D4, CRM-D12 — CRM-R18 was backfilled during the DOC-7
@@ -1893,8 +1888,8 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
   first: a consent regime per contact or per send (opt-in only as today, soft opt-in for existing customers, implied consent with an
   expiry, opt-out), purposes an administrator can edit, consent per channel; and a sender identification and postal address the
   deployer sets, carried in each commercial message. Tests with two differently shaped profiles. (L)
-  **Design drafted, waiting on CRM-D21 (2026-10-31).** [design.md](design.md) CRM-D21, *proposed, needs product-owner
-  confirmation*: profiles in WPM-D144's shape (jurisdiction codes with layers, a parameter registry with a combination rule per
+  **CRM-D21 confirmed by the product owner (2026-10-31), all twelve recommended answers; being built in steps.**
+  [design.md](design.md) CRM-D21: profiles in WPM-D144's shape (jurisdiction codes with layers, a parameter registry with a combination rule per
   key, append-only rows with a source and a status, one pure `resolve`); a regime per channel (`opt_in`, `soft_opt_in`, `implied`
   with an expiry per kind of evidence, `opt_out`) resolved from the contact's code, else the send's, else none (today's opt-in);
   purposes in a table an administrator edits; consent per channel; the sender name, postal address and contact link in each
@@ -1902,8 +1897,8 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
   exactly today's answers, and nothing blocked today becomes sendable without a profile an administrator loaded); two synthetic
   test profiles of different shapes (`XA`, one layer with a soft opt-in; `XB` with `XB-01`, a two-layer federation of opt-out
   and implied consent). Twelve numbered questions for the product owner, each with a recommendation, end the decision.
-  **Not done:** no code, migration, test or UI; nothing is built until CRM-D21 is confirmed; the regime shapes are from the
-  register, every region *not yet read*; not legal advice.
+  **Not done yet:** the code, migrations, tests and UI (steps b to f); the regime shapes are from the register, every region
+  *not yet read*; not legal advice.
 - [x] CRM-T167 **Money uses the currency's own exponent.** (CRM-R95, CRM-D19; spec row 11; code rows 8 to 11) In the UI, one
       formatter and parser with the behaviour of the sibling apps' shared `src/lib/money.ts` (project portfolio commit `956d9ed`,
       workforce planning WPM-T373: the exponent from `Intl.NumberFormat#resolvedOptions().maximumFractionDigits`, `money`,
