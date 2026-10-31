@@ -1853,7 +1853,7 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
 
 ## Worldwide equity (from the 2026-10-30 audit, [worldwide.md](worldwide.md))
 
-Each task traces to CRM-R95 (proposed) and CRM-D19 (confirmed by the product owner, 2026-10-31) and names the rows of the audit it closes ("spec" rows are the spec audit,
+Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 2026-10-31) and names the rows of the audit it closes ("spec" rows are the spec audit,
 "code" rows the code and UI check).
 
 - [x] CRM-T164 **Worldwide equity audit.** (CRM-R95, CRM-D19) (M)

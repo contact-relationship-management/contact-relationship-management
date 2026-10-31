@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the worldwide requirement confirmed by the product owner (CRM-R95, 2026-10-31)
+
+CRM-R95 (equitable capability worldwide) is confirmed, as CRM-D19 that implements it already was, in [requirements](spec/requirements.md), [worldwide](spec/worldwide.md), the [spec index](spec/index.md) and [tasks](spec/tasks.md). Its "not built" line now names only the two tasks still open (CRM-T165, CRM-T166). **Not done:** no code changed; past changelog entries that say "proposed" are left as history.
+
 ### Added — a deal with no stage move or activity for N days is flagged stalled (CRM-T183, 2026-10-31)
 
 CRM-R4 asked for it and CRM-T6 was marked done without it. An open deal is now stalled when the organization's number of days (default 14, set by an administrator beside the calendar) has passed since its last stage move or the last activity logged on it; a closed deal never is. The service derives it on every read of the deal list (CRM-D20; migration `000058` records each deal's last stage move); the Kanban board flags the card and the deal page says since when. **Not done or verified:** the new texts are unreviewed machine drafts except English; activities on the deal's contact or account do not count; no dashboard count, notification or workflow trigger; no number per pipeline; the stale-deals insight is unchanged; not run against a live service with the UI. Details: the [service](contact-relationship-management-service-with-rust/CHANGELOG.md) and [UI](contact-relationship-management-ui-with-svelte/CHANGELOG.md) changelogs.

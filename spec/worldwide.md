@@ -1,6 +1,6 @@
 # Worldwide by design
 
-*Added 2026-10-30: the worldwide equity audit (CRM-T164). The requirement below is proposed for the product owner; the decision below was confirmed by the product owner on 2026-10-31.*
+*Added 2026-10-30: the worldwide equity audit (CRM-T164). The requirement and the decision below were both confirmed by the product owner on 2026-10-31.*
 
 The CRM's target is the whole world, not the United States or the United Kingdom ([scope](scope.md#worldwide-by-design),
 [purpose](purpose.md), the opening of [requirements](requirements.md)). Much of the regulatory text, the compliance documents, the seed data
@@ -12,7 +12,7 @@ app's `governance/worldwide-equity-audit.md` (WW-1, against its `spec/02-scope.m
 
 ## Requirement
 
-- **CRM-R95** *(proposed, needs product-owner confirmation)* Every standard, protocol, convention, locale, format and regulation the CRM
+- **CRM-R95** *(confirmed by the product owner, 2026-10-31)* Every standard, protocol, convention, locale, format and regulation the CRM
   adopts must have **equitable capability for countries, regions and federations worldwide**. No jurisdiction is the default, the
   first-class case or the only case that works: a deployer in any country, in a federation of states, or in a region spanning several
   countries can configure and run the CRM without a code change and without a lesser experience than a UK or US deployer. In particular:
