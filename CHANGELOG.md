@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — the pure core of consent rules as jurisdiction profiles (CRM-T166 step b, 2026-10-31)
+
+The service gains `rules::consent_regime`: the profile registry and resolver in the workforce planning app's WPM-D144 shape, and the decision whether a message may be sent on a channel and on which basis (granted, soft opt-in, implied, opt-out), with the two synthetic example profiles and a test that no profile gives exactly today's answers. **Not done or verified:** nothing uses it yet; no table, send path, API or screen changed. Details: the [service changelog](contact-relationship-management-service-with-rust/CHANGELOG.md).
+
 ### Changed — CRM-D21 and the scope of CRM-G2 decided by the product owner (CRM-T166, 2026-10-31)
 
 CRM-D21 (consent rules as jurisdiction profiles) is confirmed with all twelve recommended answers; its questions are now recorded as decisions in [design](spec/design.md), with the alternatives kept. CRM-R6's story is reworded to decision 12: every marketing touch had a recorded basis under the profile in force, and with no profile the only basis is opt-in consent. The production gate CRM-G2 now covers the data-protection and e-marketing law of every jurisdiction the deployment sends to, as the deployer lists them, with the GDPR and PECR as the first worked case, and is passed per deployment by each deployer for its own recipients ([tasks](spec/tasks.md), [regulatory](spec/regulatory.md), the operations runbook's checklist). **Not done or verified:** spec only; no code, migration or test changed in this step; CRM-G2 stays open (nothing was reviewed); no law was read; not legal advice.

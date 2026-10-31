@@ -1897,8 +1897,10 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
   exactly today's answers, and nothing blocked today becomes sendable without a profile an administrator loaded); two synthetic
   test profiles of different shapes (`XA`, one layer with a soft opt-in; `XB` with `XB-01`, a two-layer federation of opt-out
   and implied consent). Twelve numbered questions for the product owner, each with a recommendation, end the decision.
-  **Not done yet:** the code, migrations, tests and UI (steps b to f); the regime shapes are from the register, every region
-  *not yet read*; not legal advice.
+  **Step b done (2026-10-31):** the pure `rules::consent_regime` (registry, chain, `resolve`, `rules_for`, `message_rules`,
+  `basis`, the example profiles), 14 unit tests.
+  **Not done yet:** the migrations, send paths, API, UI and request/browser tests (steps c to f); the regime shapes are from
+  the register, every region *not yet read*; not legal advice.
 - [x] CRM-T167 **Money uses the currency's own exponent.** (CRM-R95, CRM-D19; spec row 11; code rows 8 to 11) In the UI, one
       formatter and parser with the behaviour of the sibling apps' shared `src/lib/money.ts` (project portfolio commit `956d9ed`,
       workforce planning WPM-T373: the exponent from `Intl.NumberFormat#resolvedOptions().maximumFractionDigits`, `money`,
