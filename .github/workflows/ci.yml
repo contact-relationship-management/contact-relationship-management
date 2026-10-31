@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18
+        image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4
         env:
           POSTGRES_USER: loco
           POSTGRES_PASSWORD: loco
@@ -41,7 +41,7 @@ jobs:
           --health-cmd "pg_isready -U loco" --health-interval 5s
           --health-timeout 5s --health-retries 10
       redis:
-        image: redis:8-alpine
+        image: redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537
         ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s
@@ -188,3 +188,29 @@ jobs:
         with:
           name: sbom
           path: sbom/
+
+  secrets:
+    name: secret scan (gitleaks, whole history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # The release binary, checked against its published SHA-256, so the scanner is pinned like the actions.
+      # Reviewed findings (test keys, scaffold defaults) are listed with reasons in `.gitleaksignore`.
+      - name: gitleaks 8.30.1
+        run: |
+          curl -sSL -o gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks
+          ./gitleaks detect --source . --redact --no-banner
+
+  pins:
+    name: every action and image is pinned
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 scripts/check-actions-pinned.py

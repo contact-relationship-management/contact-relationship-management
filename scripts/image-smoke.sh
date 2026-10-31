@@ -74,9 +74,9 @@ serves() { [[ "$(status '' GET /_ping)" == 200 ]]; }
 say "setup"
 podman rm -f "${SVC}" "${WRK}" "${PG}" "${RD}" "${MAIL}" >/dev/null 2>&1; podman network rm "${NET}" >/dev/null 2>&1
 podman network create "${NET}" >/dev/null
-podman run -d --name "${PG}" --network "${NET}" -e POSTGRES_USER=loco -e POSTGRES_PASSWORD=loco -e POSTGRES_DB=crm docker.io/library/postgres:18-alpine >/dev/null
-podman run -d --name "${RD}" --network "${NET}" docker.io/library/redis:8-alpine >/dev/null
-podman run -d --name "${MAIL}" --network "${NET}" -p "${MAIL_API}:8025" docker.io/axllent/mailpit >/dev/null
+podman run -d --name "${PG}" --network "${NET}" -e POSTGRES_USER=loco -e POSTGRES_PASSWORD=loco -e POSTGRES_DB=crm docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5 >/dev/null
+podman run -d --name "${RD}" --network "${NET}" docker.io/library/redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537 >/dev/null
+podman run -d --name "${MAIL}" --network "${NET}" -p "${MAIL_API}:8025" docker.io/axllent/mailpit:latest@sha256:9b3a463be15354c0f0eba91697d80e3e0d8a5623ef0e627cacc836bc17fd5231 >/dev/null
 wait_for 60 podman exec "${PG}" pg_isready -U loco -d crm || { echo "postgres did not start"; exit 2; }
 sleep 2
 printf '  image: %s\n' "${IMAGE}"

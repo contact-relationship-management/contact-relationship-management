@@ -9,6 +9,16 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Security — supply-chain gates matched across the family (2026-10-31)
+
+- A whole-history secret scan (`gitleaks`, pinned by SHA-256) runs in CI (`secrets` job); the reviewed findings (test
+  keys, a signature test vector, scaffold defaults) are listed with reasons in `.gitleaksignore`.
+- `scripts/check-actions-pinned.py --actions-only` runs in CI (`pins` job); `zizmor` already did.
+- Every container image reference (compose files, Dockerfiles, CI service containers, scripts, `.woodpecker.yml`) now carries an
+  `@sha256` digest (16 references; the same digests as WPM where the tag matches). `scripts/check-actions-pinned.py` checks images
+  too, and skips `*:local` images the compose file builds itself. Dependabot's docker entries keep the digests current.
+- README: "Works on its own".
+
 ### Added — the tables for consent profiles, purposes and consent per channel (CRM-T166 step c, 2026-10-31)
 
 Migration `000059` adds the jurisdiction codes, the append-only profile rows and acknowledgements, a purposes table seeded with today's four, a channel on consent (every existing consent and event becomes `email`'s), a consent jurisdiction code on contacts, campaigns and sequences, the organization's sender name, postal address and contact link, and the basis on each delivery. **Not done or verified:** nothing uses them yet, so every answer is still today's; the migration's rollback was not run. Details: the [service changelog](contact-relationship-management-service-with-rust/CHANGELOG.md).

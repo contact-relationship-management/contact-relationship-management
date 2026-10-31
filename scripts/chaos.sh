@@ -109,8 +109,8 @@ podman rm -f "${PG}" "${RD}" "${REPLICA}" >/dev/null 2>&1
 podman network rm "${NET}" >/dev/null 2>&1
 podman network create "${NET}" >/dev/null
 podman run -d --name "${PG}" --network "${NET}" -p "${PG_PORT}:5432" -e POSTGRES_USER=loco -e POSTGRES_PASSWORD=loco \
-  -e POSTGRES_DB=chaos docker.io/library/postgres:18-alpine >/dev/null
-podman run -d --name "${RD}" -p "${RD_PORT}:6379" docker.io/library/redis:8-alpine >/dev/null
+  -e POSTGRES_DB=chaos docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5 >/dev/null
+podman run -d --name "${RD}" -p "${RD_PORT}:6379" docker.io/library/redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537 >/dev/null
 wait_for 40 podman exec "${PG}" pg_isready -U loco -d chaos || { echo "postgres did not start"; exit 2; }
 sleep 2
 echo "${PG_PORT}" >"${CTL}/target"; echo forward >"${CTL}/mode"
@@ -290,7 +290,7 @@ say "failover: the primary dies and a streaming replica is promoted"
 podman exec "${PG}" sh -c 'echo "host replication all all scram-sha-256" >>"$PGDATA/pg_hba.conf"' >/dev/null
 sql "SELECT pg_reload_conf()" >/dev/null
 podman run -d --name "${REPLICA}" --network "${NET}" -p "${REPLICA_PORT}:5432" -e PGPASSWORD=loco --user postgres \
-  --entrypoint sh docker.io/library/postgres:18-alpine \
+  --entrypoint sh docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5 \
   -c 'pg_basebackup -h crm-chaos-pg -U loco -D "$PGDATA" -R -X stream && exec postgres' >/dev/null
 rsql() { podman exec "${REPLICA}" psql -U loco -d chaos -Atc "$1"; }
 check "a streaming replica starts and is in recovery" wait_for 60 bash -c "[[ \"\$(podman exec ${REPLICA} psql -U loco -d chaos -Atc 'select pg_is_in_recovery()' 2>/dev/null)\" == t ]]"

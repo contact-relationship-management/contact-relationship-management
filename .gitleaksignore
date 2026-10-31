@@ -1,0 +1,11 @@
+# Findings reviewed and accepted: all are test fixtures or development-profile defaults, none protects real data.
+# Format: <commit>:<file>:<rule>:<line>. Production reads its secrets from the environment.
+
+# a fixed secret in a signature test vector, so the signature can be checked against what any receiving library computes
+b1b5e6dad49096d56a8f8526daf1723ace537cf2:contact-relationship-management-service-with-rust/src/rules/webhooks.rs:generic-api-key:369
+# a throwaway value for a disposable smoke-test container
+b6103621f8c9945bce67353a878e874c5f401ffc:scripts/image-smoke.sh:generic-api-key:116
+# the scaffold's generated development-profile JWT secret from the since-removed loco template; production reads its secret from the environment
+575312eb0602dc04c5a8ef37fb4ee07e3c69bfcd:contact-relationship-management-service-with-rust/config/development.yaml:generic-api-key:96
+# the scaffold's generated test-profile JWT secret from the since-removed loco template; production reads its secret from the environment
+575312eb0602dc04c5a8ef37fb4ee07e3c69bfcd:contact-relationship-management-service-with-rust/config/test.yaml:generic-api-key:93

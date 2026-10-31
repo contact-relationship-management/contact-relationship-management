@@ -62,6 +62,14 @@ run `pnpm run sync` in the site's directory first (CI fails on a stale copy).
 Never work in the exported repository. See
 [spec/github-pages-site.md](spec/github-pages-site.md).
 
+## Works on its own
+
+This repository builds, runs and is tested **without** the project-portfolio (PPM) or workforce-planning (WPM)
+repositories: nothing here depends on their code. The bridges are opt-in and off until configured
+(`CRM_PPM_SERVICE_URL`, `CRM_WORKER_SERVICE_URL`, `CRM_WPM_WEBHOOK_SECRET`; see [INSTALL.md](INSTALL.md)); the inbound
+webhook answers `404` while its secret is unset. A bridge carries references and counts, never a record.
+Walk-through: [docs/tutorial-family-bridges.md](docs/tutorial-family-bridges.md).
+
 ## Documents
 
 [INSTALL](INSTALL.md) · [CONTRIBUTING](CONTRIBUTING.md) · [RFC](RFC.md) ·

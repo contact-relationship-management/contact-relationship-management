@@ -4,17 +4,17 @@ when:
 
 variables:
   # rust-toolchain.toml carries the exact pin; rustup honours it.
-  - &rust_image 'rust:1.99-bookworm'
+  - &rust_image 'rust:1.99-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b'
 
 services:
   - name: postgres
-    image: postgres:18
+    image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4
     environment:
       POSTGRES_USER: loco
       POSTGRES_PASSWORD: loco
       POSTGRES_DB: postgres
   - name: redis
-    image: redis:8-alpine
+    image: redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537
 
 steps:
   - name: fmt
@@ -44,14 +44,14 @@ steps:
       - scripts/ci-check.sh test-db
 
   - name: front-end
-    image: 'node:26-bookworm'
+    image: 'node:26-bookworm@sha256:fa52d1669505e29b58c042875b1d65c229e0787a3610fd52869b22b68e480853'
     commands:
       # Node 25+ no longer ships corepack.
       - npm install --global pnpm@11.0.8
       - scripts/ci-check.sh front-end
 
   - name: e2e
-    image: 'node:26-bookworm'
+    image: 'node:26-bookworm@sha256:fa52d1669505e29b58c042875b1d65c229e0787a3610fd52869b22b68e480853'
     commands:
       - npm install --global pnpm@11.0.8
       - scripts/ci-check.sh e2e
@@ -71,7 +71,7 @@ steps:
       - scripts/ci-check.sh coverage
 
   - name: scripts
-    image: 'debian:bookworm-slim'
+    image: 'debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3'
     commands:
       - apt-get update && apt-get install -y --no-install-recommends shellcheck
       - scripts/ci-check.sh scripts

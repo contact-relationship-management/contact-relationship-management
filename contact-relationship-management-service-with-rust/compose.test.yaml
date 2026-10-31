@@ -23,7 +23,7 @@ services:
   postgres:
     # Fully qualified: podman refuses a short name (or prompts for a
     # registry), which would hang an unattended run.
-    image: docker.io/library/postgres:18-alpine
+    image: docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
     container_name: mxi-contact-relationship-management-test-db
     environment:
       POSTGRES_USER: loco
@@ -59,7 +59,7 @@ services:
       start_period: 5s
 
   redis:
-    image: docker.io/library/redis:8-alpine
+    image: docker.io/library/redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537
     container_name: mxi-contact-relationship-management-test-redis
     ports:
       - "${TEST_REDIS_PORT:-6379}:6379"
