@@ -142,6 +142,9 @@ struct Won {
     source_campaign: Option<Uuid>,
     created_at: DateTime<Utc>,
     closed_at: DateTime<Utc>,
+    /// The day it closed on in the organization's zone (CRM-T181), for `from`/`to` and its
+    /// close-day rate.
+    closed_on: NaiveDate,
 }
 
 fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
@@ -301,14 +304,20 @@ struct Asked {
 
 /// The won deals closed in the range, newest first, one more than the cap so a cut is seen.
 async fn won_deals(ctx: &AppContext, query: &AttributionQuery) -> Result<Vec<Won>> {
+    // The days deals closed on are the organization's (CRM-T181), as its reports' days are.
+    let calendar = super::organization::periods(&ctx.db).await?;
+    let closed_on = crate::rules::periods::local_day("closed_at", &calendar);
     let rows = ctx
         .db
         .query_all_raw(stmt(
-            "SELECT pid, amount_minor, currency, source_campaign_pid, created_at, closed_at FROM deals \
-             WHERE won AND deleted_at IS NULL AND closed_at IS NOT NULL \
-               AND ($1::date IS NULL OR closed_at::date >= $1::date) \
-               AND ($2::date IS NULL OR closed_at::date <= $2::date) \
-             ORDER BY closed_at DESC, id LIMIT $3",
+            &format!(
+                "SELECT pid, amount_minor, currency, source_campaign_pid, created_at, closed_at, \
+                        {closed_on} AS closed_on FROM deals \
+                 WHERE won AND deleted_at IS NULL AND closed_at IS NOT NULL \
+                   AND ($1::date IS NULL OR {closed_on} >= $1::date) \
+                   AND ($2::date IS NULL OR {closed_on} <= $2::date) \
+                 ORDER BY closed_at DESC, id LIMIT $3"
+            ),
             [
                 query.from.into(),
                 query.to.into(),
@@ -325,6 +334,7 @@ async fn won_deals(ctx: &AppContext, query: &AttributionQuery) -> Result<Vec<Won
                 source_campaign: row.try_get("", "source_campaign_pid")?,
                 created_at: row.try_get("", "created_at")?,
                 closed_at: row.try_get("", "closed_at")?,
+                closed_on: row.try_get("", "closed_on")?,
             })
         })
         .collect()
@@ -473,11 +483,7 @@ fn share_out(
         if list.is_empty() {
             unattributed_deals += 1;
             add(&mut unattributed, &deal.currency, deal.amount_minor);
-            unattributed_dated.push((
-                deal.closed_at.date_naive(),
-                deal.currency.clone(),
-                deal.amount_minor,
-            ));
+            unattributed_dated.push((deal.closed_on, deal.currency.clone(), deal.amount_minor));
             continue;
         }
         for touch in &list {
@@ -498,7 +504,7 @@ fn share_out(
             add(&mut tally.credit, &deal.currency, share);
             tally
                 .dated
-                .push((deal.closed_at.date_naive(), deal.currency.clone(), share));
+                .push((deal.closed_on, deal.currency.clone(), share));
         }
     }
     Shared {

@@ -755,13 +755,18 @@ pub(super) async fn campaign_funnel(
     let mut dated = None;
     if convert && query.rate_basis.is_some() && !other_currency.is_empty() {
         // Each deal at the rate of the day it closed, rounded once per deal (CRM-R86); what had
-        // no rate on its day is all that stays listed apart.
+        // no rate on its day is all that stays listed apart. The day is the organization's
+        // (CRM-T181).
+        let calendar = crate::controllers::organization::periods(&ctx.db).await?;
         let foreign: Vec<(chrono::NaiveDate, String, i64)> = attributed_deals
             .iter()
             .filter(|deal| !deal.currency.eq_ignore_ascii_case(&campaign.currency))
             .map(|deal| {
                 (
-                    deal.closed_at.unwrap_or(deal.updated_at).date_naive(),
+                    crate::rules::periods::day_of(
+                        deal.closed_at.unwrap_or(deal.updated_at).to_utc(),
+                        &calendar,
+                    ),
                     deal.currency.clone(),
                     deal.amount_minor,
                 )

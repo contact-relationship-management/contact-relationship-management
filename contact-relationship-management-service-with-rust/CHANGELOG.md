@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the days deals close on are the organization's (CRM-T181, CRM-R48, CRM-R70, CRM-R83, CRM-R85, CRM-R86)
+
+`rules::periods` gains `day_of` and `local_day`. `deals.closed_at` (a `TIMESTAMPTZ`) was taken as a day by its UTC date (`date_naive()`, `closed_at::date`); its day in the organization's zone now decides the close-day rate in `GET /api/accounts/{pid}/clv`, `GET /api/campaigns/{pid}/funnel`, `GET /api/attribution` and `POST /api/reports/run` (`rate_basis=close_day`), attribution's `from`/`to`, `quotas::credited_deals` (quota and team attainment) and territory attainment's `from`/`to`. Unit test `an_event_s_day_is_the_organization_s`; request test `a_deal_closes_on_the_organization_s_day` (at `Pacific/Kiritimati`). **Not done or verified:** no request test of quota or team attainment in a zone; the win-loss insight's window and the CLV look-ahead's history years are elapsed-time windows and were not changed; `expected_close` is a stored date and is unchanged; not run with the UI against a live service.
+
 ### Changed — the web form's confirmation mail and answer in the request's language (CRM-T180, CRM-R29, CRM-R31)
 
 `rules::public_text::Text` gains `mail_subject`, `mail_body` and `form_received` (eight languages, machine drafts but English) and `confirmation_mail`; `controllers::forms` takes an optional `language`, negotiates it with `Accept-Language` (`language_of`), sends the confirmation in that language with `?lang=` on its link, and answers `202` in it with `Content-Language` and `Vary: Accept-Language`. `controllers::marketing::purpose_label` is removed. OpenAPI: `/forms/{slug}` documents `language`. Request test `the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_it`. **Not done or verified:** the translations are unreviewed; the form's error answers stay English; no preference mail is sent and the unsubscribe links of campaign and nurture mail do not name the template's language; not sent through a real provider.

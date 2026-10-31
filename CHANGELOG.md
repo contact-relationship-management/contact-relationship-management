@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — a deal closes on the organization's day, not UTC's (CRM-T181, 2026-10-31)
+
+A deal's close moment is stored with its time; the day it closed on was taken as its UTC date. It is now the day in the organization's time zone wherever a close day is used: converting each deal at the rate of the day it closed (an account's CLV, reports, attribution and a campaign's ROI), attribution's `from`/`to`, and the deals counted in a quota's or a territory's period. **Not done or verified:** quota and team attainment have no zone test of their own (they share the tested SQL); windows measured in elapsed time over the close moment were left as they are; the UI's tour stand-in still uses UTC dates; not run against a live service with the UI. Details: the [service changelog](contact-relationship-management-service-with-rust/CHANGELOG.md).
+
 ### Changed — the web form's confirmation mail in the language of the request that asked for it (CRM-T180, 2026-10-31)
 
 The confirmation mail a web form sends, and the form's answer, were English. They now follow the language of the page the form is on (an optional `language` field) or the request's `Accept-Language`, among the public pages' eight languages, and the mailed link opens the confirmation page in the same language. The contact's language is still not stored (CRM-R29): it comes from the request and travels only in the link. **Not done or verified:** every non-English text is an unreviewed machine draft; the form's error answers are English; the service still sends no preference mail, and campaign and nurture unsubscribe links do not name the template's language; no mail was sent through a real provider. Details: the [service](contact-relationship-management-service-with-rust/CHANGELOG.md) and [UI](contact-relationship-management-ui-with-svelte/CHANGELOG.md) changelogs.

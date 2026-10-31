@@ -298,3 +298,134 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn a_deal_closes_on_the_organization_s_day() {
+    // CRM-T181: a deal closed at 10:30 UTC on 30 June is closed on 1 July in Kiritimati (UTC+14):
+    // its close-day rate is 1 July's, and a range of close days finds it on 1 July, not 30 June.
+    let _cells = super::no_suppression();
+    request::<App, _, _>(|request, ctx| async move {
+        request
+            .put("/api/settings/organization")
+            .json(&json!({ "time_zone": "Pacific/Kiritimati", "fiscal_year_start_month": 1 }))
+            .await
+            .assert_status_ok();
+        let segment: Value = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json();
+        let campaign: Value = request
+            .post("/api/campaigns")
+            .json(
+                &json!({ "name": "Zoned", "cost_minor": 1_000, "currency": "GBP",
+                           "segment_pid": segment["pid"] }),
+            )
+            .await
+            .json();
+        let campaign = campaign["pid"].as_str().unwrap().to_string();
+        let account: Value = request
+            .post("/api/accounts")
+            .json(
+                &json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Date Line Ltd" }),
+            )
+            .await
+            .json();
+        let account = account["pid"].as_str().unwrap().to_string();
+        let (pipeline, stages) = super::seed_pipeline!(&request).await;
+        let deal: Value = request
+            .post("/api/deals")
+            .json(
+                &json!({ "name": "Late", "pipeline_pid": pipeline, "amount_minor": 10_000,
+                           "currency": "USD", "account_pid": account,
+                           "source_campaign_pid": campaign }),
+            )
+            .await
+            .json();
+        let deal = deal["pid"].as_str().unwrap().to_string();
+        request
+            .post(&format!("/api/deals/{deal}/stage"))
+            .json(&json!({ "stage_pid": stages[2] }))
+            .await
+            .assert_status_ok();
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE deals SET closed_at = '2026-06-30T10:30:00Z' WHERE pid = '{deal}'"
+            ))
+            .await
+            .unwrap();
+        // 0.80 until 30 June, 0.50 from 1 July: UTC's day would give 8,000.
+        for (rate, on) in [("0.80", "2026-01-01"), ("0.50", "2026-07-01")] {
+            request
+                .put("/api/fx-rates")
+                .json(&json!({ "from": "USD", "to": "GBP", "rate": rate,
+                               "effective_on": on, "source": "test table" }))
+                .await
+                .assert_status_ok();
+        }
+
+        // Close-day conversion: attribution, the account's CLV, the campaign funnel, a report.
+        let attribution: Value = request
+            .get("/api/attribution?convert_to=GBP&rate_basis=close_day")
+            .await
+            .json();
+        let credit = &attribution["campaigns"][0]["credit"];
+        assert_eq!(
+            credit,
+            &json!([{ "currency": "GBP", "amount_minor": 5_000 }]),
+            "{attribution}"
+        );
+        let clv: Value = request
+            .get(&format!(
+                "/api/accounts/{account}/clv?convert_to=GBP&rate_basis=close_day"
+            ))
+            .await
+            .json();
+        assert_eq!(clv["converted_minor"], 5_000, "{clv}");
+        let funnel: Value = request
+            .get(&format!(
+                "/api/campaigns/{campaign}/funnel?convert=true&rate_basis=close_day"
+            ))
+            .await
+            .json();
+        assert_eq!(funnel["won_revenue_minor"], 5_000, "{funnel}");
+        let report: Value = request
+            .post("/api/reports/run")
+            .json(
+                &json!({ "kind": "deal", "group_by": "state", "measure": "sum_amount",
+                           "convert_to": "GBP", "rate_basis": "close_day",
+                           "filter": { "state": ["won"] } }),
+            )
+            .await
+            .json();
+        assert_eq!(report["rows"][0]["value"], 5_000, "{report}");
+
+        // A range of close days: attribution's from/to and territory attainment's period.
+        for (day, found) in [("2026-07-01", true), ("2026-06-30", false)] {
+            let ranged: Value = request
+                .get(&format!("/api/attribution?from={day}&to={day}"))
+                .await
+                .json();
+            assert_eq!(
+                ranged["campaigns"].as_array().unwrap().len(),
+                usize::from(found),
+                "{day}: {ranged}"
+            );
+            let territories: Value = request
+                .get(&format!(
+                    "/api/quotas/territory-attainment?from={day}&to={day}"
+                ))
+                .await
+                .json();
+            assert_eq!(
+                territories["unassigned"].as_array().unwrap().len(),
+                usize::from(found),
+                "{day}: {territories}"
+            );
+        }
+    })
+    .await;
+}

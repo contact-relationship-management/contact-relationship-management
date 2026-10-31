@@ -846,14 +846,19 @@ async fn credited_deals<C: ConnectionTrait>(
     from: NaiveDate,
     to: NaiveDate,
 ) -> Result<Vec<(String, i64)>> {
+    // The days deals closed on are the organization's (CRM-T181), as a quota's period is.
+    let calendar = super::organization::periods(db).await?;
+    let closed_on = crate::rules::periods::local_day("d.closed_at", &calendar);
     let deals = db
         .query_all_raw(stmt(
-            "SELECT d.pid, trim(d.currency) AS currency, d.amount_minor, d.owner_ref \
-             FROM deals d \
-             WHERE d.won AND d.deleted_at IS NULL AND d.closed_at IS NOT NULL \
-               AND d.closed_at::date BETWEEN $2 AND $3 \
-               AND (d.owner_ref = $1 OR EXISTS \
-                    (SELECT 1 FROM deal_splits s WHERE s.deal_pid = d.pid AND s.owner_ref = $1))",
+            &format!(
+                "SELECT d.pid, trim(d.currency) AS currency, d.amount_minor, d.owner_ref \
+                 FROM deals d \
+                 WHERE d.won AND d.deleted_at IS NULL AND d.closed_at IS NOT NULL \
+                   AND {closed_on} BETWEEN $2 AND $3 \
+                   AND (d.owner_ref = $1 OR EXISTS \
+                        (SELECT 1 FROM deal_splits s WHERE s.deal_pid = d.pid AND s.owner_ref = $1))"
+            ),
             [owner.into(), from.into(), to.into()],
         ))
         .await?;

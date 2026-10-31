@@ -62,6 +62,14 @@ pub fn today_in(now: DateTime<Utc>, zone: Tz) -> NaiveDate {
     now.with_timezone(&zone).date_naive()
 }
 
+/// The organization's day of an event at `at`: the day a deal closed on, for its close-day rate
+/// and for a range of close days (CRM-T181), is the organization's, not UTC's.
+#[must_use]
+#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
+pub fn day_of(at: DateTime<Utc>, periods: &Periods) -> NaiveDate {
+    today_in(at, periods.zone)
+}
+
 /// The zone for a caller's "today": the one it named, when it is a real zone, else the
 /// organization's.
 #[must_use]
@@ -110,6 +118,13 @@ fn zone_literal(zone: Tz) -> String {
 #[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
 pub fn local(column: &str, periods: &Periods) -> String {
     format!("({column} AT TIME ZONE {})", zone_literal(periods.zone))
+}
+
+/// SQL for the day of the timestamp `column` in the organization's zone (see [`day_of`]).
+#[must_use]
+#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
+pub fn local_day(column: &str, periods: &Periods) -> String {
+    format!("{}::date", local(column, periods))
 }
 
 /// SQL for the month (`YYYY-MM`) of `column` in the organization's zone.
@@ -178,6 +193,28 @@ mod tests {
         assert_eq!(
             today_in(now, zone("Pacific/Kiritimati").unwrap()),
             day(2027, 1, 1)
+        );
+    }
+
+    #[test]
+    fn an_event_s_day_is_the_organization_s() {
+        // A deal closed at 10:30 UTC on 30 June is closed on 1 July in Kiritimati (UTC+14) and on
+        // 29 June in Pago Pago (UTC-11): three days for one moment. The SQL reads the same zone.
+        let at = Utc.with_ymd_and_hms(2026, 6, 30, 10, 30, 0).unwrap();
+        let kiritimati = Periods {
+            zone: zone("Pacific/Kiritimati").unwrap(),
+            fiscal_start_month: 1,
+        };
+        assert_eq!(day_of(at, &kiritimati), day(2026, 7, 1));
+        let pago = Periods {
+            zone: zone("Pacific/Pago_Pago").unwrap(),
+            fiscal_start_month: 1,
+        };
+        assert_eq!(day_of(at, &pago), day(2026, 6, 29));
+        assert_eq!(day_of(at, &Periods::default()), day(2026, 6, 30));
+        assert_eq!(
+            local_day("d.closed_at", &kiritimati),
+            "(d.closed_at AT TIME ZONE 'Pacific/Kiritimati')::date"
         );
     }
 

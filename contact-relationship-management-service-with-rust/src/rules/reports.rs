@@ -449,10 +449,12 @@ pub fn plan_in(spec: &Spec, periods: &Periods) -> Result<Plan, Vec<(String, Stri
     };
     let sum = spec.measure == "sum_amount";
     let by_day = sum && spec.rate_basis.is_some();
+    // The day a deal closed on is the organization's (CRM-T181), as `from`/`to` are.
+    let close_day = period::local_day("d.closed_at", periods);
     let (select, group_by, order) = match (sum, table.money) {
         (true, Some((_, currency))) if by_day => (
             format!(
-                "{group} AS grp, {currency} AS currency, d.closed_at::date AS day, \
+                "{group} AS grp, {currency} AS currency, {close_day} AS day, \
                  coalesce(sum(d.amount_minor), 0)::bigint AS value, count(*)::bigint AS n"
             ),
             "grp, currency, day".to_string(),
@@ -593,7 +595,9 @@ mod tests {
         let planned = plan(&s).unwrap();
         assert!(planned.by_day && planned.per_currency);
         assert!(
-            planned.sql.contains("d.closed_at::date AS day"),
+            planned
+                .sql
+                .contains("(d.closed_at AT TIME ZONE 'UTC')::date AS day"),
             "{}",
             planned.sql
         );
