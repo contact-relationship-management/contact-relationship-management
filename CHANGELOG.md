@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — two decisions confirmed by the product owner (CRM-D19, CRM-D16, 2026-10-31)
+
+CRM-D19 (jurisdiction is data, never code; a standard is a profile) is confirmed as written, in [design](spec/design.md) and [worldwide](spec/worldwide.md). CRM-D16 (the employment check asks under one deployer-held HR token, `CRM_WORKER_SERVICE_TOKEN`, rather than the caller's own as WPM-D135 asks) is confirmed as the accepted design; the design, the integrations table, CRM-R94, CRM-T160's notes and the bridges tutorial no longer read it as open. **Not done or verified:** no behaviour changed; the requirement CRM-R95 is still proposed (only the decision was confirmed); WPM's own spec still mentions the gap and was not edited here; the GitHub Pages site's copy of the two documents it shows (`docs.json`) was regenerated, not published; earlier changelog entries that say "proposed" were left as the history they are.
+
 ### Changed — the web form's refusals in the language of the request (CRM-T182, 2026-10-31)
 
 The web form answered its accepted submissions in the request's language (CRM-T180) but refused in English. Its refusals (unusable name or address, another website, too many submissions, the person service unreachable) are now in the same language, with `Content-Language`; each refusal's machine-readable `error` code is unchanged. **Not done or verified:** every non-English text is an unreviewed machine draft; a body that is not the form's JSON shape is still refused in English before the form reads it; an unknown form's `404` has no text; request tests only, no browser. Details: the [service](contact-relationship-management-service-with-rust/CHANGELOG.md) and [UI](contact-relationship-management-ui-with-svelte/CHANGELOG.md) changelogs.

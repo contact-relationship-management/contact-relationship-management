@@ -156,6 +156,10 @@ leave was recorded), and keeping the ended employment row with an end date (ever
 
 ## CRM-D16 — The employment check asks under one HR token, for one configured organization
 
+*Confirmed by the product owner, 2026-10-31, as the accepted design.* The difference from WPM-D135 named below is
+accepted, not open: the CRM keeps one deployer-held HR token (`CRM_WORKER_SERVICE_TOKEN`) and does not forward the
+caller's own. WPM's own spec still mentions the gap; it was not edited from this repository.
+
 The employment check (CRM-R94) calls WPM's overlap check (WPM-R208), which answers only a privileged
 caller of the organization (HR), and WPM-D135 says an inbound call acts under **the caller's own
 token**. The CRM does not forward its caller's token: that token is issued for the CRM's audience
@@ -163,8 +167,8 @@ token**. The CRM does not forward its caller's token: that token is issued for t
 CRM caller act in WPM. Like the teams import (CRM-R73, CRM-R87), the check sends
 **`CRM_WORKER_SERVICE_TOKEN`**, which the deployer obtains for an **HR identity of the organization
 in WPM**; WPM's own policy then decides, and the CRM's side is admin only and audited. This is
-closer to WPM-D135 than a shared key and **not the same as it**; the gap is named in the integrations
-table and in WPM's spec.
+closer to WPM-D135 than a shared key and **not the same as it**; the difference is named in the
+integrations table and in WPM's spec, and is accepted (confirmed 2026-10-31, above).
 
 **The organization is a setting, `CRM_WPM_ORGANIZATION_REF`**, not a field of the request, because
 the token belongs to HR of one organization: asking about another would be refused by WPM, and a
@@ -268,7 +272,7 @@ owner's name (it asked the worker service for `/api/workers/<sub>`, which is not
 
 ## CRM-D19 — Jurisdiction is data, never code; a standard is adopted as a profile, never as the only shape
 
-*Proposed, needs product-owner confirmation* (drafted 2026-10-30 by the AI assistant; implements CRM-R95; mirrors WPM-D143 and the
+*Confirmed by the product owner, 2026-10-31* (drafted 2026-10-30 by the AI assistant; implements CRM-R95; mirrors WPM-D143 and the
 project portfolio app's spec §2.0). A rule that comes from a law takes the jurisdiction's parameters as an input and names no country;
 federations and regions are first-class; names, phone numbers, dates, time zones, working weeks, reporting periods and money (the ISO 4217
 exponent, no built-in currency) follow the locale or the jurisdiction; international standards first, national ones as profiles; locales

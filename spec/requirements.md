@@ -1521,7 +1521,7 @@ recipient would get before anything is sent, and be certain every message carrie
 - The answer: `{mode, organization_ref, asked, batches, workers, recorded, already_paused, left_by_event}`. **Stub-first**: without `CRM_UPSTREAM_MODE=http` nothing is sent and the answer says how many references would be asked in how many calls.
 - The `/quotas` page, beside the teams import, has a button to run it and says how many contacts were marked (or, in the tour, how many would be asked about).
 - WPM's contract was read from its source on 2026-10-30 (`controllers/bridges.rs`, `rules/bridge.rs`); it is exercised against a stand-in that answers only an HR bearer token, **not a running WPM**.
-- Not built: running it on a schedule or after a contact is created; asking about one contact; ending an employment on a no; more than one organization; the caller's own token (WPM-D135).
+- Not built: running it on a schedule or after a contact is created; asking about one contact; ending an employment on a no; more than one organization. Not planned: the caller's own token (WPM-D135); one deployer-held HR token is the accepted design (CRM-D16, confirmed by the product owner 2026-10-31).
 
 ## CRM-R95 — Equitable capability worldwide
 

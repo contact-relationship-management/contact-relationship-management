@@ -1,6 +1,6 @@
 # Worldwide by design
 
-*Added 2026-10-30: the worldwide equity audit (CRM-T164). The requirement and the decision below are proposed for the product owner.*
+*Added 2026-10-30: the worldwide equity audit (CRM-T164). The requirement below is proposed for the product owner; the decision below was confirmed by the product owner on 2026-10-31.*
 
 The CRM's target is the whole world, not the United States or the United Kingdom ([scope](scope.md#worldwide-by-design),
 [purpose](purpose.md), the opening of [requirements](requirements.md)). Much of the regulatory text, the compliance documents, the seed data
@@ -23,7 +23,7 @@ app's `governance/worldwide-equity-audit.md` (WW-1, against its `spec/02-scope.m
 ## Decision
 
 - **CRM-D19 Jurisdiction is data, never code; a standard is adopted as a profile, never as the only shape.**
-  *Proposed, needs product-owner confirmation* (drafted 2026-10-30 by the AI assistant from the instruction that ordered this audit; it
+  *Confirmed by the product owner, 2026-10-31* (drafted 2026-10-30 by the AI assistant from the instruction that ordered this audit; it
   mirrors WPM-D143 and the project portfolio app's §2.0 so the three apps read alike).
   - **Jurisdictions are configuration.** A rule that comes from a law (who may be emailed and on what basis, how long consent lasts, what a
     message must carry, retention, the subject-access and erasure duties) takes the jurisdiction's parameters as an input and names no

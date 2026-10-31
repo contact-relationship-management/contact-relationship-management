@@ -278,6 +278,7 @@ The events route stays public and is authenticated by its signature alone.
   in `src/clients.rs`), and the tests use stand-ins.
 - The CRM uses one HR token held by the deployer and one configured
   organization, rather than the caller's own token as WPM-D135 asks (CRM-D16).
+  The product owner confirmed this on 2026-10-31 as the accepted design.
 - See [spec/integrations.md](../spec/integrations.md#family-bridges) and
   [spec/tasks.md](../spec/tasks.md) (CRM-T139, CRM-T153, CRM-T158 to CRM-T162)
   for the limits recorded with each change.
