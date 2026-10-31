@@ -805,11 +805,11 @@ pub(super) async fn campaign_funnel(
         }
         Some(done) => (Some(done.rate_date), done.rates, done.unconverted),
         None if convert => (
-            Some(
-                query
-                    .rate_date
-                    .unwrap_or_else(|| chrono::Utc::now().date_naive()),
-            ),
+            Some(match query.rate_date {
+                Some(day) => day,
+                // The exchange-rate "today" is the organization's (CRM-T171, CRM-T179).
+                None => crate::controllers::organization::organization_today(&ctx.db).await?,
+            }),
             Vec::new(),
             Vec::new(),
         ),

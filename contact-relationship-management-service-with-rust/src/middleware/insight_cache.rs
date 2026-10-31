@@ -18,11 +18,20 @@ const INSIGHT_TTL: std::time::Duration = std::time::Duration::from_secs(30);
 const CACHE_WAIT: std::time::Duration = std::time::Duration::from_millis(750);
 
 /// The cache key for an insight read: a hash of the caller's token (so masking
-/// never crosses callers), their break-glass state, the current generation, and
-/// the path and query.
-fn insight_key(token: &str, glass: bool, generation: i64, path: &str, query: &str) -> String {
+/// never crosses callers), their break-glass state, the time zone they name (their
+/// "today" decides the follow-ups, hygiene and memberships lists, CRM-T179), the
+/// current generation, and the path and query.
+fn insight_key(
+    token: &str,
+    glass: bool,
+    zone: &str,
+    generation: i64,
+    path: &str,
+    query: &str,
+) -> String {
     use sha2::{Digest, Sha256};
-    let digest = Sha256::digest(format!("{token}|{glass}|{generation}|{path}?{query}").as_bytes());
+    let digest =
+        Sha256::digest(format!("{token}|{glass}|{zone}|{generation}|{path}?{query}").as_bytes());
     let hex = digest.iter().fold(String::new(), |mut acc, b| {
         use std::fmt::Write as _;
         let _ = write!(acc, "{b:02x}");
@@ -90,9 +99,15 @@ pub(crate) async fn insight_cache_mw(
         .and_then(Result::ok)
         .flatten()
         .unwrap_or_default();
+    let zone = req
+        .headers()
+        .get(crate::rules::periods::USER_ZONE_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
     let key = insight_key(
         token,
         glass,
+        zone,
         generation,
         &path,
         req.uri().query().unwrap_or(""),
@@ -162,18 +177,26 @@ mod tests {
 
     #[test]
     fn an_insight_key_depends_on_everything_that_changes_the_answer() {
-        let base = insight_key("Bearer a", false, 1, "/api/insights/x", "days=7");
+        let base = insight_key("Bearer a", false, "", 1, "/api/insights/x", "days=7");
         assert_eq!(
             base,
-            insight_key("Bearer a", false, 1, "/api/insights/x", "days=7"),
+            insight_key("Bearer a", false, "", 1, "/api/insights/x", "days=7"),
             "the same request gets the same key"
         );
         for other in [
-            insight_key("Bearer b", false, 1, "/api/insights/x", "days=7"),
-            insight_key("Bearer a", true, 1, "/api/insights/x", "days=7"),
-            insight_key("Bearer a", false, 2, "/api/insights/x", "days=7"),
-            insight_key("Bearer a", false, 1, "/api/insights/y", "days=7"),
-            insight_key("Bearer a", false, 1, "/api/insights/x", "days=30"),
+            insight_key("Bearer b", false, "", 1, "/api/insights/x", "days=7"),
+            insight_key("Bearer a", true, "", 1, "/api/insights/x", "days=7"),
+            insight_key(
+                "Bearer a",
+                false,
+                "Asia/Tokyo",
+                1,
+                "/api/insights/x",
+                "days=7",
+            ),
+            insight_key("Bearer a", false, "", 2, "/api/insights/x", "days=7"),
+            insight_key("Bearer a", false, "", 1, "/api/insights/y", "days=7"),
+            insight_key("Bearer a", false, "", 1, "/api/insights/x", "days=30"),
         ] {
             assert_ne!(base, other);
         }

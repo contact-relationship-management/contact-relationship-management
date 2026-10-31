@@ -261,7 +261,8 @@ pub(super) async fn followups(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let today = chrono::Utc::now().date_naive();
+    // The caller's day (CRM-T179), as attainment's.
+    let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
     let horizon = today + chrono::Days::new(30);
     let mut find = activities::Entity::find_live()
         .filter(activities::Column::Done.eq(false))
@@ -326,7 +327,8 @@ pub(super) async fn pipeline_hygiene(
 ) -> Result<Response> {
     let threshold = days_or(query.days, 14);
     let now = chrono::Utc::now();
-    let today = now.date_naive();
+    // An expected close day is a civil date: compared with the caller's day (CRM-T179).
+    let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
     let open: Vec<deals::Model> = deals::Entity::find_live()
         .filter(deals::Column::ClosedAt.is_null())
         .all(&ctx.db)

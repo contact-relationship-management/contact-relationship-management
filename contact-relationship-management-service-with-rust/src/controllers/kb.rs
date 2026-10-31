@@ -105,9 +105,18 @@ impl Count {
     }
 }
 
-/// Add one to today's count for an article (or the portal). A failure is logged, never shown: a
-/// reader is not refused an article because a counter could not be written.
+/// Add one to today's count for an article (or the portal); "today" is the organization's day
+/// (CRM-T179), so the deflection window's days are the days its reports use. A failure is
+/// logged, never shown: a reader is not refused an article because a counter could not be
+/// written.
 async fn bump(ctx: &AppContext, article: Uuid, count: Count, also: Option<Count>) {
+    let day = match super::organization::organization_today(&ctx.db).await {
+        Ok(day) => day,
+        Err(error) => {
+            tracing::warn!(%error, "could not count a knowledge-base visit");
+            return;
+        }
+    };
     let column = count.column();
     let extra = also.map_or(String::new(), |c| {
         format!(", {0} = kb_daily.{0} + 1", c.column())
@@ -116,10 +125,14 @@ async fn bump(ctx: &AppContext, article: Uuid, count: Count, also: Option<Count>
     let also_value = if also.is_some() { ", 1" } else { "" };
     let sql = format!(
         "INSERT INTO kb_daily (day, article_pid, {column}{also_column}) \
-         VALUES (CURRENT_DATE, $1, 1{also_value}) \
+         VALUES ($2, $1, 1{also_value}) \
          ON CONFLICT (day, article_pid) DO UPDATE SET {column} = kb_daily.{column} + 1{extra}"
     );
-    if let Err(error) = ctx.db.execute_raw(stmt(&sql, [article.into()])).await {
+    if let Err(error) = ctx
+        .db
+        .execute_raw(stmt(&sql, [article.into(), day.into()]))
+        .await
+    {
         tracing::warn!(%error, "could not count a knowledge-base visit");
     }
 }
@@ -351,8 +364,15 @@ async fn deflection(
         problems.push_field("days", format!("days is 1 to {MAX_DAYS}"));
         problems.finish()?;
     }
-    let to = Utc::now().date_naive();
+    // The organization's days (CRM-T179): the counts are kept by them, and a ticket counts on
+    // the day it was opened there.
+    let calendar = super::organization::periods(&ctx.db).await?;
+    let to = crate::rules::periods::today_in(Utc::now(), calendar.zone);
     let from = to - chrono::Duration::days(days - 1);
+    let opened_on = format!(
+        "{}::date",
+        crate::rules::periods::local("opened_at", &calendar)
+    );
     let totals = ctx
         .db
         .query_one_raw(stmt(
@@ -369,8 +389,10 @@ async fn deflection(
     let tickets = ctx
         .db
         .query_one_raw(stmt(
-            "SELECT count(*)::bigint AS n FROM tickets \
-             WHERE deleted_at IS NULL AND opened_at::date BETWEEN $1 AND $2",
+            &format!(
+                "SELECT count(*)::bigint AS n FROM tickets \
+                 WHERE deleted_at IS NULL AND {opened_on} BETWEEN $1 AND $2"
+            ),
             [from.into(), to.into()],
         ))
         .await?

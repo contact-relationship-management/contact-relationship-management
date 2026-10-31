@@ -492,7 +492,9 @@ async fn employment_check(
     view.workers = workers.len();
     let check_id = Uuid::new_v4();
     let source = format!("overlap:{check_id}");
-    let today = chrono::Utc::now().date_naive();
+    // The day CRM records the employment from: CRM's own, in the organization's zone (CRM-T179).
+    // WPM's answer carries no date (WPM-R208), so this is not a value of the bridge contract.
+    let today = super::organization::organization_today(&ctx.db).await?;
     let txn = ctx.db.begin().await?;
     for person_ref in &workers {
         employments::lock_order(&txn, person_ref, &organization_ref).await?;

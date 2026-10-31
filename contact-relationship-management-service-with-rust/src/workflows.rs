@@ -437,8 +437,15 @@ async fn act(
             assignee_ref,
             due_in_days,
         } => {
-            let due = due_in_days
-                .map(|d| chrono::Utc::now().date_naive() + chrono::Duration::days(i64::from(d)));
+            // Counted from the organization's "today": no caller's zone runs an automation
+            // (CRM-T179).
+            let due = match *due_in_days {
+                Some(d) => Some(
+                    crate::controllers::organization::organization_today(txn).await?
+                        + chrono::Duration::days(i64::from(d)),
+                ),
+                None => None,
+            };
             let row = activities::ActiveModel {
                 pid: ActiveValue::set(Uuid::new_v4()),
                 subject_kind: ActiveValue::set(kind.to_string()),

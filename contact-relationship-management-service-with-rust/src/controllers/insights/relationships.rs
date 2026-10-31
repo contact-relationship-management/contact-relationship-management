@@ -227,7 +227,8 @@ pub(super) async fn memberships_view(
     headers: HeaderMap,
 ) -> Result<Response> {
     let window = days_or(query.days, 90);
-    let today = chrono::Utc::now().date_naive();
+    // The caller's day (CRM-T179), as attainment's.
+    let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
     let horizon = today + chrono::Days::new(u64::try_from(window).unwrap_or(90));
     let rows: Vec<memberships::Model> = live!(memberships, &ctx.db);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);

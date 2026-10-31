@@ -539,7 +539,7 @@ async fn convert_credit(
         return Ok(Some(fx_rates::Done {
             rows,
             // Not shown: with a basis each deal has its own day, and the answer says `null`.
-            rate_date: Utc::now().date_naive(),
+            rate_date: super::organization::organization_today(&ctx.db).await?,
             rates,
             unconverted,
         }));
