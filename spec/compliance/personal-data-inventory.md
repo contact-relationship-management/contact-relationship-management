@@ -20,7 +20,7 @@ address a web form or import gave it).
 
 | Class | What happens | Period |
 |---|---|---|
-| `swept` | A row is kept while it is live. Once soft-deleted it is **hard-deleted** by `POST /api/retention/sweep` (an operator runs it; `GET /api/retention` shows what it would delete). | `CRM_RETENTION_DAYS` after the soft-delete: **365 by default, never below 30** |
+| `swept` | A row is kept while it is live. Once soft-deleted it is **hard-deleted** by `POST /api/retention/sweep` (an operator runs it; `GET /api/retention` shows what it would delete). | `CRM_RETENTION_DAYS` after the soft-delete: **365 by default, never below 30** (a starting point, no jurisdiction's period) |
 | `evidence` | Append-only compliance evidence, kept on purpose and never altered. | Until the deployer's own archive rule |
 | `ttl` | Deleted automatically when it is old enough. | 24 hours for `idempotency_keys`; a week after it expires or is spent for `link_tokens` |
 | `manual` | Kept until a person removes it through the API, or until its contact is erased (the last column). Most of these are configuration or hold no personal data. | No automatic period |

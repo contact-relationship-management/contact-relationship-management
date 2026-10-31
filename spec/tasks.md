@@ -158,6 +158,21 @@ code + tests in one PR.
   legal review, jurisdiction-correct data residency, and coordination
   of subject rights with the upstream identity services — are
   operational/legal work, not code.
+  **Open question for the product owner (CRM-T165, 2026-10-31; not
+  decided).** CRM-G2's name and text are a review against the GDPR and
+  PECR only, so a deployment sending to recipients in Canada, the United
+  States, Brazil or anywhere else would pass the gate without the review
+  that applies there (worldwide audit spec row 9). The question:
+  *Should CRM-G2's scope be (a) the data-protection and e-marketing law of
+  every jurisdiction the deployment sends to, as the deployer lists them
+  (the [register by region](regulatory.md#the-register-by-region) names
+  examples, and CRM-D21's profiles, if confirmed, would hold them), with
+  the GDPR and PECR as the first worked case; or (b) the GDPR and PECR
+  only, as written, with every other jurisdiction left to each deployer
+  outside the gate? And under (a), is the gate passed once per deployment
+  by its deployer for its own recipients, or once for the project against
+  a named list of jurisdictions?* CRM-T165's text proposes (a); the gate's
+  name and text are unchanged until the product owner answers.
 
 - [x] CRM-T19 (2026-07-20) **Insight views + boards.** (CRM-R18;
   design CRM-D4, CRM-D12 — CRM-R18 was backfilled during the DOC-7
@@ -1862,13 +1877,18 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
       DPIA and its template (regimes named; other regions *not yet read*); no behaviour changed.
       **Not done / not verified:** no law of any region was read; nothing was run; the identity registries, the role briefs, the
       `@lilydesignsystem/*` packages and the wording of each translation were not audited (worldwide.md, "Not audited").
-- [ ] CRM-T165 **Regulatory register and compliance mapping by region.** (CRM-R95, CRM-D19; spec rows 2 to 10, 19; code rows 6, 7)
+- [x] CRM-T165 **Regulatory register and compliance mapping by region.** (CRM-R95, CRM-D19; spec rows 2 to 10, 19; code rows 6, 7)
       [regulatory.md](regulatory.md) gets a register by region (international standards, the EU, the UK, the US, Canada, Latin America,
       Africa, the Middle East and the Gulf, South Asia, East Asia, South-East Asia and Oceania), each *not yet read* until read; the
       control mapping gains a row or column per regime read; the DPIA and record of processing say what a non-GDPR deployer uses
       instead; the `docs/<country-or-body>/` convention is stated beside a generic assurance mapping; CRM-G2's scope is put to the
       product owner (each jurisdiction sent to, not GDPR/PECR only); the retention defaults and the "GDPR subject-access export" text
       name whose value or right they are. (M)
+      **Done (2026-10-31, not released):**
+      - **Spec:** [regulatory.md](regulatory.md) opens by saying the law is recorded by region and ends with "The register by region": international standards, the EU, the UK, the US, Canada, Latin America and the Caribbean, Africa, the Middle East and the Gulf, South Asia, East Asia, South-East Asia and Oceania, each naming data-protection, e-marketing and medical-device examples and each *not yet read* (the UK and EU included; the "read so far" wording for the UK GDPR, the EU GDPR and PECR was an overstatement and is replaced). It states what a non-GDPR deployer uses instead of the DPIA and the record of processing, the `docs/<country-or-body>/<scheme>/<version>/` convention beside the generic mapping, and that CRM-G2's scope is open. [compliance/control-mapping.md](compliance/control-mapping.md) gains "By region", a row per region over eight controls (consent, access and erasure, retention, records, breach, transfers, message content, status); its privacy rows are labelled as the EU and UK example. The [DPIA](compliance/dpia.md), its [template](compliance/dpia-template.md) and the [record of processing](compliance/record-of-processing.md) are written for the applicable data-protection law with the GDPR as the worked example, and say what another law's deployer does with them; the Art. 27 and Art. 36 lines are labelled as the GDPR's. [compliance/index.md](compliance/index.md) states the generic and national assurance split; [plan.md](plan.md) says the schemes it names are US, UK, EU and international; the retention defaults in the inventory, DPIA and record say they are no jurisdiction's. CRM-G2 carries the open question (above). CRM-R20 says what `horizon_basis` is.
+      - **Service:** `rules::privacy::RETENTION_DEFAULTS` gives each of the three retention settings its default, floor and `default_from` (`regime`, `reference`, `status`; the shape of WPM-T384's `statutory_defaults`): all three are `starting_point` with no regime. `GET /api/retention` answers `horizon_basis` (setting, days in force, whether set, default, floor, `default_from`) and its `derivation` says no default is any jurisdiction's. The OpenAPI summary of `GET /api/contacts/{pid}/subject-access` was "GDPR subject-access export"; it now names the contact's right of access under the data-protection law that applies to the deployer, with GDPR Art. 15 as an example. The UI's `schema.d.ts` regenerated.
+      - **Tests:** unit `each_retention_default_says_whose_it_is_and_matches_its_constant` (the table equals the constants the horizons are read with; no regime; `starting_point`) and `the_subject_access_summary_names_whose_right_it_is_not_one_law` (read from the served document; no summary starts with GDPR, PECR, CAN-SPAM or CASL); the privacy request test reads `horizon_basis` from `GET /api/retention`.
+      - **Not done / not verified:** **no law of any region was read and no source was consulted** (every entry is from general knowledge on 2026-10-31 and may be wrong or out of date); it is not legal advice. No per-country list (a region names a few examples); no other country's assurance folder; the regulators named for medical devices were not checked. The control mapping by region says what the CRM gives, not what each law requires. The `POST /api/retention/sweep` answer carries no `horizon_basis` (the report does). CRM-G2's scope is not decided (the product owner's). The site's copy re-synced.
 - [ ] CRM-T166 **Consent and e-marketing rules as jurisdiction profiles.** (CRM-R95, CRM-D19; spec row 12; code rows 1, 4) A design
       first: a consent regime per contact or per send (opt-in only as today, soft opt-in for existing customers, implied consent with an
       expiry, opt-out), purposes an administrator can edit, consent per channel; and a sender identification and postal address the

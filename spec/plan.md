@@ -15,7 +15,9 @@ minimal PII, DB-free rule core, `forbid(unsafe_code)`), but major medical
 (FedRAMP / NIST SP 800-53, UK Cyber Essentials Plus / GovAssure, ISO 27001,
 WCAG 2.2 AA / Section 508 / EN 301 549) buyers would fail it today on the
 gaps below. Most gaps are known and stated in [auth.md](auth.md); several
-others were found in this assessment.
+others were found in this assessment. The schemes named are US, UK, EU and
+international ones; a buyer elsewhere would bring its own country's schemes,
+which are *not yet read* ([the register by region](regulatory.md#the-register-by-region)).
 
 ## What is already strong
 

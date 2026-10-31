@@ -389,7 +389,54 @@ pub(crate) struct RetentionReport {
     mail_horizon_days: i64,
     /// Delivery and event rows the sweep would delete for their age, by table (none left out).
     logs_past_horizon: std::collections::BTreeMap<String, i64>,
+    /// Each horizon's setting, whether the deployer set it, its default and floor, and whose the
+    /// default is (CRM-T165): none is any jurisdiction's value.
+    horizon_basis: Vec<HorizonBasis>,
     derivation: &'static str,
+}
+
+/// One retention horizon and where its value came from (CRM-T165, CRM-D19).
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct HorizonBasis {
+    /// The environment setting, such as `CRM_RETENTION_DAYS`.
+    setting: &'static str,
+    /// The horizon in force, in days.
+    days: i64,
+    /// Whether the deployer set it (`false`: the default, or a value that could not be read).
+    set: bool,
+    default_days: i64,
+    floor_days: i64,
+    /// Whose the default is.
+    default_from: rules::DefaultFrom,
+}
+
+/// The basis of each of the three horizons in force.
+fn horizon_basis() -> Vec<HorizonBasis> {
+    let settings = crate::settings::current();
+    rules::RETENTION_DEFAULTS
+        .iter()
+        .map(|entry| {
+            let (raw, days) = match entry.setting {
+                "CRM_EVENT_RETENTION_DAYS" => (
+                    settings.event_retention_days.as_deref(),
+                    log_horizon(rules::Horizon::Event),
+                ),
+                "CRM_MAIL_RETENTION_DAYS" => (
+                    settings.mail_retention_days.as_deref(),
+                    log_horizon(rules::Horizon::Mail),
+                ),
+                _ => (settings.retention_days.as_deref(), horizon_days()),
+            };
+            HorizonBasis {
+                setting: entry.setting,
+                days,
+                set: raw.is_some_and(|value| value.trim().parse::<i64>().is_ok()),
+                default_days: entry.default_days,
+                floor_days: entry.floor_days,
+                default_from: entry.default_from,
+            }
+        })
+        .collect()
 }
 
 /// `POST /api/retention/sweep`.
@@ -496,12 +543,14 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
         event_horizon_days: log_horizon(rules::Horizon::Event),
         mail_horizon_days: log_horizon(rules::Horizon::Mail),
         logs_past_horizon: logs,
+        horizon_basis: horizon_basis(),
         derivation: "soft-deleted rows older than the horizon are hard-deleted by the \
                      sweep; contacts with marketing_consent = withdrawn since before the \
                      horizon are reported (not auto-scrubbed — each still needs the \
                      /erase gate, CRM-R20); the horizon floors at 30 days (CRM-D14); delivery \
                      and event rows that are finished with are deleted by their own, separate \
-                     horizons (CRM-R81)",
+                     horizons (CRM-R81); no default is any jurisdiction's retention period \
+                     (horizon_basis says whose each is, CRM-T165)",
     })
 }
 

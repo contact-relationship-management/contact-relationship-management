@@ -70,6 +70,74 @@ pub fn mail_retention_days(raw: Option<&str>) -> i64 {
     horizon(raw, MAIL_DEFAULT_DAYS, MAIL_FLOOR_DAYS)
 }
 
+/// Whose a retention default is (CRM-T165, CRM-D19): the shape of the workforce planning app's
+/// `default_from` (WPM-T384), so the three apps say it alike. `regime` is a jurisdiction code when
+/// a default is taken from one jurisdiction's law, and `None` when it is no jurisdiction's value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
+pub struct DefaultFrom {
+    /// The jurisdiction whose value it is; absent when it is no jurisdiction's.
+    pub regime: Option<&'static str>,
+    /// What the value rests on.
+    pub reference: &'static str,
+    /// `read` (checked against the whole text of its source), `unverified` (modelled on a source
+    /// not checked in full), `example` (a worked case in one regime's shape) or `starting_point`
+    /// (no regime's value: the deployer sets its own).
+    pub status: &'static str,
+}
+
+/// One retention setting, its default and floor, and whose the default is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RetentionDefault {
+    /// The environment setting.
+    pub setting: &'static str,
+    /// The default when it is unset, in days.
+    pub default_days: i64,
+    /// The value below which a setting is raised, in days.
+    pub floor_days: i64,
+    /// Whose the default is.
+    pub default_from: DefaultFrom,
+}
+
+/// The three retention settings. None of the defaults is any jurisdiction's value: each is a
+/// starting point the project chose, and a deployer sets its own from its retention schedule and
+/// the law that applies to it (`spec/regulatory.md`, the register by region).
+pub const RETENTION_DEFAULTS: [RetentionDefault; 3] = [
+    RetentionDefault {
+        setting: "CRM_RETENTION_DAYS",
+        default_days: RETENTION_DEFAULT_DAYS,
+        floor_days: RETENTION_FLOOR_DAYS,
+        default_from: DefaultFrom {
+            regime: None,
+            reference: "a starting point chosen by the project (CRM-D14): soft-deleted rows are kept \
+                        a year; the floor keeps a sweep from turning every soft-delete into a hard \
+                        delete. No jurisdiction's retention period",
+            status: "starting_point",
+        },
+    },
+    RetentionDefault {
+        setting: "CRM_EVENT_RETENTION_DAYS",
+        default_days: EVENT_DEFAULT_DAYS,
+        floor_days: EVENT_FLOOR_DAYS,
+        default_from: DefaultFrom {
+            regime: None,
+            reference: "a starting point chosen by the project (CRM-R81): long enough to retry \
+                        and investigate a delivery. No jurisdiction's retention period",
+            status: "starting_point",
+        },
+    },
+    RetentionDefault {
+        setting: "CRM_MAIL_RETENTION_DAYS",
+        default_days: MAIL_DEFAULT_DAYS,
+        floor_days: MAIL_FLOOR_DAYS,
+        default_from: DefaultFrom {
+            regime: None,
+            reference: "a starting point chosen by the project (CRM-R81): the floor outlives the \
+                        longest attribution window (365 days). No jurisdiction's retention period",
+            status: "starting_point",
+        },
+    },
+];
+
 /// Which of the two horizons a log table is held to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Horizon {
@@ -216,6 +284,54 @@ mod tests {
         );
         assert_eq!(retention_days(Some("-5")), RETENTION_FLOOR_DAYS);
         assert_eq!(retention_days(Some("30")), 30);
+    }
+
+    /// Each retention default says whose it is, and the table cannot drift from the constants the
+    /// horizons are read with (CRM-T165). None names a jurisdiction: all are starting points.
+    #[test]
+    fn each_retention_default_says_whose_it_is_and_matches_its_constant() {
+        let [soft_deleted, event, mail] = RETENTION_DEFAULTS;
+        assert_eq!(
+            (
+                soft_deleted.setting,
+                soft_deleted.default_days,
+                soft_deleted.floor_days
+            ),
+            (
+                "CRM_RETENTION_DAYS",
+                retention_days(None),
+                retention_days(Some("0"))
+            )
+        );
+        assert_eq!(
+            (event.setting, event.default_days, event.floor_days),
+            (
+                "CRM_EVENT_RETENTION_DAYS",
+                event_retention_days(None),
+                event_retention_days(Some("0"))
+            )
+        );
+        assert_eq!(
+            (mail.setting, mail.default_days, mail.floor_days),
+            (
+                "CRM_MAIL_RETENTION_DAYS",
+                mail_retention_days(None),
+                mail_retention_days(Some("0"))
+            )
+        );
+        for entry in RETENTION_DEFAULTS {
+            assert_eq!(entry.default_from.regime, None, "{}", entry.setting);
+            assert_eq!(
+                entry.default_from.status, "starting_point",
+                "{}",
+                entry.setting
+            );
+            assert!(
+                entry.default_from.reference.contains("No jurisdiction's"),
+                "{}",
+                entry.setting
+            );
+        }
     }
 
     /// The sweep list is sorted and duplicate-free (each table swept

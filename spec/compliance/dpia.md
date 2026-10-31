@@ -1,6 +1,7 @@
 # Data protection impact assessment (completed as far as the software goes)
 
-GDPR Art. 35 / UK GDPR; guidance from the ICO and the EDPB. This is the
+Written for the applicable data-protection law, with the EU GDPR and UK GDPR (Art. 35; guidance from
+the ICO and the EDPB) as the worked example. This is the
 [template](dpia-template.md) filled in with everything the software can answer. Three kinds of
 entry, so a reader knows what to trust:
 
@@ -9,6 +10,8 @@ entry, so a reader knows what to trust:
   shipped, with the defaults on*; the deployer's context (who the contacts are, what they type into
   free text) can change it.
 - **Deployer decides** — only the organization running the software can answer; left in brackets.
+
+**Under another law.** This is written as the GDPR's instrument because that is the worked example. A deployer under another data-protection law (the [register by region](../regulatory.md#the-register-by-region) names examples, all *not yet read*) uses the system facts below for the assessment its own law asks for, under that law's name (for example a privacy impact assessment, or the LGPD's data-protection impact report), and replaces the GDPR article numbers with its own law's. Which assessment each law asks for, and when, is not yet read.
 
 It is not legal advice and not a sign-off. Nothing here has been reviewed by a DPO or a regulator.
 Companion documents: the [personal-data inventory and retention schedule](personal-data-inventory.md)
@@ -70,11 +73,12 @@ and the [record of processing](record-of-processing.md).
   person's benefit.]
 - **Retention** *(system fact)*: the [schedule](personal-data-inventory.md#retention-schedule).
   Soft-deleted rows are hard-deleted by an operator-run sweep after `CRM_RETENTION_DAYS` (365,
-  never below 30); consent history and the audit log are kept as evidence; a 24-hour cache expires
+  never below 30; every default here is a starting point the project chose, no jurisdiction's
+  period, as `GET /api/retention` says in `horizon_basis`); consent history and the audit log are kept as evidence; a 24-hour cache expires
   by itself; email delivery and event rows are pruned by their own horizon (730 days by default,
   never below 400) and the event outbox and webhook deliveries by another (30 days, never below 7),
   only when finished with (CRM-R81).
-- **Transfers outside the deployer's jurisdiction** (for a UK or EU controller, outside the UK/EEA): [deployer decides]. The software adds none of its own; the
+- **Transfers outside the deployer's jurisdiction** (outside the country or region whose law applies; for a UK or EU controller, outside the UK/EEA): [deployer decides]. The software adds none of its own; the
   email provider, the hosting and any bridge target are where a transfer would arise.
 
 ## 2. Necessity and proportionality
@@ -126,7 +130,7 @@ Rated for the software as shipped. **L** = likelihood, **S** = severity, each Lo
 ## 4. Consultation and sign-off
 
 DPO advice: [ ]. Data subject views sought: [ ]. A residual **High** risk needs prior consultation
-with the regulator (Art. 36): with authentication left off, or with patients or citizens as
+with the regulator (GDPR Art. 36; another law's equivalent, if it has one, is not yet read): with authentication left off, or with patients or citizens as
 contacts and no policy on free text, the rows above stay High. Approved by: [name, date]. Review
 date: [at least yearly, and when a bridge, a provider or the schedule changes].
 

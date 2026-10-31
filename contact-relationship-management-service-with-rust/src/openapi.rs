@@ -376,6 +376,32 @@ mod tests {
         assert!(stale.is_empty(), "no such route: {stale:?}");
     }
 
+    /// The subject-access export is described as the contact's right of access under whichever
+    /// data-protection law applies to the deployer, not as one law's (CRM-T165, CRM-D19): GDPR may
+    /// be named only as an example. Read from the served document.
+    #[test]
+    fn the_subject_access_summary_names_whose_right_it_is_not_one_law() {
+        let doc = super::spec();
+        let summary = doc["paths"]["/api/contacts/{pid}/subject-access"]["get"]["summary"]
+            .as_str()
+            .expect("a summary");
+        assert!(
+            summary.contains(
+                "right of access under the data-protection law that applies to the deployer"
+            ),
+            "{summary}"
+        );
+        assert!(summary.contains("for example GDPR"), "{summary}");
+        for (method, path, _, text, _) in crate::openapi_operations::OPERATIONS {
+            for law in ["GDPR", "PECR", "CAN-SPAM", "CASL"] {
+                assert!(
+                    !text.starts_with(law),
+                    "{method} {path}: a summary must not present {law} as the only law: {text}"
+                );
+            }
+        }
+    }
+
     /// Every mutating operation under `/api/` has a request schema, or is on
     /// the explicit list of bodyless ones, so a new endpoint forces a decision.
     #[test]

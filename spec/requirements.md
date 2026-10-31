@@ -266,6 +266,15 @@ data, and show that data past its retention horizon does not linger.*
   before the horizon (informational — never auto-scrubbed, since a
   contact always carries the erasure gate above). Destructive-classified;
   audited even when it deletes nothing.
+- **Whose value, whose right (CRM-T165).** The report's `horizon_basis` gives,
+  for each of the three horizons (`CRM_RETENTION_DAYS`,
+  `CRM_EVENT_RETENTION_DAYS`, `CRM_MAIL_RETENTION_DAYS`), the value in force,
+  whether the deployer set it, its default and floor, and whose the default is
+  (`default_from`: `regime`, `reference`, `status`, the shape of WPM-T384's):
+  none is any jurisdiction's value, so each is `starting_point` with no regime.
+  The access export serves the contact's right of access under whichever
+  data-protection law applies to the deployer, and its OpenAPI summary says so,
+  with the GDPR as one example.
 
 ## CRM-R21 — Export from tables
 
@@ -1537,4 +1546,4 @@ recipient would get before anything is sent, and be certain every message carrie
 
 - Every standard, protocol, convention, locale, format and regulation the CRM adopts has equitable capability for countries, regions and federations worldwide; no jurisdiction is the default, the first-class case or the only case that works. The full text, the decision that implements it (CRM-D19) and the audit against it are in [worldwide.md](worldwide.md).
 - Where coverage is uneven today it is a gap with a task (CRM-T165 to CRM-T176), not a design.
-- Not built: CRM-T165 (the regulatory register by region) and CRM-T166 (consent rules as jurisdiction profiles); the other tasks are done, each with its own "not done" list. This requirement adds no behaviour by itself.
+- Not built: CRM-T166 (consent rules as jurisdiction profiles; its design is CRM-D21, proposed and waiting on the product owner); CRM-T165 (the regulatory register by region) is done with every region *not yet read*; the other tasks are done, each with its own "not done" list. This requirement adds no behaviour by itself.

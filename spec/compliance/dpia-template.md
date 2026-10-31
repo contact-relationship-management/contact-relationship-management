@@ -1,7 +1,10 @@
 # DPIA template (pre-filled)
 
-For the deploying organization to complete. Guidance: UK ICO and EDPB DPIA
-guidance; GDPR Art. 35. Replace bracketed text. Items marked *(system fact)*
+For the deploying organization to complete, under the applicable data-protection law. The worked
+example is the EU GDPR and UK GDPR (Art. 35; guidance from the UK ICO and the EDPB); under another
+law, use it for the assessment that law asks for, under that law's name and article numbers (the
+[register by region](../regulatory.md#the-register-by-region) names examples, all *not yet read*).
+Not legal advice. Replace bracketed text. Items marked *(system fact)*
 describe this software and can be reused as written.
 
 ## 1. Description of processing
@@ -20,8 +23,8 @@ describe this software and can be reused as written.
   or treat the system as holding it.
 - **Recipients:** [ESP, hosting provider, identity provider]. No real email is
   sent by default.
-- **Retention:** `CRM_RETENTION_DAYS` (default 365, floor 30) for soft-deleted
-  rows; consent history is retained as compliance evidence. *(system fact)*
+- **Retention:** `CRM_RETENTION_DAYS` (default 365, floor 30; a starting point,
+  no jurisdiction's period) for soft-deleted rows; consent history is retained as compliance evidence. *(system fact)*
 - **Transfers outside the deployer's jurisdiction** (for a UK or EU controller, outside the UK/EEA): [none / safeguards].
 
 ## 2. Necessity and proportionality
@@ -55,5 +58,5 @@ describe this software and can be reused as written.
 ## 4. Consultation and sign-off
 
 DPO advice: [ ]. Data subject views sought: [ ]. Residual high risk requires
-prior consultation with the regulator (Art. 36). Approved by: [name, date].
+prior consultation with the regulator (GDPR Art. 36, or your law's equivalent). Approved by: [name, date].
 Review date: [ ].

@@ -191,6 +191,26 @@ async fn subject_rights_round_trip() {
             report["horizon_days"], 365,
             "CRM_RETENTION_DAYS unset in tests ⇒ default"
         );
+        // Each horizon says whose its default is: none is any jurisdiction's (CRM-T165).
+        let basis = report["horizon_basis"].as_array().expect("horizon_basis");
+        let settings: Vec<&str> = basis.iter().filter_map(|b| b["setting"].as_str()).collect();
+        assert_eq!(
+            settings,
+            [
+                "CRM_RETENTION_DAYS",
+                "CRM_EVENT_RETENTION_DAYS",
+                "CRM_MAIL_RETENTION_DAYS"
+            ]
+        );
+        assert_eq!(basis[0]["days"], 365);
+        assert_eq!(basis[0]["default_days"], 365);
+        assert_eq!(basis[0]["floor_days"], 30);
+        for entry in basis {
+            assert_eq!(entry["set"], false, "{entry}");
+            assert_eq!(entry["default_from"]["regime"], Value::Null, "{entry}");
+            assert_eq!(entry["default_from"]["status"], "starting_point", "{entry}");
+            assert_eq!(entry["days"], entry["default_days"], "{entry}");
+        }
         let sweep: Value = request.post("/api/retention/sweep").await.json();
         assert_eq!(
             sweep["rows_deleted"], 0,

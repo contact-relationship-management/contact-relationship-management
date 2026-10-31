@@ -6466,7 +6466,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** GDPR subject-access export: every table keyed to the contact, in one audited document (exclusions named) */
+        /** Subject-access export, for the contact's right of access under the data-protection law that applies to the deployer (for example GDPR Art. 15; other laws name it differently): every table keyed to the contact, in one audited document (exclusions named) */
         get: {
             parameters: {
                 query?: never;
@@ -19905,6 +19905,23 @@ export interface components {
             /** Format: uuid */
             stage_pid: string;
         };
+        /**
+         * @description Whose a retention default is (CRM-T165, CRM-D19): the shape of the workforce planning app's
+         *     `default_from` (WPM-T384), so the three apps say it alike. `regime` is a jurisdiction code when
+         *     a default is taken from one jurisdiction's law, and `None` when it is no jurisdiction's value.
+         */
+        DefaultFrom: {
+            /** @description What the value rests on. */
+            reference: string;
+            /** @description The jurisdiction whose value it is; absent when it is no jurisdiction's. */
+            regime: string | null;
+            /**
+             * @description `read` (checked against the whole text of its source), `unverified` (modelled on a source
+             *     not checked in full), `example` (a worked case in one regime's shape) or `starting_point`
+             *     (no regime's value: the deployer sets its own).
+             */
+            status: string;
+        };
         /** @description `GET /api/campaigns/{pid}/deliveries`: the send, counted by state. */
         Deliveries: {
             by_state: {
@@ -20431,6 +20448,24 @@ export interface components {
             /** Format: uuid */
             pid: string;
             stakeholder_role: string | null;
+        };
+        /** @description One retention horizon and where its value came from (CRM-T165, CRM-D19). */
+        HorizonBasis: {
+            /**
+             * Format: int64
+             * @description The horizon in force, in days.
+             */
+            days: number;
+            /** Format: int64 */
+            default_days: number;
+            /** @description Whose the default is. */
+            default_from: components["schemas"]["DefaultFrom"];
+            /** Format: int64 */
+            floor_days: number;
+            /** @description Whether the deployer set it (`false`: the default, or a value that could not be read). */
+            set: boolean;
+            /** @description The environment setting, such as `CRM_RETENTION_DAYS`. */
+            setting: string;
         };
         /** @description The deal a hygiene finding is about. */
         HygieneDeal: {
@@ -21543,6 +21578,11 @@ export interface components {
              * @description Days the event outbox and webhook deliveries are kept (`CRM_EVENT_RETENTION_DAYS`, CRM-R81).
              */
             event_horizon_days: number;
+            /**
+             * @description Each horizon's setting, whether the deployer set it, its default and floor, and whose the
+             *     default is (CRM-T165): none is any jurisdiction's value.
+             */
+            horizon_basis: components["schemas"]["HorizonBasis"][];
             /** Format: int64 */
             horizon_days: number;
             /** @description Delivery and event rows the sweep would delete for their age, by table (none left out). */

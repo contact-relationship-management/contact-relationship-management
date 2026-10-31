@@ -1,15 +1,19 @@
-# Record of processing activities (GDPR Art. 30)
+# Record of processing activities
 
-The controller's record, started from what the software does. The **controller's own details and
+The record a controller keeps under the applicable data-protection law: for example Article 30 of the
+EU GDPR or the UK GDPR, the worked example this is written against; other laws ask for an equivalent
+record, or none (the [register by region](../regulatory.md#the-register-by-region) names examples, all
+*not yet read*). A deployer under another law keeps the columns its law asks for and uses the system
+facts below. The controller's record, started from what the software does. The **controller's own details and
 decisions are left in brackets**: only the organization running the software can state them, and
 nothing here has been reviewed by a DPO. It is not legal advice. Retention periods and the data
 held come from the [inventory and schedule](personal-data-inventory.md); the risks are in the
 [DPIA](dpia.md).
 
-**Controller:** [name, address, contact]. **Representative (if outside the UK/EEA):** [ ].
+**Controller:** [name, address, contact]. **Representative** (GDPR Art. 27, for a controller outside the UK/EEA; another law may ask for a local representative, not yet read): [ ].
 **Data protection officer:** [name, contact].
 
-**Security measures common to every activity** *(system facts, Art. 30(1)(g))*: authentication and
+**Security measures common to every activity** *(system facts; GDPR Art. 30(1)(g) in the worked example)*: authentication and
 attribute-based access control on every route when enabled; masking of money and aggregates for
 callers who may not read them; admin-only destructive actions and bridges; a hash-chained audit log
 of changes, consent and sensitive reads; field encryption where configured; per-caller and
@@ -18,7 +22,7 @@ per-IP rate limits; TLS, backups and key management are the deployer's (see the
 
 | # | Activity | Purpose | Data subjects | Personal data | Recipients | Transfers | Retention |
 |---|---|---|---|---|---|---|---|
-| 1 | Relationship management | Keep contacts, accounts and their timeline so staff can serve them | Contacts; staff | `person:` reference and display name, job title, owner, preferred channel, activity summaries (free text), tags, custom fields | Staff with access; identity services (display names) | [ ] | Live rows kept; soft-deleted rows hard-deleted after `CRM_RETENTION_DAYS` (365, floor 30) |
+| 1 | Relationship management | Keep contacts, accounts and their timeline so staff can serve them | Contacts; staff | `person:` reference and display name, job title, owner, preferred channel, activity summaries (free text), tags, custom fields | Staff with access; identity services (display names) | [ ] | Live rows kept; soft-deleted rows hard-deleted after `CRM_RETENTION_DAYS` (365, floor 30; a starting point, no jurisdiction's period) |
 | 2 | Marketing email and nurture | Send campaigns and sequences to people who consented | Contacts; leads | Consent state and history, contact pid, delivery state, provider message id and events; a hash of each mailed confirmation or preference link | Email provider [name]; the contact | [ ] | Consent history kept as evidence; delivery and event rows pruned by age once finished with (730 days by default) |
 | 3 | Lead capture | Take a lead from a web form or an import, with double opt-in | Leads | Name, email address, source, purpose, confirmation times | Staff; email provider (the confirmation) | [ ] | As leads: soft-deleted then swept; form submissions deleted on erasure |
 | 4 | Sales pipeline | Track deals, forecast, and report revenue | Contacts; staff | Deal name (may name a customer), amount, owner, primary contact pid, lost reason (free text) | Staff with access | [ ] | As deals: kept as revenue records after erasure, keyed to a pid that no longer identifies anyone |
@@ -31,5 +35,5 @@ per-IP rate limits; TLS, backups and key management are the deployer's (see the
 | 10 | Event delivery | Tell subscribed systems that something changed | Contacts, staff (through the record) | Event payloads: pids, actor, field values the event carries | Webhook receivers the deployer registered | [ ] | The outbox and webhook deliveries pruned by age once finished with (30 days by default) |
 | 11 | Customer replies by mail | Resume a ticket that is waiting for the customer | Customers | The sender address and subject of a forwarded reply, read in passing; nothing of the message is kept | The mail service the deployer set up to forward replies | [ ] | Not kept; the audit entry says only that the ticket was resumed by mail |
 
-**Lawful basis per activity** [deployer decides, Art. 30 does not require it but the DPIA does].
+**Law that applies:** [deployer names it, and each jurisdiction it sends to]. **Lawful basis per activity** [deployer decides; GDPR Art. 30 does not require it but the DPIA does].
 **Rights handling:** see DPIA section 2. **Last reviewed:** [date].

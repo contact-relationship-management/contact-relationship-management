@@ -1240,7 +1240,7 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/contacts/{pid}/subject-access",
         "privacy",
-        "GDPR subject-access export: every table keyed to the contact, in one audited document (exclusions named)",
+        "Subject-access export, for the contact's right of access under the data-protection law that applies to the deployer (for example GDPR Art. 15; other laws name it differently): every table keyed to the contact, in one audited document (exclusions named)",
         Kind::Ok,
     ),
     (
