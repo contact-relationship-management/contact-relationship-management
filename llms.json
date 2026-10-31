@@ -31,6 +31,18 @@
           "description": "Prerequisites, running the service and the UI, sending email, the guided tour, the whole-repo check."
         },
         {
+          "title": "Root agent guide",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/AGENTS.md",
+          "path": "AGENTS.md",
+          "description": "Where to start: the three projects, how work is done here, the gates, easy mistakes."
+        },
+        {
+          "title": "Demo stack",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/compose.yaml",
+          "path": "compose.yaml",
+          "description": "One command from a fresh clone: PostgreSQL, Redis and the API, sign-in off, synthetic data only."
+        },
+        {
           "title": "Tutorial: the family bridges",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/docs/tutorial-family-bridges.md",
           "path": "docs/tutorial-family-bridges.md",

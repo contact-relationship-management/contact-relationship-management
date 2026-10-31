@@ -12,6 +12,8 @@
 
 - [README](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/README.md): What the project is and how the folders fit together.
 - [Install and use](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/INSTALL.md): Prerequisites, running the service and the UI, sending email, the guided tour, the whole-repo check.
+- [Root agent guide](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/AGENTS.md): Where to start: the three projects, how work is done here, the gates, easy mistakes.
+- [Demo stack](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/compose.yaml): One command from a fresh clone: PostgreSQL, Redis and the API, sign-in off, synthetic data only.
 - [Tutorial: the family bridges](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/docs/tutorial-family-bridges.md): Configure the bridges to the worker service: the environment variables, a signed hire event sent with curl, and the employment check.
 - [Specification index](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/index.md): Entry point to the specification.
 - [Purpose](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/purpose.md): The problem and what the CRM provides.
