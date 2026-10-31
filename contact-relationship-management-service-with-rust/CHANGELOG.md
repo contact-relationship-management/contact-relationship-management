@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the stalled-deal flag (CRM-T183, CRM-R4, CRM-D20)
+
+The pure `rules::stalled` (`days`, `last_touch`, `is_stalled`). Migration `000058`: `deals.stage_moved_at` (filled from the newest `deal_stage_changed`, `deal_won`, `deal_lost` or `deal_reopened` audit row, else `created_at`, without moving `updated_at`) and `organization_settings.stalled_after_days` (1 to 365, default 14). `POST /api/deals/{pid}/stage` and `/reopen` set `stage_moved_at`. `GET /api/deals` answers `ListedDeal` (the deal plus `stalled` and `last_touched_at`; the last live activity on each deal that has happened, in one grouped query). `GET`/`PUT /api/settings/organization` carry `stalled_after_days` (a `PUT` without it keeps it; audited). Tests: 3 unit, 1 migration unit, request test `a_deal_with_no_move_or_activity_for_n_days_is_stalled`. **Not done or verified:** activities on the deal's contact or account do not count; the contact bundle and the stage-move answer carry no flag; the stale-deals insight still reads the audit log; the seed has no stalled deal; migration `000058` not timed on a large table; not run with the UI against a live service.
+
 ### Changed — matcher 0.2.0 (CRM-T87, CRM-T169, CRM-T170)
 
 `contact-relationship-management-matcher` `0.1.2` → `0.2.0` from crates.io; `Cargo.lock` updated (cargo also moved eight Windows-only `windows-sys` dependency lines from 0.59.0 to 0.61.2, both already in the lock). The breaking changes (`#[non_exhaustive]` on `Field`, `Outcome`, `Verdict`, `MatchResult` and `FieldScore`; `ConfigError` an enum) needed no code change: the service compares a `Verdict` with `==` and never matches any of them exhaustively, and never names `ConfigError`. The duplicate check, the import duplicate hints and relationships now use the matcher's per-language words and its phone rules. **Not done or verified:** no release; not run against a live service with the UI.

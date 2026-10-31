@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the stalled flag on the deal board and the deal page (CRM-T183, CRM-R4)
+
+`ListedDeal` (`stalled`, `last_touched_at`) from `listDeals`, checked against the generated `ListedDeal` schema; `schema.d.ts` regenerated. The board gives a stalled card Lily's card `flag` (`deal.stalled`); the deal page shows `deal.stalledSince` and keeps it after an edit (not a touch); the reports page's calendar form sets `stalled_after_days` (`org.stalledAfter`). Three strings in the eight locales (machine drafts but English; register counts updated). The tour's stand-in derives the flag as the service does (`listedDeals`), with `deal-4` and `deal-6` untouched for 40 days. Tests: 3 vitest, 2 Playwright tour tests. **Not done or verified:** translations unreviewed; the save button still reads "Save the calendar"; the stand-in does not log activities on deals, so its activity rule is untested in the browser; not run against a live service.
+
 ### Changed — the review records cover the web form's refusals; `schema.d.ts` regenerated (CRM-T182)
 
 Each locale's record in `spec/reviews/` names the web form's refusals (the service's `rules::public_text`) among what a review covers; none is reviewed. `src/lib/api/schema.d.ts` regenerated for the `/forms/{slug}` description. No page changed.

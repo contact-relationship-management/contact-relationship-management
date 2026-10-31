@@ -429,3 +429,73 @@ describe("the organization's calendar (CRM-T171)", () => {
     expect(run.rows.map((r) => r.group)).toContain("2026/27-Q3");
   });
 });
+
+describe("the stalled deal flag, as the service derives it (CRM-R4, CRM-D20)", () => {
+  type Listed = {
+    pid: string;
+    stalled: boolean;
+    last_touched_at: string;
+    closed_at: string | null;
+  };
+  const deals = () => get("deals").body as Listed[];
+  const put = (body: unknown) =>
+    demoHandle("PUT", "settings/organization", new URLSearchParams(), body);
+
+  it("flags the open deals untouched for the organization's days, and no closed one", () => {
+    const stalled = deals()
+      .filter((d) => d.stalled)
+      .map((d) => d.pid);
+    expect(stalled.sort()).toEqual(["deal-4", "deal-6"]);
+    expect(deals().some((d) => d.stalled && d.closed_at !== null)).toBe(false);
+  });
+
+  it("clears the flag on a stage move, which is a touch", () => {
+    const before = Date.now();
+    expect(post("deals/deal-6/stage", { stage_pid: "stg-2" }).status).toBe(200);
+    const moved = deals().find((d) => d.pid === "deal-6")!;
+    expect(moved.stalled).toBe(false);
+    expect(Date.parse(moved.last_touched_at)).toBeGreaterThanOrEqual(
+      before - 1000,
+    );
+    expect(deals().find((d) => d.pid === "deal-4")?.stalled).toBe(true);
+  });
+
+  it("takes N from the organization's settings, checked from 1 to 365, and keeps it when absent", () => {
+    expect(
+      put({
+        time_zone: "UTC",
+        fiscal_year_start_month: 1,
+        stalled_after_days: 0,
+      }).status,
+    ).toBe(422);
+    expect(
+      put({
+        time_zone: "UTC",
+        fiscal_year_start_month: 1,
+        stalled_after_days: 366,
+      }).status,
+    ).toBe(422);
+    expect(
+      put({
+        time_zone: "UTC",
+        fiscal_year_start_month: 1,
+        stalled_after_days: 60,
+      }).status,
+    ).toBe(200);
+    expect(deals().filter((d) => d.stalled)).toEqual([]);
+    const kept = put({ time_zone: "UTC", fiscal_year_start_month: 1 });
+    expect(
+      (kept.body as { stalled_after_days: number }).stalled_after_days,
+    ).toBe(60);
+    expect(
+      put({
+        time_zone: "UTC",
+        fiscal_year_start_month: 1,
+        stalled_after_days: 1,
+      }).status,
+    ).toBe(200);
+    expect(
+      deals().filter((d) => d.stalled && d.closed_at === null).length,
+    ).toBeGreaterThan(2);
+  });
+});

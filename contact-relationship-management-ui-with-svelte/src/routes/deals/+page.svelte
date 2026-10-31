@@ -21,7 +21,7 @@
   import { i18n, t, tf } from "#lib/i18n.svelte.js";
   import { formatDate, formatDecimalText } from "#lib/locale-format.js";
   import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
-  import type { Deal, Stage } from "#lib/api/crm.js";
+  import type { ListedDeal, Stage } from "#lib/api/crm.js";
   import ViewBar from "#lib/components/ViewBar.svelte";
   import { applyFilter, applyShape } from "#lib/views.js";
   import type { SavedView } from "#lib/api/crm.js";
@@ -48,7 +48,7 @@
     { keepWhileLoading: true },
   );
   const stages = $derived<Stage[]>(board.value?.active?.stages ?? []);
-  const deals = $derived<Deal[] | null>(board.value?.deals ?? null);
+  const deals = $derived<ListedDeal[] | null>(board.value?.deals ?? null);
   const totals = $derived<Record<string, number>>(board.value?.totals ?? {});
   const pipelines = $derived(board.value?.pipelines ?? []);
   const selectedPipeline = $derived(board.value?.active?.pipeline.pid ?? chosen);
@@ -69,6 +69,8 @@
       columnId: deal.stage_pid,
       laneId: deal.owner_ref ?? UNASSIGNED,
       title: deal.name,
+      // The service's stalled flag (CRM-R4, CRM-D20), shown by the board as visible text.
+      flag: deal.stalled ? t("deal.stalled") : undefined,
       values: {
         // The amount as the page's own number format types it, in the deal's own minor unit.
         amount:

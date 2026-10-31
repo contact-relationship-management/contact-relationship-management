@@ -22,6 +22,7 @@ import type {
   Campaign,
   Contact,
   Deal,
+  ListedDeal,
   Lead,
   Notification,
   SavedView,
@@ -211,6 +212,7 @@ interface State {
   organization: {
     time_zone: string;
     fiscal_year_start_month: number;
+    stalled_after_days: number;
     set_by: string | null;
     updated_at: string;
   };
@@ -336,6 +338,8 @@ function build(): State {
       owner_ref:
         pid.endsWith("1") || pid.endsWith("3") ? "owner-ayo" : "owner-bea",
       expected_close_on: day(20 + (pid.charCodeAt(pid.length - 1) % 7) * 9),
+      // Two open deals have sat untouched for weeks, so the board shows the stalled flag (CRM-R4).
+      stage_moved_at: iso(pid === "deal-4" || pid === "deal-6" ? -40 : -3),
     };
   };
   const deals: Deal[] = [
@@ -1014,6 +1018,7 @@ function build(): State {
     organization: {
       time_zone: "UTC",
       fiscal_year_start_month: 1,
+      stalled_after_days: 14,
       set_by: null,
       updated_at: "2026-10-01T00:00:00Z",
     },
@@ -2025,6 +2030,7 @@ function moveDeal(pid: string, body: unknown): DemoReply {
   const stage = state.stages.find((s) => s.pid === stagePid);
   if (!stage) return problem(422, "unknown stage");
   deal.stage_pid = stage.pid;
+  deal.stage_moved_at = new Date().toISOString();
   deal.won = stage.is_won;
   deal.closed_at =
     stage.is_won || stage.is_lost ? new Date().toISOString() : null;
@@ -2062,9 +2068,37 @@ function reopenDeal(pid: string, body: unknown): DemoReply {
   const open = [...state.stages].reverse().find((s) => !s.is_won && !s.is_lost);
   if (!open) return problem(422, "pipeline has no open stage");
   deal.stage_pid = open.pid;
+  deal.stage_moved_at = new Date().toISOString();
   deal.closed_at = null;
   deal.won = false;
   return ok(deal);
+}
+
+/**
+ * The deal list as the service gives it (CRM-R4, CRM-D20): each deal with `stalled` (open, and
+ * the organization's `stalled_after_days` or more since the later of its last stage move and the
+ * last activity on it that has happened) and that `last_touched_at`.
+ */
+export function listedDeals(now = Date.now()): ListedDeal[] {
+  const days = state.organization.stalled_after_days;
+  return state.deals.map((deal) => {
+    let touched = Date.parse(deal.stage_moved_at ?? iso(0));
+    for (const a of state.activities) {
+      const at = Date.parse(a.occurred_at);
+      if (
+        a.subject_kind === "deal" &&
+        a.subject_pid === deal.pid &&
+        at <= now &&
+        at > touched
+      )
+        touched = at;
+    }
+    return {
+      ...deal,
+      stalled: deal.closed_at === null && now - touched >= days * DAY,
+      last_touched_at: new Date(touched).toISOString(),
+    };
+  });
 }
 
 function editDeal(pid: string, body: unknown): DemoReply {
@@ -2634,7 +2668,7 @@ export function demoHandle(
   if (head === "deals") {
     if (seg.length === 1 && get) {
       const pipeline = query.get("pipeline");
-      return ok(pipeline && pipeline !== PIPELINE.pid ? [] : state.deals);
+      return ok(pipeline && pipeline !== PIPELINE.pid ? [] : listedDeals());
     }
     if (tail === "stage" && post) return moveDeal(id!, body);
     if (tail === "reopen" && post) return reopenDeal(id!, body);
@@ -3216,6 +3250,7 @@ function organizationSettings(method: string, body: unknown): DemoReply {
   const input = (body ?? {}) as {
     time_zone?: unknown;
     fiscal_year_start_month?: unknown;
+    stalled_after_days?: unknown;
   };
   const zone =
     typeof input.time_zone === "string" ? input.time_zone.trim() : "";
@@ -3238,9 +3273,19 @@ function organizationSettings(method: string, body: unknown): DemoReply {
       422,
       "/fiscal_year_start_month: is a month from 1 (January) to 12 (December)",
     );
+  const stalled =
+    input.stalled_after_days === undefined
+      ? state.organization.stalled_after_days
+      : Number(input.stalled_after_days);
+  if (!Number.isInteger(stalled) || stalled < 1 || stalled > 365)
+    return problem(
+      422,
+      "/stalled_after_days: is a whole number of days from 1 to 365",
+    );
   state.organization = {
     time_zone: zone,
     fiscal_year_start_month: month,
+    stalled_after_days: stalled,
     set_by: "person:demo",
     updated_at: new Date().toISOString(),
   };

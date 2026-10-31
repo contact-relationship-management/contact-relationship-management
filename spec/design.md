@@ -278,3 +278,28 @@ federations and regions are first-class; names, phone numbers, dates, time zones
 exponent, no built-in currency) follow the locale or the jurisdiction; international standards first, national ones as profiles; locales
 are equal, including what a data subject reads; claims name their jurisdiction; and a jurisdiction-specific rule is tested with a second,
 differently shaped profile. The full text is in [worldwide.md](worldwide.md#decision).
+
+## CRM-D20 — A stalled deal is derived on read; its days are an organization setting
+
+*Decided 2026-10-31 by the AI assistant under the product owner's instruction to build CRM-R4's stalled flag (CRM-T183).*
+
+**The rule** (`rules::stalled`, pure): an open deal is **stalled** when at least N whole days (N × 24 hours of elapsed time) have
+passed since its **last touch**, the later of its last stage move and its last activity. A closed deal is never stalled. Elapsed time,
+not calendar days in a zone, so the answer is the same wherever the reader is and no zone is the default (CRM-D19).
+
+- **Last stage move** is a new column, `deals.stage_moved_at`, set when the deal is created, on every stage move (open, won or lost)
+  and on a reopen. Migration `000058` fills it for existing deals from the newest `deal_stage_changed`, `deal_won`, `deal_lost` or
+  `deal_reopened` audit row, else the deal's `created_at`, without moving `updated_at`. Rejected: reading the audit log on each list
+  (the stale-deals insight does, for every deal; a column is one read and keeps the derivation off the hash-chained log). An edit of
+  the name, amount or close date, a tag or a card's place on the board is not a stage move.
+- **Last activity** is the newest `occurred_at` of a live activity logged against the deal itself (`subject_kind = deal`) that is
+  not in the future. Activities on the deal's contact or account do not count: they may be about something else. A future
+  `occurred_at` (a planned call) is not a touch until it has happened.
+- **N lives in `organization_settings`** (CRM-T171's one row), as `stalled_after_days`, a whole number from 1 to 365, default 14,
+  read and set with the calendar at `/api/settings/organization` (an administrator sets it; a `PUT` without it keeps the stored
+  value). Rejected: a `CRM_*` environment setting, because N is a sales-process choice an administrator makes and changes, not a
+  deployment fact, and the organization's other process settings already live in that row.
+- **Where it shows:** `GET /api/deals` gives each deal `stalled` and `last_touched_at`; the UI's Kanban board marks a stalled card
+  with the board's non-colour flag and the deal page says since when. Nothing is stored: the flag is derived on every read (CRM-D4).
+
+The stale-deals insight (`/api/insights/stale-deals?days=`, days in the current stage) is a different, older view and is unchanged.

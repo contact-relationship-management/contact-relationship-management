@@ -1,7 +1,9 @@
-//! The organization's calendar (CRM-T171): `/api/settings/organization`.
+//! The organization's calendar (CRM-T171) and when a deal is stalled (CRM-T183):
+//! `/api/settings/organization`.
 //!
 //! One row (`organization_settings`): the IANA time zone that decides "today" in the service and
-//! the months of reports, and the month the fiscal year starts. Anyone signed in may read it; only
+//! the months of reports, the month the fiscal year starts, and after how many days without a
+//! stage move or an activity an open deal is stalled (CRM-D20). Anyone signed in may read it; only
 //! an administrator may change it (the policy derives `Destructive` for the `PUT`), and a change
 //! is audited with both values.
 
@@ -15,6 +17,7 @@ use crate::auth::MaybeAuthUser;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::periods::{self, Periods, USER_ZONE_HEADER};
+use crate::rules::stalled;
 use crate::validation::Problems;
 
 /// The organization's calendar as the API shows it.
@@ -25,6 +28,9 @@ pub(crate) struct SettingsView {
     time_zone: String,
     /// The month (1 to 12) the fiscal year starts in (1 until one is set).
     fiscal_year_start_month: u32,
+    /// After how many days without a stage move or an activity an open deal is stalled (1 to
+    /// 365; 14 until one is set).
+    stalled_after_days: u32,
     /// When they were last changed.
     updated_at: chrono::DateTime<chrono::Utc>,
     /// Who changed them last; absent while they are the starting values.
@@ -42,6 +48,10 @@ pub(crate) struct SettingsPayload {
     time_zone: String,
     /// The month (1 to 12) the fiscal year starts in.
     fiscal_year_start_month: i64,
+    /// After how many days (1 to 365) an open deal with no stage move or activity is stalled;
+    /// absent keeps the stored value.
+    #[serde(default)]
+    stalled_after_days: Option<i64>,
 }
 
 fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
@@ -51,7 +61,7 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
 async fn row(db: &impl ConnectionTrait) -> Result<Option<sea_orm::QueryResult>> {
     Ok(db
         .query_one_raw(stmt(
-            "SELECT time_zone, fiscal_year_start_month, updated_at, set_by \
+            "SELECT time_zone, fiscal_year_start_month, stalled_after_days, updated_at, set_by \
              FROM organization_settings WHERE id = 1",
             [],
         ))
@@ -76,6 +86,19 @@ pub async fn periods(db: &impl ConnectionTrait) -> Result<Periods> {
         fiscal_start_month: periods::fiscal_start_month(i64::from(month))
             .unwrap_or(fallback.fiscal_start_month),
     })
+}
+
+/// After how many days an open deal is stalled; the starting 14 when none is stored.
+///
+/// # Errors
+///
+/// A database error.
+pub async fn stalled_after_days(db: &impl ConnectionTrait) -> Result<u32> {
+    let Some(row) = row(db).await? else {
+        return Ok(stalled::DEFAULT_DAYS);
+    };
+    let days: i16 = row.try_get("", "stalled_after_days")?;
+    Ok(stalled::days(i64::from(days)).unwrap_or(stalled::DEFAULT_DAYS))
 }
 
 /// "Today" for the caller of a request: in the zone it names in `CRM-Time-Zone`, else the
@@ -117,6 +140,7 @@ async fn view(db: &impl ConnectionTrait) -> Result<SettingsView> {
     Ok(SettingsView {
         time_zone: found.zone.name().to_string(),
         fiscal_year_start_month: found.fiscal_start_month,
+        stalled_after_days: stalled_after_days(db).await?,
         updated_at,
         set_by,
         today: periods::today_in(chrono::Utc::now(), found.zone),
@@ -143,20 +167,29 @@ async fn set(
     let month = periods::fiscal_start_month(payload.fiscal_year_start_month)
         .map_err(|why| problems.push_field("fiscal_year_start_month", why))
         .ok();
+    let stalled_days = match payload.stalled_after_days {
+        Some(raw) => stalled::days(raw)
+            .map_err(|why| problems.push_field("stalled_after_days", why))
+            .ok(),
+        None => Some(stalled_after_days(&ctx.db).await?),
+    };
     problems.finish()?;
-    let (Some(zone), Some(month)) = (zone, month) else {
+    let (Some(zone), Some(month), Some(stalled_days)) = (zone, month, stalled_days) else {
         return Err(super::unprocessable("the settings cannot be set"));
     };
     let who = owner_of(&caller)?;
     let txn = ctx.db.begin().await?;
     txn.execute_raw(stmt(
-        "INSERT INTO organization_settings (id, time_zone, fiscal_year_start_month, set_by) \
-         VALUES (1, $1, $2, $3) ON CONFLICT (id) DO UPDATE SET time_zone = EXCLUDED.time_zone, \
-         fiscal_year_start_month = EXCLUDED.fiscal_year_start_month, set_by = EXCLUDED.set_by, \
+        "INSERT INTO organization_settings \
+         (id, time_zone, fiscal_year_start_month, stalled_after_days, set_by) \
+         VALUES (1, $1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET time_zone = EXCLUDED.time_zone, \
+         fiscal_year_start_month = EXCLUDED.fiscal_year_start_month, \
+         stalled_after_days = EXCLUDED.stalled_after_days, set_by = EXCLUDED.set_by, \
          updated_at = now()",
         [
             zone.name().into(),
             i16::try_from(month).unwrap_or(1).into(),
+            i16::try_from(stalled_days).unwrap_or(14).into(),
             who.into(),
         ],
     ))
@@ -170,6 +203,7 @@ async fn set(
         Some(serde_json::json!({
             "time_zone": zone.name(),
             "fiscal_year_start_month": month,
+            "stalled_after_days": stalled_days,
         })),
     )
     .await?;

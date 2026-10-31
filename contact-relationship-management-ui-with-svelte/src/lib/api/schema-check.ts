@@ -21,6 +21,7 @@ export type Checks = [
   Serves<ui.RuleScore, Sent["RuleScore"]>,
   Serves<ui.ScoreBreakdown, Sent["ScoreBreakdown"]>,
   Serves<ui.Deal, Sent["Deal"]>,
+  Serves<ui.ListedDeal, Sent["ListedDeal"]>,
   Serves<ui.Campaign, Sent["Campaign"]>,
   Serves<ui.Attribution, Sent["Attribution"]>,
   Serves<ui.FxRate, Sent["FxRate"]>,

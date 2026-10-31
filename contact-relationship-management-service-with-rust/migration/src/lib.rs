@@ -69,6 +69,7 @@ mod m20261030_000054_person_user_refs;
 mod m20261030_000055_search_ngrams;
 mod m20261030_000056_template_language;
 mod m20261030_000057_organization_settings;
+mod m20261031_000058_deal_stalled;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -136,6 +137,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261030_000055_search_ngrams::Migration),
             Box::new(m20261030_000056_template_language::Migration),
             Box::new(m20261030_000057_organization_settings::Migration),
+            Box::new(m20261031_000058_deal_stalled::Migration),
             // inject-above (do not remove this comment)
         ]
     }

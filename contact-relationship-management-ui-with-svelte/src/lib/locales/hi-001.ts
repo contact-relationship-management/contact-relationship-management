@@ -285,6 +285,8 @@ export default {
   "deal.reopened": "डील फिर से खोली गई",
   "deal.won": "जीती",
   "deal.lost": "हारी",
+  "deal.stalled": "रुकी हुई",
+  "deal.stalledSince": "{date} से न चरण बदला, न कोई गतिविधि हुई",
   "campaign.funnel": "फ़नल",
   "campaign.roi": "आरओआई",
   "campaign.convert": "अन्य मुद्राओं को प्रचलित दर पर गिनें",
@@ -663,6 +665,8 @@ export default {
   "org.timeZone": "समय क्षेत्र (IANA, जैसे Asia/Tokyo)",
   "org.fiscalStart": "वित्तीय वर्ष शुरू होता है",
   "org.save": "कैलेंडर सहेजें",
+  "org.stalledAfter":
+    "इतने दिनों तक चरण न बदलने या कोई गतिविधि न होने पर डील रुकी हुई मानी जाती है",
   "org.today": "वहाँ आज: {date}",
   "nav.attribution": "एट्रिब्यूशन",
   "attr.title": "एट्रिब्यूशन",

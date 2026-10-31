@@ -48,9 +48,9 @@ stage belongs to the deal's pipeline, stamps the move into the
 audit + `deal_stage_changed` event, and entering a terminal stage
 sets `closed_at`/`won` (lost requires `lost_reason`). Closed deals
 are immutable except a reasoned reopen. **Stalled** = no stage move
-or activity for N days (config, default 14) — a derived flag on the
-board. *Not built (checked 2026-10-30): no stalled flag is derived or
-shown (CRM-R4).*
+or activity for N days (the organization's `stalled_after_days`,
+default 14) — a derived flag on the board and the deal page, never
+stored (CRM-R4, CRM-D20).
 
 ## Forecasting
 

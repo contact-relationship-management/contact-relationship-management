@@ -9,6 +9,7 @@
     openDelivery,
     reopenDeal,
     type Deal,
+    type ListedDeal,
     type DealDelivery,
   } from "#lib/api/crm.js";
   import { formMinor, minorToInput, money } from "#lib/money.js";
@@ -16,8 +17,8 @@
   import CustomFields from "#lib/components/CustomFields.svelte";
   import Tags from "#lib/components/Tags.svelte";
   import LinksPanel from "#lib/components/LinksPanel.svelte";
-  import { i18n, t } from "#lib/i18n.svelte.js";
-  import { backArrow } from "#lib/locale-format.js";
+  import { i18n, t, tf } from "#lib/i18n.svelte.js";
+  import { backArrow, formatDate } from "#lib/locale-format.js";
 
   const pid = $derived(page.params.pid ?? "");
   // There is no single-deal read; the list is already scoped by the caller's rights.
@@ -88,7 +89,7 @@
   }
 
   // Only what changed is sent, so a masked amount is never overwritten with nothing.
-  async function save(current: Deal) {
+  async function save(current: ListedDeal) {
     const fields: { name?: string; amount_minor?: number; expected_close_on?: string } = {};
     if (name.trim() !== current.name) fields.name = name.trim();
     if (current.amount_minor !== null && amount.trim() !== "") {
@@ -110,7 +111,9 @@
     busy = true;
     formError = null;
     try {
-      record.value = await editDeal(current.pid, fields);
+      // The edit answers the raw row; an edit is not a touch (CRM-D20), so the list's stalled
+      // flag and last touch stay as they were.
+      record.value = { ...current, ...(await editDeal(current.pid, fields)) };
       editing = false;
       saved = true;
     } catch (cause) {
@@ -132,6 +135,13 @@
     {#if deal.amount_minor !== null}<strong>{money(deal.amount_minor, deal.currency, i18n.locale)}</strong>{/if}
     {#if deal.closed_at}<span class="chip">{deal.won ? "won" : "closed"}</span>{/if}
   </p>
+  {#if deal.stalled}
+    <!-- Derived by the service (CRM-R4, CRM-D20); the page only says it. -->
+    <p data-testid="deal-stalled">
+      <strong class="chip">{t("deal.stalled")}</strong>
+      {tf("deal.stalledSince", { date: formatDate(deal.last_touched_at) })}
+    </p>
+  {/if}
   {#if reopened}<p role="status" data-testid="deal-reopened">{t("deal.reopened")}</p>{/if}
   {#if saved}<p role="status" data-testid="deal-saved">{t("deal.saved")}</p>{/if}
   {#if deal.won}

@@ -68,18 +68,25 @@
   const calendar = resource(organizationSettings);
   let zoneInput = $state("");
   let startMonth = $state(1);
+  // After how many days an open deal with no stage move or activity is stalled (CRM-R4).
+  let stalledDays = $state(14);
   let calendarError = $state<string | null>(null);
   $effect(() => {
     if (calendar.value) {
       zoneInput = calendar.value.time_zone;
       startMonth = calendar.value.fiscal_year_start_month;
+      stalledDays = calendar.value.stalled_after_days;
     }
   });
   async function saveCalendar(event: SubmitEvent) {
     event.preventDefault();
     calendarError = null;
     try {
-      await setOrganizationSettings({ time_zone: zoneInput.trim(), fiscal_year_start_month: Number(startMonth) });
+      await setOrganizationSettings({
+        time_zone: zoneInput.trim(),
+        fiscal_year_start_month: Number(startMonth),
+        stalled_after_days: Number(stalledDays),
+      });
       await calendar.reload();
     } catch (cause) {
       calendarError = errorMessage(cause);
@@ -382,6 +389,10 @@
         <option value={month}>{monthName(month)}</option>
       {/each}
     </select>
+  </label>
+  <label>
+    {t("org.stalledAfter")}
+    <input type="number" min="1" max="365" step="1" bind:value={stalledDays} data-testid="org-stalled-days" />
   </label>
   <button type="submit" data-testid="org-save">{t("org.save")}</button>
   {#if calendar.value}

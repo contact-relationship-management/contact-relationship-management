@@ -61,10 +61,18 @@ truthfully.*
   requires a reason); closed deals immutable except a reasoned
   reopen to the prior stage; concurrent reorders serialize (one
   winner).
-- Stalled flag derived at N days (config, default 14) without stage
-  move or activity. **Not built** (checked 2026-10-30): neither the
-  service nor the UI derives or shows it, and no setting holds N,
-  though CRM-T6 was marked done with it.
+- Stalled flag derived at N days (default 14) without stage move or
+  activity (CRM-D20, CRM-T183, built 2026-10-31): an open deal is
+  stalled when N × 24 hours have passed since the later of its last
+  stage move (`deals.stage_moved_at`) and the last activity logged
+  on the deal that has happened; a closed deal never is. N is the
+  organization's `stalled_after_days` (1 to 365) at
+  `/api/settings/organization`, set by an administrator.
+  `GET /api/deals` gives each deal `stalled` and `last_touched_at`;
+  the Kanban board flags a stalled card and the deal page says since
+  when. Not built: a stalled count on a dashboard, a notification or
+  workflow trigger when a deal stalls, activities on the deal's
+  contact or account counting as a touch, an N per pipeline.
 
 ## CRM-R5 — Forecasting
 

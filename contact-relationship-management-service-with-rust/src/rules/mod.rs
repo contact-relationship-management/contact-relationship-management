@@ -31,6 +31,7 @@ pub mod scoring;
 pub mod search;
 pub mod segment;
 pub mod sla;
+pub mod stalled;
 pub mod suggest;
 pub mod tags;
 pub mod teams_import;

@@ -7269,7 +7269,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Deals (?pipeline=) */
+        /** Deals (?pipeline=), each with stalled (open, no stage move or activity on the deal for the organization's stalled_after_days) and last_touched_at (CRM-R4, CRM-D20) */
         get: {
             parameters: {
                 query?: {
@@ -7294,7 +7294,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Deal"][];
+                        "application/json": components["schemas"]["ListedDeal"][];
                     };
                 };
                 /** @description Missing, expired or invalid bearer token */
@@ -15269,7 +15269,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's calendar (CRM-T171): the IANA time zone of today and of report months, the month the fiscal year starts, and today there */
+        /** The organization's calendar (CRM-T171): the IANA time zone of today and of report months, the month the fiscal year starts, and today there; and after how many days an open deal is stalled (CRM-T183) */
         get: {
             parameters: {
                 query?: never;
@@ -15326,7 +15326,7 @@ export interface paths {
                 };
             };
         };
-        /** Set the organization's time zone and fiscal year start (an administrator's; 422 names the member; audited). A caller may name its own zone for today with the CRM-Time-Zone header */
+        /** Set the organization's time zone, fiscal year start and stalled_after_days (1 to 365; absent keeps the stored value) (an administrator's; 422 names the member; audited). A caller may name its own zone for today with the CRM-Time-Zone header */
         put: {
             parameters: {
                 query?: never;
@@ -19790,6 +19790,11 @@ export interface components {
             primary_contact_pid: string | null;
             /** Format: uuid */
             source_campaign_pid: string | null;
+            /**
+             * Format: date-time
+             * @description The last stage move or reopen; the deal's creation until the first (CRM-D20).
+             */
+            stage_moved_at: string;
             /** Format: uuid */
             stage_pid: string;
             /** Format: date-time */
@@ -20742,6 +20747,63 @@ export interface components {
             person_ref: string | null;
             to: string;
         };
+        /**
+         * @description One deal as `GET /api/deals` lists it: the record, and whether it is stalled (CRM-R4,
+         *     CRM-D20). The amount is `null` when masked.
+         */
+        ListedDeal: {
+            /** Format: uuid */
+            account_pid: string | null;
+            /**
+             * Format: int64
+             * @description Absent (`null`) when masked: a masked amount is never a fake zero.
+             */
+            amount_minor: number | null;
+            /** Format: date-time */
+            closed_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            currency: string;
+            /** Format: date-time */
+            deleted_at: string | null;
+            /** Format: date */
+            expected_close_on: string | null;
+            /** Format: int32 */
+            id: number;
+            /** Format: int32 */
+            kanban_position: number;
+            /**
+             * Format: date-time
+             * @description The later of the last stage move and the last activity on the deal that has happened.
+             */
+            last_touched_at: string;
+            lost_reason: string | null;
+            name: string;
+            owner_ref: string | null;
+            /** Format: uuid */
+            pid: string;
+            /** Format: uuid */
+            pipeline_pid: string;
+            /** Format: uuid */
+            primary_contact_pid: string | null;
+            /** Format: uuid */
+            source_campaign_pid: string | null;
+            /**
+             * Format: date-time
+             * @description The last stage move or reopen; the deal's creation until the first (CRM-D20).
+             */
+            stage_moved_at: string;
+            /** Format: uuid */
+            stage_pid: string;
+            /**
+             * @description Open, with no stage move and no activity on the deal for the organization's
+             *     `stalled_after_days` or more. Derived on every read, never stored.
+             */
+            stalled: boolean;
+            /** Format: date-time */
+            updated_at: string;
+            won: boolean;
+        };
         /** @description `POST /api/notifications/read-all` response. */
         MarkedRead: {
             /** Format: uint64 */
@@ -20960,6 +21022,12 @@ export interface components {
             fiscal_year_start_month: number;
             /** @description Who changed them last; absent while they are the starting values. */
             set_by: string | null;
+            /**
+             * Format: uint32
+             * @description After how many days without a stage move or an activity an open deal is stalled (1 to
+             *     365; 14 until one is set).
+             */
+            stalled_after_days: number;
             /** @description The IANA time zone of "today" and of report periods (`UTC` until one is set). */
             time_zone: string;
             /**
@@ -20980,6 +21048,13 @@ export interface components {
              * @description The month (1 to 12) the fiscal year starts in.
              */
             fiscal_year_start_month: number;
+            /**
+             * Format: int64
+             * @description After how many days (1 to 365) an open deal with no stage move or activity is stalled;
+             *     absent keeps the stored value.
+             * @default null
+             */
+            stalled_after_days: number | null;
             /** @description An IANA time zone, such as `Asia/Tokyo`. */
             time_zone: string;
         };

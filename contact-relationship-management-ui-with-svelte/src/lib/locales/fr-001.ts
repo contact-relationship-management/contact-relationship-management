@@ -304,6 +304,8 @@ export default {
   "deal.reopened": "Affaire rouverte",
   "deal.won": "Gagnée",
   "deal.lost": "Perdue",
+  "deal.stalled": "Au point mort",
+  "deal.stalledSince": "Aucun changement d'étape ni activité depuis le {date}",
   "campaign.funnel": "Entonnoir",
   "campaign.roi": "ROI",
   "campaign.convert": "Compter les autres devises au taux en vigueur",
@@ -683,6 +685,8 @@ export default {
   "org.timeZone": "Fuseau horaire (IANA, par exemple Asia/Tokyo)",
   "org.fiscalStart": "L’exercice commence en",
   "org.save": "Enregistrer le calendrier",
+  "org.stalledAfter":
+    "Une affaire est au point mort après ce nombre de jours sans changement d'étape ni activité",
   "org.today": "Aujourd’hui là-bas : {date}",
   "nav.attribution": "Attribution",
   "attr.title": "Attribution",

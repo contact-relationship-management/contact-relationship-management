@@ -283,6 +283,8 @@ export default {
   "deal.reopened": "Deal reopened",
   "deal.won": "Won",
   "deal.lost": "Lost",
+  "deal.stalled": "Stalled",
+  "deal.stalledSince": "No stage move or activity since {date}",
   "campaign.funnel": "Funnel",
   "campaign.roi": "ROI",
   "campaign.convert": "Count other currencies at the rate in force",
@@ -661,6 +663,8 @@ export default {
   "org.timeZone": "Time zone (IANA, such as Asia/Tokyo)",
   "org.fiscalStart": "Fiscal year starts in",
   "org.save": "Save the calendar",
+  "org.stalledAfter":
+    "A deal is stalled after this many days with no stage move or activity",
   "org.today": "Today there: {date}",
   "nav.attribution": "Attribution",
   "attr.title": "Attribution",

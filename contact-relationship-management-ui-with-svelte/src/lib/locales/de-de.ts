@@ -297,6 +297,8 @@ export default {
   "deal.reopened": "Deal wieder geöffnet",
   "deal.won": "Gewonnen",
   "deal.lost": "Verloren",
+  "deal.stalled": "Ins Stocken geraten",
+  "deal.stalledSince": "Kein Phasenwechsel und keine Aktivität seit {date}",
   "campaign.funnel": "Trichter",
   "campaign.roi": "ROI",
   "campaign.convert": "Andere Währungen zum gültigen Kurs zählen",
@@ -676,6 +678,8 @@ export default {
   "org.timeZone": "Zeitzone (IANA, etwa Asia/Tokyo)",
   "org.fiscalStart": "Geschäftsjahr beginnt im",
   "org.save": "Kalender speichern",
+  "org.stalledAfter":
+    "Ein Deal gilt nach so vielen Tagen ohne Phasenwechsel oder Aktivität als ins Stocken geraten",
   "org.today": "Heute dort: {date}",
   "nav.attribution": "Zuordnung",
   "attr.title": "Zuordnung",

@@ -300,6 +300,8 @@ export default {
   "deal.reopened": "Oportunidad reabierta",
   "deal.won": "Ganada",
   "deal.lost": "Perdida",
+  "deal.stalled": "Estancada",
+  "deal.stalledSince": "Sin cambio de etapa ni actividad desde {date}",
   "campaign.funnel": "Embudo",
   "campaign.roi": "ROI",
   "campaign.convert": "Contar otras monedas al tipo vigente",
@@ -678,6 +680,8 @@ export default {
   "org.timeZone": "Zona horaria (IANA, como Asia/Tokyo)",
   "org.fiscalStart": "El año fiscal empieza en",
   "org.save": "Guardar el calendario",
+  "org.stalledAfter":
+    "Una oportunidad queda estancada tras este número de días sin cambio de etapa ni actividad",
   "org.today": "Hoy allí: {date}",
   "nav.attribution": "Atribución",
   "attr.title": "Atribución",

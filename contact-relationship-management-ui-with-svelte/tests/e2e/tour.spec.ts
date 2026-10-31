@@ -481,6 +481,50 @@ test.describe("editing, order and rescheduling", () => {
     await expect(page.getByTestId("deal-board")).toContainText("£80,000.00");
   });
 
+  test("a stalled deal is flagged on the board and on its page, in the page's language (CRM-R4)", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/deals");
+    const board = page.getByTestId("deal-board");
+    // The stand-in's two deals untouched for 40 days, past the organization's 14.
+    const flagged = board.locator('[data-flag="Stalled"]');
+    await expect(flagged).toHaveCount(2);
+    await expect(
+      board.locator("[data-flag]", { hasText: "Customer portal refresh" }),
+    ).toHaveAttribute("data-flag", "Stalled");
+    await page.goto("/deals/deal-6");
+    await expect(page.getByTestId("deal-stalled")).toContainText("Stalled");
+    await expect(page.getByTestId("deal-stalled")).toContainText(
+      "No stage move or activity since",
+    );
+    await page.goto("/deals/deal-1");
+    await expect(page.getByTestId("record-title")).toBeVisible();
+    await expect(page.getByTestId("deal-stalled")).toHaveCount(0);
+    // In German, the flag is German.
+    await page.goto("/de-de/deals/deal-6");
+    await expect(page.getByTestId("deal-stalled")).toContainText(
+      "Ins Stocken geraten",
+    );
+  });
+
+  test("the days after which a deal is stalled are the organization's setting", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/reports");
+    const days = page.getByTestId("org-stalled-days");
+    await expect(days).toHaveValue("14");
+    await days.fill("60");
+    await page.getByTestId("org-save").click();
+    await expect(page.getByTestId("org-error")).toHaveCount(0);
+    await page.goto("/deals");
+    await expect(page.getByTestId("deal-board")).toBeVisible();
+    await expect(
+      page.getByTestId("deal-board").locator('[data-flag="Stalled"]'),
+    ).toHaveCount(0);
+  });
+
   test("deals are grouped in a swimlane per owner", async ({ page }) => {
     await startTour(page);
     await page.goto("/deals");

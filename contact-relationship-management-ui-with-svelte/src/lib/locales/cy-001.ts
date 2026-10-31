@@ -328,6 +328,8 @@ export default {
   "deal.reopened": "Ailagorwyd y fargen",
   "deal.won": "Enillwyd",
   "deal.lost": "Collwyd",
+  "deal.stalled": "Wedi aros yn ei unfan",
+  "deal.stalledSince": "Dim symud cam na gweithgarwch ers {date}",
   "campaign.funnel": "Twndis",
   "campaign.roi": "ROI",
   "campaign.convert": "Cyfrif arian cyfred eraill ar y gyfradd gyfredol",
@@ -707,6 +709,8 @@ export default {
   "org.timeZone": "Cylchfa amser (IANA, fel Asia/Tokyo)",
   "org.fiscalStart": "Mae'r flwyddyn ariannol yn dechrau ym mis",
   "org.save": "Cadw'r calendr",
+  "org.stalledAfter":
+    "Mae bargen wedi aros yn ei hunfan ar ôl cymaint â hyn o ddiwrnodau heb symud cam na gweithgarwch",
   "org.today": "Heddiw yno: {date}",
   "nav.attribution": "Priodoli",
   "attr.title": "Priodoli",

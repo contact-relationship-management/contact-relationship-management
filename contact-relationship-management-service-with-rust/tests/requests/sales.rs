@@ -158,3 +158,144 @@ async fn contracts_404_and_pipeline_membership() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+// CRM-R4, CRM-D20: an open deal is stalled after the organization's N days with no stage move
+// and no activity on it; a move or an activity that has happened clears it; a closed deal never is.
+async fn a_deal_with_no_move_or_activity_for_n_days_is_stalled() {
+    use sea_orm::ConnectionTrait;
+    request::<App, _, _>(|request, ctx| async move {
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        let mut pids = Vec::new();
+        for name in ["Stalled quiet", "Stalled called", "Stalled planned", "Stalled moved", "Stalled won"] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(&json!({
+                    "name": name, "pipeline_pid": pipeline,
+                    "amount_minor": 100, "currency": "GBP",
+                }))
+                .await
+                .json();
+            pids.push(deal["pid"].as_str().unwrap().to_string());
+        }
+        let listed = |all: &Value, pid: &str| -> Value {
+            all.as_array()
+                .unwrap()
+                .iter()
+                .find(|d| d["pid"] == pid)
+                .cloned()
+                .unwrap_or_else(|| panic!("{pid} listed"))
+        };
+        // Just made: nothing is stalled, and the last touch is the creation.
+        let all: Value = request.get(&format!("/api/deals?pipeline={pipeline}")).await.json();
+        for pid in &pids {
+            let deal = listed(&all, pid);
+            assert_eq!(deal["stalled"], false, "{deal}");
+            assert_eq!(deal["last_touched_at"], deal["stage_moved_at"], "{deal}");
+        }
+        // Twenty days without a move, for all five.
+        for pid in &pids {
+            ctx.db
+                .execute_unprepared(&format!(
+                    "UPDATE deals SET stage_moved_at = now() - interval '20 days' WHERE pid = '{pid}'"
+                ))
+                .await
+                .unwrap();
+        }
+        // An activity five days ago on the second, a planned one next week on the third; the
+        // first stays quiet.
+        let five_days_ago = (chrono::Utc::now() - chrono::Duration::days(5)).to_rfc3339();
+        let next_week = (chrono::Utc::now() + chrono::Duration::days(7)).to_rfc3339();
+        for (pid, at) in [(&pids[1], &five_days_ago), (&pids[2], &next_week)] {
+            request
+                .post("/api/activities")
+                .json(&json!({
+                    "subject_kind": "deal", "subject_pid": pid, "kind": "call",
+                    "summary": "Spoke about the order", "occurred_at": at,
+                }))
+                .await
+                .assert_status_success();
+        }
+        // The fourth moves stage; the fifth is won.
+        request
+            .post(&format!("/api/deals/{}/stage", pids[3]))
+            .json(&json!({ "stage_pid": stages[1] }))
+            .await
+            .assert_status_ok();
+        let won_stage = &stages[2];
+        let won = request
+            .post(&format!("/api/deals/{}/stage", pids[4]))
+            .json(&json!({ "stage_pid": won_stage }))
+            .await;
+        assert_eq!(won.status_code(), 200, "{}", won.text());
+        let all: Value = request.get(&format!("/api/deals?pipeline={pipeline}")).await.json();
+        let flags: Vec<bool> = pids
+            .iter()
+            .map(|pid| listed(&all, pid)["stalled"].as_bool().unwrap())
+            .collect();
+        assert_eq!(flags, [true, false, true, false, false], "{all}");
+        let called = listed(&all, &pids[1]);
+        let touched = chrono::DateTime::parse_from_rfc3339(called["last_touched_at"].as_str().unwrap())
+            .unwrap();
+        let expected = chrono::DateTime::parse_from_rfc3339(&five_days_ago).unwrap();
+        assert!((touched - expected).num_seconds().abs() <= 1, "{called}");
+
+        // N is the organization's: at 30 days the quiet deal is not stalled; at 5 the one
+        // called five days ago is.
+        let settings: Value = request.get("/api/settings/organization").await.json();
+        assert_eq!(settings["stalled_after_days"], 14);
+        for (bad, why) in [(0, "0"), (366, "366")] {
+            let refused = request
+                .put("/api/settings/organization")
+                .json(&json!({ "time_zone": "UTC", "fiscal_year_start_month": 1, "stalled_after_days": bad }))
+                .await;
+            assert_eq!(refused.status_code(), 422, "{why}");
+            assert!(refused.text().contains("stalled_after_days"), "{why}");
+        }
+        let set: Value = request
+            .put("/api/settings/organization")
+            .json(&json!({ "time_zone": "UTC", "fiscal_year_start_month": 1, "stalled_after_days": 30 }))
+            .await
+            .json();
+        assert_eq!(set["stalled_after_days"], 30);
+        // A PUT without it keeps it.
+        let kept: Value = request
+            .put("/api/settings/organization")
+            .json(&json!({ "time_zone": "UTC", "fiscal_year_start_month": 1 }))
+            .await
+            .json();
+        assert_eq!(kept["stalled_after_days"], 30);
+        let all: Value = request.get(&format!("/api/deals?pipeline={pipeline}")).await.json();
+        assert_eq!(listed(&all, &pids[0])["stalled"], false, "{all}");
+        request
+            .put("/api/settings/organization")
+            .json(&json!({ "time_zone": "UTC", "fiscal_year_start_month": 1, "stalled_after_days": 5 }))
+            .await
+            .assert_status_ok();
+        let all: Value = request.get(&format!("/api/deals?pipeline={pipeline}")).await.json();
+        assert_eq!(listed(&all, &pids[1])["stalled"], true, "{all}");
+        // The change is audited with the value.
+        let audited = ctx
+            .db
+            .query_one_raw(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Postgres,
+                "SELECT count(*) AS n FROM audit_logs WHERE entity = 'organization_settings' \
+                 AND (snapshot ->> 'stalled_after_days') = '5'",
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<i64>("", "n")
+            .unwrap();
+        assert_eq!(audited, 1);
+        // Put the starting value back for the other tests.
+        request
+            .put("/api/settings/organization")
+            .json(&json!({ "time_zone": "UTC", "fiscal_year_start_month": 1, "stalled_after_days": 14 }))
+            .await
+            .assert_status_ok();
+    })
+    .await;
+}

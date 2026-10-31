@@ -34,6 +34,8 @@ pub struct Model {
     pub won: bool,
     pub lost_reason: Option<String>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
+    /// The last stage move or reopen; the deal's creation until the first (CRM-D20).
+    pub stage_moved_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

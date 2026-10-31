@@ -87,6 +87,16 @@ export interface Deal {
   closed_at: string | null;
   owner_ref?: string | null;
   expected_close_on?: string | null;
+  /** The last stage move or reopen; the deal's creation until the first (CRM-D20). */
+  stage_moved_at?: string;
+}
+
+/** One deal as the deal list gives it, with the service's stalled flag (CRM-R4, CRM-D20). */
+export interface ListedDeal extends Deal {
+  /** Open, with no stage move and no activity for the organization's `stalled_after_days`. */
+  stalled: boolean;
+  /** The later of the last stage move and the last activity on the deal that has happened. */
+  last_touched_at: string;
 }
 
 /** One campaign with counters. */
@@ -440,7 +450,7 @@ export function listPipelines(
 export function listDeals(
   pipeline?: string,
   init?: FetchLike,
-): Promise<Deal[]> {
+): Promise<ListedDeal[]> {
   return apiAll(`/deals${pipeline ? `?pipeline=${pipeline}` : ""}`, init);
 }
 
@@ -1696,6 +1706,8 @@ export interface ReportResult {
 export interface OrganizationSettings {
   time_zone: string;
   fiscal_year_start_month: number;
+  /** After how many days (1 to 365) an open deal with no stage move or activity is stalled. */
+  stalled_after_days: number;
   updated_at: string;
   set_by: string | null;
   /** Today in the organization's zone. */
@@ -1713,6 +1725,8 @@ export function organizationSettings(
 export function setOrganizationSettings(input: {
   time_zone: string;
   fiscal_year_start_month: number;
+  /** Absent keeps the stored value. */
+  stalled_after_days?: number;
 }): Promise<OrganizationSettings> {
   return api("/settings/organization", { method: "PUT", body: input });
 }

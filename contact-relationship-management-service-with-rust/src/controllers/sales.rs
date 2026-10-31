@@ -646,6 +646,77 @@ async fn create_deal(
     })
 }
 
+/// One deal as `GET /api/deals` lists it: the record, and whether it is stalled (CRM-R4,
+/// CRM-D20). The amount is `null` when masked.
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ListedDeal")]
+pub(crate) struct ListedDeal {
+    #[serde(flatten)]
+    deal: deals::Model,
+    /// Open, with no stage move and no activity on the deal for the organization's
+    /// `stalled_after_days` or more. Derived on every read, never stored.
+    stalled: bool,
+    /// The later of the last stage move and the last activity on the deal that has happened.
+    last_touched_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// The newest `occurred_at` that has happened of the live activities on each of `pids`.
+async fn last_activities(
+    db: &impl sea_orm::ConnectionTrait,
+    pids: &[Uuid],
+) -> Result<std::collections::HashMap<Uuid, chrono::DateTime<chrono::Utc>>> {
+    use sea_orm::sea_query::{Expr, Func};
+    if pids.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+    let rows: Vec<(Uuid, sea_orm::prelude::DateTimeWithTimeZone)> = activities::Entity::find()
+        .select_only()
+        .column(activities::Column::SubjectPid)
+        .column_as(
+            Expr::expr(Func::max(Expr::col(activities::Column::OccurredAt))),
+            "at",
+        )
+        .filter(activities::Column::SubjectKind.eq("deal"))
+        .filter(activities::Column::DeletedAt.is_null())
+        .filter(activities::Column::OccurredAt.lte(chrono::Utc::now()))
+        .filter(activities::Column::SubjectPid.is_in(pids.iter().copied()))
+        .group_by(activities::Column::SubjectPid)
+        .into_tuple()
+        .all(db)
+        .await?;
+    Ok(rows
+        .into_iter()
+        .map(|(pid, at)| (pid, at.to_utc()))
+        .collect())
+}
+
+/// The deals with their stalled flag, at `now`.
+async fn listed(
+    db: &impl sea_orm::ConnectionTrait,
+    rows: Vec<deals::Model>,
+) -> Result<Vec<ListedDeal>> {
+    use crate::rules::stalled;
+    let days = super::organization::stalled_after_days(db).await?;
+    let pids: Vec<Uuid> = rows.iter().map(|d| d.pid).collect();
+    let activity = last_activities(db, &pids).await?;
+    let now = chrono::Utc::now();
+    Ok(rows
+        .into_iter()
+        .map(|deal| {
+            let touched = stalled::last_touch(
+                deal.stage_moved_at.to_utc(),
+                activity.get(&deal.pid).copied(),
+                now,
+            );
+            ListedDeal {
+                stalled: stalled::is_stalled(deal.closed_at.is_some(), touched, now, days),
+                last_touched_at: touched,
+                deal,
+            }
+        })
+        .collect())
+}
+
 /// `GET /api/deals?pipeline=<pid>` — the board rows (open + closed).
 #[derive(Debug, Deserialize)]
 struct DealListParams {
@@ -689,6 +760,7 @@ async fn list_deals(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
+    let rows = listed(&ctx.db, rows).await?;
     page.respond(readable_deals(&rows, &caller, tagged.is_some()), more, &uri)
 }
 
@@ -702,7 +774,7 @@ async fn list_deals(
 /// contacts). With enforcement off (the default) or no deny rule
 /// configured, `authorize_record` never denies, so this is a no-op.
 fn readable_deals(
-    rows: &[deals::Model],
+    rows: &[ListedDeal],
     caller: &MaybeAuthUser,
     drop_masked: bool,
 ) -> Vec<serde_json::Value> {
@@ -711,7 +783,7 @@ fn readable_deals(
             let obligations = auth::authorize_record(
                 caller,
                 authentication_verifier::Action::Read,
-                &auth::deal_resource_attrs(row),
+                &auth::deal_resource_attrs(&row.deal),
             )
             .ok()?;
             let mut value = serde_json::json!(row);
@@ -772,6 +844,8 @@ async fn deal_stage(
     let name = deal.name.clone();
     let mut active: deals::ActiveModel = deal.into();
     active.stage_pid = ActiveValue::set(stage.pid);
+    // A stage move is a touch (CRM-D20); a move into the stage it is in still counts.
+    active.stage_moved_at = ActiveValue::set(chrono::Utc::now().into());
     if let Some(position) = payload.kanban_position {
         active.kanban_position = ActiveValue::set(position);
     }
@@ -865,6 +939,7 @@ async fn reopen_deal(
         .ok_or_else(|| unprocessable("pipeline has no open stage"))?;
     let mut active: deals::ActiveModel = deal.into();
     active.stage_pid = ActiveValue::set(target.pid);
+    active.stage_moved_at = ActiveValue::set(chrono::Utc::now().into());
     active.closed_at = ActiveValue::set(None);
     active.won = ActiveValue::set(false);
     active.lost_reason = ActiveValue::set(None);

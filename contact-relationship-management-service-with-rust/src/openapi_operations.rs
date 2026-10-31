@@ -736,14 +736,14 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "get",
         "/api/settings/organization",
         "insights",
-        "The organization's calendar (CRM-T171): the IANA time zone of today and of report months, the month the fiscal year starts, and today there",
+        "The organization's calendar (CRM-T171): the IANA time zone of today and of report months, the month the fiscal year starts, and today there; and after how many days an open deal is stalled (CRM-T183)",
         Kind::Ok,
     ),
     (
         "put",
         "/api/settings/organization",
         "insights",
-        "Set the organization's time zone and fiscal year start (an administrator's; 422 names the member; audited). A caller may name its own zone for today with the CRM-Time-Zone header",
+        "Set the organization's time zone, fiscal year start and stalled_after_days (1 to 365; absent keeps the stored value) (an administrator's; 422 names the member; audited). A caller may name its own zone for today with the CRM-Time-Zone header",
         Kind::Ok,
     ),
     (
@@ -1271,7 +1271,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "Open tickets by priority × breach (ETag conditional)",
         Kind::Ok,
     ),
-    ("get", "/api/deals", "sales", "Deals (?pipeline=)", Kind::Ok),
+    (
+        "get",
+        "/api/deals",
+        "sales",
+        "Deals (?pipeline=), each with stalled (open, no stage move or activity on the deal for the organization's stalled_after_days) and last_touched_at (CRM-R4, CRM-D20)",
+        Kind::Ok,
+    ),
     (
         "post",
         "/api/deals",

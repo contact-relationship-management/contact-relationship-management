@@ -87,7 +87,7 @@ history remain under a pid that no longer identifies anyone.
 | `forecast_snapshots` | None (totals per day) | — | `swept` | Not applicable |
 | `form_submissions` | Contact pid, lead pid, form, purpose, confirmation times | Contacts | `manual` | Submissions of the contact deleted |
 | `fx_rates` | None (exchange rates, who set them) | Reps | `manual` | Not applicable |
-| `organization_settings` | None (the organization's time zone and fiscal year start, who set them; CRM-T171) | Administrators | `manual` | Not applicable |
+| `organization_settings` | None (the organization's time zone and fiscal year start, the days after which a deal is stalled, who set them; CRM-T171, CRM-T183) | Administrators | `manual` | Not applicable |
 | `idempotency_keys` | Cached request and response bodies, which can hold anything the request did | Whoever the request concerned | `ttl` | Expires after 24 hours |
 | `kb_daily` | None (daily article counts) | — | `manual` | Not applicable |
 | `lead_imports` | Who imported, source note, the pids created | Reps; leads | `manual` | Not applicable |

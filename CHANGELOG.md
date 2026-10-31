@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a deal with no stage move or activity for N days is flagged stalled (CRM-T183, 2026-10-31)
+
+CRM-R4 asked for it and CRM-T6 was marked done without it. An open deal is now stalled when the organization's number of days (default 14, set by an administrator beside the calendar) has passed since its last stage move or the last activity logged on it; a closed deal never is. The service derives it on every read of the deal list (CRM-D20; migration `000058` records each deal's last stage move); the Kanban board flags the card and the deal page says since when. **Not done or verified:** the new texts are unreviewed machine drafts except English; activities on the deal's contact or account do not count; no dashboard count, notification or workflow trigger; no number per pipeline; the stale-deals insight is unchanged; not run against a live service with the UI. Details: the [service](contact-relationship-management-service-with-rust/CHANGELOG.md) and [UI](contact-relationship-management-ui-with-svelte/CHANGELOG.md) changelogs.
+
 ### Changed — the service uses the published matcher 0.2.0 (CRM-T87, 2026-10-31)
 
 The maintainer published `contact-relationship-management-matcher` 0.2.0 to crates.io; the service now depends on it (was 0.1.2), so the duplicate check has the word lists by language (CRM-T169) and the phone rules for every script and trunk plan (CRM-T170). No service code changed. **Not done or verified:** no service release carries it; the duplicate check was not run against a live service with the UI; the word lists and trunk table are still unreviewed drafts. Details: the [service](contact-relationship-management-service-with-rust/CHANGELOG.md) and matcher changelogs.

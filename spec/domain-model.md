@@ -76,8 +76,10 @@ rows: `name`, `position`, `probability_percent` (0–100),
 `account_pid`, `primary_contact_pid`, `owner_ref`, `pipeline_pid`,
 `stage_pid`, `amount_minor` + `currency`, `expected_close_on`,
 `kanban_position`, `source_campaign_pid` (nullable), `closed_at`,
-`won` (set only by entering a terminal stage), `lost_reason`.
-Stage moves are audited; a deal in a terminal stage is immutable
+`won` (set only by entering a terminal stage), `lost_reason`,
+`stage_moved_at` (the last stage move or reopen; creation until the
+first). `stalled` and `last_touched_at` are derived on read
+(CRM-D20). Stage moves are audited; a deal in a terminal stage is immutable
 except reopening to its prior stage with a reason.
 
 **ForecastSnapshot** — optional persisted roll-up per period/owner

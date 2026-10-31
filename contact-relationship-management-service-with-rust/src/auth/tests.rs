@@ -868,6 +868,7 @@ fn a_deal(
         won,
         lost_reason: None,
         deleted_at: None,
+        stage_moved_at: chrono::Utc::now().into(),
     }
 }
 

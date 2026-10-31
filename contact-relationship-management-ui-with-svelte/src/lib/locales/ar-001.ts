@@ -327,6 +327,8 @@ export default {
   "deal.reopened": "أُعيد فتح الصفقة",
   "deal.won": "فازت",
   "deal.lost": "خسرت",
+  "deal.stalled": "متوقفة",
+  "deal.stalledSince": "لا نقل بين المراحل ولا نشاط منذ {date}",
   "campaign.funnel": "القمع",
   "campaign.roi": "العائد على الاستثمار",
   "campaign.convert": "احتسب العملات الأخرى بسعر الصرف السائد",
@@ -701,6 +703,8 @@ export default {
   "org.timeZone": "المنطقة الزمنية (IANA، مثل Asia/Tokyo)",
   "org.fiscalStart": "تبدأ السنة المالية في",
   "org.save": "حفظ التقويم",
+  "org.stalledAfter":
+    "تُعدّ الصفقة متوقفة بعد هذا العدد من الأيام دون نقل بين المراحل أو نشاط",
   "org.today": "اليوم هناك: {date}",
   "nav.attribution": "الإسناد",
   "attr.title": "الإسناد",
