@@ -64,6 +64,12 @@ pub struct Text {
     pub other_languages: &'static str,
     /// The purposes' words: marketing, newsletter, events, product updates, any other.
     pub purposes: [&'static str; 5],
+    /// The web form's confirmation mail: its subject (CRM-T180).
+    pub mail_subject: &'static str,
+    /// The confirmation mail's text, with `{name}`, `{purpose}`, `{link}` and `{days}`.
+    pub mail_body: &'static str,
+    /// The web form's answer to every submission it accepts or ignores.
+    pub form_received: &'static str,
 }
 
 /// The pages' languages; English first, as the fallback.
@@ -101,6 +107,9 @@ pub const TEXTS: &[Text] = &[
             "Product updates",
             "Messages",
         ],
+        mail_subject: "Please confirm your subscription",
+        mail_body: "Hello {name},\n\nSomeone asked for this address to receive: {purpose}.\nTo confirm, open this link and press the button:\n\n{link}\n\nThe link works for {days} days. If you did not ask for this, ignore this message and nothing will be sent to you.\n",
+        form_received: "If the address is valid, a confirmation message is on its way.",
     },
     Text {
         lang: "ar",
@@ -135,6 +144,9 @@ pub const TEXTS: &[Text] = &[
             "تحديثات المنتجات",
             "الرسائل",
         ],
+        mail_subject: "يرجى تأكيد اشتراكك",
+        mail_body: "مرحبًا {name}،\n\nطلب شخص ما أن يتلقى هذا العنوان: {purpose}.\nللتأكيد، افتح هذا الرابط واضغط على الزر:\n\n{link}\n\nيعمل الرابط مدة {days} أيام. إذا لم تطلب ذلك، فتجاهل هذه الرسالة ولن يُرسل إليك شيء.\n",
+        form_received: "إذا كان العنوان صالحًا، فإن رسالة التأكيد في طريقها إليك.",
     },
     Text {
         lang: "cy",
@@ -169,6 +181,9 @@ pub const TEXTS: &[Text] = &[
             "Newyddion am gynhyrchion",
             "Negeseuon",
         ],
+        mail_subject: "Cadarnhewch eich tanysgrifiad",
+        mail_body: "Helo {name},\n\nGofynnodd rhywun i'r cyfeiriad hwn dderbyn: {purpose}.\nI gadarnhau, agorwch y ddolen hon a gwasgwch y botwm:\n\n{link}\n\nMae'r ddolen yn gweithio am {days} diwrnod. Os na wnaethoch ofyn am hyn, anwybyddwch y neges hon ac ni fydd dim yn cael ei anfon atoch.\n",
+        form_received: "Os yw'r cyfeiriad yn ddilys, mae neges gadarnhau ar ei ffordd.",
     },
     Text {
         lang: "de",
@@ -203,6 +218,9 @@ pub const TEXTS: &[Text] = &[
             "Produktneuigkeiten",
             "Nachrichten",
         ],
+        mail_subject: "Bitte bestätigen Sie Ihr Abonnement",
+        mail_body: "Hallo {name},\n\njemand hat angefragt, dass diese Adresse Folgendes erhält: {purpose}.\nZum Bestätigen öffnen Sie diesen Link und drücken Sie die Schaltfläche:\n\n{link}\n\nDer Link ist {days} Tage gültig. Wenn Sie das nicht angefragt haben, ignorieren Sie diese Nachricht; Ihnen wird dann nichts geschickt.\n",
+        form_received: "Wenn die Adresse gültig ist, ist eine Bestätigungsnachricht unterwegs.",
     },
     Text {
         lang: "es",
@@ -237,6 +255,9 @@ pub const TEXTS: &[Text] = &[
             "Novedades de productos",
             "Mensajes",
         ],
+        mail_subject: "Confirme su suscripción",
+        mail_body: "Hola, {name}:\n\nAlguien pidió que esta dirección reciba: {purpose}.\nPara confirmarlo, abra este enlace y pulse el botón:\n\n{link}\n\nEl enlace funciona durante {days} días. Si usted no lo pidió, ignore este mensaje y no se le enviará nada.\n",
+        form_received: "Si la dirección es válida, un mensaje de confirmación está en camino.",
     },
     Text {
         lang: "fr",
@@ -271,6 +292,9 @@ pub const TEXTS: &[Text] = &[
             "Nouveautés produits",
             "Messages",
         ],
+        mail_subject: "Veuillez confirmer votre abonnement",
+        mail_body: "Bonjour {name},\n\nQuelqu’un a demandé que cette adresse reçoive : {purpose}.\nPour confirmer, ouvrez ce lien et appuyez sur le bouton :\n\n{link}\n\nLe lien fonctionne pendant {days} jours. Si vous n’avez rien demandé, ignorez ce message et rien ne vous sera envoyé.\n",
+        form_received: "Si l’adresse est valide, un message de confirmation est en route.",
     },
     Text {
         lang: "hi",
@@ -305,6 +329,9 @@ pub const TEXTS: &[Text] = &[
             "उत्पाद अपडेट",
             "संदेश",
         ],
+        mail_subject: "कृपया अपनी सदस्यता की पुष्टि करें",
+        mail_body: "नमस्ते {name},\n\nकिसी ने अनुरोध किया है कि इस पते पर यह भेजा जाए: {purpose}।\nपुष्टि करने के लिए यह लिंक खोलें और बटन दबाएँ:\n\n{link}\n\nयह लिंक {days} दिनों तक काम करता है। यदि आपने यह अनुरोध नहीं किया था, तो इस संदेश को अनदेखा करें और आपको कुछ नहीं भेजा जाएगा।\n",
+        form_received: "यदि पता मान्य है, तो पुष्टि का संदेश आपके पास आ रहा है।",
     },
     Text {
         lang: "zh",
@@ -333,8 +360,30 @@ pub const TEXTS: &[Text] = &[
         not_available: "该选项不可用。",
         other_languages: "其他语言",
         purposes: ["营销消息", "新闻通讯", "活动邀请", "产品更新", "消息"],
+        mail_subject: "请确认您的订阅",
+        mail_body: "{name}，您好：\n\n有人请求让此地址接收：{purpose}。\n如需确认，请打开以下链接并点击按钮：\n\n{link}\n\n该链接在 {days} 天内有效。如果您没有提出此请求，请忽略本邮件，我们不会向您发送任何内容。\n",
+        form_received: "如果该地址有效，确认邮件正在发送中。",
     },
 ];
+
+/// The web form's confirmation mail in `text`'s language: its subject and text. `{name}` is
+/// filled last, so a name that holds a placeholder stays as typed.
+#[must_use]
+pub fn confirmation_mail(
+    text: &Text,
+    name: &str,
+    purpose: &str,
+    link: &str,
+    days: i64,
+) -> (String, String) {
+    let body = text
+        .mail_body
+        .replace("{purpose}", text.purpose(purpose))
+        .replace("{link}", link)
+        .replace("{days}", &days.to_string())
+        .replace("{name}", name);
+    (text.mail_subject.to_string(), body)
+}
 
 /// The purposes in the order of [`Text::purposes`].
 const PURPOSE_ORDER: [&str; 4] = ["marketing", "newsletter", "events", "product_updates"];
@@ -471,6 +520,9 @@ mod tests {
                 text.not_receiving,
                 text.not_available,
                 text.other_languages,
+                text.mail_subject,
+                text.mail_body,
+                text.form_received,
             ];
             assert!(
                 all.iter()
@@ -479,6 +531,19 @@ mod tests {
             );
             assert!(
                 text.confirm_heading.contains("{purpose}") && text.confirmed.contains("{purpose}")
+            );
+            for placeholder in ["{name}", "{purpose}", "{link}", "{days}"] {
+                assert_eq!(
+                    text.mail_body.matches(placeholder).count(),
+                    1,
+                    "{}: {placeholder}",
+                    text.lang
+                );
+            }
+            assert!(
+                text.mail_body.contains("\n{link}\n"),
+                "{}: the link on its own line",
+                text.lang
             );
             assert!(
                 all.iter().all(|s| !s.contains(['<', '>', '&', '"'])),
@@ -492,6 +557,9 @@ mod tests {
                     text.lang
                 );
                 assert_ne!(text.purposes, english.purposes, "{}", text.lang);
+                assert_ne!(text.mail_subject, english.mail_subject, "{}", text.lang);
+                assert_ne!(text.mail_body, english.mail_body, "{}", text.lang);
+                assert_ne!(text.form_received, english.form_received, "{}", text.lang);
             }
             assert_eq!(text.dir == "rtl", text.lang == "ar");
         }
@@ -504,5 +572,27 @@ mod tests {
         assert_eq!(de.purpose("newsletter"), "Der Newsletter");
         assert_eq!(de.purpose("something_else"), "Nachrichten");
         assert_eq!(english().purpose("marketing"), "Marketing messages");
+    }
+
+    #[test]
+    fn the_confirmation_mail_is_filled_in_its_language() {
+        let (subject, body) = confirmation_mail(
+            text_for("de").unwrap(),
+            "Ada {link}",
+            "newsletter",
+            "https://crm.test/confirm/t?lang=de",
+            7,
+        );
+        assert_eq!(subject, "Bitte bestätigen Sie Ihr Abonnement");
+        assert!(body.starts_with("Hallo Ada {link},"), "{body}");
+        assert!(body.contains("Der Newsletter"), "{body}");
+        assert!(
+            body.contains("\nhttps://crm.test/confirm/t?lang=de\n"),
+            "{body}"
+        );
+        assert!(body.contains("7 Tage"), "{body}");
+        let (subject, body) = confirmation_mail(english(), "Ada", "marketing", "L", 7);
+        assert_eq!(subject, "Please confirm your subscription");
+        assert!(body.contains("receive: Marketing messages."), "{body}");
     }
 }

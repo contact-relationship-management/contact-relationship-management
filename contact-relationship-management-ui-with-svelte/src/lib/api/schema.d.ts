@@ -18134,6 +18134,8 @@ export interface paths {
                 content: {
                     "application/json": {
                         email: string;
+                        /** @description The BCP 47 tag of the page the form is on (CRM-T180): the confirmation mail, its link and this answer are in it when the public pages have it, else in the request's Accept-Language, else English. Never stored. */
+                        language?: string;
                         name: string;
                         /** @description Honeypot: leave empty. A filled value creates nothing. */
                         website?: string;
@@ -18141,7 +18143,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Received */
+                /** @description Received, in the request's language (Content-Language) */
                 202: {
                     headers: {
                         [name: string]: unknown;

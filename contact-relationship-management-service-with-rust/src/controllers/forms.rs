@@ -21,7 +21,6 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use super::marketing::consent::apply_consent_in;
-use super::marketing::purpose_label;
 use super::sales::{NewLead, capture_lead};
 use crate::mail;
 use crate::models::_entities::{contacts, leads};
@@ -29,6 +28,7 @@ use crate::models::audit_logs::Model as Audit;
 use crate::models::live::FindLive;
 use crate::models::records;
 use crate::rules::forms::{self as rules, Counter};
+use crate::rules::public_text::{self, Text};
 use crate::rules::tokens;
 use crate::settings::{self, WebForm};
 use crate::validation::Problems;
@@ -55,6 +55,11 @@ pub(crate) struct FormPayload {
     /// A field real visitors never see; a bot fills it.
     #[serde(default)]
     website: Option<String>,
+    /// The language of the page the form is on (a BCP 47 tag, CRM-T180): the confirmation mail
+    /// and this answer are in it when it is one of the public pages' languages, else in the
+    /// request's `Accept-Language`, else English. Used for this request only and never stored.
+    #[serde(default)]
+    language: Option<String>,
 }
 
 fn counter() -> &'static Mutex<Counter> {
@@ -120,15 +125,32 @@ async fn preflight(Path(slug): Path<String>, headers: HeaderMap) -> Response {
 }
 
 /// The one answer to every submission that was not an error.
-fn received() -> Response {
-    (
+/// The one answer to every submission accepted or ignored, in the request's language.
+fn received(text: &Text) -> Response {
+    let mut response = (
         StatusCode::ACCEPTED,
         axum::Json(serde_json::json!({
             "status": "received",
-            "message": "If the address is valid, a confirmation message is on its way."
+            "message": text.form_received,
         })),
     )
-        .into_response()
+        .into_response();
+    let headers = response.headers_mut();
+    headers.insert(header::VARY, HeaderValue::from_static("accept-language"));
+    if let Ok(lang) = HeaderValue::from_str(text.lang) {
+        headers.insert(header::CONTENT_LANGUAGE, lang);
+    }
+    response
+}
+
+/// The language of the mail and the answer (CRM-T180): the form page's `language`, else the
+/// request's `Accept-Language`, else English. The contact's language is not stored (CRM-R29):
+/// the request that asks for the mail says it.
+fn language_of(payload: &FormPayload, headers: &HeaderMap) -> &'static Text {
+    let accept = headers
+        .get(header::ACCEPT_LANGUAGE)
+        .and_then(|v| v.to_str().ok());
+    public_text::negotiate(payload.language.as_deref(), accept)
 }
 
 /// `429` with the seconds to wait.
@@ -178,8 +200,9 @@ async fn submit(
     if let Err(retry_after) = within_limits(form, &headers) {
         return with_cors(too_many(retry_after), &origin);
     }
-    let response = match accept(&ctx, form, &payload).await {
-        Ok(()) => received(),
+    let text = language_of(&payload, &headers);
+    let response = match accept(&ctx, form, &payload, text).await {
+        Ok(()) => received(text),
         Err(error) => error.into_response(),
     };
     with_cors(response, &origin)
@@ -193,7 +216,12 @@ fn unavailable() -> Error {
 }
 
 /// Validate, then make or find the person, contact and lead, and ask for the confirmation.
-async fn accept(ctx: &AppContext, form: &WebForm, payload: &FormPayload) -> Result<()> {
+async fn accept(
+    ctx: &AppContext,
+    form: &WebForm,
+    payload: &FormPayload,
+    text: &'static Text,
+) -> Result<()> {
     if payload
         .website
         .as_deref()
@@ -250,7 +278,7 @@ async fn accept(ctx: &AppContext, form: &WebForm, payload: &FormPayload) -> Resu
         state != "granted" && !confirmation_sent_lately(&txn, contact.pid, &form.purpose).await?;
     let submission = record_submission(&txn, form, contact.pid, lead_pid, ask).await?;
     txn.commit().await?;
-    if ask && !send_confirmation(&ctx.db, form, &contact, name, email).await {
+    if ask && !send_confirmation(&ctx.db, form, &contact, (name, email), text).await {
         clear_sent_mark(&ctx.db, submission).await;
     }
     Ok(())
@@ -389,14 +417,16 @@ async fn clear_sent_mark(db: &sea_orm::DatabaseConnection, submission: Uuid) {
     }
 }
 
-/// Send the confirmation to the address in the request. It is not marketing and carries no
-/// unsubscribe link. Returns whether it went out; a failure is logged and not shown.
+/// Send the confirmation to the address in the request, in `text`'s language, with a link that
+/// opens the confirmation page in the same language (`?lang=`; CRM-T180). It is not marketing
+/// and carries no unsubscribe link. Returns whether it went out; a failure is logged and not
+/// shown.
 async fn send_confirmation(
     db: &sea_orm::DatabaseConnection,
     form: &WebForm,
     contact: &contacts::Model,
-    name: &str,
-    email: &str,
+    (name, email): (&str, &str),
+    text: &Text,
 ) -> bool {
     let Some(signer) = crate::unsubscribe::current() else {
         tracing::warn!(form = %form.slug, "web form: no signed-link secret, so no confirmation");
@@ -425,20 +455,15 @@ async fn send_confirmation(
             return false;
         }
     };
-    let link = signer.link("confirm", &token);
+    let link = format!("{}?lang={}", signer.link("confirm", &token), text.lang);
+    let (subject, body) =
+        public_text::confirmation_mail(text, name, &form.purpose, &link, CONFIRM_DAYS);
     let sender = mail::current();
     let message = mail::Message {
         to: email.to_string(),
         to_name: name.to_string(),
-        subject: "Please confirm your subscription".to_string(),
-        text: format!(
-            "Hello {name},\n\n\
-             Someone asked for this address to receive: {}.\n\
-             To confirm, open this link and press the button:\n\n{link}\n\n\
-             The link works for {CONFIRM_DAYS} days. If you did not ask for this, ignore this \
-             message and nothing will be sent to you.\n",
-            purpose_label(&form.purpose).to_lowercase()
-        ),
+        subject,
+        text: body,
         message_id: sender.new_message_id(),
         unsubscribe_url: None,
     };

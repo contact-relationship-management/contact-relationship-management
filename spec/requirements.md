@@ -527,7 +527,14 @@ was sent to it.*
   keep one more piece of personal data for no other use. A page that answers an
   error (an invalid link, a refused choice) stays HTML; it is no longer turned into
   a JSON problem document.
-- Not built: sending the confirmation or preference mail, a language beyond the
+- **The confirmation mail** the web form sends (CRM-R31) is in the language of the request
+  that asked for it, and its link opens the confirmation page in that language (CRM-T180);
+  this keeps the rule above, since the language comes from the request, not from a stored
+  field. The links `POST /api/contacts/{pid}/consent/request` and `/preferences-link` return
+  take `?lang=` like any public page, so a caller that sends them can name its mail's language.
+- Not built: sending the preference mail, the confirmation mail of
+  `consent/request` (the caller sends it), the unsubscribe link of campaign and nurture
+  mail naming the template's language, a language beyond the
   UI's eight on the public pages, a purpose list an administrator can edit (the
   four are fixed in code), and consent per channel.
 
@@ -589,8 +596,9 @@ address, and that bots and strangers cannot fill the CRM or use it to spam someo
   sequence pid). A slug that is not configured is `404`. The visitor cannot choose the
   purpose or the sequence.
 - **`POST /forms/{slug}`** (outside `/api`, public by design, like the unsubscribe pages)
-  takes `{ "name", "email" }` and a honeypot field `website`. It answers `202` with the
-  same body whether the address is new, already known, already confirmed, or the honeypot
+  takes `{ "name", "email" }`, a honeypot field `website` and an optional `language` (the
+  BCP 47 tag of the page the form is on, CRM-T180). It answers `202` with the
+  same body (for one language) whether the address is new, already known, already confirmed, or the honeypot
   was filled, so the answer cannot be used to find out who is in the CRM.
 - **Origin check.** The request must carry an `Origin` on the form's list; one that does
   not, or that carries none, is `403`. An `OPTIONS` preflight is answered for allowed
@@ -624,6 +632,13 @@ address, and that bots and strangers cannot fill the CRM or use it to spam someo
   address cannot be flooded by repeat submissions. A failed send is logged and is not shown
   to the visitor. Until the visitor confirms, the purpose is `pending`, which allows no
   send.
+- **The mail's language (CRM-T180).** The confirmation mail and the `202` answer are in the
+  language of the request that asked for them: the form's `language` when the public pages
+  have it, else the request's `Accept-Language` (by its `q` weights), else English, chosen
+  among the public pages' eight (`rules::public_text`, machine drafts but English). The mailed
+  link carries `?lang=` with that language, so the confirmation page opens in the language of
+  the mail. The answer carries `Content-Language` and `Vary: Accept-Language`. Nothing about
+  the language is stored (CRM-R29): it is in the request and in the link the person holds.
 - **Optional nurture enrolment** happens when the visitor confirms (in the same transaction
   as the grant), never before. A withdrawal before confirming means the link no longer works
   and nothing is enrolled.

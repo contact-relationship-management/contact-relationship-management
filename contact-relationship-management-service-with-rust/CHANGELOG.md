@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the web form's confirmation mail and answer in the request's language (CRM-T180, CRM-R29, CRM-R31)
+
+`rules::public_text::Text` gains `mail_subject`, `mail_body` and `form_received` (eight languages, machine drafts but English) and `confirmation_mail`; `controllers::forms` takes an optional `language`, negotiates it with `Accept-Language` (`language_of`), sends the confirmation in that language with `?lang=` on its link, and answers `202` in it with `Content-Language` and `Vary: Accept-Language`. `controllers::marketing::purpose_label` is removed. OpenAPI: `/forms/{slug}` documents `language`. Request test `the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_it`. **Not done or verified:** the translations are unreviewed; the form's error answers stay English; no preference mail is sent and the unsubscribe links of campaign and nurture mail do not name the template's language; not sent through a real provider.
+
 ### Fixed — the remaining "today"s in the organization's or the caller's zone (CRM-T179, CRM-R48, CRM-R94)
 
 `controllers::organization::caller_today` now decides `GET /api/insights/followups`, `pipeline-hygiene` and `memberships`; `middleware::insight_cache::insight_key` takes the `CRM-Time-Zone` header. `organization_today` decides `kb_daily.day` (was `CURRENT_DATE`), the `kb-deflection` window (its ticket count by `opened_at` in the organization's zone, was `opened_at::date`), a campaign funnel's `rate_date` when nothing is converted, a workflow `create_task`'s `due_on`, the employment check's `since` (CRM's own record day; WPM-R208's answer has no date), attribution's unshown placeholder day and the seed's rate day. Request test `the_other_todays_follow_the_organization_or_the_caller`. **Not done or verified:** stored `kb_daily` days are not moved; deal close days (close-day rates, attribution's `from`/`to`) stay UTC dates; no request test of the memberships window or the employment check in a zone; not run with the UI against a live service.

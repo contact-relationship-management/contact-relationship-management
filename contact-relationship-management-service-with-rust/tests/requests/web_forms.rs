@@ -526,3 +526,100 @@ async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_s
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+async fn the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_it() {
+    // CRM-T180: the form page's `language`, else the request's Accept-Language, else English;
+    // the link opens the confirmation page in the same language; nothing about it is stored.
+    request::<App, _, _>(|request, ctx| async move {
+        let (recorder, _restore) = arrange(vec![form("lang-signup", "newsletter", None)]);
+
+        // The browser asks for French: the answer and the mail are French.
+        let answer = request
+            .post("/forms/lang-signup")
+            .add_header("origin", ORIGIN)
+            .add_header("x-forwarded-for", "192.0.2.10")
+            .add_header("accept-language", "fr-CA, en;q=0.5")
+            .json(&json!({ "name": "Marie Curie", "email": "marie@radium.test" }))
+            .await;
+        assert_eq!(answer.status_code(), StatusCode::ACCEPTED);
+        assert_eq!(answer.header("content-language").to_str().unwrap(), "fr");
+        assert_eq!(answer.header("vary").to_str().unwrap(), "accept-language");
+        let french: Value = answer.json();
+        let words = contact_relationship_management::rules::public_text::text_for("fr").unwrap();
+        assert_eq!(french["message"], words.form_received);
+        assert_ne!(
+            words.form_received,
+            contact_relationship_management::rules::public_text::english().form_received
+        );
+        let sent = recorder.sent();
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0].subject, "Veuillez confirmer votre abonnement");
+        assert!(
+            sent[0].text.starts_with("Bonjour Marie Curie,"),
+            "{}",
+            sent[0].text
+        );
+        assert!(sent[0].text.contains("La lettre d"), "{}", sent[0].text);
+        let confirm = path_of(&sent[0].text);
+        assert!(confirm.ends_with("?lang=fr"), "{confirm}");
+        // The page the link opens is French, whatever the browser that opens it asks for.
+        let page = request
+            .get(&confirm)
+            .add_header("accept-language", "de")
+            .await;
+        page.assert_status_ok();
+        assert!(page.text().contains("<html lang=\"fr\""), "{}", page.text());
+
+        // The form page names its language: it wins over the browser's.
+        let answer = request
+            .post("/forms/lang-signup")
+            .add_header("origin", ORIGIN)
+            .add_header("x-forwarded-for", "192.0.2.11")
+            .add_header("accept-language", "de")
+            .json(&json!({ "name": "Ibn Sina", "email": "ibn@sina.test", "language": "ar" }))
+            .await;
+        assert_eq!(answer.header("content-language").to_str().unwrap(), "ar");
+        let sent = recorder.sent();
+        assert_eq!(sent.len(), 2);
+        assert_eq!(sent[1].subject, "يرجى تأكيد اشتراكك");
+        assert!(path_of(&sent[1].text).ends_with("?lang=ar"));
+
+        // A language the pages lack, and no header: English.
+        let answer = request
+            .post("/forms/lang-signup")
+            .add_header("origin", ORIGIN)
+            .add_header("x-forwarded-for", "192.0.2.12")
+            .json(&json!({ "name": "Sei Shonagon", "email": "sei@heian.test", "language": "ja" }))
+            .await;
+        assert_eq!(answer.header("content-language").to_str().unwrap(), "en");
+        let sent = recorder.sent();
+        assert_eq!(sent.len(), 3);
+        assert_eq!(sent[2].subject, "Please confirm your subscription");
+        assert!(
+            sent[2].text.contains("receive: The newsletter."),
+            "{}",
+            sent[2].text
+        );
+        assert!(path_of(&sent[2].text).ends_with("?lang=en"));
+
+        // No language is kept: no column of the contact or of the submission holds one.
+        let columns = ctx
+            .db
+            .query_one_raw(Statement::from_string(
+                DatabaseBackend::Postgres,
+                "SELECT count(*) AS n FROM information_schema.columns \
+                 WHERE table_name IN ('contacts', 'form_submissions', 'link_tokens') \
+                 AND column_name ILIKE '%lang%'",
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<i64>("", "n")
+            .unwrap();
+        assert_eq!(columns, 0);
+    })
+    .await;
+}

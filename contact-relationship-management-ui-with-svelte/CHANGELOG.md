@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the review records cover the confirmation mail; `schema.d.ts` regenerated (CRM-T180)
+
+Each locale's record in `spec/reviews/` names the web form's confirmation mail and answer (the service's `rules::public_text`) among what a review covers; none is reviewed. `src/lib/api/schema.d.ts` regenerated for the form's new `language` field. No page changed.
+
 ### Added — the organization's calendar on the reports page; the reader's zone sent with every request (CRM-T171)
 
 `client.ts` sends `CRM-Time-Zone` (the browser's zone, `readerZone()`) with every API request, so the service's "today" is the reader's. The reports page groups by fiscal quarter and fiscal year as well as month, says which zone and fiscal start a result used, and has a form for the organization's time zone and fiscal start month (refused for a non-administrator by the service). `organizationSettings` and `setOrganizationSettings` in `crm.ts`; `schema.d.ts` regenerated; 12 strings in all 8 locales (machine drafts). The stand-in serves the settings and the fiscal groups. Tests: `tests/unit/reader-zone.test.ts` (2), 2 in `demo.test.ts`, a tour test. **Not done:** the form is on the reports page, not a settings page of its own; the stand-in's months are UTC months.

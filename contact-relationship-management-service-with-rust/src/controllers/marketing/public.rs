@@ -469,11 +469,6 @@ async fn confirm_target(
     ))
 }
 
-/// The English words for a purpose (the web form's own answer, which is not yet translated).
-pub(crate) fn purpose_label(purpose: &str) -> &'static str {
-    public_text::english().purpose(purpose)
-}
-
 /// `GET /confirm/{token}` — the page a confirmation message links to. It changes nothing,
 /// because mail scanners follow links; the button posts (CRM-R29).
 #[debug_handler]
