@@ -17,6 +17,9 @@ subproject keeps a detailed changelog:
 - Every container image reference (compose files, Dockerfiles, CI service containers, scripts, `.woodpecker.yml`) now carries an
   `@sha256` digest (16 references; the same digests as WPM where the tag matches). `scripts/check-actions-pinned.py` checks images
   too, and skips `*:local` images the compose file builds itself. Dependabot's docker entries keep the digests current.
+- A root `compose.yaml` runs a demo from a fresh clone (PostgreSQL, Redis, the API; sign-in off and stated so, email
+  simulated, loopback port, images pinned by digest), as PPM and WPM already had. Built and smoke-tested with Docker:
+  `/_ping` 200, a contact created, the audit chain verified, the WPM bridge route `404` while unconfigured.
 - README: "Works on its own".
 
 ### Added — the tables for consent profiles, purposes and consent per channel (CRM-T166 step c, 2026-10-31)

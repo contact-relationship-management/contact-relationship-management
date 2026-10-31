@@ -6,6 +6,20 @@
 - PostgreSQL 18 (or `podman compose`)
 - Node.js and pnpm, for the front end
 
+## Try it in one command (demo)
+
+From a fresh clone, with no other repository:
+
+```bash
+podman compose up --build        # or: docker compose up --build
+curl http://localhost:5150/_ping
+```
+
+This starts PostgreSQL, Redis and the API ([compose.yaml](compose.yaml)). **Demo only:** sign-in is off, email is simulated,
+and the port is published on this machine's loopback address only. Use synthetic data. The family bridges stay off until you
+set their URLs, so nothing here needs the PPM or WPM repositories. For a real deployment, turn authentication on
+(see [spec/auth.md](spec/auth.md)) and run with `LOCO_ENV=production`.
+
 ## Rust service
 
 ```bash

@@ -1,0 +1,59 @@
+# A demo of the service from a fresh clone, with no sibling repositories:
+#
+#   podman compose up --build        (or: docker compose up --build)
+#   curl http://localhost:5150/_ping
+#
+# DEMO ONLY. The demo has no identity service, so sign-in enforcement is OFF
+# (`CRM_REQUIRE_AUTH=0`, stated here on purpose): anyone who can reach the port
+# can read and write everything. Use synthetic data only. The port is published
+# on this machine's loopback address only, and the `production` environment
+# refuses to start without authentication. For anything else, set
+# CRM_PASETO_KEYS (or CRM_PASETO_KEYS_URL), CRM_REQUIRE_AUTH=1 and
+# LOCO_ENV=production (see INSTALL.md and spec/auth.md).
+#
+# Email is simulated: nothing is sent. The family bridges (PPM, WPM) are off
+# until their URLs are set, so this runs on its own. This file runs the API
+# only; the SvelteKit front end is run from its own directory (INSTALL.md).
+services:
+  postgres:
+    image: docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+    environment:
+      POSTGRES_USER: loco
+      POSTGRES_PASSWORD: loco
+      POSTGRES_DB: contact_relationship_management_demo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loco -d contact_relationship_management_demo"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql
+
+  redis:
+    image: docker.io/library/redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537
+    command: ["redis-server", "--save", "", "--appendonly", "no"]   # a cache: nothing to keep
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: ./contact-relationship-management-service-with-rust
+      dockerfile: Containerfile
+    # Development mode binds to localhost; the container needs every interface.
+    command: ["--binding", "0.0.0.0"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      LOCO_ENV: development            # applies the migrations on start
+      DATABASE_URL: postgres://loco:loco@postgres:5432/contact_relationship_management_demo
+      CRM_REDIS_URL: redis://redis:6379
+      JWT_SECRET: demo-only-not-a-secret
+      CRM_REQUIRE_AUTH: "0"            # explicit, demo only: see the header of this file
+    ports:
+      - "127.0.0.1:5150:5150"
