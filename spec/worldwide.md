@@ -55,6 +55,9 @@ app's `governance/worldwide-equity-audit.md` (WW-1, against its `spec/02-scope.m
   [compliance/email-provider-brief.md](compliance/email-provider-brief.md) (three rows and the transfer question),
   [compliance/dpia.md](compliance/dpia.md) and [compliance/dpia-template.md](compliance/dpia-template.md) (the transfer line). **Not done:**
   see "Not audited" at the end.
+- [~] CRM-T166 **Consent and e-marketing rules as jurisdiction profiles.** Design drafted, waiting on CRM-D21 ([design.md](design.md),
+  proposed, needs product-owner confirmation; twelve questions with recommendations). No code: spec row 12 and code rows 1 and 4 stay
+  open.
 - [x] (2026-10-31) CRM-T165 **Regulatory register and compliance mapping by region.** Done: spec rows 2 to 10 and 19, code rows 6
   and 7. [regulatory.md](regulatory.md) ends with the register by region (twelve regions, each *not yet read*; no law was read and no
   source consulted; not legal advice); the control mapping has a row per region; the DPIA, its template and the record of processing

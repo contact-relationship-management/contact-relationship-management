@@ -303,3 +303,157 @@ not calendar days in a zone, so the answer is the same wherever the reader is an
   with the board's non-colour flag and the deal page says since when. Nothing is stored: the flag is derived on every read (CRM-D4).
 
 The stale-deals insight (`/api/insights/stale-deals?days=`, days in the current stage) is a different, older view and is unchanged.
+
+## CRM-D21 — Consent and e-marketing rules are jurisdiction profiles; opt-in stays the default
+
+**Proposed, needs product-owner confirmation.** *Drafted 2026-10-31 by the AI assistant for CRM-T166 (CRM-R95, CRM-D19), as a design
+only: no code, migration or test is changed by it, and nothing below is built. The questions at the end are the product owner's.* Not
+legal advice: the regime shapes below are the ones the [register by region](regulatory.md#the-register-by-region) names as commonly
+described, and every region is *not yet read*.
+
+### What exists today
+
+Consent is held per contact and per purpose (CRM-R6, CRM-R29): four purposes fixed in code (`rules::tokens::PURPOSES`: `marketing`,
+`newsletter`, `events`, `product_updates`), states `granted`, `withdrawn`, `never` and `pending`, an append-only `consent_events`
+history, and **one rule for every contact on every send path: only `granted` sends** (the campaign job, the nurture scheduler and the
+segment evaluator, which ANDs it structurally; CRM-D6). Consent has no channel (only email is sent), no expiry and no jurisdiction. A
+suppressed mailbox, an employment pause (CRM-D15) and an erased contact block a send whatever the consent. Each message carries an
+unsubscribe link and the `List-Unsubscribe` and `List-Unsubscribe-Post` headers, and **no sender identification or postal address**
+(worldwide audit code rows 1 and 4, spec row 12). That is the strictest model, applied everywhere: safe, but no jurisdiction's own
+shape can be expressed.
+
+### The model
+
+The rule is CRM-D19's: the law's parameters are an input and the code names no country. The shape is WPM-D144's, so the three apps
+hold jurisdiction rules alike:
+
+- **Jurisdiction code.** WPM-D144's: ISO 3166-1 alpha-2 for a country, ISO 3166-2 for a subdivision, a deployer-extended list for a
+  supranational region (`EU`, others). Each code has a layer (`supranational`, `national`, `subnational`) and a parent, held per
+  organization, so a federation, a bloc or a free zone with its own law is a chain.
+- **Parameter registry** (a list in the spec and in `rules::consent_regime`, one changes with the other; a key outside it is refused).
+  Each entry fixes its type, its validation and its combination rule across the layers of a chain:
+
+  | Key | Value | Combination across layers |
+  | --- | --- | --- |
+  | `consent.regime.<channel>` | `opt_in` \| `soft_opt_in` \| `implied` \| `opt_out` | `strictest` (in that order, `opt_in` strictest) |
+  | `consent.soft_opt_in.window_days.<channel>` | whole days, 1 to 3,660, since the existing-customer evidence | `strictest_max` (the shortest) |
+  | `consent.implied.expiry_days.<evidence>` | whole days, 1 to 3,660, per kind of evidence (`won_deal`, `inquiry`) | `strictest_max` (the shortest) |
+  | `message.sender_identification` | `required` \| `not_required` | `strictest` |
+  | `message.postal_address` | `required` \| `not_required` | `strictest` |
+  | `message.advertising_label` | text per language (a mark some regimes ask for in the subject), or none | `most_specific` |
+
+  As in WPM-D144, **a parameter has no default value**. Unlike WPM, where an unknown is shown as unknown, an unknown consent regime
+  resolves to `opt_in`, today's rule, because for a send the safe answer to "no rule configured" is the strictest one.
+- **Profile row.** WPM-D144's: `(organization, jurisdiction code, parameter key, value, effective_from, effective_to?, source,
+  checked_on, status)`, `status` one of `read`, `unverified` or `example`; append-only (a change is a new row), set by an
+  administrator, audited with the code and the key. `resolve(parameter, chain, as_of)` is one pure function (the same signature and
+  answer as WPM's: the value, the code it came from, its status and source), DB-free and clock-free.
+
+### Which profile applies to a send
+
+**Per contact, else per send.** A contact gains an optional `consent_jurisdiction` (a code), set by staff, by an import column or by
+the web form's configuration, never inferred from a phone prefix, an address, a language, a name or an IP address. A campaign and a
+nurture sequence gain an optional `consent_jurisdiction` too. A recipient is under the chain of their own code when it is set, else the
+send's, else **none, which is today's opt-in**. The applicable code and the resolved parameters are recorded on each delivery, so a
+send can be explained by the rule in force that day.
+
+### What a regime allows
+
+One pure decision, `rules::consent_regime::basis(regime, state, evidence, now) -> Basis | Blocked(reason)`, used by every send path
+and by the segment evaluator (which today ANDs `granted`; it would AND "has a basis"):
+
+| Regime | Sends when | Never sends when |
+| --- | --- | --- |
+| `opt_in` (today, and the default) | the purpose and channel are `granted` | anything else |
+| `soft_opt_in` | `granted`; or `never` or `pending` with existing-customer evidence (a won deal naming the contact as primary contact) inside the window, and the purpose marked eligible for it | `withdrawn` for that purpose and channel, ever since the evidence |
+| `implied` | `granted`; or `never` or `pending` with evidence of a kind the profile lists, younger than that kind's expiry | `withdrawn`; evidence expired |
+| `opt_out` | anything but `withdrawn` | `withdrawn` |
+
+In every regime, as today: a suppressed mailbox, an employment pause (CRM-D15), an erased contact and a withdrawal block the send; an
+unsubscribe withdraws the message's purpose (on its channel) at once; the double opt-in and the preference page work as they do. The
+delivery records its **basis** (`granted`, `soft_opt_in`, `implied` with the evidence's pid and expiry, or `opt_out`), so CRM-R6's
+evidence becomes "every marketing touch had a recorded basis under the profile in force" (question 12).
+
+### Purposes an administrator edits; consent per channel
+
+- **Purposes** move from code to a table: a key, a name and a description per locale (the UI's eight, English fallback marked as such),
+  `active`, and `soft_opt_in_eligible`. The four of today are its first rows. `marketing` stays (it is `contacts.marketing_consent`
+  and the default purpose) and cannot be retired; another purpose can be retired (no new campaign, sequence or preference-page row
+  names it) but never deleted, because history names it. A new purpose starts `never` for everyone.
+- **Channel.** Consent state and events gain a channel: `email`, `sms`, `phone`, `post` (`rules::tokens::CHANNELS` without `none`, plus
+  `sms`). Only email is sent; the others are recorded so a deployer's other systems can read them, and so a regime can differ by
+  channel. A campaign sends on `email` and checks only `email`.
+
+### Sender identification and postal address
+
+The organization's settings row (`organization_settings`, CRM-T171) gains a **sender name**, a **postal address** (free text in any
+script and any number of lines, no country's format assumed, as WPM-D152 keeps addresses) and a **contact link or address**, set by an
+administrator. When set, every commercial message carries them in its footer, in the template's language (the labels translated like
+the public pages, CRM-T175), in both the text and the HTML part; the advertising label, when the profile has one, prefixes the
+subject. When the applicable profile says `required` and one is unset, the campaign's `run` and the nurture step are refused (`422`
+naming the setting), before anything is queued. With no profile, nothing is refused that is sent today.
+
+### Migration and default behaviour
+
+- **Opt-in stays the default, and nothing blocked today becomes sendable without a profile an administrator loaded.** With no profile
+  rows, every decision equals today's, for every state, purpose and contact; a test holds that exhaustively over the states.
+- Existing consent becomes the `email` channel's (the only one ever sent); `sms`, `phone` and `post` start `never`. Existing events
+  become `email` events. `marketing_consent` keeps meaning `marketing` on `email`.
+- No deployment-wide setting (`CRM_*`) chooses a regime: that would make one jurisdiction the deployment's.
+- Loosening is explicit: an administrator sets a contact's or a send's code and loads the rows; a campaign's preview shows how many
+  recipients would be sent to on each basis and under which profile and status before it runs.
+
+### The two test profiles
+
+Synthetic codes from the ISO 3166 user-assigned range, so no test names a country (CRM-D19):
+
+- **`XA`, one national layer, soft opt-in.** `email`: `soft_opt_in`, window 730 days; `sms`: `opt_in`; sender identification and postal
+  address `required`; no label. In the shape the register describes for the UK's PECR.
+- **`XB` and `XB-01`, a federation of two layers.** `XB` (national): `email` `opt_out`, postal address `required`; `XB-01`
+  (subnational): `email` `implied`, `won_deal` 730 days and `inquiry` 180 days, an advertising label in two languages. The chain
+  resolves to `implied` (the stricter), the address required (from the parent), the label (from the child). In the shapes the
+  register describes for the US CAN-SPAM Act and Canada's CASL, joined as one federation only to exercise the layers.
+- Both run against every regime row above, plus: the same contact under each profile and under none gets three different answers;
+  a withdrawal blocks under all of them; no profile equals today.
+
+### Order of work (once confirmed)
+
+1. Pure `rules::consent_regime` (the registry, `resolve` over a chain, `basis`), with the two profiles and the "no profile is today"
+   test.
+2. The tables (jurisdictions, parameter rows, purposes, the channel column), administrator-only, audited.
+3. The send paths and the segment evaluator read the basis; deliveries record it.
+4. The sender settings and the footer.
+5. The UI: profiles, purposes, a contact's and a campaign's code, the preview by basis.
+
+### Questions for the product owner
+
+Each with the assistant's recommendation; none is decided.
+
+1. **Per contact or per send?** Recommended: the contact's `consent_jurisdiction` when set, else the campaign's or sequence's, else
+   none (opt-in). Alternatives: per send only; per contact only.
+2. **Combining layers for the regime.** Recommended: `strictest` (whichever layer is stricter wins, a state over a looser federation or a federation over a looser state).
+   Alternative: `most_specific` (the deepest layer wins even if looser).
+3. **Where a contact's code comes from.** Recommended: set by staff, an import column or the web form's configuration, never
+   inferred from a phone prefix, address, language, name or IP. Alternative: also inferred, flagged as inferred (contrary to CRM-D13).
+4. **Who edits profiles and purposes.** Recommended: an administrator, every row audited and append-only. Alternatives: the deployer
+   only (configuration files); an administrator with a second person's review.
+5. **What counts as an existing customer for a soft opt-in.** Recommended: a won deal naming the contact as primary contact, inside
+   the profile's window, for a purpose marked eligible. Alternatives: also an account of tier `customer`; also a negotiation (an open
+   deal).
+6. **What counts as evidence for implied consent.** Recommended: the profile lists the kinds (`won_deal`, `inquiry`, the latter a web
+   form submission or a ticket the contact opened), each with its own expiry. Alternative: one expiry for all evidence.
+7. **The channels.** Recommended: `email`, `sms`, `phone` and `post`; existing consent migrates as `email` only, the rest `never`.
+   Alternative: `email` only until another channel is sent.
+8. **Sender identification and address.** Recommended: one set per organization, carried whenever set, required (send refused) only
+   where the applicable profile says so. Alternatives: required for every commercial message once the feature ships (sends that work
+   today would be refused until set); per campaign or per brand.
+9. **May an `example` or `unverified` profile loosen a send?** Recommended: yes, only after an administrator acknowledges that profile
+   (audited), and the preview and each delivery show its status. Alternative: only `read` rows may loosen; the others may only tighten.
+10. **The demo seed.** Recommended: it loads `XA`- and `XB`-shaped example profiles under clearly synthetic codes and assigns them only
+    to newly seeded contacts, so the existing seeded contacts and the tour's sends give today's answers. Alternative: no profiles in
+    the seed.
+11. **`pending` under a soft opt-in or implied regime.** Recommended: treated as `never` (a confirmation was asked for and not
+    refused), so evidence can still give a basis. Alternative: `pending` always blocks, as today.
+12. **CRM-R6's wording.** Recommended: "every marketing touch had a recorded basis under the profile in force; with no profile the
+    only basis is opt-in consent". Alternative: keep "consented to" and allow only `opt_in` and `soft_opt_in` (no `implied`, no
+    `opt_out`).

@@ -1889,10 +1889,21 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
       - **Service:** `rules::privacy::RETENTION_DEFAULTS` gives each of the three retention settings its default, floor and `default_from` (`regime`, `reference`, `status`; the shape of WPM-T384's `statutory_defaults`): all three are `starting_point` with no regime. `GET /api/retention` answers `horizon_basis` (setting, days in force, whether set, default, floor, `default_from`) and its `derivation` says no default is any jurisdiction's. The OpenAPI summary of `GET /api/contacts/{pid}/subject-access` was "GDPR subject-access export"; it now names the contact's right of access under the data-protection law that applies to the deployer, with GDPR Art. 15 as an example. The UI's `schema.d.ts` regenerated.
       - **Tests:** unit `each_retention_default_says_whose_it_is_and_matches_its_constant` (the table equals the constants the horizons are read with; no regime; `starting_point`) and `the_subject_access_summary_names_whose_right_it_is_not_one_law` (read from the served document; no summary starts with GDPR, PECR, CAN-SPAM or CASL); the privacy request test reads `horizon_basis` from `GET /api/retention`.
       - **Not done / not verified:** **no law of any region was read and no source was consulted** (every entry is from general knowledge on 2026-10-31 and may be wrong or out of date); it is not legal advice. No per-country list (a region names a few examples); no other country's assurance folder; the regulators named for medical devices were not checked. The control mapping by region says what the CRM gives, not what each law requires. The `POST /api/retention/sweep` answer carries no `horizon_basis` (the report does). CRM-G2's scope is not decided (the product owner's). The site's copy re-synced.
-- [ ] CRM-T166 **Consent and e-marketing rules as jurisdiction profiles.** (CRM-R95, CRM-D19; spec row 12; code rows 1, 4) A design
-      first: a consent regime per contact or per send (opt-in only as today, soft opt-in for existing customers, implied consent with an
-      expiry, opt-out), purposes an administrator can edit, consent per channel; and a sender identification and postal address the
-      deployer sets, carried in each commercial message. Tests with two differently shaped profiles. (L)
+- [~] CRM-T166 **Consent and e-marketing rules as jurisdiction profiles.** (CRM-R95, CRM-D19; spec row 12; code rows 1, 4) A design
+  first: a consent regime per contact or per send (opt-in only as today, soft opt-in for existing customers, implied consent with an
+  expiry, opt-out), purposes an administrator can edit, consent per channel; and a sender identification and postal address the
+  deployer sets, carried in each commercial message. Tests with two differently shaped profiles. (L)
+  **Design drafted, waiting on CRM-D21 (2026-10-31).** [design.md](design.md) CRM-D21, *proposed, needs product-owner
+  confirmation*: profiles in WPM-D144's shape (jurisdiction codes with layers, a parameter registry with a combination rule per
+  key, append-only rows with a source and a status, one pure `resolve`); a regime per channel (`opt_in`, `soft_opt_in`, `implied`
+  with an expiry per kind of evidence, `opt_out`) resolved from the contact's code, else the send's, else none (today's opt-in);
+  purposes in a table an administrator edits; consent per channel; the sender name, postal address and contact link in each
+  commercial message, required where a profile says so; the migration (existing consent becomes `email`'s; no profile means
+  exactly today's answers, and nothing blocked today becomes sendable without a profile an administrator loaded); two synthetic
+  test profiles of different shapes (`XA`, one layer with a soft opt-in; `XB` with `XB-01`, a two-layer federation of opt-out
+  and implied consent). Twelve numbered questions for the product owner, each with a recommendation, end the decision.
+  **Not done:** no code, migration, test or UI; nothing is built until CRM-D21 is confirmed; the regime shapes are from the
+  register, every region *not yet read*; not legal advice.
 - [x] CRM-T167 **Money uses the currency's own exponent.** (CRM-R95, CRM-D19; spec row 11; code rows 8 to 11) In the UI, one
       formatter and parser with the behaviour of the sibling apps' shared `src/lib/money.ts` (project portfolio commit `956d9ed`,
       workforce planning WPM-T373: the exponent from `Intl.NumberFormat#resolvedOptions().maximumFractionDigits`, `money`,
