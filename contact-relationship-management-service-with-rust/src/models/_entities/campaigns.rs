@@ -39,6 +39,8 @@ pub struct Model {
     /// The email template the message is made from (CRM-R36); then `subject` and `body` are absent.
     pub template_pid: Option<Uuid>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
+    /// The jurisdiction code whose consent profile applies to a recipient without one of their own (CRM-D21).
+    pub consent_jurisdiction: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

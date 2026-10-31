@@ -66,18 +66,22 @@ history remain under a pid that no longer identifies anyone.
 | `business_calendars` | None (working hours, holidays) | — | `manual` | Not applicable |
 | `campaigns` | Subject and body text; counts only, no recipients named | — | `swept` | Not applicable |
 | `commission_plans` | None (tiers) | — | `manual` | Not applicable |
-| `consent_events` | Contact pid, purpose, action, source, time: the consent history | Contacts | `evidence` | Kept as evidence, keyed to a pid that no longer identifies anyone |
-| `contact_consents` | Contact pid, purpose, state | Contacts | `manual` | Every purpose withdrawn; rows kept |
+| `consent_events` | Contact pid, purpose, channel, action, source, time: the consent history | Contacts | `evidence` | Kept as evidence, keyed to a pid that no longer identifies anyone |
+| `consent_jurisdictions` | None (the jurisdiction codes the organization keeps, each with a layer, a parent and a name, and who set it; CRM-T166) | Administrators | `manual` | Not applicable |
+| `consent_profile_acknowledgements` | The administrator who acknowledged a code's example or unverified rows, and when (CRM-T166) | Administrators | `evidence` | Not applicable |
+| `consent_profile_rows` | None about contacts (a code's dated parameter values, their source and status, and who recorded them; CRM-T166) | Administrators | `evidence` | Not applicable |
+| `consent_purposes` | None (the purposes' keys, names and descriptions per locale, and flags; CRM-T166) | Administrators | `manual` | Not applicable |
+| `contact_consents` | Contact pid, purpose, channel, state | Contacts | `manual` | Every purpose withdrawn; rows kept |
 | `contact_employments` | Contact pid, person reference, employer's organization reference, first day (or the day of the employment check), the WPM event id or `overlap:<check id>` (CRM-R92, CRM-R94) | Contacts who are employees | `manual` | Rows of the contact deleted |
 | `contact_merges` | Surviving and merged contact pids, the merged person reference, actor | Contacts, reps | `manual` | The merged person reference is replaced by a tombstone |
-| `contacts` | Person reference, display, given and family name, job title, owner, preferred channel, marketing consent, stakeholder role | Contacts | `swept` | Identity fields scrubbed to a tombstone and the row soft-deleted |
+| `contacts` | Person reference, display, given and family name, job title, owner, preferred channel, marketing consent, consent jurisdiction code, stakeholder role | Contacts | `swept` | Identity fields scrubbed to a tombstone and the row soft-deleted |
 | `custom_field_defs` | Labels the deployer chose; may be set to sensitive | — | `manual` | Not applicable |
 | `custom_field_values` | Whatever the deployer's fields hold, by subject | Contacts, accounts | `manual` | Values of the contact deleted |
 | `deal_clawbacks` | The seller's `person:` reference (CRM-D18), amount, reason, who set it | Reps | `manual` | Not applicable: a rep, not a contact |
 | `deal_deliveries` | Deal pid, the idea's id in PPM, who opened it | Reps | `manual` | Not applicable |
 | `deal_splits` | The sellers' `person:` references (CRM-D18) and shares | Reps | `manual` | Not applicable |
 | `deals` | Name (may name a customer), amount, owner reference, primary contact pid, lost reason (free text) | Contacts, reps | `swept` | Kept: revenue records, keyed to a pid that no longer identifies anyone |
-| `email_deliveries` | Contact pid, message id, provider id, send state and error text | Contacts | `aged` | Kept |
+| `email_deliveries` | Contact pid, message id, provider id, send state and error text, the basis the message was sent on (CRM-T166) | Contacts | `aged` | Kept |
 | `email_events` | Message id and the provider event (delivered, bounced, opened, clicked) | Contacts, through the message id | `aged` | Kept |
 | `email_suppressions` | Contact pid and the reason a mailbox is suppressed | Contacts | `manual` | Kept: a suppression must survive |
 | `email_templates` | None (template text) | — | `manual` | Not applicable |
@@ -87,7 +91,7 @@ history remain under a pid that no longer identifies anyone.
 | `forecast_snapshots` | None (totals per day) | — | `swept` | Not applicable |
 | `form_submissions` | Contact pid, lead pid, form, purpose, confirmation times | Contacts | `manual` | Submissions of the contact deleted |
 | `fx_rates` | None (exchange rates, who set them) | Reps | `manual` | Not applicable |
-| `organization_settings` | None (the organization's time zone and fiscal year start, the days after which a deal is stalled, who set them; CRM-T171, CRM-T183) | Administrators | `manual` | Not applicable |
+| `organization_settings` | None (the organization's time zone and fiscal year start, the days after which a deal is stalled, the sender name, postal address and contact link carried in commercial messages, who set them; CRM-T171, CRM-T183, CRM-T166) | Administrators | `manual` | Not applicable |
 | `idempotency_keys` | Cached request and response bodies, which can hold anything the request did | Whoever the request concerned | `ttl` | Expires after 24 hours |
 | `kb_daily` | None (daily article counts) | — | `manual` | Not applicable |
 | `lead_imports` | Who imported, source note, the pids created | Reps; leads | `manual` | Not applicable |

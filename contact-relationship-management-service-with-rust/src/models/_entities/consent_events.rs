@@ -22,6 +22,8 @@ pub struct Model {
     pub source: String,
     /// What the event was about (`marketing`, `newsletter`, …).
     pub purpose: String,
+    /// The channel it was about (`email`, `sms`, `phone`, `post`; CRM-D21). Events before CRM-T166 are `email`.
+    pub channel: String,
     pub occurred_at: DateTimeWithTimeZone,
 }
 

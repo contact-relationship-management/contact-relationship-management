@@ -34,6 +34,9 @@ pub struct Model {
     pub interest: Option<i32>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
     pub merged_into_pid: Option<Uuid>,
+    /// The jurisdiction code whose consent profile applies to this contact (CRM-D21); set by staff, an import
+    /// column or a web form, never inferred.
+    pub consent_jurisdiction: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

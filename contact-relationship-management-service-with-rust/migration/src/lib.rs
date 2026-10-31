@@ -70,6 +70,7 @@ mod m20261030_000055_search_ngrams;
 mod m20261030_000056_template_language;
 mod m20261030_000057_organization_settings;
 mod m20261031_000058_deal_stalled;
+mod m20261031_000059_consent_profiles;
 pub mod search_docs;
 
 /// The crate's migrator.
@@ -138,6 +139,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261030_000056_template_language::Migration),
             Box::new(m20261030_000057_organization_settings::Migration),
             Box::new(m20261031_000058_deal_stalled::Migration),
+            Box::new(m20261031_000059_consent_profiles::Migration),
             // inject-above (do not remove this comment)
         ]
     }

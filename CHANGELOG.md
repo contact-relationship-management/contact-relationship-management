@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — the tables for consent profiles, purposes and consent per channel (CRM-T166 step c, 2026-10-31)
+
+Migration `000059` adds the jurisdiction codes, the append-only profile rows and acknowledgements, a purposes table seeded with today's four, a channel on consent (every existing consent and event becomes `email`'s), a consent jurisdiction code on contacts, campaigns and sequences, the organization's sender name, postal address and contact link, and the basis on each delivery. **Not done or verified:** nothing uses them yet, so every answer is still today's; the migration's rollback was not run. Details: the [service changelog](contact-relationship-management-service-with-rust/CHANGELOG.md).
+
 ### Added — the pure core of consent rules as jurisdiction profiles (CRM-T166 step b, 2026-10-31)
 
 The service gains `rules::consent_regime`: the profile registry and resolver in the workforce planning app's WPM-D144 shape, and the decision whether a message may be sent on a channel and on which basis (granted, soft opt-in, implied, opt-out), with the two synthetic example profiles and a test that no profile gives exactly today's answers. **Not done or verified:** nothing uses it yet; no table, send path, API or screen changed. Details: the [service changelog](contact-relationship-management-service-with-rust/CHANGELOG.md).

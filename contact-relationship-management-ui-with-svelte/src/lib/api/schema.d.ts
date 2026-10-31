@@ -18988,6 +18988,8 @@ export interface components {
             body: string | null;
             /** Format: int32 */
             clicked: number;
+            /** @description The jurisdiction code whose consent profile applies to a recipient without one of their own (CRM-D21). */
+            consent_jurisdiction: string | null;
             /**
              * Format: int64
              * @description Absent (`null`) when masked.
@@ -19317,6 +19319,8 @@ export interface components {
         };
         ConsentEvent: {
             action: string;
+            /** @description The channel it was about (`email`, `sms`, `phone`, `post`; CRM-D21). Events before CRM-T166 are `email`. */
+            channel: string;
             /** Format: uuid */
             contact_pid: string;
             /** Format: date-time */
@@ -19392,6 +19396,11 @@ export interface components {
             account_pid: string | null;
             /** Format: date-time */
             consent_changed_at: string | null;
+            /**
+             * @description The jurisdiction code whose consent profile applies to this contact (CRM-D21); set by staff, an import
+             *     column or a web form, never inferred.
+             */
+            consent_jurisdiction: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -20996,6 +21005,8 @@ export interface components {
             updated_at: string;
         };
         NurtureSequence: {
+            /** @description The jurisdiction code whose consent profile applies to a recipient without one of their own (CRM-D21). */
+            consent_jurisdiction: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */

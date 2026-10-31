@@ -41,7 +41,7 @@ pub async fn others<C: ConnectionTrait>(
 ) -> Result<BTreeMap<String, (String, DateTime<Utc>)>, DbErr> {
     let rows = db
         .query_all_raw(stmt(
-            "SELECT purpose, state, changed_at FROM contact_consents WHERE contact_pid = $1",
+            "SELECT purpose, state, changed_at FROM contact_consents WHERE contact_pid = $1 AND channel = 'email'",
             [contact.into()],
         ))
         .await?;
@@ -125,7 +125,7 @@ pub async fn set_other<C: ConnectionTrait>(
     db.execute_raw(stmt(
         "INSERT INTO contact_consents (contact_pid, purpose, state, changed_at) \
          VALUES ($1, $2, $3, $4) \
-         ON CONFLICT (contact_pid, purpose) DO UPDATE SET state = $3, changed_at = $4",
+         ON CONFLICT (contact_pid, purpose, channel) DO UPDATE SET state = $3, changed_at = $4",
         [contact.into(), purpose.into(), state.into(), at.into()],
     ))
     .await

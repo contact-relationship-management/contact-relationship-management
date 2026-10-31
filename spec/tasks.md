@@ -1899,7 +1899,10 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
   and implied consent). Twelve numbered questions for the product owner, each with a recommendation, end the decision.
   **Step b done (2026-10-31):** the pure `rules::consent_regime` (registry, chain, `resolve`, `rules_for`, `message_rules`,
   `basis`, the example profiles), 14 unit tests.
-  **Not done yet:** the migrations, send paths, API, UI and request/browser tests (steps c to f); the regime shapes are from
+  **Step c done (2026-10-31):** migration `000059` (codes, append-only rows and acknowledgements, purposes, consent per
+  channel with existing consent as `email`'s, `consent_jurisdiction` on contacts, campaigns and sequences, the sender
+  fields, the delivery basis).
+  **Not done yet:** the send paths, API, UI and request/browser tests (steps d to f); the regime shapes are from
   the register, every region *not yet read*; not legal advice.
 - [x] CRM-T167 **Money uses the currency's own exponent.** (CRM-R95, CRM-D19; spec row 11; code rows 8 to 11) In the UI, one
       formatter and parser with the behaviour of the sibling apps' shared `src/lib/money.ts` (project portfolio commit `956d9ed`,
