@@ -4,7 +4,10 @@ The CRM talks to two sibling services: the project portfolio service (PPM) and t
 worker service (WPM). This tutorial sets up the bridges, sends the CRM a signed
 hire and leave event the way WPM does, and runs the employment check.
 
-> **Not run against a running WPM or PPM.** Every detail here is taken from the
+> **Run live against a WPM on 2026-11-01** (a signed hire and leave delivered by
+> WPM, then the employment check and the teams import with WPM's sign-in on, and
+> a replayed, older, unsigned and unknown event). **Not run against a running
+> PPM.** The rest is taken from the
 > service's code and request tests (`src/controllers/bridges.rs`,
 > `src/rules/wpm_events.rs`, `src/rules/employment_check.rs`, `src/clients.rs`,
 > `src/settings.rs`, `tests/requests/wpm_events.rs`,
@@ -273,9 +276,15 @@ The events route stays public and is authenticated by its signature alone.
 
 ## What is not verified
 
-- None of this has been run against a running WPM or PPM. The contracts were
-  read from those services' source (2026-10-28 and 2026-10-30, see the comments
-  in `src/clients.rs`), and the tests use stand-ins.
+- Run live against a WPM on 2026-11-01: the events (a hire, a leave, a repeat, an
+  older hire, a bad signature, an unknown kind: `paused`, `resumed`, `duplicate`,
+  `stale`, `401`, `ignored`), the employment check (3 contacts asked, 2 workers
+  recorded, a second run recorded none) and the teams import (one team per
+  department), with WPM's sign-in on and an HR token. WPM answers `401` without a
+  token and `403` to a token with no HR membership in the organization. Not run
+  live: a future `effective_on`, a campaign skipping the contact, and PPM (which
+  CRM does not call here). The contracts were first read from the services' source
+  (2026-10-28 and 2026-10-30, see the comments in `src/clients.rs`).
 - The CRM uses one HR token held by the deployer and one configured
   organization, rather than the caller's own token as WPM-D135 asks (CRM-D16).
   The product owner confirmed this on 2026-10-31 as the accepted design.

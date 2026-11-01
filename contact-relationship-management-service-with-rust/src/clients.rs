@@ -407,7 +407,7 @@ pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Resu
 /// read page by page. Checked against that service's source (`hr_core.rs`, `list_workers`: a bare
 /// JSON array of worker records, a page of at most 500, an offset of at most 10,000, `active` a real
 /// status; since WPM-R216 `fields` limits each row to the named fields, so no name, job or pay is
-/// sent) on 2026-10-28 and again on 2026-10-30; not run against a live one. A WPM older than
+/// sent) on 2026-10-28 and again on 2026-10-30, and run against a live WPM on 2026-11-01. A WPM older than
 /// WPM-R216 answers `fields` with `422`, which fails the import with that status; the whole record
 /// is never asked for. Only `pid`, `department` and `person_ref` are read from each row. With `CRM_WORKER_SERVICE_TOKEN` set it sends that as a
 /// bearer credential (CRM-R87), and the list is then the one that token may see.
@@ -471,7 +471,7 @@ pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
 /// today (CRM-R94, WPM-R208): `POST {CRM_WORKER_SERVICE_URL}/api/bridges/overlap` with
 /// `{"organization_ref", "person_refs"}`, answered `{"organization_ref", "results": [{"person_ref",
 /// "worker"}]}`. Checked against that service's source (`controllers/bridges.rs`, `rules/bridge.rs`)
-/// on 2026-10-30; not run against a live one. WPM requires an HR caller of the organization, so
+/// on 2026-10-30, and run against a live WPM on 2026-11-01. WPM requires an HR caller of the organization, so
 /// `CRM_WORKER_SERVICE_TOKEN` is sent as the bearer credential (CRM-R87, CRM-D16). Only references
 /// are sent, never a name.
 ///
