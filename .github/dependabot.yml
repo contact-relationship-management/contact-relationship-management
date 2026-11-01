@@ -71,3 +71,10 @@ updates:
     # A release is trusted after it has been out a week, not on the day it is published.
     cooldown:
       default-days: 7
+  # The root compose.yaml (the one-command demo) holds digest-pinned images.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
