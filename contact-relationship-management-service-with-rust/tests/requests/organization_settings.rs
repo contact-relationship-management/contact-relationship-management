@@ -167,11 +167,15 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
         let kiritimati = chrono::Utc::now()
             .with_timezone(&chrono_tz::Pacific::Kiritimati)
             .date_naive();
-        // Pago Pago is 25 hours behind Kiritimati: always the day before.
+        // Pago Pago is 25 hours behind Kiritimati: its calendar day is one or two days before, depending on the hour
+        // (two for the hour between 10:00 and 11:00 UTC), and never the same day.
         let pago = chrono::Utc::now()
             .with_timezone(&chrono_tz::Pacific::Pago_Pago)
             .date_naive();
-        assert_eq!(pago + chrono::Days::new(1), kiritimati);
+        assert!(
+            pago + chrono::Days::new(1) == kiritimati || pago + chrono::Days::new(2) == kiritimati,
+            "{pago} vs {kiritimati}"
+        );
 
         // A knowledge-base view is counted on the organization's day.
         let made: Value = request
@@ -288,7 +292,7 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
             .iter()
             .find(|f| f["summary"] == "Call back")
             .unwrap_or_else(|| panic!("{here}"));
-        assert_eq!(late["overdue_days"], 1, "{here}");
+        assert_eq!(late["overdue_days"], (kiritimati - pago).num_days(), "{here}");
 
         request
             .put("/api/settings/organization")
