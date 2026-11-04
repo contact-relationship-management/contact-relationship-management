@@ -1,51 +1,51 @@
 # Rheoli Perthnasoedd Cyswllt
 
-Gwerthu, marchnata a chymorth mewn un lle cyfeillgar, gyda chaniatâd yn gyntaf.
+Meddalwedd CRM ffynhonnell agored ar gyfer gwerthu, marchnata a chymorth i gwsmeriaid.
 
-Croeso! Mae Rheoli Perthnasoedd Cyswllt yn dod â'r bobl rydych chi'n gweithio gyda nhw, a phopeth rydych chi wedi'i addo iddyn nhw, ynghyd o amgylch un cofnod ar gyfer pob cyswllt. Meddalwedd arddangos ffynhonnell agored ydyw, felly gallwch ei archwilio'n rhydd ar ddata ffuglennol a darllen yn union sut mae'n gweithio.
+Mae Rheoli Perthnasoedd Cyswllt yn olrhain perthnasoedd â chwsmeriaid a darpar gwsmeriaid ar draws gwerthu, marchnata a chymorth. Mae'n cadw un cofnod ar gyfer pob cyswllt ac mae angen caniatâd wedi'i gofnodi cyn anfon neges. Arddangosiad yw'r feddalwedd: mae'n rhedeg ar ddata synthetig ac nid yw wedi'i bwriadu ar gyfer defnydd cynhyrchu.
 
-## Pam ei fod yn werth ei weld
+## Manteision
 
-- **Un darlun o bob cwsmer.** Mae gwerthu, marchnata, cymorth a dadansoddeg yn rhannu'r un cofnod, felly nid oes neb yn dechrau sgwrs o'r dechrau.
-- **Caniatâd yn gyntaf.** Nid anfonir dim at gyswllt heb ganiatâd a gofnodwyd, ac mae dolen dad-danysgrifio wedi'i llofnodi mewn e-bost.
-- **Llai o ddata personol i'w ddiogelu.** Mae'r CRM yn cadw cyfeiriad at berson yn eich gwasanaeth hunaniaeth, nid copi o'i enw na'i gyfeiriad.
-- **Penderfyniadau y gallwch eu hesbonio.** Daw sgoriau arweinwyr o reolau y gallwch eu darllen, a rhagolygon o gamau wedi'u pwysoli, felly gallwch ateb "pam y rhif hwn?" bob amser.
-- **Wedi'i wneud i'r byd i gyd.** Nid yw enwau, cyfeiriadau, calendrau a chyfeiriadau ysgrifennu yn dilyn siâp un wlad, ac mae'r rhyngwyneb ar gael mewn wyth iaith.
-- **Agored drwyddo draw.** Mae'r fanyleb, y cod a'r profion yn gyhoeddus, ac mae'r dogfennau'n dweud yn blaen beth sydd wedi'i adeiladu a beth sydd heb ei adeiladu.
+- **Un cofnod cyswllt.** Mae gwerthu, marchnata, cymorth a dadansoddeg yn defnyddio'r un cofnod.
+- **Caniatâd wedi'i gofnodi.** Nid anfonir dim at gyswllt heb ganiatâd wedi'i gofnodi. Mae pob e-bost yn cynnwys dolen dad-danysgrifio wedi'i llofnodi.
+- **Llai o ddata personol.** Mae'r CRM yn storio cyfeiriad at berson mewn gwasanaeth hunaniaeth, nid copi o'r enw na'r cyfeiriad post.
+- **Canlyniadau esboniadwy.** Cyfrifir sgoriau arweinwyr o reolau darllenadwy. Cyfrifir rhagolygon o gamau piblinell wedi'u pwysoli.
+- **Dylunio rhyngwladol.** Nid yw enwau, cyfeiriadau, calendrau a chyfeiriadau ysgrifennu ynghlwm wrth fformat un wlad. Mae'r rhyngwyneb ar gael mewn wyth iaith.
+- **Manyleb gyhoeddus.** Mae'r fanyleb, y cod a'r profion yn gyhoeddus. Mae'r ddogfennaeth yn nodi beth sydd wedi'i adeiladu a beth sydd heb ei adeiladu.
 
-## Beth allwch chi ei wneud ag ef
+## Nodweddion
 
-- **Gwerthu.** Sgorio arweinwyr â rheolau clir, symud bargeinion ar draws bwrdd, a rhagweld fesul cam wedi'i bwysoli.
-- **Marchnata.** Rhedeg ymgyrchoedd i segmentau a meithrin cysylltiadau gam wrth gam, gydag anfon wedi'i efelychu nes i chi droi post go iawn ymlaen.
-- **Cefnogi.** Olrhain tocynnau gyda blaenoriaethau a therfynau amser, a chyhoeddi erthyglau sylfaen wybodaeth.
-- **Deall.** Gweld cyfradd ennill, piblinell fesul cam, enillion ymgyrch, iechyd gwasanaeth a gwerth oes cwsmer ar ddangosfyrddau.
-- **Cadw cofnodion yn lân.** Dod o hyd i ddyblygiadau tebygol â thebygolrwydd y gallwch ei archwilio, eu cyfuno, a dadwneud cyfuniad.
-- **Aros yn atebol.** Cadw log archwilio, rheoli mynediad yn ôl rôl, ac ateb ceisiadau mynediad gwrthrych a dileu.
+- **Gwerthu.** Sgorio arweinwyr yn ôl rheolau, piblinellau bargeinion ar fwrdd, a rhagolygon wedi'u pwysoli fesul cam.
+- **Marchnata.** Ymgyrchoedd wedi'u segmentu a dilyniannau meithrin. Mae anfon wedi'i efelychu oni bai bod modd post wedi'i ffurfweddu.
+- **Cymorth.** Tocynnau gyda blaenoriaethau a therfynau amser lefel gwasanaeth, ac erthyglau sylfaen wybodaeth.
+- **Dadansoddeg.** Dangosfyrddau ar gyfer cyfradd ennill, piblinell fesul cam, enillion ymgyrch, iechyd lefel gwasanaeth a gwerth oes cwsmer.
+- **Ansawdd data.** Canfod dyblygiadau yn ôl tebygolrwydd, gyda chyfuno a dadwneud.
+- **Llywodraethu.** Log archwilio, mynediad yn ôl rôl, a chymorth ar gyfer ceisiadau mynediad gwrthrych a dileu.
 
-## Rhowch gynnig arni mewn pedwar cam
+## Dechrau arni
 
-1. **Cael y cod.** Clonio'r ystorfa. Mae arnoch angen Node.js a pnpm.
-2. **Dechrau'r ap.** Yn y ffolder Svelte, rhedwch `pnpm install`, yna `pnpm dev`.
+1. **Cael y cod.** Clonio'r ystorfa. Mae angen Node.js a pnpm.
+2. **Dechrau'r rhaglen.** Yn y cyfeiriadur Svelte, rhedwch `pnpm install`, yna `pnpm dev`.
 3. **Mewngofnodi.** Defnyddiwch `example@example.com`. Nid oes angen unrhyw wasanaeth arall.
-4. **Dilyn y daith.** Cerdded drwy gysylltiadau, arweinwyr, bargeinion, ymgyrchoedd, tocynnau a'r olwg weithredol ar ddata ffuglennol.
+4. **Adolygu'r daith.** Mae'r daith yn ymdrin â chysylltiadau, arweinwyr, bargeinion, ymgyrchoedd, tocynnau a'r olwg weithredol, gan ddefnyddio data ffuglennol.
 
-Mae'r [tiwtorial](../../docs/tutorial-first-tour.md) (Saesneg) yn mynd drwy bob cam, ac mae [gosod](../../INSTALL.md) (Saesneg) yn ymdrin â'r gwasanaeth llawn.
+Mae'r [tiwtorial](../../docs/tutorial-first-tour.md) (Saesneg) yn disgrifio pob cam. Mae [gosod a defnyddio](../../INSTALL.md) (Saesneg) yn ymdrin â'r gwasanaeth llawn.
 
-## Sut mae'n cymharu
+## Cymhariaeth
 
-| Prosiect | Beth ydyw | Sut mae'r prosiect hwn yn wahanol |
+| Prosiect | Categori | Gwahaniaeth |
 | --- | --- | --- |
-| [Twenty](../../docs/compare/twenty.md) | CRM ffynhonnell agored | Cynnyrch llawn; arddangosiad llai yw hwn, wedi'i yrru gan ei fanyleb |
-| [EspoCRM](../../docs/compare/espocrm.md) | CRM ffynhonnell agored | Nodweddion ehangach; mae'r prosiect hwn yn rhoi rheolau esboniadwy yn gyntaf |
-| [SuiteCRM](../../docs/compare/suitecrm.md) | CRM ffynhonnell agored | Aeddfed a mawr; cyfeirnod cryno yw hwn |
-| [Salesforce](../../docs/compare/salesforce.md), [HubSpot](../../docs/compare/hubspot.md) | CRM SaaS masnachol | Yr arfer y mae'r prosiect hwn yn ei fodelu; ni rennir cod na data |
+| [Twenty](../../docs/compare/twenty.md) | CRM ffynhonnell agored | Cynnyrch llawn. Arddangosiad llai wedi'i yrru gan fanyleb yw'r prosiect hwn. |
+| [EspoCRM](../../docs/compare/espocrm.md) | CRM ffynhonnell agored | Nodweddion ehangach. Mae'r prosiect hwn yn pwysleisio rheolau esboniadwy. |
+| [SuiteCRM](../../docs/compare/suitecrm.md) | CRM ffynhonnell agored | Aeddfed a mawr. Cyfeirnod cryno yw'r prosiect hwn. |
+| [Salesforce](../../docs/compare/salesforce.md), [HubSpot](../../docs/compare/hubspot.md) | CRM SaaS masnachol | Mae'r prosiect hwn yn modelu'r un arfer. Ni rennir cod na data. |
 
-Prosiect arddangos yw hwn, nid cystadleuydd i'r cynhyrchion aeddfed hynny. Darllenwch [y gymhariaeth lawn](../../COMPARISONS.md) (Saesneg).
+Arddangosiad yw'r prosiect hwn ac nid yw'n cystadlu â'r cynhyrchion hyn. Gweler [pob cymhariaeth](../../COMPARISONS.md) (Saesneg).
 
-## Dewch o hyd i'ch ffordd i mewn
+## Briffiau rôl
 
-Yn arwain tîm? Mae'r [briffiau rôl](for/) yn rhoi un dudalen i bob uwch rôl: beth yw'r feddalwedd, beth mae'n ei roi i chi, beth nad yw'n ei roi, a'r penderfyniadau sy'n eiddo i chi.
+Mae'r [briffiau rôl](for/) yn darparu un dudalen ar gyfer pob uwch rôl: beth mae'r feddalwedd yn ei wneud, beth nad yw'n ei wneud, a pha benderfyniadau sy'n perthyn i'r rôl honno.
 
-## Gair gonest
+## Statws
 
-Meddalwedd arddangos yw hon, nid CRM cynhyrchu. Defnyddiwch ddata synthetig. Nid anfonir e-bost go iawn oni bai eich bod yn ffurfweddu modd post go iawn, ac nid cyngor cyfreithiol yw unrhyw eiriad cyfreithiol neu gydymffurfio yma.
+Meddalwedd arddangos yw hon, nid CRM cynhyrchu. Defnyddiwch ddata synthetig yn unig. Nid anfonir e-bost go iawn oni bai bod modd post go iawn wedi'i ffurfweddu. Nid oes dim ar y wefan hon yn gyngor cyfreithiol.

@@ -1,38 +1,38 @@
 # Contact Relationship Management and Pipedrive
 
-Pipedrive is a commercial CRM focused on the sales pipeline. Contact Relationship Management is open-source demo software, not a production CRM, so this is a fair look at two different things rather than a contest.
+Pipedrive is a commercial CRM focused on the sales pipeline. Contact Relationship Management is open-source demonstration software, not a production CRM. The two are not direct alternatives.
 
-## At a glance
+## Summary
 
 | | Pipedrive | Contact Relationship Management |
 | --- | --- | --- |
-| What it is | A CRM built around activity-based selling | Open-source demo software, driven by its specification |
-| Licence | Commercial | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only or GPL-3.0-only, at your option |
-| Where it runs | Hosted by Pipedrive, with mobile apps | You run it yourself: a Rust service, a Svelte interface and PostgreSQL |
-| Focus | The sales pipeline, with add-ons for email marketing, projects and lead generation | Sales, marketing, support and analytics, with consent first |
+| Category | CRM built around activity-based selling | Open-source demonstration software, driven by its specification |
+| Licence | Commercial | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only or GPL-3.0-only, at the user's option |
+| Hosting | Hosted by Pipedrive, with mobile applications | Self-hosted: a Rust service, a Svelte interface and PostgreSQL |
+| Focus | The sales pipeline, with add-ons for email marketing, projects and lead generation | Sales, marketing, support and analytics, with recorded consent |
 
 ## Where Pipedrive is stronger
 
-- It is a supported commercial product, and this project is demo software.
-- It is built for salespeople, with mobile apps, a large integrations marketplace and AI-generated reports.
-- Its focus on daily sales activity is sharper than this project's broader scope.
+- Supported commercial product. This project is demonstration software.
+- Built for sales teams, with mobile applications, an integrations marketplace and AI-generated reports.
+- Narrower and deeper focus on daily sales activity.
 
-## Where this project is different
+## Where this project differs
 
-- Marketing and support are in the same application as sales, not add-ons.
-- You can run the whole system yourself, and read how it works.
-- Consent is built into the design: nothing is sent without it.
+- Marketing and support are part of the same application as sales.
+- The whole system can be self-hosted and inspected.
+- Sending without recorded consent is prevented by design.
 
-## Which suits you
+## Suitability
 
-- Choose Pipedrive if you run a sales team and want a focused, ready pipeline tool.
-- Try this project if you want one open application across sales, marketing and support.
+- Pipedrive suits sales teams that need a dedicated pipeline tool.
+- This project suits one open application across sales, marketing and support.
 
-Curious? [Take the tour](../tutorial-first-tour.md), or see [all the comparisons](../../COMPARISONS.md).
+See the [tutorial](../tutorial-first-tour.md) and [all comparisons](../../COMPARISONS.md).
 
 ## Sources
 
-The statements about Pipedrive come from these public pages, checked on 2026-11-04. Products change, so check them before you decide. A correction is welcome; see [CONTRIBUTING.md](../../CONTRIBUTING.md).
+Statements about Pipedrive are based on the public pages below, checked on 2026-11-04. Product details change. Corrections are welcome; see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 - [Pipedrive products](https://www.pipedrive.com/en/products)
 

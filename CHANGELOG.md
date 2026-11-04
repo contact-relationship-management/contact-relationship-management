@@ -11,10 +11,12 @@ subproject keeps a detailed changelog:
 
 ### Changed — the GitHub Pages site is the project's front door (CRM-T193, 2026-11-04)
 
-A welcoming landing page in English, Welsh and Mandarin (the last two unreviewed machine drafts), a tutorial, a comparison
+A landing page in English, Welsh and Mandarin (the last two unreviewed machine drafts), a tutorial, a comparison
 index and eight `/compare/<product>/` pages that say first where the other product is stronger and link their sources.
 The full Lily picker bar with all 57 themes, in-browser search, endonym locale labels, and sitemaps. The README moved to
 `/overview/`.
+
+The site's own copy was then rewritten in a neutral business-analyst voice, in all three languages.
 
 ### Added — the GitHub Pages site is published (CRM-T178, 2026-11-04)
 

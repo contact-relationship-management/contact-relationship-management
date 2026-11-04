@@ -1,38 +1,38 @@
 # Contact Relationship Management and HubSpot
 
-HubSpot is a commercial CRM platform with a free tier. Contact Relationship Management is open-source demo software, not a production CRM, so this is a fair look at two different things rather than a contest.
+HubSpot is a commercial CRM platform with a free tier. Contact Relationship Management is open-source demonstration software, not a production CRM. The two are not direct alternatives.
 
-## At a glance
+## Summary
 
 | | HubSpot | Contact Relationship Management |
 | --- | --- | --- |
-| What it is | A CRM that unifies customer data on one platform, with paid hubs on top | Open-source demo software, driven by its specification |
-| Licence | Commercial, with a free tier and paid editions | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only or GPL-3.0-only, at your option |
-| Where it runs | In your browser, with nothing to install | You run it yourself: a Rust service, a Svelte interface and PostgreSQL |
-| Focus | Marketing, sales, service, content, data and revenue hubs | Sales, marketing, support and analytics, with consent first |
+| Category | CRM that unifies customer data on one platform, with paid hubs | Open-source demonstration software, driven by its specification |
+| Licence | Commercial, with a free tier and paid editions | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only or GPL-3.0-only, at the user's option |
+| Hosting | Browser-based, with no installation | Self-hosted: a Rust service, a Svelte interface and PostgreSQL |
+| Focus | Marketing, sales, service, content, data and revenue hubs | Sales, marketing, support and analytics, with recorded consent |
 
 ## Where HubSpot is stronger
 
-- You can start for free in a browser with nothing to install; this project needs a developer's tools.
-- It is a supported commercial product, and this project is demo software.
-- Its hubs go further, into content, data and billing.
+- Free to start in a browser, with no installation. This project requires developer tools.
+- Supported commercial product. This project is demonstration software.
+- Wider scope, including content, data and billing.
 
-## Where this project is different
+## Where this project differs
 
-- You can run the whole system yourself, and read how it works.
-- Nothing is sent to a contact without recorded consent: that rule is part of the design, not a setting.
-- It keeps a reference to a person rather than a copy of their details.
+- The whole system can be self-hosted and inspected.
+- Sending without recorded consent is prevented by design, not by a setting.
+- Stores a reference to a person, not a copy of their details.
 
-## Which suits you
+## Suitability
 
-- Choose HubSpot if you want a working CRM this afternoon with no technical set-up.
-- Try this project if you want to inspect, change or learn from the code.
+- HubSpot suits organizations that need a CRM with no technical set-up.
+- This project suits inspecting, changing or learning from the code.
 
-Curious? [Take the tour](../tutorial-first-tour.md), or see [all the comparisons](../../COMPARISONS.md).
+See the [tutorial](../tutorial-first-tour.md) and [all comparisons](../../COMPARISONS.md).
 
 ## Sources
 
-The statements about HubSpot come from these public pages, checked on 2026-11-04. Products change, so check them before you decide. A correction is welcome; see [CONTRIBUTING.md](../../CONTRIBUTING.md).
+Statements about HubSpot are based on the public pages below, checked on 2026-11-04. Product details change. Corrections are welcome; see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 - [HubSpot CRM](https://www.hubspot.com/products/crm)
 

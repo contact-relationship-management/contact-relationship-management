@@ -1,51 +1,51 @@
 # Contact Relationship Management
 
-Sales, marketing and support in one friendly place, with consent first.
+Open-source CRM software for sales, marketing and customer support.
 
-Welcome! Contact Relationship Management brings the people you work with, and everything you have promised them, together around one record of each contact. It is open-source demo software, so you can explore it freely on fictional data and read exactly how it works.
+Contact Relationship Management tracks customer and prospect relationships across sales, marketing and support. It holds one record for each contact and requires recorded consent before a message is sent. The software is a demonstration: it runs on synthetic data and is not intended for production use.
 
-## Why it is worth a look
+## Benefits
 
-- **One picture of each customer.** Sales, marketing, support and analytics share the same record, so nobody starts a conversation from scratch.
-- **Consent comes first.** Nothing is sent to a contact without recorded consent, and an email carries a signed unsubscribe link.
-- **Less personal data to protect.** The CRM keeps a reference to a person in your identity service, not a copy of their name or address.
-- **Decisions you can explain.** Lead scores come from rules you can read, and forecasts from weighted stages, so you can always answer "why this number?"
-- **Made for the whole world.** Names, addresses, calendars and writing directions are not assumed to follow one country's shape, and the interface comes in eight languages.
-- **Open all the way through.** The specification, the code and the tests are public, and the documents say plainly what is built and what is not.
+- **Single contact record.** Sales, marketing, support and analytics use the same record.
+- **Recorded consent.** Nothing is sent to a contact without recorded consent. Each email includes a signed unsubscribe link.
+- **Reduced personal data.** The CRM stores a reference to a person in an identity service, not a copy of the name or address.
+- **Explainable results.** Lead scores are calculated from readable rules. Forecasts are calculated from weighted pipeline stages.
+- **International design.** Names, addresses, calendars and writing directions are not tied to one country's format. The interface is available in eight languages.
+- **Public specification.** The specification, code and tests are public. The documentation states what is built and what is not.
 
-## What you can do with it
+## Features
 
-- **Sell.** Score leads with clear rules, move deals across a board, and forecast by weighted stage.
-- **Market.** Run campaigns to segments and nurture contacts step by step, with sending simulated until you turn real mail on.
-- **Support.** Track tickets with priorities and deadlines, and publish knowledge-base articles.
-- **Understand.** See win rate, pipeline by stage, campaign return, service health and customer lifetime value on dashboards.
-- **Keep records clean.** Find likely duplicates with a probability you can inspect, merge them, and undo a merge.
-- **Stay accountable.** Keep an audit log, control access by role, and answer subject access and erasure requests.
+- **Sales.** Rule-based lead scoring, deal pipelines on a board, and stage-weighted forecasts.
+- **Marketing.** Segmented campaigns and nurture sequences. Sending is simulated unless a mail mode is configured.
+- **Support.** Tickets with priorities and service-level deadlines, and knowledge-base articles.
+- **Analytics.** Dashboards for win rate, pipeline by stage, campaign return, service-level health and customer lifetime value.
+- **Data quality.** Duplicate detection by probability, with merge and undo.
+- **Governance.** Audit log, role-based access, and support for subject access and erasure requests.
 
-## Try it in four steps
+## Getting started
 
-1. **Get the code.** Clone the repository. You need Node.js and pnpm.
-2. **Start the app.** In the Svelte folder, run `pnpm install`, then `pnpm dev`.
-3. **Sign in.** Use `example@example.com`. No other service is needed.
-4. **Take the tour.** Walk through contacts, leads, deals, campaigns, tickets and the executive view on fictional data.
+1. **Get the code.** Clone the repository. Node.js and pnpm are required.
+2. **Start the application.** In the Svelte directory, run `pnpm install`, then `pnpm dev`.
+3. **Sign in.** Use `example@example.com`. No other service is required.
+4. **Review the tour.** The tour covers contacts, leads, deals, campaigns, tickets and the executive view, using fictional data.
 
-The [tutorial](../../docs/tutorial-first-tour.md) goes through each step, and [install](../../INSTALL.md) covers the full service.
+The [tutorial](../../docs/tutorial-first-tour.md) describes each step. [Install and use](../../INSTALL.md) covers the full service.
 
-## How it compares
+## Comparison
 
-| Project | What it is | How this project differs |
+| Project | Category | Difference |
 | --- | --- | --- |
-| [Twenty](../../docs/compare/twenty.md) | Open-source CRM | A full product; this is a smaller demo driven by its specification |
-| [EspoCRM](../../docs/compare/espocrm.md) | Open-source CRM | Broader features; this project puts explainable rules first |
-| [SuiteCRM](../../docs/compare/suitecrm.md) | Open-source CRM | Mature and large; this is a compact reference |
-| [Salesforce](../../docs/compare/salesforce.md), [HubSpot](../../docs/compare/hubspot.md) | Commercial SaaS CRM | The practice this project models; no code or data is shared |
+| [Twenty](../../docs/compare/twenty.md) | Open-source CRM | Full product. This project is a smaller, specification-driven demonstration. |
+| [EspoCRM](../../docs/compare/espocrm.md) | Open-source CRM | Broader features. This project emphasizes explainable rules. |
+| [SuiteCRM](../../docs/compare/suitecrm.md) | Open-source CRM | Mature and large. This project is a compact reference. |
+| [Salesforce](../../docs/compare/salesforce.md), [HubSpot](../../docs/compare/hubspot.md) | Commercial SaaS CRM | This project models the same practice. No code or data is shared. |
 
-This is a demonstration project, not a competitor to those mature products. Read [the full comparison](../../COMPARISONS.md).
+This project is a demonstration and does not compete with these products. See [all comparisons](../../COMPARISONS.md).
 
-## Find your way in
+## Role briefs
 
-Leading a team? The [role briefs](for/) give each senior role a single page: what the software is, what it gives you, what it does not, and the decisions that are yours.
+The [role briefs](for/) provide one page for each senior role: what the software does, what it does not do, and which decisions belong to that role.
 
-## An honest word
+## Status
 
-This is demo software, not a production CRM. Use synthetic data. No real email is sent unless you configure a real mail mode, and legal or compliance wording here is not legal advice.
+This is demonstration software, not a production CRM. Use synthetic data only. No real email is sent unless a real mail mode is configured. Nothing on this site is legal advice.

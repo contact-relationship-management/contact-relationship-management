@@ -12,7 +12,7 @@ project, not a competitor to mature products.
 
 ## Side by side
 
-A page for each, with what the other product does better and the sources:
+Each page lists where the other product is stronger, where this project differs, and the sources:
 
 - Commercial: [Salesforce](docs/compare/salesforce.md), [HubSpot](docs/compare/hubspot.md),
   [Microsoft Dynamics 365](docs/compare/microsoft-dynamics-365.md), [Zoho CRM](docs/compare/zoho-crm.md),

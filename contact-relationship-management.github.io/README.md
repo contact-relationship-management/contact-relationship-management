@@ -93,7 +93,7 @@ git remote add github-pages git@github.com:contact-relationship-management/conta
   have not been read by a native speaker, and there are none for a language without briefs.
 - Axe runs on one brief per locale (11 of 121), and on themes other than `light` and `dark` on one page.
 - The time-zone picker has no effect here: nothing on the site shows a time.
-- There is no hosted demo. The comparison pages are English, and their sources were checked on 2026-11-04.
+- There is no hosted demo. The tutorial has not been run from a fresh clone. The comparison pages are English, and their sources were checked on 2026-11-04.
 - Before the theme stylesheet loads (the first paint, or with JavaScript off) the page uses the light fallbacks of the
   tokens, whatever the system preference.
 - GitHub Pages cannot send HTTP headers, so the content security policy is a `<meta http-equiv>` tag, which cannot

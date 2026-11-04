@@ -10,9 +10,8 @@ sibling repository, published by `make github-pages`.
 
 ## What it is
 
-- **A welcome, then the documents.** The site is the project's front door: it says what the software offers, how to
-  try it and how it compares, in plain and friendly words, and it stays honest that this is demo software
-  (CRM-T193).
+- **An introduction, then the documents.** The site states what the software offers, how to try it and how it
+  compares, in the neutral voice of a business analyst, and that it is demonstration software (CRM-T193).
 - **Static.** SvelteKit 3 with `@sveltejs/adapter-static`; every page is prerendered (`prerender = true`,
   `trailingSlash = "always"`, so `/install/` is `install/index.html`): 157 pages. No server, no API call, no form.
 - **Svelte 5 runes** and the full Lily `PickerBar`, as the CRM UI uses it, at the same pinned versions: link (every
@@ -116,8 +115,9 @@ an Arabic list and brief, a Chinese brief) loaded in Chromium with no console er
 ## Not built
 
 The deploy workflow's actions are pinned by commit SHA and not watched by Dependabot; the Playwright and axe suite
-runs against `vite preview`, not the live site, and axe has not been run against the live site; there is no hosted
-demo, so the tutorial needs Node.js and pnpm; the tutorial was written from the repository and has not been timed;
+runs against `vite preview`, not the live site, and axe on the live site covered ten pages in light and dark, once,
+by hand; there is no hosted demo, so the tutorial needs Node.js and pnpm; the tutorial was written from the repository
+and has not been run from a fresh clone;
 the comparison pages are English only and will age; the search page is English; the theme and text-size picker
 options are English on every page; the documents other than the briefs and the locale homes are English only, and the site's words in four languages are unreviewed drafts; axe runs on 11 of the 121 briefs, and on themes other than `light` and `dark` on one page; the first paint (or a visit with JavaScript off) uses the light
 fallback tokens whatever the system preference.
