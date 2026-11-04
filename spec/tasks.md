@@ -2060,10 +2060,15 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
       workflow has never run and its Pages actions are pinned by tag; GitHub Pages serving the native-script paths;
       the documents other than the briefs are English; the site's words in four languages are unreviewed; two themes;
       axe on 11 of the 121 briefs.
-- [ ] CRM-T178 **Publish the site.** *(The owner's.)* Create
+- [x] CRM-T178 **Publish the site.** Create
       `contact-relationship-management/contact-relationship-management.github.io`, set its Pages source to GitHub Actions,
       add the `github-pages` remote and run `make github-pages`; then check the deployed pages, the native-script paths
       among them. Steps: the root README, "GitHub Pages site". (S)
+      **Done (2026-11-04):** the steps above, at the owner's request; <https://contact-relationship-management.github.io/>. Before the push: `scripts/ci-check.sh site`
+      passed (66 tests) and `gitleaks` found nothing in the 9 exported commits. After it: the deploy workflow's first run
+      passed, all 137 pages answered 200 on the live host, the native-script paths among them, a missing page 404 and
+      `http` 301 to `https`; seven pages loaded in Chromium with no console error, CSP report or failed request.
+      **Not verified:** axe and the Playwright suite against the live site (they run on `vite preview`).
 
 ## Local-first CI/CD ([local-ci-cd.md](local-ci-cd.md)), proposed 2026-11-04
 

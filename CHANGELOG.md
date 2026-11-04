@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — the GitHub Pages site is published (CRM-T178, 2026-11-04)
+
+The site is live at <https://contact-relationship-management.github.io/>, exported to `contact-relationship-management/contact-relationship-management.github.io`. The
+deploy workflow passed its first run and all 137 pages answered 200 on the live host, the native-script paths among
+them. Not verified: axe and the Playwright suite against the live site (they run on `vite preview`).
+
 ### Security — supply-chain gates matched across the family (2026-10-31)
 
 - A whole-history secret scan (`gitleaks`, pinned by SHA-256) runs in CI (`secrets` job); the reviewed findings (test

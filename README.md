@@ -19,8 +19,8 @@ support, and analytics.
 - [spec](spec/index.md) — the cross-cutting specification, the single source
   of truth for both editions.
 - [contact-relationship-management.github.io](contact-relationship-management.github.io/README.md) —
-  the documentation site for GitHub Pages (static SvelteKit), built here and
-  not yet published.
+  the documentation site for GitHub Pages (static SvelteKit), published at
+  <https://contact-relationship-management.github.io/>.
 - [docs](docs/) — tutorials and reference material:
   [the family bridges](docs/tutorial-family-bridges.md) (the project portfolio
   and worker services, signed WPM events, the employment check), and the NHS
@@ -39,26 +39,24 @@ no service needed.
 [contact-relationship-management.github.io/](contact-relationship-management.github.io/README.md)
 is a static site of this README, INSTALL, the family-bridges tutorial, the
 specification index, the locale status and the role briefs in all 11 locales
-(Arabic right to left). It is built and tested here (`scripts/ci-check.sh
-site`) but **not published**: there is no `github-pages` remote and no
-exported repository yet. To publish it, the organization's owner:
+(Arabic right to left), published at <https://contact-relationship-management.github.io/>. It is built and tested here
+(`scripts/ci-check.sh site`) and exported to the read-only repository
+`contact-relationship-management/contact-relationship-management.github.io`,
+which deploys it with GitHub Actions.
 
-1. Creates the empty public repository
-   `contact-relationship-management/contact-relationship-management.github.io`
-   on GitHub (no README, licence or `.gitignore`).
-2. In that repository's Settings, Pages, sets Source to **GitHub Actions**
-   (the site's own `.github/workflows/deploy.yml` builds and deploys it).
-3. Adds the remote in this clone:
-   `git remote add github-pages git@github.com:contact-relationship-management/contact-relationship-management.github.io.git`
-4. Commits any site change and runs `make github-pages` from the repository
-   root. That runs `bin/make-github-pages`, which checks the remote, the
-   site's copy of the documents and a clean directory, then runs
+To publish a change, from a clone with the `github-pages` remote:
+
+1. After editing any document the site shows, run `pnpm run sync` in the site's
+   directory (CI fails on a stale copy).
+2. Commit, then run `make github-pages` from the repository root. That runs
+   `bin/make-github-pages`, which checks the remote, the site's copy of the
+   documents and a clean directory, then runs
    `git subtree push --prefix=contact-relationship-management.github.io github-pages main`.
-5. Watches the deploy run in the exported repository; the site is then at
-   <https://contact-relationship-management.github.io/>.
+3. Watch the deploy run in the exported repository.
 
-Later publishes are step 4 again. After editing any document the site shows,
-run `pnpm run sync` in the site's directory first (CI fails on a stale copy).
+The remote lives in each clone, so a new clone adds it once:
+`git remote add github-pages git@github.com:contact-relationship-management/contact-relationship-management.github.io.git`
+
 Never work in the exported repository. See
 [spec/github-pages-site.md](spec/github-pages-site.md).
 

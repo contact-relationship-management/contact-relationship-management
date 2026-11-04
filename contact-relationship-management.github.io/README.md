@@ -9,8 +9,7 @@ This directory lives inside the monorepo, `contact-relationship-management/conta
 here; never work in the exported repository. The specification is
 [`../spec/github-pages-site.md`](../spec/github-pages-site.md).
 
-**Status: built, not published.** No `github-pages` remote is configured and the exported repository does not exist
-yet. The steps to publish are below.
+**Status: published** at <https://contact-relationship-management.github.io/> (2026-11-04, CRM-T178). The steps to publish a change are below.
 
 ## What it shows
 
@@ -60,22 +59,10 @@ default) serves the site from a sub-path if it is ever published as a project si
 
 ## Publishing
 
-The owner of the `contact-relationship-management` GitHub organization does this once; nothing here has done any of
-it (no remote was added, no repository created, nothing pushed).
+The repository exists, its Pages source is GitHub Actions, and `.github/workflows/deploy.yml` in this directory is its
+root workflow. To publish a change:
 
-1. On GitHub, create the empty public repository
-   `contact-relationship-management/contact-relationship-management.github.io` (no README, licence or `.gitignore`,
-   so the first push is not rejected).
-2. In that repository, open Settings, then Pages, and set Source to **GitHub Actions**. The workflow
-   `.github/workflows/deploy.yml` in this directory becomes that repository's root workflow; it builds the site and
-   deploys it.
-3. In the monorepo clone, add the remote (the spec's `.git/config` entry):
-
-   ```sh
-   git remote add github-pages git@github.com:contact-relationship-management/contact-relationship-management.github.io.git
-   ```
-
-4. Commit any change to this directory, then from the monorepo root run:
+1. Commit it, then from the monorepo root run:
 
    ```sh
    make github-pages
@@ -84,18 +71,20 @@ it (no remote was added, no repository created, nothing pushed).
    which runs `bin/make-github-pages`: it checks that the remote exists, that `src/content/` is current and that this
    directory has no uncommitted change, then runs
    `git subtree push --prefix=contact-relationship-management.github.io github-pages main`.
-5. Watch the Deploy to GitHub Pages run in the exported repository; the site is then at
-   <https://contact-relationship-management.github.io/>.
+2. Watch the Deploy to GitHub Pages run in the exported repository.
 
-Every later publish is step 4 again.
+The remote lives in each clone, so a new clone adds it once:
+
+```sh
+git remote add github-pages git@github.com:contact-relationship-management/contact-relationship-management.github.io.git
+```
 
 ## Not done
 
-- Not published, and the deploy workflow has never run. Every action in it is pinned to a commit SHA with its tag in
-  a comment, as the monorepo's own workflows are, but Dependabot does not watch it (the `github-actions` entry covers
-  the root `.github` only).
-- That GitHub Pages serves the native-script brief paths (`/ar-001/for/الرئيس-التنفيذي/`) was checked with
-  `vite preview` only, not on GitHub Pages.
+- Every action in the deploy workflow is pinned to a commit SHA with its tag in a comment, as the monorepo's own
+  workflows are, but Dependabot does not watch it (the `github-actions` entry covers the root `.github` only).
+- The Playwright and axe suite runs against `vite preview`, not the live site. The live site had every page requested
+  and seven pages loaded in Chromium; axe has not been run against it.
 - The documents other than the briefs are English only. The site's own words in Arabic, Welsh, Hindi and Chinese
   have not been read by a native speaker, and there are none for a language without briefs.
 - Only the `light` and `dark` Lily themes are offered and audited, and axe runs on one brief per locale (11 of 121).

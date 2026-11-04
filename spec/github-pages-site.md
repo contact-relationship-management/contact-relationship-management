@@ -1,6 +1,6 @@
 # GitHub Pages site
 
-*Added 2026-10-30 (CRM-T177). Publishing is CRM-T178, the owner's, open.*
+*Added 2026-10-30 (CRM-T177). Published 2026-11-04 (CRM-T178) at <https://contact-relationship-management.github.io/>.*
 
 The public documentation site, `contact-relationship-management.github.io/` in this repository. It follows the family
 pattern written down in the workforce planning repository (`workforce-planning-management/spec/monorepo-github-pages/`)
@@ -78,13 +78,17 @@ content check, `svelte-check`, the build and the suite; the CI job `site` runs t
 `git subtree push --prefix=contact-relationship-management.github.io github-pages main` after checking that the
 `github-pages` remote exists, the content copy is current and the directory has no uncommitted change. The exported
 repository deploys with its own `.github/workflows/deploy.yml` (GitHub Pages' actions; inert inside the monorepo).
-The remote and the repository are created by the owner; the steps are in the root [README](../README.md#github-pages-site)
-and the site's [README](../contact-relationship-management.github.io/README.md#publishing).
+The `github-pages` remote is per clone; the steps are in the root [README](../README.md#github-pages-site) and the site's
+[README](../contact-relationship-management.github.io/README.md#publishing).
+
+Published 2026-11-04 (CRM-T178). The exported repository's Deploy to GitHub Pages workflow passed its first run;
+all 137 pages answered 200 on the live host, the native-script paths among them; and seven pages (four documents,
+an Arabic list and brief, a Chinese brief) loaded in Chromium with no console error, CSP report or failed request, with the expected `lang` and `dir`.
 
 ## Not built
 
-Not published (CRM-T178); the deploy workflow has never run (its actions are pinned by commit SHA, not watched by
-Dependabot); GitHub Pages serving the native-script paths is unverified (only `vite preview` was run); the documents
-other than the briefs are English only, and the site's words in four languages are unreviewed drafts; only the `light`
+The deploy workflow's actions are pinned by commit SHA and not watched by Dependabot; the Playwright and axe suite
+runs against `vite preview`, not the live site, and axe has not been run against the live site; the documents other
+than the briefs are English only, and the site's words in four languages are unreviewed drafts; only the `light`
 and `dark` themes; axe runs on 11 of the 121 briefs; the first paint (or a visit with JavaScript off) uses the light
 fallback tokens whatever the system preference.
