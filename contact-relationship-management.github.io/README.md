@@ -77,6 +77,10 @@ root workflow. To publish a change:
    `git subtree push --prefix=contact-relationship-management.github.io github-pages main`.
 2. Watch the Deploy to GitHub Pages run in the exported repository.
 
+A green `make github-pages` means the code was pushed, not that the site was deployed; only that run says so. On
+2026-11-04 three attempts at one commit timed out in `actions/deploy-pages` with GitHub reporting no incident. The
+cause was not established, and the live site kept the previous deployment.
+
 The remote lives in each clone, so a new clone adds it once:
 
 ```sh
