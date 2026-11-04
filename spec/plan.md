@@ -191,3 +191,7 @@ The code findings are counts and line references from one read-only pass, not
 a review of every function. Sizes are guesses. The capability survey reads
 vendors' documentation, not their products, and says nothing about real users
 of this CRM. Each task re-checks its finding before work starts.
+
+## Local-first CI/CD (2026-11-04)
+
+Research and advice are in [local-ci-cd.md](local-ci-cd.md); the tasks are CRM-T184 to CRM-T192 in [tasks.md](tasks.md). CRM already has the entry point (`scripts/ci-check.sh`) and a Woodpecker file that calls it, so its remaining work is a local container helper, a pre-push gate, an attestation and a second remote. Not taken: `act` as the plan, a Forgejo runner, a GitHub self-hosted runner.

@@ -2064,3 +2064,17 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
       `contact-relationship-management/contact-relationship-management.github.io`, set its Pages source to GitHub Actions,
       add the `github-pages` remote and run `make github-pages`; then check the deployed pages, the native-script paths
       among them. Steps: the root README, "GitHub Pages site". (S)
+
+## Local-first CI/CD ([local-ci-cd.md](local-ci-cd.md)), proposed 2026-11-04
+
+Why: the owner finds GitHub-hosted CI unreliable and costly. CRM is already furthest along: `scripts/ci-check.sh` is the one entry point and `.woodpecker.yml` calls it. The assessment is in [local-ci-cd.md](local-ci-cd.md); every decision is the owner's (CRM-D22).
+
+- [ ] CRM-T184 **Measure first.** Time every stage on this machine, cold and warm, against the hosted run history, with the number of runs that were down, queued or failed for reasons other than the code. The evidence for CRM-D22. (S)
+- [ ] CRM-T185 **Make the entry point the only path.** A test fails if a `ci.yml`, `mutants.yml` or `.woodpecker.yml` step is not a call to `scripts/ci-check.sh` or a documented exception; add an `all` stage. (S)
+- [ ] CRM-T186 **A local helper for the service containers** (PostgreSQL 18, Redis, Keycloak) with the pinned digests under colima or docker; `--platform linux/amd64` for the parity-sensitive stages. (M)
+- [ ] CRM-T187 **A pre-push gate** (fmt, clippy, lib tests, scripts), installed by a script, skippable by an explicit recorded variable. (S)
+- [ ] CRM-T188 **Parallel database suites** with a throwaway database per test binary. (M)
+- [ ] CRM-T189 **Attestation.** `all` writes `refs/notes/ci` and posts a `local-ci` commit status to each remote that accepts one, from a clean tree only, with a status-only token. (M)
+- [ ] CRM-T190 **Narrow the hosted workflow** to `workflow_dispatch`, tags and a weekly clean room; keep `release.yml` as the manual fallback. Needs CRM-T185 and CRM-T189. (S)
+- [ ] CRM-T191 **Nightly and weekly local jobs** by `launchd` (gitleaks over history, `cargo deny`, mutants, the image smokes), writing a last-run page. (M)
+- [ ] CRM-T192 **Add a second remote** (Codeberg or GitLab) so a hosted outage on one host is not an outage of the project. (S, owner)

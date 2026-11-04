@@ -132,6 +132,12 @@
           "description": "The audit trail and events."
         },
         {
+          "title": "Local-first CI/CD",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/local-ci-cd.md",
+          "path": "spec/local-ci-cd.md",
+          "description": "Proposed: run CI locally first and record the result; options assessed, risks, order."
+        },
+        {
           "title": "Sales automation",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/sales-automation.md",
           "path": "spec/sales-automation.md",

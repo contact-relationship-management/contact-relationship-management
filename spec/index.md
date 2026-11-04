@@ -101,3 +101,4 @@ queued in `tasks.md`, and only then lands as code in a subproject.
   `main-x-service`, not to this one. These links resolve only in a checkout
   where this repository sits beside that one's `agents/` directory; elsewhere
   they are dangling, and the comments name the contract that the code follows.
+- **Local-first CI/CD (proposed):** [local-ci-cd.md](local-ci-cd.md).

@@ -51,6 +51,7 @@ SECTIONS = [
         ("Design decisions", "spec/design.md", "Numbered design decisions (CRM-D1 to CRM-D18)."),
         ("Authentication and authorisation", "spec/auth.md", "Personas, masking and record-level access."),
         ("Audit", "spec/audit.md", "The audit trail and events."),
+        ("Local-first CI/CD", "spec/local-ci-cd.md", "Proposed: run CI locally first and record the result; options assessed, risks, order."),
         ("Sales automation", "spec/sales-automation.md", "Leads, scoring, pipelines, deals, forecasting."),
         ("Marketing automation", "spec/marketing-automation.md", "Consent, segments, campaigns, nurture."),
         ("Service and support", "spec/service-support.md", "Tickets, SLAs, knowledge base."),

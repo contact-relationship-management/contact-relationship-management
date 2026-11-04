@@ -31,6 +31,7 @@
 - [Design decisions](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/design.md): Numbered design decisions (CRM-D1 to CRM-D18).
 - [Authentication and authorisation](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/auth.md): Personas, masking and record-level access.
 - [Audit](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/audit.md): The audit trail and events.
+- [Local-first CI/CD](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/local-ci-cd.md): Proposed: run CI locally first and record the result; options assessed, risks, order.
 - [Sales automation](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/sales-automation.md): Leads, scoring, pipelines, deals, forecasting.
 - [Marketing automation](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/marketing-automation.md): Consent, segments, campaigns, nurture.
 - [Service and support](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/service-support.md): Tickets, SLAs, knowledge base.
