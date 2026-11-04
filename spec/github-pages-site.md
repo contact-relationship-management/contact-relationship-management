@@ -116,8 +116,8 @@ an Arabic list and brief, a Chinese brief) loaded in Chromium with no console er
 
 The deploy workflow's actions are pinned by commit SHA and not watched by Dependabot; the Playwright and axe suite
 runs against `vite preview`, not the live site, and axe on the live site covered ten pages in light and dark, once,
-by hand; there is no hosted demo, so the tutorial needs Node.js and pnpm; the tutorial was written from the repository
-and has not been run from a fresh clone;
+by hand; there is no hosted demo, so the tutorial needs Node.js and pnpm; the tutorial was run once from a fresh clone
+(2026-11-04, macOS, Node 26.8, pnpm 12, the six tour screens), and no test keeps it so;
 the comparison pages are English only and will age; the search page is English; the theme and text-size picker
 options are English on every page; the documents other than the briefs and the locale homes are English only, and the site's words in four languages are unreviewed drafts; axe runs on 11 of the 121 briefs, and on themes other than `light` and `dark` on one page; the first paint (or a visit with JavaScript off) uses the light
 fallback tokens whatever the system preference.
