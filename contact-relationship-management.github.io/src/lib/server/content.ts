@@ -57,8 +57,12 @@ export function rewriteHref(from: string, href: string, route: (r: string) => st
 export type Rendered = { title: string; html: string };
 
 /** Render one repository document. Raw HTML in the Markdown is shown as text, never passed through. */
-export function render(path: string, route: (r: string) => string): Rendered {
+export function render(path: string, route: (r: string) => string, part?: "hero" | "body"): Rendered {
   let text = source(path);
+  // A landing page's parts: the hero is everything before the first `##`, the body the rest.
+  const firstSection = text.search(/^## /m);
+  if (part === "hero" && firstSection !== -1) text = text.slice(0, firstSection);
+  if (part === "body" && firstSection !== -1) text = text.slice(firstSection);
   // YAML front matter, if a document has any, is metadata, not page text.
   text = text.replace(/^---\n[\s\S]*?\n---\n/, "");
   const seen = new Map<string, number>();

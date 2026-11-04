@@ -10,6 +10,16 @@ project, not a competitor to mature products.
 | [SuiteCRM](https://suitecrm.com)             | Open-source CRM (PHP)        | Mature, large; this project is a compact reference                 |
 | Salesforce, HubSpot                          | Commercial SaaS CRM          | The practice this project models; no code or data is shared        |
 
+## Side by side
+
+A page for each, with what the other product does better and the sources:
+
+- Commercial: [Salesforce](docs/compare/salesforce.md), [HubSpot](docs/compare/hubspot.md),
+  [Microsoft Dynamics 365](docs/compare/microsoft-dynamics-365.md), [Zoho CRM](docs/compare/zoho-crm.md),
+  [Pipedrive](docs/compare/pipedrive.md)
+- Open source: [Twenty](docs/compare/twenty.md), [EspoCRM](docs/compare/espocrm.md),
+  [SuiteCRM](docs/compare/suitecrm.md)
+
 ## What is different here
 
 - Specification first: [spec](spec/index.md) is the single source of truth for

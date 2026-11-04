@@ -9,7 +9,7 @@
 </script>
 
 <svelte:head>
-  <title>{data.title} · Contact Relationship Management</title>
+  <title>{data.title} · {t(data.locale, "brand")}</title>
   {#each data.alternates as a (a.locale)}
     <link rel="alternate" hreflang={langTag(a.locale)} href={href(`/${a.locale}/for/${a.slug}/`)} />
   {/each}

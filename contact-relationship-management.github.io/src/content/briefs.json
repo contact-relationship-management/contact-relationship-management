@@ -1,5 +1,25 @@
 {
   "generated": "by scripts/sync-content.mjs from the monorepo; do not edit by hand",
+  "homes": [
+    "cy-001",
+    "cy-gb",
+    "en-001",
+    "en-gb",
+    "en-gb-oxendict",
+    "en-us",
+    "zh-001",
+    "zh-cn"
+  ],
+  "compare": [
+    "espocrm",
+    "hubspot",
+    "microsoft-dynamics-365",
+    "pipedrive",
+    "salesforce",
+    "suitecrm",
+    "twenty",
+    "zoho-crm"
+  ],
   "briefs": [
     {
       "locale": "ar-001",

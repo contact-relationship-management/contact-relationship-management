@@ -19,6 +19,19 @@ Source text: `en-gb-oxendict`, refreshed 2026-10-11.
 | cy-001 | 11 | Byte copy of cy-gb | **No** |
 | ar-001 | 11 | Translated by Claude (Modern Standard Arabic, right-to-left), native-script slugs; no regional variant | **No** |
 
+The locale home pages, `locales/<code>/index.md` with `.locale-peer-id` and a `README.md` symlink (CRM-T193):
+
+| Locale | Method | Reviewed by a native speaker |
+|---|---|---|
+| en-gb-oxendict | Source | n/a |
+| en-001, en-gb, en-us | Same text as en-gb-oxendict: the text has no word whose spelling differs | n/a |
+| cy-gb | Translated by Claude (Welsh) | **No** |
+| cy-001 | Byte copy of cy-gb | **No** |
+| zh-cn | Translated by Claude (Simplified Chinese, Mandarin) | **No** |
+| zh-001 | Byte copy of zh-cn | **No** |
+
+`ar-001`, `hi-001` and `hi-in` have no home page yet.
+
 ## Two locale sets (CRM-T89)
 
 The repository has two sets of locales, for two different things, and they are not meant to be equal.

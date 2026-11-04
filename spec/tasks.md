@@ -2069,6 +2069,18 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
       passed, all 137 pages answered 200 on the live host, the native-script paths among them, a missing page 404 and
       `http` 301 to `https`; seven pages loaded in Chromium with no console error, CSP report or failed request.
       **Not verified:** axe and the Playwright suite against the live site (they run on `vite preview`).
+- [x] CRM-T193 **The site as the project's front door.** The GitHub Pages site becomes a welcoming landing page, with the
+      tutorial, the comparisons and the full Lily picker bar. At the owner's request.
+      **Done (2026-11-04):** `/` and `/<locale>/` from `locales/<code>/index.md` in English, Welsh and Mandarin (benefits,
+      features, four steps, comparison, role briefs, an honest word), `/tutorial/` (`docs/tutorial-first-tour.md`),
+      `/compare/` and eight `/compare/<product>/` pages (`docs/compare/`, sources checked 2026-11-04), the README moved to
+      `/overview/`. `PickerBar` with all seven pickers and 57 themes, search in the browser from a prerendered index,
+      endonym labels, a translated wordmark, `/sitemap.xml` and `/<locale>/sitemap.xml`. Axe passes in every theme; the
+      link and muted colours moved to get there. 187 Playwright tests.
+      **Not done / not verified:** not checked on the live site until it is published; axe on non-default themes covers
+      one page; the Welsh and Mandarin text is unreviewed machine translation; the tutorial and comparison pages are
+      English; no hosted demo; the time-zone picker has no effect here, because nothing shows a time; the rules' other
+      locales, and home pages for Arabic and Hindi, are not started.
 
 ## Local-first CI/CD ([local-ci-cd.md](local-ci-cd.md)), proposed 2026-11-04
 

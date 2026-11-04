@@ -6,10 +6,11 @@
      preference), with the original values as fallbacks for first paint. */
   --mxi-color-bg: var(--color-base-100, #fafafa);
   --mxi-color-fg: var(--color-base-content, #111827);
-  /* 88%, not 78%: Lily themes 0.6 made the base text colour lighter, and 78% fell to 4.07:1 (needs 4.5:1). */
+  /* 92%, not 78%: Lily themes 0.6 made the base text colour lighter, and 78% fell to 4.07:1 (needs 4.5:1); 88% held in
+     every theme but valentine. */
   --mxi-color-muted: color-mix(
     in oklch,
-    var(--color-base-content, #6b7280) 88%,
+    var(--color-base-content, #6b7280) 92%,
     var(--color-base-100, #fafafa)
   );
   --mxi-color-border: var(--color-base-300, #e5e7eb);
@@ -21,11 +22,11 @@
     var(--color-primary, #2563eb) 80%,
     var(--color-neutral, #111827)
   );
-  /* The primary colour as text (links): mixed 70/30 with the theme's text colour. The dark theme's primary measured
-     3.4:1 as link text; this is 5.6:1 in dark and 10.8:1 in light. */
+  /* The primary colour as text (links): mixed 25/75 with the theme's text colour, so a link stays over 4.5:1 in every
+     Lily theme the picker offers (at 70/30, nine light themes fell under it, and at 40/60 two; the dark theme's primary alone is 3.4:1). */
   --mxi-color-link: color-mix(
     in oklch,
-    var(--color-primary, #2563eb) 70%,
+    var(--color-primary, #2563eb) 25%,
     var(--color-base-content, #111827)
   );
   --mxi-color-primary-fg: var(--color-primary-content, #ffffff);

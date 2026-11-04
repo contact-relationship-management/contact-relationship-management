@@ -15,7 +15,12 @@ here; never work in the exported repository. The specification is
 
 | Route | Document |
 | --- | --- |
-| `/` | [`README.md`](../README.md) |
+| `/`, `/<locale>/` | the landing page, [`locales/<locale>/index.md`](../locales/) in English, Welsh and Mandarin |
+| `/tutorial/` | [`docs/tutorial-first-tour.md`](../docs/tutorial-first-tour.md) |
+| `/compare/` | [`COMPARISONS.md`](../COMPARISONS.md) |
+| `/compare/<product>/` | [`docs/compare/<product>.md`](../docs/compare/) |
+| `/overview/` | [`README.md`](../README.md) |
+| `/search/` | search in the browser, from `/search-index.json` |
 | `/install/` | [`INSTALL.md`](../INSTALL.md) |
 | `/family-bridges/` | [`docs/tutorial-family-bridges.md`](../docs/tutorial-family-bridges.md) |
 | `/spec/` | [`spec/index.md`](../spec/index.md) |
@@ -28,9 +33,8 @@ Chinese, Hindi, Welsh), so the same role is matched across locales by its `.loca
 header's language button (Lily `LocalePicker`) opens the same brief in another locale. `<html lang>` is the page's
 locale and `dir` is `rtl` on the Arabic (`ar-001`) pages. The site's own words (navigation, headings, footer) follow the
 page's language the way the CRM UI's strings do, chosen by language (`cy-gb` and `cy-001` read Welsh); they exist in
-English, Arabic, Welsh, Hindi and Chinese, and every language but English is a machine draft. The theme follows the
-system's light or dark preference (Lily `ThemePicker`, the `light` and `dark` themes only); text size uses Lily
-`TextSizePicker`.
+English, Arabic, Welsh, Hindi and Chinese, and every language but English is a machine draft. The header is the full Lily `PickerBar`: pages, search, theme (all 57, starting from the system's light or dark
+preference), locale, time zone, text size and share.
 
 ## Content
 
@@ -87,7 +91,9 @@ git remote add github-pages git@github.com:contact-relationship-management/conta
   and seven pages loaded in Chromium; axe has not been run against it.
 - The documents other than the briefs are English only. The site's own words in Arabic, Welsh, Hindi and Chinese
   have not been read by a native speaker, and there are none for a language without briefs.
-- Only the `light` and `dark` Lily themes are offered and audited, and axe runs on one brief per locale (11 of 121).
+- Axe runs on one brief per locale (11 of 121), and on themes other than `light` and `dark` on one page.
+- The time-zone picker has no effect here: nothing on the site shows a time.
+- There is no hosted demo. The comparison pages are English, and their sources were checked on 2026-11-04.
 - Before the theme stylesheet loads (the first paint, or with JavaScript off) the page uses the light fallbacks of the
   tokens, whatever the system preference.
 - GitHub Pages cannot send HTTP headers, so the content security policy is a `<meta http-equiv>` tag, which cannot

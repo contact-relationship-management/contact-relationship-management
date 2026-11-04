@@ -16,7 +16,7 @@
   });
 </script>
 
-<svelte:head><title>{t(data.locale, "nav.briefs")} ({data.locale}) · Contact Relationship Management</title></svelte:head>
+<svelte:head><title>{t(data.locale, "nav.briefs")} ({data.locale}) · {t(data.locale, "brand")}</title></svelte:head>
 
 <h1>{t(data.locale, "nav.briefs")}</h1>
 <p class="lede">{t(data.locale, "locale")} {endonym} (<code>{data.locale}</code>)</p>

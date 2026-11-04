@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Doc from "#lib/Doc.svelte";
+  import Landing from "#lib/Landing.svelte";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -7,4 +7,4 @@
 
 <svelte:head><title>Contact Relationship Management</title></svelte:head>
 
-<Doc html={data.html} path={data.path} />
+<Landing hero={data.hero} body={data.body} />

@@ -23,11 +23,19 @@ const BRIEFS_OUT = join(SITE, "src", "content", "briefs.json");
 // The documents, by repository path.
 const DOCS = [
   "README.md",
+  "COMPARISONS.md",
   "INSTALL.md",
+  "docs/tutorial-first-tour.md",
   "docs/tutorial-family-bridges.md",
   "spec/index.md",
   "spec/locale/index.md",
 ];
+
+// The comparison pages, /compare/<product>/.
+const COMPARE = readdirSync(join(ROOT, "docs", "compare"))
+  .filter((f) => f.endsWith(".md"))
+  .sort()
+  .map((f) => `docs/compare/${f}`);
 
 function briefs() {
   const out = [];
@@ -45,18 +53,33 @@ function briefs() {
   return out;
 }
 
+// The locale home pages: locales/<locale>/index.md, with the same `.locale-peer-id` in every locale that has one.
+function homes() {
+  return readdirSync(join(ROOT, "locales"))
+    .sort()
+    .filter((locale) => existsSync(join(ROOT, "locales", locale, "index.md")))
+    .map((locale) => {
+      if (!existsSync(join(ROOT, "locales", locale, ".locale-peer-id")))
+        throw new Error(`no .locale-peer-id beside locales/${locale}/index.md`);
+      return locale;
+    });
+}
+
 /** @param {unknown} value */
 const json = (value) => JSON.stringify(value, null, 2) + "\n";
 
 function render() {
   const list = briefs();
+  const homeLocales = homes();
   /** @type {Record<string, string>} */
   const files = {};
-  for (const p of [...DOCS, ...list.map((b) => b.path)]) files[p] = readFileSync(join(ROOT, p), "utf8");
+  for (const p of [...DOCS, ...COMPARE, ...homeLocales.map((l) => `locales/${l}/index.md`), ...list.map((b) => b.path)]) files[p] = readFileSync(join(ROOT, p), "utf8");
   return {
     docs: json({ generated: "by scripts/sync-content.mjs from the monorepo; do not edit by hand", files }),
     briefs: json({
       generated: "by scripts/sync-content.mjs from the monorepo; do not edit by hand",
+      homes: homeLocales,
+      compare: COMPARE.map((p) => p.replace(/^docs\/compare\/|\.md$/g, "")),
       briefs: list.map(({ locale, slug, peer }) => ({ locale, slug, peer })),
     }),
   };

@@ -9,6 +9,13 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the GitHub Pages site is the project's front door (CRM-T193, 2026-11-04)
+
+A welcoming landing page in English, Welsh and Mandarin (the last two unreviewed machine drafts), a tutorial, a comparison
+index and eight `/compare/<product>/` pages that say first where the other product is stronger and link their sources.
+The full Lily picker bar with all 57 themes, in-browser search, endonym locale labels, and sitemaps. The README moved to
+`/overview/`.
+
 ### Added — the GitHub Pages site is published (CRM-T178, 2026-11-04)
 
 The site is live at <https://contact-relationship-management.github.io/>, exported to `contact-relationship-management/contact-relationship-management.github.io`. The
