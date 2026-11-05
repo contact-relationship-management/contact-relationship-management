@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — webhook subscriptions and the application clock (CRM-T198)
+
+`POST /api/webhook-subscriptions` stamps `created_at` from the application, the clock that stamps `occurred_at` on an
+event. The relay compares the two, so a database clock ahead of the application's could skip an event sent just after
+subscribing. The API does not change.
+
 ### Added — the consent-profile tables and columns (CRM-T166 step c, CRM-D21)
 
 Migration `000059`: `consent_jurisdictions` (code, layer, parent, name); `consent_profile_rows` (code, key, JSON value, `effective_from`/`effective_to`, source, `checked_on`, status `read`/`unverified`/`example`, who recorded it; append-only, a trigger refuses an update or a delete; `id` is the recording order); `consent_profile_acknowledgements` (code, `through_id`, who and when; append-only); `consent_purposes` (key, position, names and descriptions per locale, `active`, `soft_opt_in_eligible`), seeded with today's four purposes at the positions signed links already name them by; `channel` on `contact_consents` (now keyed by contact, purpose and channel) and on `consent_events`, every existing row `email`; `consent_jurisdiction` on contacts, campaigns and nurture sequences; `sender_name`, `postal_address` and `contact_link` on `organization_settings`; `basis` on `email_deliveries`. The entities of contacts, campaigns, nurture sequences and consent events carry the new columns (so the OpenAPI document and the UI's `schema.d.ts` do); the consent reads and writes name the `email` channel. The personal-data inventory lists the four new tables. **Not done or verified:** nothing reads the new tables or columns yet: every send still checks only `granted`; the migration's `down` was not run; no request test of the new columns beyond the whole suite passing (223 request tests against a throwaway PostgreSQL database).

@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — webhook subscriptions and the application clock (CRM-T198, 2026-11-05)
+
+- A webhook subscription is stamped by the application, as events are. With the database clock ahead, an event sent just
+  after subscribing could be skipped.
+
 ### Added — a record of a passing local run (CRM-T189, 2026-11-05)
 
 - A passing `scripts/ci-check.sh all` on a clean tree writes a note on `refs/notes/ci`, and posts a `local-ci` commit

@@ -134,15 +134,18 @@ async fn create(
     let pid = Uuid::new_v4();
     let secret = rules::new_secret();
     let txn = ctx.db.begin().await?;
+    // Stamped here, not by the database's default: the relay compares this with an event's
+    // `occurred_at`, which `streaming` stamps from this clock, and the two clocks can differ.
     txn.execute_raw(sql(
-        "INSERT INTO webhook_subscriptions (pid, url, events, secret, created_by) \
-         VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO webhook_subscriptions (pid, url, events, secret, created_by, created_at) \
+         VALUES ($1, $2, $3, $4, $5, $6)",
         [
             pid.into(),
             address.clone().into(),
             serde_json::json!(events).into(),
             crate::crypto::seal(&secret).into(),
             caller.actor().map(str::to_string).into(),
+            Utc::now().into(),
         ],
     ))
     .await?;

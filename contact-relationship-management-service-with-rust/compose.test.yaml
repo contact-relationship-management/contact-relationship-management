@@ -11,9 +11,8 @@
 # PG_PASSWORD, so a server without the `loco` role takes
 # `PG_USER=postgres PG_PASSWORD=<its password>` (a superuser, for the
 # extensions). The stage drops and recreates its own `ci_*` database each run.
-# Seen on macOS: three webhook request tests failed against this container
-# and passed against a local PostgreSQL, likely because the podman VM's clock
-# runs a few milliseconds ahead of the host's.
+# On macOS the container's clock runs ahead of the host's: 9 ms under Podman
+# and under colima (CRM-T198). Compare two times from the same clock.
 #
 # The connection details deliberately match what CI provides
 # (.github/workflows/ci.yml `test-db`): superuser `loco`/`loco` on 5432.
