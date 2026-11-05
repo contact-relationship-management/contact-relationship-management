@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — tests for the mutants that survived (CRM-T196, 2026-11-05)
+
+- Tests for the period markers in reports, the day split in sums, the recency line in lead scoring, and service-level
+  breaches exactly at the deadline. Two equivalent mutants are excluded by name with the reason.
+
 ### Changed — hosted mutation testing in seven shards (CRM-T195, 2026-11-05)
 
 - `mutants.yml` runs seven parallel jobs in place of one that was cancelled at six hours. It has not run yet.

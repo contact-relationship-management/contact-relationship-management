@@ -262,6 +262,15 @@ mod tests {
         }
     }
 
+    #[test]
+    fn recency_follows_the_line_from_day_7_to_day_30() {
+        // With 23 full points the ceiling of 23 * remaining / 23 is `remaining` itself.
+        for days in 8..30 {
+            assert_eq!(recency_points(days, 23), i32::try_from(30 - days).unwrap());
+        }
+        assert_eq!(recency_points(8, 46), 44);
+    }
+
     /// The unsubscribe penalty floors at zero (clamp), never negative.
     #[test]
     fn unsubscribe_clamps_at_zero() {

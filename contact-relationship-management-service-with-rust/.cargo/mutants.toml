@@ -4,3 +4,7 @@
 # request tests, which need PostgreSQL.
 examine_globs = ["src/rules/**/*.rs"]
 additional_cargo_test_args = ["--lib"]
+# Equivalent mutants: no test can tell them from the code (CRM-T196).
+# - terms: a two-character word's one overlapping pair is the word itself.
+# - last_touch: when the activity and the stage move are the same instant, either one is that instant.
+exclude_re = ["replace < with <= in terms$", "replace > with >= in last_touch$"]

@@ -679,6 +679,31 @@ mod tests {
         assert!(p.sql.contains("d.currency AS currency"));
         assert!(p.sql.contains("GROUP BY grp, currency"));
         assert!(p.per_currency && p.uses_money);
+        // Split by day only for a close-day rate, or a group would be one row per day.
+        assert!(!p.sql.contains(" AS day"), "{}", p.sql);
+        assert!(!p.sql.contains("currency, day"), "{}", p.sql);
+    }
+
+    #[test]
+    fn each_period_marker_uses_its_own_expression() {
+        let periods = Periods {
+            zone: crate::rules::periods::zone("Asia/Tokyo").unwrap(),
+            fiscal_start_month: 4,
+        };
+        let month = period::month_expr("d.closed_at", &periods);
+        let quarter = period::fiscal_quarter_expr("d.closed_at", &periods);
+        let year = period::fiscal_year_expr("d.closed_at", &periods);
+        assert!(month != quarter && quarter != year && year != month);
+        for (marker, sql) in [
+            ("@month(d.closed_at)", month),
+            ("@fiscal_quarter(d.closed_at)", quarter),
+            ("@fiscal_year(d.closed_at)", year),
+        ] {
+            assert_eq!(
+                resolve(marker, &periods),
+                format!("coalesce({sql}, '(open)')")
+            );
+        }
     }
 
     #[test]

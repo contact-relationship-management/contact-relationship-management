@@ -219,6 +219,23 @@ mod tests {
         assert!(!resolution_breached(at(23, 0), due, Some(at(9, 0))));
     }
 
+    /// The deadline itself is in time: a breach is strictly after it, and `now` no longer
+    /// matters once the work is on record.
+    #[test]
+    fn work_done_exactly_at_the_deadline_is_not_a_breach() {
+        let due = at(10, 0);
+        let now = at(12, 0);
+        for breached in [first_response_breached, resolution_breached] {
+            assert!(!breached(now, due, Some(at(9, 59))));
+            assert!(!breached(now, due, Some(due)));
+            assert!(breached(now, due, Some(at(10, 1))));
+            // With nothing on record the clock decides, and the same rule holds.
+            assert!(!breached(at(9, 59), due, None));
+            assert!(!breached(due, due, None));
+            assert!(breached(at(10, 1), due, None));
+        }
+    }
+
     fn office() -> Calendar {
         use crate::rules::calendar::{Hours, Week};
         let day = vec![Hours {
