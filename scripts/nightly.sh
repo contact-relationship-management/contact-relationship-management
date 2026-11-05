@@ -90,6 +90,13 @@ if [[ "${kind}" == nightly ]]; then
   # A different seventh each night, so every rule's mutants are tried once a week. The checkout
   # keeps its build output, so a mutants-out directory from last night has to go first.
   shard="$(($(date +%u) % 7))"
+  # Without kache, by every route it has, ~/.cargo/config.toml's [env] included. A mutated build is
+  # thrown away, so a cache gains nothing, and under load kache's daemon fails the C build of
+  # aws-lc-sys (os error 35), which cargo-mutants reports as unviable: a mutant never tested.
+  PATH="$(printf %s "${PATH}" | tr ':' '\n' | grep -v '/kache' | paste -sd: -)"
+  export RUSTC_WRAPPER='' CARGO_BUILD_RUSTC_WRAPPER='' CC_KNOWN_WRAPPER_CUSTOM=''
+  export HOST_CC=cc HOST_CXX=c++ CC_aarch64_apple_darwin=cc CXX_aarch64_apple_darwin=c++
+  unset CC CXX CARGO_TARGET_AARCH64_APPLE_DARWIN_RUNNER
   rm -rf "${checkout:?}/${service}/mutants-out"
   started="${SECONDS}"
   export CRM_MUTANTS_JOBS="${CRM_MUTANTS_JOBS:-8}"
@@ -135,7 +142,7 @@ fi
 {
   echo "# Last ${kind} run"
   echo
-  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) on commit \`${commit:0:9}\`, rustc wrapper: ${RUSTC_WRAPPER:-cargo config}."
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) on commit \`${commit:0:9}\`."
   echo
   echo "| Job | Result | Seconds | Log |"
   echo "|---|---|---|---|"

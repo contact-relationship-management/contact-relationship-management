@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — nightly mutants lost to `kache` (CRM-T197, 2026-11-05)
+
+- `scripts/nightly.sh` runs mutants without `kache`, whose daemon failed C builds under load, leaving mutants reported
+  as unviable that were never tested.
+
 ### Added — tests for the mutants that survived (CRM-T196, 2026-11-05)
 
 - Tests for the period markers in reports, the day split in sums, the recency line in lead scoring, and service-level
