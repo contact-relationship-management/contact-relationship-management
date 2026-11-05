@@ -47,6 +47,13 @@ EXCEPTIONS = {
 NOT_IN_ALL = {
     "all": "it is the list",
     "mutants": "it takes hours (spec/local-ci-cd.md), so it is a scheduled job",
+    "pre-push": "it repeats stages `all` runs",
+}
+
+# Stages for this machine only, which no hosted workflow calls, and why.
+LOCAL_ONLY = {
+    "all": "the hosted workflow runs the same stages as separate jobs",
+    "pre-push": "the hook's subset of stages the hosted workflow already runs",
 }
 
 
@@ -132,7 +139,7 @@ def check_commands(
 
 def check_coverage(stages: set[str], called: set[str], in_all: set[str]) -> list[str]:
     """A stage no hosted workflow calls, and a stage `all` leaves out or invents."""
-    bad = [f"ci-check.sh: no hosted workflow calls stage {s}" for s in sorted(stages - called - {"all"})]
+    bad = [f"ci-check.sh: no hosted workflow calls stage {s}" for s in sorted(stages - called - set(LOCAL_ONLY))]
     expected = stages - set(NOT_IN_ALL)
     bad += [f"ci-check.sh: `all` leaves out stage {s}" for s in sorted(expected - in_all)]
     bad += [f"ci-check.sh: `all` runs what is not a stage: {s}" for s in sorted(in_all - expected)]

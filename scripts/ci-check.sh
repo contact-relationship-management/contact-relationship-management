@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | pins | secrets | mutants | supply-chain | semver | api-types | coverage | all
+#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | pins | secrets | mutants | supply-chain | semver | api-types | coverage | all | pre-push
 # scripts/check-ci-entry-point.py fails the build if a CI step checks anything outside this file.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -17,7 +17,7 @@ FEATURES=(--features keycloak)
 # What `all` runs, cheapest first. `mutants` is left out: it takes hours (spec/local-ci-cd.md).
 ALL_STAGES=(fmt lint scripts pins secrets semver clippy test api-types coverage front-end e2e site supply-chain test-db)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|supply-chain|semver|api-types|coverage|all>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|supply-chain|semver|api-types|coverage|all|pre-push>}"
 
 case "${stage}" in
   fmt)
@@ -120,6 +120,7 @@ case "${stage}" in
   scripts)
     # Warnings and errors only; the style and info notes are not gated.
     shellcheck -S warning scripts/*.sh
+    scripts/test-pre-push.sh
     ;;
   lint)
     # Spelling (`_typos.toml` lists what is not a typo and leaves the translations out), and the
@@ -167,6 +168,16 @@ case "${stage}" in
     # release; run it before publishing. Needs cargo-semver-checks 0.51 or
     # later to read Rust 1.99's rustdoc output.
     (cd "${MATCHER}" && cargo semver-checks)
+    ;;
+  pre-push)
+    # What scripts/pre-push-gate.sh runs on the commit being pushed. These stages, and Prettier and
+    # ESLint from `front-end`, caught most of the failed jobs in CRM-T184; a minute or so when warm.
+    for each in fmt lint scripts pins secrets clippy; do
+      "${PWD}/scripts/ci-check.sh" "${each}"
+    done
+    (cd "${SVC}" && cargo test "${FEATURES[@]}" --lib)
+    (cd "${MATCHER}" && cargo test --lib)
+    (cd "${FE}" && pnpm install --frozen-lockfile && pnpm run lint)
     ;;
   all)
     # Every stage, in one process each, on after a failure so one run shows every problem. test-db

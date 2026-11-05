@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a pre-push gate (CRM-T187, 2026-11-05)
+
+`scripts/install-pre-push.sh` installs a hook that runs the new `pre-push` stage on the commit being pushed, not the
+working tree, in about 20 seconds when warm. `CRM_SKIP_PRE_PUSH="why"` skips it and records the reason. Nothing installs
+it for you.
+
 ### Changed — every CI check goes through one script (CRM-T185, 2026-11-05)
 
 `scripts/ci-check.sh` gains `pins`, `secrets` and `all`. `all` runs every stage but `mutants`, and goes on after a

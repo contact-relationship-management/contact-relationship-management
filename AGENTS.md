@@ -35,8 +35,10 @@ that makes a sibling required is a bug.
 
 `scripts/ci-check.sh <stage>` is the one entry point for every CI check, so GitHub Actions and Woodpecker run the same
 commands. The stages are `fmt`, `clippy`, `test`, `test-db`, `front-end`, `e2e`, `site`, `scripts`, `lint`, `pins`,
-`secrets`, `mutants`, `supply-chain`, `semver`, `api-types` and `coverage`; `all` runs every stage but `mutants`. A CI
-step that checks anything outside the script fails `pins` (`scripts/check-ci-entry-point.py`).
+`secrets`, `mutants`, `supply-chain`, `semver`, `api-types` and `coverage`; `all` runs every stage but `mutants`, and
+`pre-push` the fast ones. A CI step that checks anything outside the script fails `pins`
+(`scripts/check-ci-entry-point.py`). `scripts/install-pre-push.sh` installs a hook that runs `pre-push` on the commit
+being pushed; `CRM_SKIP_PRE_PUSH="why" git push` skips it and records the reason.
 
 ```bash
 scripts/ci-check.sh fmt && scripts/ci-check.sh clippy && scripts/ci-check.sh test
