@@ -91,7 +91,7 @@ entity-ref = "0.2.1"
 # Offline PASETO v4.public verification + the shared ABAC engine.
 authentication-verifier = { version = "0.9.1", default-features = false }
 aes-gcm = "0.11"
-redis = { version = "1.8.0", default-features = false, features = ["tokio-comp", "connection-manager", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
+redis = { version = "1.8.1", default-features = false, features = ["tokio-comp", "connection-manager", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
 
 [features]
 # PASETO bearer verification (the family default): `Verifier`, the boot key
