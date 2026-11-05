@@ -2081,6 +2081,10 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
       **Not done / not verified:** the suite still runs on `vite preview`; axe on non-default themes covers one page; the Welsh and Mandarin text is unreviewed machine translation; the tutorial and comparison pages are
       English; no hosted demo; the time-zone picker has no effect here, because nothing shows a time; the rules' other
       locales, and home pages for Arabic and Hindi, are not started.
+- [x] CRM-T194 **Arabic and Hindi home pages on the site**, at the owner's request. (S)
+      - **Built:** `locales/ar-001/index.md` and `locales/hi-in/index.md`, translated by Claude, with `hi-001` a byte copy of `hi-in`, each with `.locale-peer-id` and a `README.md` symlink. The "Translations:" sentence on every home page now names all five languages, and the locale button opens these pages rather than their list of briefs.
+      - **Ran:** the `site` stage: `svelte-check`, the static build and 195 Playwright tests, with the new pages in the home, right-to-left, phone-width and sitemap tests. Their links and six sections match `en-001`. Screenshots of `/ar-001/` at desktop and phone width and `/hi-in/` at desktop were read by eye. Not yet on the live site.
+      - **Not done / not verified:** the text is unreviewed machine translation; the tutorial, documents and comparison pages stay English, and the home pages say so at each link.
 
 ## Local-first CI/CD ([local-ci-cd.md](local-ci-cd.md)), proposed 2026-11-04
 

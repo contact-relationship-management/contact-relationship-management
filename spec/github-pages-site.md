@@ -55,11 +55,10 @@ script and in `src/lib/site.ts`.
   `ar-001` stays `ar-001`) on a brief or a locale's list, and `en` elsewhere; `dir` is `rtl` for a right-to-left
   language, which `ar-001` is. Both are written into the prerendered HTML by `hooks.server.ts` and kept in step on
   client-side navigation. Every layout rule uses logical properties; code and paths stay left to right.
-- **Locale homes.** English (`en-001`, `en-gb`, `en-gb-oxendict`, `en-us`), Welsh (`cy-gb`, `cy-001`) and Mandarin
-  (`zh-cn`, `zh-001`) have a home page, written first in that order per
+- **Locale homes.** English (`en-001`, `en-gb`, `en-gb-oxendict`, `en-us`), Welsh (`cy-gb`, `cy-001`), Mandarin
+  (`zh-cn`, `zh-001`), Arabic (`ar-001`) and Hindi (`hi-in`, `hi-001`) have a home page, written in that order per
   [the locale rules](locales-for-global-sharing-with-svelte/index.md), with a translated wordmark and a "Translations:"
-  sentence of the `*-001` endonyms from `locales.tsv`. Arabic and Hindi have their briefs and no home page, so the
-  locale button opens their list of briefs. The rules' longer list of locales is not started.
+  sentence of the `*-001` endonyms from `locales.tsv`. The rules' longer list of locales is not started.
 - **The locale button** is on every page, labelled each locale in its own language. It reports the locale it starts on,
   so a document, which shows the default brief locale, must ignore that report or it would redirect.
 - **The site's own words** follow the CRM UI's locale approach (`src/lib/i18n.svelte.ts` there): one table of strings

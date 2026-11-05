@@ -15,7 +15,7 @@ here; never work in the exported repository. The specification is
 
 | Route | Document |
 | --- | --- |
-| `/`, `/<locale>/` | the landing page, [`locales/<locale>/index.md`](../locales/) in English, Welsh and Mandarin |
+| `/`, `/<locale>/` | the landing page, [`locales/<locale>/index.md`](../locales/) in English, Arabic, Welsh, Hindi and Mandarin |
 | `/tutorial/` | [`docs/tutorial-first-tour.md`](../docs/tutorial-first-tour.md) |
 | `/compare/` | [`COMPARISONS.md`](../COMPARISONS.md) |
 | `/compare/<product>/` | [`docs/compare/<product>.md`](../docs/compare/) |

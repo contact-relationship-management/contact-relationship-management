@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — Arabic and Hindi home pages on the site (CRM-T194, 2026-11-05)
+
+- `/ar-001/`, `/hi-in/` and `/hi-001/`, unreviewed machine translations. Every home page's "Translations:" sentence now
+  names Arabic and Hindi.
+
 ### Added — nightly and weekly local jobs (CRM-T191, 2026-11-05)
 
 - `scripts/nightly.sh` runs gitleaks, `supply-chain` and one seventh of the mutants nightly, and the image smokes

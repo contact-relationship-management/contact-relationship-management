@@ -80,7 +80,7 @@ test("a brief's html carries its locale; a document is English", async ({ page }
 
 // One test per page and scheme: ThemePicker stores the theme it applied, so a second visit in the same browser
 // context would keep the first scheme's theme.
-for (const route of ["/ar-001/for/", briefRoute(ceo("ar-001"))])
+for (const route of ["/ar-001/", "/ar-001/for/", briefRoute(ceo("ar-001"))])
   for (const scheme of ["light", "dark"] as const)
     test(`${route} is right to left, mirrored, its own words Arabic, and passes axe (${scheme})`, async ({ page }) => {
       await open(page, route, scheme);
@@ -138,8 +138,8 @@ test("a document keeps its address until the reader picks a locale, which opens 
   await expect(page.locator("h1")).toHaveText(TABLES.cy!.brand);
 });
 
-test("the home page in English, Welsh and Mandarin has its hero, its wordmark and the translations", async ({ page }) => {
-  const translations = ["cy-001", "en-001", "zh-001"];
+test("the home page in every language has its hero, its wordmark and the translations", async ({ page }) => {
+  const translations = ["ar-001", "cy-001", "en-001", "hi-001", "zh-001"];
   for (const [route, lang] of [
     ["/", "en"],
     ["/en-us/", "en"],
@@ -147,6 +147,9 @@ test("the home page in English, Welsh and Mandarin has its hero, its wordmark an
     ["/cy-001/", "cy"],
     ["/zh-cn/", "zh"],
     ["/zh-001/", "zh"],
+    ["/ar-001/", "ar"],
+    ["/hi-in/", "hi"],
+    ["/hi-001/", "hi"],
   ] as const) {
     const words = TABLES[lang]!;
     await page.goto(route);
@@ -162,7 +165,7 @@ test("the home page in English, Welsh and Mandarin has its hero, its wordmark an
     await expect(page.locator('.landing a[href$="/for/"]'), route).toHaveCount(1);
     const line = page.locator(".translations");
     await expect(line, route).toContainText(words.translations);
-    await expect(line, route).toContainText("Cymraeg, English, 普通话");
+    await expect(line, route).toContainText("العربية, Cymraeg, English, हिन्दी, 普通话");
     for (const code of translations) {
       const link = line.getByRole("link", { name: ENDONYMS[code.split("-")[0]!]!, exact: true });
       await expect(link, `${route} ${code}`).toHaveAttribute("href", new RegExp(`/${code}/$`));
@@ -340,7 +343,7 @@ test("links between the site's own documents stay on the site; others go to the 
 
 test("at phone width no page scrolls sideways", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const route of [...docRoutes, "/en-gb/for/", briefRoute(ceo("hi-in")), briefRoute(ceo("ar-001"))]) {
+  for (const route of [...docRoutes, "/en-gb/for/", "/ar-001/", "/hi-in/", briefRoute(ceo("hi-in")), briefRoute(ceo("ar-001"))]) {
     await page.goto(encodeURI(route));
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

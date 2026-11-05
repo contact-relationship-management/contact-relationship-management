@@ -29,8 +29,9 @@ The locale home pages, `locales/<code>/index.md` with `.locale-peer-id` and a `R
 | cy-001 | Byte copy of cy-gb | **No** |
 | zh-cn | Translated by Claude (Simplified Chinese, Mandarin) | **No** |
 | zh-001 | Byte copy of zh-cn | **No** |
-
-`ar-001`, `hi-001` and `hi-in` have no home page yet.
+| ar-001 | Translated by Claude (Modern Standard Arabic, right-to-left) | **No** |
+| hi-in | Translated by Claude (Hindi) | **No** |
+| hi-001 | Byte copy of hi-in | **No** |
 
 ## Two locale sets (CRM-T89)
 
