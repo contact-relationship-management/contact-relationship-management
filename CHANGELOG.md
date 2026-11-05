@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — hosted mutation testing in seven shards (CRM-T195, 2026-11-05)
+
+- `mutants.yml` runs seven parallel jobs in place of one that was cancelled at six hours. It has not run yet.
+
 ### Added — Arabic and Hindi home pages on the site (CRM-T194, 2026-11-05)
 
 - `/ar-001/`, `/hi-in/` and `/hi-001/`, unreviewed machine translations. Every home page's "Translations:" sentence now
