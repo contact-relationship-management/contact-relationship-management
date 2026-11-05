@@ -161,6 +161,12 @@ if "${repo}/scripts/ci-check.sh" all >"${base}/stdout" 2>"${base}/stderr"; then 
 check "all on a dirty tree writes no note" no_note
 check "all on a dirty tree says so" said 'will not be recorded'
 
+new_repo
+git -C "${repo}" worktree add -q --detach "${repo}/.git/inside" HEAD
+if "${repo}/.git/inside/scripts/ci-check.sh" all >"${base}/stdout" 2>"${base}/stderr"; then fail "all under .git is refused"; else pass "all under .git is refused"; fi
+check "all under .git says why" said 'outside .git'
+check "all under .git writes no note" no_note
+
 if ((failures > 0)); then
   echo "test-attest: ${failures} failed" >&2
   exit 1

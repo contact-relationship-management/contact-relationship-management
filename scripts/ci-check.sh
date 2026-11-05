@@ -185,7 +185,11 @@ case "${stage}" in
     # Every stage, in one process each, on after a failure so one run shows every problem. test-db
     # needs PostgreSQL and Redis: see its comment above. A pass on a clean tree is recorded by
     # scripts/attest.sh; a dirty tree or a failed stage records nothing.
-    # Run it from a checkout outside .git: Vite will not load test files from under that directory.
+    # Vite will not load test files from under .git, so `front-end` would fail after minutes of work.
+    if [[ "${PWD}/" == */.git/* ]]; then
+      echo "ci-check: run all from a checkout outside .git, not ${PWD}" >&2
+      exit 2
+    fi
     failed=()
     attest_commit="$("${PWD}/scripts/attest.sh" start)"
     attest_stages="$(mktemp)"
