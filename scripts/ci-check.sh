@@ -122,6 +122,7 @@ case "${stage}" in
     shellcheck -S warning scripts/*.sh
     scripts/test-pre-push.sh
     scripts/test-machine-idle.sh
+    scripts/test-attest.sh
     ;;
   lint)
     # Spelling (`_typos.toml` lists what is not a typo and leaves the translations out), and the
@@ -182,18 +183,28 @@ case "${stage}" in
     ;;
   all)
     # Every stage, in one process each, on after a failure so one run shows every problem. test-db
-    # needs PostgreSQL and Redis: see its comment above. This reports; it records nothing.
+    # needs PostgreSQL and Redis: see its comment above. A pass on a clean tree is recorded by
+    # scripts/attest.sh; a dirty tree or a failed stage records nothing.
     failed=()
+    attest_commit="$("${PWD}/scripts/attest.sh" start)"
+    attest_stages="$(mktemp)"
+    trap 'rm -f "${attest_stages}"' EXIT
     for each in "${ALL_STAGES[@]}"; do
       started="${SECONDS}"
-      if "${PWD}/scripts/ci-check.sh" "${each}"; then outcome=passed; else outcome=FAILED; failed+=("${each}"); fi
+      code=0
+      "${PWD}/scripts/ci-check.sh" "${each}" || code=$?
+      if ((code == 0)); then outcome=passed; else outcome=FAILED; failed+=("${each}"); fi
       echo "ci-check: ${each} ${outcome} in $((SECONDS - started))s"
+      echo "${each} ${code} $((SECONDS - started))" >>"${attest_stages}"
     done
     if ((${#failed[@]} > 0)); then
       echo "ci-check: failed: ${failed[*]}" >&2
       exit 1
     fi
     echo "ci-check: all ${#ALL_STAGES[@]} stages passed"
+    if [[ -n "${attest_commit}" ]]; then
+      "${PWD}/scripts/attest.sh" write "${attest_commit}" "${attest_stages}"
+    fi
     ;;
   *)
     echo "unknown stage: ${stage}" >&2

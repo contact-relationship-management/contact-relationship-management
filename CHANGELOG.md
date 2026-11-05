@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a record of a passing local run (CRM-T189, 2026-11-05)
+
+- A passing `scripts/ci-check.sh all` on a clean tree writes a note on `refs/notes/ci`, and posts a `local-ci` commit
+  status when a status-only token is available. No token is configured yet, so no status is posted.
+
 ### Fixed — nightly mutants lost to `kache` (CRM-T197, 2026-11-05)
 
 - `scripts/nightly.sh` runs mutants without `kache`, whose daemon failed C builds under load, leaving mutants reported
