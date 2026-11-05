@@ -44,8 +44,8 @@ being pushed; `CRM_SKIP_PRE_PUSH="why" git push` skips it and records the reason
 scripts/ci-check.sh fmt && scripts/ci-check.sh clippy && scripts/ci-check.sh test
 scripts/ci-check.sh lint            # typos, zizmor, rumdl
 python3 scripts/check-actions-pinned.py
-# database tests need PostgreSQL 18 and Redis 8: podman compose -f contact-relationship-management-service-with-rust/compose.test.yaml up -d
-scripts/ci-check.sh test-db
+# database tests need PostgreSQL 18 and Redis 8; this starts them on free ports and stops them afterwards
+scripts/ci-services.sh run test-db
 ```
 
 A one-command demo (sign-in off, synthetic data only) is `podman compose up --build` ([`compose.yaml`](compose.yaml)).

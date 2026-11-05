@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a helper for the test services (CRM-T186, 2026-11-05)
+
+`scripts/ci-services.sh run <stage>...` runs stages against the pinned PostgreSQL and Redis containers on ports the
+system chooses, under Podman or docker, and always stops them.
+
 ### Added — a pre-push gate (CRM-T187, 2026-11-05)
 
 `scripts/install-pre-push.sh` installs a hook that runs the new `pre-push` stage on the commit being pushed, not the

@@ -1,6 +1,6 @@
 # Local-first CI/CD (CRM, proposed 2026-11-04)
 
-> **Status: proposed; CRM-T184, CRM-T185 and CRM-T187 are done, the rest is not built.** This file is an assessment and a plan. Nothing in it changes how the build runs today, and every decision it lists is the owner's (CRM-D22). The owner's reason: GitHub-hosted CI is unreliable and costs money, so do more of it locally.
+> **Status: proposed; CRM-T184 to CRM-T187 are done, the rest is not built.** This file is an assessment and a plan. Nothing in it changes how the build runs today, and every decision it lists is the owner's (CRM-D22). The owner's reason: GitHub-hosted CI is unreliable and costs money, so do more of it locally.
 
 ## Advice, in one paragraph
 
@@ -19,7 +19,7 @@ Make **the local machine the place CI runs first and the place its result is rec
 | **One entry point** (`scripts/ci-check.sh <stage>`, or `just`) that the workflow also calls | Free; a few days | Already proven in CRM (GitHub and Woodpecker call the same commands). The other projects inline their steps | **Adopt first.** Everything below depends on it |
 | **Pre-push gate** (a fast stage set) plus `all` on demand | Free | The fast stages are fmt, clippy, lib tests and the doc scripts; minutes on 16 cores | **Adopt** |
 | **Local attestation**: a git note or signed file of commit, tree hash, stages, durations, tool versions, host; and a **commit status** posted to the host | Free; needs a token per host | Lets branch protection require "local CI passed" on GitHub, GitLab and Forgejo without a hosted runner. Trust is one maintainer's machine | **Adopt**, with the limits under "Risks" |
-| **Parallel database suites**: one throwaway database per test binary, binaries run concurrently | Free | The database binaries run serially today. On 16 cores the 20-odd binaries could overlap, for a several-fold speed-up | **Adopt**, after the entry point |
+| **Parallel database suites**: one throwaway database per test binary, binaries run concurrently | Free | The database tests run serially today. **Corrected 2026-11-05:** 223 of the 228 are in one binary and share process-wide settings, so a database per binary gains almost nothing; see CRM-T188 | **Adopt**, after the entry point |
 | **Linux containers locally** (colima or docker, digests pinned as in the workflow) | Free | Already installed. Apple silicon runs `arm64`; CI is `amd64`, so run the few parity-sensitive jobs with `--platform linux/amd64` | **Adopt** |
 | **Nightly and weekly jobs by `launchd`** (chaos, mutants, `cargo deny` advisories, gitleaks over history, ZAP) | Free | These are the jobs that cost the most hosted minutes and need no push | **Adopt** |
 | **GitLab Runner on this machine** (shell executor) for the GitLab mirror | Free | Registers to GitLab.com; no hosted minutes. Runs only while this machine is on and logged in | **Optional** second opinion |
