@@ -34,8 +34,9 @@ that makes a sibling required is a bug.
 ## Gates
 
 `scripts/ci-check.sh <stage>` is the one entry point for every CI check, so GitHub Actions and Woodpecker run the same
-commands. The stages are `fmt`, `clippy`, `test`, `test-db`, `front-end`, `e2e`, `site`, `scripts`, `lint`, `mutants`,
-`supply-chain`, `semver`, `api-types` and `coverage`.
+commands. The stages are `fmt`, `clippy`, `test`, `test-db`, `front-end`, `e2e`, `site`, `scripts`, `lint`, `pins`,
+`secrets`, `mutants`, `supply-chain`, `semver`, `api-types` and `coverage`; `all` runs every stage but `mutants`. A CI
+step that checks anything outside the script fails `pins` (`scripts/check-ci-entry-point.py`).
 
 ```bash
 scripts/ci-check.sh fmt && scripts/ci-check.sh clippy && scripts/ci-check.sh test

@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — every CI check goes through one script (CRM-T185, 2026-11-05)
+
+`scripts/ci-check.sh` gains `pins`, `secrets` and `all`. `all` runs every stage but `mutants`, and goes on after a
+failure. gitleaks and the pin check moved out of `ci.yml`, and `scripts/check-ci-entry-point.py` now fails the build if
+a CI step checks anything outside the script. CRM-T184's timings and run history are in `spec/local-ci-cd.md`.
+
 ### Changed — the GitHub Pages site is the project's front door (CRM-T193, 2026-11-04)
 
 A landing page in English, Welsh and Mandarin (the last two unreviewed machine drafts), a tutorial, a comparison

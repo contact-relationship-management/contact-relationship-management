@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | mutants | supply-chain | semver | api-types | coverage
+#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | pins | secrets | mutants | supply-chain | semver | api-types | coverage | all
+# scripts/check-ci-entry-point.py fails the build if a CI step checks anything outside this file.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -13,7 +14,10 @@ SITE=contact-relationship-management.github.io
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|mutants|supply-chain|semver|api-types|coverage>}"
+# What `all` runs, cheapest first. `mutants` is left out: it takes hours (spec/local-ci-cd.md).
+ALL_STAGES=(fmt lint scripts pins secrets semver clippy test api-types coverage front-end e2e site supply-chain test-db)
+
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|supply-chain|semver|api-types|coverage|all>}"
 
 case "${stage}" in
   fmt)
@@ -126,6 +130,16 @@ case "${stage}" in
     # Markdown (`.rumdl.toml`: line length and the links to sibling projects are not checked).
     rumdl check .
     ;;
+  pins)
+    # Every action and image is pinned, and every CI step goes through this file.
+    python3 scripts/check-actions-pinned.py
+    python3 scripts/check-ci-entry-point.py
+    python3 scripts/test_check_ci_entry_point.py
+    ;;
+  secrets)
+    # Reviewed findings, with reasons, are in `.gitleaksignore`. Needs the whole history.
+    gitleaks detect --source . --redact --no-banner
+    ;;
   mutants)
     # CRM-T94: change each pure rule a little and check that a unit test notices. A mutant that
     # survives is a rule no test pins. Scheduled weekly, not on every push: it takes a while.
@@ -153,6 +167,21 @@ case "${stage}" in
     # release; run it before publishing. Needs cargo-semver-checks 0.51 or
     # later to read Rust 1.99's rustdoc output.
     (cd "${MATCHER}" && cargo semver-checks)
+    ;;
+  all)
+    # Every stage, in one process each, on after a failure so one run shows every problem. test-db
+    # needs PostgreSQL and Redis: see its comment above. This reports; it records nothing.
+    failed=()
+    for each in "${ALL_STAGES[@]}"; do
+      started="${SECONDS}"
+      if "${PWD}/scripts/ci-check.sh" "${each}"; then outcome=passed; else outcome=FAILED; failed+=("${each}"); fi
+      echo "ci-check: ${each} ${outcome} in $((SECONDS - started))s"
+    done
+    if ((${#failed[@]} > 0)); then
+      echo "ci-check: failed: ${failed[*]}" >&2
+      exit 1
+    fi
+    echo "ci-check: all ${#ALL_STAGES[@]} stages passed"
     ;;
   *)
     echo "unknown stage: ${stage}" >&2

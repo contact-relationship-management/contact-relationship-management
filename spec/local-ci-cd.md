@@ -1,6 +1,6 @@
 # Local-first CI/CD (CRM, proposed 2026-11-04)
 
-> **Status: proposed, not built.** This file is an assessment and a plan. Nothing in it changes how the build runs today, and every decision it lists is the owner's (CRM-D22). The owner's reason: GitHub-hosted CI is unreliable and costs money, so do more of it locally.
+> **Status: proposed; CRM-T184 and CRM-T185 are done, the rest is not built.** This file is an assessment and a plan. Nothing in it changes how the build runs today, and every decision it lists is the owner's (CRM-D22). The owner's reason: GitHub-hosted CI is unreliable and costs money, so do more of it locally.
 
 ## Advice, in one paragraph
 
@@ -8,7 +8,7 @@ Make **the local machine the place CI runs first and the place its result is rec
 
 ## Where CRM stands
 
-- **The model the other two should copy.** `scripts/ci-check.sh <stage>` is "one entry point for every CI check, so GitHub Actions and Woodpecker run byte-identical commands" (stages: fmt, clippy, test, test-db, front-end, e2e, site, scripts, lint, mutants, supply-chain, semver, api-types, coverage). `.github/workflows/ci.yml` (216 lines) and `.woodpecker.yml` both call it, and `mutants.yml` and `release.yml` are separate.
+- **The model the other two should copy.** `scripts/ci-check.sh <stage>` is "one entry point for every CI check, so GitHub Actions and Woodpecker run byte-identical commands" (stages: fmt, clippy, test, test-db, front-end, e2e, site, scripts, lint, pins, secrets, mutants, supply-chain, semver, api-types, coverage, and `all`, which runs every stage but mutants; `scripts/check-ci-entry-point.py` fails the build if a CI step checks anything outside it). `.github/workflows/ci.yml` (216 lines) and `.woodpecker.yml` both call it, and `mutants.yml` and `release.yml` are separate.
 - **Remotes.** `origin` is GitHub only (HTTPS), so there is no second host yet.
 - **Machine.** 16 cores, 128 GB, Apple silicon, with `docker`, `colima`, `podman`, `dagger` and `just` installed.
 
@@ -104,7 +104,7 @@ All 400 listed runs, 2026-10-10 to 2026-11-04, on a public repository. Billing w
 
 ### What this means for CRM-D22
 
-- **Reliability.** In this window the CI history does not show the hosted service being down, queued or flaky. The Pages timeouts are the only sign of it. The owner may have seen more elsewhere; this covers this repository only.
+- **Reliability.** In this window the CI history does not show the hosted service being down, queued or flaky. The Pages timeouts are the only sign of it. This covers this repository only: the owner's position, restated on 2026-11-05, is that GitHub CI is unreliable, from experience outside this repository, so this history neither supports nor weakens that reason for CRM-D22.
 - **The gain is in early feedback.** 55 failed jobs (Prettier 40, `lint` 10, `fmt` 3, `clippy` 2) were formatting, spelling or lint-level, which a local check finds in seconds to a minute or so. CRM-T187 as written (fmt, clippy, lib tests, scripts) would have caught only 5 of them, plus some of the 11 test failures: it leaves out Prettier (40), and `lint` (10). Add those two if CRM-T187 goes ahead.
 - **Advisories are not a local problem.** The 48 `supply-chain` failures arrive with new advisories whatever the code does, so a scheduled run suits them better than a push gate.
 - **Mutation testing fits neither place at `-j 2`.** 135 of 1,526 mutants finished in the 40-minute limit set for this measurement (121 caught, 5 missed, 1 timeout, 8 unviable). At that rate a full run is about 7.5 hours, longer than the hosted six-hour limit. That is a straight extrapolation, not a measured run. CRM-T191's nightly job needs a higher `-j`, or fewer mutants per night.
