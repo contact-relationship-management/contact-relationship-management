@@ -2086,7 +2086,9 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
 
 Why: the owner finds GitHub-hosted CI unreliable and costly. CRM is already furthest along: `scripts/ci-check.sh` is the one entry point and `.woodpecker.yml` calls it. The assessment is in [local-ci-cd.md](local-ci-cd.md); every decision is the owner's (CRM-D22).
 
-- [ ] CRM-T184 **Measure first.** Time every stage on this machine, cold and warm, against the hosted run history, with the number of runs that were down, queued or failed for reasons other than the code. The evidence for CRM-D22. (S)
+- [x] CRM-T184 **Measure first.** Time every stage on this machine, cold and warm, against the hosted run history, with the number of runs that were down, queued or failed for reasons other than the code. The evidence for CRM-D22. (S)
+      - **Result:** [local-ci-cd.md](local-ci-cd.md), "Measured". Of 268 CI runs (2026-10-10 to 2026-11-04), 73 failed and none of the 133 failed jobs traces to a runner or to GitHub; queues were a median of 2 seconds. A sequential local run is about 9 minutes warm against 5.6 hosted. CRM-T187's list would miss Prettier (40 failed jobs) and `lint` (10).
+      - **Not done / not verified:** billing not read; `test-db` not run in the pinned container (Podman's VM did not answer) or from cold; mutants stopped at 135 of 1,526; linux/amd64, image smokes, chaos, ZAP and `release.yml` not timed; one `kache` link failure, cause not established. CRM-D22 stays the owner's.
 - [ ] CRM-T185 **Make the entry point the only path.** A test fails if a `ci.yml`, `mutants.yml` or `.woodpecker.yml` step is not a call to `scripts/ci-check.sh` or a documented exception; add an `all` stage. (S)
 - [ ] CRM-T186 **A local helper for the service containers** (PostgreSQL 18, Redis, Keycloak) with the pinned digests under colima or docker; `--platform linux/amd64` for the parity-sensitive stages. (M)
 - [ ] CRM-T187 **A pre-push gate** (fmt, clippy, lib tests, scripts), installed by a script, skippable by an explicit recorded variable. (S)

@@ -54,6 +54,70 @@ Make **the local machine the place CI runs first and the place its result is rec
 
 Before any change beyond the entry point, time every job's commands on this machine, cold and warm, and compare with the hosted runs' durations from the workflow history. The decision to add a runner or a machine rests on those numbers and on how often a hosted run was down or queued (CRM-T184).
 
+## Measured (CRM-T184, 2026-11-05)
+
+Commit 1b31df2, on this machine, in a detached worktree with no build output, while other sessions were also using the machine. Every stage exited 0; the one exception is recorded under "Local timing limits". Hosted figures are the median job time over the last 30 green CI runs.
+
+| Stage | Hosted (s) | Local, first pass (s) | Local, warm (s) | Local, no compile cache (s) |
+|---|---|---|---|---|
+| fmt | 25 | 1 | 1 | |
+| clippy | 170 | 125 | 6 | 170 |
+| test | 333 | 216 | 14 | 254 |
+| scripts | 6 | 0 | 1 | |
+| lint | 10 | 1 | 1 | |
+| semver | 21 | 8 | 5 | |
+| api-types | 124 | 53 | 8 | 136 (`cc` shim still on) |
+| coverage | 104 | 81 | 12 | 104 (`cc` shim still on) |
+| front-end | 77 | 95 | 71 | |
+| e2e | 234 | 158 | 156 | |
+| site | 112 | 51 | 96 | |
+| supply-chain | 44 | 10 | 9 | |
+| test-db | 280 | not measured | 144 | |
+| **Total** | **1,540** | **799 without test-db** | **524** | |
+
+The hosted run's median wall time over the same 30 runs is 337 seconds, because its jobs run in parallel. The local totals are one stage after another: about 9 minutes warm. **A sequential local `all` is slower than the hosted run, even warm;** the hosted run uses about 26 minutes of runner time to do it in under 6. Local work is faster per stage when warm, and the stages to run in parallel have not been tried.
+
+### Hosted run history
+
+All 400 listed runs, 2026-10-10 to 2026-11-04, on a public repository. Billing was not read, so this says nothing about cost.
+
+- **CI:** 268 runs, 195 green, 73 failed, none rerun, none cancelled, no job timed out. 133 of 2,016 jobs failed.
+- **Queue:** a job waited a median of 2 seconds, 17 at the 95th percentile, 368 at most. 52 waited over a minute and 2 over five minutes.
+- **Outages:** none of the 133 failed jobs traces to a runner or to GitHub. Each ended in a check or in this repository's own configuration:
+
+| Failed jobs | Cause |
+|---|---|
+| 48 | `supply-chain`: RustSec advisories and yanked crates |
+| 40 | `front-end`: Prettier formatting |
+| 11 | `lint`: 10 findings, 1 bad `pip` flag in the workflow |
+| 11 | failing unit tests (`test` 5, `coverage` 5, `test-db` 1) |
+| 9 | three runs where the manifest needed a newer `rustc` than the toolchain pin |
+| 5 | `fmt` 3, `clippy` 2 |
+| 3 | `front-end`: other test or type failures |
+| 3 | `e2e` |
+| 3 | `site`: the SvelteKit config step |
+
+- **Release:** 13 runs, 4 failed: `corepack` missing in an image, image signing, `cargo audit` not installed, and one whose cause was not established.
+- **Dependabot:** 118 runs, 4 failed; the cause was not read.
+- **Mutation testing:** one run, cancelled at six hours. It did not finish.
+- **Pages:** three deploy attempts of one commit timed out on 2026-11-04 in the site's own repository (see its README). This is the only failure found that appears to be on GitHub's side, and its cause was not established.
+
+### What this means for CRM-D22
+
+- **Reliability.** In this window the CI history does not show the hosted service being down, queued or flaky. The Pages timeouts are the only sign of it. The owner may have seen more elsewhere; this covers this repository only.
+- **The gain is in early feedback.** 55 failed jobs (Prettier 40, `lint` 10, `fmt` 3, `clippy` 2) were formatting, spelling or lint-level, which a local check finds in seconds to a minute or so. CRM-T187 as written (fmt, clippy, lib tests, scripts) would have caught only 5 of them, plus some of the 11 test failures: it leaves out Prettier (40), and `lint` (10). Add those two if CRM-T187 goes ahead.
+- **Advisories are not a local problem.** The 48 `supply-chain` failures arrive with new advisories whatever the code does, so a scheduled run suits them better than a push gate.
+- **Mutation testing fits neither place at `-j 2`.** 135 of 1,526 mutants finished in the 40-minute limit set for this measurement (121 caught, 5 missed, 1 timeout, 8 unviable). At that rate a full run is about 7.5 hours, longer than the hosted six-hour limit. That is a straight extrapolation, not a measured run. CRM-T191's nightly job needs a higher `-j`, or fewer mutants per night.
+
+### Local timing limits
+
+- **"First pass" is not a clean machine.** It had no `target` or `node_modules`, but the cargo registry, pnpm store and Playwright browsers were present, `kache` (the owner's global `rustc-wrapper`, with a `cc` shim on `PATH`) served cached crates, and stages shared build output as they ran in order.
+- **"No compile cache"** is clippy and test from an empty `target` with both the wrapper and the shim off: 977 tests passed. api-types and coverage had only the wrapper off.
+- **One failure, not reproduced.** With the wrapper off and the shim on, `test` failed at link time in the shim (`daemon compilation did not complete`). It passed with the shim off. That is one occurrence and its cause was not established. A failure in `kache` would look like a failure in the code, so CRM-T189's attestation should record whether `kache` was on.
+- **`test-db` ran on PostgreSQL 18.4 on macOS, not in the pinned container**, because Podman's VM would not answer and colima was not running. It also shared that server with another session's work, so the 144 seconds is a rough figure. It ran after `test`, so it had nothing to compile from cold.
+- **Load varied.** `site` took 51 and 96 seconds on the two passes, with the same 187 tests passing. Single runs like these show the size of a stage, not a small difference between two.
+- **Not measured:** `--platform linux/amd64`, the image smokes, chaos, ZAP and `release.yml`. The failure causes come from the last log lines of each failed job, grouped by pattern, not from reading each log in full.
+
 ## Sources
 
 Read on 2026-11-04. These are search results and vendor pages, not trials: the claims about `act`, Dagger's cache overhead and Codeberg's current terms are **not verified by running them** here, and the last four rows of the options table say what to test first.
