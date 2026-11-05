@@ -121,6 +121,7 @@ case "${stage}" in
     # Warnings and errors only; the style and info notes are not gated.
     shellcheck -S warning scripts/*.sh
     scripts/test-pre-push.sh
+    scripts/test-machine-idle.sh
     ;;
   lint)
     # Spelling (`_typos.toml` lists what is not a typo and leaves the translations out), and the
@@ -145,7 +146,7 @@ case "${stage}" in
     # CRM-T94: change each pure rule a little and check that a unit test notices. A mutant that
     # survives is a rule no test pins. Scheduled weekly, not on every push: it takes a while.
     # `.cargo/mutants.toml` limits it to src/rules and the unit tests.
-    (cd "${SVC}" && cargo mutants -j 2 --no-shuffle --output "${PWD}/mutants-out" "${@:2}")
+    (cd "${SVC}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out" "${@:2}")
     ;;
   supply-chain)
     # CRM-T34: known-vulnerability, licence, and source gates, plus SBOMs

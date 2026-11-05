@@ -1,6 +1,6 @@
 # Local-first CI/CD (CRM, proposed 2026-11-04)
 
-> **Status: proposed; CRM-T184 to CRM-T187 are done, the rest is not built.** This file is an assessment and a plan. Nothing in it changes how the build runs today, and every decision it lists is the owner's (CRM-D22). The owner's reason: GitHub-hosted CI is unreliable and costs money, so do more of it locally.
+> **Status: proposed; CRM-T184 to CRM-T187 and CRM-T191 are done, the rest is not built.** This file is an assessment and a plan. Nothing in it changes how the build runs today, and every decision it lists is the owner's (CRM-D22). The owner's reason: GitHub-hosted CI is unreliable and costs money, so do more of it locally.
 
 ## Advice, in one paragraph
 
@@ -107,7 +107,7 @@ All 400 listed runs, 2026-10-10 to 2026-11-04, on a public repository. Billing w
 - **Reliability.** In this window the CI history does not show the hosted service being down, queued or flaky. The Pages timeouts are the only sign of it. This covers this repository only: the owner's position, restated on 2026-11-05, is that GitHub CI is unreliable, from experience outside this repository, so this history neither supports nor weakens that reason for CRM-D22.
 - **The gain is in early feedback.** 55 failed jobs (Prettier 40, `lint` 10, `fmt` 3, `clippy` 2) were formatting, spelling or lint-level, which a local check finds in seconds to a minute or so. CRM-T187 as written (fmt, clippy, lib tests, scripts) would have caught only 5 of them, plus some of the 11 test failures: it leaves out Prettier (40), and `lint` (10). CRM-T187 was built with both added, and takes 20 seconds warm.
 - **Advisories are not a local problem.** The 48 `supply-chain` failures arrive with new advisories whatever the code does, so a scheduled run suits them better than a push gate.
-- **Mutation testing fits neither place at `-j 2`.** 135 of 1,526 mutants finished in the 40-minute limit set for this measurement (121 caught, 5 missed, 1 timeout, 8 unviable). At that rate a full run is about 7.5 hours, longer than the hosted six-hour limit. That is a straight extrapolation, not a measured run. CRM-T191's nightly job needs a higher `-j`, or fewer mutants per night.
+- **Mutation testing fits neither place at `-j 2`.** 135 of 1,526 mutants finished in the 40-minute limit set for this measurement (121 caught, 5 missed, 1 timeout, 8 unviable). At that rate a full run is about 7.5 hours, longer than the hosted six-hour limit. That is a straight extrapolation, not a measured run, and it did not hold: CRM-T191 measured 52 an hour at `-j 2` and 75 at `-j 8` with other sessions building on this machine, against about 200 here. CRM-T191 runs one seventh a night instead, 218 mutants in 2 hours 54 minutes.
 
 ### Local timing limits
 

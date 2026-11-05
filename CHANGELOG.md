@@ -9,6 +9,14 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — nightly and weekly local jobs (CRM-T191, 2026-11-05)
+
+- `scripts/nightly.sh` runs gitleaks, `supply-chain` and one seventh of the mutants nightly, and the image smokes
+  weekly, on `origin/main` in a worktree of its own, and writes a last-run page. `scripts/install-nightly.sh` schedules
+  them with launchd. A job starts only on wall power with a low load average (`scripts/machine-idle.sh`), and a skip
+  is recorded. The nightly job ran once for real, before the gate; the weekly smokes have not run.
+- The mutants stage takes `CRM_MUTANTS_JOBS`, default 2.
+
 ### Added — a helper for the test services (CRM-T186, 2026-11-05)
 
 `scripts/ci-services.sh run <stage>...` runs stages against the pinned PostgreSQL and Redis containers on ports the

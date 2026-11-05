@@ -1,6 +1,6 @@
 name: Mutation testing
 # Weekly, not on every push: it re-runs the unit tests once for each small change to a rule in
-# `src/rules` (about 800 of them). A surviving mutant is a rule that no test pins (CRM-T94).
+# `src/rules` (about 1,500 of them). A surviving mutant is a rule that no test pins (CRM-T94).
 on:
   schedule:
     - cron: "17 3 * * 0"
