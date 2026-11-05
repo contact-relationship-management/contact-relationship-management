@@ -18,7 +18,7 @@ if ! [[ "${load:-}" =~ ${number} && "${limit}" =~ ${number} ]] || [[ "${limit}" 
   echo "could not read the load average (load '${load:-}', limit '${limit}')"
   exit 1
 fi
-if ! awk -v load="${load}" -v limit="${limit}" 'BEGIN { exit !(load < limit) }'; then
+if ! awk -v now="${load}" -v most="${limit}" 'BEGIN { exit !(now < most) }'; then
   echo "load average ${load} is not under ${limit}"
   exit 1
 fi
