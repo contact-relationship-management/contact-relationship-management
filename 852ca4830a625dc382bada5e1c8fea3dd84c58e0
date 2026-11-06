@@ -1,0 +1,25 @@
+commit: 852ca4830a625dc382bada5e1c8fea3dd84c58e0
+tree: 64c0fa91b7969c6fae60564295c290b3d145708a
+finished: 2026-11-06T08:48:51Z
+host: Joel-Henderson--MacBook-Pro, Darwin arm64
+rustc: rustc 1.99.1 (58cf8f9c3 2026-10-13)
+node: v26.8.1
+pnpm: 12.10.1
+image: docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+image: docker.io/library/redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537
+stages:
+  fmt 0 1
+  lint 0 0
+  scripts 0 7
+  pins 0 1
+  secrets 0 2
+  semver 0 4
+  clippy 0 2
+  test 0 5
+  api-types 0 5
+  coverage 0 33
+  front-end 0 28
+  e2e 0 112
+  site 0 48
+  supply-chain 0 10
+  test-db 0 133
