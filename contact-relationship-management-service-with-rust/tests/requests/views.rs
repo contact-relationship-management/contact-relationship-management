@@ -1,13 +1,13 @@
 //! Saved views (CRM-R35): make, list, replace and delete; the closed sets; unique names.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_view_is_saved_listed_replaced_and_deleted() {
     request::<App, _, _>(|request, ctx| async move {
         let body = json!({

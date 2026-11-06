@@ -5,7 +5,7 @@
 
 ## Architecture
 
-- **Service:** Rust on Loco (Axum, SeaORM 2.0), PostgreSQL 18, Redis for cache,
+- **Service:** Rust on Axum and axa (SeaORM 2.0), PostgreSQL 18, Redis for cache,
   shared counters and break-glass propagation. `forbid(unsafe_code)`, clippy
   pedantic. Source of truth for behaviour is the specification
   ([index](../../../../spec/index.md), [architecture](../../../../spec/architecture.md)).

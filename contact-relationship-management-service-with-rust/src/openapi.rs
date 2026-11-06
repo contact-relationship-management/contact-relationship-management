@@ -100,12 +100,10 @@ fn operation(method: &str, path: &str, public: &Value) -> Option<Value> {
 pub fn spec() -> Value {
     let public = public_operations();
     let mut paths = serde_json::Map::new();
-    for route in crate::app::app_routes().collect() {
-        for method in route.actions {
-            let method = method.as_str().to_lowercase();
-            if let Some(operation) = operation(&method, &route.uri, &public) {
-                paths.entry(route.uri.clone()).or_insert_with(|| json!({}))[method] = operation;
-            }
+    for (method, path) in crate::app::app_routes().mounted() {
+        let method = method.to_lowercase();
+        if let Some(operation) = operation(&method, &path, &public) {
+            paths.entry(path).or_insert_with(|| json!({}))[method] = operation;
         }
     }
     let mut doc = json!({
@@ -276,7 +274,7 @@ mod tests {
     use super::shape;
 
     /// Routes that exist but are not part of the documented API surface:
-    /// Loco's probes and the documentation endpoints themselves.
+    /// The health probes and the documentation endpoints themselves.
     const UNDOCUMENTED: [&str; 5] = [
         "/_ping",
         "/_health",
@@ -314,11 +312,11 @@ mod tests {
 
     fn mounted() -> BTreeMap<String, BTreeSet<String>> {
         let mut routes: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-        for route in crate::app::app_routes().collect() {
-            let entry = routes.entry(shape(&route.uri)).or_default();
-            for method in route.actions {
-                entry.insert(method.as_str().to_lowercase());
-            }
+        for (method, path) in crate::app::app_routes().mounted() {
+            routes
+                .entry(shape(&path))
+                .or_default()
+                .insert(method.to_lowercase());
         }
         routes
     }

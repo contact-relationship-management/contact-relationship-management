@@ -7,7 +7,7 @@
  contact-relationship-management-ui-with-svelte  (SvelteKit BFF)
         │  Authorization: Bearer v4.public.…
         ▼
- contact-relationship-management-service-with-rust  (Loco: Axum + SeaORM + PostgreSQL)
+ contact-relationship-management-service-with-rust  (Axum + axa + SeaORM + PostgreSQL)
         │  EntityRef lookups (read-only, cached, stub-able); the family
         │  bridges (CRM-R72, CRM-R73, CRM-R94), stub-first
         ▼
@@ -18,11 +18,11 @@
 
 ## Service edition
 
-Loco-idiomatic layout (the patient-flow / WPM shape):
+Conventional layout (the patient-flow / WPM shape):
 
 ```text
 src/
-├── app.rs                loco Hooks (+ background workers: campaign
+├── app.rs                routes and start-up (+ background workers: campaign
 │                         send, the notification sweep; the nurture
 │                         and SLA sweeps are POST routes)
 ├── controllers/          relationships (contacts/accounts/activities),
@@ -61,7 +61,7 @@ dashboards; family fixtures (`#![forbid(unsafe_code)]`,
 clippy-pedantic, OTLP, `Accepts-version`, Podman). **API versioning is the
 `Accepts-version` header on the one `/api` path; never `/api/v1`, `/api/v2`
 (CRM-R17).** **All-plural
-table names** (the loco `create_table` pluralization lesson);
+table names** (the `create_table` pluralization lesson);
 `404` mapping at `find_by_pid` call sites; enforcement tests
 (`tests/requests/enforcement.rs`) that set the settings for their own length.
 

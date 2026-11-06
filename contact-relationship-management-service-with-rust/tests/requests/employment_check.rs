@@ -5,6 +5,7 @@
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
+use axa::testing::prelude::*;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -14,7 +15,6 @@ use contact_relationship_management::app::App;
 use contact_relationship_management::clients::Mode;
 use contact_relationship_management::rules::wpm_events::sign;
 use contact_relationship_management::settings::{self, Settings};
-use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -123,7 +123,7 @@ fn signed(id: &str, kind: &str, person_ref: &str, occurred_at: &str) -> (String,
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_nothing() {
     let _restore = Restore;
     settings::update(|s| s.wpm_webhook_secret = Some(SECRET.to_string()));

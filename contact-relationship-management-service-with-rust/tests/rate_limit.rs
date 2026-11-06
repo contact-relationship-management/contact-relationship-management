@@ -4,13 +4,13 @@
 //! Its own test binary because the limit is read from the environment when the
 //! app boots. Run with `cargo test --test rate_limit -- --ignored`.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn the_limit_answers_429_with_the_budget_and_spares_probes() {
     // Safe here: the test binary is single-threaded at this point and nothing
     // else reads the variable before the app boots.

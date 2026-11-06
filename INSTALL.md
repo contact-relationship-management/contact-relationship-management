@@ -18,7 +18,7 @@ curl http://localhost:5150/_ping
 This starts PostgreSQL, Redis and the API ([compose.yaml](compose.yaml)). **Demo only:** sign-in is off, email is simulated,
 and the port is published on this machine's loopback address only. Use synthetic data. The family bridges stay off until you
 set their URLs, so nothing here needs the PPM or WPM repositories. For a real deployment, turn authentication on
-(see [spec/auth.md](spec/auth.md)) and run with `LOCO_ENV=production`.
+(see [spec/auth.md](spec/auth.md)) and run with `APP_ENV=production`.
 
 ## Rust service
 
@@ -65,7 +65,7 @@ service refuses to start with a bad combination.
 With a real sender, `POST /api/campaigns/{pid}/run` checks the campaign and
 hands the sending to a background job, answering `202` while it runs (`200`
 once complete). In production, `workers.mode` is `BackgroundQueue` (jobs are
-kept in PostgreSQL), so run a worker: `cargo run -- start --server-and-worker`
+kept in PostgreSQL), so run a worker: `cargo run -- start --all`
 in development, or a separate `start --worker` process. A campaign whose
 remaining sends all fail stops (stays `running`); call `run` again to resume.
 Simulated mode, and the test configuration, still finish inside the request.

@@ -6,3 +6,4 @@ pub(crate) mod insight_audit;
 pub(crate) mod insight_cache;
 pub(crate) mod no_store;
 pub(crate) mod require_auth;
+pub(crate) mod secure_headers;

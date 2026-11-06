@@ -1,4 +1,4 @@
-//! Shared counters in Redis (the same `CRM_REDIS_URL` Loco's cache uses), so
+//! Shared counters in Redis (the same `CRM_REDIS_URL` the response cache uses), so
 //! the rate limit and failed-authentication lockout count across replicas
 //! rather than per process. Unset URL means no shared state: callers fall
 //! back to the in-process counters in [`crate::rate_limit`].

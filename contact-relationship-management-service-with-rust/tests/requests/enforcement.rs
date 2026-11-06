@@ -8,11 +8,11 @@
 //! `#[ignore]`d: boots the app (needs PostgreSQL via `config/test.yaml` / `DATABASE_URL`).
 #![cfg(feature = "paseto")]
 
+use axa::testing::prelude::*;
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use contact_relationship_management::app::App;
 use ed25519_dalek::SigningKey;
-use loco_rs::testing::prelude::*;
 use rusty_paseto::core::{Footer, Key, Paseto, PasetoAsymmetricPrivateKey, Payload, Public, V4};
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -87,7 +87,7 @@ fn test_policy() -> String {
 /// a real consent-gated flow end-to-end under enforcement.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test --test enforcement -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test --test enforcement -- --ignored`"]
 async fn enforcement_gates_the_real_stack() {
     let (keys, kid) = keys_and_kid();
     // Settings, not the environment: the verifier and the policy are built from
@@ -592,7 +592,7 @@ async fn enforcement_gates_the_real_stack() {
 /// gets data, and every call is audited with the agent marker.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn mcp_tool_calls_are_decided_as_the_caller() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
@@ -743,7 +743,7 @@ async fn mcp_tool_calls_are_decided_as_the_caller() {
 /// inactive contact to everyone but machine peers.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_read() {
     use sea_orm::ConnectionTrait;
     let (keys, kid) = keys_and_kid();
@@ -878,7 +878,7 @@ async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_rea
 /// names (never the masked field), and needs a token.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn search_leaves_out_what_the_caller_may_not_read() {
     use sea_orm::ConnectionTrait;
     let (keys, kid) = keys_and_kid();
@@ -953,7 +953,7 @@ async fn search_leaves_out_what_the_caller_may_not_read() {
 /// may not read.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn lead_import_needs_write_and_advice_hides_unreadable_contacts() {
     use sea_orm::ConnectionTrait;
     let (keys, kid) = keys_and_kid();
@@ -1028,7 +1028,7 @@ async fn lead_import_needs_write_and_advice_hides_unreadable_contacts() {
 /// nothing the list would not.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn views_are_shared_without_sharing_access() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
@@ -1165,7 +1165,7 @@ async fn views_are_shared_without_sharing_access() {
 /// CRM-R36: writing a template is a write; previewing a draft stores nothing, so a reader may.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_reader_may_preview_a_template_but_not_save_one() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
@@ -1220,7 +1220,7 @@ fn draft_without_name(draft: &Value) -> Value {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_reader_may_list_workflows_but_not_save_or_try_one() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
@@ -1271,7 +1271,7 @@ async fn a_reader_may_list_workflows_but_not_save_or_try_one() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_masked_read_hides_personal_custom_fields_and_a_reader_cannot_set_any() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
@@ -1363,7 +1363,7 @@ async fn a_masked_read_hides_personal_custom_fields_and_a_reader_cannot_set_any(
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_masked_reader_cannot_list_or_fetch_files_and_cannot_attach_any() {
     let dir = std::env::temp_dir().join(format!("crm-attach-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&dir).unwrap();
@@ -1433,7 +1433,7 @@ async fn a_masked_reader_cannot_list_or_fetch_files_and_cannot_attach_any() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_masked_reader_cannot_see_tags_and_a_tag_filter_does_not_show_masked_records() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
@@ -1508,7 +1508,7 @@ async fn a_masked_reader_cannot_see_tags_and_a_tag_filter_does_not_show_masked_r
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_masked_reader_may_count_but_not_sum_or_use_tags_and_shared_reports_stay_the_owners() {
     let _plain = super::no_suppression();
     let (keys, kid) = keys_and_kid();
@@ -1602,7 +1602,7 @@ async fn a_masked_reader_may_count_but_not_sum_or_use_tags_and_shared_reports_st
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn attribution_is_money_so_a_masked_reader_is_refused_and_an_unmasked_one_is_answered() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
@@ -1636,7 +1636,7 @@ async fn attribution_is_money_so_a_masked_reader_is_refused_and_an_unmasked_one_
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_reader_may_see_exchange_rates_but_only_a_writer_may_change_them() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
@@ -1682,7 +1682,7 @@ async fn a_reader_may_see_exchange_rates_but_only_a_writer_may_change_them() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn an_accounts_clv_is_money_so_a_masked_reader_sees_null_and_an_unmasked_one_the_figures() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
@@ -1736,7 +1736,7 @@ async fn an_accounts_clv_is_money_so_a_masked_reader_sees_null_and_an_unmasked_o
 /// in none of the answers. A new endpoint that returns money without masking fails here.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn no_read_a_masked_caller_may_make_returns_the_seeded_amount() {
     const MARKER: i64 = 7_654_321;
     let (keys, kid) = keys_and_kid();
@@ -1887,7 +1887,7 @@ async fn no_read_a_masked_caller_may_make_returns_the_seeded_amount() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn quotas_and_commission_plans_are_for_admin_and_service_callers_only() {
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {

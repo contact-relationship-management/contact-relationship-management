@@ -2,13 +2,13 @@
 //! entity plus the per-entity `find_*` finders (active = not
 //! soft-deleted).
 //!
-//! The finders return the **loco** `Result` with `Error::NotFound` on
-//! a missing row (not `ModelError::EntityNotFound`): loco 0.16's
-//! `IntoResponse` catch-all turns an unmapped model error into a 500,
+//! The finders return the **axa** `Result` with `Error::NotFound` on
+//! a missing row (not `ModelError::EntityNotFound`): an unmapped model
+//! error would become a 500,
 //! so mapping here keeps every `GET /…/{pid}` contract an honest 404
 //! (family lesson, pinned in the request tests).
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 use sea_orm::ConnectionTrait;
 use uuid::Uuid;
 

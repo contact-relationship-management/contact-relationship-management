@@ -1,7 +1,7 @@
 //! `GET /api/search?q=` (CRM-R33): names and titles across the main records.
 
+use axa::prelude::*;
 use axum::http::Uri;
-use loco_rs::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

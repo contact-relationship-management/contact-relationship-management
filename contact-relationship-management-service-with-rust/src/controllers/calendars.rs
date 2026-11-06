@@ -4,8 +4,8 @@
 //! the deadlines of the tickets opened under it are counted in working time. The counting is in
 //! [`crate::rules::calendar`].
 
+use axa::prelude::*;
 use chrono::NaiveDate;
-use loco_rs::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

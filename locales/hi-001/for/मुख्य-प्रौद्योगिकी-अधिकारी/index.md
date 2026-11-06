@@ -4,7 +4,7 @@
 
 ## आर्किटेक्चर
 
-- **सेवा:** Loco (Axum, SeaORM 2.0) पर Rust, PostgreSQL 18; कैश, साझा काउंटर और ब्रेक-ग्लास प्रसार के लिए Redis। `forbid(unsafe_code)`, clippy pedantic। व्यवहार का मूल स्रोत विनिर्देश है ([index](../../../../spec/index.md), [architecture](../../../../spec/architecture.md))।
+- **सेवा:** axa (Axum, SeaORM 2.0) पर Rust, PostgreSQL 18; कैश, साझा काउंटर और ब्रेक-ग्लास प्रसार के लिए Redis। `forbid(unsafe_code)`, clippy pedantic। व्यवहार का मूल स्रोत विनिर्देश है ([index](../../../../spec/index.md), [architecture](../../../../spec/architecture.md))।
 - **UI:** SvelteKit 3 / Svelte 5, बैकएंड-फ़ॉर-फ्रंटएंड प्रॉक्सी ताकि कोई टोकन ब्राउज़र JavaScript तक न पहुँचे; हैश के साथ सख़्त CSP।
 - **प्रमाणीकरण:** ऑफ़लाइन सत्यापित PASETO v4.public, वैकल्पिक Keycloak; साझा इंजन से विशेषता-आधारित पहुँच-नियंत्रण (read/write/delete/destructive क्रियाएँ, `mask` दायित्व, रिकॉर्ड-स्तरीय जाँच)।
 - **ऑडिट:** SHA-256 हैश शृंखला जो बदलाव के साथ उसी ट्रांज़ैक्शन में लिखी जाती है, केवल-जोड़ने वाला ट्रिगर, और `GET /api/audits/verify` पर सत्यापन योग्य।

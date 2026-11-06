@@ -1,8 +1,8 @@
 //! Quotas, commission plans and attainment (CRM-R59): what is set by hand, what is refused, and
 //! what a worker's won deals reach.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -10,7 +10,7 @@ use super::{a_user, seed_pipeline};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_plan_is_set_replaced_checked_and_cannot_be_removed_while_a_quota_uses_it() {
     request::<App, _, _>(|request, _ctx| async move {
         let made: Value = request
@@ -87,7 +87,7 @@ async fn a_plan_is_set_replaced_checked_and_cannot_be_removed_while_a_quota_uses
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_quota_that_cannot_be_set_is_refused_naming_the_member() {
     request::<App, _, _>(|request, _ctx| async move {
         let worker = a_user();
@@ -172,7 +172,7 @@ async fn a_quota_that_cannot_be_set_is_refused_naming_the_member() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn attainment_is_the_workers_won_revenue_in_the_period_and_the_commission_its_plan_pays() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
@@ -301,7 +301,7 @@ async fn attainment_is_the_workers_won_revenue_in_the_period_and_the_commission_
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_split_deal_is_credited_in_shares_to_the_minor_unit_and_a_removed_split_gives_it_back() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
@@ -414,7 +414,7 @@ async fn a_split_deal_is_credited_in_shares_to_the_minor_unit_and_a_removed_spli
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_team_adds_its_workers_standings_per_currency_and_is_replaced_by_name_and_removed() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
@@ -508,7 +508,7 @@ async fn a_team_adds_its_workers_standings_per_currency_and_is_replaced_by_name_
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_territory_holds_named_accounts_once_and_adds_the_revenue_won_on_them_per_currency() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
@@ -654,7 +654,7 @@ async fn a_territory_holds_named_accounts_once_and_adds_the_revenue_won_on_them_
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_clawback_takes_credit_back_from_one_worker_and_is_refused_beyond_what_they_hold() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;

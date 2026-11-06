@@ -4,13 +4,13 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use axa::testing::prelude::*;
 use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use contact_relationship_management::app::App;
 use contact_relationship_management::clients::Mode;
 use contact_relationship_management::settings::{self, Settings};
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -169,7 +169,7 @@ fn worker(person_ref: Option<&str>, department: Option<&str>) -> Value {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_won_deal_opens_one_delivery_idea_in_ppm_and_only_over_http() {
     request::<App, _, _>(|request, ctx| async move {
         let _restore = Restore;
@@ -275,7 +275,7 @@ async fn a_won_deal_opens_one_delivery_idea_in_ppm_and_only_over_http() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alone() {
     request::<App, _, _>(|request, _ctx| async move {
         let _restore = Restore;
@@ -419,7 +419,7 @@ async fn the_worker_service_gives_a_team_per_department_and_leaves_the_rest_alon
 /// that status and changes no team; it never falls back to asking for the whole record.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_worker_service_without_the_lean_list_fails_the_import_and_changes_nothing() {
     request::<App, _, _>(|request, _ctx| async move {
         let _restore = Restore;
@@ -460,7 +460,7 @@ async fn a_worker_service_without_the_lean_list_fails_the_import_and_changes_not
 /// A quota and a deal owner given in the legacy `worker:` form are stored as `person:` and count.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn an_imported_teams_roll_up_meets_the_quotas_set_for_the_same_people() {
     request::<App, _, _>(|request, _ctx| async move {
         let _restore = Restore;

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Loco replaced with axa (CRM-T199, CRM-D23)
+
+`config/*.yaml` is gone: settings come from the environment, with defaults in `src/app.rs`.
+`APP_ENV` replaces `LOCO_ENV`. The API does not change. Requests have a 60-second limit in
+production, and `db reset` and `db truncate` refuse there.
+
 ### Fixed — webhook subscriptions and the application clock (CRM-T198)
 
 `POST /api/webhook-subscriptions` stamps `created_at` from the application, the clock that stamps `occurred_at` on an

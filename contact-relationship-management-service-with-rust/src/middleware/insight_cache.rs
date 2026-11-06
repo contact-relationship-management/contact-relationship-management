@@ -1,11 +1,11 @@
 //! Redis-backed response cache for insight reads.
 
+use axa::redis::Cache;
 use axum::{
     extract::Request,
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use loco_rs::Result;
 
 use crate::auth;
 
@@ -41,11 +41,11 @@ fn insight_key(
 }
 
 /// Make every cached insight stale: a write has happened.
-async fn bump_cache_generation(cache: &loco_rs::cache::Cache) {
+async fn bump_cache_generation(cache: &Cache) {
     let stamp = chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default();
     match tokio::time::timeout(
         CACHE_WAIT,
-        cache.insert_with_expiry(CACHE_GEN_KEY, &stamp, INSIGHT_TTL * 4),
+        cache.set_with_ttl(CACHE_GEN_KEY, &stamp, INSIGHT_TTL * 4),
     )
     .await
     {
@@ -55,14 +55,14 @@ async fn bump_cache_generation(cache: &loco_rs::cache::Cache) {
     }
 }
 
-/// Insight response cache (Loco's cache, Redis-backed). Sits inside auth and
+/// Insight response cache (Redis-backed in production). Sits inside auth and
 /// the read audit, so every request is still authenticated and audited; only
 /// the computation is skipped. The key carries the caller's token hash (so
 /// masking never crosses callers), their break-glass state, the path and
 /// query, and a generation bumped by every successful write, so a write is
 /// visible at once. A policy reload is visible after at most the TTL.
 pub(crate) async fn insight_cache_mw(
-    axum::extract::State(cache): axum::extract::State<std::sync::Arc<loco_rs::cache::Cache>>,
+    axum::extract::State(cache): axum::extract::State<std::sync::Arc<Cache>>,
     req: Request,
     next: Next,
 ) -> Response {
@@ -135,11 +135,7 @@ pub(crate) async fn insight_cache_mw(
             .filter_map(|(name, value)| Some((name.to_string(), value.to_str().ok()?.to_string())))
             .collect();
         let entry = CachedResponse { headers, text };
-        match tokio::time::timeout(
-            CACHE_WAIT,
-            cache.insert_with_expiry(&key, &entry, INSIGHT_TTL),
-        )
-        .await
+        match tokio::time::timeout(CACHE_WAIT, cache.set_with_ttl(&key, &entry, INSIGHT_TTL)).await
         {
             Ok(Ok(())) => {}
             Ok(Err(error)) => tracing::warn!(%error, "insight cache write failed"),

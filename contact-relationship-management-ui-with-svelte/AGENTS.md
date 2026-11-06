@@ -6,7 +6,7 @@ subproject. Read this **before** opening a PR.
 ## What this project is
 
 A **SvelteKit browser client** for the
-[Loco JSON API sibling](../contact-relationship-management-service-with-rust/):
+[JSON API sibling](../contact-relationship-management-service-with-rust/):
 contact/account timelines, the score-sorted lead queue, the deal
 Kanban board, forecast tables, campaign funnels and the nurture
 editor, the ticket queue with live SLA countdowns, the knowledge

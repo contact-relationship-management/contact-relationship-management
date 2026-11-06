@@ -4,10 +4,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::models::deliveries::MAX_ATTEMPTS;
 use contact_relationship_management::rules::privacy::{SOFT_DELETED_TABLES, log_rules};
-use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serial_test::serial;
 
@@ -36,7 +36,7 @@ fn inventory() -> BTreeMap<String, String> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn every_table_is_in_the_inventory_and_the_swept_ones_are_those_the_sweep_deletes_from() {
     request::<App, _, _>(|_request, ctx| async move {
         let listed = inventory();

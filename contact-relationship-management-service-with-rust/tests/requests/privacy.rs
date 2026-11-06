@@ -5,8 +5,8 @@
 //! does; the retention report is horizon-floored and the sweep is
 //! audited even when it deletes nothing.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -14,7 +14,7 @@ use super::seed_contact;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn subject_rights_round_trip() {
     request::<App, _, _>(|request, _ctx| async move {
         // ── Subject access: gathers the footprint, names exclusions, audited.

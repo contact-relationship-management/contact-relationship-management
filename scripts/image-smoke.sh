@@ -11,7 +11,7 @@
 # mail leaves until a second container started with `--worker` picks the job up.
 #
 # Production refuses unverified SMTP certificates, so phase 2 runs the image with
-# LOCO_ENV=development; the mail path and the worker are the same code. Self-contained:
+# APP_ENV=development; the mail path and the worker are the same code. Self-contained:
 # containers crm-smoke-*, ports 15150 and 18025, removed on exit. Needs podman, curl,
 # python3 and a cargo toolchain (for the token). Not part of ci-check.sh.
 set -uo pipefail
@@ -113,7 +113,7 @@ check "and the service still answers" serves
 podman rm -f "${SVC}" "${WRK}" >/dev/null 2>&1
 
 say "phase 2: a campaign send needs the worker (development mode, Mailpit)"
-mail_env=(-e LOCO_ENV=development -e CRM_MAIL_MODE=smtp -e "CRM_SMTP_HOST=${MAIL}" -e CRM_SMTP_PORT=1025 -e CRM_SMTP_TLS=none
+mail_env=(-e APP_ENV=development -e CRM_MAIL_MODE=smtp -e "CRM_SMTP_HOST=${MAIL}" -e CRM_SMTP_PORT=1025 -e CRM_SMTP_TLS=none
   -e CRM_MAIL_FROM=crm@example.test -e CRM_MAIL_DEV_DOMAIN=example.test
   -e CRM_UNSUBSCRIBE_SECRET=smoke-unsubscribe-secret-0123456789abcdef -e CRM_PUBLIC_URL=https://crm.example.test)
 # development binds to localhost; the container needs every interface

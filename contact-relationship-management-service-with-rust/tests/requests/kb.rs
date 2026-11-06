@@ -1,8 +1,8 @@
 //! The public knowledge base and its deflection report (CRM-R57): off until it is turned on,
 //! published articles only, counted without identifying anyone, rate limited per client.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -29,7 +29,7 @@ macro_rules! article {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn nothing_is_public_until_the_knowledge_base_is_turned_on() {
     request::<App, _, _>(|request, _ctx| async move {
         let pid = article!(&request, "Hidden", "Not for the public yet", ["published"]);
@@ -50,7 +50,7 @@ async fn nothing_is_public_until_the_knowledge_base_is_turned_on() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn published_articles_are_public_and_what_happens_is_counted_without_naming_anyone() {
     let _scope = scoped(|s| {
         s.public_kb = true;
@@ -173,7 +173,7 @@ async fn published_articles_are_public_and_what_happens_is_counted_without_namin
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_client_over_its_limit_is_told_to_wait() {
     let _scope = scoped(|s| {
         s.public_kb = true;

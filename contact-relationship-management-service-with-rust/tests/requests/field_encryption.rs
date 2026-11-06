@@ -2,12 +2,12 @@
 //! surface returns plaintext, legacy plaintext still reads, key rotation
 //! re-seals, and a retired key fails loudly instead of returning garbage.
 
+use axa::testing::prelude::*;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use contact_relationship_management::app::App;
 use contact_relationship_management::crypto::{self, Keyring};
 use contact_relationship_management::tasks::rotate_field_keys::rotate;
-use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -37,7 +37,7 @@ async fn stored(db: &sea_orm::DatabaseConnection, sql: &str) -> Vec<String> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
     request::<App, _, _>(|request, ctx| async move {
         crypto::install(Some(keyring(&[("k1", 1)])));

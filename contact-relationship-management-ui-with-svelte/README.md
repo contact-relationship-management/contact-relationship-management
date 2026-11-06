@@ -1,7 +1,7 @@
 # Contact Relationship Management — SvelteKit front-end
 
 The browser client for the
-[Loco JSON API sibling](../contact-relationship-management-service-with-rust/):
+[JSON API sibling](../contact-relationship-management-service-with-rust/):
 sales, marketing, and support views over the relationship
 lifecycle — lead queue, deal Kanban, forecasts, campaign funnels,
 nurture sequences, ticket queue with SLA countdowns, knowledge
@@ -27,7 +27,7 @@ pnpm dev
 
 Sign in as `example@example.com` for the guided tour: fictitious data
 held in the UI server, with no service needed (`CRM_DEMO_TOUR=off`
-removes it). To use the Loco sibling instead, run it on its dev port (the
+removes it). To use the API sibling instead, run it on its dev port (the
 default `CRM_API_URL`, `http://localhost:5150/api`, reaches it) and point
 `AUTH_API_URL` at the family authentication service, which provides the sign-in routes
 (`/api/auth/magic-link`, `/api/auth/token`). The CRM service does not.

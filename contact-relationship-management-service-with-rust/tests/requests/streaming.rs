@@ -1,14 +1,14 @@
 //! Events (in-memory transport): a committed write is visible at
 //! `/api/events/recent`, newest first, and a refused write emits nothing.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_committed_write_emits_an_event_and_a_refused_one_does_not() {
     request::<App, _, _>(|request, _ctx| async move {
         let name = format!("Event Lead {}", uuid::Uuid::new_v4());

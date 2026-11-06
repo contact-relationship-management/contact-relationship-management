@@ -2,8 +2,8 @@
 //! fires again, a record that is gone is suppressed, the inbox is the caller's own, and SLA
 //! breaches reach the assignee.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -57,7 +57,7 @@ macro_rules! inbox {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_recipient_only() {
     request::<App, _, _>(|request, ctx| async move {
         let (me, other) = (a_user(), a_user());
@@ -161,7 +161,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_gone_record_is_suppressed_an_sla_breach_notifies_the_assignee_and_erasure_clears_them() {
     request::<App, _, _>(|request, ctx| async move {
         let me = a_user();

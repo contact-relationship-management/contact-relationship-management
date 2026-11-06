@@ -12,7 +12,7 @@
 
 use std::collections::BTreeMap;
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::Serialize;
 use uuid::Uuid;
@@ -38,7 +38,7 @@ fn unavailable(reason: &str) -> Error {
     tracing::warn!(%reason, "bridge: upstream failed");
     Error::CustomError(
         axum::http::StatusCode::BAD_GATEWAY,
-        loco_rs::controller::ErrorDetail::new("bad_gateway", reason),
+        axa::error::ErrorDetail::new("bad_gateway", reason),
     )
 }
 

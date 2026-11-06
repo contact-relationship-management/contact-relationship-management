@@ -23,7 +23,7 @@ LABEL org.opencontainers.image.title="Contact Relationship Management service" \
 COPY --from=build /src/target/release/contact-relationship-management /app/crm-service
 COPY --from=build /src/config /app/config
 WORKDIR /app
-ENV LOCO_ENV=production \
+ENV APP_ENV=production \
     CRM_REQUIRE_AUTH=1 \
     PORT=5150
 USER nonroot:nonroot

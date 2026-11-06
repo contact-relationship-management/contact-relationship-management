@@ -1,4 +1,4 @@
-//! loco CLI tasks.
+//! Command-line tasks.
 
 pub mod rotate_field_keys;
 pub mod seed;

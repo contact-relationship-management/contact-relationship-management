@@ -13,11 +13,11 @@
 //! total count: a total over stored rows would include rows a caller's
 //! record-level policy hides.
 
+use axa::error::ErrorDetail;
+use axa::prelude::*;
 use axum::http::{StatusCode, Uri};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use loco_rs::controller::ErrorDetail;
-use loco_rs::prelude::*;
 use sea_orm::{EntityTrait, QuerySelect, Select};
 use serde::{Deserialize, Serialize};
 

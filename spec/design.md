@@ -14,7 +14,7 @@ repoint (manual v1, event-driven roadmap) after upstream merges.
 
 Pipelines, stage positions, SLA clocks, consent history, and money
 sums are constraint-heavy — normalized SeaORM tables, not
-DTO-as-JSONB. All-plural table names (the loco pluralization
+DTO-as-JSONB. All-plural table names (the table-name pluralization
 lesson).
 
 ## CRM-D3 — Every lifecycle is a pure-core state machine
@@ -79,7 +79,7 @@ tests with no siblings running.
 
 ## CRM-D12 — Family fixtures from day one
 
-Loco-idiomatic layout, forbid-unsafe + clippy-pedantic, OpenAPI +
+Conventional layout, forbid-unsafe + clippy-pedantic, OpenAPI +
 Swagger, `Accepts-version`, OTLP + `/metrics.prom`, Podman, input
 caps, `404` mapping at `find_by_pid` call sites, enforcement tests
 that scope the settings they change (the OnceLock lesson), ETag-conditional
@@ -458,3 +458,11 @@ alternatives are kept as the record of what was not chosen.
 12. **CRM-R6's wording.** **Decided (recommended):** "every marketing touch had a recorded basis under the profile in force; with no profile the
     only basis is opt-in consent". Alternative: keep "consented to" and allow only `opt_in` and `soft_opt_in` (no `implied`, no
     `opt_out`).
+
+## CRM-D23 — The service runs on Axum and axa, not Loco
+
+*Decided 2026-11-05 by the owner; built by CRM-T199.*
+
+Loco calls a service through hooks, so an auditor has to read the framework as well as the service. [axa](https://crates.io/crates/axa) is a library: `main.rs` calls ordinary functions, and start-up can be read from this repository. Settings come from the environment, so what a deployment runs with is in one place.
+
+SeaORM stays until a separate change moves the service to sqlx. What this conversion finds goes back into axa and its guide.

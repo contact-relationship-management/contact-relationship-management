@@ -1,9 +1,9 @@
 //! Retention for the delivery and event logs (CRM-R81): rows that are finished with go once they
 //! are old enough, and nothing that something may still act on is touched.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::settings;
-use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::Value;
 use serial_test::serial;
@@ -36,7 +36,7 @@ fn past(report: &Value, table: &str) -> i64 {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn finished_delivery_and_event_rows_go_by_age_and_nothing_still_owed_does() {
     request::<App, _, _>(|request, ctx| async move {
         let db = &ctx.db;

@@ -1,8 +1,8 @@
 //! Lead import (CRM-R34): mapping, a bad row, duplicate advice, commit in batches, undo, no
 //! consent, and the audit rows.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -32,7 +32,7 @@ fn mapping() -> Value {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_preview_maps_columns_reports_each_row_and_gives_duplicate_advice_only() {
     request::<App, _, _>(|request, ctx| async move {
         // Someone already known: a contact and an earlier lead.
@@ -115,7 +115,7 @@ async fn a_preview_maps_columns_reports_each_row_and_gives_duplicate_advice_only
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
     request::<App, _, _>(|request, ctx| async move {
         let today = chrono::Utc::now().date_naive().to_string();
@@ -230,7 +230,7 @@ async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn likely_duplicates_can_be_left_out_and_a_long_file_goes_in_batches() {
     request::<App, _, _>(|request, ctx| async move {
         let today = chrono::Utc::now().date_naive().to_string();

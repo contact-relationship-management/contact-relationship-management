@@ -9,7 +9,7 @@
 # on this machine's loopback address only, and the `production` environment
 # refuses to start without authentication. For anything else, set
 # CRM_PASETO_KEYS (or CRM_PASETO_KEYS_URL), CRM_REQUIRE_AUTH=1 and
-# LOCO_ENV=production (see INSTALL.md and spec/auth.md).
+# APP_ENV=production (see INSTALL.md and spec/auth.md).
 #
 # Email is simulated: nothing is sent. The family bridges (PPM, WPM) are off
 # until their URLs are set, so this runs on its own. This file runs the API
@@ -50,7 +50,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      LOCO_ENV: development            # applies the migrations on start
+      APP_ENV: development            # applies the migrations on start
       DATABASE_URL: postgres://loco:loco@postgres:5432/contact_relationship_management_demo
       CRM_REDIS_URL: redis://redis:6379
       JWT_SECRET: demo-only-not-a-secret

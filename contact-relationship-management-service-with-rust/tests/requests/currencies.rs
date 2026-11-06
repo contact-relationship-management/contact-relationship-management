@@ -2,8 +2,8 @@
 //! is refused wherever a currency is taken, a missing one is refused and never assumed, and a
 //! conversion between currencies of different exponents scales by each one's own minor unit.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -16,7 +16,7 @@ fn pointer(answer: &Value) -> &str {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn an_unknown_currency_code_is_refused_wherever_a_currency_is_taken() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, _stages) = seed_pipeline!(&request).await;
@@ -117,7 +117,7 @@ async fn an_unknown_currency_code_is_refused_wherever_a_currency_is_taken() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_missing_currency_is_refused_and_never_assumed() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, _stages) = seed_pipeline!(&request).await;
@@ -175,7 +175,7 @@ async fn a_missing_currency_is_refused_and_never_assumed() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_converted_report_scales_by_each_currencys_own_minor_unit() {
     let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {

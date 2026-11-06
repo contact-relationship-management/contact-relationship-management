@@ -1,7 +1,7 @@
 # Documentation index
 
 Contact Relationship Management — SvelteKit edition. Browser client
-for the Loco JSON API sibling.
+for the JSON API sibling.
 
 ## Start here
 

@@ -2,8 +2,8 @@
 //! `pending`, a paused ticket does not breach, and leaving `pending` moves each deadline by the
 //! waiting that counted against it.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -25,7 +25,7 @@ fn seconds_between(a: &Value, b: &Value) -> i64 {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_ticket_waiting_for_the_customer_stops_its_clock_and_gets_the_time_back() {
     request::<App, _, _>(|request, ctx| async move {
         request
@@ -177,7 +177,7 @@ async fn a_ticket_waiting_for_the_customer_stops_its_clock_and_gets_the_time_bac
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_customer_reply_resumes_a_waiting_ticket_and_leaves_the_others_alone() {
     request::<App, _, _>(|request, ctx| async move {
         request
@@ -258,7 +258,7 @@ async fn a_customer_reply_resumes_a_waiting_ticket_and_leaves_the_others_alone()
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_ticket_left_waiting_past_its_policy_limit_is_flagged_once_and_cleared_on_leaving() {
     request::<App, _, _>(|request, ctx| async move {
         // `normal` allows 60 minutes of waiting; `high` has no limit.
@@ -344,7 +344,7 @@ async fn a_ticket_left_waiting_past_its_policy_limit_is_flagged_once_and_cleared
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_policy_can_resolve_or_escalate_a_ticket_left_waiting_past_its_limit() {
     request::<App, _, _>(|request, ctx| async move {
         let worker = format!("person:{}", uuid::Uuid::new_v4());
@@ -454,7 +454,7 @@ async fn a_policy_can_resolve_or_escalate_a_ticket_left_waiting_past_its_limit()
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_policy_closes_a_ticket_left_resolved_for_its_days_and_no_other() {
     request::<App, _, _>(|request, ctx| async move {
         let policy = |priority: &'static str, days: Value| {
@@ -559,7 +559,7 @@ const INBOUND_SECRET: &str = "inbound-secret-0123456789abcdef-xyz";
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_reply_by_mail_resumes_the_ticket_it_names_when_it_comes_from_the_customer() {
     use contact_relationship_management::{clients, settings, webhook};
     settings::update(|s| s.webhook_secret = Some(INBOUND_SECRET.to_string()));

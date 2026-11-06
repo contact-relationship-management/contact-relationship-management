@@ -1,11 +1,11 @@
 //! Consent per purpose and double opt-in (CRM-R29): the send gate for each state, the
 //! confirmation and preference links, unsubscribe by purpose, and merge, unmerge and erasure.
 
+use axa::testing::prelude::*;
 use axum::http::StatusCode;
 use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};
 use contact_relationship_management::unsubscribe::{self, Unsubscriber};
-use loco_rs::testing::prelude::*;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -129,7 +129,7 @@ macro_rules! request_consent {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn each_purpose_is_its_own_and_only_granted_allows_a_send() {
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
@@ -229,7 +229,7 @@ async fn each_purpose_is_its_own_and_only_granted_allows_a_send() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_double_opt_in_is_pending_until_the_person_confirms_and_never_overrides_a_withdrawal() {
     request::<App, _, _>(|request, ctx| async move {
         let (_recorder, _restore) = recording();
@@ -386,7 +386,7 @@ async fn a_double_opt_in_is_pending_until_the_person_confirms_and_never_override
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn the_preference_page_changes_one_purpose_at_a_time() {
     request::<App, _, _>(|request, _ctx| async move {
         let (_recorder, _restore) = recording();
@@ -483,7 +483,7 @@ async fn the_preference_page_changes_one_purpose_at_a_time() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn an_unsubscribe_link_withdraws_only_the_purpose_of_its_message() {
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
@@ -510,7 +510,7 @@ async fn an_unsubscribe_link_withdraws_only_the_purpose_of_its_message() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_merge_and_an_unmerge_apply_the_stricter_rule_to_every_purpose() {
     request::<App, _, _>(|request, _ctx| async move {
         let (_recorder, _restore) = recording();
@@ -588,7 +588,7 @@ async fn a_merge_and_an_unmerge_apply_the_stricter_rule_to_every_purpose() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn erasure_withdraws_every_purpose_and_the_export_lists_them() {
     request::<App, _, _>(|request, ctx| async move {
         let pid = seed_contact!(&request, "Erase Purposes").await;
@@ -642,7 +642,7 @@ async fn erasure_withdraws_every_purpose_and_the_export_lists_them() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_link_token_works_once_even_when_used_twice_at_once_expires_and_goes_with_the_contact() {
     request::<App, _, _>(|request, ctx| async move {
         use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
@@ -748,7 +748,7 @@ async fn a_link_token_works_once_even_when_used_twice_at_once_expires_and_goes_w
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn the_public_pages_are_in_the_reader_s_language() {
     use axum::http::{HeaderName, HeaderValue};
     request::<App, _, _>(|request, _ctx| async move {

@@ -3,7 +3,7 @@
 //! recent event stream.
 
 use crate::controllers::PidPath;
-use loco_rs::prelude::*;
+use axa::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::models::audit_logs::Model as Audit;

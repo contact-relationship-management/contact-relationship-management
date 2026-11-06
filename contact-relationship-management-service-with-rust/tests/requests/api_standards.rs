@@ -1,8 +1,8 @@
 //! GDS API standards (CRM-T49): unknown request members are refused, and
 //! authenticated API responses say they must not be cached.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::json;
 use serial_test::serial;
 
@@ -10,7 +10,7 @@ use super::{a_person, seed_contact};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_misspelt_request_member_is_refused_not_dropped() {
     request::<App, _, _>(|request, _ctx| async move {
         let response = request
@@ -42,7 +42,7 @@ async fn a_misspelt_request_member_is_refused_not_dropped() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn each_validation_problem_names_its_member() {
     request::<App, _, _>(|request, _ctx| async move {
         // Two members are wrong at once; one problem has no single member.
@@ -75,7 +75,7 @@ async fn each_validation_problem_names_its_member() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_problem_about_the_whole_request_has_no_pointer() {
     request::<App, _, _>(|request, _ctx| async move {
         // A pipeline with one stage: the rule is about the list, not a member.
@@ -99,7 +99,7 @@ async fn a_problem_about_the_whole_request_has_no_pointer() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn api_responses_are_not_cacheable() {
     request::<App, _, _>(|request, _ctx| async move {
         seed_contact!(&request, "Cache Test").await;

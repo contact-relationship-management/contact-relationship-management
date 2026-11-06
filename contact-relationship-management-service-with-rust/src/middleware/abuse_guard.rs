@@ -1,11 +1,11 @@
 //! Per-client request limit and failed-authentication lockout.
 
+use axa::Result;
 use axum::{
     extract::Request,
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use loco_rs::Result;
 
 use crate::{rate_limit, redis_store};
 

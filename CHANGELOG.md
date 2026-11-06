@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — Loco replaced with axa (CRM-T199, 2026-11-06)
+
+- The service runs on Axum and axa 0.3, and keeps SeaORM for now. Settings come from the
+  environment, not `config/*.yaml`. `LOCO_ENV` is `APP_ENV`, and `start --all` runs the
+  server and the worker together. Drain `pg_loco_queue` before deploying.
+
 ### Fixed — webhook subscriptions and the application clock (CRM-T198, 2026-11-05)
 
 - A webhook subscription is stamped by the application, as events are. With the database clock ahead, an event sent just

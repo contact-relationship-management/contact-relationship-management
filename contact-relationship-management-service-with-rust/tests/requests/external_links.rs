@@ -1,8 +1,8 @@
 //! Links to records in other systems (CRM-R27): added to four kinds of record,
 //! checked, moved with a merge and an unmerge, and deleted with an erasure.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -11,7 +11,7 @@ use super::a_person;
 use super::openapi_schemas::schema_check::{check, to_json_schema};
 use super::seed_contact;
 
-async fn contact(request: &loco_rs::TestServer, name: &str) -> String {
+async fn contact(request: &axa::TestServer, name: &str) -> String {
     let created: Value = request
         .post("/api/contacts")
         .json(&json!({ "person_ref": a_person(), "display_name": name }))
@@ -21,7 +21,7 @@ async fn contact(request: &loco_rs::TestServer, name: &str) -> String {
 }
 
 async fn add(
-    request: &loco_rs::TestServer,
+    request: &axa::TestServer,
     plural: &str,
     pid: &str,
     system: &str,
@@ -34,7 +34,7 @@ async fn add(
     (response.status_code().as_u16(), response.json())
 }
 
-async fn links(request: &loco_rs::TestServer, plural: &str, pid: &str) -> Vec<Value> {
+async fn links(request: &axa::TestServer, plural: &str, pid: &str) -> Vec<Value> {
     let body: Value = request
         .get(&format!("/api/{plural}/{pid}/external-links"))
         .await
@@ -44,7 +44,7 @@ async fn links(request: &loco_rs::TestServer, plural: &str, pid: &str) -> Vec<Va
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn links_can_be_added_listed_and_removed_on_every_kind_of_record() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -134,7 +134,7 @@ async fn links_can_be_added_listed_and_removed_on_every_kind_of_record() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn unsafe_and_misplaced_addresses_are_refused() {
     request::<App, _, _>(|request, _ctx| async move {
         let pid = contact(&request, "Ana").await;
@@ -186,7 +186,7 @@ async fn unsafe_and_misplaced_addresses_are_refused() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn links_follow_a_merge_and_come_back_with_an_unmerge() {
     request::<App, _, _>(|request, _ctx| async move {
         let survivor = contact(&request, "Ana Ruiz").await;
@@ -238,7 +238,7 @@ async fn links_follow_a_merge_and_come_back_with_an_unmerge() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn subject_access_lists_links_and_erasure_deletes_them() {
     request::<App, _, _>(|request, ctx| async move {
         let pid = seed_contact!(&request, "Erin").await;

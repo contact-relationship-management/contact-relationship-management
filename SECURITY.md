@@ -30,9 +30,8 @@ Only the latest commit on `main` is supported.
 Dependencies are pinned by lockfile (`Cargo.lock`, `pnpm-lock.yaml`).
 `scripts/ci-check.sh supply-chain` checks known vulnerabilities, licences and
 sources, and writes the SBOMs to `sbom/`. The Rust service and its migration
-crate forbid `unsafe` code (`#![forbid(unsafe_code)]`), and the service
-deliberately omits loco's `auth` (JWT) feature; see the comment in its
-`Cargo.toml`.
+crate forbid `unsafe` code (`#![forbid(unsafe_code)]`), and the service has no JWT
+code, because tokens in this family are PASETO.
 
 ## Inbound requests that are not signed in
 

@@ -9,7 +9,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Val
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 
 use super::fx_rates::{RateUsed, Unconverted};
 use super::views::owner_of;
@@ -404,10 +404,7 @@ async fn owned(txn: &sea_orm::DatabaseTransaction, pid: Uuid, me: &str) -> Resul
     } else if shared {
         Err(Error::CustomError(
             axum::http::StatusCode::FORBIDDEN,
-            loco_rs::controller::ErrorDetail::new(
-                "forbidden",
-                "only the owner can change a report",
-            ),
+            axa::error::ErrorDetail::new("forbidden", "only the owner can change a report"),
         ))
     } else {
         Err(Error::NotFound)

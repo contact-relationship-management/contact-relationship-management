@@ -8,9 +8,9 @@
 
 use crate::controllers::PidPath;
 use crate::json::Json;
+use axa::error::ErrorDetail;
+use axa::prelude::*;
 use axum::http::StatusCode;
-use loco_rs::controller::ErrorDetail;
-use loco_rs::prelude::*;
 use sea_orm::{
     ActiveValue, ConnectionTrait, DatabaseBackend, DatabaseTransaction, QueryOrder, QuerySelect,
     Statement, TransactionTrait, Value,

@@ -1,4 +1,4 @@
-# Contact Relationship Management — Loco JSON API
+# Contact Relationship Management — JSON API
 
 A back-end **JSON API** for CRM: contacts and accounts with full
 relationship timelines, lead capture and explainable rule-based
@@ -7,7 +7,7 @@ forecasting, consent-first email campaigns / segments / nurture
 sequences, support tickets with SLA tracking, a versioned knowledge
 base, and derived dashboards (win rate, pipeline value, campaign
 ROI, CLV, SLA health). Implemented in Rust on
-[Loco](https://loco.rs) (Axum + SeaORM + PostgreSQL). No built-in
+[Axum](https://docs.rs/axum) and [axa](https://crates.io/crates/axa) (SeaORM + PostgreSQL). No built-in
 UI — the
 [Svelte sibling](../contact-relationship-management-ui-with-svelte/)
 provides the sales, marketing, and support client.
@@ -34,7 +34,7 @@ cargo run -- db migrate && cargo run -- task seed && cargo run -- start
 curl localhost:5150/api/forecast | jq .
 ```
 
-The server listens on port 5150 (`config/development.yaml`). Without
+The server listens on port 5150 (the default in `src/app.rs`). Without
 `DATABASE_URL`, development uses the database named above. `cargo test`
 runs the DB-free tests; `cargo test -- --ignored` runs the request tests
 against `contact_relationship_management_test` (`config/test.yaml`),

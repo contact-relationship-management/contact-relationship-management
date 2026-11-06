@@ -4,7 +4,7 @@
 //! readable: the trigger, the conditions (the segment filter language) and the actions. A dry run
 //! shows what it would do to the current data, and every real run is in the run log.
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

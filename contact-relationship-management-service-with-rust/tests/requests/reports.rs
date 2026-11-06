@@ -1,8 +1,8 @@
 //! The report builder (CRM-R48): counts and per-currency sums grouped by a field, filters and a
 //! date range, what is refused, and saved reports.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -32,7 +32,7 @@ fn rows(result: &Value) -> Vec<(String, i64)> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn records_are_counted_by_a_field_a_tag_and_a_date_range() {
     let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
@@ -116,7 +116,7 @@ async fn records_are_counted_by_a_field_a_tag_and_a_date_range() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn deal_amounts_are_summed_per_currency_and_never_added_across_them() {
     let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
@@ -187,7 +187,7 @@ async fn deal_amounts_are_summed_per_currency_and_never_added_across_them() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_report_that_cannot_be_asked_is_refused_naming_the_member() {
     request::<App, _, _>(|request, _ctx| async move {
         for (body, pointer) in [
@@ -229,7 +229,7 @@ async fn a_report_that_cannot_be_asked_is_refused_naming_the_member() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_report_is_saved_run_again_changed_and_deleted() {
     let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
@@ -282,7 +282,7 @@ async fn a_report_is_saved_run_again_changed_and_deleted() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_group_with_only_a_few_records_behind_it_is_left_out_and_counted() {
     request::<App, _, _>(|request, _ctx| async move {
         contact_relationship_management::settings::update(|s| s.min_cell_size = 5);

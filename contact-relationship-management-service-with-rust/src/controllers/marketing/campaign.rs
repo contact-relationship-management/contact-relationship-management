@@ -435,7 +435,10 @@ pub(super) async fn run_campaign(
     } else {
         axum::http::StatusCode::ACCEPTED
     };
-    format::render().status(status).json(row)
+    Ok(axum::response::IntoResponse::into_response((
+        status,
+        axum::Json(row),
+    )))
 }
 
 /// The job that sends a campaign.

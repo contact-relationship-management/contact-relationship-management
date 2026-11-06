@@ -6,7 +6,7 @@
 
 use std::collections::BTreeMap;
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

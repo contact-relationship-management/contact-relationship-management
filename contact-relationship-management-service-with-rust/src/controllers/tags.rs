@@ -5,7 +5,7 @@
 //! it is hidden from a masked read, listed in a subject-access export, and deleted when the contact
 //! is erased.
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

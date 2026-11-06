@@ -1,7 +1,7 @@
 //! RFC 9457 problem details for every error response (CRM-T54).
 //!
 //! The service's errors are produced in several places: the controllers
-//! (`{"error", "description"}` through Loco), the auth and abuse middleware
+//! (`{"error", "description"}` through axa), the auth and abuse middleware
 //! (plain text), the API-version check, and the idempotency layer. One
 //! outermost middleware turns every `4xx`/`5xx` into
 //! `application/problem+json` so a client parses one shape.
@@ -62,7 +62,7 @@ pub fn document(status: StatusCode, instance: &str, body: &[u8]) -> Value {
     if let Ok(Value::Object(source)) = serde_json::from_slice::<Value>(body) {
         for (key, value) in source {
             match (key.as_str(), &value) {
-                // Loco labels some statuses with a reason phrase ("Bad Request"
+                // axa labels some statuses with a reason phrase ("Bad Request"
                 // for a 413); only a snake_case code is a stable machine code.
                 ("error", Value::String(text)) => {
                     if is_code(text) {
@@ -161,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn a_loco_error_keeps_its_code_and_message() {
+    fn an_axa_error_keeps_its_code_and_message() {
         let body = br#"{"error":"validation","description":"name is required"}"#;
         let doc = document(StatusCode::UNPROCESSABLE_ENTITY, "/api/contacts", body);
         assert_eq!(doc["type"], "urn:crm:problem:validation");

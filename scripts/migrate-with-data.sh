@@ -22,7 +22,7 @@ for _ in $(seq 40); do podman exec $PG pg_isready -U loco -d legacy >/dev/null 2
 
 echo "== 1. build a populated database"
 run db migrate | tail -1
-(cd "$SVC" && exec "$BIN" start --server-and-worker --port $PORT >/tmp/mig-svc.log 2>&1) & SP=$!
+(cd "$SVC" && exec "$BIN" start --all --port $PORT >/tmp/mig-svc.log 2>&1) & SP=$!
 for _ in $(seq 60); do curl -sf $API/_ping >/dev/null && break; sleep 1; done
 post() { curl -s -X POST -H 'content-type: application/json' -d "$2" "$API$1"; }
 pidof() { sed -n 's/.*"pid":"\([^"]*\)".*/\1/p' | head -1; }
@@ -66,7 +66,7 @@ BAD=$(diff /tmp/mig-before.txt <(grep -v -e '^contact_merges ' -e '^external_lin
 run db migrate | tail -1 | sed 's/^/  second run: /'
 
 echo "== 4. merge on the migrated database"
-(cd "$SVC" && exec "$BIN" start --server-and-worker --port $PORT >/tmp/mig-svc.log 2>&1) & SP=$!
+(cd "$SVC" && exec "$BIN" start --all --port $PORT >/tmp/mig-svc.log 2>&1) & SP=$!
 for _ in $(seq 60); do curl -sf $API/_ping >/dev/null && break; sleep 1; done
 PIDS=(); while read -r l; do PIDS+=("$l"); done </tmp/mig-pids.txt
 merged=0; failed=0

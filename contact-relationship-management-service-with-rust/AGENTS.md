@@ -5,8 +5,8 @@ subproject. Read this **before** opening a PR.
 
 ## What this project is
 
-A **back-end JSON API**, written in Rust on [Loco](https://loco.rs)
-(Axum + SeaORM + PostgreSQL), for contact relationship management:
+A **back-end JSON API**, written in Rust on [Axum](https://docs.rs/axum) and
+[axa](https://crates.io/crates/axa) (SeaORM + PostgreSQL), for contact relationship management:
 contacts and accounts with relationship timelines, leads with
 rule-based scoring, deal pipelines (Kanban) and stage-weighted
 forecasting, email campaigns / segments / nurture sequences with
@@ -37,12 +37,12 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
    change is spec edit + code + tests in one PR. The live task queue
    is [`../spec/tasks.md`](../spec/tasks.md) (CRM-T* ids, traced to
    CRM-D*/CRM-R*).
-2. **Family conventions.** Loco-idiomatic layout
+2. **Family conventions.** Conventional layout
    (`src/controllers/`), `#![forbid(unsafe_code)]`, thiserror,
    tracing + OTLP, OpenAPI/Swagger, header API versioning
    (`Accepts-version`), Podman not Docker, PostgreSQL not SQLite,
-   `worker` (Postgres-backed) jobs, in-memory loco cache (Redis
-   optional, `CRM_REDIS_URL`). The family notes cited in comments as
+   `worker` (Postgres-backed) jobs, a Redis cache (`CRM_REDIS_URL`,
+   required in production, in-process elsewhere). The family notes cited in comments as
    `agents/share/*.md` (for example `rust-loco-stack.md`, `jwt.md`,
    `event-bus.md`) live in the `main-x-service` repository, not here.
 3. **Pure core.** Every lifecycle machine (lead, deal, campaign,
@@ -61,7 +61,7 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
 5. **Money discipline.** Minor units (`i64`) + ISO-4217; overflow
    refused; mixed currencies report per-currency lines, never a
    silent sum. No floats.
-6. **Known family gotchas.** loco `create_table` pluralizes table
+6. **Known family gotchas.** `axa::schema::create_table` pluralizes table
    names (use already-plural names / explicit SQL);
    `ModelError::EntityNotFound` is NOT mapped to 404 (return
    `Error::NotFound` at `find_by_pid` call sites); enforcement tests

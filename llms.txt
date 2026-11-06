@@ -1,6 +1,6 @@
 # Contact Relationship Management
 
-> A demo contact relationship management (CRM) system: sales automation, marketing automation, customer support and analytics. A Rust JSON API (Loco: Axum, SeaORM, PostgreSQL) and a Svelte 5 / SvelteKit 3 browser client built on the Lily Design System, specified in spec/. Demo software: synthetic data only, no real email is sent by default, no accreditation or certification is claimed.
+> A demo contact relationship management (CRM) system: sales automation, marketing automation, customer support and analytics. A Rust JSON API (Axum, axa, SeaORM, PostgreSQL) and a Svelte 5 / SvelteKit 3 browser client built on the Lily Design System, specified in spec/. Demo software: synthetic data only, no real email is sent by default, no accreditation or certification is claimed.
 
 - The specification in spec/ is the single source of truth; code and docs follow it.
 - Requirements are CRM-R<n> (spec/requirements.md); tasks are CRM-T<n> (spec/tasks.md). Every task traces to a requirement.

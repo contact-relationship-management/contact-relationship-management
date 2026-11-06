@@ -1,8 +1,8 @@
 //! `POST /api/contacts/{pid}/unmerge` (CRM-R26): a merge is undone from its
 //! ledger, consent never widens, and what cannot be undone is refused.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -11,7 +11,7 @@ use super::a_person;
 use super::openapi_schemas::schema_check::{check, to_json_schema};
 use super::seed_contact;
 
-async fn contact(request: &loco_rs::TestServer, name: &str, title: Option<&str>) -> String {
+async fn contact(request: &axa::TestServer, name: &str, title: Option<&str>) -> String {
     let created: Value = request
         .post("/api/contacts")
         .json(&json!({ "person_ref": a_person(), "display_name": name, "job_title": title }))
@@ -20,12 +20,12 @@ async fn contact(request: &loco_rs::TestServer, name: &str, title: Option<&str>)
     created["pid"].as_str().unwrap().to_string()
 }
 
-async fn post(request: &loco_rs::TestServer, path: &str, body: Value) -> (u16, Value) {
+async fn post(request: &axa::TestServer, path: &str, body: Value) -> (u16, Value) {
     let response = request.post(path).json(&body).await;
     (response.status_code().as_u16(), response.json())
 }
 
-async fn merge(request: &loco_rs::TestServer, from: &str, into: &str) -> u16 {
+async fn merge(request: &axa::TestServer, from: &str, into: &str) -> u16 {
     post(
         request,
         &format!("/api/contacts/{from}/merge"),
@@ -35,7 +35,7 @@ async fn merge(request: &loco_rs::TestServer, from: &str, into: &str) -> u16 {
     .0
 }
 
-async fn unmerge(request: &loco_rs::TestServer, pid: &str, dry_run: bool) -> (u16, Value) {
+async fn unmerge(request: &axa::TestServer, pid: &str, dry_run: bool) -> (u16, Value) {
     post(
         request,
         &format!("/api/contacts/{pid}/unmerge"),
@@ -44,7 +44,7 @@ async fn unmerge(request: &loco_rs::TestServer, pid: &str, dry_run: bool) -> (u1
     .await
 }
 
-async fn activities(request: &loco_rs::TestServer, pid: &str) -> usize {
+async fn activities(request: &axa::TestServer, pid: &str) -> usize {
     let export: Value = request
         .get(&format!("/api/contacts/{pid}/subject-access"))
         .await
@@ -52,7 +52,7 @@ async fn activities(request: &loco_rs::TestServer, pid: &str) -> usize {
     export["activities"].as_array().unwrap().len()
 }
 
-async fn note(request: &loco_rs::TestServer, pid: &str, summary: &str) {
+async fn note(request: &axa::TestServer, pid: &str, summary: &str) {
     request
         .post("/api/activities")
         .json(&json!({ "subject_kind": "contact", "subject_pid": pid,
@@ -63,7 +63,7 @@ async fn note(request: &loco_rs::TestServer, pid: &str, summary: &str) {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn an_unmerge_gives_back_what_the_merge_took() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -181,7 +181,7 @@ async fn an_unmerge_gives_back_what_the_merge_took() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn an_unmerge_never_widens_consent() {
     request::<App, _, _>(|request, _ctx| async move {
         let survivor = contact(&request, "Ana", None).await;
@@ -223,7 +223,7 @@ async fn an_unmerge_never_widens_consent() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn what_cannot_be_undone_is_refused() {
     request::<App, _, _>(|request, ctx| async move {
         let a = contact(&request, "Ana", None).await;
@@ -268,7 +268,7 @@ async fn what_cannot_be_undone_is_refused() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn erasing_the_survivor_scrubs_the_merged_duplicate_and_the_ledger() {
     request::<App, _, _>(|request, ctx| async move {
         let survivor = seed_contact!(&request, "Sam Survivor").await;

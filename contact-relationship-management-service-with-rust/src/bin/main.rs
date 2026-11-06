@@ -1,5 +1,5 @@
-//! `contact-relationship-management` binary entrypoint — boots the loco.rs CLI,
-//! wiring the `App` hooks and the database migrator. See the crate
+//! `contact-relationship-management` binary entrypoint — parses the command line
+//! and hands it to [`App::run`]. See the crate
 //! library docs for the service overview.
 
 #![warn(clippy::pedantic)]
@@ -10,11 +10,11 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use axa::cli::Cli;
+use clap::Parser;
 use contact_relationship_management::app::App;
-use loco_rs::cli;
-use migration::Migrator;
 
 #[tokio::main]
-async fn main() -> loco_rs::Result<()> {
-    cli::main::<App, Migrator>().await
+async fn main() -> axa::Result<()> {
+    App::run(Cli::parse()).await
 }

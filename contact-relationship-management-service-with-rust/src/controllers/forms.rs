@@ -10,9 +10,9 @@
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
+use axa::prelude::*;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::IntoResponse;
-use loco_rs::prelude::*;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseBackend, DatabaseTransaction, QueryFilter, Statement,
     TransactionTrait, Value,
@@ -265,7 +265,7 @@ async fn submit(
 fn unavailable(text: &Text) -> Error {
     Error::CustomError(
         StatusCode::SERVICE_UNAVAILABLE,
-        loco_rs::controller::ErrorDetail::new("unavailable", text.form_unavailable),
+        axa::error::ErrorDetail::new("unavailable", text.form_unavailable),
     )
 }
 

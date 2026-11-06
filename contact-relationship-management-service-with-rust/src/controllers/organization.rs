@@ -7,7 +7,7 @@
 //! an administrator may change it (the policy derives `Destructive` for the `PUT`), and a change
 //! is audited with both values.
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

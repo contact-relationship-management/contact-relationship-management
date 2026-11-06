@@ -15,7 +15,7 @@ BASE = "https://github.com/contact-relationship-management/contact-relationship-
 TITLE = "Contact Relationship Management"
 SUMMARY = (
     "A demo contact relationship management (CRM) system: sales automation, marketing "
-    "automation, customer support and analytics. A Rust JSON API (Loco: Axum, SeaORM, "
+    "automation, customer support and analytics. A Rust JSON API (Axum, axa, SeaORM, "
     "PostgreSQL) and a Svelte 5 / SvelteKit 3 browser client built on the Lily Design "
     "System, specified in spec/. Demo software: synthetic data only, no real email is "
     "sent by default, no accreditation or certification is claimed."
@@ -160,7 +160,7 @@ def data() -> dict:
         "repository": "https://github.com/contact-relationship-management/contact-relationship-management",
         "status": "demo software; synthetic data only",
         "stack": {
-            "service": "Rust, Loco (Axum, SeaORM), PostgreSQL",
+            "service": "Rust, Axum, axa, SeaORM, PostgreSQL",
             "client": "Svelte 5 runes, SvelteKit 3 (SPA mode), Lily Design System",
         },
         "notes": NOTES,

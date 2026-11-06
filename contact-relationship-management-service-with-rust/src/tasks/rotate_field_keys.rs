@@ -1,11 +1,11 @@
-//! `cargo loco task rotate_field_keys` — re-seal every encrypted column under
+//! `cargo run -- task rotate_field_keys` — re-seal every encrypted column under
 //! the active key (CRM-T41). Run it after adding a new first key to
 //! `CRM_FIELD_KEYS`, and before retiring an old one; it also seals any legacy
 //! plaintext. It is idempotent: values already under the active key are left
 //! alone, and it reports the counts.
 
-use loco_rs::prelude::*;
-use loco_rs::task::{TaskInfo, Vars};
+use axa::prelude::*;
+use axa::task::{TaskInfo, Vars};
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 
 use crate::crypto;
@@ -99,7 +99,7 @@ async fn rotate_custom(
     Ok(updates.len() as u64)
 }
 
-/// The loco task wrapper.
+/// The task wrapper.
 pub struct RotateFieldKeys;
 
 #[async_trait]

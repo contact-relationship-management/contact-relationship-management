@@ -3,9 +3,9 @@
 //! funnel / member-health / consent-by-account views, the partnership
 //! lifecycle, memberships + renewals, and working groups.
 
+use axa::testing::prelude::*;
 use chrono::{Duration, Utc};
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -13,7 +13,7 @@ use super::{a_person, a_user, seed_pipeline};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 #[allow(clippy::too_many_lines)] // one seeded estate, the whole surface
 async fn engagement_round_trip() {
     request::<App, _, _>(|request, _ctx| async move {

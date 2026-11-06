@@ -1,9 +1,9 @@
-//! Axum controllers (loco `Routes`), one module per CRM module, plus
+//! Axum controllers (axa `Routes`), one module per CRM module, plus
 //! the shared error helpers.
 
+use axa::error::ErrorDetail;
+use axa::prelude::*;
 use axum::http::StatusCode;
-use loco_rs::controller::ErrorDetail;
-use loco_rs::prelude::*;
 
 use crate::validation::FieldProblem;
 
@@ -152,7 +152,7 @@ pub fn unprocessable(message: &str) -> Error {
 }
 
 /// Map a record-level authorization rejection (`(status, reason)`) to a
-/// loco error response: `403` = policy denied; `401` = fail-safe when
+/// error response: `403` = policy denied; `401` = fail-safe when
 /// claims are missing behind the guard.
 #[must_use]
 pub fn record_rejection((status, reason): (StatusCode, String)) -> Error {

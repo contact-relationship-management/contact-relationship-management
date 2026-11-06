@@ -1,4 +1,4 @@
-//! The request-body extractor. Loco's own `Json` throws the parser's message
+//! The request-body extractor. Axum's own `Json` rejection throws the parser's message
 //! away, so a body with a misspelt member got a bare "Unprocessable Entity".
 //! This one keeps the same shape (`Json(payload)`, `Json(value)` as a
 //! response) and says what was wrong with the body: which member is unknown,

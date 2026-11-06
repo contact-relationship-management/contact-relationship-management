@@ -187,7 +187,7 @@ impl Problems {
     /// # Errors
     ///
     /// The `422` when any problem was recorded.
-    pub fn finish(self) -> loco_rs::Result<()> {
+    pub fn finish(self) -> axa::Result<()> {
         if self.0.is_empty() {
             return Ok(());
         }

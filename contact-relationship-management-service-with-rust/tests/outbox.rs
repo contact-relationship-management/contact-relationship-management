@@ -4,14 +4,14 @@
 //! process-wide and read once.
 //! Run with `cargo test --test outbox -- --ignored`.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::{app::App, settings, streaming::EventTransport};
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn the_event_is_an_outbox_row() {
     settings::update(|s| s.event_transport = EventTransport::Outbox);
     request::<App, _, _>(|request, _ctx| async move {

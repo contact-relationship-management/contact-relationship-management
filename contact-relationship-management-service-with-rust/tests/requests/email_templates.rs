@@ -1,10 +1,10 @@
 //! Email templates with merge tokens (CRM-R36): the closed token set, the unsubscribe link every
 //! body must carry, the synthetic preview, and campaigns and nurture steps that use a template.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};
 use contact_relationship_management::unsubscribe::{self, Unsubscriber};
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -42,7 +42,7 @@ fn template(name: &str) -> Value {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_template_is_saved_checked_previewed_and_deleted() {
     request::<App, _, _>(|request, _ctx| async move {
         let created: Value = request
@@ -169,7 +169,7 @@ async fn a_template_is_saved_checked_previewed_and_deleted() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_campaign_and_a_nurture_step_are_made_from_a_template() {
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
@@ -271,7 +271,7 @@ async fn a_campaign_and_a_nurture_step_are_made_from_a_template() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
     request::<App, _, _>(|request, ctx| async move {
         use sea_orm::ConnectionTrait;
@@ -374,7 +374,7 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn fallbacks_are_in_the_template_s_language() {
     request::<App, _, _>(|request, _ctx| async move {
         // The built-in fallbacks in the language asked for; none for a language without them.

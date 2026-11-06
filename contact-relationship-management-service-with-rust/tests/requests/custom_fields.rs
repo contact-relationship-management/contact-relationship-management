@@ -1,12 +1,12 @@
 //! Typed custom fields (CRM-R41): declaring them, values checked against their kind, the
 //! sensitivity that decides sealing, subject access and erasure, and key rotation.
 
+use axa::testing::prelude::*;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use contact_relationship_management::app::App;
 use contact_relationship_management::crypto::{self, Keyring};
 use contact_relationship_management::tasks::rotate_field_keys::rotate;
-use loco_rs::testing::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -42,7 +42,7 @@ macro_rules! define {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn fields_are_declared_and_values_are_checked_against_their_kind() {
     request::<App, _, _>(|request, _ctx| async move {
         define!(&request, "contact", "notes", "text", "business");
@@ -125,7 +125,7 @@ async fn fields_are_declared_and_values_are_checked_against_their_kind() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn every_kind_of_record_can_carry_fields_and_deleting_a_field_deletes_its_values() {
     request::<App, _, _>(|request, ctx| async move {
         let account: Value = request
@@ -181,7 +181,7 @@ async fn every_kind_of_record_can_carry_fields_and_deleting_a_field_deletes_its_
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_choice_in_use_cannot_be_removed() {
     request::<App, _, _>(|request, _ctx| async move {
         let field = define!(
@@ -217,7 +217,7 @@ async fn a_choice_in_use_cannot_be_removed() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn sensitivity_decides_sealing_subject_access_erasure_and_rotation() {
     request::<App, _, _>(|request, ctx| async move {
         let keyring = |id: &str, byte: u8| {

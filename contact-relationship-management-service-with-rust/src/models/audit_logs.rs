@@ -5,7 +5,7 @@
 //! detail (old/new state, override reasons, the `owner` where
 //! relevant — which is what the owner-scoped query filters on).
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 use sea_orm::{
     ConnectionTrait, DatabaseBackend, QueryOrder, QuerySelect, Statement, TransactionTrait,
 };

@@ -2,8 +2,8 @@
 //! truncation, following it visits every row once, bad input is refused, and
 //! article search runs before the page is cut.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -12,8 +12,7 @@ use std::collections::HashSet;
 use super::seed_contact;
 
 /// The path-and-query inside a `Link: <...>; rel="next"` header value.
-/// (Takes the header, not the response: loco pins its own `axum-test`
-/// version, a type this crate cannot name.)
+/// (Takes the header, so a test need not name `axum-test`'s response type.)
 fn next_of(link: Option<&axum::http::HeaderValue>) -> Option<String> {
     let link = link?.to_str().ok()?;
     let inner = link.strip_prefix('<')?.split('>').next()?.to_string();
@@ -22,7 +21,7 @@ fn next_of(link: Option<&axum::http::HeaderValue>) -> Option<String> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn following_next_visits_every_row_once() {
     request::<App, _, _>(|request, _ctx| async move {
         for i in 0..5 {
@@ -62,7 +61,7 @@ async fn following_next_visits_every_row_once() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn bad_paging_input_is_refused() {
     request::<App, _, _>(|request, _ctx| async move {
         for url in [
@@ -80,7 +79,7 @@ async fn bad_paging_input_is_refused() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn article_search_is_not_cut_by_the_page() {
     request::<App, _, _>(|request, _ctx| async move {
         for title in ["Alpha one", "Alpha two", "Needle in the stack"] {
@@ -113,7 +112,7 @@ async fn article_search_is_not_cut_by_the_page() {
 /// The activity dashboard counts every activity, not a capped sample.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn activity_dashboard_counts_past_the_old_cap() {
     request::<App, _, _>(|request, ctx| async move {
         ctx.db

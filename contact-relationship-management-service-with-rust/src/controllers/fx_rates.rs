@@ -4,8 +4,8 @@
 //! report that converts reads them through [`crate::rules::fx`]. Changing a rate is a write and is
 //! audited with the pair, the rate, the day and the source.
 
+use axa::prelude::*;
 use chrono::NaiveDate;
-use loco_rs::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

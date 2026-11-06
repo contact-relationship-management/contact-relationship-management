@@ -79,7 +79,7 @@ export CRM_WPM_WEBHOOK_SECRET='dev-only-wpm-webhook-secret-0123456789'   # 38 ch
 cargo run -- start
 ```
 
-The service listens on `http://localhost:5150` (`config/development.yaml`).
+The service listens on `http://localhost:5150` (the default in `src/app.rs`).
 
 ## 2. Create a contact for a synthetic person
 

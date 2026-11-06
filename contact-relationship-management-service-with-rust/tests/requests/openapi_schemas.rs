@@ -2,8 +2,8 @@
 //! the request schemas, and real list responses satisfy the resource schemas
 //! (`OpenAPI` schemas drift silently unless something checks them).
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -15,7 +15,7 @@ use schema_check::{check, to_json_schema};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn responses_match_the_documented_schemas() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -129,7 +129,7 @@ async fn responses_match_the_documented_schemas() {
 /// response schemas, with rows in every table so no section is empty.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 #[allow(clippy::too_many_lines)] // one seeded walk over every documented read
 async fn read_responses_match_the_documented_schemas() {
     request::<App, _, _>(|request, _ctx| async move {
@@ -350,7 +350,7 @@ async fn read_responses_match_the_documented_schemas() {
 /// `error` and `description` members.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn errors_are_problem_documents() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -389,7 +389,7 @@ async fn errors_are_problem_documents() {
                 "about:blank",
             ),
             (
-                "body over the limit (413, loco layer)",
+                "body over the limit (413, axa layer)",
                 request
                     .post("/api/contacts")
                     .add_header("content-type", "application/json")
@@ -407,6 +407,12 @@ async fn errors_are_problem_documents() {
         ];
         for (what, response, status, kind) in cases {
             assert_eq!(response.status_code(), status, "{what}");
+            // An unknown path passes through the whole stack. A refusal from a layer
+            // outside `axa`'s stack, such as the version check, does not.
+            if what.starts_with("unknown route") {
+                assert!(response.headers().contains_key("x-request-id"), "{what}");
+                assert_eq!(response.headers()["x-content-type-options"], "nosniff");
+            }
             let content_type = response
                 .headers()
                 .get("content-type")

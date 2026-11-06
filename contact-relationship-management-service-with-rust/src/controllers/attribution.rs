@@ -11,7 +11,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 
 use super::fx_rates::{self, RateUsed, Unconverted};
 use super::record_rejection;

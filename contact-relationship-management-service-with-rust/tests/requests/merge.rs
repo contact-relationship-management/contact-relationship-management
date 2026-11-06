@@ -1,8 +1,8 @@
 //! `POST /api/contacts/{pid}/merge` (CRM-R24): rows move, consent never
 //! widens, the refusals hold, and a failure part-way changes nothing.
 
+use axa::testing::prelude::*;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -11,7 +11,7 @@ use super::a_person;
 use super::openapi_schemas::schema_check::{check, to_json_schema};
 use super::seed_contact;
 
-async fn contact(request: &loco_rs::TestServer, name: &str, title: Option<&str>) -> String {
+async fn contact(request: &axa::TestServer, name: &str, title: Option<&str>) -> String {
     let created: Value = request
         .post("/api/contacts")
         .json(&json!({ "person_ref": a_person(), "display_name": name, "job_title": title }))
@@ -20,7 +20,7 @@ async fn contact(request: &loco_rs::TestServer, name: &str, title: Option<&str>)
     created["pid"].as_str().unwrap().to_string()
 }
 
-async fn consent(request: &loco_rs::TestServer, pid: &str, action: Option<&str>) {
+async fn consent(request: &axa::TestServer, pid: &str, action: Option<&str>) {
     if let Some(action) = action {
         request
             .post(&format!("/api/contacts/{pid}/consent"))
@@ -30,12 +30,7 @@ async fn consent(request: &loco_rs::TestServer, pid: &str, action: Option<&str>)
     }
 }
 
-async fn merge(
-    request: &loco_rs::TestServer,
-    from: &str,
-    into: &str,
-    dry_run: bool,
-) -> (u16, Value) {
+async fn merge(request: &axa::TestServer, from: &str, into: &str, dry_run: bool) -> (u16, Value) {
     let response = request
         .post(&format!("/api/contacts/{from}/merge"))
         .json(&json!({ "into_pid": into, "reason": "same person", "dry_run": dry_run }))
@@ -45,7 +40,7 @@ async fn merge(
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_merge_moves_everything_and_is_recorded() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -172,7 +167,7 @@ async fn a_merge_moves_everything_and_is_recorded() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn consent_never_widens() {
     request::<App, _, _>(|request, _ctx| async move {
         // (survivor, merged, expected). `None` leaves a new contact at "never".
@@ -223,7 +218,7 @@ async fn consent_never_widens() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn refusals() {
     request::<App, _, _>(|request, _ctx| async move {
         let a = contact(&request, "Ana", None).await;
@@ -264,7 +259,7 @@ async fn refusals() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_failure_part_way_leaves_both_contacts_unchanged() {
     request::<App, _, _>(|request, ctx| async move {
         let survivor = contact(&request, "Ana Ruiz", None).await;

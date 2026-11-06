@@ -1,4 +1,4 @@
-//! `contact-relationship-management` — a loco.rs consumer
+//! `contact-relationship-management` — a service built on Axum and axa
 //! application for **contact relationship management** across four
 //! modules: sales automation (contacts / accounts / leads with
 //! deterministic scoring / deal pipelines / forecasting), marketing
@@ -14,7 +14,7 @@
 //!
 //! ## Modules
 //!
-//! - [`app`] — loco `Hooks` wiring (routes, truncate, seed).
+//! - [`app`] — the routes, the command line, and start-up.
 //! - [`controllers`] — Axum controllers, one per module.
 //! - [`rules`] — the **pure core**: lifecycle machines, lead scoring
 //!   with breakdown, KPI arithmetic, SLA derivation, segment

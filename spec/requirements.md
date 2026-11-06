@@ -689,7 +689,7 @@ for records I am allowed to see.*
   ticket that caused it, when it was made and when it was read. It carries no record text, so
   nothing in it can leak what the record says; the inbox shows the kind and links to the record.
 - **A periodic job makes them.** The server queues `NotificationSweepWorker` every minute (it runs as a
-  background job when `workers.mode` is a queue, inline otherwise; Loco has no scheduler of its own, so the
+  background job when `WORKER_MODE` is `BackgroundQueue`, inline otherwise; nothing else schedules it, so the
   server does the timing), and `POST /api/notifications/sweep` (admin tier, like the other sweeps)
   runs the same sweep and reports `{ created, suppressed }`. It makes a `task_reminder` for each
   open task whose `remind_at` has passed and that has an assignee, and an `sla_breach` for each open

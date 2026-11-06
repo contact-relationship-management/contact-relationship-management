@@ -6,8 +6,8 @@
 //! dated follow-up is still open) or counts for a window, so the database
 //! computes those and sends back one row per subject or per group.
 
+use axa::prelude::*;
 use chrono::{DateTime, Utc};
-use loco_rs::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement, Value};
 use uuid::Uuid;
 

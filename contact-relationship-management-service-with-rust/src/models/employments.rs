@@ -6,7 +6,7 @@
 //! `employment_last_events`, the last hire or leave applied per person and organization, which
 //! orders the events (CRM-R93).
 
-use loco_rs::prelude::*;
+use axa::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde::Serialize;
 

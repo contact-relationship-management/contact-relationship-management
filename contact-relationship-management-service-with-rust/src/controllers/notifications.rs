@@ -4,8 +4,8 @@
 //! when it is read, with the caller's own token, and left out if the caller may not read the
 //! record it is about.
 
+use axa::prelude::*;
 use axum::http::{StatusCode, Uri};
-use loco_rs::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -62,7 +62,7 @@ fn recipient_of(caller: &MaybeAuthUser, query: &InboxQuery) -> Result<String> {
             .ok_or_else(|| {
                 Error::CustomError(
                     StatusCode::UNAUTHORIZED,
-                    loco_rs::controller::ErrorDetail::new("unauthorized", "missing bearer token"),
+                    axa::error::ErrorDetail::new("unauthorized", "missing bearer token"),
                 )
             });
     }

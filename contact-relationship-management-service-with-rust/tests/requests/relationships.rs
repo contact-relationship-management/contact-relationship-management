@@ -1,9 +1,9 @@
 //! Contacts, accounts and activities: creation, lookup, refusals and the task
 //! lifecycle, through the routes.
 
+use axa::testing::prelude::*;
 use axum::http::StatusCode;
 use contact_relationship_management::app::App;
-use loco_rs::testing::prelude::*;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -11,7 +11,7 @@ use super::{a_person, seed_contact};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_contact_is_created_listed_and_fetched() {
     request::<App, _, _>(|request, _ctx| async move {
         let pid = seed_contact!(&request, "Rel Contact").await;
@@ -26,7 +26,7 @@ async fn a_contact_is_created_listed_and_fetched() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn bad_contacts_and_unknown_ids_are_refused_with_the_right_status() {
     request::<App, _, _>(|request, _ctx| async move {
         let blank: Value = {
@@ -62,7 +62,7 @@ async fn bad_contacts_and_unknown_ids_are_refused_with_the_right_status() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn an_account_round_trips() {
     request::<App, _, _>(|request, _ctx| async move {
         let created: Value = request
@@ -84,7 +84,7 @@ async fn an_account_round_trips() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn only_a_task_can_be_marked_done() {
     request::<App, _, _>(|request, _ctx| async move {
         let contact = seed_contact!(&request, "Rel Tasker").await;
@@ -125,7 +125,7 @@ async fn only_a_task_can_be_marked_done() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_contact_is_edited_by_the_members_sent_and_nothing_else() {
     request::<App, _, _>(|request, ctx| async move {
         use sea_orm::ConnectionTrait;
@@ -195,7 +195,7 @@ async fn a_contact_is_edited_by_the_members_sent_and_nothing_else() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (config/test.yaml); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn an_account_is_edited_by_the_members_sent_and_nothing_else() {
     request::<App, _, _>(|request, _ctx| async move {
         let created: Value = request

@@ -1,6 +1,6 @@
 # Documentation index
 
-Contact Relationship Management — Loco edition. JSON-only back-end
+Contact Relationship Management service. JSON-only back-end
 API for sales automation, marketing automation, support, and
 analytics.
 

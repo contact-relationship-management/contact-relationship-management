@@ -6,9 +6,9 @@
 
 use std::collections::BTreeMap;
 
+use axa::error::ErrorDetail;
+use axa::prelude::*;
 use axum::http::StatusCode;
-use loco_rs::controller::ErrorDetail;
-use loco_rs::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

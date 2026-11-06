@@ -1,4 +1,4 @@
-//! `cargo loco task seed` — create a synthetic book of business so
+//! `cargo run -- task seed` — create a synthetic book of business so
 //! the CRM views demo instantly. **Synthetic data only** (spec
 //! `regulatory.md`): person/organization/worker URNs are random
 //! UUIDs, names are obviously fictional, no email is sent.
@@ -8,8 +8,8 @@
 //! currency, and the contacts' names are written in more than one order and script, some with
 //! the given and family names stored and some with the display name only.
 
-use loco_rs::prelude::*;
-use loco_rs::task::{TaskInfo, Vars};
+use axa::prelude::*;
+use axa::task::{TaskInfo, Vars};
 use sea_orm::{ActiveValue, ConnectionTrait, DbBackend, Statement};
 use uuid::Uuid;
 

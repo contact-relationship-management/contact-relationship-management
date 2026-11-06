@@ -11,7 +11,7 @@ Commands assume the container images from the repository's `Containerfile`s.
    do not expose either over plain HTTP.
 3. Put the service on a private network. Only the UI/BFF and operators reach
    it; browsers never do (the BFF keeps tokens out of JavaScript).
-4. Set `LOCO_ENV=production` and `CRM_REQUIRE_AUTH=1`. The service refuses to
+4. Set `APP_ENV=production` and `CRM_REQUIRE_AUTH=1`. The service refuses to
    start in production otherwise (`CRM_ALLOW_INSECURE=1` overrides and logs an
    error; do not use it).
 5. Mount an ABAC policy (`CRM_ABAC_POLICY_FILE`) derived from
@@ -25,7 +25,7 @@ Commands assume the container images from the repository's `Containerfile`s.
    `CRM_AUTH_FAIL_LIMIT`, `CRM_AUTH_FAIL_WINDOW_SECS`; `0` disables). With
    `CRM_REDIS_URL` set the counters are shared across replicas through Redis (a
    Redis error falls back to per-replica counters); production requires that
-   variable because Loco's cache is Redis, so also limit at the ingress anyway. Set
+   variable because replicas share the response cache there, so also limit at the ingress anyway. Set
    `CRM_TRUST_FORWARDED_FOR=1` only behind a proxy that overwrites
    `X-Forwarded-For`, otherwise all unauthenticated callers share one bucket.
 9. Set `CRM_CORS_ORIGIN` only if a browser must call the service directly.
@@ -35,7 +35,7 @@ Commands assume the container images from the repository's `Containerfile`s.
     (the image's entrypoint is `start`, so `db migrate` needs the override). The
     production config refuses to load without `DATABASE_URL` and
     `CRM_REDIS_URL` (images up to v0.1.5 also require `JWT_SECRET`, which
-    nothing reads: loco's JWT support is not compiled in). Checked 2026-10-19 with a locally built image on a fresh
+    nothing reads: the service has no JWT support). Checked 2026-10-19 with a locally built image on a fresh
     PostgreSQL 18 and Redis: all 17 migrations applied, the service started,
     `/_ping` answered 200 and `/api/contacts` answered 401 (authentication on).
     A `start` without `--worker` runs no background jobs; run a second container
@@ -100,7 +100,7 @@ table owner, so keep the owner role out of day-to-day use.
 
 1. Add a new key **first** in `CRM_FIELD_KEYS`, keeping the old one after it.
 2. Roll the service so every replica has both.
-3. Run `cargo loco task rotate_field_keys` (idempotent; it also seals any
+3. Run `cargo run -- task rotate_field_keys` (idempotent; it also seals any
    legacy plaintext) and confirm it reports zero on a second run.
 4. Only then remove the old key. A value sealed under a removed key cannot be
    read and the service returns an error for that row.

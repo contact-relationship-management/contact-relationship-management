@@ -24,7 +24,7 @@ use crate::rules::segment::{ContactFacts, clauses_match};
 use crate::rules::workflows::{Action, Conditions, SCHEDULE_BATCH, SCHEDULE_SCAN, guard, pick};
 use crate::streaming;
 
-type Result<T> = loco_rs::Result<T>;
+type Result<T> = axa::Result<T>;
 
 /// What happened that may start a workflow.
 #[derive(Debug, Clone)]
@@ -270,7 +270,7 @@ async fn recent_runs<C: ConnectionTrait>(db: &C, workflow: Uuid, outcomes: &str)
             [workflow.into()],
         ))
         .await?
-        .ok_or(loco_rs::Error::NotFound)?;
+        .ok_or(axa::Error::NotFound)?;
     Ok(row.try_get("", "n")?)
 }
 
@@ -547,7 +547,7 @@ async fn open_load<C: ConnectionTrait>(db: &C, worker: &str) -> Result<i64> {
             [worker.to_string().into()],
         ))
         .await?
-        .ok_or(loco_rs::Error::NotFound)?;
+        .ok_or(axa::Error::NotFound)?;
     Ok(row.try_get("", "n")?)
 }
 
@@ -572,7 +572,7 @@ async fn assign_owner(
             [ctx.workflow.into()],
         ))
         .await?
-        .ok_or(loco_rs::Error::NotFound)?
+        .ok_or(axa::Error::NotFound)?
         .try_get("", "turn")?;
     let mut loads = Vec::new();
     if strategy == "least_open" {

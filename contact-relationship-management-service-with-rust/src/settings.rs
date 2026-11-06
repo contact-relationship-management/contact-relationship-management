@@ -96,6 +96,8 @@ pub struct Settings {
     pub field_keys: Option<String>,
     /// `CRM_FIELD_KEYS_FILE`: a file holding them.
     pub field_keys_file: Option<String>,
+    /// `CRM_CORS_ORIGIN`: the one browser origin allowed to call the service directly.
+    pub cors_origin: Option<String>,
     /// `CRM_REDIS_URL`.
     pub redis_url: Option<String>,
     /// `CRM_MCP_WRITES`: offer the MCP write tools (off: the MCP endpoint is read-only).
@@ -242,6 +244,7 @@ impl Settings {
             abac_policy_file: text("CRM_ABAC_POLICY_FILE").map(|v| v.trim().to_string()),
             field_keys: text("CRM_FIELD_KEYS"),
             field_keys_file: get("CRM_FIELD_KEYS_FILE"),
+            cors_origin: text("CRM_CORS_ORIGIN"),
             redis_url: text("CRM_REDIS_URL"),
             mcp_writes: flag("CRM_MCP_WRITES"),
             mcp_allowed_origins: text("CRM_MCP_ALLOWED_ORIGINS")

@@ -1,6 +1,6 @@
 # Contact Relationship Management service — edition spec
 
-Stack-specific specification for the Loco edition. The
+Stack-specific specification for the service. The
 **cross-cutting spec at [`../../spec/`](../../spec/index.md) is the
 single source of truth** for the domain (model, modules, state
 machines, auth posture); this file adds only what is specific to
@@ -12,8 +12,8 @@ adds its spec detail here in the same PR as the code.
 
 Per [architecture](../../spec/architecture.md) and the family
 [rust-loco-stack](../../../agents/share/rust-loco-stack.md):
-Rust 2024, Loco (Axum + SeaORM), PostgreSQL 18, crate-root
-`migration/`, loco-idiomatic `src/controllers/` layout, pure
+Rust 2024, Axum, axa, and SeaORM, PostgreSQL 18, crate-root
+`migration/`, conventional `src/controllers/` layout, pure
 `src/rules/` core, Postgres-queue background jobs (campaign send,
 notification sweep), stub-first upstream clients, offline PASETO + ABAC,
 OpenAPI/Swagger, `Accepts-version` header versioning, tracing +
@@ -40,7 +40,7 @@ OTLP, Podman.
   defaults, and no stalled flag is built; see CRM-R4).
 - **Identifiers**: public UUID `pid` on every owned record; EntityRef
   URNs for all upstream references.
-- **Table names all-plural** (the loco `create_table` pluralization
+- **Table names all-plural** (the `create_table` pluralization
   lesson); `event_outbox` as explicit SQL.
 
 ## Edition-specific implementation notes (as landed)

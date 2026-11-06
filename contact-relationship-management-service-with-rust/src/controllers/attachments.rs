@@ -7,12 +7,12 @@
 
 use std::path::PathBuf;
 
+use axa::error::ErrorDetail;
+use axa::prelude::*;
 use axum::body::Bytes;
 use axum::extract::DefaultBodyLimit;
 use axum::http::{HeaderName, StatusCode, header};
 use axum::response::IntoResponse;
-use loco_rs::controller::ErrorDetail;
-use loco_rs::prelude::*;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
