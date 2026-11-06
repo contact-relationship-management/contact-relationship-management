@@ -10,11 +10,14 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use axa::cli::Cli;
-use clap::Parser;
 use contact_relationship_management::app::App;
 
 #[tokio::main]
 async fn main() -> axa::Result<()> {
-    App::run(Cli::parse()).await
+    App::run(axa::cli::parse(
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION"),
+        env!("CARGO_PKG_DESCRIPTION"),
+    ))
+    .await
 }

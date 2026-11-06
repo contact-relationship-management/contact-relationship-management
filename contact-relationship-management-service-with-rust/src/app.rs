@@ -31,6 +31,7 @@ fn defaults() -> Defaults {
         production_port: None,
         body_limit: 2 * MB,
         max_connections: 1,
+        ..Defaults::default()
     }
 }
 
@@ -543,7 +544,9 @@ mod tests {
 
     #[test]
     fn production_does_not_migrate_by_itself() {
-        let lookup = |name: &str| (name == "DATABASE_URL").then(|| "postgres://db/crm".to_string());
+        let lookup = |name: &str| {
+            (name == "DATABASE_URL").then(|| "postgres://db/crm?sslmode=require".to_string())
+        };
         let config =
             ServiceConfig::from_lookup(&Environment::Production, &super::defaults(), lookup)
                 .unwrap();

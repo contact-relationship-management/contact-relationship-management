@@ -9,6 +9,13 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa 0.4 (CRM-T200, 2026-11-06)
+
+- Production refuses a `DATABASE_URL` that could go in the clear: set `sslmode`, or
+  `DB_ALLOW_INSECURE=true` on a network that encrypts its own traffic.
+- `--help` and `--version` describe this service, and the database timeouts are 5 seconds
+  and 10 minutes, up from 500 ms each.
+
 ### Changed — Loco replaced with axa (CRM-T199, 2026-11-06)
 
 - The service runs on Axum and axa 0.3, and keeps SeaORM for now. Settings come from the

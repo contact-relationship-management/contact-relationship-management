@@ -57,8 +57,9 @@ contact() { body "${ADMIN}" POST /api/contacts "{\"person_ref\":\"$(person)\",\"
 
 # JWT_SECRET is read by nothing; images up to v0.1.5 refuse to load their
 # config without it, so it stays while those images are smoke-tested.
+# DB_ALLOW_INSECURE: Postgres here is another container on a private test network, without TLS.
 common_env=(
-  -e "DATABASE_URL=postgres://loco:loco@${PG}:5432/crm" -e JWT_SECRET=smoke-test-secret-not-a-secret
+  -e "DATABASE_URL=postgres://loco:loco@${PG}:5432/crm" -e DB_ALLOW_INSECURE=true -e JWT_SECRET=smoke-test-secret-not-a-secret
   -e "CRM_REDIS_URL=redis://${RD}:6379" -e CRM_REQUIRE_AUTH=1 -e "CRM_PASETO_KEYS=${KEYS_JSON}"
   -e CRM_ABAC_POLICY_FILE=/app/config/abac-policy.reference.json -e CRM_EVENT_TRANSPORT=outbox
   -e "CRM_FIELD_KEYS=k1:$(head -c 32 /dev/zero | tr '\0' 'a' | base64)" -e CRM_REQUIRE_FIELD_ENCRYPTION=1

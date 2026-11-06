@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.4 (CRM-T200)
+
+**Production now refuses a `DATABASE_URL` that could go in the clear.** Set `sslmode` to
+`require`, `verify-ca` or `verify-full`, or `DB_ALLOW_INSECURE=true` on a network that
+encrypts its own traffic. A loopback address or a socket is exempt. `DB_CONNECT_TIMEOUT` is
+now 5 seconds and `DB_IDLE_TIMEOUT` 10 minutes, up from 500 ms each. A client stalling in its
+headers is dropped after `HEADER_READ_TIMEOUT_SECONDS`, 30 by default. `--help` and
+`--version` now describe this service, not axa.
+
 ### Changed — Loco replaced with axa (CRM-T199, CRM-D23)
 
 `config/*.yaml` is gone: settings come from the environment, with defaults in `src/app.rs`.
