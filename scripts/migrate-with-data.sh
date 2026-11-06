@@ -10,6 +10,7 @@ SVC="$(pwd)/contact-relationship-management-service-with-rust"
 BIN=$SVC/target/debug/contact-relationship-management
 PG=crm-mig-pg RD=crm-mig-redis PGP=15440 RDP=16380 PORT=5181
 export DATABASE_URL="postgres://loco:loco@localhost:$PGP/legacy" CRM_REDIS_URL="redis://localhost:$RDP"
+export AXA_DESTROY_DATA=true # this throwaway database is rolled back below
 API=http://localhost:$PORT
 sql() { podman exec "$PG" psql -U loco -d legacy -Atc "$1"; }
 run() { (cd "$SVC" && "$BIN" "$@" 2>&1); }

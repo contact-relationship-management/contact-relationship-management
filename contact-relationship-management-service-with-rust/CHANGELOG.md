@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — problem documents through axa-problem (CRM-T202)
+
+`src/problem.rs` builds `axa::problem::Problem`. The documents hold the same members, and the
+service keeps its `urn:crm:problem:` types and its `error` and `description` members.
+
+### Changed — axa 0.5 (CRM-T201)
+
+**`db down` is now refused in production**, with `db reset` and `db truncate`, so undo a
+migration there by restoring a backup. In development and test the three commands need
+`AXA_DESTROY_DATA=true`, and `scripts/migrate-*.sh` set it for their throwaway databases. A
+client that connects and sends nothing is now dropped after `HEADER_READ_TIMEOUT_SECONDS`.
+The server speaks HTTP/1 only, and holds at most `MAX_CONNECTIONS` connections, 10,000 by
+default, so `h2` leaves the lockfile.
+
 ### Changed — axa 0.4 (CRM-T200)
 
 **Production now refuses a `DATABASE_URL` that could go in the clear.** Set `sslmode` to

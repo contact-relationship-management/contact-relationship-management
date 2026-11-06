@@ -18,6 +18,7 @@ BIN=$SVC/target/debug/contact-relationship-management
 export PGPASSWORD="$PG_PASSWORD"
 DB=crm_mig_person_refs
 export DATABASE_URL="postgres://$PG_USER:$PG_PASSWORD@$PG_HOST:$PG_PORT/$DB"
+export AXA_DESTROY_DATA=true # this throwaway database is rolled back below
 N=${N:-500}
 admin() { psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "${2:-postgres}" -q -c "$1"; }
 sql() { psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d "$DB" -Atc "$1"; }

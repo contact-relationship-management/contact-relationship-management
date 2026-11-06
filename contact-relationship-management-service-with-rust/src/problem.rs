@@ -11,16 +11,16 @@
 //! and `instance`, so a client written against the earlier body keeps working;
 //! only the media type changed. Members a source adds (for example
 //! `supported` on a refused API version) pass through unchanged.
+//!
+//! The document is [`axa::problem::Problem`]. What is this service's own is reading it from
+//! whatever body a source sent, the `urn:crm:problem:` types, and the two earlier members.
 
-use axum::body::Body;
+use axa::problem::{PROBLEM_JSON, Problem};
 use axum::extract::Request;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::Next;
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 use serde_json::{Map, Value, json};
-
-/// The media type of a problem document.
-pub const MEDIA_TYPE: &str = "application/problem+json";
 
 /// Largest error body read for conversion; an error body is a sentence.
 const MAX_ERROR_BODY: usize = 64 * 1024;
@@ -54,7 +54,7 @@ fn type_for(code: &str, default_code: &str) -> String {
 
 /// Build the problem document for `status` from whatever body the source sent.
 #[must_use]
-pub fn document(status: StatusCode, instance: &str, body: &[u8]) -> Value {
+pub fn document(status: StatusCode, instance: &str, body: &[u8]) -> Problem {
     let default_code = code_for(status);
     let mut members = Map::new();
     let mut code = default_code.clone();
@@ -83,18 +83,17 @@ pub fn document(status: StatusCode, instance: &str, body: &[u8]) -> Value {
             detail = Some(text);
         }
     }
-    let title = status.canonical_reason().unwrap_or("Error");
-    let detail = detail.unwrap_or_else(|| title.to_string());
-    let mut out = Map::new();
-    out.insert("type".into(), json!(type_for(&code, &default_code)));
-    out.insert("title".into(), json!(title));
-    out.insert("status".into(), json!(status.as_u16()));
-    out.insert("detail".into(), json!(detail));
-    out.insert("instance".into(), json!(instance));
-    out.insert("error".into(), json!(code));
-    out.insert("description".into(), json!(detail));
-    out.extend(members);
-    Value::Object(out)
+    let problem = Problem::new(status);
+    let detail = detail.unwrap_or_else(|| problem.title.clone());
+    let problem = problem
+        .with_type(type_for(&code, &default_code))
+        .with_detail(detail.clone())
+        .with_instance(instance)
+        .with_extension("error", json!(code))
+        .with_extension("description", json!(detail));
+    members.into_iter().fold(problem, |problem, (name, value)| {
+        problem.with_extension(&name, value)
+    })
 }
 
 /// Marks a response as a public HTML page for a person in a browser (the unsubscribe, confirm and
@@ -126,13 +125,15 @@ pub async fn problem_mw(req: Request, next: Next) -> Response {
     let bytes = axum::body::to_bytes(body, MAX_ERROR_BODY)
         .await
         .unwrap_or_default();
-    let mut document = document(status, &instance, &bytes);
+    let mut problem = document(status, &instance, &bytes);
     if let Some(Title(title)) = title {
-        document["title"] = json!(title);
+        problem = problem.with_title(title);
     }
+    // Only the body is taken: the source's own headers, such as `Retry-After`, stay.
+    let body = problem.into_response().into_body();
     parts
         .headers
-        .insert(header::CONTENT_TYPE, HeaderValue::from_static(MEDIA_TYPE));
+        .insert(header::CONTENT_TYPE, HeaderValue::from_static(PROBLEM_JSON));
     parts.headers.remove(header::CONTENT_LENGTH);
     if status == StatusCode::UNAUTHORIZED && !parts.headers.contains_key(header::WWW_AUTHENTICATE) {
         // RFC 9110 §15.5.2: a 401 names the scheme that would be accepted.
@@ -140,13 +141,82 @@ pub async fn problem_mw(req: Request, next: Next) -> Response {
             .headers
             .insert(header::WWW_AUTHENTICATE, HeaderValue::from_static("Bearer"));
     }
-    let body = Body::from(document.to_string());
     Response::from_parts(parts, body)
 }
 
 #[cfg(test)]
 mod tests {
+    use axum::body::Body;
+    use axum::routing::get;
+    use axum::{Router, middleware};
+    use tower::ServiceExt;
+
     use super::*;
+
+    /// The document as a client reads it.
+    fn document(status: StatusCode, instance: &str, body: &[u8]) -> Value {
+        serde_json::to_value(super::document(status, instance, body)).unwrap()
+    }
+
+    /// `route`'s answer after [`problem_mw`], as the application would send it.
+    async fn through_the_middleware(route: Router) -> (Response, Value) {
+        let response = route
+            .layer(middleware::from_fn(problem_mw))
+            .oneshot(Request::get("/x").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = axum::body::to_bytes(body, MAX_ERROR_BODY).await.unwrap();
+        // The source's length would cut the longer document short.
+        if let Some(length) = parts.headers.get(header::CONTENT_LENGTH) {
+            assert_eq!(length.to_str().unwrap(), bytes.len().to_string());
+        }
+        let value = serde_json::from_slice(&bytes).unwrap();
+        (Response::from_parts(parts, Body::empty()), value)
+    }
+
+    #[tokio::test]
+    async fn the_source_keeps_its_status_and_headers() {
+        let route = Router::new().route(
+            "/x",
+            get(|| async {
+                (
+                    StatusCode::TOO_MANY_REQUESTS,
+                    [(header::RETRY_AFTER, "7"), (header::CONTENT_LENGTH, "17")],
+                    "too many requests",
+                )
+            }),
+        );
+        let (response, document) = through_the_middleware(route).await;
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(response.headers()[header::RETRY_AFTER], "7");
+        assert_eq!(response.headers()[header::CONTENT_TYPE], PROBLEM_JSON);
+        assert_eq!(document["detail"], "too many requests");
+        assert_eq!(document["instance"], "/x");
+    }
+
+    #[tokio::test]
+    async fn a_set_title_replaces_the_reason_phrase_and_a_401_names_its_scheme() {
+        let route = Router::new().route(
+            "/x",
+            get(|| async {
+                let mut response = StatusCode::UNAUTHORIZED.into_response();
+                response.extensions_mut().insert(Title("Non autorisé"));
+                response
+            }),
+        );
+        let (response, document) = through_the_middleware(route).await;
+        assert_eq!(document["title"], "Non autorisé");
+        assert_eq!(document["error"], "unauthorized");
+        assert_eq!(response.headers()[header::WWW_AUTHENTICATE], "Bearer");
+    }
+
+    #[test]
+    fn a_source_member_with_the_wrong_type_still_replaces_the_earlier_member() {
+        let doc = document(StatusCode::CONFLICT, "/x", br#"{"error":{"code":7}}"#);
+        assert_eq!(doc["error"], json!({ "code": 7 }));
+        assert_eq!(doc["type"], "about:blank");
+    }
 
     #[test]
     fn a_reason_phrase_is_not_taken_for_a_machine_code() {

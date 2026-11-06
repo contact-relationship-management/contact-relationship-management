@@ -30,7 +30,9 @@ Commands assume the container images from the repository's `Containerfile`s.
    `X-Forwarded-For`, otherwise all unauthenticated callers share one bucket.
 9. Set `CRM_CORS_ORIGIN` only if a browser must call the service directly.
 10. Run migrations as a separate, privileged step (`auto_migrate` is off in
-   production). The runtime database role needs no DDL rights.
+   production). The runtime database role needs no DDL rights. `db down`, `db reset`
+   and `db truncate` are refused in production, so undo a migration there by
+   restoring a backup. Elsewhere they need `AXA_DESTROY_DATA=true`.
     From the image: `podman run --rm --entrypoint /app/crm-service <env> <image> db migrate`
     (the image's entrypoint is `start`, so `db migrate` needs the override). The
     production config refuses to load without `DATABASE_URL` and

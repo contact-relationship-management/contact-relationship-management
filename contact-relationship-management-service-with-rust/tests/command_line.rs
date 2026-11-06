@@ -1,10 +1,14 @@
-//! What the real binary says about itself, and what it refuses before it connects (CRM-T200).
+//! What the real binary says about itself, and what it refuses before it connects (CRM-T200,
+//! CRM-T201).
 
 use std::process::{Command, Output};
 
 fn run(args: &[&str], env: &[(&str, &str)]) -> Output {
     let mut command = Command::new(env!("CARGO_BIN_EXE_contact-relationship-management"));
-    command.args(args).env_remove("DB_ALLOW_INSECURE");
+    command
+        .args(args)
+        .env_remove("DB_ALLOW_INSECURE")
+        .env_remove("AXA_DESTROY_DATA");
     for (name, value) in env {
         command.env(name, value);
     }
@@ -39,4 +43,51 @@ fn production_refuses_a_database_address_that_could_go_in_the_clear() {
         !text.contains("crm:crm"),
         "the password must not be printed: {text}"
     );
+}
+
+/// No database is reachable here, so a refusal that names the setting can only come from the
+/// check that runs before the service connects.
+#[test]
+fn commands_that_destroy_data_are_refused_before_connecting() {
+    let unreachable = "postgres://crm:crm@127.0.0.1:1/crm";
+    for command in [
+        ["db", "down", "1"].as_slice(),
+        ["db", "reset"].as_slice(),
+        ["db", "truncate"].as_slice(),
+    ] {
+        for env in [
+            [("APP_ENV", "development"), ("DATABASE_URL", unreachable)].as_slice(),
+            [
+                ("APP_ENV", "production"),
+                ("AXA_DESTROY_DATA", "true"),
+                ("DATABASE_URL", unreachable),
+            ]
+            .as_slice(),
+        ] {
+            let refused = run(command, env);
+            let text = String::from_utf8_lossy(&refused.stderr);
+            assert!(!refused.status.success(), "{command:?} {env:?}");
+            assert!(
+                text.contains("AXA_DESTROY_DATA"),
+                "{command:?} {env:?}: {text}"
+            );
+        }
+    }
+}
+
+/// The setting opens the guard outside production: this call gets as far as the database.
+#[test]
+fn the_setting_lets_a_destructive_command_through_in_development() {
+    let attempted = run(
+        &["db", "down", "1"],
+        &[
+            ("APP_ENV", "development"),
+            ("AXA_DESTROY_DATA", "true"),
+            ("DATABASE_URL", "postgres://crm:crm@127.0.0.1:1/crm"),
+            ("DB_CONNECT_TIMEOUT", "100"),
+        ],
+    );
+    let text = String::from_utf8_lossy(&attempted.stderr);
+    assert!(!attempted.status.success());
+    assert!(!text.contains("AXA_DESTROY_DATA"), "{text}");
 }

@@ -262,11 +262,9 @@ impl App {
     }
 
     async fn db(ctx: &AppContext, command: DbCommand) -> Result<()> {
-        if matches!(command, DbCommand::Reset | DbCommand::Truncate)
-            && ctx.environment.is_production_like()
-        {
+        if command.destroys_data() && ctx.environment.is_production_like() {
             return Err(Error::string(
-                "db reset and db truncate refuse to run in production",
+                "db down, db reset and db truncate refuse to run in production",
             ));
         }
         match command {

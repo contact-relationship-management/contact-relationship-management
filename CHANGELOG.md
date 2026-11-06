@@ -9,6 +9,13 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa 0.5 (CRM-T201, 2026-11-06)
+
+- `db down`, `db reset` and `db truncate` are refused in production, and elsewhere need
+  `AXA_DESTROY_DATA=true`. `db down` used to be allowed in production.
+- A client that connects and sends nothing is dropped after `HEADER_READ_TIMEOUT_SECONDS`.
+  The server speaks HTTP/1 only and holds at most `MAX_CONNECTIONS`, 10,000 by default.
+
 ### Changed — axa 0.4 (CRM-T200, 2026-11-06)
 
 - Production refuses a `DATABASE_URL` that could go in the clear: set `sslmode`, or
