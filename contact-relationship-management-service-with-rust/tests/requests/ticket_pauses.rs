@@ -18,6 +18,21 @@ async fn sql(db: &sea_orm::DatabaseConnection, text: &str, pid: &str) {
     .unwrap();
 }
 
+/// Put `pid`'s pause `minutes` back on the service's clock. The service measures a pause from
+/// `paused_at` to its own `Utc::now()`, so backdating with the database's `now()` measures the
+/// gap between the two clocks too: a container nine minutes behind its host turned 30 minutes
+/// into 39 (CRM-T220).
+async fn paused_for(db: &sea_orm::DatabaseConnection, pid: &str, minutes: i64) {
+    let at = chrono::Utc::now() - chrono::Duration::minutes(minutes);
+    db.execute_raw(Statement::from_sql_and_values(
+        DatabaseBackend::Postgres,
+        "UPDATE tickets SET paused_at = $2 WHERE pid = $1::uuid",
+        [pid.into(), at.into()],
+    ))
+    .await
+    .unwrap();
+}
+
 fn seconds_between(a: &Value, b: &Value) -> i64 {
     let parse = |v: &Value| chrono::DateTime::parse_from_rfc3339(v.as_str().unwrap()).unwrap();
     (parse(b) - parse(a)).num_seconds()
@@ -105,12 +120,7 @@ async fn a_ticket_waiting_for_the_customer_stops_its_clock_and_gets_the_time_bac
         let ticket = open("Resumed").await;
         let opened = get(ticket.clone()).await;
         status(ticket.clone(), "pending").await;
-        sql(
-            &ctx.db,
-            "UPDATE tickets SET paused_at = now() - interval '30 minutes' WHERE pid = $1::uuid",
-            &ticket,
-        )
-        .await;
+        paused_for(&ctx.db, &ticket, 30).await;
         let resumed = status(ticket.clone(), "open").await;
         assert!(resumed["paused_at"].is_null(), "{resumed}");
         let moved = seconds_between(&opened["resolution_due_at"], &resumed["resolution_due_at"]);
@@ -211,12 +221,7 @@ async fn a_customer_reply_resumes_a_waiting_ticket_and_leaves_the_others_alone()
             .json(&json!({ "to": "pending" }))
             .await
             .assert_status_ok();
-        sql(
-            &ctx.db,
-            "UPDATE tickets SET paused_at = now() - interval '30 minutes' WHERE pid = $1::uuid",
-            &ticket,
-        )
-        .await;
+        paused_for(&ctx.db, &ticket, 30).await;
         let answered: Value = request.post(&reply).await.json();
         assert_eq!(answered["status"], "open", "{answered}");
         assert!(answered["paused_at"].is_null(), "{answered}");
