@@ -18,7 +18,7 @@ include = ["src/**/*", ".sqlx/**/*", ".cargo/config.toml", "sqlx.toml", "README.
 
 [workspace.dependencies]
 # The shared plumbing. `sea-orm` until the service moves to sqlx; `queue` is the Postgres job queue.
-axa = { version = "0.6.1", features = ["sea-orm", "queue", "redis", "problem", "ratelimit", "pagination"] }
+axa = { version = "0.7.0", features = ["sea-orm", "queue", "redis", "problem", "ratelimit", "offset-pagination"] }
 
 [dependencies]
 axa = { workspace = true }

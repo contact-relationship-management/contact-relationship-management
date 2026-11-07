@@ -490,17 +490,19 @@ dependencies = [
 
 [[package]]
 name = "axa"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39530ce057e79a039c11ee1da47eafbcb1a3e97f7fbc36b714584c8eee4ab41d"
+checksum = "e7f321d0968f2ca45ddc6d0a6f2d48f2682f9d680ba2a50c3b7a69f28444a41f"
 dependencies = [
  "async-trait",
  "axa-environment",
- "axa-pagination",
+ "axa-offset-pagination",
+ "axa-outbox",
  "axa-problem",
  "axa-ratelimit",
  "axa-redis",
  "axa-seaorm",
+ "axa-worker",
  "axum",
  "axum-test",
  "clap",
@@ -525,13 +527,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aeb36293430bafb06d1e29f5e213623d127444cdd234003b413a46207c03bbd3"
 
 [[package]]
-name = "axa-pagination"
-version = "0.1.1"
+name = "axa-offset-pagination"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a173061148a2344af7610a69926bf41a1867ba2a35374f478b9bec0762effb63"
+checksum = "fac10ea40e2e799da26e752d714e302c341c0808cd5cf6ba7ca178e905213046"
 dependencies = [
  "axum",
  "serde",
+]
+
+[[package]]
+name = "axa-outbox"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da9ee14572d697a9633d7923c246f31e580ad106d03e394a4fd39e78771f8279"
+dependencies = [
+ "sea-orm",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -547,13 +563,14 @@ dependencies = [
 
 [[package]]
 name = "axa-ratelimit"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be2c92a3894dfd967003ce5fb37cd9ec866ed524ea72239064fb00237b0c97f2"
+checksum = "491a6eb3b9e613d12da6df0eea115ded93cdddf42f16157e272663a75bfbfab6"
 dependencies = [
  "axa-problem",
  "axum",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]
@@ -584,6 +601,19 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "validator",
+]
+
+[[package]]
+name = "axa-worker"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b965872e9cb8d57f4fe4e0e7035fb685da22f9f214fe85477c6bbb2619b18d3f"
+dependencies = [
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -181,8 +181,9 @@ async fn search(
     let mut found = articles::Entity::find_live().filter(articles::Column::Status.eq("published"));
     let asked = query.q.as_deref().map(str::trim).filter(|q| !q.is_empty());
     if let Some(q) = asked {
-        let escaped =
-            axa::pagination::escape_like(&q.chars().take(100).collect::<String>().to_lowercase());
+        let escaped = axa::offset_pagination::escape_like(
+            &q.chars().take(100).collect::<String>().to_lowercase(),
+        );
         found = found.filter(sea_orm::sea_query::Expr::cust_with_values(
             "(lower(title) LIKE $1 OR lower(coalesce(keywords, '')) LIKE $1 OR lower(body) LIKE $1)",
             [format!("%{escaped}%")],

@@ -97,6 +97,10 @@ fn verdict(allowed: bool, limit: u32, remaining: u64, reset_seconds: u64) -> Ver
         limit,
         remaining: u32::try_from(remaining).unwrap_or(u32::MAX),
         reset_seconds,
+        // Redis holds every key, so the shared counters never run out of room.
+        overflowed: false,
+        // The shared counters do not track it, and nothing here reads it.
+        first_refusal: false,
     }
 }
 

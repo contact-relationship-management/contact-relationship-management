@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa 0.7.0 (CRM-T222, 2026-11-07)
+
+- A write that breaks a field's rule answers `422` instead of `500`, and a repeat read holding a
+  list of tags gets `304`.
+
 ### Changed — axa's extractors, rate limiter and paging helpers (CRM-T219, 2026-11-07)
 
 - A refused URL value, query parameter or request body no longer quotes what the caller sent;

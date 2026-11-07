@@ -184,9 +184,17 @@ async fn insight_views_round_trip() {
             .to_string();
         let replay = request
             .get("/api/insights/dpo")
-            .add_header("if-none-match", etag)
+            .add_header("if-none-match", etag.clone())
             .await;
         assert_eq!(replay.status_code(), 304);
+        // axa's stack (CRM-T222) also answers a list holding the tag, which the handler's own
+        // comparison does not.
+        let listed = request
+            .get("/api/insights/dpo")
+            .add_header("if-none-match", format!("\"other\", {etag}"))
+            .await;
+        assert_eq!(listed.status_code(), 304);
+        assert_eq!(listed.headers()["etag"], etag.as_str());
     })
     .await;
 }

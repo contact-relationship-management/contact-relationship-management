@@ -1059,7 +1059,7 @@ async fn list_articles(
     // Search in SQL, before the page is cut: filtering after the cut would
     // hide matches that sit beyond the first page.
     if let Some(q) = params.q.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
-        let escaped = axa::pagination::escape_like(&q.to_lowercase());
+        let escaped = axa::offset_pagination::escape_like(&q.to_lowercase());
         query = query.filter(sea_orm::sea_query::Expr::cust_with_values(
             "(lower(title) LIKE $1 OR lower(coalesce(keywords, '')) LIKE $1)",
             [format!("%{escaped}%")],

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.7.0 (CRM-T222, CRM-D23)
+
+- A write that breaks a check or not-null constraint answers `422`, not `500` (axa 0.6.2).
+- axa's stack answers `304` to an `If-None-Match` holding the answer's `ETag`, including a list of
+  tags or `*`; with origins listed, CORS exposes `etag`.
+- A client that stops reading a response is dropped after `SEND_STALL_TIMEOUT_SECONDS` (60).
+- The paging helpers are `axa::offset_pagination` (feature `offset-pagination`).
+- A job whose run lost its claim waits in `needs_review`; `Queue::connect` adds the new queue columns
+  and `axa_schedule`.
+
 ### Changed — axa's extractors, rate limiter and paging helpers (CRM-T219, CRM-D23)
 
 - Handlers take `axa::extract::{Path, Query}`; a refusal is a `400` with a generic `detail`, not
