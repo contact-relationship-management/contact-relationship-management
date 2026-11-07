@@ -628,8 +628,8 @@ address, and that bots and strangers cannot fill the CRM or use it to spam someo
 - **Rate limits.** Each form allows 5 submissions per client in 10 minutes and 300 per
   hour in all (`CRM_WEB_FORM_CLIENT_LIMIT`, `CRM_WEB_FORM_LIMIT`), answering `429` with
   `Retry-After`. Counts are kept in the process, so with several replicas each allows its
-  own; clients are told apart by `X-Forwarded-For` only when `CRM_TRUST_FORWARDED_FOR` is
-  on, and otherwise share one bucket.
+  own; clients are told apart by the address `axa` resolves from the connection and
+  `TRUSTED_PROXIES`, so behind an unlisted proxy they share that proxy's bucket.
 - **Honeypot.** A non-empty `website` is a bot: nothing is created, nothing is sent, and
   the answer is the normal one.
 - **The CRM stores no email.** The address goes to the person service, which finds or
@@ -1118,7 +1118,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a support lead, I can let customers read our published articles without signing in, and see how many questions they answered for themselves, so that fewer of them become tickets.*
 
-- **Off until asked for.** `CRM_PUBLIC_KB` (off by default) turns on three routes that need no token and answer `404` while it is off, so a deployment publishes nothing by accident: `GET /kb/articles`, `GET /kb/articles/{pid}` and `POST /kb/articles/{pid}/feedback`. They are public paths when `CRM_REQUIRE_AUTH` is on. Each client is limited to `CRM_PUBLIC_KB_CLIENT_LIMIT` requests a minute (default 120, `0` for no limit), counted as the web forms are (the trusted forwarded address when `CRM_TRUST_FORWARDED_FOR` is set); over it is `429` with `Retry-After`.
+- **Off until asked for.** `CRM_PUBLIC_KB` (off by default) turns on three routes that need no token and answer `404` while it is off, so a deployment publishes nothing by accident: `GET /kb/articles`, `GET /kb/articles/{pid}` and `POST /kb/articles/{pid}/feedback`. They are public paths when `CRM_REQUIRE_AUTH` is on. Each client is limited to `CRM_PUBLIC_KB_CLIENT_LIMIT` requests a minute (default 120, `0` for no limit), counted as the web forms are (the address `axa` resolves from the connection and `TRUSTED_PROXIES`); over it is `429` with `Retry-After`.
 - **Published only.** A draft, an archived or a deleted article is `404`, the same answer as one that never existed, so nothing is given away. `GET /kb/articles?q=` lists published articles (at most 50, by title; each with the first 200 characters of its text), or those whose title, keywords or text contain `q` (case-insensitive; `%` and `_` are plain characters). `GET /kb/articles/{pid}` returns title, text, keywords, version and last update. The text is **plain**: a client shows it as text, never as markup.
 - **Feedback.** `POST /kb/articles/{pid}/feedback` takes `{"helpful": true|false}` and nothing else (an unknown member is `422`); it answers `202`. It is anonymous: nothing identifies who voted.
 - **What is kept.** Only counts, per day and per article (and for the portal as a whole): views, "this helped" and "this did not" votes, searches with words in them, and of those the searches that found nothing. **No address, no visitor and no text a visitor typed is stored**, because people type their own names and problems into a search box. The cost is that a search that finds nothing cannot say what was wanted; the count says only that the content has gaps.

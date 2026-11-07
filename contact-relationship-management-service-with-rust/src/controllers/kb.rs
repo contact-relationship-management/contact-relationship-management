@@ -7,11 +7,13 @@
 //! nothing); no address, no visitor and no text a visitor typed is kept.
 //! `GET /api/insights/kb-deflection` reads the counts beside the tickets raised.
 
+use std::net::IpAddr;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
+use axa::client::ClientAddr;
 use axa::prelude::*;
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::http::{StatusCode, header};
 use axum::response::IntoResponse;
 use chrono::{DateTime, NaiveDate, Utc};
 use sea_orm::{
@@ -54,16 +56,12 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
 
 /// `None` when the request may go on; otherwise the response that refuses it: `404` while the
 /// public knowledge base is off, `429` when the client is over its limit.
-fn admit(headers: &HeaderMap) -> Option<Response> {
+fn admit(address: Option<IpAddr>) -> Option<Response> {
     let current = settings::current();
     if !current.public_kb {
         return Some(StatusCode::NOT_FOUND.into_response());
     }
-    let client = crate::rate_limit::client_key(
-        None,
-        headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()),
-        current.trust_forwarded_for,
-    );
+    let client = crate::rate_limit::client_key(None, address);
     let hit = counter()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -188,10 +186,10 @@ fn snippet(body: &str) -> String {
 #[debug_handler]
 async fn search(
     State(ctx): State<AppContext>,
-    headers: HeaderMap,
+    ClientAddr(address): ClientAddr,
     axum::extract::Query(query): axum::extract::Query<SearchQuery>,
 ) -> Result<Response> {
-    if let Some(refused) = admit(&headers) {
+    if let Some(refused) = admit(address) {
         return Ok(refused);
     }
     let mut found = articles::Entity::find_live().filter(articles::Column::Status.eq("published"));
@@ -247,10 +245,10 @@ async fn published(ctx: &AppContext, pid: Uuid) -> Result<Option<articles::Model
 #[debug_handler]
 async fn read(
     State(ctx): State<AppContext>,
-    headers: HeaderMap,
+    ClientAddr(address): ClientAddr,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    if let Some(refused) = admit(&headers) {
+    if let Some(refused) = admit(address) {
         return Ok(refused);
     }
     let Some(article) = published(&ctx, pid).await? else {
@@ -280,11 +278,11 @@ pub(crate) struct FeedbackPayload {
 #[debug_handler]
 async fn feedback(
     State(ctx): State<AppContext>,
-    headers: HeaderMap,
+    ClientAddr(address): ClientAddr,
     PidPath(pid): PidPath,
     Json(payload): Json<FeedbackPayload>,
 ) -> Result<Response> {
-    if let Some(refused) = admit(&headers) {
+    if let Some(refused) = admit(address) {
         return Ok(refused);
     }
     let Some(article) = published(&ctx, pid).await? else {

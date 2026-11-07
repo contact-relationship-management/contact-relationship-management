@@ -6,12 +6,18 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
+use std::net::IpAddr;
 
-use crate::{rate_limit, redis_store};
+use crate::{auth, rate_limit, redis_store};
 
 /// Abuse guard (CRM-T43): per-client request limit and a failed-auth
 /// lockout, answering `429` with `Retry-After`. Runs outside the auth
-/// middleware so it sees the `401`s the auth middleware produces.
+/// middleware so it sees the `401`s the auth middleware produces, and inside
+/// `axa`'s stack so it sees the client address that stack resolves.
+///
+/// A token counts only once it has verified, which costs a signature check
+/// here as well as in the guard behind this one. Counting by the bearer value
+/// would give each made-up token a limit of its own (CRM-T217).
 pub(crate) async fn abuse_guard_mw(
     axum::extract::State((guard, shared)): axum::extract::State<(
         std::sync::Arc<rate_limit::Guard>,
@@ -25,15 +31,14 @@ pub(crate) async fn abuse_guard_mw(
     if matches!(req.uri().path(), "/_health" | "/_ping" | "/_readiness") {
         return next.run(req).await;
     }
-    let key = {
-        let header = |name: &str| req.headers().get(name).and_then(|v| v.to_str().ok());
-        let trust_forwarded = crate::settings::current().trust_forwarded_for;
-        rate_limit::client_key(
-            header("authorization"),
-            header("x-forwarded-for"),
-            trust_forwarded,
-        )
-    };
+    if guard.requests.disabled() && guard.failures.disabled() {
+        return next.run(req).await;
+    }
+    let verified = auth::request_claims(req.headers()).await.ok();
+    let key = rate_limit::client_key(
+        verified.as_ref().map(|claims| claims.sub.as_str()),
+        req.extensions().get::<IpAddr>().copied(),
+    );
     let now = std::time::Instant::now();
     let limit = u64::from(guard.requests.limit());
     let refused = |retry_after_secs: u64| {
@@ -204,6 +209,51 @@ mod tests {
             status(&app, "/api/x").await.status(),
             StatusCode::TOO_MANY_REQUESTS
         );
+    }
+
+    /// A request from `address`, with whatever else the caller chose to send.
+    fn from(address: &str, headers: &[(&str, &str)]) -> Request<Body> {
+        let mut request = Request::get("/api/x");
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
+        let mut request = request.body(Body::empty()).unwrap();
+        request
+            .extensions_mut()
+            .insert(address.parse::<std::net::IpAddr>().unwrap());
+        request
+    }
+
+    #[tokio::test]
+    async fn neither_a_made_up_token_nor_a_forged_address_buys_a_fresh_limit() {
+        let app = app(Guard::new(2, 0, 60));
+        for attempt in 0..2 {
+            let token = format!("Bearer forged-{attempt}");
+            let forwarded = format!("192.0.2.{attempt}");
+            let headers = [
+                ("authorization", token.as_str()),
+                ("x-forwarded-for", forwarded.as_str()),
+            ];
+            let answer = app
+                .clone()
+                .oneshot(from("203.0.113.9", &headers))
+                .await
+                .unwrap();
+            assert_eq!(answer.status(), StatusCode::OK);
+        }
+        let headers = [
+            ("authorization", "Bearer forged-2"),
+            ("x-forwarded-for", "192.0.2.2"),
+        ];
+        let answer = app
+            .clone()
+            .oneshot(from("203.0.113.9", &headers))
+            .await
+            .unwrap();
+        assert_eq!(answer.status(), StatusCode::TOO_MANY_REQUESTS);
+        // Another client still has its own.
+        let answer = app.oneshot(from("203.0.113.10", &[])).await.unwrap();
+        assert_eq!(answer.status(), StatusCode::OK);
     }
 
     #[tokio::test]

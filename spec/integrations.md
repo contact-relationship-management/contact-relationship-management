@@ -107,9 +107,10 @@ together.
 
 `POST /mcp` (outside `/api`, so the blanket sign-in layer does not stand in front of it) builds the REST request a tool stands
 for and sends it through the service's own router, the same value `after_routes` returns, cloned before the MCP route is
-added to it. The caller's `Authorization` header (and `X-Forwarded-For`, so the rate limiter counts the same client) is
-copied; nothing else of the original request is. Because the router is the whole stack (version check, abuse guard,
-sign-in, access policy, insight cache and audit, idempotency, problem rendering), a tool call is refused, masked,
+added to it. The caller's `Authorization` header is copied, and the address `axa` resolved goes along as a request extension, so the
+rate limiter counts the same client; nothing else of the original request is. That router is everything inside `axa`'s
+stack (version check, abuse guard, sign-in, access policy, insight cache and audit, idempotency, problem rendering), so a
+tool call is refused, masked,
 rate-limited and audited exactly as the REST call it is. The endpoint adds only the protocol, an argument check against a
 closed schema, the `mcp_tool_called` audit row (written first), the data notice, and the cut at 200 KB.
 
@@ -145,8 +146,8 @@ submissions name the address. The answer never says whether the address was know
 
 Limits are counted in the process (`rules::forms::Counter`), so with several replicas each allows its own count. Moving them to
 the shared Redis store is possible (the abuse guard already does it) and was left out to keep the first version small. Clients are
-told apart by `X-Forwarded-For` only with `CRM_TRUST_FORWARDED_FOR`; without it every client shares one bucket, which is safe and
-strict.
+told apart by the address `axa` resolves from the connection and `TRUSTED_PROXIES`, never by what the caller wrote in
+`X-Forwarded-For`. An IPv6 client counts by its `/64`.
 
 The nurture enrolment is made by the confirmation itself (`forms::on_confirmed`, called inside the transaction that grants), from the
 `form_submissions` row the submission left. A sequence of another purpose than the form's is skipped.

@@ -25,9 +25,14 @@ Commands assume the container images from the repository's `Containerfile`s.
    `CRM_AUTH_FAIL_LIMIT`, `CRM_AUTH_FAIL_WINDOW_SECS`; `0` disables). With
    `CRM_REDIS_URL` set the counters are shared across replicas through Redis (a
    Redis error falls back to per-replica counters); production requires that
-   variable because replicas share the response cache there, so also limit at the ingress anyway. Set
-   `CRM_TRUST_FORWARDED_FOR=1` only behind a proxy that overwrites
-   `X-Forwarded-For`, otherwise all unauthenticated callers share one bucket.
+   variable because replicas share the response cache there, so also limit at the ingress anyway.
+   A caller whose token verifies is counted by its subject, and any other by its address. Behind
+   proxies, list every one in `TRUSTED_PROXIES` (addresses or CIDR ranges, comma-separated), or
+   all unauthenticated callers count as the nearest proxy and share its bucket and its lockout.
+   Each listed proxy must append to `X-Forwarded-For`: the service believes the header from the
+   right, and only as far as the proxies on this list. A bad entry trusts none. The UI's BFF does
+   not append, so list it only if something in front of it does the appending for it.
+   `CRM_TRUST_FORWARDED_FOR` is no longer read, and a start with it set logs a warning.
 9. Set `CRM_CORS_ORIGIN` only if a browser must call the service directly.
 10. Run migrations as a separate, privileged step (`auto_migrate` is off in
    production). The runtime database role needs no DDL rights. `db down`, `db reset`

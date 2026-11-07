@@ -38,8 +38,6 @@ pub struct Settings {
     pub allow_insecure: bool,
     /// `CRM_REQUIRE_FIELD_ENCRYPTION`: refuse to start without field keys.
     pub require_field_encryption: bool,
-    /// `CRM_TRUST_FORWARDED_FOR`: count callers by `X-Forwarded-For`.
-    pub trust_forwarded_for: bool,
     /// `CRM_UPSTREAM_MODE`: `http` looks names up; anything else is the stub.
     pub upstream_mode: Mode,
     /// `CRM_EVENT_RETENTION_DAYS`, raw: how long the event outbox and webhook deliveries are kept
@@ -201,7 +199,6 @@ impl Settings {
             protect_operational: flag("CRM_PROTECT_OPERATIONAL"),
             allow_insecure: flag("CRM_ALLOW_INSECURE"),
             require_field_encryption: flag("CRM_REQUIRE_FIELD_ENCRYPTION"),
-            trust_forwarded_for: flag("CRM_TRUST_FORWARDED_FOR"),
             upstream_mode: if get("CRM_UPSTREAM_MODE")
                 .is_some_and(|v| v.trim().eq_ignore_ascii_case("http"))
             {
@@ -360,7 +357,7 @@ mod tests {
     fn a_bare_environment_gives_the_safe_defaults() {
         let s = Settings::default();
         assert!(!s.require_auth && !s.protect_operational && !s.allow_insecure);
-        assert!(!s.require_field_encryption && !s.trust_forwarded_for);
+        assert!(!s.require_field_encryption);
         assert_eq!(s.upstream_mode, Mode::Stub);
         assert_eq!(s.event_transport, EventTransport::Memory);
         assert_eq!(s.mail_batch, 200);

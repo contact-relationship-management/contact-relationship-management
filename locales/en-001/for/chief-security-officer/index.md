@@ -41,8 +41,9 @@ as "built and self-tested", not "verified".
   like the database: TLS, password, no public exposure.
 - **Break-glass** cannot be revoked, only expire, and no alert is wired.
 - **Rate-limit and lockout** fall back to per-replica counts if Redis fails; the
-  unauthenticated bucket is shared unless `CRM_TRUST_FORWARDED_FOR=1` behind a
-  trusted proxy, so an attacker can lock out other unauthenticated callers.
+  unauthenticated bucket is per address, and behind a proxy not listed in
+  `TRUSTED_PROXIES` that is the proxy's, so an attacker can lock out other
+  unauthenticated callers. A caller with a valid token is counted by its subject.
 - **Policy reloads** show in cached insights after up to 30 seconds.
 - **Idle sign-out** is client-side.
 - **Idempotency keys** are opt-in at the API (T52): a client that does not send

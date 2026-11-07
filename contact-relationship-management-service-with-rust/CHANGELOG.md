@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the middleware order and a forgeable rate-limit key (CRM-T217)
+
+`App::router` now builds the routes, then `after_routes`, then `axa::middleware::apply`. Refusals
+from the service's own layers carry the request id, the security headers and CORS, a preflight
+reaches the CORS layer before the abuse guard, and `problem_mw` reads plain bodies: with
+compression on it used to send gzip as text, under `Content-Encoding: gzip`. A `408` and the `500`
+for a panic now come from axa, outside `problem_mw`, so they are not problem documents.
+
+**`CRM_TRUST_FORWARDED_FOR` is gone; behind a proxy, set `TRUSTED_PROXIES`.** The abuse guard, the
+web forms and the public knowledge base count by the address axa resolves, walking
+`X-Forwarded-For` from the right. A token counts only once verified, by its subject. A start with
+the old setting logs a warning.
+
 ### Changed — sqlx begins (CRM-T203, CRM-D24)
 
 Idempotency keys are stored through `sqlx::query!`, on SeaORM's pool, with no change to what a

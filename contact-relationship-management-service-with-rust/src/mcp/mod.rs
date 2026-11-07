@@ -16,6 +16,7 @@
 
 pub mod tools;
 
+use axa::client::ClientAddr;
 use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::{HeaderMap, Method, Request, StatusCode, header};
@@ -24,6 +25,7 @@ use axum::routing::post;
 use axum::{Router, body::Body};
 use sea_orm::DatabaseConnection;
 use serde_json::{Value, json};
+use std::net::IpAddr;
 use tower::ServiceExt as _;
 use uuid::Uuid;
 
@@ -201,6 +203,7 @@ fn parse(headers: &HeaderMap, body: &Bytes) -> Result<Incoming, Response> {
 async fn handle(
     State(mcp): State<Mcp>,
     caller: MaybeAuthUser,
+    ClientAddr(client): ClientAddr,
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
@@ -245,7 +248,10 @@ async fn handle(
             call(
                 &mcp,
                 &caller,
-                &headers,
+                Asked {
+                    headers: &headers,
+                    client,
+                },
                 &params,
                 &id,
                 era,
@@ -389,11 +395,18 @@ fn tool_result(
     rpc_result(id, result, era)
 }
 
+/// What a forwarded request takes from the one that asked for it.
+#[derive(Clone, Copy)]
+struct Asked<'a> {
+    headers: &'a HeaderMap,
+    client: Option<IpAddr>,
+}
+
 /// Send the REST request a tool stands for through the service's own router, as the caller.
 /// Returns the status, the body as text (cut at [`MAX_RESULT`]) and whether it was cut.
 async fn forward(
     mcp: &Mcp,
-    headers: &HeaderMap,
+    asked: Asked<'_>,
     tool: &tools::Tool,
     path: &str,
     body: Option<Value>,
@@ -403,10 +416,12 @@ async fn forward(
         .uri(path)
         .header("x-crm-agent", "mcp");
     // The caller's own credentials, and nothing else: the REST call is decided as theirs.
-    for name in [header::AUTHORIZATION.as_str(), "x-forwarded-for"] {
-        if let Some(value) = headers.get(name) {
-            request = request.header(name, value);
-        }
+    if let Some(value) = asked.headers.get(header::AUTHORIZATION) {
+        request = request.header(header::AUTHORIZATION, value);
+    }
+    // This router sits inside `axa`'s stack, which has already resolved the address.
+    if let Some(client) = asked.client {
+        request = request.extension(client);
     }
     let request = match body {
         Some(body) => request
@@ -471,7 +486,7 @@ async fn audit(
 async fn call(
     mcp: &Mcp,
     caller: &MaybeAuthUser,
-    headers: &HeaderMap,
+    asked: Asked<'_>,
     params: &Value,
     id: &Value,
     era: Era,
@@ -510,7 +525,7 @@ async fn call(
             id,
         );
     }
-    let (status, text, truncated) = match forward(mcp, headers, tool, &path, body).await {
+    let (status, text, truncated) = match forward(mcp, asked, tool, &path, body).await {
         Ok(answer) => answer,
         Err(why) => return rpc_error(StatusCode::OK, id, code::INTERNAL, why, None),
     };

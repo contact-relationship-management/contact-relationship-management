@@ -407,12 +407,13 @@ async fn errors_are_problem_documents() {
         ];
         for (what, response, status, kind) in cases {
             assert_eq!(response.status_code(), status, "{what}");
-            // An unknown path passes through the whole stack. A refusal from a layer
-            // outside `axa`'s stack, such as the version check, does not.
-            if what.starts_with("unknown route") {
-                assert!(response.headers().contains_key("x-request-id"), "{what}");
-                assert_eq!(response.headers()["x-content-type-options"], "nosniff");
-            }
+            // Every refusal passes through the whole stack, the service's own layers' too.
+            assert!(response.headers().contains_key("x-request-id"), "{what}");
+            assert_eq!(
+                response.headers()["x-content-type-options"],
+                "nosniff",
+                "{what}"
+            );
             let content_type = response
                 .headers()
                 .get("content-type")

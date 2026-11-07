@@ -3,8 +3,10 @@
 //! The service's errors are produced in several places: the controllers
 //! (`{"error", "description"}` through axa), the auth and abuse middleware
 //! (plain text), the API-version check, and the idempotency layer. One
-//! outermost middleware turns every `4xx`/`5xx` into
-//! `application/problem+json` so a client parses one shape.
+//! middleware around all of them turns every `4xx`/`5xx` into
+//! `application/problem+json` so a client parses one shape. It sits inside
+//! `axa`'s stack, so it reads a body before compression, and what that stack
+//! answers itself (a `408`, the `500` for a panic) does not pass through it.
 //!
 //! The members `error` (a stable machine code) and `description` (the human
 //! message) are kept next to the standard `type`, `title`, `status`, `detail`

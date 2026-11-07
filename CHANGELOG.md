@@ -9,6 +9,15 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — the middleware order and a forgeable rate-limit key (CRM-T217, 2026-11-07)
+
+- The service's layers now sit inside axa's stack. Refusals carry the request id, the security
+  headers and CORS, a preflight is no longer counted or refused, and a compressed error is a
+  readable problem document.
+- The rate limit, the lockout and the web-form and knowledge-base limits no longer believe what a
+  caller writes. **Operators behind a proxy must set `TRUSTED_PROXIES`**;
+  `CRM_TRUST_FORWARDED_FOR` is no longer read.
+
 ### Changed — sqlx begins (CRM-T203, 2026-11-06)
 
 - The first queries move from SeaORM to `sqlx::query!`, checked against a committed `.sqlx/`

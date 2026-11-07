@@ -26,13 +26,18 @@ impl Drop for Restore {
     }
 }
 
+/// Makes the test client a proxy, as a form behind an ingress has one, so `X-Forwarded-For` names
+/// each visitor. Read when the app boots. Safe as in `tests/rate_limit.rs`: `#[serial]`.
+fn behind_a_proxy() {
+    unsafe { std::env::set_var("TRUSTED_PROXIES", "127.0.0.1") };
+}
+
 fn arrange(forms: Vec<WebForm>) -> (Recorder, Restore) {
     let recorder = Recorder::default();
     mail::set(Sender::Recording(recorder.clone()));
     unsubscribe::install(Some(Unsubscriber::new(SECRET, BASE, true).unwrap()));
     settings::update(|s| {
         s.web_forms = forms;
-        s.trust_forwarded_for = true;
     });
     (recorder, Restore)
 }
@@ -79,6 +84,7 @@ async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
 #[serial]
 #[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_only_after_it() {
+    behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
         let sequence: Value = request
             .post("/api/nurture-sequences")
@@ -252,6 +258,7 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
 #[serial]
 #[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn the_origin_the_form_the_honeypot_and_the_input_are_checked() {
+    behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![form("contact-us", "marketing", None)]);
         let contacts_before = count(&ctx.db, "SELECT count(*) AS n FROM contacts").await;
@@ -338,6 +345,7 @@ async fn the_origin_the_form_the_honeypot_and_the_input_are_checked() {
 #[serial]
 #[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_client_and_a_form_are_limited_and_a_stranger_is_not_mailed_twice() {
+    behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![
             form("limited", "marketing", None),
@@ -460,6 +468,7 @@ async fn a_client_and_a_form_are_limited_and_a_stranger_is_not_mailed_twice() {
 #[serial]
 #[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_submissions() {
+    behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![form("signup", "marketing", None)]);
         settings::update(|s| {
@@ -533,6 +542,7 @@ async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_s
 async fn the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_it() {
     // CRM-T180: the form page's `language`, else the request's Accept-Language, else English;
     // the link opens the confirmation page in the same language; nothing about it is stored.
+    behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![form("lang-signup", "newsletter", None)]);
 
@@ -632,6 +642,7 @@ async fn the_form_s_refusals_are_in_the_language_of_the_request() {
     // the form's `language`, else Accept-Language, else English. Their `error` code does not
     // change with the language.
     use contact_relationship_management::rules::public_text::{english, text_for};
+    behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![form("lang-refusals", "marketing", None)]);
         // The answer's Content-Language is `lang`; its body.

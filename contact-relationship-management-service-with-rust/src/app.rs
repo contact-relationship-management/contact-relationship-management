@@ -251,14 +251,18 @@ impl App {
         Ok(ctx)
     }
 
-    /// The whole router: the routes, `axa`'s standard middleware, then the service's own layers.
+    /// The whole router: the routes, the service's own layers, then `axa`'s standard middleware
+    /// around them all. In that order a refusal from one of those layers carries the request id,
+    /// the security headers and CORS, a panic in one is caught, they read plain bodies rather than
+    /// compressed ones, and the abuse guard sees the address `axa` resolved (CRM-T217).
     ///
     /// # Errors
     ///
     /// When a start-up check refuses, or a setting is invalid.
     pub async fn router(ctx: &AppContext) -> Result<AxumRouter> {
-        let router = Self::routes(ctx).into_app(ctx.clone())?;
-        Self::after_routes(router, ctx).await
+        let router = Self::routes(ctx).into_router(ctx.clone());
+        let router = Self::after_routes(router, ctx).await?;
+        axa::middleware::apply(router, &ctx.config.http)
     }
 
     async fn db(ctx: &AppContext, command: DbCommand) -> Result<()> {
@@ -365,6 +369,13 @@ impl App {
         spawn_break_glass_refresh(ctx, shared.clone());
         spawn_token_sweep(ctx);
         spawn_notification_sweep(ctx);
+        // Unread since CRM-T217, so a deployment that relied on it now counts its proxy as one
+        // client. A log line rather than a refusal: nothing it did was safe to keep.
+        if std::env::var_os("CRM_TRUST_FORWARDED_FOR").is_some() {
+            tracing::warn!(
+                "CRM_TRUST_FORWARDED_FOR is ignored: list your proxies in TRUSTED_PROXIES instead"
+            );
+        }
         let guard = std::sync::Arc::new(rate_limit::Guard::from_env(
             ctx.environment.is_production_like(),
         ));
@@ -395,8 +406,9 @@ impl App {
             .layer(axum::middleware::from_fn(
                 crate::version::require_version_mw,
             ))
-            // Outermost: every error above, whoever produced it, leaves as
-            // `application/problem+json` (CRM-T54).
+            // Every error above, whoever produced it, leaves as `application/problem+json`
+            // (CRM-T54). What `axa` answers itself, outside this, does not: a timeout's `408` and
+            // the `500` for a panic (CRM-T217).
             .layer(axum::middleware::from_fn(crate::problem::problem_mw))
             // Outside the problem layer so errors carry the policy too.
             .layer(axum::middleware::from_fn(middleware::no_store::no_store_mw));
@@ -404,7 +416,11 @@ impl App {
         // caller's credentials; it is added last so it is not inside those layers itself.
         // `merge` keeps the fallback of the router it is given, so this order matters:
         // the other way round, a request for an unknown path skips every layer above.
-        let router = crate::mcp::router(api.clone(), ctx.db.clone()).merge(api);
+        // That inner router is called directly, so it is given the limit `axa` sets from outside.
+        let inner = api
+            .clone()
+            .layer(axa::middleware::body_limit(ctx.config.http.body_limit));
+        let router = crate::mcp::router(inner, ctx.db.clone()).merge(api);
         Ok(if ctx.environment.is_production_like() {
             middleware::secure_headers::install(router)
         } else {

@@ -7,6 +7,7 @@
 //! client key is only as trustworthy as its source (see [`client_key`]).
 
 use std::collections::HashMap;
+use std::net::{IpAddr, Ipv6Addr};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -184,36 +185,30 @@ impl Guard {
     }
 }
 
-/// The key a request is counted under. A bearer token is hashed so the
-/// limiter never stores credentials; without one, the left-most
-/// `X-Forwarded-For` address is used **only when** `trust_forwarded` is set
-/// (the service sits behind a proxy that overwrites the header); otherwise
-/// all unauthenticated callers share one bucket, which is the safe
-/// direction for a lockout.
+/// The key a request is counted under. `subject` is the `sub` of a token that verified, so a
+/// signed-in caller has one budget wherever it calls from, and however many tokens it holds.
+/// Anything else counts by `address`, the one `axa` resolved from the connection and
+/// `TRUSTED_PROXIES`: the caller writes neither a bearer value nor the left end of
+/// `X-Forwarded-For`, so neither may name a bucket, or each new value would buy a fresh limit.
+/// With neither, every such caller shares one bucket, the safe direction for a lockout.
+///
+/// A subject is hashed so the counters hold no one's identifier. IPv6 counts by its `/64`, the
+/// block one customer is routinely given, as one address there would be free to replace.
 #[must_use]
-pub fn client_key(
-    authorization: Option<&str>,
-    forwarded_for: Option<&str>,
-    trust_forwarded: bool,
-) -> String {
+pub fn client_key(subject: Option<&str>, address: Option<IpAddr>) -> String {
     use sha2::{Digest, Sha256};
-    if trust_forwarded
-        && let Some(address) = forwarded_for
-            .and_then(|v| v.split(',').next())
-            .map(str::trim)
-        && !address.is_empty()
-    {
-        return format!("ip:{address}");
+    if let Some(subject) = subject {
+        let digest = Sha256::digest(subject.as_bytes());
+        let first: [u8; 8] = digest[..8].try_into().unwrap_or_default();
+        return format!("sub:{:016x}", u64::from_be_bytes(first));
     }
-    match authorization {
-        Some(value) if !value.is_empty() => {
-            let digest = Sha256::digest(value.as_bytes());
-            format!(
-                "tok:{:02x}{:02x}{:02x}{:02x}",
-                digest[0], digest[1], digest[2], digest[3]
-            )
+    match address.map(|address| address.to_canonical()) {
+        Some(IpAddr::V4(address)) => format!("ip:{address}"),
+        Some(IpAddr::V6(address)) => {
+            let [a, b, c, d, ..] = address.segments();
+            format!("ip:{}/64", Ipv6Addr::new(a, b, c, d, 0, 0, 0, 0))
         }
-        _ => "anon".to_string(),
+        None => "anon".to_string(),
     }
 }
 
@@ -304,26 +299,48 @@ mod tests {
         assert_eq!(w.blocked("a", at(t0, 300)), Decision::Allowed);
     }
 
-    #[test]
-    fn client_key_prefers_trusted_forwarded_address() {
-        assert_eq!(
-            client_key(None, Some("203.0.113.9, 10.0.0.1"), true),
-            "ip:203.0.113.9"
-        );
-        // Untrusted: the header is ignored, so it cannot be used to dodge a limit.
-        assert_eq!(client_key(None, Some("203.0.113.9"), false), "anon");
+    fn address(text: &str) -> IpAddr {
+        text.parse().unwrap()
     }
 
     #[test]
-    fn client_key_hashes_tokens_and_never_stores_them() {
-        let key = client_key(Some("Bearer v4.public.secret"), None, false);
-        assert!(key.starts_with("tok:"));
-        assert!(!key.contains("secret"));
+    fn client_key_is_the_verified_subject_wherever_it_calls_from() {
+        let key = client_key(Some("person-1"), Some(address("203.0.113.9")));
+        assert!(key.starts_with("sub:"), "{key}");
+        assert!(!key.contains("person-1"));
         assert_eq!(
             key,
-            client_key(Some("Bearer v4.public.secret"), None, false)
+            client_key(Some("person-1"), Some(address("198.51.100.1")))
         );
-        assert_ne!(key, client_key(Some("Bearer v4.public.other"), None, false));
+        assert_ne!(
+            key,
+            client_key(Some("person-2"), Some(address("203.0.113.9")))
+        );
+    }
+
+    #[test]
+    fn client_key_without_a_subject_is_the_address() {
+        assert_eq!(
+            client_key(None, Some(address("203.0.113.9"))),
+            "ip:203.0.113.9"
+        );
+        assert_eq!(
+            client_key(None, Some(address("::ffff:203.0.113.9"))),
+            "ip:203.0.113.9"
+        );
+    }
+
+    #[test]
+    fn client_key_counts_ipv6_by_its_block() {
+        let one = client_key(None, Some(address("2001:db8:1:2::1")));
+        assert_eq!(one, "ip:2001:db8:1:2::/64");
+        assert_eq!(one, client_key(None, Some(address("2001:db8:1:2:aaaa::9"))));
+        assert_ne!(one, client_key(None, Some(address("2001:db8:1:3::1"))));
+    }
+
+    #[test]
+    fn client_key_with_neither_is_one_shared_bucket() {
+        assert_eq!(client_key(None, None), "anon");
     }
 
     #[test]

@@ -1,5 +1,5 @@
 //! Response security headers (CRM-T33), set on every response in production. The values are the
-//! ones production has always sent. Outermost, so they replace `axa`'s defaults.
+//! ones production has always sent. Inside `axa`'s stack, whose defaults yield to a header already set.
 
 use axum::{
     Router,
@@ -90,6 +90,33 @@ mod tests {
     async fn a_handler_cannot_loosen_them() {
         let headers = headers_of("/replaced").await;
         assert_eq!(headers[header::X_FRAME_OPTIONS], "sameorigin");
+    }
+
+    /// `axa` has its own value for several of these in production, and only sets one that is absent.
+    #[tokio::test]
+    async fn they_win_over_the_defaults_of_axa_s_stack_around_them() {
+        let http = axa::config::Http {
+            body_limit: 1024,
+            compression: false,
+            timeout_seconds: 0,
+            timeout_overrides: Vec::new(),
+            cors_origins: Vec::new(),
+            trusted_proxies: Vec::new(),
+            hsts: true,
+            hsts_max_age: 1,
+            csp: Some("default-src 'none'".to_string()),
+        };
+        let router = Router::new().route("/x", get(|| async { "ok" }));
+        let request = Request::builder().uri("/x").body(Body::empty()).unwrap();
+        let response = axa::middleware::apply(install(router), &http)
+            .unwrap()
+            .oneshot(request)
+            .await
+            .unwrap();
+        for (name, value) in &HEADERS {
+            let sent = response.headers().get(name).unwrap().to_str().unwrap();
+            assert_eq!(sent, *value);
+        }
     }
 
     #[tokio::test]

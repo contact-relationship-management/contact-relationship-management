@@ -7,9 +7,11 @@
 //! one mail sent. A nurture sequence the form names is started on that confirmation, not
 //! before. Every accepted or ignored submission gets the same answer.
 
+use std::net::IpAddr;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
+use axa::client::ClientAddr;
 use axa::prelude::*;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::IntoResponse;
@@ -207,13 +209,9 @@ fn too_many(retry_after: u64, text: &Text) -> Response {
 }
 
 /// Count this submission against the form's limits.
-fn within_limits(form: &WebForm, headers: &HeaderMap) -> Result<(), u64> {
+fn within_limits(form: &WebForm, address: Option<IpAddr>) -> Result<(), u64> {
     let current = settings::current();
-    let client = crate::rate_limit::client_key(
-        None,
-        header_text(headers, "x-forwarded-for"),
-        current.trust_forwarded_for,
-    );
+    let client = crate::rate_limit::client_key(None, address);
     let now = Instant::now();
     let mut counts = counter()
         .lock()
@@ -232,6 +230,7 @@ fn within_limits(form: &WebForm, headers: &HeaderMap) -> Result<(), u64> {
 async fn submit(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
+    ClientAddr(address): ClientAddr,
     headers: HeaderMap,
     crate::json::Json(payload): crate::json::Json<FormPayload>,
 ) -> Response {
@@ -242,7 +241,7 @@ async fn submit(
         Ok(found) => found,
         Err(refused) => return *refused,
     };
-    if let Err(retry_after) = within_limits(form, &headers) {
+    if let Err(retry_after) = within_limits(form, address) {
         return with_cors(too_many(retry_after, text), &origin);
     }
     let response = match accept(&ctx, form, &payload, text).await {
