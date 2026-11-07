@@ -54,6 +54,8 @@ sqlx = { version = "0.9", default-features = false, features = [
   "sqlx-toml",
   "uuid",
 ] }
+# Only `db::Bridge` needs this, and it goes with SeaORM: it binds a SeaORM statement's values on a sqlx connection.
+sea-query-sqlx = { version = "0.9", default-features = false, features = ["sqlx-postgres"] }
 chrono = { version = "0.4" }
 chrono-tz = { version = "0.10" }
 url = "2.5"

@@ -1091,6 +1091,7 @@ dependencies = [
  "rusty_paseto",
  "schemars 1.2.3",
  "sea-orm",
+ "sea-query-sqlx",
  "serde",
  "serde_json",
  "serial_test",

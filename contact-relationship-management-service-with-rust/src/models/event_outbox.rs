@@ -12,6 +12,7 @@
 use axa::prelude::*;
 use sea_orm::sea_query::Expr;
 use sea_orm::{ConnectionTrait, QueryOrder, QuerySelect, prelude::DateTimeWithTimeZone};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 pub use super::_entities::event_outbox::{self, ActiveModel, Entity, Model};
@@ -89,6 +90,31 @@ impl OutboxInsert {
     pub async fn insert_on<C: ConnectionTrait>(&self, conn: &C) -> ModelResult<Model> {
         let row = self.active_model().insert(conn).await?;
         Ok(row)
+    }
+
+    /// [`Self::insert_on`] for a handler on `sqlx` (CRM-D24): it takes a connection, so the event
+    /// shares the mutation's commit boundary.
+    ///
+    /// # Errors
+    ///
+    /// When the insert fails (e.g. a duplicate `event_id`).
+    pub async fn insert_in(&self, conn: &mut PgConnection) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO event_outbox \
+             (event_id, entity, entity_pid, kind, occurred_at, actor, schema_version, payload) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+            self.event_id,
+            self.entity,
+            self.entity_pid,
+            self.kind,
+            self.occurred_at,
+            self.actor,
+            self.schema_version,
+            self.payload,
+        )
+        .execute(conn)
+        .await?;
+        Ok(())
     }
 }
 

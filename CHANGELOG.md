@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the shared parts of the sqlx move (CRM-T204, 2026-11-07)
+
+- Audit rows, outbox events and the two sealed columns now work through both database libraries,
+  and the organization settings routes run on `sqlx` (CRM-D24). A client sees no change.
+
 ### Fixed — the middleware order and a forgeable rate-limit key (CRM-T217, 2026-11-07)
 
 - The service's layers now sit inside axa's stack. Refusals carry the request id, the security

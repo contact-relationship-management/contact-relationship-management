@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT time_zone, fiscal_year_start_month, stalled_after_days, updated_at, set_by FROM organization_settings WHERE id = 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time_zone",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "organization_settings",
+            "name": "time_zone"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "fiscal_year_start_month",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "organization_settings",
+            "name": "fiscal_year_start_month"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "stalled_after_days",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "organization_settings",
+            "name": "stalled_after_days"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "organization_settings",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "set_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "organization_settings",
+            "name": "set_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7c9b9c9e0336da14919a257aeffbc4537aa18001d84402d50c771538a2da7f40"
+}

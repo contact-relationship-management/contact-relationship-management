@@ -9,6 +9,7 @@ use axa::prelude::*;
 use sea_orm::{
     ConnectionTrait, DatabaseBackend, QueryOrder, QuerySelect, Statement, TransactionTrait,
 };
+use sqlx::PgConnection;
 
 use crate::rules::audit_chain;
 use uuid::Uuid;
@@ -72,6 +73,60 @@ impl Model {
             "UPDATE audit_logs SET hash = $1 WHERE id = $2",
             [chain_hash.clone().into(), entry.id.into()],
         ))
+        .await?;
+        Ok(Self {
+            hash: Some(chain_hash),
+            ..entry
+        })
+    }
+
+    /// [`Self::record`] for a handler on `sqlx` (CRM-D24). It takes a connection, never the pool,
+    /// so an audit row cannot commit apart from its mutation. Both versions take the same lock, so
+    /// they can write one chain side by side.
+    ///
+    /// # Errors
+    ///
+    /// When a statement fails.
+    pub async fn record_on(
+        conn: &mut PgConnection,
+        entity: &str,
+        entity_pid: Uuid,
+        action: &str,
+        actor: Option<&str>,
+        snapshot: Option<serde_json::Value>,
+    ) -> Result<Self, sqlx::Error> {
+        // `SELECT` straight from the function would be a `void` column, which the macro refuses.
+        sqlx::query!("SELECT 1 AS locked FROM pg_advisory_xact_lock(7203197)")
+            .fetch_one(&mut *conn)
+            .await?;
+        let prev_hash = sqlx::query_scalar!("SELECT hash FROM audit_logs ORDER BY id DESC LIMIT 1")
+            .fetch_optional(&mut *conn)
+            .await?
+            .flatten()
+            .unwrap_or_default();
+        let entry = sqlx::query_as!(
+            Self,
+            "INSERT INTO audit_logs (entity, entity_pid, action, actor, snapshot, prev_hash) \
+             VALUES ($1, $2, $3, $4, $5, $6) \
+             RETURNING created_at, updated_at, id, entity, entity_pid, action, actor, snapshot, \
+             prev_hash, hash",
+            entity,
+            entity_pid,
+            action,
+            actor,
+            snapshot,
+            prev_hash,
+        )
+        .fetch_one(&mut *conn)
+        .await?;
+        // As in `record`: hash the row as stored, because jsonb normalises the snapshot.
+        let chain_hash = chain_hash_of(&entry);
+        sqlx::query!(
+            "UPDATE audit_logs SET hash = $1 WHERE id = $2",
+            chain_hash,
+            entry.id,
+        )
+        .execute(&mut *conn)
         .await?;
         Ok(Self {
             hash: Some(chain_hash),

@@ -1,3 +1,12 @@
 # SeaORM turns on sqlx's `time` feature too, so say which date types the query macros use (CRM-D24).
 [macros.preferred-crates]
 date-time = "chrono"
+
+# These two columns are sealed at rest (CRM-T41). Without this, `query_as!` turns the stored text into `EncryptedText`
+# through `From<String>`, which compiles and serves ciphertext. An override needs a column with an origin, so an
+# expression such as `COALESCE(summary, '')` loses it.
+[macros.table-overrides.'contacts']
+'preferred_channel' = "crate::models::encrypted::EncryptedText"
+
+[macros.table-overrides.'activities']
+'summary' = "crate::models::encrypted::EncryptedText"

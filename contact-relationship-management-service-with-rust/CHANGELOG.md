@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the shared parts of the sqlx move (CRM-T204, CRM-D24)
+
+`GET` and `PUT /api/settings/organization` run on `sqlx`, with no change to what a client sees.
+A moved handler writes audit rows with `Audit::record_on` and events with `streaming::emit_in`, and
+binds `EncryptedText` to write `contacts.preferred_channel` or `activities.summary`. `db::Bridge`
+lets it call a `SeaORM` helper on its own transaction, unless that helper opens a transaction or a
+savepoint. `db.rs` has census tests for `deleted_at` and for who writes a sealed column in SQL.
+
 ### Fixed — the middleware order and a forgeable rate-limit key (CRM-T217)
 
 `App::router` now builds the routes, then `after_routes`, then `axa::middleware::apply`. Refusals

@@ -95,6 +95,14 @@ impl Page {
         (self.limit + 1, self.offset)
     }
 
+    /// [`Page::window`] as `sqlx` binds it. A cursor is a client's text and can name any `u64`,
+    /// which saturates (CRM-D24): an offset past the end is an empty page, not a failed query.
+    #[must_use]
+    pub fn bounds(&self) -> (i64, i64) {
+        let (limit, offset) = self.window();
+        (crate::db::bound(limit), crate::db::bound(offset))
+    }
+
     /// Drop the probe row; the flag says whether more rows follow.
     #[must_use]
     pub fn split<T>(&self, mut rows: Vec<T>) -> (Vec<T>, bool) {
@@ -163,6 +171,15 @@ mod tests {
         assert_eq!(page.offset, 250);
         assert!(Page::new(&params(None, Some("not a cursor")), 100).is_err());
         assert!(Page::new(&params(None, Some(&URL_SAFE_NO_PAD.encode("x:1"))), 100).is_err());
+    }
+
+    #[test]
+    fn a_cursor_past_any_row_stays_a_valid_bound() {
+        let cursor = encode_cursor(u64::MAX);
+        let page = Page::new(&params(Some(2), Some(&cursor)), 10).unwrap();
+        assert_eq!(page.bounds(), (3, i64::MAX));
+        let page = Page::new(&params(Some(2), Some(&encode_cursor(40))), 10).unwrap();
+        assert_eq!(page.bounds(), (3, 40));
     }
 
     #[test]

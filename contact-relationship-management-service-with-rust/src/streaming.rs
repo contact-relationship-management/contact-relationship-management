@@ -186,16 +186,48 @@ pub async fn emit_on<C: ConnectionTrait>(
             .await
             .map_err(axa::Error::Model)?;
     } else {
-        let mut events = publisher()
-            .events
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if events.len() >= MEMORY_CAPACITY {
-            events.remove(0);
-        }
-        events.push(env);
+        remember(env);
     }
     Ok(())
+}
+
+/// [`emit_on`] for a handler on `sqlx` (CRM-D24): `conn` is the mutation's transaction, so under
+/// the `outbox` transport the event commits with it.
+///
+/// # Errors
+///
+/// When the outbox insert fails (the `memory` path is infallible).
+pub async fn emit_in(
+    conn: &mut sqlx::PgConnection,
+    entity: &str,
+    kind: &str,
+    pid: &str,
+    name: &str,
+    actor: Option<&str>,
+    data: Option<serde_json::Value>,
+) -> axa::Result<()> {
+    let env = envelope(entity, kind, pid, name, actor, data);
+    if transport().is_outbox() {
+        OutboxInsert::from_envelope(&env, chrono::Utc::now().into())
+            .map_err(axa::Error::Model)?
+            .insert_in(conn)
+            .await?;
+    } else {
+        remember(env);
+    }
+    Ok(())
+}
+
+/// Keep `env` in the in-process ring buffer of the `memory` transport.
+fn remember(env: Envelope) {
+    let mut events = publisher()
+        .events
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if events.len() >= MEMORY_CAPACITY {
+        events.remove(0);
+    }
+    events.push(env);
 }
 
 /// The most recent in-memory events, newest first, capped at `limit`.

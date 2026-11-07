@@ -43,6 +43,7 @@ mod relationships;
 mod reports;
 mod sales;
 mod search;
+mod sqlx_move;
 mod streaming;
 mod support;
 mod tags;

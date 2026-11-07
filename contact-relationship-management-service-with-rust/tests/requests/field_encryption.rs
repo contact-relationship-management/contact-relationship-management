@@ -7,6 +7,8 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use contact_relationship_management::app::App;
 use contact_relationship_management::crypto::{self, Keyring};
+use contact_relationship_management::db;
+use contact_relationship_management::models::encrypted::EncryptedText;
 use contact_relationship_management::tasks::rotate_field_keys::rotate;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
@@ -119,6 +121,91 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
             .execute_unprepared("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'")
             .await
             .unwrap();
+    })
+    .await;
+}
+
+/// `sqlx` seals and opens as `SeaORM` does: each reads what the other wrote, and a value that cannot
+/// be opened is an error, never ciphertext shown as text (CRM-D24).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+async fn sqlx_seals_and_opens_the_same_columns() {
+    request::<App, _, _>(|request, ctx| async move {
+        crypto::install(Some(keyring(&[("k1", 1)])));
+        let pool = db::pool(&ctx);
+        let pid = seed_contact!(&request, "Sealed By Sqlx").await;
+        let subject = uuid::Uuid::parse_str(&pid).unwrap();
+        request
+            .post("/api/activities")
+            .json(&json!({ "subject_kind": "contact", "subject_pid": pid,
+                           "kind": "note", "summary": "Written by SeaORM" }))
+            .await
+            .assert_status_ok();
+        let summary = "SELECT summary FROM activities WHERE subject_pid = $1";
+
+        // SeaORM wrote it, sqlx opens it.
+        let read: EncryptedText = sqlx::query_scalar(summary)
+            .bind(subject)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(read.as_str(), "Written by SeaORM");
+
+        // sqlx writes it: sealed at rest, and SeaORM opens it.
+        sqlx::query("UPDATE activities SET summary = $1 WHERE subject_pid = $2")
+            .bind(EncryptedText::from("Written by sqlx"))
+            .bind(subject)
+            .execute(pool)
+            .await
+            .unwrap();
+        let at_rest: String = sqlx::query_scalar(summary)
+            .bind(subject)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert!(at_rest.starts_with("enc:v1:k1:"), "{at_rest}");
+        assert!(!at_rest.contains("sqlx"), "{at_rest}");
+        let detail: Value = request.get(&format!("/api/contacts/{pid}")).await.json();
+        assert_eq!(detail["activities"][0]["summary"], "Written by sqlx");
+
+        // Both columns take it, as `contacts.preferred_channel` is the other one sealed.
+        sqlx::query("UPDATE contacts SET preferred_channel = $1 WHERE pid = $2")
+            .bind(EncryptedText::from("email"))
+            .bind(subject)
+            .execute(pool)
+            .await
+            .unwrap();
+        let channel: String =
+            sqlx::query_scalar("SELECT preferred_channel FROM contacts WHERE pid = $1")
+                .bind(subject)
+                .fetch_one(pool)
+                .await
+                .unwrap();
+        assert!(channel.starts_with("enc:v1:k1:"), "{channel}");
+
+        // A retired key fails loudly, the same as on SeaORM.
+        crypto::install(Some(keyring(&[("k3", 3)])));
+        let refused = sqlx::query_scalar::<_, EncryptedText>(summary)
+            .bind(subject)
+            .fetch_one(pool)
+            .await;
+        crypto::install(None);
+        assert!(refused.is_err(), "{refused:?}");
+
+        // With no keys, legacy plaintext is written and read as it stands.
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE activities SET summary = 'legacy' WHERE subject_pid = '{pid}'"
+            ))
+            .await
+            .unwrap();
+        let legacy: EncryptedText = sqlx::query_scalar(summary)
+            .bind(subject)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(legacy.as_str(), "legacy");
     })
     .await;
 }

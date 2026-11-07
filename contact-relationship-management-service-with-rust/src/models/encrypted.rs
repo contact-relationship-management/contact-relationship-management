@@ -6,12 +6,21 @@
 //! `enc:v1:` form from [`crate::crypto`] (or legacy plaintext when no keys
 //! are configured). Raw SQL bypasses this type, so a raw write stores
 //! plaintext, which still reads back (and `rotate-field-keys` then seals it).
+//!
+//! `sqlx` goes through the same two functions: binding this type seals, decoding it opens, and a
+//! value that cannot be opened is an error, never ciphertext shown as text (CRM-D24). `sqlx.toml`
+//! makes the macros read both columns as this type, but it covers reads only, so a write must bind
+//! `EncryptedText` itself. A census test in `db.rs` holds which modules write them.
 
 use std::ops::Deref;
 
 use sea_orm::sea_query::{ArrayType, ColumnType, Nullable, Value, ValueType, ValueTypeErr};
 use sea_orm::{ActiveValue, DbErr, IntoActiveValue, QueryResult, TryGetError, TryGetable};
 use serde::{Deserialize, Serialize};
+use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::{PgArgumentBuffer, PgTypeInfo, PgValueRef};
+use sqlx::{Decode, Encode, Postgres, Type};
 
 use crate::crypto;
 
@@ -100,6 +109,29 @@ impl TryGetable for EncryptedText {
         crypto::open(&stored)
             .map(Self)
             .map_err(|error| TryGetError::DbErr(DbErr::Type(error.to_string())))
+    }
+}
+
+impl Type<Postgres> for EncryptedText {
+    fn type_info() -> PgTypeInfo {
+        <String as Type<Postgres>>::type_info()
+    }
+
+    fn compatible(ty: &PgTypeInfo) -> bool {
+        <String as Type<Postgres>>::compatible(ty)
+    }
+}
+
+impl Encode<'_, Postgres> for EncryptedText {
+    fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> Result<IsNull, BoxDynError> {
+        <String as Encode<'_, Postgres>>::encode(crypto::seal(&self.0), buf)
+    }
+}
+
+impl Decode<'_, Postgres> for EncryptedText {
+    fn decode(value: PgValueRef<'_>) -> Result<Self, BoxDynError> {
+        let stored = <String as Decode<'_, Postgres>>::decode(value)?;
+        Ok(Self(crypto::open(&stored)?))
     }
 }
 
