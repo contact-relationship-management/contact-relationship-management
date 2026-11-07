@@ -67,7 +67,7 @@ pub(crate) struct ConsentByAccount {
 /// — CRM-local hygiene; identity dedup stays upstream).
 #[debug_handler]
 pub(super) async fn dpo(
-    axum::extract::Query(query): axum::extract::Query<DaysQuery>,
+    axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
@@ -131,7 +131,7 @@ pub(super) async fn dpo(
 /// consent states (verbatim) and withdrawals in the window.
 #[debug_handler]
 pub(super) async fn consent_by_account(
-    axum::extract::Query(query): axum::extract::Query<DaysQuery>,
+    axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {

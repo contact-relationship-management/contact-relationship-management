@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa's extractors, rate limiter and paging helpers (CRM-T219, CRM-D23)
+
+- Handlers take `axa::extract::{Path, Query}`; a refusal is a `400` with a generic `detail`, not
+  axum's text, which quoted the value. A census test in `controllers/mod.rs` holds this.
+- `json.rs` keeps naming the member, and drops the value serde quoted. An unknown message shape
+  becomes "is not valid".
+- The abuse guard, web forms and public knowledge base count with `axa::ratelimit::Limiter`, keyed
+  as before; Redis is still the shared count. `rules::forms::Counter` and `rate_limit::Window` are
+  gone, and `rate_limit::Settable` is a limit whose number is a setting. On a lockout the
+  `RateLimit-*` headers describe the lockout's limit.
+- `Page::bounds` is `axa::pagination`'s, `db::bound` is gone, and the article searches use
+  `escape_like`. The cursor, `Link` and no total stay.
+
 ### Changed — axa 0.6.1 (CRM-T218, CRM-D23)
 
 axa 0.6 answers every error itself as a problem with `code` and `detail`, where it sent `error` and

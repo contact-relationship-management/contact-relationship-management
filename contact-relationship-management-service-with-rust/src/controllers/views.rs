@@ -7,6 +7,7 @@
 use std::collections::BTreeMap;
 
 use axa::error::ErrorDetail;
+use axa::extract::Query;
 use axa::prelude::*;
 use axum::http::StatusCode;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};

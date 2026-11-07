@@ -376,7 +376,7 @@ macro_rules! record_routes {
             State(ctx): State<AppContext>,
             caller: MaybeAuthUser,
             PidPath(pid): PidPath,
-            axum::extract::Query(query): axum::extract::Query<UploadQuery>,
+            axa::extract::Query(query): axa::extract::Query<UploadQuery>,
             body: Bytes,
         ) -> Result<Response> {
             upload_to(ctx, caller, $entity, pid, &query.name, body).await

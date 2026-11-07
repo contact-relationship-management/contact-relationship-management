@@ -496,7 +496,9 @@ checksum = "39530ce057e79a039c11ee1da47eafbcb1a3e97f7fbc36b714584c8eee4ab41d"
 dependencies = [
  "async-trait",
  "axa-environment",
+ "axa-pagination",
  "axa-problem",
+ "axa-ratelimit",
  "axa-redis",
  "axa-seaorm",
  "axum",
@@ -523,6 +525,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aeb36293430bafb06d1e29f5e213623d127444cdd234003b413a46207c03bbd3"
 
 [[package]]
+name = "axa-pagination"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a173061148a2344af7610a69926bf41a1867ba2a35374f478b9bec0762effb63"
+dependencies = [
+ "axum",
+ "serde",
+]
+
+[[package]]
 name = "axa-problem"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -530,6 +542,17 @@ checksum = "cb39b7bacf93de6ee4fc19e1816be36cb9b43db4cb75d9f9cb85560130c01025"
 dependencies = [
  "axum",
  "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "axa-ratelimit"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be2c92a3894dfd967003ce5fb37cd9ec866ed524ea72239064fb00237b0c97f2"
+dependencies = [
+ "axa-problem",
+ "axum",
  "serde_json",
 ]
 

@@ -8,10 +8,10 @@
 //! before. Every accepted or ignored submission gets the same answer.
 
 use std::net::IpAddr;
-use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, Instant};
+use std::num::NonZeroU32;
 
 use axa::client::ClientAddr;
+use axa::extract::Path;
 use axa::prelude::*;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::IntoResponse;
@@ -29,7 +29,8 @@ use crate::models::_entities::{contacts, leads};
 use crate::models::audit_logs::Model as Audit;
 use crate::models::live::FindLive;
 use crate::models::records;
-use crate::rules::forms::{self as rules, Counter};
+use crate::rate_limit::Settable;
+use crate::rules::forms as rules;
 use crate::rules::public_text::{self, Text};
 use crate::rules::tokens;
 use crate::settings::{self, WebForm};
@@ -37,10 +38,10 @@ use crate::validation::Problems;
 
 /// How long a visitor has to confirm.
 const CONFIRM_DAYS: i64 = 7;
-/// The window the per-client limit counts over.
-const CLIENT_SPAN: Duration = Duration::from_mins(10);
-/// The window the per-form limit counts over.
-const FORM_SPAN: Duration = Duration::from_hours(1);
+/// Submissions per client per form, over ten minutes.
+static PER_CLIENT: Settable = Settable::new(NonZeroU32::new(600).unwrap());
+/// Submissions per form, over an hour.
+static PER_FORM: Settable = Settable::new(NonZeroU32::new(3600).unwrap());
 
 /// The routes, outside `/api`.
 pub fn routes() -> Routes {
@@ -62,11 +63,6 @@ pub(crate) struct FormPayload {
     /// request's `Accept-Language`, else English. Used for this request only and never stored.
     #[serde(default)]
     language: Option<String>,
-}
-
-fn counter() -> &'static Mutex<Counter> {
-    static COUNTER: OnceLock<Mutex<Counter>> = OnceLock::new();
-    COUNTER.get_or_init(|| Mutex::new(Counter::default()))
 }
 
 fn header_text<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
@@ -212,17 +208,8 @@ fn too_many(retry_after: u64, text: &Text) -> Response {
 fn within_limits(form: &WebForm, address: Option<IpAddr>) -> Result<(), u64> {
     let current = settings::current();
     let client = crate::rate_limit::client_key(None, address);
-    let now = Instant::now();
-    let mut counts = counter()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    counts.hit(
-        &format!("{}|{client}", form.slug),
-        current.web_form_client_limit,
-        CLIENT_SPAN,
-        now,
-    )?;
-    counts.hit(&form.slug, current.web_form_limit, FORM_SPAN, now)
+    PER_CLIENT.check(current.web_form_client_limit, (form.slug.as_str(), client))?;
+    PER_FORM.check(current.web_form_limit, form.slug.as_str())
 }
 
 /// `POST /forms/{slug}` — see the module documentation.

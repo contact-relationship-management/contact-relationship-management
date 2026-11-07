@@ -3,6 +3,7 @@
 //! recent event stream.
 
 use crate::controllers::PidPath;
+use axa::extract::Query;
 use axa::prelude::*;
 use serde::{Deserialize, Serialize};
 

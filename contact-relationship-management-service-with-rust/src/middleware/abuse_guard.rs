@@ -1,11 +1,7 @@
 //! Per-client request limit and failed-authentication lockout.
 
-use axa::Result;
-use axum::{
-    extract::Request,
-    middleware::Next,
-    response::{IntoResponse, Response},
-};
+use axa::ratelimit::Verdict;
+use axum::{extract::Request, middleware::Next, response::Response};
 use std::net::IpAddr;
 
 use crate::{auth, rate_limit, redis_store};
@@ -31,7 +27,7 @@ pub(crate) async fn abuse_guard_mw(
     if matches!(req.uri().path(), "/_health" | "/_ping" | "/_readiness") {
         return next.run(req).await;
     }
-    if guard.requests.disabled() && guard.failures.disabled() {
+    if guard.requests.is_none() && guard.failures.is_none() {
         return next.run(req).await;
     }
     let verified = auth::request_claims(req.headers()).await.ok();
@@ -39,31 +35,18 @@ pub(crate) async fn abuse_guard_mw(
         verified.as_ref().map(|claims| claims.sub.as_str()),
         req.extensions().get::<IpAddr>().copied(),
     );
-    let now = std::time::Instant::now();
-    let limit = u64::from(guard.requests.limit());
-    let refused = |retry_after_secs: u64| {
-        with_budget(
-            (
-                axum::http::StatusCode::TOO_MANY_REQUESTS,
-                [(
-                    axum::http::header::RETRY_AFTER,
-                    retry_after_secs.to_string(),
-                )],
-                "too many requests",
-            )
-                .into_response(),
-            (limit > 0).then_some((limit, 0, retry_after_secs)),
-        )
-    };
     if let Some(shared) = &shared {
         // Shared counters (CRM_REDIS_URL): one count across all replicas.
         // A Redis error falls through to the in-process counters below.
         match shared_verdict(&guard, shared, &key).await {
-            Ok(Err(retry_after_secs)) => return refused(retry_after_secs),
+            Ok(Err(refused)) => return refused.refusal(),
             Ok(Ok(budget)) => {
-                let response = with_budget(next.run(req).await, budget);
+                let mut response = next.run(req).await;
+                if let Some(budget) = budget {
+                    budget.stamp(&mut response);
+                }
                 if response.status() == axum::http::StatusCode::UNAUTHORIZED
-                    && !guard.failures.disabled()
+                    && guard.failures.is_some()
                     && let Err(error) = shared
                         .hit(&format!("crm:fail:{key}"), guard.failure_window_secs())
                         .await
@@ -75,63 +58,74 @@ pub(crate) async fn abuse_guard_mw(
             Err(error) => tracing::warn!(%error, "shared rate limit failed; using local counters"),
         }
     }
-    if let rate_limit::Decision::Limited { retry_after_secs } = guard.failures.blocked(&key, now) {
-        return refused(retry_after_secs);
-    }
-    if let rate_limit::Decision::Limited { retry_after_secs } = guard.requests.hit(&key, now) {
-        return refused(retry_after_secs);
-    }
-    let budget = guard
-        .requests
-        .budget(&key, now)
-        .map(|(limit, remaining, reset)| (u64::from(limit), u64::from(remaining), reset));
-    let response = with_budget(next.run(req).await, budget);
-    if response.status() == axum::http::StatusCode::UNAUTHORIZED {
-        let _ = guard.failures.hit(&key, now);
-    }
-    response
-}
-
-/// Tell the client its budget (`RateLimit-Limit`, `-Remaining`, `-Reset`; the
-/// IETF draft names). The GDS standard asks services to warn clients before
-/// they hit the limit.
-fn with_budget(mut response: Response, budget: Option<(u64, u64, u64)>) -> Response {
-    if let Some((limit, remaining, reset)) = budget {
-        let headers = response.headers_mut();
-        for (name, value) in [
-            ("ratelimit-limit", limit),
-            ("ratelimit-remaining", remaining),
-            ("ratelimit-reset", reset),
-        ] {
-            headers.insert(name, axum::http::HeaderValue::from(value));
+    // The lockout only looks; a `401` below is what counts against it.
+    if let Some(failures) = &guard.failures {
+        let verdict = failures.peek(&key);
+        if !verdict.allowed {
+            return verdict.refusal();
         }
     }
+    let budget = match &guard.requests {
+        Some(requests) => {
+            let verdict = requests.check(&key);
+            if !verdict.allowed {
+                return verdict.refusal();
+            }
+            Some(verdict)
+        }
+        None => None,
+    };
+    let mut response = next.run(req).await;
+    if let Some(budget) = budget {
+        // `RateLimit-Limit`, `-Remaining`, `-Reset` (the IETF draft names): the GDS standard
+        // asks services to warn clients before they hit the limit.
+        budget.stamp(&mut response);
+    }
+    if response.status() == axum::http::StatusCode::UNAUTHORIZED
+        && let Some(failures) = &guard.failures
+    {
+        let _ = failures.check(&key);
+    }
     response
 }
 
-/// A client's budget: `(limit, remaining, seconds until reset)`.
-type Budget = Option<(u64, u64, u64)>;
+/// A verdict from the shared counters, in axa's shape, so a refusal and a budget are answered
+/// the same whichever counted them.
+fn verdict(allowed: bool, limit: u32, remaining: u64, reset_seconds: u64) -> Verdict {
+    Verdict {
+        allowed,
+        limit,
+        remaining: u32::try_from(remaining).unwrap_or(u32::MAX),
+        reset_seconds,
+    }
+}
 
-/// The shared-counter decision: `Err(retry_after)` to refuse, otherwise the
-/// client's remaining budget.
+/// The shared-counter decision: `Err` with the refusal, otherwise the client's remaining
+/// budget, `None` when the request limit is off.
 async fn shared_verdict(
     guard: &rate_limit::Guard,
     shared: &redis_store::Shared,
     key: &str,
-) -> Result<std::result::Result<Budget, u64>, redis::RedisError> {
-    if !guard.failures.disabled() {
+) -> Result<std::result::Result<Option<Verdict>, Verdict>, redis::RedisError> {
+    if guard.failures.is_some() {
+        let limit = guard.failure_limit();
         let (failed, ttl) = shared.peek(&format!("crm:fail:{key}")).await?;
-        if failed >= u64::from(guard.failures.limit()) {
-            return Ok(Err(ttl));
+        if failed >= u64::from(limit) {
+            return Ok(Err(verdict(false, limit, 0, ttl)));
         }
     }
-    if !guard.requests.disabled() {
-        let limit = u64::from(guard.requests.limit());
+    if guard.requests.is_some() {
+        let limit = guard.requests_per_minute();
         let (count, ttl) = shared.hit(&format!("crm:req:{key}"), 60).await?;
-        if count > limit {
-            return Ok(Err(ttl));
+        if count > u64::from(limit) {
+            return Ok(Err(verdict(false, limit, 0, ttl)));
         }
-        return Ok(Ok(Some((limit, limit - count, ttl))));
+        return Ok(Ok(Some(verdict(
+            true,
+            limit,
+            u64::from(limit) - count,
+            ttl,
+        ))));
     }
     Ok(Ok(None))
 }

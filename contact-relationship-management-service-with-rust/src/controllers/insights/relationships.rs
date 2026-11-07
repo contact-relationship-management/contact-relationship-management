@@ -222,7 +222,7 @@ pub(super) async fn partnerships_register(
 /// within the window plus the lapsed list.
 #[debug_handler]
 pub(super) async fn memberships_view(
-    axum::extract::Query(query): axum::extract::Query<DaysQuery>,
+    axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {

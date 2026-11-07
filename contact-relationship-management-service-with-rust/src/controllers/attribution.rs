@@ -571,7 +571,7 @@ async fn convert_credit(
 async fn run(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    axum::extract::Query(query): axum::extract::Query<AttributionQuery>,
+    axa::extract::Query(query): axa::extract::Query<AttributionQuery>,
 ) -> Result<Response> {
     let Asked {
         model,

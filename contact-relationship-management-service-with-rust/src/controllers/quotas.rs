@@ -256,7 +256,7 @@ struct QuotaQuery {
 #[debug_handler]
 async fn list_quotas(
     State(ctx): State<AppContext>,
-    axum::extract::Query(query): axum::extract::Query<QuotaQuery>,
+    axa::extract::Query(query): axa::extract::Query<QuotaQuery>,
 ) -> Result<Response> {
     let rows = ctx
         .db
@@ -757,7 +757,7 @@ async fn remove_clawback(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    axum::extract::Query(mut query): axum::extract::Query<ClawbackQuery>,
+    axa::extract::Query(mut query): axa::extract::Query<ClawbackQuery>,
 ) -> Result<Response> {
     query.owner_ref = user_ref::normalise(&query.owner_ref);
     let txn = ctx.db.begin().await?;
@@ -970,7 +970,7 @@ async fn attainment(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     headers: axum::http::HeaderMap,
-    axum::extract::Query(query): axum::extract::Query<AttainmentQuery>,
+    axa::extract::Query(query): axa::extract::Query<AttainmentQuery>,
 ) -> Result<Response> {
     // Today in the caller's zone, else the organization's (CRM-T171), not UTC's.
     let at = match query.at {

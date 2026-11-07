@@ -8,6 +8,7 @@
 
 use std::collections::HashMap;
 
+use axa::extract::Query;
 use axa::prelude::*;
 use contact_relationship_management_matcher::Verdict;
 use sea_orm::{ActiveValue, ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};

@@ -101,7 +101,7 @@ pub(crate) struct Preview {
 pub(super) async fn preview_segment(
     State(ctx): State<AppContext>,
     PidPath(pid): PidPath,
-    axum::extract::Query(query): axum::extract::Query<PreviewQuery>,
+    axa::extract::Query(query): axa::extract::Query<PreviewQuery>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     problems.token_opt("purpose", tokens::PURPOSES, query.purpose.as_deref());

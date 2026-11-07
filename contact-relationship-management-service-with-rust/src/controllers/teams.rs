@@ -239,7 +239,7 @@ async fn team_attainment(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     headers: axum::http::HeaderMap,
-    axum::extract::Query(query): axum::extract::Query<TeamQuery>,
+    axa::extract::Query(query): axa::extract::Query<TeamQuery>,
 ) -> Result<Response> {
     let at = match query.at {
         Some(at) => at,

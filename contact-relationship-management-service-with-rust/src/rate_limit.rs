@@ -1,167 +1,63 @@
-//! Abuse resistance (CRM-T43): a fixed-window request limiter and a
-//! failed-authentication lockout, both in memory and per process.
+//! Abuse resistance (CRM-T43): a fixed-window request limit and a failed-authentication
+//! lockout, counted by `axa::ratelimit::Limiter` in each process (CRM-T219), or in Redis when
+//! `CRM_REDIS_URL` is set ([`crate::redis_store`]).
 //!
-//! The counters are DB-free and take the clock as an argument so the rules
-//! are unit-pinned. Limits: state is per process (run N replicas and each
-//! counts alone, so enforce a global limit at the ingress as well), and the
-//! client key is only as trustworthy as its source (see [`client_key`]).
+//! What stays here is the service's own: the settings, and [`client_key`], which counts a
+//! signed-in caller by its verified subject rather than by address (CRM-T217). axa's
+//! `by_client` and `lock_out_failures` count by address only, so the middleware calls
+//! [`Limiter::check`] and [`Limiter::peek`] with this key instead.
 
-use std::collections::HashMap;
 use std::net::{IpAddr, Ipv6Addr};
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::num::NonZeroU32;
 
-/// The verdict for one request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Decision {
-    /// Proceed.
-    Allowed,
-    /// Refuse with `429`; retry after this many seconds.
-    Limited {
-        /// Seconds until the window resets.
-        retry_after_secs: u64,
-    },
-}
+use axa::ratelimit::Limiter;
 
-/// A fixed-window counter keyed by client.
-#[derive(Debug)]
-pub struct Window {
-    limit: u32,
-    span: Duration,
-    state: Mutex<HashMap<String, (Instant, u32)>>,
-}
-
-/// Entries kept before stale ones are pruned.
-const PRUNE_AT: usize = 10_000;
-
-impl Window {
-    /// A counter allowing `limit` events per `span`; a `limit` of 0 disables it.
-    #[must_use]
-    pub fn new(limit: u32, span: Duration) -> Self {
-        Self {
-            limit,
-            span,
-            state: Mutex::new(HashMap::new()),
-        }
-    }
-
-    /// The events allowed per window.
-    #[must_use]
-    pub fn limit(&self) -> u32 {
-        self.limit
-    }
-
-    /// Whether this counter is switched off.
-    #[must_use]
-    pub fn disabled(&self) -> bool {
-        self.limit == 0
-    }
-
-    fn remaining(&self, start: Instant, now: Instant) -> u64 {
-        self.span
-            .saturating_sub(now.saturating_duration_since(start))
-            .as_secs()
-            .max(1)
-    }
-
-    /// Count one event for `key` and decide.
-    #[must_use]
-    pub fn hit(&self, key: &str, now: Instant) -> Decision {
-        if self.disabled() {
-            return Decision::Allowed;
-        }
-        let mut state = self
-            .state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if state.len() >= PRUNE_AT {
-            state.retain(|_, (start, _)| now.saturating_duration_since(*start) < self.span);
-        }
-        let entry = state.entry(key.to_string()).or_insert((now, 0));
-        if now.saturating_duration_since(entry.0) >= self.span {
-            *entry = (now, 0);
-        }
-        entry.1 = entry.1.saturating_add(1);
-        if entry.1 > self.limit {
-            Decision::Limited {
-                retry_after_secs: self.remaining(entry.0, now),
-            }
-        } else {
-            Decision::Allowed
-        }
-    }
-
-    /// What is left for `key` in the current window: `(limit, remaining,
-    /// seconds until reset)`, or `None` when the counter is off. Counts nothing.
-    #[must_use]
-    pub fn budget(&self, key: &str, now: Instant) -> Option<(u32, u32, u64)> {
-        if self.disabled() {
-            return None;
-        }
-        let state = self
-            .state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        Some(match state.get(key) {
-            Some((start, count)) if now.saturating_duration_since(*start) < self.span => (
-                self.limit,
-                self.limit.saturating_sub(*count),
-                self.remaining(*start, now),
-            ),
-            _ => (self.limit, self.limit, self.span.as_secs()),
-        })
-    }
-
-    /// Whether `key` is already over the limit, without counting an event.
-    #[must_use]
-    pub fn blocked(&self, key: &str, now: Instant) -> Decision {
-        if self.disabled() {
-            return Decision::Allowed;
-        }
-        let state = self
-            .state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        match state.get(key) {
-            Some((start, count))
-                if *count >= self.limit && now.saturating_duration_since(*start) < self.span =>
-            {
-                Decision::Limited {
-                    retry_after_secs: self.remaining(*start, now),
-                }
-            }
-            _ => Decision::Allowed,
-        }
-    }
-}
-
-/// The two counters the middleware uses.
-#[derive(Debug)]
+/// The two limits the middleware uses, and the numbers the shared counters need.
+#[derive(Debug, Clone)]
 pub struct Guard {
-    /// Requests per client per window.
-    pub requests: Window,
-    /// Failed authentications per client per window; at the limit the client
-    /// is locked out until the window ends.
-    pub failures: Window,
+    /// Requests per client per minute; `None` when switched off.
+    pub requests: Option<Limiter>,
+    /// Failed authentications per client per window; at the limit the client is locked out
+    /// until the window ends. `None` when switched off.
+    pub failures: Option<Limiter>,
+    requests_per_minute: u32,
+    failure_limit: u32,
+    failure_window_secs: u64,
 }
 
 impl Guard {
-    /// Build from explicit limits (0 disables a counter).
+    /// Build from explicit limits (0 switches a limit off).
     #[must_use]
     pub fn new(requests_per_minute: u32, failure_limit: u32, failure_window_secs: u64) -> Self {
+        let failure_window_secs = failure_window_secs.max(1);
+        let window = NonZeroU32::new(u32::try_from(failure_window_secs).unwrap_or(u32::MAX))
+            .unwrap_or(NonZeroU32::MIN);
         Self {
-            requests: Window::new(requests_per_minute, Duration::from_mins(1)),
-            failures: Window::new(
-                failure_limit,
-                Duration::from_secs(failure_window_secs.max(1)),
-            ),
+            requests: NonZeroU32::new(requests_per_minute)
+                .map(|limit| Limiter::new(limit, NonZeroU32::new(60).unwrap_or(NonZeroU32::MIN))),
+            failures: NonZeroU32::new(failure_limit).map(|limit| Limiter::new(limit, window)),
+            requests_per_minute,
+            failure_limit,
+            failure_window_secs,
         }
+    }
+
+    /// Requests allowed per minute, `0` when off.
+    #[must_use]
+    pub fn requests_per_minute(&self) -> u32 {
+        self.requests_per_minute
+    }
+
+    /// Failed authentications allowed per window, `0` when off.
+    #[must_use]
+    pub fn failure_limit(&self) -> u32 {
+        self.failure_limit
     }
 
     /// Seconds in the failed-authentication window.
     #[must_use]
     pub fn failure_window_secs(&self) -> u64 {
-        self.failures.span.as_secs()
+        self.failure_window_secs
     }
 
     /// Defaults: on in production (600 requests a minute, lockout after 10
@@ -182,6 +78,58 @@ impl Guard {
             u32::try_from(number("CRM_AUTH_FAIL_LIMIT", 10 * on)).unwrap_or(u32::MAX),
             number("CRM_AUTH_FAIL_WINDOW_SECS", 300),
         )
+    }
+}
+
+/// A limit whose number is a setting that can change while the service runs (the web forms'
+/// and the public knowledge base's, CRM-R31). An axa [`Limiter`] has a fixed number, so a new
+/// one is made when the setting changes, and the counts start again then.
+#[derive(Debug)]
+pub struct Settable {
+    window_seconds: NonZeroU32,
+    current: std::sync::Mutex<Option<(u32, Limiter)>>,
+}
+
+impl Settable {
+    /// A limit counted over `window_seconds`.
+    #[must_use]
+    pub const fn new(window_seconds: NonZeroU32) -> Self {
+        Self {
+            window_seconds,
+            current: std::sync::Mutex::new(None),
+        }
+    }
+
+    /// Count one request by `key` against `limit`, where `0` is off.
+    ///
+    /// # Errors
+    ///
+    /// The seconds to wait, at least 1, when `key` is already at `limit`. A refused request
+    /// is not counted.
+    pub fn check(&self, limit: u32, key: impl std::hash::Hash) -> Result<(), u64> {
+        let Some(number) = NonZeroU32::new(limit) else {
+            return Ok(());
+        };
+        let limiter = {
+            let mut current = self
+                .current
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            match &*current {
+                Some((held, limiter)) if *held == limit => limiter.clone(),
+                _ => {
+                    let limiter = Limiter::new(number, self.window_seconds);
+                    *current = Some((limit, limiter.clone()));
+                    limiter
+                }
+            }
+        };
+        let verdict = limiter.check(key);
+        if verdict.allowed {
+            Ok(())
+        } else {
+            Err(verdict.reset_seconds.max(1))
+        }
     }
 }
 
@@ -215,89 +163,6 @@ pub fn client_key(subject: Option<&str>, address: Option<IpAddr>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn at(base: Instant, secs: u64) -> Instant {
-        base + Duration::from_secs(secs)
-    }
-
-    #[test]
-    fn allows_up_to_the_limit_then_limits_with_retry_after() {
-        let w = Window::new(3, Duration::from_mins(1));
-        let t0 = Instant::now();
-        for _ in 0..3 {
-            assert_eq!(w.hit("a", t0), Decision::Allowed);
-        }
-        assert_eq!(
-            w.hit("a", at(t0, 10)),
-            Decision::Limited {
-                retry_after_secs: 50
-            }
-        );
-    }
-
-    #[test]
-    fn window_resets_after_the_span() {
-        let w = Window::new(1, Duration::from_mins(1));
-        let t0 = Instant::now();
-        assert_eq!(w.hit("a", t0), Decision::Allowed);
-        assert!(matches!(w.hit("a", at(t0, 1)), Decision::Limited { .. }));
-        assert_eq!(w.hit("a", at(t0, 60)), Decision::Allowed);
-    }
-
-    #[test]
-    fn clients_are_counted_separately() {
-        let w = Window::new(1, Duration::from_mins(1));
-        let t0 = Instant::now();
-        assert_eq!(w.hit("a", t0), Decision::Allowed);
-        assert_eq!(w.hit("b", t0), Decision::Allowed);
-    }
-
-    #[test]
-    fn budget_counts_down_and_resets() {
-        let base = Instant::now();
-        let w = Window::new(3, Duration::from_secs(60));
-        assert_eq!(w.budget("k", base), Some((3, 3, 60)));
-        let _ = w.hit("k", base);
-        let _ = w.hit("k", at(base, 10));
-        assert_eq!(w.budget("k", at(base, 20)), Some((3, 1, 40)));
-        assert_eq!(w.budget("k", at(base, 61)), Some((3, 3, 60)));
-        assert_eq!(
-            Window::new(0, Duration::from_secs(60)).budget("k", base),
-            None
-        );
-    }
-
-    #[test]
-    fn zero_limit_disables() {
-        let w = Window::new(0, Duration::from_mins(1));
-        let t0 = Instant::now();
-        for _ in 0..100 {
-            assert_eq!(w.hit("a", t0), Decision::Allowed);
-        }
-        assert_eq!(w.blocked("a", t0), Decision::Allowed);
-    }
-
-    #[test]
-    fn lockout_blocks_at_the_limit_without_counting() {
-        let w = Window::new(2, Duration::from_mins(5));
-        let t0 = Instant::now();
-        assert_eq!(w.blocked("a", t0), Decision::Allowed);
-        let _ = w.hit("a", t0);
-        assert_eq!(w.blocked("a", t0), Decision::Allowed);
-        let _ = w.hit("a", t0);
-        assert_eq!(
-            w.blocked("a", t0),
-            Decision::Limited {
-                retry_after_secs: 300
-            }
-        );
-        // `blocked` does not count: still locked, then released after the window.
-        assert!(matches!(
-            w.blocked("a", at(t0, 100)),
-            Decision::Limited { .. }
-        ));
-        assert_eq!(w.blocked("a", at(t0, 300)), Decision::Allowed);
-    }
 
     fn address(text: &str) -> IpAddr {
         text.parse().unwrap()
@@ -344,8 +209,24 @@ mod tests {
     }
 
     #[test]
+    fn a_settable_limit_counts_per_key_and_starts_again_when_the_setting_changes() {
+        let limit = Settable::new(NonZeroU32::new(600).unwrap());
+        for _ in 0..3 {
+            assert!(limit.check(3, "a").is_ok());
+        }
+        let wait = limit.check(3, "a").unwrap_err();
+        assert!((599..=600).contains(&wait), "{wait}");
+        assert!(limit.check(3, "b").is_ok(), "another key");
+        assert!(
+            limit.check(4, "a").is_ok(),
+            "a new setting starts the count again"
+        );
+        assert!(limit.check(0, "a").is_ok(), "zero is off");
+    }
+
+    #[test]
     fn production_defaults_on_elsewhere_off() {
-        assert!(!Guard::from_env(true).requests.disabled());
-        assert!(Guard::from_env(false).requests.disabled());
+        assert!(Guard::from_env(true).requests.is_some());
+        assert!(Guard::from_env(false).requests.is_none());
     }
 }

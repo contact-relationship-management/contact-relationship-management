@@ -5,6 +5,7 @@
 use crate::controllers::PidPath;
 use crate::json::Json;
 use crate::models::live::FindLive;
+use axa::extract::Query;
 use axa::prelude::*;
 use sea_orm::DatabaseTransaction;
 use sea_orm::{PaginatorTrait, QueryOrder, QuerySelect, TransactionTrait};
@@ -963,7 +964,7 @@ async fn reopen_deal(
 async fn forecast(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    axum::extract::Query(query): axum::extract::Query<ForecastQuery>,
+    axa::extract::Query(query): axa::extract::Query<ForecastQuery>,
 ) -> Result<Response> {
     let mut problems = Problems::new();
     if let Some(target) = &query.convert_to {

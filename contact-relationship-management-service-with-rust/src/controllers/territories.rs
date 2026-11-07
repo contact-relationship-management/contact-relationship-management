@@ -277,7 +277,7 @@ async fn territory_attainment(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     headers: axum::http::HeaderMap,
-    axum::extract::Query(query): axum::extract::Query<TerritoryQuery>,
+    axa::extract::Query(query): axa::extract::Query<TerritoryQuery>,
 ) -> Result<Response> {
     let to = match query.to {
         Some(to) => to,

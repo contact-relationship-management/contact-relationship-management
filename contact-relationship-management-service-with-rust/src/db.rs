@@ -18,12 +18,6 @@ pub fn pool(ctx: &AppContext) -> &PgPool {
     ctx.db.get_postgres_connection_pool()
 }
 
-/// A count or an offset as Postgres binds it. Past `i64::MAX` it saturates, which no table reaches.
-#[must_use]
-pub fn bound(value: u64) -> i64 {
-    i64::try_from(value).unwrap_or(i64::MAX)
-}
-
 /// A `sqlx` connection that `SeaORM` code can run on, so a moved handler can call a helper that
 /// has not moved, inside its own transaction. It goes when the last helper has moved.
 ///
@@ -105,7 +99,6 @@ impl ConnectionTrait for Bridge<'_> {
 mod tests {
     use std::path::{Path, PathBuf};
 
-    use super::bound;
     use crate::rules::privacy::SOFT_DELETED_TABLES;
 
     /// Who may write a sealed column in SQL, and why. A write here must bind `EncryptedText`, or
@@ -224,12 +217,5 @@ mod tests {
         writers.sort();
         let listed: Vec<&str> = SEALED_WRITERS.iter().map(|(path, _)| *path).collect();
         assert_eq!(writers, listed);
-    }
-
-    #[test]
-    fn a_bound_saturates() {
-        assert_eq!(bound(0), 0);
-        assert_eq!(bound(i64::MAX as u64), i64::MAX);
-        assert_eq!(bound(u64::MAX), i64::MAX);
     }
 }

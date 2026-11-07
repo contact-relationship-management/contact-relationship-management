@@ -4,6 +4,7 @@
 //! when it is read, with the caller's own token, and left out if the caller may not read the
 //! record it is about.
 
+use axa::extract::Query;
 use axa::prelude::*;
 use axum::http::{StatusCode, Uri};
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};

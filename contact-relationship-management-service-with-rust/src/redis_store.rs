@@ -192,4 +192,69 @@ mod tests {
             .unwrap();
         assert!(!shared.grants().await.unwrap().contains_key(&expired));
     }
+
+    /// The abuse guard's shared path, in Redis (CRM-T219): the budget headers, the `429` once the
+    /// limit is spent, and a lockout after the allowed `401`s, all in axa's shape. Named for the
+    /// `redis_store` filter `test-db` runs against Redis.
+    #[tokio::test]
+    #[ignore = "requires Redis on CRM_REDIS_URL"]
+    async fn the_abuse_guard_counts_in_redis() {
+        use axum::{Router, body::Body, http::Request, http::StatusCode, routing::get};
+        use tower::ServiceExt;
+
+        let Some(shared) = Shared::from_env().await.unwrap() else {
+            eprintln!("CRM_REDIS_URL unset; skipping");
+            return;
+        };
+        let app = |guard: crate::rate_limit::Guard| {
+            Router::new()
+                .route("/api/x", get(|| async { "ok" }))
+                .route("/api/denied", get(|| async { StatusCode::UNAUTHORIZED }))
+                .layer(axum::middleware::from_fn_with_state(
+                    (std::sync::Arc::new(guard), Some(shared.clone())),
+                    crate::middleware::abuse_guard::abuse_guard_mw,
+                ))
+        };
+        // A fresh address per run, so the counts are this test's own.
+        let address = || {
+            let [a, b, ..] = uuid::Uuid::new_v4().into_bytes();
+            std::net::IpAddr::from([10, a, b, 7])
+        };
+        let call = |app: &Router, path: &str, from: std::net::IpAddr| {
+            let mut request = Request::get(path).body(Body::empty()).unwrap();
+            request.extensions_mut().insert(from);
+            app.clone().oneshot(request)
+        };
+
+        let limited = app(crate::rate_limit::Guard::new(2, 0, 60));
+        let from = address();
+        let first = call(&limited, "/api/x", from).await.unwrap();
+        assert_eq!(first.status(), StatusCode::OK);
+        assert_eq!(first.headers()["ratelimit-limit"], "2");
+        assert_eq!(first.headers()["ratelimit-remaining"], "1");
+        assert_eq!(
+            call(&limited, "/api/x", from).await.unwrap().status(),
+            StatusCode::OK
+        );
+        let refused = call(&limited, "/api/x", from).await.unwrap();
+        assert_eq!(refused.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert!(refused.headers().contains_key("retry-after"));
+        assert_eq!(refused.headers()["ratelimit-remaining"], "0");
+        let other = call(&limited, "/api/x", address()).await.unwrap();
+        assert_eq!(
+            other.status(),
+            StatusCode::OK,
+            "another client has its own count"
+        );
+
+        let locking = app(crate::rate_limit::Guard::new(0, 2, 60));
+        let from = address();
+        for _ in 0..2 {
+            let denied = call(&locking, "/api/denied", from).await.unwrap();
+            assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+        }
+        let locked = call(&locking, "/api/x", from).await.unwrap();
+        assert_eq!(locked.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert!(locked.headers().contains_key("retry-after"));
+    }
 }

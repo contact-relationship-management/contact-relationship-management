@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa's extractors, rate limiter and paging helpers (CRM-T219, 2026-11-07)
+
+- A refused URL value, query parameter or request body no longer quotes what the caller sent;
+  a body's refusal still names the member. Rate limits answer with axa's `429`. Lists keep their
+  cursor and `Link` paging.
+
 ### Changed — axa 0.6.1 (CRM-T218, 2026-11-07)
 
 - Every error now also carries `code`, the member axa uses, next to `error` and `description`,

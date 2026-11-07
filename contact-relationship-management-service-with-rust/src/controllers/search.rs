@@ -1,5 +1,6 @@
 //! `GET /api/search?q=` (CRM-R33): names and titles across the main records.
 
+use axa::extract::Query;
 use axa::prelude::*;
 use axum::http::Uri;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};

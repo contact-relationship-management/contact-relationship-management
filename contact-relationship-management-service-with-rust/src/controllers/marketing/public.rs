@@ -6,7 +6,7 @@ use super::{
     deliveries, format, records, tokens,
 };
 
-use axum::extract::Query;
+use axa::extract::Query;
 
 use crate::rules::public_text::{self, Text};
 
@@ -398,7 +398,7 @@ pub(super) fn callback_authentic(
 #[debug_handler]
 pub(super) async fn provider_webhook(
     State(ctx): State<AppContext>,
-    axum::extract::Path(provider): axum::extract::Path<String>,
+    axa::extract::Path(provider): axa::extract::Path<String>,
     headers: axum::http::HeaderMap,
     body: axum::body::Bytes,
 ) -> Result<Response> {

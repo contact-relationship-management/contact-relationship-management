@@ -9,6 +9,7 @@ use crate::rules::user_ref;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
+use axa::extract::Query;
 use axa::prelude::*;
 use contact_relationship_management_matcher::{Contact as MatchContact, Matcher, Ranked, Verdict};
 use sea_orm::{QueryOrder, QuerySelect, TransactionTrait};

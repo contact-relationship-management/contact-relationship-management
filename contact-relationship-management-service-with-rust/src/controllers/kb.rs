@@ -8,8 +8,7 @@
 //! `GET /api/insights/kb-deflection` reads the counts beside the tickets raised.
 
 use std::net::IpAddr;
-use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, Instant};
+use std::num::NonZeroU32;
 
 use axa::client::ClientAddr;
 use axa::prelude::*;
@@ -29,13 +28,13 @@ use crate::json::Json;
 use crate::models::_entities::articles;
 use crate::models::audit_logs::Model as Audit;
 use crate::models::live::FindLive;
+use crate::rate_limit::Settable;
 use crate::rules::analytics::{self, Ratio};
-use crate::rules::forms::Counter;
 use crate::settings;
 use crate::validation::Problems;
 
-/// The window the per-client limit counts over.
-const CLIENT_SPAN: Duration = Duration::from_mins(1);
+/// Requests per client, over a minute.
+static PER_CLIENT: Settable = Settable::new(NonZeroU32::new(60).unwrap());
 /// Most articles one search returns.
 const MAX_LISTED: u64 = 50;
 /// How much of an article a search result shows.
@@ -44,11 +43,6 @@ const SNIPPET_CHARS: usize = 200;
 const MAX_DAYS: i64 = 365;
 /// The id the portal's own counts (searches) are kept under.
 const PORTAL: Uuid = Uuid::nil();
-
-fn counter() -> &'static Mutex<Counter> {
-    static COUNTER: OnceLock<Mutex<Counter>> = OnceLock::new();
-    COUNTER.get_or_init(|| Mutex::new(Counter::default()))
-}
 
 fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
@@ -62,15 +56,7 @@ fn admit(address: Option<IpAddr>) -> Option<Response> {
         return Some(StatusCode::NOT_FOUND.into_response());
     }
     let client = crate::rate_limit::client_key(None, address);
-    let hit = counter()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .hit(
-            &format!("kb|{client}"),
-            current.public_kb_client_limit,
-            CLIENT_SPAN,
-            Instant::now(),
-        );
+    let hit = PER_CLIENT.check(current.public_kb_client_limit, client);
     hit.err().map(|wait| {
         (
             StatusCode::TOO_MANY_REQUESTS,
@@ -187,7 +173,7 @@ fn snippet(body: &str) -> String {
 async fn search(
     State(ctx): State<AppContext>,
     ClientAddr(address): ClientAddr,
-    axum::extract::Query(query): axum::extract::Query<SearchQuery>,
+    axa::extract::Query(query): axa::extract::Query<SearchQuery>,
 ) -> Result<Response> {
     if let Some(refused) = admit(address) {
         return Ok(refused);
@@ -195,14 +181,8 @@ async fn search(
     let mut found = articles::Entity::find_live().filter(articles::Column::Status.eq("published"));
     let asked = query.q.as_deref().map(str::trim).filter(|q| !q.is_empty());
     if let Some(q) = asked {
-        let escaped = q
-            .chars()
-            .take(100)
-            .collect::<String>()
-            .to_lowercase()
-            .replace('\\', "\\\\")
-            .replace('%', "\\%")
-            .replace('_', "\\_");
+        let escaped =
+            axa::pagination::escape_like(&q.chars().take(100).collect::<String>().to_lowercase());
         found = found.filter(sea_orm::sea_query::Expr::cust_with_values(
             "(lower(title) LIKE $1 OR lower(coalesce(keywords, '')) LIKE $1 OR lower(body) LIKE $1)",
             [format!("%{escaped}%")],
@@ -354,7 +334,7 @@ struct DeflectionQuery {
 async fn deflection(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    axum::extract::Query(query): axum::extract::Query<DeflectionQuery>,
+    axa::extract::Query(query): axa::extract::Query<DeflectionQuery>,
 ) -> Result<Response> {
     let days = query.days.unwrap_or(30);
     if !(1..=MAX_DAYS).contains(&days) {

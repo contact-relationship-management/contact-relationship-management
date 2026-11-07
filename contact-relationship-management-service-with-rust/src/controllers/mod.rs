@@ -2,6 +2,7 @@
 //! the shared error helpers.
 
 use axa::error::ErrorDetail;
+use axa::extract::Path;
 use axa::prelude::*;
 use axum::http::StatusCode;
 
@@ -187,5 +188,51 @@ mod tests {
                 .await
                 .assert_status_not_found();
         }
+    }
+
+    /// Every `Path` and `Query` a handler takes is axa's, whose refusal says what was wrong
+    /// and quotes nothing the caller sent (CRM-T219). `axa::prelude` still exports axum's, so
+    /// a file that uses one without importing axa's would quietly get axum's refusal again.
+    #[test]
+    fn every_path_and_query_extractor_is_axa_s() {
+        let mut found = Vec::new();
+        let mut pending = vec![std::path::PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src"
+        ))];
+        while let Some(dir) = pending.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    pending.push(path);
+                    continue;
+                }
+                let text = std::fs::read_to_string(&path).unwrap();
+                if text.contains(concat!("axum::extract::", "Query"))
+                    || text.contains(concat!("axum::extract::", "Path<"))
+                {
+                    found.push(format!("{}: names axum's extractor", path.display()));
+                }
+                if !text.contains("axa::prelude::*") {
+                    continue;
+                }
+                for name in ["Path", "Query"] {
+                    let used = [format!("{name}<"), format!("{name}(")].iter().any(|form| {
+                        text.match_indices(form.as_str()).any(|(at, _)| {
+                            !text[..at]
+                                .ends_with(|c: char| c == ':' || c.is_alphanumeric() || c == '_')
+                        })
+                    });
+                    let imported = text
+                        .lines()
+                        .any(|line| line.starts_with("use axa::extract::") && line.contains(name));
+                    let other = text.contains("std::path::");
+                    if used && !imported && !other {
+                        found.push(format!("{}: {name} without axa::extract", path.display()));
+                    }
+                }
+            }
+        }
+        assert!(found.is_empty(), "{found:#?}");
     }
 }

@@ -187,7 +187,7 @@ fn problems_of(found: Vec<(String, String)>) -> Result<()> {
 #[debug_handler]
 async fn list(
     State(ctx): State<AppContext>,
-    axum::extract::Query(query): axum::extract::Query<BTreeMap<String, String>>,
+    axa::extract::Query(query): axa::extract::Query<BTreeMap<String, String>>,
 ) -> Result<Response> {
     let defs = defs_of(&ctx.db, query.get("entity").map(String::as_str)).await?;
     format::json(defs.iter().map(Def::view).collect::<Vec<_>>())

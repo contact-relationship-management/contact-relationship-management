@@ -95,12 +95,13 @@ impl Page {
         (self.limit + 1, self.offset)
     }
 
-    /// [`Page::window`] as `sqlx` binds it. A cursor is a client's text and can name any `u64`,
-    /// which saturates (CRM-D24): an offset past the end is an empty page, not a failed query.
+    /// [`Page::window`] as `sqlx` binds it, through `axa::pagination` (CRM-T219). A cursor is a
+    /// client's text and can name any `u64`, which saturates (CRM-D24): an offset past the end is
+    /// an empty page, not a failed query.
     #[must_use]
     pub fn bounds(&self) -> (i64, i64) {
         let (limit, offset) = self.window();
-        (crate::db::bound(limit), crate::db::bound(offset))
+        axa::pagination::Page { limit, offset }.bounds()
     }
 
     /// Drop the probe row; the flag says whether more rows follow.

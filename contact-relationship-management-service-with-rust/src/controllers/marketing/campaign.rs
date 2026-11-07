@@ -706,7 +706,7 @@ pub(super) async fn campaign_funnel(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    axum::extract::Query(query): axum::extract::Query<FunnelQuery>,
+    axa::extract::Query(query): axa::extract::Query<FunnelQuery>,
 ) -> Result<Response> {
     let convert = query.convert.unwrap_or(false);
     let mut problems = Problems::new();

@@ -138,7 +138,7 @@ pub(crate) struct MembersView {
 #[debug_handler]
 #[allow(clippy::too_many_lines)] // one pass over contacts + accounts
 pub(super) async fn cadence(
-    axum::extract::Query(query): axum::extract::Query<DaysQuery>,
+    axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
@@ -246,7 +246,7 @@ pub(super) async fn cadence(
 /// sentiment is counted as unrecorded, never guessed).
 #[debug_handler]
 pub(super) async fn engagement(
-    axum::extract::Query(query): axum::extract::Query<DaysQuery>,
+    axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
@@ -294,7 +294,7 @@ pub(super) async fn engagement(
 /// stage. Ratios carry numerator and denominator.
 #[debug_handler]
 pub(super) async fn funnel(
-    axum::extract::Query(query): axum::extract::Query<FunnelQuery>,
+    axa::extract::Query(query): axa::extract::Query<FunnelQuery>,
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
@@ -392,7 +392,7 @@ pub(super) struct FunnelQuery {
 #[debug_handler]
 #[allow(clippy::too_many_lines)] // one pass over the account estate
 pub(super) async fn members(
-    axum::extract::Query(query): axum::extract::Query<DaysQuery>,
+    axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {

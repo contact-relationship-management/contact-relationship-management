@@ -6,6 +6,7 @@ use crate::controllers::PidPath;
 use crate::models::live::FindLive;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
+use axa::extract::Query;
 use axa::prelude::*;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::IntoResponse;
@@ -520,7 +521,7 @@ async fn account_clv(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    axum::extract::Query(query): axum::extract::Query<ClvQuery>,
+    axa::extract::Query(query): axa::extract::Query<ClvQuery>,
 ) -> Result<Response> {
     check_clv_query(&query)?;
     // CLV is money: a masked collection read gets the count of won deals, not the figures.

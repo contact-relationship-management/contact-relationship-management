@@ -166,7 +166,7 @@ pub(crate) struct ForecastTrends {
 /// (never moved) — the derivation is served.
 #[debug_handler]
 pub(super) async fn stale_deals(
-    axum::extract::Query(query): axum::extract::Query<DaysQuery>,
+    axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     headers: HeaderMap,
@@ -257,7 +257,7 @@ pub(super) struct FollowupsQuery {
 /// recorder — said, not assumed to be an assignee).
 #[debug_handler]
 pub(super) async fn followups(
-    axum::extract::Query(query): axum::extract::Query<FollowupsQuery>,
+    axa::extract::Query(query): axa::extract::Query<FollowupsQuery>,
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
@@ -321,7 +321,7 @@ pub(super) async fn followups(
 /// what each rule matched.
 #[debug_handler]
 pub(super) async fn pipeline_hygiene(
-    axum::extract::Query(query): axum::extract::Query<DaysQuery>,
+    axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
@@ -428,7 +428,7 @@ pub(super) async fn pipeline_hygiene(
 #[debug_handler]
 #[allow(clippy::too_many_lines)] // one pass over the period's facts
 pub(super) async fn executive(
-    axum::extract::Query(query): axum::extract::Query<WindowQuery>,
+    axa::extract::Query(query): axa::extract::Query<WindowQuery>,
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     headers: HeaderMap,
