@@ -48,6 +48,7 @@ pub mod consent_profiles;
 pub mod consents;
 pub mod controllers;
 pub mod crypto;
+pub mod db;
 pub mod hardening;
 pub mod idempotency;
 pub mod idempotency_store;

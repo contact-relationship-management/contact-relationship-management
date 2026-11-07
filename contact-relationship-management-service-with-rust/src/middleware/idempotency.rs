@@ -18,7 +18,7 @@ fn idempotency_problem(status: axum::http::StatusCode, message: &str) -> Respons
 }
 
 /// The store failed: refuse rather than run the request unprotected.
-fn idempotency_unavailable(error: &sea_orm::DbErr) -> Response {
+fn idempotency_unavailable(error: &sqlx::Error) -> Response {
     tracing::error!(%error, "idempotency store failed");
     idempotency_problem(
         axum::http::StatusCode::SERVICE_UNAVAILABLE,
@@ -77,7 +77,7 @@ fn answer_for_existing(existing: Option<&Stored>, fingerprint: &str) -> Response
 /// scoped to the caller. Fails closed: a caller who asked for idempotency
 /// never gets an unprotected execution because the store was unavailable.
 pub(crate) async fn idempotency_mw(
-    axum::extract::State(db): axum::extract::State<sea_orm::DatabaseConnection>,
+    axum::extract::State(db): axum::extract::State<sqlx::PgPool>,
     req: Request,
     next: Next,
 ) -> Response {

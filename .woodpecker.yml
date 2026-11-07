@@ -41,6 +41,7 @@ steps:
       REDIS_HOST: redis
     commands:
       - apt-get update && apt-get install -y --no-install-recommends postgresql-client
+      - cargo install sqlx-cli --version 0.9.0 --locked --no-default-features --features postgres,rustls,sqlx-toml
       - scripts/ci-check.sh test-db
 
   - name: front-end

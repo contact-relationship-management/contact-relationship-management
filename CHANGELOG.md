@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — sqlx begins (CRM-T203, 2026-11-06)
+
+- The first queries move from SeaORM to `sqlx::query!`, checked against a committed `.sqlx/`
+  (CRM-D24). A client sees no change. `test-db` now needs `sqlx-cli` 0.9.0.
+
 ### Changed — axa 0.5 (CRM-T201, 2026-11-06)
 
 - `db down`, `db reset` and `db truncate` are refused in production, and elsewhere need

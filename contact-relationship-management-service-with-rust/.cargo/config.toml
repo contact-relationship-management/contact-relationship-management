@@ -1,0 +1,4 @@
+# `sqlx::query!` checks each query against `.sqlx/`, so a build needs no database. `cargo sqlx prepare` overrides this and
+# regenerates the cache from a migrated database; `scripts/ci-check.sh test-db` fails if the two have drifted (CRM-D24).
+[env]
+SQLX_OFFLINE = "true"

@@ -40,6 +40,7 @@ EXCEPTIONS = {
     r"^apt-get update && apt-get install -y --no-install-recommends \S+$": "a system package",
     r"^npm install --global pnpm@\S+$": "pnpm, which Node no longer ships",
     r"^cargo install --locked [\w -]+$": "a cargo tool the image lacks",
+    r"^cargo install sqlx-cli --version \S+ --locked --no-default-features --features [\w,-]+$": "the query-cache check's tool, at a pinned version",
     r"^curl -fsSL https://deb\.nodesource\.com/setup_\d+\.x \| bash - && apt-get install -y nodejs$": "Node in a Rust image",
 }
 

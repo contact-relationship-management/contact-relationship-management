@@ -374,7 +374,7 @@ impl App {
             .ok_or_else(|| Error::string("the cache was not connected"))?;
         let api = router
             .layer(axum::middleware::from_fn_with_state(
-                ctx.db.clone(),
+                crate::db::pool(ctx).clone(),
                 middleware::idempotency::idempotency_mw,
             ))
             .layer(axum::middleware::from_fn_with_state(

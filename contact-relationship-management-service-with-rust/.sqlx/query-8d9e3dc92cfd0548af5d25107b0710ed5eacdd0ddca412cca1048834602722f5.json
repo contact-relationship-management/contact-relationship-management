@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE idempotency_keys SET state = 'done', status = $3, content_type = $4,\n         body = $5 WHERE scope = $1 AND key = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8d9e3dc92cfd0548af5d25107b0710ed5eacdd0ddca412cca1048834602722f5"
+}

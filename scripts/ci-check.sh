@@ -59,6 +59,21 @@ case "${stage}" in
       'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
        CREATE EXTENSION IF NOT EXISTS citext;
        CREATE EXTENSION IF NOT EXISTS unaccent;' || true
+    # The query cache a build reads must match the migrated schema and the queries (CRM-D24). A
+    # compiler cache such as kache answers without running the macros, so nothing is compared and
+    # the check passes: clear it, and treat sqlx's warning about unseen queries as that failure.
+    (cd "${SVC}" \
+      && DATABASE_URL="postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}" \
+         cargo run "${FEATURES[@]}" -- db migrate)
+    prepared="$(cd "${SVC}" \
+      && DATABASE_URL="postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}" \
+         RUSTC_WRAPPER='' CARGO_BUILD_RUSTC_WRAPPER='' \
+         cargo sqlx prepare --check -- "${FEATURES[@]}" 2>&1)" || { echo "${prepared}"; exit 1; }
+    if grep -q 'potentially unused queries' <<<"${prepared}"; then
+      echo "${prepared}"
+      echo "test-db: the query macros did not run, so the cache was not compared" >&2
+      exit 1
+    fi
     (cd "${SVC}" \
       && DATABASE_URL="postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}" \
          cargo test "${FEATURES[@]}" -- --ignored --test-threads=1)

@@ -44,6 +44,12 @@ class Commands(unittest.TestCase):
     def test_a_listed_installer_passes(self):
         self.assertEqual(commands_bad(["rustup component add clippy"]), [])
 
+    def test_the_pinned_sqlx_cli_passes_and_an_unpinned_one_or_a_chain_fails(self):
+        pinned = "cargo install sqlx-cli --version 0.9.0 --locked --no-default-features --features postgres,sqlx-toml"
+        self.assertEqual(commands_bad([pinned]), [])
+        self.assertTrue(commands_bad([pinned + " && cargo sqlx prepare --check"]))
+        self.assertTrue(commands_bad(["cargo install sqlx-cli --locked --no-default-features --features postgres"]))
+
     def test_a_matrix_call_counts_each_stage(self):
         _, called = check.check_commands(
             "ci.yml", [(1, "scripts/ci-check.sh ${{ matrix.stage }}")], STAGES, {"fmt", "test"}

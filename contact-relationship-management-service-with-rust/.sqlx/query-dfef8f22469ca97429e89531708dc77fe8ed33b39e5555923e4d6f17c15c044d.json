@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO idempotency_keys (scope, key, fingerprint, state)\n           VALUES ($1, $2, $3, 'in_progress')\n           ON CONFLICT (scope, key) DO UPDATE SET fingerprint = EXCLUDED.fingerprint,\n             state = 'in_progress', status = NULL, content_type = NULL, body = NULL,\n             created_at = now()\n           WHERE idempotency_keys.created_at < now() - interval '24 hours'\n              OR (idempotency_keys.state = 'in_progress'\n                  AND idempotency_keys.created_at < now() - interval '2 minutes')\n           RETURNING 1 AS claimed",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "claimed",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "dfef8f22469ca97429e89531708dc77fe8ed33b39e5555923e4d6f17c15c044d"
+}

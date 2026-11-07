@@ -466,3 +466,16 @@ alternatives are kept as the record of what was not chosen.
 Loco calls a service through hooks, so an auditor has to read the framework as well as the service. [axa](https://crates.io/crates/axa) is a library: `main.rs` calls ordinary functions, and start-up can be read from this repository. Settings come from the environment, so what a deployment runs with is in one place.
 
 SeaORM stays until a separate change moves the service to sqlx. What this conversion finds goes back into axa and its guide.
+
+## CRM-D24 — Queries move from SeaORM to sqlx, one area at a time
+
+*Decided 2026-11-06 by the owner; started by CRM-T203.*
+
+Each query is written out with `sqlx::query!`, so a reviewer reads what runs and a wrong column or type fails the build. This follows WPM-D184 where the two services are alike.
+
+- **One pool.** `db::pool` lends SeaORM's pool to sqlx, which is the same sqlx 0.9. This replaces the earlier decision that a sqlx service holds its own pool until axa has one: axa's pool cannot be reached while the `sea-orm` feature is on, a second pool would double the connections, and it would lose the pool of one that makes a query outside its transaction fail in tests. `AppContext::db` becomes the pool when SeaORM goes.
+- **A handler moves whole,** because a transaction belongs to one library. Where a moved handler must call a helper that has not moved, a temporary `ConnectionTrait` over a sqlx connection carries the call. CRM-T204 proves it or the slices that need it merge.
+- **Migrations move second to last,** so every earlier slice can be undone by redeploying an image. The 59 become one baseline, and a test compares its catalog with the history's. A deployed database records them as applied through sqlx's `Migrator::skip`, and nothing runs again.
+- **Builds read `.sqlx/`,** with `SQLX_OFFLINE` set in `.cargo/config.toml`, so they need no database. `test-db` fails if the cache and the migrated schema have drifted. That check clears compiler caches, because a cache hit skips the macros and the check then passes without comparing anything.
+
+Still open: whether any database is deployed, when `seaql_migrations` may be dropped, and what `db truncate` should do.

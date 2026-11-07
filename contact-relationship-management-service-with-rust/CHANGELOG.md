@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — sqlx begins (CRM-T203, CRM-D24)
+
+Idempotency keys are stored through `sqlx::query!`, on SeaORM's pool, with no change to what a
+client sees. A build reads `.sqlx/`. After changing a query or the schema, run
+`cargo sqlx prepare -- --features keycloak` against a migrated database and commit the result;
+`scripts/ci-check.sh test-db` fails if they differ. It needs `sqlx-cli` 0.9.0 with `sqlx-toml`.
+
 ### Changed — problem documents through axa-problem (CRM-T202)
 
 `src/problem.rs` builds `axa::problem::Problem`. The documents hold the same members, and the

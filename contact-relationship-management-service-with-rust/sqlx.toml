@@ -1,0 +1,3 @@
+# SeaORM turns on sqlx's `time` feature too, so say which date types the query macros use (CRM-D24).
+[macros.preferred-crates]
+date-time = "chrono"
