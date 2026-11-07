@@ -11,7 +11,7 @@ use sea_orm::{QueryOrder, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::paging::{Page, PageParams};
+use super::paging::Page;
 use super::{PidRef, StatusPayload, unprocessable};
 use crate::auth::MaybeAuthUser;
 use crate::metrics::Metrics;
@@ -328,10 +328,9 @@ async fn list_tickets(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(params): Query<TicketListParams>,
-    Query(paging): Query<PageParams>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
-    let page = Page::new(&paging, 1000)?;
+    let page = Page::new(&uri, 1000)?;
     let mut query = tickets::Entity::find_live();
     if let Some(status) = &params.status {
         query = query.filter(tickets::Column::Status.eq(status));
@@ -374,7 +373,7 @@ async fn list_tickets(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    page.respond(rows, more, &uri)
+    page.respond(rows, more)
 }
 
 /// `GET /api/tickets/{pid}`: the ticket and its activities, oldest first.
@@ -1051,15 +1050,14 @@ struct ArticleSearchParams {
 async fn list_articles(
     State(ctx): State<AppContext>,
     Query(params): Query<ArticleSearchParams>,
-    Query(paging): Query<PageParams>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
-    let page = Page::new(&paging, 500)?;
+    let page = Page::new(&uri, 500)?;
     let mut query = articles::Entity::find_live();
     // Search in SQL, before the page is cut: filtering after the cut would
     // hide matches that sit beyond the first page.
     if let Some(q) = params.q.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
-        let escaped = axa::offset_pagination::escape_like(&q.to_lowercase());
+        let escaped = axa::cursor_pagination::escape_like(&q.to_lowercase());
         query = query.filter(sea_orm::sea_query::Expr::cust_with_values(
             "(lower(title) LIKE $1 OR lower(coalesce(keywords, '')) LIKE $1)",
             [format!("%{escaped}%")],
@@ -1070,7 +1068,7 @@ async fn list_articles(
         .all(&ctx.db)
         .await?;
     let (rows, more) = page.split(rows);
-    page.respond(rows, more, &uri)
+    page.respond(rows, more)
 }
 
 /// An article that may answer a ticket.

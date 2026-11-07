@@ -12,7 +12,7 @@ use sea_orm::{PaginatorTrait, QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::paging::{Page, PageParams};
+use super::paging::Page;
 use super::{PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::metrics::Metrics;
@@ -248,11 +248,10 @@ async fn create_lead(
 async fn list_leads(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Query(paging): Query<PageParams>,
     Query(tag): Query<super::tags::TagFilter>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
-    let page = Page::new(&paging, 1000)?;
+    let page = Page::new(&uri, 1000)?;
     let mut query = leads::Entity::find_live()
         .order_by_asc(leads::Column::BoardPosition)
         .order_by_desc(leads::Column::Score)
@@ -271,7 +270,7 @@ async fn list_leads(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    page.respond(rows, more, &uri)
+    page.respond(rows, more)
 }
 
 /// `GET /api/leads/{pid}`: the lead and its live score breakdown.
@@ -730,11 +729,10 @@ async fn list_deals(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(params): Query<DealListParams>,
-    Query(paging): Query<PageParams>,
     Query(tag): Query<super::tags::TagFilter>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
-    let page = Page::new(&paging, 2000)?;
+    let page = Page::new(&uri, 2000)?;
     let mut query = deals::Entity::find_live();
     if let Some(pipeline) = params.pipeline {
         query = query.filter(deals::Column::PipelinePid.eq(pipeline));
@@ -762,7 +760,7 @@ async fn list_deals(
     )
     .await?;
     let rows = listed(&ctx.db, rows).await?;
-    page.respond(readable_deals(&rows, &caller, tagged.is_some()), more, &uri)
+    page.respond(readable_deals(&rows, &caller, tagged.is_some()), more)
 }
 
 /// Filter `rows` down to the ones `caller`'s record-level ABAC policy

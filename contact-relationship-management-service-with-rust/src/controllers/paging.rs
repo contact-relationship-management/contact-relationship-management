@@ -1,4 +1,4 @@
-//! Pagination for list endpoints (CRM-T51).
+//! Pagination for list endpoints (CRM-T51, CRM-T223).
 //!
 //! Every list used to cut its result at a fixed cap and say nothing. Now a
 //! list takes `?limit=` (1 to the endpoint's cap, default the cap) and an
@@ -7,139 +7,130 @@
 //! client keeps working until it passes the cap, and then it is told rather
 //! than truncated.
 //!
-//! The cursor is an offset, so a row inserted or removed between two page
-//! fetches can make a later page skip or repeat one row; every order here
-//! ends in `id` so the order itself is stable. There is deliberately no
-//! total count: a total over stored rows would include rows a caller's
-//! record-level policy hides.
+//! The cursor is `axa::cursor_pagination`'s: an offset signed with the
+//! service's key over the path and every filter, so a caller cannot make one
+//! up, edit one, or carry one to another list or filter. A row inserted or
+//! removed between two page fetches can make a later page skip or repeat one
+//! row; every order here ends in `id` so the order itself is stable. There is
+//! deliberately no total count: a total over stored rows would include rows a
+//! caller's record-level policy hides.
 
-use axa::error::ErrorDetail;
+use std::sync::OnceLock;
+
+use axa::cursor_pagination::{CursorKey, CursorLimits, CursorPage};
 use axa::prelude::*;
-use axum::http::{StatusCode, Uri};
-use base64::Engine;
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use axum::http::Uri;
 use sea_orm::{EntityTrait, QuerySelect, Select};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-/// The `limit` and `cursor` query parameters, taken alongside an
-/// endpoint's own filters (a second `Query` extractor).
-#[derive(Debug, Default, Deserialize)]
-pub struct PageParams {
-    /// Rows wanted, 1 to the endpoint cap.
-    #[serde(default)]
-    pub limit: Option<u64>,
-    /// Opaque position from a previous `Link: rel="next"`.
-    #[serde(default)]
-    pub cursor: Option<String>,
+/// The setting that holds the key cursors are signed with, 32 bytes or more.
+pub const SECRET_VAR: &str = "CRM_CURSOR_SECRET";
+
+static KEY: OnceLock<CursorKey> = OnceLock::new();
+
+/// A key for this process alone, for development and tests: its cursors stop working when the
+/// process stops, and another replica refuses them.
+fn process_key() -> CursorKey {
+    let mut secret = Vec::with_capacity(32);
+    secret.extend_from_slice(uuid::Uuid::new_v4().as_bytes());
+    secret.extend_from_slice(uuid::Uuid::new_v4().as_bytes());
+    CursorKey::new(&secret).unwrap_or_else(|_| unreachable!("32 bytes is long enough"))
+}
+
+/// The cursor key from `secret`. In production a key is required, because replicas must
+/// accept each other's cursors.
+///
+/// # Errors
+///
+/// A message when production has no key, or a key is shorter than 32 bytes.
+pub fn key_from(secret: Option<&str>, production: bool) -> Result<CursorKey, String> {
+    match secret {
+        Some(secret) => CursorKey::new(secret.as_bytes()).map_err(|e| format!("{SECRET_VAR}: {e}")),
+        None if production => Err(format!(
+            "{SECRET_VAR} is required in production: it signs the list cursors, and every \
+             replica must hold the same one"
+        )),
+        None => Ok(process_key()),
+    }
+}
+
+/// Read [`SECRET_VAR`] at start-up. A second call in one process keeps the first key.
+///
+/// # Errors
+///
+/// As [`key_from`].
+pub fn init(production: bool) -> Result<(), String> {
+    let secret = std::env::var(SECRET_VAR).ok();
+    let key = key_from(secret.as_deref(), production)?;
+    let _ = KEY.set(key);
+    Ok(())
+}
+
+/// The installed key. A process that never ran [`init`], such as a unit test, gets a key of
+/// its own; a server always runs it, and production refuses to start without a setting.
+fn key() -> &'static CursorKey {
+    KEY.get_or_init(process_key)
 }
 
 /// A validated page request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Page {
-    limit: u64,
-    offset: u64,
-}
-
-fn bad(message: &str) -> Error {
-    Error::CustomError(
-        StatusCode::UNPROCESSABLE_ENTITY,
-        ErrorDetail::new("unprocessable", message),
-    )
-}
-
-/// Encode an offset as an opaque cursor.
-#[must_use]
-pub fn encode_cursor(offset: u64) -> String {
-    URL_SAFE_NO_PAD.encode(format!("o:{offset}"))
-}
-
-fn decode_cursor(cursor: &str) -> Option<u64> {
-    let bytes = URL_SAFE_NO_PAD.decode(cursor).ok()?;
-    String::from_utf8(bytes)
-        .ok()?
-        .strip_prefix("o:")?
-        .parse()
-        .ok()
-}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Page(CursorPage);
 
 impl Page {
-    /// Validate `params` against the endpoint's `cap`.
+    /// Read `limit` and `cursor` from the request's `uri`, against the endpoint's `cap`.
     ///
     /// # Errors
     ///
-    /// `422` for a `limit` outside `1..=cap` or a cursor that is not one of
-    /// ours.
-    pub fn new(params: &PageParams, cap: u64) -> Result<Self> {
-        let limit = params.limit.unwrap_or(cap);
-        if !(1..=cap).contains(&limit) {
-            return Err(bad(&format!("limit must be between 1 and {cap}")));
-        }
-        let offset = match params.cursor.as_deref() {
-            None | Some("") => 0,
-            Some(cursor) => decode_cursor(cursor).ok_or_else(|| bad("cursor is not valid"))?,
+    /// `422` for a `limit` outside `1..=cap`, not a number or given twice, or a cursor this
+    /// service did not sign for this path and these filters. The `detail` quotes nothing the
+    /// caller sent.
+    pub fn new(uri: &Uri, cap: u64) -> Result<Self> {
+        Self::with_key(key(), uri, cap)
+    }
+
+    fn with_key(key: &CursorKey, uri: &Uri, cap: u64) -> Result<Self> {
+        let limits = CursorLimits {
+            default_limit: cap,
+            max_limit: cap,
         };
-        Ok(Self { limit, offset })
+        Ok(Self(CursorPage::new(key, limits, uri)?))
     }
 
     /// Restrict `select` to this page, fetching one extra row to learn
     /// whether another page exists.
     #[must_use]
     pub fn apply<E: EntityTrait>(&self, select: Select<E>) -> Select<E> {
-        select.offset(self.offset).limit(self.limit + 1)
+        select
+            .offset(self.0.offset())
+            .limit(self.0.limit().saturating_add(1))
     }
 
-    /// The `(limit + 1, offset)` to put in a hand-written query, for a list that is not an entity
-    /// select. The extra row is the probe [`Page::split`] drops.
-    #[must_use]
-    pub fn window(&self) -> (u64, u64) {
-        (self.limit + 1, self.offset)
-    }
-
-    /// [`Page::window`] as `sqlx` binds it, through `axa::offset_pagination` (CRM-T219). A cursor is a
-    /// client's text and can name any `u64`, which saturates (CRM-D24): an offset past the end is
-    /// an empty page, not a failed query.
+    /// `LIMIT` and `OFFSET` as `sqlx` binds them, the limit one more than the page: the probe
+    /// row [`Page::split`] drops. A cursor past every row saturates (CRM-D24): an empty page,
+    /// not a failed query.
     #[must_use]
     pub fn bounds(&self) -> (i64, i64) {
-        let (limit, offset) = self.window();
-        axa::offset_pagination::Page { limit, offset }.bounds()
+        self.0.bounds()
     }
 
     /// Drop the probe row; the flag says whether more rows follow.
     #[must_use]
-    pub fn split<T>(&self, mut rows: Vec<T>) -> (Vec<T>, bool) {
-        let more = u64::try_from(rows.len()).unwrap_or(u64::MAX) > self.limit;
-        rows.truncate(usize::try_from(self.limit).unwrap_or(usize::MAX));
-        (rows, more)
+    pub fn split<T>(&self, rows: Vec<T>) -> (Vec<T>, bool) {
+        self.0.split(rows)
     }
 
-    /// The JSON array response, with `Link: rel="next"` when `more`.
+    /// The JSON array response, with `Link: rel="next"` when `more`. `body` is what is left of
+    /// the page after [`Page::split`] and any filtering the caller may not see past.
     ///
     /// # Errors
     ///
     /// When the body cannot be serialised.
-    pub fn respond<T: Serialize>(&self, body: T, more: bool, uri: &Uri) -> Result<Response> {
+    pub fn respond<T: Serialize>(&self, body: T, more: bool) -> Result<Response> {
         let mut response = format::json(body)?;
-        if more {
-            let kept: Vec<&str> = uri
-                .query()
-                .unwrap_or("")
-                .split('&')
-                .filter(|part| !part.is_empty() && !part.starts_with("cursor="))
-                .collect();
-            let next = encode_cursor(self.offset + self.limit);
-            let query = if kept.is_empty() {
-                format!("cursor={next}")
-            } else {
-                format!("{}&cursor={next}", kept.join("&"))
-            };
-            if let Ok(value) = axum::http::HeaderValue::from_str(&format!(
-                "<{}?{query}>; rel=\"next\"",
-                uri.path()
-            )) {
-                response
-                    .headers_mut()
-                    .insert(axum::http::header::LINK, value);
-            }
+        if more && let Some(link) = self.0.next_link() {
+            response
+                .headers_mut()
+                .insert(axum::http::header::LINK, link);
         }
         Ok(response)
     }
@@ -149,69 +140,108 @@ impl Page {
 mod tests {
     use super::*;
 
-    fn params(limit: Option<u64>, cursor: Option<&str>) -> PageParams {
-        PageParams {
-            limit,
-            cursor: cursor.map(str::to_string),
-        }
+    fn key() -> CursorKey {
+        CursorKey::new(b"a test secret of thirty-two byte").unwrap()
+    }
+
+    fn page(uri: &str, cap: u64) -> Result<Page> {
+        Page::with_key(&key(), &uri.parse().unwrap(), cap)
+    }
+
+    /// The path and query of the next link, to send back.
+    fn next(response: &Response) -> String {
+        let link = response.headers()[axum::http::header::LINK]
+            .to_str()
+            .unwrap();
+        link.strip_prefix('<')
+            .unwrap()
+            .split('>')
+            .next()
+            .unwrap()
+            .to_string()
     }
 
     #[test]
     fn defaults_to_the_cap_and_rejects_out_of_range() {
-        let page = Page::new(&params(None, None), 100).unwrap();
-        assert_eq!((page.limit, page.offset), (100, 0));
-        assert!(Page::new(&params(Some(0), None), 100).is_err());
-        assert!(Page::new(&params(Some(101), None), 100).is_err());
-        assert!(Page::new(&params(Some(1), None), 100).is_ok());
+        assert_eq!(page("/api/x", 100).unwrap().bounds(), (101, 0));
+        for bad in ["limit=0", "limit=101", "limit=two", "limit=1&limit=2"] {
+            assert!(page(&format!("/api/x?{bad}"), 100).is_err(), "{bad}");
+        }
+        assert_eq!(page("/api/x?limit=1", 100).unwrap().bounds(), (2, 0));
     }
 
     #[test]
-    fn cursors_round_trip_and_junk_is_refused() {
-        let cursor = encode_cursor(250);
-        let page = Page::new(&params(Some(50), Some(&cursor)), 100).unwrap();
-        assert_eq!(page.offset, 250);
-        assert!(Page::new(&params(None, Some("not a cursor")), 100).is_err());
-        assert!(Page::new(&params(None, Some(&URL_SAFE_NO_PAD.encode("x:1"))), 100).is_err());
+    fn a_next_cursor_moves_on_and_keeps_the_filters() {
+        let first = page("/api/tickets?status=open&limit=2", 10).unwrap();
+        let response = first.respond(vec![1, 2], true).unwrap();
+        let link = next(&response);
+        assert!(
+            link.starts_with("/api/tickets?status=open&limit=2&cursor="),
+            "{link}"
+        );
+        assert_eq!(page(&link, 10).unwrap().bounds(), (3, 2));
+        assert!(
+            first
+                .respond(vec![1], false)
+                .unwrap()
+                .headers()
+                .get(axum::http::header::LINK)
+                .is_none()
+        );
     }
 
     #[test]
-    fn a_cursor_past_any_row_stays_a_valid_bound() {
-        let cursor = encode_cursor(u64::MAX);
-        let page = Page::new(&params(Some(2), Some(&cursor)), 10).unwrap();
-        assert_eq!(page.bounds(), (3, i64::MAX));
-        let page = Page::new(&params(Some(2), Some(&encode_cursor(40))), 10).unwrap();
-        assert_eq!(page.bounds(), (3, 40));
+    fn a_cursor_is_refused_when_made_up_edited_moved_or_signed_by_another_key() {
+        let link = next(
+            &page("/api/tickets?status=open&limit=2", 10)
+                .unwrap()
+                .respond(vec![1, 2], true)
+                .unwrap(),
+        );
+        let cursor = link.split("cursor=").nth(1).unwrap();
+        // The old unsigned form, `o:<offset>`.
+        assert!(page("/api/tickets?status=open&cursor=bzoyNTA", 10).is_err());
+        let mut edited = cursor.to_string();
+        let last = if edited.ends_with('A') { 'B' } else { 'A' };
+        edited.pop();
+        edited.push(last);
+        assert!(page(&format!("/api/tickets?status=open&cursor={edited}"), 10).is_err());
+        assert!(page(&format!("/api/tickets?status=closed&cursor={cursor}"), 10).is_err());
+        assert!(page(&format!("/api/deals?status=open&cursor={cursor}"), 10).is_err());
+        let other = CursorKey::new(b"another secret, thirty-two bytes").unwrap();
+        assert!(Page::with_key(&other, &link.parse().unwrap(), 10).is_err());
+        // The page size may change between pages.
+        assert!(
+            page(
+                &format!("/api/tickets?status=open&limit=5&cursor={cursor}"),
+                10
+            )
+            .is_ok()
+        );
     }
 
     #[test]
     fn split_reports_whether_more_rows_follow() {
-        let page = Page::new(&params(Some(2), None), 10).unwrap();
+        let page = page("/api/x?limit=2", 10).unwrap();
         assert_eq!(page.split(vec![1, 2, 3]), (vec![1, 2], true));
         assert_eq!(page.split(vec![1, 2]), (vec![1, 2], false));
         assert_eq!(page.split(Vec::<i32>::new()), (vec![], false));
     }
 
     #[test]
-    fn next_link_keeps_filters_and_replaces_the_cursor() {
-        let page = Page::new(&params(Some(2), Some(&encode_cursor(2))), 10).unwrap();
-        let uri: Uri = format!(
-            "/api/tickets?status=open&limit=2&cursor={}",
-            encode_cursor(2)
-        )
-        .parse()
-        .unwrap();
-        let response = page.respond(vec![1, 2], true, &uri).unwrap();
-        let link = response.headers()[axum::http::header::LINK]
-            .to_str()
-            .unwrap();
-        assert_eq!(
-            link,
-            format!(
-                "</api/tickets?status=open&limit=2&cursor={}>; rel=\"next\"",
-                encode_cursor(4)
-            )
-        );
-        let none = page.respond(vec![1], false, &uri).unwrap();
-        assert!(none.headers().get(axum::http::header::LINK).is_none());
+    fn production_needs_a_key_of_32_bytes_and_elsewhere_one_is_made() {
+        assert!(key_from(None, true).unwrap_err().contains(SECRET_VAR));
+        assert!(key_from(Some("too short"), false).is_err());
+        assert!(key_from(Some("too short"), true).is_err());
+        assert!(key_from(Some("a production secret, 32 bytes ok"), true).is_ok());
+        assert!(key_from(None, false).is_ok());
+    }
+
+    #[test]
+    fn the_error_quotes_nothing_the_caller_sent() {
+        let Err(error) = page("/api/x?cursor=SECRETVALUE", 10) else {
+            panic!("a made-up cursor was accepted");
+        };
+        assert!(!format!("{error:?}").contains("SECRETVALUE"));
     }
 }

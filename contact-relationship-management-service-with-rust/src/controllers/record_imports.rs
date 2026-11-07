@@ -8,7 +8,6 @@
 
 use std::collections::HashMap;
 
-use axa::extract::Query;
 use axa::prelude::*;
 use contact_relationship_management_matcher::Verdict;
 use sea_orm::{ActiveValue, ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
@@ -16,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::lead_imports::{Likeness, RowReport, advise};
-use super::paging::{Page, PageParams};
+use super::paging::Page;
 use super::{PidPath, unprocessable};
 use crate::auth::MaybeAuthUser;
 use crate::clients;
@@ -858,14 +857,9 @@ async fn undo_import(
     })
 }
 
-async fn list_imports(
-    ctx: &AppContext,
-    kind: Kind,
-    paging: &PageParams,
-    uri: &axum::http::Uri,
-) -> Result<Response> {
-    let page = Page::new(paging, 100)?;
-    let (limit, offset) = page.window();
+async fn list_imports(ctx: &AppContext, kind: Kind, uri: &axum::http::Uri) -> Result<Response> {
+    let page = Page::new(uri, 100)?;
+    let (limit, offset) = page.bounds();
     let rows = ctx
         .db
         .query_all_raw(stmt(
@@ -873,27 +867,19 @@ async fn list_imports(
                 "SELECT {COLUMNS} FROM record_imports WHERE kind = $1 ORDER BY id DESC \
                  LIMIT $2 OFFSET $3"
             ),
-            [
-                kind.word().into(),
-                i64::try_from(limit).unwrap_or(i64::MAX).into(),
-                i64::try_from(offset).unwrap_or(i64::MAX).into(),
-            ],
+            [kind.word().into(), limit.into(), offset.into()],
         ))
         .await?;
     let records = rows.iter().map(record).collect::<Result<Vec<_>>>()?;
     let (records, more) = page.split(records);
-    page.respond(records, more, uri)
+    page.respond(records, more)
 }
 
 macro_rules! kind_routes {
     ($list:ident, $one:ident, $undo:ident, $kind:expr) => {
         #[debug_handler]
-        async fn $list(
-            State(ctx): State<AppContext>,
-            Query(paging): Query<PageParams>,
-            uri: axum::http::Uri,
-        ) -> Result<Response> {
-            list_imports(&ctx, $kind, &paging, &uri).await
+        async fn $list(State(ctx): State<AppContext>, uri: axum::http::Uri) -> Result<Response> {
+            list_imports(&ctx, $kind, &uri).await
         }
 
         #[debug_handler]

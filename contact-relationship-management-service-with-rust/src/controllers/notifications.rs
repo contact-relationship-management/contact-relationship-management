@@ -11,7 +11,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Val
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::paging::{Page, PageParams};
+use super::paging::Page;
 use super::{PidPath, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::audit_logs::Model as Audit;
@@ -115,12 +115,11 @@ async fn list(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(query): Query<InboxQuery>,
-    Query(paging): Query<PageParams>,
     uri: Uri,
 ) -> Result<Response> {
     let recipient = recipient_of(&caller, &query)?;
-    let page = Page::new(&paging, PAGE_CAP)?;
-    let (limit, offset) = page.window();
+    let page = Page::new(&uri, PAGE_CAP)?;
+    let (limit, offset) = page.bounds();
     let rows = ctx
         .db
         .query_all_raw(stmt(
@@ -133,8 +132,8 @@ async fn list(
             [
                 recipient.into(),
                 query.unread.into(),
-                i64::try_from(limit).unwrap_or(i64::MAX).into(),
-                i64::try_from(offset).unwrap_or(i64::MAX).into(),
+                limit.into(),
+                offset.into(),
             ],
         ))
         .await?;
@@ -149,7 +148,7 @@ async fn list(
             shown.push(n);
         }
     }
-    page.respond(shown, more, &uri)
+    page.respond(shown, more)
 }
 
 /// `GET /api/notifications/unread-count` response.

@@ -70,8 +70,43 @@ async fn bad_paging_input_is_refused() {
             "/api/contacts?cursor=garbage",
             "/api/tickets?limit=5000",
             "/api/deals?limit=0",
+            "/api/contacts?limit=two",
+            "/api/contacts?limit=1&limit=2",
+            // The unsigned cursor this service handed out before CRM-T223, `o:250`.
+            "/api/contacts?cursor=bzoyNTA",
         ] {
             assert_eq!(request.get(url).await.status_code(), 422, "{url}");
+        }
+    })
+    .await;
+}
+
+/// A cursor is signed over its list and its filters (CRM-T223): it works where it was handed
+/// out, with any page size, and nowhere else.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+async fn a_cursor_works_only_for_the_list_and_filters_it_came_from() {
+    request::<App, _, _>(|request, _ctx| async move {
+        for i in 0..3 {
+            seed_contact!(&request, format!("Signed {i}")).await;
+        }
+        let first = request.get("/api/contacts?limit=1").await;
+        let next = next_of(first.headers().get("link")).expect("a next link");
+        let cursor = next.split("cursor=").nth(1).unwrap().to_string();
+        assert_eq!(request.get(&next).await.status_code(), 200, "{next}");
+        let bigger = format!("/api/contacts?limit=2&cursor={cursor}");
+        assert_eq!(request.get(&bigger).await.status_code(), 200, "{bigger}");
+        let detail: Value = request
+            .get(&format!("/api/deals?cursor={cursor}"))
+            .await
+            .json();
+        assert_eq!(detail["detail"], "cursor is not valid", "{detail}");
+        for url in [
+            format!("/api/deals?cursor={cursor}"),
+            format!("/api/contacts?limit=1&tag=vip&cursor={cursor}"),
+        ] {
+            assert_eq!(request.get(&url).await.status_code(), 422, "{url}");
         }
     })
     .await;

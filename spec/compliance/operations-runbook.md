@@ -13,7 +13,10 @@ Commands assume the container images from the repository's `Containerfile`s.
    it; browsers never do (the BFF keeps tokens out of JavaScript).
 4. Set `APP_ENV=production` and `CRM_REQUIRE_AUTH=1`. The service refuses to
    start in production otherwise (`CRM_ALLOW_INSECURE=1` overrides and logs an
-   error; do not use it).
+   error; do not use it). Set `CRM_CURSOR_SECRET`, 32 bytes or more and the same
+   on every replica: it signs the list cursors, and production refuses to start
+   without it. Changing it makes every `Link: rel="next"` already handed out
+   answer `422`, so a client starts its list again.
 5. Mount an ABAC policy (`CRM_ABAC_POLICY_FILE`) derived from
    `config/abac-policy.reference.json` and run
    `cargo test --test enforcement -- --ignored` against it in staging.

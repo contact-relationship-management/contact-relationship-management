@@ -16,7 +16,7 @@ use sea_orm::{QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::paging::{Page, PageParams};
+use super::paging::Page;
 use super::{PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{accounts, activities, contacts, deals, tickets};
@@ -383,11 +383,10 @@ async fn update_contact(
 async fn list_contacts(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Query(paging): Query<PageParams>,
     Query(tag): Query<super::tags::TagFilter>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
-    let page = Page::new(&paging, 1000)?;
+    let page = Page::new(&uri, 1000)?;
     let mut query = contacts::Entity::find_live().order_by_asc(contacts::Column::Id);
     let tagged = super::tags::filter_pids(&ctx.db, "contact", &tag).await?;
     if let Some(pids) = &tagged {
@@ -406,7 +405,7 @@ async fn list_contacts(
         Some(serde_json::json!({ "returned": readable.len() })),
     )
     .await?;
-    page.respond(readable, more, &uri)
+    page.respond(readable, more)
 }
 
 /// Filter `rows` down to the ones `caller`'s record-level ABAC policy
@@ -1017,11 +1016,10 @@ async fn update_account(
 async fn list_accounts(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
-    Query(paging): Query<PageParams>,
     Query(tag): Query<super::tags::TagFilter>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
-    let page = Page::new(&paging, 500)?;
+    let page = Page::new(&uri, 500)?;
     let mut query = accounts::Entity::find_live().order_by_asc(accounts::Column::Id);
     if let Some(pids) = super::tags::filter_pids(&ctx.db, "account", &tag).await? {
         query = query.filter(accounts::Column::Pid.is_in(pids));
@@ -1037,7 +1035,7 @@ async fn list_accounts(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    page.respond(rows, more, &uri)
+    page.respond(rows, more)
 }
 
 /// `GET /api/accounts/{pid}` — account + its contacts and deals.
@@ -1196,10 +1194,9 @@ async fn list_activities(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(params): Query<ActivityListParams>,
-    Query(paging): Query<PageParams>,
     uri: axum::http::Uri,
 ) -> Result<Response> {
-    let page = Page::new(&paging, 200)?;
+    let page = Page::new(&uri, 200)?;
     let mut query = activities::Entity::find_live();
     if let Some(kind) = &params.subject_kind {
         query = query.filter(activities::Column::SubjectKind.eq(kind));
@@ -1225,7 +1222,7 @@ async fn list_activities(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    page.respond(rows, more, &uri)
+    page.respond(rows, more)
 }
 
 /// `PUT /api/activities/{pid}/done` — tick a task activity.

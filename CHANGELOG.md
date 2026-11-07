@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — signed list cursors (CRM-T223, 2026-11-07)
+
+- A list's next-page link can no longer be made up or reused for another list or filter. A link
+  handed out before this change answers `422`, so start the list again. Production needs
+  `CRM_CURSOR_SECRET`.
+
 ### Changed — axa 0.7.0 (CRM-T222, 2026-11-07)
 
 - A write that breaks a field's rule answers `422` instead of `500`, and a repeat read holding a

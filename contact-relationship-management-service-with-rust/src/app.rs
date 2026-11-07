@@ -357,6 +357,9 @@ impl App {
         crate::hardening::check_process(ctx.environment.is_production_like())
             .map_err(Error::string)?;
         init_sending(ctx)?;
+        // CRM-T223: list cursors are signed, and replicas must share the key.
+        crate::controllers::paging::init(ctx.environment.is_production_like())
+            .map_err(|e| Error::string(&e))?;
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();

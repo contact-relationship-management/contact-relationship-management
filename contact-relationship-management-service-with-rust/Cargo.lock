@@ -495,8 +495,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7f321d0968f2ca45ddc6d0a6f2d48f2682f9d680ba2a50c3b7a69f28444a41f"
 dependencies = [
  "async-trait",
+ "axa-cursor-pagination",
  "axa-environment",
- "axa-offset-pagination",
  "axa-outbox",
  "axa-problem",
  "axa-ratelimit",
@@ -521,20 +521,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "axa-cursor-pagination"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "254bae98d29dc977a0a3d4ba4e4d776fe94931923b70f476b7020aea15e60d98"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "hmac",
+ "serde",
+ "sha2 0.11.1",
+]
+
+[[package]]
 name = "axa-environment"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aeb36293430bafb06d1e29f5e213623d127444cdd234003b413a46207c03bbd3"
-
-[[package]]
-name = "axa-offset-pagination"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fac10ea40e2e799da26e752d714e302c341c0808cd5cf6ba7ca178e905213046"
-dependencies = [
- "axum",
- "serde",
-]
 
 [[package]]
 name = "axa-outbox"

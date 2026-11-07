@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — signed list cursors (CRM-T223, CRM-D23)
+
+- **Breaking for operators:** production refuses to start without `CRM_CURSOR_SECRET`, 32 bytes
+  or more and the same on every replica.
+- A list's `cursor` is `axa::cursor_pagination`'s, signed over its position, path and filters. A
+  made-up, edited or moved cursor, and every cursor handed out before this change, is `422`.
+- A `limit` that is not a number or is given twice is `422`, not `400`.
+- `PageParams` and `Page::window` are gone; `Page::new` reads the request's URI.
+
 ### Changed — axa 0.7.0 (CRM-T222, CRM-D23)
 
 - A write that breaks a check or not-null constraint answers `422`, not `500` (axa 0.6.2).

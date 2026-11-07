@@ -7,7 +7,7 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Val
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::paging::{Page, PageParams};
+use super::paging::Page;
 use super::unprocessable;
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::audit_logs::Model as Audit;
@@ -42,7 +42,6 @@ async fn search(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     Query(query): Query<SearchQuery>,
-    Query(paging): Query<PageParams>,
     uri: Uri,
 ) -> Result<Response> {
     let typed = query.q.trim();
@@ -58,8 +57,8 @@ async fn search(
     let Some(tsquery) = rules::tsquery(&words) else {
         return Err(unprocessable("q must contain a letter or a digit"));
     };
-    let page = Page::new(&paging, PAGE_CAP)?;
-    let (limit, offset) = page.window();
+    let page = Page::new(&uri, PAGE_CAP)?;
+    let (limit, offset) = page.bounds();
     let txn = ctx.db.begin().await?;
     // Fuzzy matches below the default 0.6 are what a typo needs.
     txn.execute_unprepared("SET LOCAL pg_trgm.word_similarity_threshold = 0.45")
@@ -71,8 +70,8 @@ async fn search(
             [
                 Value::from(tsquery),
                 Value::from(rules::phrase(&words)),
-                Value::from(i64::try_from(limit).unwrap_or(i64::MAX)),
-                Value::from(i64::try_from(offset).unwrap_or(i64::MAX)),
+                Value::from(limit),
+                Value::from(offset),
             ],
         ))
         .await?;
@@ -113,7 +112,7 @@ async fn search(
         Some(serde_json::json!({ "returned": shown.len() })),
     )
     .await?;
-    page.respond(shown, more, &uri)
+    page.respond(shown, more)
 }
 
 /// The search route.

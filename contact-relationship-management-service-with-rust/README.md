@@ -102,6 +102,9 @@ input and is stored as `person:<id>`.
   unless `CRM_UPSTREAM_MODE=http`.
 - **Events** use the in-memory transport unless
   `CRM_EVENT_TRANSPORT=outbox`.
+- **List cursors** are signed with `CRM_CURSOR_SECRET` (32 bytes or more,
+  the same on every replica), which production requires. Elsewhere, unset,
+  each process makes its own key.
 - **Email** is simulated unless `CRM_MAIL_MODE` says otherwise; see
   [INSTALL.md](../INSTALL.md#sending-email).
 - **Bridges:** `CRM_PPM_SERVICE_URL`, `CRM_PPM_SERVICE_TOKEN`,

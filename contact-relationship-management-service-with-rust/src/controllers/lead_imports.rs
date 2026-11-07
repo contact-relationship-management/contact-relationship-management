@@ -7,14 +7,13 @@
 
 use std::collections::{HashMap, HashSet};
 
-use axa::extract::Query;
 use axa::prelude::*;
 use contact_relationship_management_matcher::{Contact as MatchContact, Verdict};
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::paging::{Page, PageParams};
+use super::paging::Page;
 use super::relationships::{DUPLICATE_POOL, account_names, match_contact, matcher};
 use super::sales::{NewLead, capture_lead};
 use super::{PidPath, unprocessable};
@@ -561,26 +560,19 @@ async fn undo(
 
 /// `GET /api/lead-imports` — import records, newest first.
 #[debug_handler]
-async fn list(
-    State(ctx): State<AppContext>,
-    Query(paging): Query<PageParams>,
-    uri: axum::http::Uri,
-) -> Result<Response> {
-    let page = Page::new(&paging, 100)?;
-    let (limit, offset) = page.window();
+async fn list(State(ctx): State<AppContext>, uri: axum::http::Uri) -> Result<Response> {
+    let page = Page::new(&uri, 100)?;
+    let (limit, offset) = page.bounds();
     let rows = ctx
         .db
         .query_all_raw(stmt(
             &format!("SELECT {COLUMNS} FROM lead_imports ORDER BY id DESC LIMIT $1 OFFSET $2"),
-            [
-                i64::try_from(limit).unwrap_or(i64::MAX).into(),
-                i64::try_from(offset).unwrap_or(i64::MAX).into(),
-            ],
+            [limit.into(), offset.into()],
         ))
         .await?;
     let records = rows.iter().map(record).collect::<Result<Vec<_>>>()?;
     let (records, more) = page.split(records);
-    page.respond(records, more, &uri)
+    page.respond(records, more)
 }
 
 /// `GET /api/lead-imports/{pid}`.

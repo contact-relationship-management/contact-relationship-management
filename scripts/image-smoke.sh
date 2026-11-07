@@ -63,6 +63,7 @@ common_env=(
   -e "CRM_REDIS_URL=redis://${RD}:6379" -e CRM_REQUIRE_AUTH=1 -e "CRM_PASETO_KEYS=${KEYS_JSON}"
   -e CRM_ABAC_POLICY_FILE=/app/config/abac-policy.reference.json -e CRM_EVENT_TRANSPORT=outbox
   -e "CRM_FIELD_KEYS=k1:$(head -c 32 /dev/zero | tr '\0' 'a' | base64)" -e CRM_REQUIRE_FIELD_ENCRYPTION=1
+  -e "CRM_CURSOR_SECRET=$(head -c 32 /dev/zero | tr '\0' 'c')"
 )
 hardened=(--read-only --tmpfs /tmp --cap-drop all --security-opt no-new-privileges --memory 768m --cpus 2 --network "${NET}")
 run_image() { # NAME EXTRA-RUN-ARGS... -- IMAGE-ARGS...
@@ -97,6 +98,7 @@ check "a signed reader token reads: 200" test "$(status "${READER}" GET /api/con
 check "a reader cannot write: 403" test "$(status "${READER}" POST /api/contacts "{\"person_ref\":\"$(person)\",\"display_name\":\"No\"}")" = 403
 A="$(contact 'Smoke A')"; B="$(contact 'Smoke B')"
 check "an admin creates contacts" test -n "${A}" -a -n "${B}"
+check "a page of one links to a next page that answers" bash -c "next=\$(curl -s -o /dev/null -D - -H 'authorization: Bearer ${ADMIN}' '${API}/api/contacts?limit=1' | sed -n 's/^[Ll]ink: <\([^>]*\)>.*/\1/p'); [[ -n \"\${next}\" && \$(curl -s -o /dev/null -w '%{http_code}' -H 'authorization: Bearer ${ADMIN}' \"${API}\${next}\") == 200 ]]"
 check "a rep (writer) records an activity" test "$(status "${REP}" POST /api/activities "{\"subject_kind\":\"contact\",\"subject_pid\":\"${A}\",\"kind\":\"note\",\"summary\":\"smoke\"}")" = 200
 check "a rep cannot merge (destructive): 403" test "$(status "${REP}" POST "/api/contacts/${A}/merge" "{\"into_pid\":\"${B}\",\"reason\":\"x\"}")" = 403
 check "an admin links the contact to HubSpot" test "$(status "${ADMIN}" POST "/api/contacts/${A}/external-links" '{"system":"hubspot","url":"https://app.hubspot.com/contacts/1/record/0-1/9"}')" = 200

@@ -227,7 +227,7 @@ fn add_paging(doc: &mut Value) {
             "description": format!("Rows per page, 1 to {cap}; default {cap}. Out of range is 422."),
             "schema": { "type": "integer", "minimum": 1, "maximum": cap } }));
         parameters.push(json!({ "name": "cursor", "in": "query", "required": false,
-            "description": "Opaque position from a previous Link rel=next. Anything else is 422.",
+            "description": "Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422.",
             "schema": { "type": "string" } }));
         operation["parameters"] = Value::Array(parameters);
         operation["responses"]["200"]["headers"] = json!({ "Link": {

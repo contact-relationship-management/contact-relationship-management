@@ -405,7 +405,7 @@ export interface paths {
                 query?: {
                     /** @description Rows per page, 1 to 500; default 500. Out of range is 422. */
                     limit?: number;
-                    /** @description Opaque position from a previous Link rel=next. Anything else is 422. */
+                    /** @description Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422. */
                     cursor?: string;
                     /** @description Only the records that carry this tag (any case); a record the caller sees masked is left out */
                     tag?: string;
@@ -1615,7 +1615,7 @@ export interface paths {
                 query?: {
                     /** @description Rows per page, 1 to 200; default 200. Out of range is 422. */
                     limit?: number;
-                    /** @description Opaque position from a previous Link rel=next. Anything else is 422. */
+                    /** @description Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422. */
                     cursor?: string;
                 };
                 header?: never;
@@ -1919,7 +1919,7 @@ export interface paths {
                 query?: {
                     /** @description Rows per page, 1 to 500; default 500. Out of range is 422. */
                     limit?: number;
-                    /** @description Opaque position from a previous Link rel=next. Anything else is 422. */
+                    /** @description Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422. */
                     cursor?: string;
                 };
                 header?: never;
@@ -4766,7 +4766,7 @@ export interface paths {
                 query?: {
                     /** @description Rows per page, 1 to 1000; default 1000. Out of range is 422. */
                     limit?: number;
-                    /** @description Opaque position from a previous Link rel=next. Anything else is 422. */
+                    /** @description Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422. */
                     cursor?: string;
                     /** @description Only the records that carry this tag (any case); a record the caller sees masked is left out */
                     tag?: string;
@@ -7275,7 +7275,7 @@ export interface paths {
                 query?: {
                     /** @description Rows per page, 1 to 2000; default 2000. Out of range is 422. */
                     limit?: number;
-                    /** @description Opaque position from a previous Link rel=next. Anything else is 422. */
+                    /** @description Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422. */
                     cursor?: string;
                     /** @description Only the records that carry this tag (any case); a record the caller sees masked is left out */
                     tag?: string;
@@ -11197,7 +11197,7 @@ export interface paths {
                 query?: {
                     /** @description Rows per page, 1 to 1000; default 1000. Out of range is 422. */
                     limit?: number;
-                    /** @description Opaque position from a previous Link rel=next. Anything else is 422. */
+                    /** @description Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422. */
                     cursor?: string;
                     /** @description Only the records that carry this tag (any case); a record the caller sees masked is left out */
                     tag?: string;
@@ -16019,7 +16019,7 @@ export interface paths {
                 query?: {
                     /** @description Rows per page, 1 to 1000; default 1000. Out of range is 422. */
                     limit?: number;
-                    /** @description Opaque position from a previous Link rel=next. Anything else is 422. */
+                    /** @description Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422. */
                     cursor?: string;
                 };
                 header?: never;
