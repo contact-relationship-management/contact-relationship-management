@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.6.1 (CRM-T218, CRM-D23)
+
+axa 0.6 answers every error itself as a problem with `code` and `detail`, where it sent `error` and
+`description`. `problem_mw` now reads both shapes, so a controller's message still reaches the
+client, and adds `code` to every document; `error` and `description` stay. Client-visible:
+
+- A violated unique or foreign key constraint answers `409` with a generic `detail`, not `500`.
+- A timeout's `408` and a panic's `500` are axa's problem documents, with the request id and the
+  security and CORS headers. They carry `code`, not `error`, `description`, `instance` or
+  `Cache-Control: no-store`.
+- An idle connection is kept for `KEEP_ALIVE_TIMEOUT_SECONDS`, 75 by default, rather than the
+  header limit. A load balancer keeping idle connections longer needs a higher value.
+- `task seed` is development-only: axa refuses it in production.
+
 ### Changed — the shared parts of the sqlx move (CRM-T204, CRM-D24)
 
 `GET` and `PUT /api/settings/organization` run on `sqlx`, with no change to what a client sees.

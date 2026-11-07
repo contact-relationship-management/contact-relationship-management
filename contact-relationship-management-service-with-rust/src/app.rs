@@ -407,8 +407,9 @@ impl App {
                 crate::version::require_version_mw,
             ))
             // Every error above, whoever produced it, leaves as `application/problem+json`
-            // (CRM-T54). What `axa` answers itself, outside this, does not: a timeout's `408` and
-            // the `500` for a panic (CRM-T217).
+            // (CRM-T54). What `axa` answers itself, outside this, is axa's own problem: a timeout's
+            // `408` and the `500` for a panic carry `code` but not `error`, `description`,
+            // `instance` or `no-store` (CRM-T217, CRM-T218).
             .layer(axum::middleware::from_fn(crate::problem::problem_mw))
             // Outside the problem layer so errors carry the policy too.
             .layer(axum::middleware::from_fn(middleware::no_store::no_store_mw));

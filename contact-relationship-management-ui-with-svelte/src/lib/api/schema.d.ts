@@ -20166,10 +20166,12 @@ export interface components {
             note: string;
         };
         Error: {
+            /** @description Stable machine code, the member axa itself sends */
+            code: string;
             /** @description Same text as `detail` (kept from the earlier body) */
             description: string;
             detail: string;
-            /** @description Stable machine code (kept from the earlier body) */
+            /** @description Same code as `code` (kept from the earlier body) */
             error: string;
             /** @description On a `422` validation error: each problem, with the member it is about */
             errors?: {

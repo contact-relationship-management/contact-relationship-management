@@ -279,8 +279,9 @@ async fn a_failure_part_way_leaves_both_contacts_unchanged() {
             ))
             .await
             .unwrap();
+        // A violated unique key is a `409` from axa 0.6, where it was a `500` (CRM-T218).
         let (status, _) = merge(&request, &merged, &survivor, false).await;
-        assert!(status >= 500, "{status}");
+        assert_eq!(status, 409);
 
         request.get(&format!("/api/contacts/{merged}")).await.assert_status_ok();
         let kept: Value = request.get(&format!("/api/contacts/{survivor}")).await.json();

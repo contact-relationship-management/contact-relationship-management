@@ -296,11 +296,12 @@ pub fn schemas() -> Value {
 /// `problem_mw` layer from whatever error a handler, guard or extractor produced.
 fn base_schemas() -> Value {
     json!({
-        "Error": resource(&["type", "title", "status", "detail", "instance", "error", "description"], &json!({
+        "Error": resource(&["type", "title", "status", "detail", "instance", "code", "error", "description"], &json!({
             "type": { "type": "string", "description": "`about:blank`, or a `urn:crm:problem:` URN for the machine code" },
             "title": string(), "status": integer(), "detail": string(),
             "instance": { "type": "string", "description": "The request path" },
-            "error": { "type": "string", "description": "Stable machine code (kept from the earlier body)" },
+            "code": { "type": "string", "description": "Stable machine code, the member axa itself sends" },
+            "error": { "type": "string", "description": "Same code as `code` (kept from the earlier body)" },
             "description": { "type": "string", "description": "Same text as `detail` (kept from the earlier body)" },
             "errors": { "type": "array", "description": "On a `422` validation error: each problem, with the member it is about",
                 "items": { "type": "object", "required": ["detail"], "properties": {

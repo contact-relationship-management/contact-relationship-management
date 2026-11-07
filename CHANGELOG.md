@@ -9,6 +9,13 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa 0.6.1 (CRM-T218, 2026-11-07)
+
+- Every error now also carries `code`, the member axa uses, next to `error` and `description`,
+  which stay. A write that breaks a unique or foreign key answers `409` where it answered `500`,
+  and a timeout's `408` and a panic's `500` are problem documents with the security and CORS
+  headers. `task seed` refuses to run outside development and test.
+
 ### Changed — the shared parts of the sqlx move (CRM-T204, 2026-11-07)
 
 - Audit rows, outbox events and the two sealed columns now work through both database libraries,

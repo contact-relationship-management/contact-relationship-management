@@ -1,18 +1,19 @@
 //! RFC 9457 problem details for every error response (CRM-T54).
 //!
 //! The service's errors are produced in several places: the controllers
-//! (`{"error", "description"}` through axa), the auth and abuse middleware
+//! (problems with `code` and `detail` through axa), the auth and abuse middleware
 //! (plain text), the API-version check, and the idempotency layer. One
 //! middleware around all of them turns every `4xx`/`5xx` into
 //! `application/problem+json` so a client parses one shape. It sits inside
 //! `axa`'s stack, so it reads a body before compression, and what that stack
 //! answers itself (a `408`, the `500` for a panic) does not pass through it.
 //!
-//! The members `error` (a stable machine code) and `description` (the human
-//! message) are kept next to the standard `type`, `title`, `status`, `detail`
-//! and `instance`, so a client written against the earlier body keeps working;
-//! only the media type changed. Members a source adds (for example
-//! `supported` on a refused API version) pass through unchanged.
+//! The machine code is sent as `code`, the member axa itself uses from 0.6 (and so on a `408`
+//! or a panic's `500`, which do not pass through here), and again as `error`. The human
+//! message is `detail` and again `description`. The two earlier members are kept next to the
+//! standard `type`, `title`, `status`, `detail` and `instance`, so a client written against the
+//! earlier body keeps working. Members a source adds (for example `supported` on a refused API
+//! version) pass through unchanged.
 //!
 //! The document is [`axa::problem::Problem`]. What is this service's own is reading it from
 //! whatever body a source sent, the `urn:crm:problem:` types, and the two earlier members.
@@ -64,16 +65,18 @@ pub fn document(status: StatusCode, instance: &str, body: &[u8]) -> Problem {
     if let Ok(Value::Object(source)) = serde_json::from_slice::<Value>(body) {
         for (key, value) in source {
             match (key.as_str(), &value) {
-                // axa labels some statuses with a reason phrase ("Bad Request"
-                // for a 413); only a snake_case code is a stable machine code.
-                ("error", Value::String(text)) => {
+                // axa from 0.6 sends a problem with `code` and `detail`; the service's own
+                // sources still send `error` and `description` (CRM-T218). An earlier axa
+                // labelled some statuses with a reason phrase ("Bad Request" for a 413); only a
+                // snake_case code is a stable machine code.
+                ("error" | "code", Value::String(text)) => {
                     if is_code(text) {
                         code.clone_from(text);
                     }
                 }
-                ("description", Value::String(text)) => detail = Some(text.clone()),
+                ("description" | "detail", Value::String(text)) => detail = Some(text.clone()),
                 // The standard members are ours to set.
-                ("type" | "title" | "status" | "detail" | "instance", _) => {}
+                ("type" | "title" | "status" | "detail" | "instance" | "code", _) => {}
                 _ => {
                     members.insert(key, value);
                 }
@@ -91,6 +94,7 @@ pub fn document(status: StatusCode, instance: &str, body: &[u8]) -> Problem {
         .with_type(type_for(&code, &default_code))
         .with_detail(detail.clone())
         .with_instance(instance)
+        .with_extension("code", json!(code))
         .with_extension("error", json!(code))
         .with_extension("description", json!(detail));
     members.into_iter().fold(problem, |problem, (name, value)| {
@@ -245,6 +249,39 @@ mod tests {
         assert_eq!(doc["description"], "name is required");
     }
 
+    /// axa 0.6 answers with a problem of its own: its `code` and `detail` are what the earlier
+    /// `error` and `description` were, and must not be lost (CRM-T218).
+    #[test]
+    fn an_axa_problem_keeps_its_code_and_detail() {
+        let body = br#"{"type":"about:blank","title":"Bad Request","status":400,
+            "detail":"name is required","code":"validation","errors":{"name":[]}}"#;
+        let doc = document(StatusCode::BAD_REQUEST, "/api/contacts", body);
+        assert_eq!(doc["type"], "urn:crm:problem:validation");
+        assert_eq!(doc["detail"], "name is required");
+        assert_eq!(doc["description"], "name is required");
+        assert_eq!(doc["code"], "validation");
+        assert_eq!(doc["error"], "validation");
+        assert_eq!(doc["errors"], json!({ "name": [] }));
+        assert_eq!(doc["instance"], "/api/contacts");
+    }
+
+    /// A real `axa::Error`, as axa 0.6 renders it, through the middleware.
+    #[tokio::test]
+    async fn an_axa_error_reaches_the_client_with_its_message() {
+        let route = Router::new().route(
+            "/x",
+            get(|| async {
+                Err::<(), axa::Error>(axa::Error::BadRequest("name is required".to_string()))
+            }),
+        );
+        let (response, document) = through_the_middleware(route).await;
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(document["detail"], "name is required");
+        assert_eq!(document["description"], "name is required");
+        assert_eq!(document["code"], "bad_request");
+        assert_eq!(document["error"], "bad_request");
+    }
+
     #[test]
     fn plain_text_becomes_the_detail_with_a_blank_type() {
         let doc = document(
@@ -292,6 +329,7 @@ mod tests {
                 "status",
                 "detail",
                 "instance",
+                "code",
                 "error",
                 "description",
             ] {

@@ -82,6 +82,12 @@ impl Task for Seed {
         }
     }
 
+    /// Made-up records never reach a production database: axa refuses the task outside
+    /// development and test (CRM-T218).
+    fn development_only(&self) -> bool {
+        true
+    }
+
     #[allow(clippy::too_many_lines)] // one linear walk building the demo book
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> Result<()> {
         let db = &ctx.db;
@@ -270,6 +276,14 @@ mod tests {
     /// Basic Latin to Latin Extended-B, and Latin Extended Additional (Vietnamese).
     fn is_latin(c: char) -> bool {
         matches!(u32::from(c), 0..=0x024F | 0x1E00..=0x1EFF)
+    }
+
+    /// axa refuses a development-only task in production, so this is what keeps the synthetic
+    /// book out of a real database (CRM-T218).
+    #[test]
+    fn the_seed_runs_only_in_development_or_test() {
+        use axa::task::Task;
+        assert!(super::Seed.development_only());
     }
 
     #[test]

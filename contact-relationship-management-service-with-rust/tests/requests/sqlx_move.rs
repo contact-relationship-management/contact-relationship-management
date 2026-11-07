@@ -48,11 +48,14 @@ async fn a_chain_written_by_both_libraries_verifies() {
         let second = Audit::record_on(&mut txn, "test", pid, "sqlx", None, Some(snapshot()))
             .await
             .unwrap();
-        let bridge = Bridge::new(&mut txn);
-        let third = Audit::record(&bridge, "test", pid, "bridge", Some("a"), None)
-            .await
-            .unwrap();
-        drop(bridge);
+        // A block, not `drop`: whether `Bridge` has drop glue depends on the platform, and on
+        // Linux clippy refuses `drop` of a value without it.
+        let third = {
+            let bridge = Bridge::new(&mut txn);
+            Audit::record(&bridge, "test", pid, "bridge", Some("a"), None)
+                .await
+                .unwrap()
+        };
         let fourth = Audit::record_on(&mut txn, "test", pid, "sqlx", Some("a"), None)
             .await
             .unwrap();
@@ -175,12 +178,13 @@ async fn a_seaorm_helper_commits_and_rolls_back_with_the_sqlx_transaction() {
         let pid = Uuid::new_v4();
         for (keep, audited, noted) in [(false, 0, 0), (true, 1, 1)] {
             let mut txn = db::pool(&ctx).begin().await.unwrap();
-            let bridge = Bridge::new(&mut txn);
-            Audit::record(&bridge, "test", pid, "bridge", None, None)
-                .await
-                .unwrap();
-            note(pid).insert(&bridge).await.unwrap();
-            drop(bridge);
+            {
+                let bridge = Bridge::new(&mut txn);
+                Audit::record(&bridge, "test", pid, "bridge", None, None)
+                    .await
+                    .unwrap();
+                note(pid).insert(&bridge).await.unwrap();
+            }
             if keep {
                 txn.commit().await.unwrap();
             } else {
@@ -311,7 +315,7 @@ async fn the_bridge_carries_what_seaorm_code_does() {
             matches!(refused, Err(DbErr::Exec(RuntimeErr::SqlxError(_)))),
             "{refused:?}"
         );
-        drop(bridge);
+        // `bridge` is not used again, so its borrow of `txn` has ended.
         txn.rollback().await.unwrap();
     })
     .await;
