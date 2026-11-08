@@ -42,7 +42,9 @@ fn insight_key(
 
 /// Make every cached insight stale: a write has happened.
 async fn bump_cache_generation(cache: &Cache) {
-    let stamp = chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default();
+    let stamp = crate::clock::now()
+        .timestamp_nanos_opt()
+        .unwrap_or_default();
     match tokio::time::timeout(
         CACHE_WAIT,
         cache.set_with_ttl(CACHE_GEN_KEY, &stamp, INSIGHT_TTL * 4),
@@ -92,7 +94,7 @@ pub(crate) async fn insight_cache_mw(
     let claims = auth::request_claims(req.headers()).await.ok();
     let glass = claims
         .as_ref()
-        .is_some_and(|c| crate::break_glass::registry().active(&c.sub, chrono::Utc::now()));
+        .is_some_and(|c| crate::break_glass::registry().active(&c.sub, crate::clock::now()));
     let generation: i64 = tokio::time::timeout(CACHE_WAIT, cache.get(CACHE_GEN_KEY))
         .await
         .ok()

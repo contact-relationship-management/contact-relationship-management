@@ -451,7 +451,7 @@ async fn act(
                 subject_kind: ActiveValue::set(kind.to_string()),
                 subject_pid: ActiveValue::set(subject),
                 kind: ActiveValue::set("task".to_string()),
-                occurred_at: ActiveValue::set(chrono::Utc::now().into()),
+                occurred_at: ActiveValue::set(crate::clock::now().into()),
                 actor_ref: ActiveValue::set(None),
                 summary: ActiveValue::set(summary.clone().into()),
                 due_on: ActiveValue::set(due),

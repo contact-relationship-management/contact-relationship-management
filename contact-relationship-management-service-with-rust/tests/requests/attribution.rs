@@ -193,14 +193,15 @@ async fn won_revenue_is_shared_among_the_campaigns_that_touched_the_buyer() {
         assert_eq!(earned(&long, "Alpha", "GBP"), 0);
 
         // The date range is on the day a deal closed: all of them closed today.
-        let yesterday = (chrono::Utc::now() - chrono::Duration::days(1)).date_naive();
+        let yesterday = (contact_relationship_management::clock::now() - chrono::Duration::days(1))
+            .date_naive();
         let none: Value = request
             .get(&format!("/api/attribution?to={yesterday}"))
             .await
             .json();
         assert_eq!(none["deals"], 0);
         assert!(none["campaigns"].as_array().unwrap().is_empty());
-        let today = chrono::Utc::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_naive();
         let all: Value = request
             .get(&format!("/api/attribution?from={today}&to={today}"))
             .await

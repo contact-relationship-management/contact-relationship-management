@@ -162,7 +162,7 @@ impl ApiSender {
                     &host_header(&url),
                     url.path(),
                     &body,
-                    chrono::Utc::now(),
+                    crate::clock::now(),
                 );
                 with_headers(post.header("content-type", "application/json"), headers).body(body)
             }
@@ -178,7 +178,7 @@ impl ApiSender {
                     &host_header(&url),
                     &path,
                     &body,
-                    chrono::Utc::now(),
+                    crate::clock::now(),
                 )
                 .map_err(SendError::Permanent)?;
                 with_headers(post.header("content-type", "application/json"), headers).body(body)

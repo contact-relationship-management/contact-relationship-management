@@ -99,7 +99,7 @@ pub(super) async fn stakeholders(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
     let last_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =

@@ -315,7 +315,7 @@ async fn team_attainment(
     )
     .await?;
     format::json(TeamReport {
-        as_of: chrono::Utc::now(),
+        as_of: crate::clock::now(),
         at,
         rows,
         note: "a team's revenue is its workers' credited won revenue (a split deal counts each \

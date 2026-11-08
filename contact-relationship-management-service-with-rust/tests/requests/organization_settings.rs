@@ -34,7 +34,7 @@ async fn the_organization_s_zone_and_fiscal_year_shape_today_and_the_reports() {
             .await
             .json();
         assert_eq!(set["time_zone"], "Pacific/Kiritimati");
-        let kiritimati = chrono::Utc::now()
+        let kiritimati = contact_relationship_management::clock::now()
             .with_timezone(&chrono_tz::Pacific::Kiritimati)
             .date_naive();
         assert_eq!(set["today"], json!(kiritimati));
@@ -115,7 +115,7 @@ async fn the_organization_s_zone_and_fiscal_year_shape_today_and_the_reports() {
         assert_eq!(snap["taken_on"], json!(kiritimati), "{snap}");
 
         // A caller's own zone decides its "today": quota attainment is read on that day.
-        let pago = chrono::Utc::now()
+        let pago = contact_relationship_management::clock::now()
             .with_timezone(&chrono_tz::Pacific::Pago_Pago)
             .date_naive();
         let read: Value = request
@@ -164,12 +164,12 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
             .json(&json!({ "time_zone": "Pacific/Kiritimati", "fiscal_year_start_month": 1 }))
             .await
             .assert_status_ok();
-        let kiritimati = chrono::Utc::now()
+        let kiritimati = contact_relationship_management::clock::now()
             .with_timezone(&chrono_tz::Pacific::Kiritimati)
             .date_naive();
         // Pago Pago is 25 hours behind Kiritimati: its calendar day is one or two days before, depending on the hour
         // (two for the hour between 10:00 and 11:00 UTC), and never the same day.
-        let pago = chrono::Utc::now()
+        let pago = contact_relationship_management::clock::now()
             .with_timezone(&chrono_tz::Pacific::Pago_Pago)
             .date_naive();
         assert!(

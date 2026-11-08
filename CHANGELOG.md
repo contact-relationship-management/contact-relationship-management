@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — one clock for records (CRM-T221, 2026-11-08)
+
+- Reminders, deadlines and record times no longer move when the application host's clock and the
+  database's disagree: the service follows the database's.
+
 ### Changed — signed list cursors (CRM-T223, 2026-11-07)
 
 - A list's next-page link can no longer be made up or reused for another list or filter. A link

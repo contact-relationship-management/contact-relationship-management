@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — one clock for records (CRM-T221)
+
+- Record times follow the database's clock. `clock::now()` is the host's clock moved by the gap
+  to the database's, measured at start and every minute, in the server and the worker; a gap over
+  a second is logged. Before, the service stamped with the host's clock while the database stamped
+  `created_at` and compared with `now()` on its own, so a gap between them moved reminders and
+  deadlines.
+- Signed webhook and bridge timestamps are still checked against the host's clock. A census test
+  in `clock.rs` holds the list.
+
 ### Changed — signed list cursors (CRM-T223, CRM-D23)
 
 - **Breaking for operators:** production refuses to start without `CRM_CURSOR_SECRET`, 32 bytes

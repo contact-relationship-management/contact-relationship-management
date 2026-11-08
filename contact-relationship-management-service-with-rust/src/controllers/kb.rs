@@ -346,7 +346,7 @@ async fn deflection(
     // The organization's days (CRM-T179): the counts are kept by them, and a ticket counts on
     // the day it was opened there.
     let calendar = super::organization::periods(&ctx.db).await?;
-    let to = crate::rules::periods::today_in(Utc::now(), calendar.zone);
+    let to = crate::rules::periods::today_in(crate::clock::now(), calendar.zone);
     let from = to - chrono::Duration::days(days - 1);
     let opened_on = format!(
         "{}::date",

@@ -1125,7 +1125,7 @@ async fn create_activity(
     problems.finish()?;
     let occurred_at = payload
         .occurred_at
-        .unwrap_or_else(|| chrono::Utc::now().into());
+        .unwrap_or_else(|| crate::clock::now().into());
     let txn = ctx.db.begin().await?;
     let row = activities::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),

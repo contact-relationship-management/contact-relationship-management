@@ -188,7 +188,7 @@ pub(crate) async fn enrol_in(
     else {
         return Ok(None);
     };
-    let due = chrono::Utc::now() + chrono::Duration::hours(i64::from(first_step.delay_hours));
+    let due = crate::clock::now() + chrono::Duration::hours(i64::from(first_step.delay_hours));
     let row = nurture_enrollments::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         sequence_pid: ActiveValue::set(sequence.pid),
@@ -405,7 +405,7 @@ pub(super) async fn advance_nurture(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
 ) -> Result<Response> {
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     let due = nurture_enrollments::Entity::find()
         .filter(nurture_enrollments::Column::Status.eq("active"))
         .filter(nurture_enrollments::Column::DeletedAt.is_null())

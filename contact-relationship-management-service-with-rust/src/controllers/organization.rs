@@ -145,7 +145,7 @@ pub async fn caller_today(
     let org = periods(db).await?;
     let named = headers.get(USER_ZONE_HEADER).and_then(|v| v.to_str().ok());
     Ok(periods::today_in(
-        chrono::Utc::now(),
+        crate::clock::now(),
         periods::caller_zone(named, &org),
     ))
 }
@@ -157,7 +157,7 @@ pub async fn caller_today(
 /// A database error.
 pub async fn organization_today(db: &impl ConnectionTrait) -> Result<chrono::NaiveDate> {
     Ok(periods::today_in(
-        chrono::Utc::now(),
+        crate::clock::now(),
         periods(db).await?.zone,
     ))
 }
@@ -172,7 +172,7 @@ async fn view(pool: &PgPool) -> Result<SettingsView> {
     });
     let (updated_at, set_by) = match row {
         Some(row) => (row.updated_at, row.set_by),
-        None => (chrono::Utc::now(), None),
+        None => (crate::clock::now(), None),
     };
     Ok(SettingsView {
         time_zone: found.zone.name().to_string(),
@@ -180,7 +180,7 @@ async fn view(pool: &PgPool) -> Result<SettingsView> {
         stalled_after_days: stalled_days,
         updated_at,
         set_by,
-        today: periods::today_in(chrono::Utc::now(), found.zone),
+        today: periods::today_in(crate::clock::now(), found.zone),
     })
 }
 

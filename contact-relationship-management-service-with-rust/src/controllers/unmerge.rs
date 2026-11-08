@@ -435,7 +435,7 @@ async fn unmerge(
     let (restored, left_behind) = restore_moved(&txn, &ledger).await?;
     let dropped_restored = restore_dropped(&txn, &ledger, &before).await?;
     let (cleared, kept) = clear_filled(&txn, &ledger, &before).await?;
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     let (result, purposes) = bring_back(&txn, &merged, &survivor, now).await?;
 
     let body = ContactUnmerge {

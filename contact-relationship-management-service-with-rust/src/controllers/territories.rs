@@ -356,7 +356,7 @@ async fn territory_attainment(
     )
     .await?;
     format::json(TerritoryReport {
-        as_of: chrono::Utc::now(),
+        as_of: crate::clock::now(),
         from,
         to,
         rows,

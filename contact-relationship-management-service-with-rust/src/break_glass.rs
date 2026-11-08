@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn grants_expire() {
         let registry = Registry::default();
-        let now = Utc::now();
+        let now = crate::clock::now();
         registry.grant("u", expiry(now, 30));
         assert!(registry.active("u", now));
         assert!(registry.active("u", now + Duration::minutes(29)));
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn replace_drops_revoked_grants_and_grant_keeps_the_later_expiry() {
         let registry = Registry::default();
-        let now = Utc::now();
+        let now = crate::clock::now();
         registry.grant("u", expiry(now, 10));
         registry.grant("u", expiry(now, 5));
         assert!(registry.active("u", now + Duration::minutes(9)));

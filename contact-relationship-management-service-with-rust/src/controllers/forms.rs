@@ -476,7 +476,7 @@ async fn send_confirmation(
     else {
         return false;
     };
-    let expires = chrono::Utc::now() + chrono::Duration::days(CONFIRM_DAYS);
+    let expires = crate::clock::now() + chrono::Duration::days(CONFIRM_DAYS);
     let token = match crate::link_tokens::issue(
         db,
         crate::link_tokens::CONFIRM,

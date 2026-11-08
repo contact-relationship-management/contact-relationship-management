@@ -72,7 +72,7 @@ pub(super) async fn dpo(
     headers: HeaderMap,
 ) -> Result<Response> {
     let window_days = days_or(query.days, 30);
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let since = now - chrono::Days::new(u64::try_from(window_days).unwrap_or(30));
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
     let mut coverage: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
@@ -136,7 +136,7 @@ pub(super) async fn consent_by_account(
     headers: HeaderMap,
 ) -> Result<Response> {
     let window = days_or(query.days, 30);
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let since = now - chrono::Days::new(u64::try_from(window).unwrap_or(30));
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);

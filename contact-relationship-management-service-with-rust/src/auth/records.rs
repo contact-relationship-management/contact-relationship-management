@@ -115,7 +115,7 @@ pub fn mask_text_json(mut value: serde_json::Value, keys: &[&str]) -> serde_json
 #[must_use]
 pub fn request_env_attrs() -> BTreeMap<String, Vec<String>> {
     use chrono::Timelike;
-    env_attrs_at(chrono::Utc::now().hour())
+    env_attrs_at(crate::clock::now().hour())
 }
 
 /// Pure derivation of the environment attributes for a given UTC `hour`
@@ -166,7 +166,7 @@ pub fn authorize_record(
         .claims()
         .ok_or((StatusCode::UNAUTHORIZED, "missing bearer token".to_string()))?;
     let mut env = request_env_attrs();
-    if crate::break_glass::registry().active(&claims.sub, chrono::Utc::now()) {
+    if crate::break_glass::registry().active(&claims.sub, crate::clock::now()) {
         env.insert("break_glass".to_string(), vec!["true".to_string()]);
     }
     let decision = policy()
@@ -188,7 +188,7 @@ pub fn may_read(claims: &Claims, resource: &BTreeMap<String, Vec<String>>) -> bo
         return true;
     }
     let mut env = request_env_attrs();
-    if crate::break_glass::registry().active(&claims.sub, chrono::Utc::now()) {
+    if crate::break_glass::registry().active(&claims.sub, crate::clock::now()) {
         env.insert("break_glass".to_string(), vec!["true".to_string()]);
     }
     policy()
@@ -226,7 +226,7 @@ pub fn claims_for_worker(worker_ref: &str) -> Claims {
 pub fn break_glass_active(caller: &MaybeAuthUser) -> bool {
     caller
         .actor()
-        .is_some_and(|sub| crate::break_glass::registry().active(sub, chrono::Utc::now()))
+        .is_some_and(|sub| crate::break_glass::registry().active(sub, crate::clock::now()))
 }
 
 /// Whether the caller's **collection-level** read carries the `mask`

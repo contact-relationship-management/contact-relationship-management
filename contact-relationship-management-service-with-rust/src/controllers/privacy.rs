@@ -111,7 +111,7 @@ async fn subject_access(
     let db = &ctx.db;
     let cpid = contact.pid;
     let export = SubjectAccessExport {
-        as_of: chrono::Utc::now(),
+        as_of: crate::clock::now(),
         contact: contact.clone(),
         consent_history: rows_for!(db, consent_events, ContactPid, cpid),
         consent_purposes: crate::consents::all(db, &contact).await?,
@@ -194,7 +194,7 @@ fn scrub(contact: contacts::Model) -> contacts::ActiveModel {
     scrubbed.given_name = ActiveValue::set(None);
     scrubbed.family_name = ActiveValue::set(None);
     scrubbed.marketing_consent = ActiveValue::set("withdrawn".to_string());
-    scrubbed.deleted_at = ActiveValue::set(Some(chrono::Utc::now().into()));
+    scrubbed.deleted_at = ActiveValue::set(Some(crate::clock::now().into()));
     scrubbed
 }
 
@@ -511,7 +511,7 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
         .filter(contacts::Column::MarketingConsent.eq("withdrawn"))
         .filter(
             contacts::Column::ConsentChangedAt
-                .lt(chrono::Utc::now() - chrono::Duration::days(days)),
+                .lt(crate::clock::now() - chrono::Duration::days(days)),
         )
         .all(&ctx.db)
         .await?
@@ -536,7 +536,7 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
         }
     }
     format::json(RetentionReport {
-        as_of: chrono::Utc::now(),
+        as_of: crate::clock::now(),
         horizon_days: days,
         soft_deleted_past_horizon: tables,
         withdrawn_consent_past_horizon,

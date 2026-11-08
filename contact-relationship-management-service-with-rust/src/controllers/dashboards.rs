@@ -41,7 +41,7 @@ pub(crate) fn conditional(headers: &HeaderMap, payload: serde_json::Value) -> Re
     }
     let mut body = payload;
     if let Some(object) = body.as_object_mut() {
-        object.insert("as_of".into(), serde_json::json!(chrono::Utc::now()));
+        object.insert("as_of".into(), serde_json::json!(crate::clock::now()));
     }
     (StatusCode::OK, [(header::ETAG, tag)], axum::Json(body)).into_response()
 }
@@ -263,7 +263,7 @@ async fn sales_dashboard(
 /// state; live breach truth (CRM-R13).
 #[debug_handler]
 async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Result<Response> {
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     let open = tickets::Entity::find_live()
         .filter(tickets::Column::Status.is_in(["open", "pending"]))
         .all(&ctx.db)
@@ -578,7 +578,7 @@ async fn account_clv(
         ),
         (None, None) => (None, None, Vec::new(), Vec::new()),
     };
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let (margin_minor, mut projection) = if masked {
         (None, None)
     } else {
@@ -643,7 +643,7 @@ async fn activity_dashboard(
     State(ctx): State<AppContext>,
     Query(params): Query<ActivityParams>,
 ) -> Result<Response> {
-    let since = chrono::Utc::now() - chrono::Duration::days(params.days.clamp(1, 365));
+    let since = crate::clock::now() - chrono::Duration::days(params.days.clamp(1, 365));
     let counts: Vec<(String, i64)> = activities::Entity::find()
         .select_only()
         .column(activities::Column::Kind)
@@ -660,7 +660,7 @@ async fn activity_dashboard(
         window_days: params.days,
         total,
         by_kind,
-        as_of: chrono::Utc::now(),
+        as_of: crate::clock::now(),
     })
 }
 

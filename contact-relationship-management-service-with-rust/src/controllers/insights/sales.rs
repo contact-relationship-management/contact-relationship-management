@@ -172,7 +172,7 @@ pub(super) async fn stale_deals(
     headers: HeaderMap,
 ) -> Result<Response> {
     let threshold = days_or(query.days, 14);
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let open: Vec<deals::Model> = deals::Entity::find_live()
         .filter(deals::Column::ClosedAt.is_null())
         .all(&ctx.db)
@@ -326,7 +326,7 @@ pub(super) async fn pipeline_hygiene(
     headers: HeaderMap,
 ) -> Result<Response> {
     let threshold = days_or(query.days, 14);
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     // An expected close day is a civil date: compared with the caller's day (CRM-T179).
     let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
     let open: Vec<deals::Model> = deals::Entity::find_live()
@@ -434,7 +434,7 @@ pub(super) async fn executive(
     headers: HeaderMap,
 ) -> Result<Response> {
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let to = query
         .to
         .as_deref()

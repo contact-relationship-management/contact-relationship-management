@@ -91,7 +91,7 @@ async fn records_are_counted_by_a_field_a_tag_and_a_date_range() {
         assert_eq!(rows(&only_press), [("active".to_string(), 1)]);
 
         // A date range: today is in, last year is out.
-        let today = chrono::Utc::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_naive();
         let in_range = run!(
             &request,
             json!({ "kind": "contact", "group_by": "status", "from": today, "to": today })

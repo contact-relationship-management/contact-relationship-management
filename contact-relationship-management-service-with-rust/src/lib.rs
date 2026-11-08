@@ -44,6 +44,7 @@ pub mod attachments;
 pub mod auth;
 pub mod break_glass;
 pub mod clients;
+pub mod clock;
 pub mod consent_profiles;
 pub mod consents;
 pub mod controllers;

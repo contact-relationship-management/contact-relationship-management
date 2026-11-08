@@ -183,11 +183,25 @@ async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
             made["secret"].as_str().unwrap(),
         );
         let contact = Uuid::new_v4();
-        let event = emit(&ctx.db, "contact", "created", contact, Utc::now()).await;
-        emit(&ctx.db, "deal", "opened", Uuid::new_v4(), Utc::now()).await;
+        let event = emit(
+            &ctx.db,
+            "contact",
+            "created",
+            contact,
+            contact_relationship_management::clock::now(),
+        )
+        .await;
+        emit(
+            &ctx.db,
+            "deal",
+            "opened",
+            Uuid::new_v4(),
+            contact_relationship_management::clock::now(),
+        )
+        .await;
 
         let recorder = Recorder::answering(200);
-        let now = Utc::now();
+        let now = contact_relationship_management::clock::now();
         let report = run(&ctx.db, &recorder, now).await.unwrap();
         assert_eq!(
             (report.deliveries_created, report.delivered),
@@ -240,12 +254,18 @@ async fn a_subscription_does_not_hear_what_happened_before_it_existed() {
             "contact",
             "created",
             Uuid::new_v4(),
-            Utc::now() - Duration::hours(1),
+            contact_relationship_management::clock::now() - Duration::hours(1),
         )
         .await;
         let made = subscribe!(request, ["*"]).await;
         let recorder = Recorder::answering(200);
-        let report = run(&ctx.db, &recorder, Utc::now()).await.unwrap();
+        let report = run(
+            &ctx.db,
+            &recorder,
+            contact_relationship_management::clock::now(),
+        )
+        .await
+        .unwrap();
         assert_eq!(report.deliveries_created, 0);
         assert!(
             log!(request, made["pid"].as_str().unwrap())
@@ -263,9 +283,16 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
     request::<App, _, _>(|request, ctx| async move {
         let made = subscribe!(request, ["*"]).await;
         let pid = made["pid"].as_str().unwrap();
-        emit(&ctx.db, "lead", "lead_captured", Uuid::new_v4(), Utc::now()).await;
+        emit(
+            &ctx.db,
+            "lead",
+            "lead_captured",
+            Uuid::new_v4(),
+            contact_relationship_management::clock::now(),
+        )
+        .await;
         let recorder = Recorder::answering(500);
-        let start = Utc::now();
+        let start = contact_relationship_management::clock::now();
 
         let first = run(&ctx.db, &recorder, start).await.unwrap();
         assert_eq!((first.attempted, first.retrying), (1, 1));
@@ -297,10 +324,21 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
 
         // A receiver that recovers gets the next one.
         recorder.respond_with(200);
-        emit(&ctx.db, "lead", "lead_captured", Uuid::new_v4(), Utc::now()).await;
-        let ok = run(&ctx.db, &recorder, Utc::now() + Duration::days(31))
-            .await
-            .unwrap();
+        emit(
+            &ctx.db,
+            "lead",
+            "lead_captured",
+            Uuid::new_v4(),
+            contact_relationship_management::clock::now(),
+        )
+        .await;
+        let ok = run(
+            &ctx.db,
+            &recorder,
+            contact_relationship_management::clock::now() + Duration::days(31),
+        )
+        .await
+        .unwrap();
         assert_eq!(ok.delivered, 1);
     })
     .await;
@@ -314,10 +352,23 @@ async fn a_410_disables_the_subscription_cancels_what_is_queued_and_is_audited()
         let made = subscribe!(request, ["*"]).await;
         let pid = made["pid"].as_str().unwrap();
         for _ in 0..3 {
-            emit(&ctx.db, "contact", "created", Uuid::new_v4(), Utc::now()).await;
+            emit(
+                &ctx.db,
+                "contact",
+                "created",
+                Uuid::new_v4(),
+                contact_relationship_management::clock::now(),
+            )
+            .await;
         }
         let recorder = Recorder::answering(410);
-        let report = run(&ctx.db, &recorder, Utc::now()).await.unwrap();
+        let report = run(
+            &ctx.db,
+            &recorder,
+            contact_relationship_management::clock::now(),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             (report.attempted, report.subscriptions_disabled),
             (1, 1),
@@ -330,9 +381,13 @@ async fn a_410_disables_the_subscription_cancels_what_is_queued_and_is_audited()
         let rows = log!(request, pid).await;
         assert_eq!(rows.len(), 3);
         assert!(rows.iter().all(|r| r["status"] == "cancelled"), "{rows:?}");
-        let later = run(&ctx.db, &recorder, Utc::now() + Duration::days(1))
-            .await
-            .unwrap();
+        let later = run(
+            &ctx.db,
+            &recorder,
+            contact_relationship_management::clock::now() + Duration::days(1),
+        )
+        .await
+        .unwrap();
         assert_eq!(later.attempted, 0);
         let audits: Value = request.get(&format!("/api/audits/{pid}")).await.json();
         assert!(
@@ -368,8 +423,21 @@ async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
         assert_ne!(new, old);
 
         let recorder = Recorder::answering(200);
-        let event = emit(&ctx.db, "contact", "created", Uuid::new_v4(), Utc::now()).await;
-        run(&ctx.db, &recorder, Utc::now()).await.unwrap();
+        let event = emit(
+            &ctx.db,
+            "contact",
+            "created",
+            Uuid::new_v4(),
+            contact_relationship_management::clock::now(),
+        )
+        .await;
+        run(
+            &ctx.db,
+            &recorder,
+            contact_relationship_management::clock::now(),
+        )
+        .await
+        .unwrap();
         {
             let calls = recorder.calls();
             let header = calls[0].header("webhook-signature");
@@ -386,10 +454,21 @@ async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
         }
 
         // Two days on, only the new secret signs.
-        let event = emit(&ctx.db, "contact", "created", Uuid::new_v4(), Utc::now()).await;
-        run(&ctx.db, &recorder, Utc::now() + Duration::days(2))
-            .await
-            .unwrap();
+        let event = emit(
+            &ctx.db,
+            "contact",
+            "created",
+            Uuid::new_v4(),
+            contact_relationship_management::clock::now(),
+        )
+        .await;
+        run(
+            &ctx.db,
+            &recorder,
+            contact_relationship_management::clock::now() + Duration::days(2),
+        )
+        .await
+        .unwrap();
         {
             let calls = recorder.calls();
             let header = calls[1].header("webhook-signature");
@@ -426,12 +505,19 @@ async fn erasing_a_contact_cancels_its_queued_deliveries() {
             "contact",
             "created",
             contact.parse().unwrap(),
-            Utc::now(),
+            contact_relationship_management::clock::now(),
         )
         .await;
-        emit(&ctx.db, "contact", "created", other, Utc::now()).await;
+        emit(
+            &ctx.db,
+            "contact",
+            "created",
+            other,
+            contact_relationship_management::clock::now(),
+        )
+        .await;
         let recorder = Recorder::answering(500);
-        let start = Utc::now();
+        let start = contact_relationship_management::clock::now();
         let first = run(&ctx.db, &recorder, start).await.unwrap();
         assert_eq!(first.retrying, 2);
 
@@ -467,19 +553,43 @@ async fn a_removed_subscription_sends_nothing_more_and_keeps_its_log() {
     request::<App, _, _>(|request, ctx| async move {
         let made = subscribe!(request, ["*"]).await;
         let pid = made["pid"].as_str().unwrap();
-        emit(&ctx.db, "contact", "created", Uuid::new_v4(), Utc::now()).await;
+        emit(
+            &ctx.db,
+            "contact",
+            "created",
+            Uuid::new_v4(),
+            contact_relationship_management::clock::now(),
+        )
+        .await;
         let recorder = Recorder::answering(500);
-        run(&ctx.db, &recorder, Utc::now()).await.unwrap();
+        run(
+            &ctx.db,
+            &recorder,
+            contact_relationship_management::clock::now(),
+        )
+        .await
+        .unwrap();
 
         let removed: Value = request
             .delete(&format!("/api/webhook-subscriptions/{pid}"))
             .await
             .json();
         assert_eq!(removed["deliveries_cancelled"], 1);
-        emit(&ctx.db, "contact", "created", Uuid::new_v4(), Utc::now()).await;
-        let report = run(&ctx.db, &recorder, Utc::now() + Duration::days(1))
-            .await
-            .unwrap();
+        emit(
+            &ctx.db,
+            "contact",
+            "created",
+            Uuid::new_v4(),
+            contact_relationship_management::clock::now(),
+        )
+        .await;
+        let report = run(
+            &ctx.db,
+            &recorder,
+            contact_relationship_management::clock::now() + Duration::days(1),
+        )
+        .await
+        .unwrap();
         assert_eq!((report.deliveries_created, report.attempted), (0, 0));
         let rows = log!(request, pid).await;
         assert_eq!(rows.len(), 1);

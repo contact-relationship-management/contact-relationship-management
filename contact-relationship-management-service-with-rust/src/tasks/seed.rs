@@ -184,7 +184,7 @@ impl Task for Seed {
                 expected_close_on: ActiveValue::set(chrono::NaiveDate::from_ymd_opt(2026, 9, 30)),
                 kanban_position: ActiveValue::set(i32::try_from(i).unwrap_or(0)),
                 source_campaign_pid: ActiveValue::set(None),
-                closed_at: ActiveValue::set(closed.then(|| chrono::Utc::now().into())),
+                closed_at: ActiveValue::set(closed.then(|| crate::clock::now().into())),
                 won: ActiveValue::set(stage_index == 3),
                 lost_reason: ActiveValue::set((stage_index == 4).then(|| "budget cut".to_string())),
                 deleted_at: ActiveValue::set(None),

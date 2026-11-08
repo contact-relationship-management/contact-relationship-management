@@ -206,7 +206,7 @@ pub async fn tighten<C: ConnectionTrait>(
 ) -> Result<Vec<PurposeOutcome>, DbErr> {
     let mine = others(db, target).await?;
     let theirs = others(db, other).await?;
-    let now = Utc::now();
+    let now = crate::clock::now();
     let mut out = Vec::new();
     for purpose in PURPOSES.iter().filter(|p| **p != DEFAULT_PURPOSE) {
         let held = |m: &BTreeMap<String, (String, DateTime<Utc>)>| {

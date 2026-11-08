@@ -280,7 +280,7 @@ async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_noth
             );
         }
         // Ada is now an employee since today, and out of marketing; Linus, who left, is not.
-        let today = chrono::Utc::now().date_naive().to_string();
+        let today = contact_relationship_management::clock::now().date_naive().to_string();
         let detail: Value = request.get(&format!("/api/contacts/{ada}")).await.json();
         assert_eq!(
             detail["employments"],

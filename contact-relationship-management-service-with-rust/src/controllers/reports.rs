@@ -249,7 +249,7 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
         time_zone: periods.zone.name().to_string(),
         fiscal_year_start_month: periods.fiscal_start_month,
         spec,
-        as_of: chrono::Utc::now(),
+        as_of: crate::clock::now(),
         rows,
         truncated,
         rate_date,

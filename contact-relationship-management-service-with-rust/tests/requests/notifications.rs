@@ -35,7 +35,7 @@ async fn database_now(db: &sea_orm::DatabaseConnection) -> chrono::DateTime<chro
 }
 
 fn an_hour_ago() -> String {
-    (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339()
+    (contact_relationship_management::clock::now() - chrono::Duration::hours(1)).to_rfc3339()
 }
 
 macro_rules! task {
@@ -79,7 +79,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
         let contact = seed_contact!(&request, "Reminded").await;
 
         // Not yet due, not a task, and finished tasks make nothing.
-        let future = (chrono::Utc::now() + chrono::Duration::days(1)).to_rfc3339();
+        let future = (contact_relationship_management::clock::now() + chrono::Duration::days(1)).to_rfc3339();
         let _later = task!(request, contact, me, future);
         let done = task!(request, contact, me, an_hour_ago());
         request

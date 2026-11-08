@@ -4,7 +4,6 @@
 
 use axa::AppContext;
 use axa::testing::prelude::*;
-use chrono::Utc;
 use contact_relationship_management::app::App;
 use contact_relationship_management::controllers::organization;
 use contact_relationship_management::db::{self, Bridge};
@@ -203,7 +202,7 @@ fn note(subject: Uuid) -> activities::ActiveModel {
         subject_kind: ActiveValue::set("contact".to_string()),
         subject_pid: ActiveValue::set(subject),
         kind: ActiveValue::set("note".to_string()),
-        occurred_at: ActiveValue::set(Utc::now().into()),
+        occurred_at: ActiveValue::set(contact_relationship_management::clock::now().into()),
         actor_ref: ActiveValue::set(None),
         summary: ActiveValue::set("through the bridge".into()),
         due_on: ActiveValue::set(Some(chrono::NaiveDate::from_ymd_opt(2026, 11, 7).unwrap())),

@@ -37,6 +37,10 @@ Commands assume the container images from the repository's `Containerfile`s.
    not append, so list it only if something in front of it does the appending for it.
    `CRM_TRUST_FORWARDED_FOR` is no longer read, and a start with it set logs a warning.
 9. Set `CRM_CORS_ORIGIN` only if a browser must call the service directly.
+   Keep the hosts' clocks and the database's in sync (NTP). Record times follow the
+   database's clock (CRM-T221), measured again every minute, and a host more than a second
+   off logs `this host's clock is off from the database's`. Signed webhook and bridge
+   timestamps and token expiry are still checked against the host's clock.
 10. Run migrations as a separate, privileged step (`auto_migrate` is off in
    production). The runtime database role needs no DDL rights. `db down`, `db reset`
    and `db truncate` are refused in production, so undo a migration there by

@@ -145,7 +145,7 @@ async fn create(
             serde_json::json!(events).into(),
             crate::crypto::seal(&secret).into(),
             caller.actor().map(str::to_string).into(),
-            Utc::now().into(),
+            crate::clock::now().into(),
         ],
     ))
     .await?;
@@ -241,7 +241,7 @@ async fn rotate_secret(
     PidPath(pid): PidPath,
 ) -> Result<Response> {
     let secret = rules::new_secret();
-    let until = Utc::now() + Duration::hours(rules::ROTATION_GRACE_HOURS);
+    let until = crate::clock::now() + Duration::hours(rules::ROTATION_GRACE_HOURS);
     let txn = ctx.db.begin().await?;
     let changed = txn
         .execute_raw(sql(
@@ -320,7 +320,8 @@ async fn deliveries(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Res
 /// on a schedule (every minute is typical).
 #[debug_handler]
 async fn relay(State(ctx): State<AppContext>) -> Result<Response> {
-    let report = crate::webhooks::run(&ctx.db, &crate::webhooks::HttpSender, Utc::now()).await?;
+    let report =
+        crate::webhooks::run(&ctx.db, &crate::webhooks::HttpSender, crate::clock::now()).await?;
     format::json(report)
 }
 

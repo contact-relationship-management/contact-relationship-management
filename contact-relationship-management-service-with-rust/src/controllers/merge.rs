@@ -337,7 +337,7 @@ async fn combine(
     active.influence = ActiveValue::set(rules::fill(survivor.influence, merged.influence));
     active.interest = ActiveValue::set(rules::fill(survivor.interest, merged.interest));
     if consent_changed {
-        let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+        let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
         active.marketing_consent = ActiveValue::set(consent.clone());
         active.consent_changed_at = ActiveValue::set(Some(now));
         consent_events::ActiveModel {
@@ -536,7 +536,7 @@ async fn merge(
     let moved = move_rows(&txn, survivor_pid, merged_pid).await?;
     let (filled, consent, purposes) = combine(&txn, survivor, &merged).await?;
 
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     let mut gone: contacts::ActiveModel = merged.clone().into();
     gone.deleted_at = ActiveValue::set(Some(now));
     gone.merged_into_pid = ActiveValue::set(Some(survivor_pid));

@@ -118,7 +118,7 @@ async fn a_preview_maps_columns_reports_each_row_and_gives_duplicate_advice_only
 #[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
     request::<App, _, _>(|request, ctx| async move {
-        let today = chrono::Utc::now().date_naive().to_string();
+        let today = contact_relationship_management::clock::now().date_naive().to_string();
         let body = |skip: bool| {
             json!({ "csv": FILE, "mapping": mapping(), "source_note": "Trade show 2026",
                     "obtained_on": today, "skip_likely_duplicates": skip })
@@ -233,7 +233,9 @@ async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
 #[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn likely_duplicates_can_be_left_out_and_a_long_file_goes_in_batches() {
     request::<App, _, _>(|request, ctx| async move {
-        let today = chrono::Utc::now().date_naive().to_string();
+        let today = contact_relationship_management::clock::now()
+            .date_naive()
+            .to_string();
         let skipped: Value = request
             .post("/api/lead-imports")
             .json(

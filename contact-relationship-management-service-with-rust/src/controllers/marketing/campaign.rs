@@ -348,7 +348,7 @@ pub(super) async fn deliver_one(
         (sender.new_message_id(), None)
     };
     // The delivery row and the touch activity commit together.
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     let txn = ctx.db.begin().await?;
     deliveries::settle(&txn, item.id, "sent", Some(&message_id), None).await?;
     if let Some(provider_id) = &provider_id {

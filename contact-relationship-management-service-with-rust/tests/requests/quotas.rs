@@ -219,7 +219,7 @@ async fn attainment_is_the_workers_won_revenue_in_the_period_and_the_commission_
                 { "from_percent": 100, "rate_bps": 800 } ] }))
             .await
             .json();
-        let today = chrono::Utc::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_naive();
         let (from, to) = (
             today - chrono::Duration::days(10),
             today + chrono::Duration::days(80),
@@ -330,7 +330,7 @@ async fn a_split_deal_is_credited_in_shares_to_the_minor_unit_and_a_removed_spli
         let handed = win(ada.clone(), "Handed over", 10_000).await;
         win(grace.clone(), "Own", 7_000).await;
 
-        let today = chrono::Utc::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_naive();
         let (from, to) = (
             today - chrono::Duration::days(10),
             today + chrono::Duration::days(80),
@@ -437,7 +437,7 @@ async fn a_team_adds_its_workers_standings_per_currency_and_is_replaced_by_name_
                 .await
                 .assert_status_ok();
         }
-        let today = chrono::Utc::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_naive();
         let (from, to) = (
             today - chrono::Duration::days(10),
             today + chrono::Duration::days(80),
@@ -690,7 +690,7 @@ async fn a_clawback_takes_credit_back_from_one_worker_and_is_refused_beyond_what
                 { "owner_ref": grace, "share_bps": 5_000 } ] }))
             .await
             .assert_status_ok();
-        let today = chrono::Utc::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_naive();
         for owner in [&ada, &grace] {
             request
                 .put("/api/quotas")

@@ -356,6 +356,8 @@ impl App {
         // CRM-T30: fail closed. (Here because every server start reaches it.)
         crate::hardening::check_process(ctx.environment.is_production_like())
             .map_err(Error::string)?;
+        // CRM-T221: record times follow the database's clock; measure it before serving.
+        crate::clock::start(crate::db::pool(ctx).clone()).await;
         init_sending(ctx)?;
         // CRM-T223: list cursors are signed, and replicas must share the key.
         crate::controllers::paging::init(ctx.environment.is_production_like())
@@ -442,6 +444,9 @@ impl App {
         // without this it would send campaigns with the simulated sender and mark them
         // delivered (found by `scripts/image-smoke.sh`, CRM-T72).
         init_sending(ctx)?;
+        // CRM-T221: the worker's record times follow the database's clock too. Its first
+        // measurement lands in the background, a moment after the workers start.
+        tokio::spawn(crate::clock::start(crate::db::pool(ctx).clone()));
         queue.register(controllers::marketing::CampaignSendWorker::build(ctx));
         queue.register(controllers::notifications::NotificationSweepWorker::build(
             ctx,

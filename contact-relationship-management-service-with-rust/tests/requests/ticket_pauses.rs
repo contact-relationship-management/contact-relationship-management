@@ -18,12 +18,12 @@ async fn sql(db: &sea_orm::DatabaseConnection, text: &str, pid: &str) {
     .unwrap();
 }
 
-/// Put `pid`'s pause `minutes` back on the service's clock. The service measures a pause from
-/// `paused_at` to its own `Utc::now()`, so backdating with the database's `now()` measures the
-/// gap between the two clocks too: a container nine minutes behind its host turned 30 minutes
-/// into 39 (CRM-T220).
+/// Put `pid`'s pause `minutes` back on the clock the service measures it with, `clock::now()`.
+/// Before CRM-T221 that was the host's clock, and backdating with the database's `now()`
+/// measured the gap between the two clocks too: a container nine minutes behind its host turned
+/// 30 minutes into 39 (CRM-T220).
 async fn paused_for(db: &sea_orm::DatabaseConnection, pid: &str, minutes: i64) {
-    let at = chrono::Utc::now() - chrono::Duration::minutes(minutes);
+    let at = contact_relationship_management::clock::now() - chrono::Duration::minutes(minutes);
     db.execute_raw(Statement::from_sql_and_values(
         DatabaseBackend::Postgres,
         "UPDATE tickets SET paused_at = $2 WHERE pid = $1::uuid",

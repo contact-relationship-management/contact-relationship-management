@@ -675,7 +675,7 @@ async fn run(
         min_open_seconds: (min_open_seconds > 0).then_some(min_open_seconds),
         min_click_seconds: (min_click_seconds > 0).then_some(min_click_seconds),
         touches: kinds.names(),
-        as_of: Utc::now(),
+        as_of: crate::clock::now(),
         deals: deals.len(),
         unattributed_deals,
         unattributed: if conversion.is_some() {

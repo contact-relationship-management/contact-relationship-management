@@ -53,7 +53,7 @@ pub(super) async fn sla_register(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let at_risk_horizon = now + chrono::Duration::hours(4);
     let open: Vec<tickets::Model> = tickets::Entity::find_live()
         .filter(tickets::Column::Status.is_in(["open", "pending"]))

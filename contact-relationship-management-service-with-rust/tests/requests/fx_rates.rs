@@ -193,7 +193,9 @@ async fn a_report_shows_its_sums_in_one_currency_naming_the_rates_and_what_it_co
         assert_eq!(none["unconverted"].as_array().unwrap().len(), 3);
 
         // With no date, today is used; a report in another currency is just another conversion.
-        let today = chrono::Utc::now().date_naive().to_string();
+        let today = contact_relationship_management::clock::now()
+            .date_naive()
+            .to_string();
         let now: Value = run(json!({})).await.json();
         assert_eq!(now["rate_date"], today);
         let usd_view: Value = run(json!({ "convert_to": "USD", "rate_date": "2026-07-01" }))
@@ -214,7 +216,7 @@ async fn a_report_shows_its_sums_in_one_currency_naming_the_rates_and_what_it_co
         assert!(plain["rate_date"].is_null());
 
         // Refusals: a future day, a count, a lower-case currency, a date for nothing.
-        let tomorrow = (chrono::Utc::now() + chrono::Duration::days(1))
+        let tomorrow = (contact_relationship_management::clock::now() + chrono::Duration::days(1))
             .date_naive()
             .to_string();
         for (extra, pointer) in [

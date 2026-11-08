@@ -143,7 +143,7 @@ pub(super) async fn cadence(
     headers: HeaderMap,
 ) -> Result<Response> {
     let threshold = days_or(query.days, 30);
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
     let touches = super::rollup::touches(&ctx.db).await?;
@@ -251,7 +251,7 @@ pub(super) async fn engagement(
     headers: HeaderMap,
 ) -> Result<Response> {
     let window = days_or(query.days, 90);
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let since = now - chrono::Days::new(u64::try_from(window).unwrap_or(90));
     let groups = super::rollup::engagement_counts(&ctx.db, since, now).await?;
     let mut per_recorder_month: std::collections::BTreeMap<String, usize> =
@@ -397,7 +397,7 @@ pub(super) async fn members(
     headers: HeaderMap,
 ) -> Result<Response> {
     let threshold = days_or(query.days, 30);
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
     let touches = super::rollup::touches(&ctx.db).await?;

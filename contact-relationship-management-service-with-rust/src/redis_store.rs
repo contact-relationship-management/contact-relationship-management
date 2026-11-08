@@ -100,7 +100,7 @@ impl Shared {
         expires_at: DateTime<Utc>,
     ) -> Result<(), redis::RedisError> {
         let key = format!("{GRANT_PREFIX}{subject}");
-        let secs = (expires_at - Utc::now()).num_seconds();
+        let secs = (expires_at - crate::clock::now()).num_seconds();
         if secs <= 0 {
             return Ok(());
         }
@@ -178,8 +178,8 @@ mod tests {
             return;
         };
         let subject = format!("user-{}", uuid::Uuid::new_v4());
-        let later = Utc::now() + chrono::Duration::minutes(30);
-        let sooner = Utc::now() + chrono::Duration::minutes(5);
+        let later = crate::clock::now() + chrono::Duration::minutes(30);
+        let sooner = crate::clock::now() + chrono::Duration::minutes(5);
         shared.put_grant(&subject, later).await.unwrap();
         shared.put_grant(&subject, sooner).await.unwrap();
         let live = shared.grants().await.unwrap();
@@ -187,7 +187,7 @@ mod tests {
         assert!((*seen - later).num_seconds().abs() <= 1, "kept the later");
         let expired = format!("user-{}", uuid::Uuid::new_v4());
         shared
-            .put_grant(&expired, Utc::now() - chrono::Duration::minutes(1))
+            .put_grant(&expired, crate::clock::now() - chrono::Duration::minutes(1))
             .await
             .unwrap();
         assert!(!shared.grants().await.unwrap().contains_key(&expired));

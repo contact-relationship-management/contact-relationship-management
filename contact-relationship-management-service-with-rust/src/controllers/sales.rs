@@ -128,7 +128,7 @@ async fn score_lead<C: sea_orm::ConnectionTrait>(
         .order_by_desc(activities::Column::OccurredAt)
         .all(db)
         .await?;
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     let days_since_last = activity_rows
         .first()
         .map(|a| (now - a.occurred_at.with_timezone(&chrono::Utc)).num_days());
@@ -678,7 +678,7 @@ async fn last_activities(
         )
         .filter(activities::Column::SubjectKind.eq("deal"))
         .filter(activities::Column::DeletedAt.is_null())
-        .filter(activities::Column::OccurredAt.lte(chrono::Utc::now()))
+        .filter(activities::Column::OccurredAt.lte(crate::clock::now()))
         .filter(activities::Column::SubjectPid.is_in(pids.iter().copied()))
         .group_by(activities::Column::SubjectPid)
         .into_tuple()
@@ -699,7 +699,7 @@ async fn listed(
     let days = super::organization::stalled_after_days(db).await?;
     let pids: Vec<Uuid> = rows.iter().map(|d| d.pid).collect();
     let activity = last_activities(db, &pids).await?;
-    let now = chrono::Utc::now();
+    let now = crate::clock::now();
     Ok(rows
         .into_iter()
         .map(|deal| {
@@ -844,13 +844,13 @@ async fn deal_stage(
     let mut active: deals::ActiveModel = deal.into();
     active.stage_pid = ActiveValue::set(stage.pid);
     // A stage move is a touch (CRM-D20); a move into the stage it is in still counts.
-    active.stage_moved_at = ActiveValue::set(chrono::Utc::now().into());
+    active.stage_moved_at = ActiveValue::set(crate::clock::now().into());
     if let Some(position) = payload.kanban_position {
         active.kanban_position = ActiveValue::set(position);
     }
     let terminal = stage.is_won || stage.is_lost;
     if terminal {
-        active.closed_at = ActiveValue::set(Some(chrono::Utc::now().into()));
+        active.closed_at = ActiveValue::set(Some(crate::clock::now().into()));
         active.won = ActiveValue::set(stage.is_won);
         active.lost_reason = ActiveValue::set(payload.lost_reason.clone());
     }
@@ -938,7 +938,7 @@ async fn reopen_deal(
         .ok_or_else(|| unprocessable("pipeline has no open stage"))?;
     let mut active: deals::ActiveModel = deal.into();
     active.stage_pid = ActiveValue::set(target.pid);
-    active.stage_moved_at = ActiveValue::set(chrono::Utc::now().into());
+    active.stage_moved_at = ActiveValue::set(crate::clock::now().into());
     active.closed_at = ActiveValue::set(None);
     active.won = ActiveValue::set(false);
     active.lost_reason = ActiveValue::set(None);
@@ -1018,7 +1018,7 @@ async fn forecast(
         rate_date,
         rates,
         unconverted,
-        as_of: chrono::Utc::now(),
+        as_of: crate::clock::now(),
         open_deals: open.len(),
         totals_minor: if masked {
             serde_json::Value::Null

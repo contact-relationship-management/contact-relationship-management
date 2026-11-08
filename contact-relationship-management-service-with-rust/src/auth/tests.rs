@@ -849,8 +849,8 @@ fn a_deal(
     won: bool,
 ) -> crate::models::_entities::deals::Model {
     crate::models::_entities::deals::Model {
-        created_at: chrono::Utc::now().into(),
-        updated_at: chrono::Utc::now().into(),
+        created_at: crate::clock::now().into(),
+        updated_at: crate::clock::now().into(),
         id: 1,
         pid: uuid::Uuid::new_v4(),
         account_pid: None,
@@ -864,11 +864,11 @@ fn a_deal(
         expected_close_on: None,
         kanban_position: 0,
         source_campaign_pid: None,
-        closed_at: closed.then(|| chrono::Utc::now().into()),
+        closed_at: closed.then(|| crate::clock::now().into()),
         won,
         lost_reason: None,
         deleted_at: None,
-        stage_moved_at: chrono::Utc::now().into(),
+        stage_moved_at: crate::clock::now().into(),
     }
 }
 

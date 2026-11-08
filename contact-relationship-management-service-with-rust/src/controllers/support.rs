@@ -262,7 +262,7 @@ async fn create_ticket(
     } else {
         None
     };
-    let opened_at: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let opened_at: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     let deadlines = targets_for(&ctx.db, &payload.priority)
         .await?
         .map(|(targets, calendar)| sla::deadlines_on(opened_at, targets, calendar.as_ref()));
@@ -344,7 +344,7 @@ async fn list_tickets(
         .all(&ctx.db)
         .await?;
     let (rows, more) = page.split(rows);
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     let rows: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|ticket| {
@@ -767,7 +767,7 @@ async fn transition(
         .map_err(|e| unprocessable(&e.to_string()))?;
     // The SLA clock stops while the ticket waits for the customer and starts again when it leaves
     // `pending`, moving each deadline by the waiting that counted against it (CRM-R55).
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     let resumed = match ticket.paused_at {
         Some(paused_at) if ticket.status == "pending" => {
             Some(resume_clock(&ctx.db, &ticket, paused_at, now).await?)
@@ -793,7 +793,7 @@ async fn transition(
         }
     }
     if payload.to == "resolved" {
-        active.resolved_at = ActiveValue::set(Some(chrono::Utc::now().into()));
+        active.resolved_at = ActiveValue::set(Some(crate::clock::now().into()));
     } else if payload.to == "open" && from == "resolved" {
         active.resolved_at = ActiveValue::set(None); // reopen clears it
     }
@@ -879,7 +879,7 @@ async fn ticket_priority(
 /// stored flag is still false flip and emit).
 #[debug_handler]
 async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     let open = tickets::Entity::find_live()
         .filter(tickets::Column::Status.is_in(["open", "pending", "resolved"]))
         .all(&ctx.db)

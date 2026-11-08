@@ -116,7 +116,7 @@ pub(crate) async fn apply_consent_in(
     source: &str,
     actor: Option<&str>,
 ) -> Result<()> {
-    let now: chrono::DateTime<chrono::FixedOffset> = chrono::Utc::now().into();
+    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
     consent_events::ActiveModel {
         pid: ActiveValue::set(Uuid::new_v4()),
         contact_pid: ActiveValue::set(contact.pid),
@@ -231,7 +231,7 @@ pub(super) async fn request_consent(
         .position(|p| *p == payload.purpose)
         .and_then(|i| u8::try_from(i).ok())
         .ok_or_else(|| unprocessable("unknown purpose"))?;
-    let expires_at = chrono::Utc::now() + chrono::Duration::days(CONFIRM_DAYS);
+    let expires_at = crate::clock::now() + chrono::Duration::days(CONFIRM_DAYS);
     apply_consent(
         &ctx.db,
         contact,
@@ -269,7 +269,7 @@ pub(super) async fn preferences_link(
 ) -> Result<Response> {
     let signer = unsubscriber()?;
     let contact = records::find_contact(&ctx.db, pid).await?;
-    let expires_at = chrono::Utc::now() + chrono::Duration::days(PREFERENCES_DAYS);
+    let expires_at = crate::clock::now() + chrono::Duration::days(PREFERENCES_DAYS);
     let token = crate::link_tokens::issue(
         &ctx.db,
         crate::link_tokens::PREFERENCES,

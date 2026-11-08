@@ -89,7 +89,7 @@ async fn grant(
 ) -> Result<Response> {
     let (reason, minutes) = rules::validate_request(&payload.reason, payload.minutes)
         .map_err(|e| invalid_field(e.field(), &e.to_string()))?;
-    let now = Utc::now();
+    let now = crate::clock::now();
     let expires_at = rules::expiry(now, minutes);
     let pid = Uuid::new_v4();
     let txn = ctx.db.begin().await?;

@@ -180,7 +180,7 @@ pub async fn emit_on<C: ConnectionTrait>(
 ) -> axa::Result<()> {
     let env = envelope(entity, kind, pid, name, actor, data);
     if transport().is_outbox() {
-        OutboxInsert::from_envelope(&env, chrono::Utc::now().into())
+        OutboxInsert::from_envelope(&env, crate::clock::now().into())
             .map_err(axa::Error::Model)?
             .insert_on(conn)
             .await
@@ -208,7 +208,7 @@ pub async fn emit_in(
 ) -> axa::Result<()> {
     let env = envelope(entity, kind, pid, name, actor, data);
     if transport().is_outbox() {
-        OutboxInsert::from_envelope(&env, chrono::Utc::now().into())
+        OutboxInsert::from_envelope(&env, crate::clock::now().into())
             .map_err(axa::Error::Model)?
             .insert_in(conn)
             .await?;

@@ -988,7 +988,7 @@ async fn attainment(
     )
     .await?;
     format::json(AttainmentReport {
-        as_of: chrono::Utc::now(),
+        as_of: crate::clock::now(),
         at,
         rows,
         note: "revenue is the amount of the worker's won, live deals closed in the period, in the \
