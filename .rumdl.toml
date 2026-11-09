@@ -3,6 +3,8 @@
 # repository point at sibling projects of the author's workspace, which this check cannot see.
 # `CLAUDE.md` is the one line `@AGENTS.md` (Claude Code's include), so it has no heading.
 # The templates under spec/special-files-for-public-repos are copied from elsewhere as they are.
+# `.git` holds the pre-push and nightly worktrees (`ci-gate`, `ci-nightly`), whole checkouts
+# where the paths above do not match.
 [global]
 disable = ["MD013", "MD033", "MD057"]
-exclude = ["spec/special-files-for-public-repos", "CLAUDE.md"]
+exclude = [".git", "spec/special-files-for-public-repos", "CLAUDE.md"]
