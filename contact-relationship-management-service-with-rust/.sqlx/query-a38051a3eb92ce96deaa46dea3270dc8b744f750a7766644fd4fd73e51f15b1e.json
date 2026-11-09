@@ -1,0 +1,93 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, url, events, enabled, disabled_reason, created_at, COALESCE(previous_secret IS NOT NULL AND previous_secret_expires_at > now(), FALSE) AS \"rotating!\" FROM webhook_subscriptions ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "events",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "events"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "disabled_reason",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "disabled_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "rotating!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "a38051a3eb92ce96deaa46dea3270dc8b744f750a7766644fd4fd73e51f15b1e"
+}

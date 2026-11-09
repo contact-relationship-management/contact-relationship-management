@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE webhook_deliveries SET status = 'cancelled', last_error = $2, updated_at = CURRENT_TIMESTAMP WHERE status = 'pending' AND subscription_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8ca08756bf211bd593018279d08967bbfb8be48374d9d4628993dfa29d058a07"
+}

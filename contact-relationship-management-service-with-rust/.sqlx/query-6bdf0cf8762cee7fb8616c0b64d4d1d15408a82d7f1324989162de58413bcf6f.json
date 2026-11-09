@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE webhook_subscriptions SET previous_secret = secret, previous_secret_expires_at = $3, secret = $2, updated_at = now() WHERE pid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6bdf0cf8762cee7fb8616c0b64d4d1d15408a82d7f1324989162de58413bcf6f"
+}

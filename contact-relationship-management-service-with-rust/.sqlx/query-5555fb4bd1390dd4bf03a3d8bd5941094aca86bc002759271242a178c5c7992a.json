@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, subject, reason, granted_at, expires_at, reviewed_at, reviewed_by, review_note FROM break_glass_grants ORDER BY id DESC LIMIT 200",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "break_glass_grants",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "subject",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "break_glass_grants",
+            "name": "subject"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "break_glass_grants",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "granted_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "break_glass_grants",
+            "name": "granted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "break_glass_grants",
+            "name": "expires_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "reviewed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "break_glass_grants",
+            "name": "reviewed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "reviewed_by",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "break_glass_grants",
+            "name": "reviewed_by"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "review_note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "break_glass_grants",
+            "name": "review_note"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "5555fb4bd1390dd4bf03a3d8bd5941094aca86bc002759271242a178c5c7992a"
+}

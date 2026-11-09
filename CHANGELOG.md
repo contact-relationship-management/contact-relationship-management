@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — quotas, custom fields, webhooks and more on sqlx (CRM-T206, 2026-11-09)
+
+- Quotas and commission plans, custom fields, attachments, break-glass, webhooks, notifications
+  and key rotation read and write through `sqlx`. A custom-field write that fails part way now
+  keeps nothing, and its audit row goes with it.
+
 ### Changed — dependencies and minimum Rust (CRM-T225, 2026-11-09)
 
 - Front-end and CI tool updates, the Lily Design System's latest releases, and the Rust crates

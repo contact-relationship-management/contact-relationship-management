@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE webhook_deliveries SET next_attempt_at = $2 + make_interval(secs => $3) WHERE id IN (SELECT d.id FROM webhook_deliveries d JOIN webhook_subscriptions s ON s.id = d.subscription_id WHERE d.status = 'pending' AND d.next_attempt_at <= $2 AND s.enabled ORDER BY d.next_attempt_at, d.id LIMIT $1 FOR UPDATE OF d SKIP LOCKED) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "webhook_deliveries",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "166c8d7bfe7bc093dda373005a030478e5261d87f3baabd46a895bfc65bac63b"
+}

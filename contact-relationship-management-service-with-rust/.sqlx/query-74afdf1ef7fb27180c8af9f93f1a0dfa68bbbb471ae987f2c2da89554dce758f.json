@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH p AS ( INSERT INTO commission_plans (pid, name, tiers, set_by) VALUES ($1, $2, $3::jsonb, $4) ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, tiers = EXCLUDED.tiers, set_by = EXCLUDED.set_by, updated_at = now() RETURNING * ) SELECT p.pid AS \"pid!\", p.name AS \"name!\", p.tiers AS \"tiers!\", p.set_by AS \"set_by!\", (SELECT count(*) FROM quotas q WHERE q.plan_pid = p.pid) AS \"in_use!\" FROM p",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "commission_plans",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "commission_plans",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "tiers!",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "commission_plans",
+            "name": "tiers"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "set_by!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "commission_plans",
+            "name": "set_by"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "in_use!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Jsonb",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "74afdf1ef7fb27180c8af9f93f1a0dfa68bbbb471ae987f2c2da89554dce758f"
+}

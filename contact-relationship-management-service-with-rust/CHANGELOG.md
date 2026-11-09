@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the hand-written SQL on sqlx (CRM-T206, CRM-D24)
+
+- `quotas`, `custom_fields`, `attachments`, `break_glass`, `webhooks` and `notifications` (routes,
+  relay and sweep), `rotate_field_keys` and the `app.rs` sweeps run on `sqlx::query!` in `sqlx`
+  transactions. `webhooks::run`, `notifications::sweep`, `rotate_field_keys::rotate` and
+  `break_glass::refresh` take the `PgPool`. `PUT /api/{records}/{pid}/custom-fields` reads its
+  answer inside the transaction, so a failure there rolls the write and its audit row back.
+  `.sqlx/` gains 66 entries.
+
 ### Changed — minimum Rust 1.97 (CRM-T225)
 
 - `rust-version` is 1.97 here and in `migration`. The published matcher 0.2.0 still declares

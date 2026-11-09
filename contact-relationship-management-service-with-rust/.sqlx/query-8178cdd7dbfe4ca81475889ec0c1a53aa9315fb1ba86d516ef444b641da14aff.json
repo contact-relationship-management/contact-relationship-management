@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deal_splits (deal_pid, owner_ref, share_bps, set_by) VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8178cdd7dbfe4ca81475889ec0c1a53aa9315fb1ba86d516ef444b641da14aff"
+}

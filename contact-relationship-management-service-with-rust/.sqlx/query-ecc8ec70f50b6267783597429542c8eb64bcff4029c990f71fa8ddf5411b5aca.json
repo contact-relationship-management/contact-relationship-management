@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT 1 AS \"one!\" FROM quotas WHERE owner_ref = $1 AND currency = $2 AND period_from <= $4 AND period_to >= $3 AND NOT (period_from = $3 AND period_to = $4)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "one!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bpchar",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ecc8ec70f50b6267783597429542c8eb64bcff4029c990f71fa8ddf5411b5aca"
+}

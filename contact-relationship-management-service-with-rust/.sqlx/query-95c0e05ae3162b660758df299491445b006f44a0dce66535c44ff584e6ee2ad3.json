@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM deal_clawbacks WHERE deal_pid = $1 AND owner_ref = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "95c0e05ae3162b660758df299491445b006f44a0dce66535c44ff584e6ee2ad3"
+}

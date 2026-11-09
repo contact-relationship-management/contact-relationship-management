@@ -1,0 +1,160 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.attempts, d.event_id, d.subscription_id AS sub, s.pid AS sub_pid, s.url, s.secret, s.previous_secret, s.previous_secret_expires_at, o.entity AS \"entity?\", o.kind AS \"kind?\", o.entity_pid AS \"entity_pid?\", o.occurred_at AS \"occurred_at?\" FROM webhook_deliveries d JOIN webhook_subscriptions s ON s.id = d.subscription_id LEFT JOIN event_outbox o ON o.event_id = d.event_id WHERE d.id = $1 AND d.status = 'pending'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "attempts",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "webhook_deliveries",
+            "name": "attempts"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "event_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "webhook_deliveries",
+            "name": "event_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "sub",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "webhook_deliveries",
+            "name": "subscription_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "sub_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "secret",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "secret"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "previous_secret",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "previous_secret"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "previous_secret_expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "webhook_subscriptions",
+            "name": "previous_secret_expires_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "entity?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "event_outbox",
+            "name": "entity"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "kind?",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "event_outbox",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "entity_pid?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "event_outbox",
+            "name": "entity_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "occurred_at?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "event_outbox",
+            "name": "occurred_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "6c635786b79e475affb1ede1e3d56789a4667b722ce707c3cbaf0c8d68f0cd07"
+}

@@ -6,6 +6,7 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use contact_relationship_management::app::App;
 use contact_relationship_management::crypto::{self, Keyring};
+use contact_relationship_management::db;
 use contact_relationship_management::tasks::rotate_field_keys::rotate;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
@@ -276,7 +277,7 @@ async fn sensitivity_decides_sealing_subject_access_erasure_and_rotation() {
             ))
             .unwrap(),
         ));
-        let report = rotate(&ctx.db).await.unwrap();
+        let report = rotate(db::pool(&ctx)).await.unwrap();
         assert!(
             report
                 .iter()
@@ -333,6 +334,61 @@ async fn sensitivity_decides_sealing_subject_access_erasure_and_rotation() {
         )
         .await;
         assert_eq!(left, ["account_manager_note"]);
+        crypto::install(None);
+    })
+    .await;
+}
+
+/// A write and its audit row are one transaction (CRM-T206): when the request fails after both are
+/// written, here because a stored value it reads back cannot be opened, neither is kept.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+async fn a_write_that_fails_after_its_audit_row_keeps_neither() {
+    request::<App, _, _>(|request, ctx| async move {
+        crypto::install(Some(
+            Keyring::from_spec(&format!("k1:{}", STANDARD.encode([1u8; 32]))).unwrap(),
+        ));
+        define!(&request, "contact", "hobby", "text", "personal");
+        define!(&request, "contact", "diagnosis", "text", "sensitive");
+        let contact = seed_contact!(&request, "Rollback Subject").await;
+        let url = format!("/api/contacts/{contact}/custom-fields");
+        request
+            .put(&url)
+            .json(&json!({ "values": { "diagnosis": "private words" } }))
+            .await
+            .assert_status_ok();
+        // Under a key the ring does not hold, so reading it back fails.
+        sqlx::query(
+            "UPDATE custom_field_values SET value = 'enc:v1:k9:AAAA' WHERE field_pid = \
+             (SELECT pid FROM custom_field_defs WHERE key = 'diagnosis')",
+        )
+        .execute(db::pool(&ctx))
+        .await
+        .unwrap();
+
+        let failed = request
+            .put(&url)
+            .json(&json!({ "values": { "hobby": "sailing" } }))
+            .await;
+        assert!(failed.status_code().is_server_error(), "{}", failed.text());
+
+        let kept = texts(
+            &ctx.db,
+            "SELECT v.value AS v FROM custom_field_values v JOIN custom_field_defs d \
+             ON d.pid = v.field_pid WHERE d.key = 'hobby'",
+        )
+        .await;
+        assert!(kept.is_empty(), "{kept:?}");
+        let audited: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM audit_logs \
+             WHERE action = 'custom_fields_updated' AND entity_pid = $1::text::uuid",
+        )
+        .bind(&contact)
+        .fetch_one(db::pool(&ctx))
+        .await
+        .unwrap();
+        assert_eq!(audited, 1, "only the first write is audited");
         crypto::install(None);
     })
     .await;

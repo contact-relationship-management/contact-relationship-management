@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT owner_ref, share_bps FROM deal_splits WHERE deal_pid = $1 ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owner_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deal_splits",
+            "name": "owner_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "share_bps",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "deal_splits",
+            "name": "share_bps"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "36063bddda2b72bf87c093001acf76b39dedc6f5e38ad3c5833d3b9e28f063fe"
+}

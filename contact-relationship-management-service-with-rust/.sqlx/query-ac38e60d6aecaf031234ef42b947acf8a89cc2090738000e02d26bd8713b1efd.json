@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.pid, a.subject_kind, a.subject_pid, a.assignee_ref AS \"assignee_ref!\", (extract(epoch FROM a.remind_at) * 1000000)::bigint AS \"micros!\" FROM activities a WHERE a.kind = 'task' AND a.done = FALSE AND a.deleted_at IS NULL AND a.assignee_ref IS NOT NULL AND a.remind_at <= now() AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.kind = 'task_reminder' AND n.source_pid = a.pid AND n.recipient_ref = a.assignee_ref AND n.source_key = (extract(epoch FROM a.remind_at) * 1000000)::bigint::text) ORDER BY a.remind_at LIMIT $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "subject_kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "subject_kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "subject_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "subject_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "assignee_ref!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "assignee_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "micros!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "ac38e60d6aecaf031234ef42b947acf8a89cc2090738000e02d26bd8713b1efd"
+}

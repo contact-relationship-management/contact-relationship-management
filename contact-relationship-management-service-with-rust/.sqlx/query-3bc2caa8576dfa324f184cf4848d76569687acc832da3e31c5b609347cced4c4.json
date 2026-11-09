@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM quotas WHERE pid = $1 RETURNING pid, owner_ref, period_from, period_to, currency, amount_minor, plan_pid, set_by",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "owner_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "owner_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "period_from",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "period_from"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "period_to",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "period_to"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "currency",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "currency"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "amount_minor",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "amount_minor"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "plan_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "plan_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "set_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "set_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "3bc2caa8576dfa324f184cf4848d76569687acc832da3e31c5b609347cced4c4"
+}

@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT owner_ref, amount_minor, reason, set_by FROM deal_clawbacks WHERE deal_pid = $1 ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owner_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deal_clawbacks",
+            "name": "owner_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "amount_minor",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "deal_clawbacks",
+            "name": "amount_minor"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "reason",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deal_clawbacks",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "set_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deal_clawbacks",
+            "name": "set_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "4a5c331eb44c1ea6c56695ec8e963ec782565c55a6d84be15c8934c282f31a09"
+}

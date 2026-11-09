@@ -8,15 +8,15 @@
 //!   deliveries, and `(subscription, event)` is unique;
 //! - **send** first *claims* a delivery by pushing its next attempt five minutes ahead, so a
 //!   second run skips it, and a crash mid-send only delays the retry.
+//!
+//! The statements are `sqlx` ones (CRM-D24, CRM-T206).
 
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use sea_orm::{
-    ConnectionTrait, DatabaseBackend, DatabaseConnection, DbErr, Statement, TransactionTrait, Value,
-};
 use serde::Serialize;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::models::audit_logs::Model as Audit;
@@ -139,108 +139,80 @@ pub struct Report {
     pub subscriptions_disabled: u64,
 }
 
-fn text(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
 /// Create the deliveries for outbox rows not yet handled, oldest first.
 async fn fan_out(
-    db: &DatabaseConnection,
+    pool: &PgPool,
     now: DateTime<Utc>,
     report: &mut Report,
-) -> Result<(), DbErr> {
-    let txn = db.begin().await?;
-    let rows = txn
-        .query_all_raw(text(
-            "SELECT id, event_id, entity, kind, entity_pid, occurred_at FROM event_outbox \
-             WHERE webhook_fanned_out_at IS NULL ORDER BY id LIMIT $1 \
-             FOR UPDATE SKIP LOCKED",
-            [FAN_OUT_BATCH.into()],
-        ))
-        .await?;
+) -> Result<(), sqlx::Error> {
+    let mut txn = pool.begin().await?;
+    let rows = sqlx::query!(
+        "SELECT id, event_id, entity, kind, entity_pid, occurred_at FROM event_outbox \
+         WHERE webhook_fanned_out_at IS NULL ORDER BY id LIMIT $1 \
+         FOR UPDATE SKIP LOCKED",
+        FAN_OUT_BATCH
+    )
+    .fetch_all(&mut *txn)
+    .await?;
     if rows.is_empty() {
         return txn.commit().await;
     }
-    let subscriptions = txn
-        .query_all_raw(text(
-            "SELECT id, events, created_at FROM webhook_subscriptions WHERE enabled",
-            [],
-        ))
-        .await?;
-    let subscriptions: Vec<(i32, Vec<String>, DateTime<Utc>)> = subscriptions
-        .iter()
-        .filter_map(|s| {
-            let patterns: Vec<String> =
-                serde_json::from_value(s.try_get::<serde_json::Value>("", "events").ok()?).ok()?;
-            Some((
-                s.try_get("", "id").ok()?,
-                patterns,
-                s.try_get("", "created_at").ok()?,
-            ))
-        })
-        .collect();
-    let mut ids: Vec<Value> = Vec::new();
+    let subscriptions: Vec<(i32, Vec<String>, DateTime<Utc>)> =
+        sqlx::query!("SELECT id, events, created_at FROM webhook_subscriptions WHERE enabled")
+            .fetch_all(&mut *txn)
+            .await?
+            .into_iter()
+            .filter_map(|s| {
+                let patterns: Vec<String> = serde_json::from_value(s.events).ok()?;
+                Some((s.id, patterns, s.created_at))
+            })
+            .collect();
+    let mut ids: Vec<i32> = Vec::with_capacity(rows.len());
     for row in &rows {
-        let id: i32 = row.try_get("", "id")?;
-        let event_id: Uuid = row.try_get("", "event_id")?;
-        let entity: String = row.try_get("", "entity")?;
-        let kind: String = row.try_get("", "kind")?;
-        let entity_pid: Uuid = row.try_get("", "entity_pid")?;
-        let occurred_at: DateTime<Utc> = row.try_get("", "occurred_at")?;
         for (subscription, patterns, since) in &subscriptions {
             // A subscription hears what happens after it exists, not the backlog.
-            if occurred_at >= *since && rules::wants(patterns, &entity, &kind) {
-                let made = txn
-                    .execute_raw(text(
-                        "INSERT INTO webhook_deliveries (subscription_id, event_id, entity_pid, next_attempt_at) \
-                         VALUES ($1, $2, $3, $4) ON CONFLICT (subscription_id, event_id) DO NOTHING",
-                        [
-                            (*subscription).into(),
-                            event_id.into(),
-                            entity_pid.into(),
-                            now.into(),
-                        ],
-                    ))
-                    .await?;
+            if row.occurred_at >= *since && rules::wants(patterns, &row.entity, &row.kind) {
+                let made = sqlx::query!(
+                    "INSERT INTO webhook_deliveries (subscription_id, event_id, entity_pid, next_attempt_at) \
+                     VALUES ($1, $2, $3, $4) ON CONFLICT (subscription_id, event_id) DO NOTHING",
+                    subscription,
+                    row.event_id,
+                    row.entity_pid,
+                    now,
+                )
+                .execute(&mut *txn)
+                .await?;
                 report.deliveries_created += made.rows_affected();
             }
         }
-        ids.push(id.into());
+        ids.push(row.id);
         report.events_fanned_out += 1;
     }
-    // Integers from the database, so building the list is safe.
-    let list = ids.iter().map(|id| match id {
-        Value::Int(Some(n)) => n.to_string(),
-        _ => "0".to_string(),
-    });
-    let list: Vec<String> = list.collect();
-    txn.execute_unprepared(&format!(
-        "UPDATE event_outbox SET webhook_fanned_out_at = CURRENT_TIMESTAMP WHERE id IN ({})",
-        list.join(", ")
-    ))
+    sqlx::query!(
+        "UPDATE event_outbox SET webhook_fanned_out_at = CURRENT_TIMESTAMP WHERE id = ANY($1)",
+        &ids
+    )
+    .execute(&mut *txn)
     .await?;
     txn.commit().await
 }
 
 /// Claim up to [`SEND_BATCH`] due deliveries and return their ids.
-async fn claim_due(db: &DatabaseConnection, now: DateTime<Utc>) -> Result<Vec<i32>, DbErr> {
-    let rows = db
-        .query_all_raw(text(
-            "UPDATE webhook_deliveries SET next_attempt_at = $2 + make_interval(secs => $3) \
-             WHERE id IN (SELECT d.id FROM webhook_deliveries d \
-                          JOIN webhook_subscriptions s ON s.id = d.subscription_id \
-                          WHERE d.status = 'pending' AND d.next_attempt_at <= $2 AND s.enabled \
-                          ORDER BY d.next_attempt_at, d.id LIMIT $1 \
-                          FOR UPDATE OF d SKIP LOCKED) \
-             RETURNING id",
-            [
-                SEND_BATCH.into(),
-                now.into(),
-                f64::from(i32::try_from(CLAIM_SECONDS).unwrap_or(300)).into(),
-            ],
-        ))
-        .await?;
-    rows.iter().map(|r| r.try_get("", "id")).collect()
+async fn claim_due(pool: &PgPool, now: DateTime<Utc>) -> Result<Vec<i32>, sqlx::Error> {
+    sqlx::query_scalar!(
+        "UPDATE webhook_deliveries SET next_attempt_at = $2 + make_interval(secs => $3) \
+         WHERE id IN (SELECT d.id FROM webhook_deliveries d \
+                      JOIN webhook_subscriptions s ON s.id = d.subscription_id \
+                      WHERE d.status = 'pending' AND d.next_attempt_at <= $2 AND s.enabled \
+                      ORDER BY d.next_attempt_at, d.id LIMIT $1 \
+                      FOR UPDATE OF d SKIP LOCKED) \
+         RETURNING id",
+        SEND_BATCH,
+        now,
+        f64::from(i32::try_from(CLAIM_SECONDS).unwrap_or(300)),
+    )
+    .fetch_all(pool)
+    .await
 }
 
 /// Run the relay once: fan out, then send what is due.
@@ -249,14 +221,14 @@ async fn claim_due(db: &DatabaseConnection, now: DateTime<Utc>) -> Result<Vec<i3
 ///
 /// A database error. A receiver that fails is not an error: it is counted in the report.
 pub async fn run(
-    db: &DatabaseConnection,
+    pool: &PgPool,
     sender: &dyn Sender,
     now: DateTime<Utc>,
-) -> Result<Report, DbErr> {
+) -> Result<Report, sqlx::Error> {
     let mut report = Report::default();
-    fan_out(db, now, &mut report).await?;
-    for id in claim_due(db, now).await? {
-        send_one(db, sender, id, now, &mut report).await?;
+    fan_out(pool, now, &mut report).await?;
+    for id in claim_due(pool, now).await? {
+        send_one(pool, sender, id, now, &mut report).await?;
     }
     Ok(report)
 }
@@ -282,42 +254,42 @@ enum Loaded {
 }
 
 /// Load a claimed delivery with its subscription and event, and sign it.
-async fn prepare(db: &DatabaseConnection, id: i32, now: DateTime<Utc>) -> Result<Loaded, DbErr> {
-    let Some(row) = db
-        .query_one_raw(text(
-            "SELECT d.attempts, d.event_id, d.subscription_id AS sub, s.pid AS sub_pid, s.url, \
-                    s.secret, s.previous_secret, s.previous_secret_expires_at, \
-                    o.entity, o.kind, o.entity_pid, o.occurred_at \
-             FROM webhook_deliveries d \
-             JOIN webhook_subscriptions s ON s.id = d.subscription_id \
-             LEFT JOIN event_outbox o ON o.event_id = d.event_id \
-             WHERE d.id = $1 AND d.status = 'pending'",
-            [id.into()],
-        ))
-        .await?
+async fn prepare(pool: &PgPool, id: i32, now: DateTime<Utc>) -> Result<Loaded, sqlx::Error> {
+    // The event is a left join: it may have been pruned since the delivery was made.
+    let Some(row) = sqlx::query!(
+        "SELECT d.attempts, d.event_id, d.subscription_id AS sub, s.pid AS sub_pid, s.url, \
+                s.secret, s.previous_secret, s.previous_secret_expires_at, \
+                o.entity AS \"entity?\", o.kind AS \"kind?\", o.entity_pid AS \"entity_pid?\", \
+                o.occurred_at AS \"occurred_at?\" \
+         FROM webhook_deliveries d \
+         JOIN webhook_subscriptions s ON s.id = d.subscription_id \
+         LEFT JOIN event_outbox o ON o.event_id = d.event_id \
+         WHERE d.id = $1 AND d.status = 'pending'",
+        id
+    )
+    .fetch_optional(pool)
+    .await?
     else {
         return Ok(Loaded::Skip);
     };
-    let attempts: i32 = row.try_get("", "attempts")?;
-    let event_id: Uuid = row.try_get("", "event_id")?;
-    let Ok(entity) = row.try_get::<String>("", "entity") else {
+    let attempts = row.attempts;
+    let event_id = row.event_id;
+    let (Some(entity), Some(kind), Some(entity_pid), Some(occurred_at)) =
+        (row.entity, row.kind, row.entity_pid, row.occurred_at)
+    else {
         return Ok(Loaded::Close("the event is gone", attempts));
     };
-    let kind: String = row.try_get("", "kind")?;
-    let entity_pid: Uuid = row.try_get("", "entity_pid")?;
-    let occurred_at: DateTime<Utc> = row.try_get("", "occurred_at")?;
 
     let mut secrets: Vec<String> = Vec::new();
-    let sealed: String = row.try_get("", "secret")?;
-    if let Ok(secret) = crate::crypto::open(&sealed) {
+    if let Ok(secret) = crate::crypto::open(&row.secret) {
         secrets.push(secret);
     }
     let previous_valid = row
-        .try_get::<DateTime<Utc>>("", "previous_secret_expires_at")
-        .is_ok_and(|until| until > now);
+        .previous_secret_expires_at
+        .is_some_and(|until| until > now);
     if previous_valid
-        && let Ok(sealed) = row.try_get::<String>("", "previous_secret")
-        && let Ok(secret) = crate::crypto::open(&sealed)
+        && let Some(sealed) = &row.previous_secret
+        && let Ok(secret) = crate::crypto::open(sealed)
     {
         secrets.push(secret);
     }
@@ -330,9 +302,9 @@ async fn prepare(db: &DatabaseConnection, id: i32, now: DateTime<Utc>) -> Result
     };
     Ok(Loaded::Send(Prepared {
         attempts,
-        subscription: row.try_get("", "sub")?,
-        subscription_pid: row.try_get("", "sub_pid")?,
-        url: row.try_get("", "url")?,
+        subscription: row.sub,
+        subscription_pid: row.sub_pid,
+        url: row.url,
         headers: vec![
             ("content-type", "application/json".to_string()),
             ("webhook-id", event_id.to_string()),
@@ -345,13 +317,13 @@ async fn prepare(db: &DatabaseConnection, id: i32, now: DateTime<Utc>) -> Result
 
 /// Send one claimed delivery and record what happened.
 async fn send_one(
-    db: &DatabaseConnection,
+    pool: &PgPool,
     sender: &dyn Sender,
     id: i32,
     now: DateTime<Utc>,
     report: &mut Report,
-) -> Result<(), DbErr> {
-    let prepared = match prepare(db, id, now).await? {
+) -> Result<(), sqlx::Error> {
+    let prepared = match prepare(pool, id, now).await? {
         Loaded::Skip => return Ok(()),
         Loaded::Close(why, attempts) => {
             let status = if why == "the event is gone" {
@@ -362,7 +334,7 @@ async fn send_one(
             if status == "dead" {
                 report.dead += 1;
             }
-            return finish(db, id, status, attempts, None, Some(why)).await;
+            return finish(pool, id, status, attempts, None, Some(why)).await;
         }
         Loaded::Send(prepared) => prepared,
     };
@@ -374,11 +346,11 @@ async fn send_one(
     match outcome {
         Outcome::Status(code) if (200..300).contains(&code) => {
             report.delivered += 1;
-            finish(db, id, "delivered", attempts, Some(code), None).await
+            finish(pool, id, "delivered", attempts, Some(code), None).await
         }
         Outcome::Status(410) => {
             report.subscriptions_disabled += 1;
-            disable_gone(db, id, attempts, &prepared, now).await
+            disable_gone(pool, id, attempts, &prepared, now).await
         }
         failure => {
             let (status, why) = match failure {
@@ -388,10 +360,20 @@ async fn send_one(
             if let Some(delay) = rules::retry_delay_seconds(attempts) {
                 report.retrying += 1;
                 let next = now + chrono::Duration::seconds(delay);
-                record_attempt(db, id, "pending", attempts, status, Some(&why), Some(next)).await
+                let mut conn = pool.acquire().await?;
+                record_attempt(
+                    &mut conn,
+                    id,
+                    "pending",
+                    attempts,
+                    status,
+                    Some(&why),
+                    Some(next),
+                )
+                .await
             } else {
                 report.dead += 1;
-                finish(db, id, "dead", attempts, status, Some(&why)).await
+                finish(pool, id, "dead", attempts, status, Some(&why)).await
             }
         }
     }
@@ -400,99 +382,102 @@ async fn send_one(
 /// A `410 Gone`: the receiver does not want these any more. Disable the subscription, cancel what
 /// is queued for it, and audit.
 async fn disable_gone(
-    db: &DatabaseConnection,
+    pool: &PgPool,
     id: i32,
     attempts: i32,
     prepared: &Prepared,
     now: DateTime<Utc>,
-) -> Result<(), DbErr> {
+) -> Result<(), sqlx::Error> {
     const WHY: &str = "the receiver answered 410 Gone";
-    let txn = db.begin().await?;
-    txn.execute_raw(text(
+    let mut txn = pool.begin().await?;
+    sqlx::query!(
         "UPDATE webhook_subscriptions SET enabled = FALSE, disabled_at = $2, \
          disabled_reason = $3, updated_at = $2 WHERE id = $1 AND enabled",
-        [prepared.subscription.into(), now.into(), WHY.into()],
-    ))
-    .await?;
-    cancel_pending(
-        &txn,
-        "subscription_id = $1",
-        prepared.subscription.into(),
+        prepared.subscription,
+        now,
         WHY,
     )
+    .execute(&mut *txn)
     .await?;
-    record_attempt(&txn, id, "cancelled", attempts, Some(410), Some(WHY), None).await?;
-    Audit::record(
-        &txn,
+    cancel_pending(&mut txn, prepared.subscription, WHY).await?;
+    record_attempt(
+        &mut txn,
+        id,
+        "cancelled",
+        attempts,
+        Some(410),
+        Some(WHY),
+        None,
+    )
+    .await?;
+    Audit::record_on(
+        &mut txn,
         "webhook_subscription",
         prepared.subscription_pid,
         "webhook_subscription_disabled",
         None,
         Some(serde_json::json!({ "reason": "410 Gone" })),
     )
-    .await
-    .map_err(|e| DbErr::Custom(e.to_string()))?;
+    .await?;
     txn.commit().await
 }
 
 /// Mark a delivery finished (delivered, dead or cancelled).
 async fn finish(
-    db: &DatabaseConnection,
+    pool: &PgPool,
     id: i32,
     status: &str,
     attempts: i32,
     code: Option<u16>,
     why: Option<&str>,
-) -> Result<(), DbErr> {
-    record_attempt(db, id, status, attempts, code, why, None).await
+) -> Result<(), sqlx::Error> {
+    let mut conn = pool.acquire().await?;
+    record_attempt(&mut conn, id, status, attempts, code, why, None).await
 }
 
-async fn record_attempt<C: ConnectionTrait>(
-    db: &C,
+async fn record_attempt(
+    conn: &mut PgConnection,
     id: i32,
     status: &str,
     attempts: i32,
     code: Option<u16>,
     why: Option<&str>,
     next: Option<DateTime<Utc>>,
-) -> Result<(), DbErr> {
-    db.execute_raw(text(
-        "UPDATE webhook_deliveries SET status = $2, attempts = $3, last_status = $4, \
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "UPDATE webhook_deliveries SET status = $2::text, attempts = $3, last_status = $4, \
          last_error = $5, next_attempt_at = COALESCE($6, next_attempt_at), \
-         delivered_at = CASE WHEN $2 = 'delivered' THEN CURRENT_TIMESTAMP ELSE delivered_at END, \
+         delivered_at = CASE WHEN $2::text = 'delivered' THEN CURRENT_TIMESTAMP ELSE delivered_at END, \
          updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-        [
-            id.into(),
-            status.into(),
-            attempts.into(),
-            code.map(i32::from).into(),
-            why.map(str::to_string).into(),
-            next.into(),
-        ],
-    ))
+        id,
+        status,
+        attempts,
+        code.map(i32::from),
+        why,
+        next,
+    )
+    .execute(conn)
     .await
     .map(|_| ())
 }
 
-/// Cancel queued deliveries matching `condition` (one bind, `$1`); returns how many.
+/// Cancel the queued deliveries of one subscription; returns how many.
 ///
 /// # Errors
 ///
 /// A database error.
-pub async fn cancel_pending<C: ConnectionTrait>(
-    db: &C,
-    condition: &str,
-    bind: Value,
+pub async fn cancel_pending(
+    conn: &mut PgConnection,
+    subscription_id: i32,
     why: &str,
-) -> Result<u64, DbErr> {
-    let result = db
-        .execute_raw(text(
-            &format!(
-                "UPDATE webhook_deliveries SET status = 'cancelled', last_error = $2, \
-                 updated_at = CURRENT_TIMESTAMP WHERE status = 'pending' AND {condition}"
-            ),
-            [bind, why.to_string().into()],
-        ))
-        .await?;
+) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query!(
+        "UPDATE webhook_deliveries SET status = 'cancelled', last_error = $2, \
+         updated_at = CURRENT_TIMESTAMP WHERE status = 'pending' AND subscription_id = $1",
+        subscription_id,
+        why,
+    )
+    .execute(conn)
+    .await?;
     Ok(result.rows_affected())
 }

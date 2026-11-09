@@ -3,17 +3,21 @@
 //! A notification carries no record text. Each one is checked against the access policy again
 //! when it is read, with the caller's own token, and left out if the caller may not read the
 //! record it is about.
+//!
+//! Runs on `sqlx` (CRM-D24, CRM-T206), but for the policy check, which reads the record through
+//! [`inbox::subject_attrs`] on `SeaORM`'s side of the shared pool.
 
 use axa::extract::Query;
 use axa::prelude::*;
 use axum::http::{StatusCode, Uri};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::paging::Page;
 use super::{PidPath, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
+use crate::db;
 use crate::models::audit_logs::Model as Audit;
 use crate::notifications as inbox;
 
@@ -26,14 +30,12 @@ const COUNT_CAP: i64 = 200;
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "Notification")]
 pub(crate) struct Notification {
-    #[schemars(with = "uuid::Uuid")]
-    pid: String,
+    pid: Uuid,
     /// `task_reminder`, `sla_breach` or `workflow`.
     kind: String,
     /// What the notification is about: `contact`, `account`, `lead`, `deal` or `ticket`.
     subject_kind: String,
-    #[schemars(with = "uuid::Uuid")]
-    subject_pid: String,
+    subject_pid: Uuid,
     created_at: chrono::DateTime<chrono::Utc>,
     read_at: Option<chrono::DateTime<chrono::Utc>>,
 }
@@ -48,10 +50,6 @@ pub(crate) struct InboxQuery {
     /// only when sign-in is off; with it on the inbox is the caller's own.
     #[serde(default)]
     recipient: Option<String>,
-}
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
 /// Whose inbox this is: the caller's (`person:<sub>`), or, with sign-in off, the one named.
@@ -84,10 +82,7 @@ async fn visible(
     caller: &MaybeAuthUser,
     n: &Notification,
 ) -> Result<bool> {
-    let Ok(pid) = n.subject_pid.parse::<Uuid>() else {
-        return Ok(false);
-    };
-    let Some(attrs) = inbox::subject_attrs(db, &n.subject_kind, pid).await? else {
+    let Some(attrs) = inbox::subject_attrs(db, &n.subject_kind, n.subject_pid).await? else {
         return Ok(false);
     };
     if !auth::require_auth() {
@@ -95,19 +90,6 @@ async fn visible(
     }
     Ok(caller.claims().is_some_and(|c| auth::may_read(c, &attrs)))
 }
-
-fn to_notification(row: &sea_orm::QueryResult) -> Result<Notification> {
-    Ok(Notification {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        kind: row.try_get("", "kind")?,
-        subject_kind: row.try_get("", "subject_kind")?,
-        subject_pid: row.try_get::<Uuid>("", "subject_pid")?.to_string(),
-        created_at: row.try_get("", "created_at")?,
-        read_at: row.try_get("", "read_at")?,
-    })
-}
-
-const COLUMNS: &str = "pid, kind, subject_kind, subject_pid, created_at, read_at";
 
 /// `GET /api/notifications` — the caller's inbox, newest first, without what they may not read.
 #[debug_handler]
@@ -120,27 +102,19 @@ async fn list(
     let recipient = recipient_of(&caller, &query)?;
     let page = Page::new(&uri, PAGE_CAP)?;
     let (limit, offset) = page.bounds();
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {COLUMNS} FROM notifications \
-                 WHERE recipient_ref = $1 AND suppressed = FALSE \
-                   AND ($2 = FALSE OR read_at IS NULL) \
-                 ORDER BY id DESC LIMIT $3 OFFSET $4"
-            ),
-            [
-                recipient.into(),
-                query.unread.into(),
-                limit.into(),
-                offset.into(),
-            ],
-        ))
-        .await?;
-    let all = rows
-        .iter()
-        .map(to_notification)
-        .collect::<Result<Vec<_>>>()?;
+    let all = sqlx::query_as!(
+        Notification,
+        "SELECT pid, kind, subject_kind, subject_pid, created_at, read_at FROM notifications \
+         WHERE recipient_ref = $1 AND suppressed = FALSE \
+           AND ($2 = FALSE OR read_at IS NULL) \
+         ORDER BY id DESC LIMIT $3 OFFSET $4",
+        recipient,
+        query.unread,
+        limit,
+        offset,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
     let (all, more) = page.split(all);
     let mut shown = Vec::with_capacity(all.len());
     for n in all {
@@ -169,21 +143,20 @@ async fn unread_count(
     Query(query): Query<InboxQuery>,
 ) -> Result<Response> {
     let recipient = recipient_of(&caller, &query)?;
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {COLUMNS} FROM notifications \
-                 WHERE recipient_ref = $1 AND suppressed = FALSE AND read_at IS NULL \
-                 ORDER BY id DESC LIMIT $2"
-            ),
-            [recipient.into(), (COUNT_CAP + 1).into()],
-        ))
-        .await?;
+    let rows = sqlx::query_as!(
+        Notification,
+        "SELECT pid, kind, subject_kind, subject_pid, created_at, read_at FROM notifications \
+         WHERE recipient_ref = $1 AND suppressed = FALSE AND read_at IS NULL \
+         ORDER BY id DESC LIMIT $2",
+        recipient,
+        COUNT_CAP + 1,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
     let capped = i64::try_from(rows.len()).unwrap_or(i64::MAX) > COUNT_CAP;
     let mut unread = 0_u64;
-    for row in rows.iter().take(usize::try_from(COUNT_CAP).unwrap_or(0)) {
-        if visible(&ctx.db, &caller, &to_notification(row)?).await? {
+    for n in rows.iter().take(usize::try_from(COUNT_CAP).unwrap_or(0)) {
+        if visible(&ctx.db, &caller, n).await? {
             unread += 1;
         }
     }
@@ -199,21 +172,21 @@ async fn mark_read(
     PidPath(pid): PidPath,
 ) -> Result<Response> {
     let recipient = recipient_of(&caller, &query)?;
-    let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!(
-                "UPDATE notifications SET read_at = COALESCE(read_at, now()) \
-                 WHERE pid = $1 AND recipient_ref = $2 AND suppressed = FALSE \
-                 RETURNING {COLUMNS}"
-            ),
-            [pid.into(), recipient.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    Audit::record(&txn, "notification", pid, "read", caller.actor(), None).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let read = sqlx::query_as!(
+        Notification,
+        "UPDATE notifications SET read_at = COALESCE(read_at, now()) \
+         WHERE pid = $1 AND recipient_ref = $2 AND suppressed = FALSE \
+         RETURNING pid, kind, subject_kind, subject_pid, created_at, read_at",
+        pid,
+        recipient,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    Audit::record_on(&mut txn, "notification", pid, "read", caller.actor(), None).await?;
     txn.commit().await?;
-    format::json(to_notification(&row)?)
+    format::json(read)
 }
 
 /// `POST /api/notifications/read-all` response.
@@ -231,17 +204,17 @@ async fn read_all(
     Query(query): Query<InboxQuery>,
 ) -> Result<Response> {
     let recipient = recipient_of(&caller, &query)?;
-    let txn = ctx.db.begin().await?;
-    let marked = txn
-        .execute_raw(stmt(
-            "UPDATE notifications SET read_at = now() \
-             WHERE recipient_ref = $1 AND suppressed = FALSE AND read_at IS NULL",
-            [recipient.into()],
-        ))
-        .await?
-        .rows_affected();
-    Audit::record(
-        &txn,
+    let mut txn = db::pool(&ctx).begin().await?;
+    let marked = sqlx::query!(
+        "UPDATE notifications SET read_at = now() \
+         WHERE recipient_ref = $1 AND suppressed = FALSE AND read_at IS NULL",
+        recipient,
+    )
+    .execute(&mut *txn)
+    .await?
+    .rows_affected();
+    Audit::record_on(
+        &mut txn,
         "notification",
         Uuid::nil(),
         "read_all",
@@ -258,14 +231,12 @@ async fn read_all(
 /// # Errors
 ///
 /// A database error.
-pub async fn run_sweep(
-    db: &sea_orm::DatabaseConnection,
-    actor: Option<&str>,
-) -> Result<inbox::Outcome> {
-    let outcome = inbox::sweep(db).await?;
+pub async fn run_sweep(pool: &PgPool, actor: Option<&str>) -> Result<inbox::Outcome> {
+    let outcome = inbox::sweep(pool).await?;
     if outcome.created + outcome.suppressed > 0 {
-        Audit::record(
-            db,
+        let mut txn = pool.begin().await?;
+        Audit::record_on(
+            &mut txn,
             "notification",
             Uuid::nil(),
             "notifications_swept",
@@ -275,6 +246,7 @@ pub async fn run_sweep(
             })),
         )
         .await?;
+        txn.commit().await?;
     }
     Ok(outcome)
 }
@@ -282,7 +254,7 @@ pub async fn run_sweep(
 /// `POST /api/notifications/sweep` — make the notifications that are due now.
 #[debug_handler]
 async fn sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
-    format::json(run_sweep(&ctx.db, caller.actor()).await?)
+    format::json(run_sweep(db::pool(&ctx), caller.actor()).await?)
 }
 
 /// The job that makes due notifications, queued every minute by the server.
@@ -297,7 +269,7 @@ impl BackgroundWorker<()> for NotificationSweepWorker {
     }
 
     async fn perform(&self, (): ()) -> Result<()> {
-        let outcome = run_sweep(&self.ctx.db, None).await?;
+        let outcome = run_sweep(db::pool(&self.ctx), None).await?;
         if outcome.created + outcome.suppressed > 0 {
             tracing::info!(
                 created = outcome.created,

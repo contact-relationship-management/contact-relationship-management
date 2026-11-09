@@ -9,6 +9,7 @@ use axa::testing::prelude::*;
 use axum::http::StatusCode;
 use chrono::{DateTime, Duration, Utc};
 use contact_relationship_management::app::App;
+use contact_relationship_management::db;
 use contact_relationship_management::rules::webhooks as rules;
 use contact_relationship_management::webhooks::{HttpSender, Outcome, Sender, run};
 use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
@@ -202,7 +203,7 @@ async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
 
         let recorder = Recorder::answering(200);
         let now = contact_relationship_management::clock::now();
-        let report = run(&ctx.db, &recorder, now).await.unwrap();
+        let report = run(db::pool(&ctx), &recorder, now).await.unwrap();
         assert_eq!(
             (report.deliveries_created, report.delivered),
             (1, 1),
@@ -231,7 +232,7 @@ async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
         }
 
         // Nothing is sent twice, however often the relay runs.
-        let again = run(&ctx.db, &recorder, now + Duration::minutes(10))
+        let again = run(db::pool(&ctx), &recorder, now + Duration::minutes(10))
             .await
             .unwrap();
         assert_eq!((again.deliveries_created, again.attempted), (0, 0));
@@ -260,7 +261,7 @@ async fn a_subscription_does_not_hear_what_happened_before_it_existed() {
         let made = subscribe!(request, ["*"]).await;
         let recorder = Recorder::answering(200);
         let report = run(
-            &ctx.db,
+            db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now(),
         )
@@ -294,10 +295,10 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
         let recorder = Recorder::answering(500);
         let start = contact_relationship_management::clock::now();
 
-        let first = run(&ctx.db, &recorder, start).await.unwrap();
+        let first = run(db::pool(&ctx), &recorder, start).await.unwrap();
         assert_eq!((first.attempted, first.retrying), (1, 1));
         // Too soon: the first retry waits 30 seconds.
-        let soon = run(&ctx.db, &recorder, start + Duration::seconds(10))
+        let soon = run(db::pool(&ctx), &recorder, start + Duration::seconds(10))
             .await
             .unwrap();
         assert_eq!(soon.attempted, 0);
@@ -308,7 +309,7 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
 
         // Seven more attempts, each after the previous wait, then dead.
         for n in 1..8 {
-            let r = run(&ctx.db, &recorder, start + Duration::days(2 * n))
+            let r = run(db::pool(&ctx), &recorder, start + Duration::days(2 * n))
                 .await
                 .unwrap();
             assert_eq!(r.attempted, 1, "attempt {}", n + 1);
@@ -316,7 +317,7 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
         let rows = log!(request, pid).await;
         assert_eq!(rows[0]["status"], "dead");
         assert_eq!(rows[0]["attempts"], 8);
-        let after = run(&ctx.db, &recorder, start + Duration::days(30))
+        let after = run(db::pool(&ctx), &recorder, start + Duration::days(30))
             .await
             .unwrap();
         assert_eq!(after.attempted, 0, "a dead delivery is not tried again");
@@ -333,7 +334,7 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
         )
         .await;
         let ok = run(
-            &ctx.db,
+            db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now() + Duration::days(31),
         )
@@ -363,7 +364,7 @@ async fn a_410_disables_the_subscription_cancels_what_is_queued_and_is_audited()
         }
         let recorder = Recorder::answering(410);
         let report = run(
-            &ctx.db,
+            db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now(),
         )
@@ -382,7 +383,7 @@ async fn a_410_disables_the_subscription_cancels_what_is_queued_and_is_audited()
         assert_eq!(rows.len(), 3);
         assert!(rows.iter().all(|r| r["status"] == "cancelled"), "{rows:?}");
         let later = run(
-            &ctx.db,
+            db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now() + Duration::days(1),
         )
@@ -432,7 +433,7 @@ async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
         )
         .await;
         run(
-            &ctx.db,
+            db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now(),
         )
@@ -463,7 +464,7 @@ async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
         )
         .await;
         run(
-            &ctx.db,
+            db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now() + Duration::days(2),
         )
@@ -518,7 +519,7 @@ async fn erasing_a_contact_cancels_its_queued_deliveries() {
         .await;
         let recorder = Recorder::answering(500);
         let start = contact_relationship_management::clock::now();
-        let first = run(&ctx.db, &recorder, start).await.unwrap();
+        let first = run(db::pool(&ctx), &recorder, start).await.unwrap();
         assert_eq!(first.retrying, 2);
 
         request
@@ -526,7 +527,7 @@ async fn erasing_a_contact_cancels_its_queued_deliveries() {
             .await
             .assert_status_ok();
 
-        let later = run(&ctx.db, &recorder, start + Duration::days(1))
+        let later = run(db::pool(&ctx), &recorder, start + Duration::days(1))
             .await
             .unwrap();
         assert_eq!(
@@ -563,7 +564,7 @@ async fn a_removed_subscription_sends_nothing_more_and_keeps_its_log() {
         .await;
         let recorder = Recorder::answering(500);
         run(
-            &ctx.db,
+            db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now(),
         )
@@ -584,7 +585,7 @@ async fn a_removed_subscription_sends_nothing_more_and_keeps_its_log() {
         )
         .await;
         let report = run(
-            &ctx.db,
+            db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now() + Duration::days(1),
         )

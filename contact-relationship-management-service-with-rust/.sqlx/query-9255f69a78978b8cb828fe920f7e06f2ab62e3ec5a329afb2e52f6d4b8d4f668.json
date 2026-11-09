@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM custom_field_values WHERE field_pid = $1 AND subject_pid = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9255f69a78978b8cb828fe920f7e06f2ab62e3ec5a329afb2e52f6d4b8d4f668"
+}

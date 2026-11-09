@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, entity, key, label, kind, choices, sensitivity, position FROM custom_field_defs WHERE pid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "custom_field_defs",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "entity",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "custom_field_defs",
+            "name": "entity"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "key",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "custom_field_defs",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "label",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "custom_field_defs",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "custom_field_defs",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "choices",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "custom_field_defs",
+            "name": "choices"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "sensitivity",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "custom_field_defs",
+            "name": "sensitivity"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "custom_field_defs",
+            "name": "position"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b5734bc448ac006442a66e007828c89400da34cefa8c7a2f131708dccfbfeb38"
+}

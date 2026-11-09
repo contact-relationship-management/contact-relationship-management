@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT trim(currency) AS \"currency!\", amount_minor, owner_ref FROM deals WHERE pid = $1 AND won AND deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "currency!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "amount_minor",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "amount_minor"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "owner_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      false,
+      true
+    ]
+  },
+  "hash": "67769b9b71ab54c4d75956a55cfd5d8c5349fc2eb6e65fa099a61b7bb7120c7f"
+}

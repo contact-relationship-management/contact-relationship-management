@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE webhook_subscriptions SET enabled = FALSE, disabled_at = now(), disabled_reason = COALESCE(disabled_reason, 'removed'), updated_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "51c292341c86efe0eca7a6f4093471ce25b764490a38370e73d44491e56e1ffe"
+}

@@ -1,6 +1,8 @@
 //! Break-glass endpoints (CRM-T44): take a reasoned, time-limited read
 //! elevation; list grants for review; record the after-the-fact review.
 //! See [`crate::break_glass`] for the rules and defaults.
+//!
+//! Runs on `sqlx` (CRM-D24, CRM-T206).
 
 use crate::controllers::PidPath;
 use crate::json::Json;
@@ -9,13 +11,14 @@ use std::collections::HashMap;
 use axa::prelude::*;
 use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::{invalid_field, record_rejection};
 use crate::auth::{AuthUser, MaybeAuthUser};
 use crate::break_glass as rules;
+use crate::db;
 use crate::models::audit_logs::Model as Audit;
 
 /// Body of `POST /api/break-glass`.
@@ -46,18 +49,11 @@ pub(crate) struct Grant {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "GrantRecord")]
 pub(crate) struct GrantRecord {
-    // The first five are NOT NULL columns; they are read leniently, so the code types them
-    // `Option`, but the document says what the table guarantees.
-    #[schemars(with = "Uuid")]
-    pid: Option<Uuid>,
-    #[schemars(with = "String")]
-    subject: Option<String>,
-    #[schemars(with = "String")]
-    reason: Option<String>,
-    #[schemars(with = "DateTime<Utc>")]
-    granted_at: Option<DateTime<Utc>>,
-    #[schemars(with = "DateTime<Utc>")]
-    expires_at: Option<DateTime<Utc>>,
+    pid: Uuid,
+    subject: String,
+    reason: String,
+    granted_at: DateTime<Utc>,
+    expires_at: DateTime<Utc>,
     reviewed_at: Option<DateTime<Utc>>,
     reviewed_by: Option<String>,
     review_note: Option<String>,
@@ -92,22 +88,20 @@ async fn grant(
     let now = crate::clock::now();
     let expires_at = rules::expiry(now, minutes);
     let pid = Uuid::new_v4();
-    let txn = ctx.db.begin().await?;
-    txn.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
+    let mut txn = db::pool(&ctx).begin().await?;
+    sqlx::query!(
         "INSERT INTO break_glass_grants (pid, subject, reason, granted_at, expires_at) \
          VALUES ($1, $2, $3, $4, $5)",
-        [
-            pid.into(),
-            claims.sub.clone().into(),
-            reason.clone().into(),
-            now.into(),
-            expires_at.into(),
-        ],
-    ))
+        pid,
+        claims.sub,
+        reason,
+        now,
+        expires_at,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "break_glass",
         pid,
         "break_glass_granted",
@@ -134,33 +128,14 @@ async fn grant(
 /// count a reviewer works from (admin/service tier).
 #[debug_handler]
 async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = ctx
-        .db
-        .query_all_raw(Statement::from_string(
-            DatabaseBackend::Postgres,
-            "SELECT pid, subject, reason, granted_at, expires_at, reviewed_at, reviewed_by, \
-             review_note FROM break_glass_grants ORDER BY id DESC LIMIT 200"
-                .to_string(),
-        ))
-        .await?;
-    let mut grants = Vec::with_capacity(rows.len());
-    let mut unreviewed = 0_u64;
-    for row in &rows {
-        let reviewed_at: Option<DateTime<Utc>> = row.try_get("", "reviewed_at").ok();
-        if reviewed_at.is_none() {
-            unreviewed += 1;
-        }
-        grants.push(GrantRecord {
-            pid: row.try_get::<Uuid>("", "pid").ok(),
-            subject: row.try_get::<String>("", "subject").ok(),
-            reason: row.try_get::<String>("", "reason").ok(),
-            granted_at: row.try_get::<DateTime<Utc>>("", "granted_at").ok(),
-            expires_at: row.try_get::<DateTime<Utc>>("", "expires_at").ok(),
-            reviewed_at,
-            reviewed_by: row.try_get::<String>("", "reviewed_by").ok(),
-            review_note: row.try_get::<String>("", "review_note").ok(),
-        });
-    }
+    let grants = sqlx::query_as!(
+        GrantRecord,
+        "SELECT pid, subject, reason, granted_at, expires_at, reviewed_at, reviewed_by, \
+         review_note FROM break_glass_grants ORDER BY id DESC LIMIT 200"
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    let unreviewed = grants.iter().filter(|g| g.reviewed_at.is_none()).count() as u64;
     format::json(Grants { unreviewed, grants })
 }
 
@@ -174,18 +149,15 @@ async fn review(
     PidPath(pid): PidPath,
     Json(payload): Json<ReviewPayload>,
 ) -> Result<Response> {
-    let row = ctx
-        .db
-        .query_one_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "SELECT subject, reviewed_at FROM break_glass_grants WHERE pid = $1",
-            [pid.into()],
-        ))
-        .await?
-        .ok_or_else(|| Error::NotFound)?;
-    let subject: String = row.try_get("", "subject")?;
-    let already: Option<DateTime<Utc>> = row.try_get("", "reviewed_at").ok();
-    if already.is_some() {
+    let row = sqlx::query!(
+        "SELECT subject, reviewed_at FROM break_glass_grants WHERE pid = $1",
+        pid
+    )
+    .fetch_optional(db::pool(&ctx))
+    .await?
+    .ok_or(Error::NotFound)?;
+    let subject = row.subject;
+    if row.reviewed_at.is_some() {
         return Err(super::unprocessable("this grant has already been reviewed"));
     }
     let reviewer = caller.actor().unwrap_or("unauthenticated").to_string();
@@ -193,16 +165,18 @@ async fn review(
         rules::ReviewError::SelfReview => record_rejection((StatusCode::FORBIDDEN, e.to_string())),
         rules::ReviewError::NoteTooShort => invalid_field("note", &e.to_string()),
     })?;
-    let txn = ctx.db.begin().await?;
-    txn.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
+    let mut txn = db::pool(&ctx).begin().await?;
+    sqlx::query!(
         "UPDATE break_glass_grants SET reviewed_at = now(), reviewed_by = $2, review_note = $3 \
          WHERE pid = $1",
-        [pid.into(), reviewer.clone().into(), note.clone().into()],
-    ))
+        pid,
+        reviewer,
+        note,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "break_glass",
         pid,
         "break_glass_reviewed",
@@ -223,26 +197,18 @@ async fn review(
 ///
 /// When the query fails.
 pub async fn refresh(
-    db: &DatabaseConnection,
-) -> std::result::Result<HashMap<String, DateTime<Utc>>, sea_orm::DbErr> {
-    let rows = db
-        .query_all_raw(Statement::from_string(
-            DatabaseBackend::Postgres,
-            "SELECT subject, max(expires_at) AS expires_at FROM break_glass_grants \
-             WHERE expires_at > now() GROUP BY subject"
-                .to_string(),
-        ))
-        .await?;
-    let mut live = HashMap::new();
-    for row in &rows {
-        if let (Ok(subject), Ok(expires_at)) = (
-            row.try_get::<String>("", "subject"),
-            row.try_get::<DateTime<Utc>>("", "expires_at"),
-        ) {
-            live.insert(subject, expires_at);
-        }
-    }
-    Ok(live)
+    pool: &PgPool,
+) -> std::result::Result<HashMap<String, DateTime<Utc>>, sqlx::Error> {
+    let rows = sqlx::query!(
+        "SELECT subject, max(expires_at) AS \"expires_at!\" FROM break_glass_grants \
+         WHERE expires_at > now() GROUP BY subject"
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| (row.subject, row.expires_at))
+        .collect())
 }
 
 /// The break-glass routes.

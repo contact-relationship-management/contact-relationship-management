@@ -3,18 +3,23 @@
 //! An admin declares a field on contacts, accounts, leads or deals; anyone who may write the
 //! record sets its values. Each field declares its sensitivity ([`rules::SENSITIVITIES`]), and that
 //! decides masking, storage, subject access and erasure for its values.
+//!
+//! The routes run on `sqlx` (CRM-D24, CRM-T206). [`subject`] and [`export_for`] stay on
+//! `ConnectionTrait` for the modules that call them inside `SeaORM` transactions.
 
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::merge::conflict;
 use super::{PidPath, PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::crypto;
+use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
@@ -57,8 +62,7 @@ pub(crate) struct DefChange {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "CustomField")]
 pub(crate) struct DefView {
-    #[schemars(with = "uuid::Uuid")]
-    pid: String,
+    pid: Uuid,
     entity: String,
     key: String,
     label: String,
@@ -126,10 +130,37 @@ fn read(row: &sea_orm::QueryResult) -> Result<Def> {
     })
 }
 
+/// A `custom_field_defs` row as `sqlx` reads it.
+struct DefRow {
+    pid: Uuid,
+    entity: String,
+    key: String,
+    label: String,
+    kind: String,
+    choices: serde_json::Value,
+    sensitivity: String,
+    position: i32,
+}
+
+impl From<DefRow> for Def {
+    fn from(row: DefRow) -> Self {
+        Self {
+            pid: row.pid,
+            entity: row.entity,
+            key: row.key,
+            label: row.label,
+            kind: row.kind,
+            choices: serde_json::from_value(row.choices).unwrap_or_default(),
+            sensitivity: row.sensitivity,
+            position: row.position,
+        }
+    }
+}
+
 impl Def {
     fn view(&self) -> DefView {
         DefView {
-            pid: self.pid.to_string(),
+            pid: self.pid,
             entity: self.entity.clone(),
             key: self.key.clone(),
             label: self.label.clone(),
@@ -151,6 +182,7 @@ impl Def {
     }
 }
 
+/// The declared fields, for [`export_for`] on a `SeaORM` connection.
 async fn defs_of<C: ConnectionTrait>(db: &C, entity: Option<&str>) -> Result<Vec<Def>> {
     let rows = db
         .query_all_raw(stmt(
@@ -164,15 +196,31 @@ async fn defs_of<C: ConnectionTrait>(db: &C, entity: Option<&str>) -> Result<Vec
     rows.iter().map(read).collect()
 }
 
-async fn def_by_pid<C: ConnectionTrait>(db: &C, pid: Uuid) -> Result<Def> {
-    let row = db
-        .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM custom_field_defs WHERE pid = $1"),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    read(&row)
+/// The declared fields of `entity`, or of every entity.
+async fn defs(conn: &mut PgConnection, entity: Option<&str>) -> Result<Vec<Def>> {
+    let rows = sqlx::query_as!(
+        DefRow,
+        "SELECT pid, entity, key, label, kind, choices, sensitivity, position \
+         FROM custom_field_defs WHERE ($1::text IS NULL OR entity = $1) \
+         ORDER BY entity, position, id",
+        entity
+    )
+    .fetch_all(conn)
+    .await?;
+    Ok(rows.into_iter().map(Def::from).collect())
+}
+
+async fn def_by_pid(conn: &mut PgConnection, pid: Uuid) -> Result<Def> {
+    sqlx::query_as!(
+        DefRow,
+        "SELECT pid, entity, key, label, kind, choices, sensitivity, position \
+         FROM custom_field_defs WHERE pid = $1",
+        pid
+    )
+    .fetch_optional(conn)
+    .await?
+    .map(Def::from)
+    .ok_or(Error::NotFound)
 }
 
 fn problems_of(found: Vec<(String, String)>) -> Result<()> {
@@ -189,7 +237,8 @@ async fn list(
     State(ctx): State<AppContext>,
     axa::extract::Query(query): axa::extract::Query<BTreeMap<String, String>>,
 ) -> Result<Response> {
-    let defs = defs_of(&ctx.db, query.get("entity").map(String::as_str)).await?;
+    let mut conn = db::pool(&ctx).acquire().await?;
+    let defs = defs(&mut conn, query.get("entity").map(String::as_str)).await?;
     format::json(defs.iter().map(Def::view).collect::<Vec<_>>())
 }
 
@@ -208,15 +257,13 @@ async fn create(
         &payload.choices,
         &payload.sensitivity,
     ))?;
-    let txn = ctx.db.begin().await?;
-    let held: i64 = txn
-        .query_one_raw(stmt(
-            "SELECT count(*) AS n FROM custom_field_defs WHERE entity = $1",
-            [payload.entity.clone().into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?
-        .try_get("", "n")?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let held = sqlx::query_scalar!(
+        "SELECT count(*) AS \"n!\" FROM custom_field_defs WHERE entity = $1",
+        payload.entity
+    )
+    .fetch_one(&mut *txn)
+    .await?;
     if held >= rules::MAX_PER_ENTITY {
         return Err(unprocessable(&format!(
             "a {} may have at most {} custom fields",
@@ -225,31 +272,29 @@ async fn create(
         )));
     }
     let pid = Uuid::new_v4();
-    let inserted = txn
-        .execute_raw(stmt(
-            "INSERT INTO custom_field_defs (pid, entity, key, label, kind, choices, sensitivity, position) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING",
-            [
-                pid.into(),
-                payload.entity.clone().into(),
-                payload.key.clone().into(),
-                payload.label.trim().to_string().into(),
-                payload.kind.clone().into(),
-                serde_json::json!(payload.choices).into(),
-                payload.sensitivity.clone().into(),
-                i32::try_from(held).unwrap_or(i32::MAX).into(),
-            ],
-        ))
-        .await?
-        .rows_affected();
+    let inserted = sqlx::query!(
+        "INSERT INTO custom_field_defs (pid, entity, key, label, kind, choices, sensitivity, position) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING",
+        pid,
+        payload.entity,
+        payload.key,
+        payload.label.trim(),
+        payload.kind,
+        serde_json::json!(payload.choices),
+        payload.sensitivity,
+        i32::try_from(held).unwrap_or(i32::MAX),
+    )
+    .execute(&mut *txn)
+    .await?
+    .rows_affected();
     if inserted == 0 {
         return Err(unprocessable(&format!(
             "a {} already has a custom field with the key {}",
             payload.entity, payload.key
         )));
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "custom_field",
         pid,
         "created",
@@ -274,8 +319,8 @@ async fn change(
     PidPath(pid): PidPath,
     Json(payload): Json<DefChange>,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let def = def_by_pid(&txn, pid).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let def = def_by_pid(&mut txn, pid).await?;
     let mut found = rules::check_choices(&def.kind, &payload.choices);
     if payload.label.trim().is_empty() || payload.label.chars().count() > rules::MAX_LABEL {
         found.push((
@@ -285,15 +330,14 @@ async fn change(
     }
     problems_of(found)?;
     // A choice that values still use cannot be taken away. Sealed values are opened to compare.
-    let rows = txn
-        .query_all_raw(stmt(
-            "SELECT value FROM custom_field_values WHERE field_pid = $1",
-            [pid.into()],
-        ))
-        .await?;
+    let rows = sqlx::query_scalar!(
+        "SELECT value FROM custom_field_values WHERE field_pid = $1",
+        pid
+    )
+    .fetch_all(&mut *txn)
+    .await?;
     let mut held = Vec::new();
-    for row in &rows {
-        let raw: String = row.try_get("", "value")?;
+    for raw in rows {
         held.push(if def.sealed() {
             crypto::open(&raw).map_err(|e| Error::string(&e.to_string()))?
         } else {
@@ -308,18 +352,25 @@ async fn change(
             )));
         }
     }
-    txn.execute_raw(stmt(
+    sqlx::query!(
         "UPDATE custom_field_defs SET label = $2, choices = $3, position = $4, updated_at = now() \
          WHERE pid = $1",
-        [
-            pid.into(),
-            payload.label.trim().to_string().into(),
-            serde_json::json!(payload.choices).into(),
-            payload.position.into(),
-        ],
-    ))
+        pid,
+        payload.label.trim(),
+        serde_json::json!(payload.choices),
+        payload.position,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(&txn, "custom_field", pid, "updated", caller.actor(), None).await?;
+    Audit::record_on(
+        &mut txn,
+        "custom_field",
+        pid,
+        "updated",
+        caller.actor(),
+        None,
+    )
+    .await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -333,22 +384,17 @@ async fn remove(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let def = def_by_pid(&txn, pid).await?;
-    let values = txn
-        .execute_raw(stmt(
-            "DELETE FROM custom_field_values WHERE field_pid = $1",
-            [pid.into()],
-        ))
+    let mut txn = db::pool(&ctx).begin().await?;
+    let def = def_by_pid(&mut txn, pid).await?;
+    let values = sqlx::query!("DELETE FROM custom_field_values WHERE field_pid = $1", pid)
+        .execute(&mut *txn)
         .await?
         .rows_affected();
-    txn.execute_raw(stmt(
-        "DELETE FROM custom_field_defs WHERE pid = $1",
-        [pid.into()],
-    ))
-    .await?;
-    Audit::record(
-        &txn,
+    sqlx::query!("DELETE FROM custom_field_defs WHERE pid = $1", pid)
+        .execute(&mut *txn)
+        .await?;
+    Audit::record_on(
+        &mut txn,
         "custom_field",
         pid,
         "deleted",
@@ -396,21 +442,20 @@ pub(super) async fn subject<C: ConnectionTrait>(
 }
 
 /// The values stored for the record, by field pid, opened.
-async fn stored<C: ConnectionTrait>(
-    db: &C,
+async fn stored(
+    conn: &mut PgConnection,
     subject_pid: Uuid,
     defs: &[Def],
 ) -> Result<BTreeMap<Uuid, String>> {
-    let rows = db
-        .query_all_raw(stmt(
-            "SELECT field_pid, value FROM custom_field_values WHERE subject_pid = $1",
-            [subject_pid.into()],
-        ))
-        .await?;
+    let rows = sqlx::query!(
+        "SELECT field_pid, value FROM custom_field_values WHERE subject_pid = $1",
+        subject_pid
+    )
+    .fetch_all(conn)
+    .await?;
     let mut out = BTreeMap::new();
     for row in rows {
-        let field: Uuid = row.try_get("", "field_pid")?;
-        let value: String = row.try_get("", "value")?;
+        let (field, value) = (row.field_pid, row.value);
         let Some(def) = defs.iter().find(|d| d.pid == field) else {
             continue;
         };
@@ -425,14 +470,14 @@ async fn stored<C: ConnectionTrait>(
 }
 
 /// A record's fields with their values, masked where the caller's read is masked.
-async fn values_of<C: ConnectionTrait>(
-    db: &C,
+async fn values_of(
+    conn: &mut PgConnection,
     entity: &str,
     subject_pid: Uuid,
     masked: bool,
 ) -> Result<Vec<ValueView>> {
-    let defs = defs_of(db, Some(entity)).await?;
-    let held = stored(db, subject_pid, &defs).await?;
+    let defs = defs(&mut *conn, Some(entity)).await?;
+    let held = stored(conn, subject_pid, &defs).await?;
     Ok(defs
         .iter()
         .map(|d| {
@@ -468,7 +513,8 @@ async fn get_values(
         authentication_verifier::Action::Read,
     )
     .await?;
-    format::json(values_of(&ctx.db, entity, pid, masked).await?)
+    let mut conn = db::pool(&ctx).acquire().await?;
+    format::json(values_of(&mut conn, entity, pid, masked).await?)
 }
 
 async fn put_values(
@@ -486,7 +532,8 @@ async fn put_values(
         authentication_verifier::Action::Write,
     )
     .await?;
-    let defs = defs_of(&ctx.db, Some(entity)).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let defs = defs(&mut txn, Some(entity)).await?;
     if payload.values.is_empty() {
         return Err(unprocessable("nothing to change"));
     }
@@ -506,7 +553,6 @@ async fn put_values(
         }
     }
     problems.finish()?;
-    let txn = ctx.db.begin().await?;
     for (def, value) in &plan {
         match value {
             Some(text) => {
@@ -515,26 +561,31 @@ async fn put_values(
                 } else {
                     text.clone()
                 };
-                txn.execute_raw(stmt(
+                sqlx::query!(
                     "INSERT INTO custom_field_values (field_pid, subject_pid, value) \
                      VALUES ($1, $2, $3) ON CONFLICT (field_pid, subject_pid) \
                      DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
-                    [def.pid.into(), pid.into(), kept.into()],
-                ))
+                    def.pid,
+                    pid,
+                    kept,
+                )
+                .execute(&mut *txn)
                 .await?;
             }
             None => {
-                txn.execute_raw(stmt(
+                sqlx::query!(
                     "DELETE FROM custom_field_values WHERE field_pid = $1 AND subject_pid = $2",
-                    [def.pid.into(), pid.into()],
-                ))
+                    def.pid,
+                    pid,
+                )
+                .execute(&mut *txn)
                 .await?;
             }
         }
     }
     // The audit row names the fields, never the values.
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         entity,
         pid,
         "custom_fields_updated",
@@ -542,8 +593,9 @@ async fn put_values(
         Some(serde_json::json!({ "fields": plan.iter().map(|(d, _)| d.key.clone()).collect::<Vec<_>>() })),
     )
     .await?;
+    let values = values_of(&mut txn, entity, pid, false).await?;
     txn.commit().await?;
-    format::json(values_of(&ctx.db, entity, pid, false).await?)
+    format::json(values)
 }
 
 macro_rules! record_routes {

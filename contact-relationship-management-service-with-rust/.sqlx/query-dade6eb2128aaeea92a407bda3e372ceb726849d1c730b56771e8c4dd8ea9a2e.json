@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT t.pid, t.assignee_ref AS \"assignee_ref!\" FROM tickets t WHERE t.resolution_breached = TRUE AND t.deleted_at IS NULL AND t.status IN ('open', 'pending', 'resolved') AND t.assignee_ref IS NOT NULL AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.kind = 'sla_breach' AND n.source_pid = t.pid AND n.recipient_ref = t.assignee_ref AND n.source_key = 'resolution') ORDER BY t.id LIMIT $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "assignee_ref!",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "assignee_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "dade6eb2128aaeea92a407bda3e372ceb726849d1c730b56771e8c4dd8ea9a2e"
+}

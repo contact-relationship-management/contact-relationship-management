@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE webhook_deliveries SET status = $2::text, attempts = $3, last_status = $4, last_error = $5, next_attempt_at = COALESCE($6, next_attempt_at), delivered_at = CASE WHEN $2::text = 'delivered' THEN CURRENT_TIMESTAMP ELSE delivered_at END, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Int4",
+        "Int4",
+        "Varchar",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2fd0a3fa63bb2e599741448dcf24e34dce516880fa7ee2b728a3fb527eb7c975"
+}

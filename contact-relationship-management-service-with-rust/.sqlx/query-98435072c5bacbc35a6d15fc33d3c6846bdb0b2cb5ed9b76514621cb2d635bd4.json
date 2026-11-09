@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, subject_kind, subject_pid, name, content_type, size_bytes, sha256, uploaded_by, created_at FROM attachments WHERE pid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "subject_kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "subject_kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "subject_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "subject_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "content_type",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "size_bytes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "size_bytes"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "sha256",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "sha256"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "uploaded_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "uploaded_by"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "98435072c5bacbc35a6d15fc33d3c6846bdb0b2cb5ed9b76514621cb2d635bd4"
+}

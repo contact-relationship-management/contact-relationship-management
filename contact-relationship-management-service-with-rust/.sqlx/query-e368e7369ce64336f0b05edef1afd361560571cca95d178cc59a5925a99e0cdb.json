@@ -1,0 +1,119 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO quotas (pid, owner_ref, period_from, period_to, currency, amount_minor, plan_pid, set_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (owner_ref, period_from, period_to, currency) DO UPDATE SET amount_minor = EXCLUDED.amount_minor, plan_pid = EXCLUDED.plan_pid, set_by = EXCLUDED.set_by, updated_at = now() RETURNING pid, owner_ref, period_from, period_to, currency, amount_minor, plan_pid, set_by",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "owner_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "owner_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "period_from",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "period_from"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "period_to",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "period_to"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "currency",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "currency"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "amount_minor",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "amount_minor"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "plan_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "plan_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "set_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "quotas",
+            "name": "set_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Date",
+        "Date",
+        "Bpchar",
+        "Int8",
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "e368e7369ce64336f0b05edef1afd361560571cca95d178cc59a5925a99e0cdb"
+}

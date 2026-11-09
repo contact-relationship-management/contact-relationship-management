@@ -144,7 +144,7 @@ fn spawn_break_glass_refresh(ctx: &AppContext, poll: Option<redis_store::Shared>
     // CRM-T44: keep the live break-glass set fresh across replicas. The
     // database is the record (re-read every 10 s); with Redis, new grants
     // also arrive within a second, and the live set is the union of both.
-    let db = ctx.db.clone();
+    let db = crate::db::pool(ctx).clone();
     tokio::spawn(async move {
         let (tick, db_every) = if poll.is_some() { (1, 10) } else { (10, 1) };
         let mut from_db = std::collections::HashMap::new();
@@ -181,14 +181,14 @@ fn spawn_break_glass_refresh(ctx: &AppContext, poll: Option<redis_store::Shared>
 fn spawn_token_sweep(ctx: &AppContext) {
     // CRM-T52: drop idempotency keys past their 24 hours.
     let idem_db = ctx.db.clone();
+    let pool = crate::db::pool(ctx).clone();
     tokio::spawn(async move {
-        use sea_orm::ConnectionTrait;
         loop {
-            if let Err(error) = idem_db
-                .execute_unprepared(
-                    "DELETE FROM idempotency_keys WHERE created_at < now() - interval '24 hours'",
-                )
-                .await
+            if let Err(error) = sqlx::query!(
+                "DELETE FROM idempotency_keys WHERE created_at < now() - interval '24 hours'"
+            )
+            .execute(&pool)
+            .await
             {
                 tracing::warn!(%error, "idempotency cleanup failed");
             }

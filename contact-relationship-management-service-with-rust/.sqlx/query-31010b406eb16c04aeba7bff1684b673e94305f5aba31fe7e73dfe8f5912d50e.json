@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deal_clawbacks (deal_pid, owner_ref, amount_minor, reason, set_by) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (deal_pid, owner_ref) DO UPDATE SET amount_minor = EXCLUDED.amount_minor, reason = EXCLUDED.reason, set_by = EXCLUDED.set_by",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Int8",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "31010b406eb16c04aeba7bff1684b673e94305f5aba31fe7e73dfe8f5912d50e"
+}

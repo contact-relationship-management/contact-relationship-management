@@ -4,19 +4,25 @@
 //! /api/quotas/attainment` reads the won deals against them. All three are admin-only (see
 //! [`crate::auth::policy::ADMIN_ONLY_PREFIXES`]): what a person is paid is neither theirs to set
 //! nor everyone's to read.
+//!
+//! The routes that write run on `sqlx` (CRM-D24, CRM-T206). The attainment read, [`standings`],
+//! stays on `ConnectionTrait`: `teams` calls it too, and it builds the organization's day into its
+//! SQL at run time.
 
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
 use chrono::NaiveDate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::merge::conflict;
 use super::views::owner_of;
 use super::{PidPath, PidRef};
 use crate::auth::MaybeAuthUser;
+use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::analytics::Ratio;
@@ -51,8 +57,7 @@ pub(crate) struct PlanPayload {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "CommissionPlan")]
 pub(crate) struct PlanView {
-    #[schemars(with = "uuid::Uuid")]
-    pid: String,
+    pid: Uuid,
     name: String,
     tiers: Vec<Tier>,
     /// How many quotas are paid under it.
@@ -61,33 +66,46 @@ pub(crate) struct PlanView {
     set_by: String,
 }
 
-const PLAN_COLUMNS: &str = "p.pid, p.name, p.tiers, p.set_by, \
-     (SELECT count(*) FROM quotas q WHERE q.plan_pid = p.pid)::bigint AS in_use";
+/// A plan row with how many quotas use it.
+struct PlanRow {
+    pid: Uuid,
+    name: String,
+    tiers: serde_json::Value,
+    set_by: String,
+    in_use: i64,
+}
 
-fn plan_view(row: &sea_orm::QueryResult) -> Result<PlanView> {
-    let tiers: serde_json::Value = row.try_get("", "tiers")?;
-    Ok(PlanView {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        name: row.try_get("", "name")?,
-        tiers: serde_json::from_value(tiers).map_err(|e| Error::string(&e.to_string()))?,
-        quotas: row.try_get("", "in_use")?,
-        set_by: row.try_get("", "set_by")?,
-    })
+impl TryFrom<PlanRow> for PlanView {
+    type Error = Error;
+
+    fn try_from(row: PlanRow) -> Result<Self> {
+        Ok(Self {
+            pid: row.pid,
+            name: row.name,
+            tiers: serde_json::from_value(row.tiers).map_err(|e| Error::string(&e.to_string()))?,
+            quotas: row.in_use,
+            set_by: row.set_by,
+        })
+    }
 }
 
 /// `GET /api/commission-plans` — the plans, by name.
 #[debug_handler]
 async fn list_plans(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {PLAN_COLUMNS} FROM commission_plans p ORDER BY lower(p.name) LIMIT $1"
-            ),
-            [MAX_LISTED.into()],
-        ))
-        .await?;
-    format::json(rows.iter().map(plan_view).collect::<Result<Vec<_>>>()?)
+    let rows = sqlx::query_as!(
+        PlanRow,
+        "SELECT p.pid, p.name, p.tiers, p.set_by, \
+                (SELECT count(*) FROM quotas q WHERE q.plan_pid = p.pid) AS \"in_use!\" \
+         FROM commission_plans p ORDER BY lower(p.name) LIMIT $1",
+        MAX_LISTED
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    format::json(
+        rows.into_iter()
+            .map(PlanView::try_from)
+            .collect::<Result<Vec<_>>>()?,
+    )
 }
 
 /// `PUT /api/commission-plans` — set a plan; audited.
@@ -110,31 +128,30 @@ async fn set_plan(
     };
     let who = owner_of(&caller)?;
     let tiers = serde_json::to_value(&payload.tiers).map_err(|e| Error::string(&e.to_string()))?;
-    let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!(
-                "WITH p AS ( \
-                   INSERT INTO commission_plans (pid, name, tiers, set_by) \
-                   VALUES ($1, $2, $3::jsonb, $4) \
-                   ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, \
-                     tiers = EXCLUDED.tiers, set_by = EXCLUDED.set_by, updated_at = now() \
-                   RETURNING * ) \
-                 SELECT {PLAN_COLUMNS} FROM p"
-            ),
-            [
-                Uuid::new_v4().into(),
-                name.as_str().into(),
-                tiers.into(),
-                who.into(),
-            ],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let made = plan_view(&row)?;
-    let pid: Uuid = row.try_get("", "pid")?;
-    Audit::record(
-        &txn,
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = sqlx::query_as!(
+        PlanRow,
+        "WITH p AS ( \
+           INSERT INTO commission_plans (pid, name, tiers, set_by) \
+           VALUES ($1, $2, $3::jsonb, $4) \
+           ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, \
+             tiers = EXCLUDED.tiers, set_by = EXCLUDED.set_by, updated_at = now() \
+           RETURNING * ) \
+         SELECT p.pid AS \"pid!\", p.name AS \"name!\", p.tiers AS \"tiers!\", \
+                p.set_by AS \"set_by!\", \
+                (SELECT count(*) FROM quotas q WHERE q.plan_pid = p.pid) AS \"in_use!\" \
+         FROM p",
+        Uuid::new_v4(),
+        name.as_str(),
+        tiers,
+        who,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    let pid = row.pid;
+    let made = PlanView::try_from(row)?;
+    Audit::record_on(
+        &mut txn,
         "commission_plan",
         pid,
         "set",
@@ -154,27 +171,26 @@ async fn remove_plan(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!(
-                "SELECT {PLAN_COLUMNS} FROM commission_plans p WHERE p.pid = $1 FOR UPDATE OF p"
-            ),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let plan = plan_view(&row)?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = sqlx::query_as!(
+        PlanRow,
+        "SELECT p.pid, p.name, p.tiers, p.set_by, \
+                (SELECT count(*) FROM quotas q WHERE q.plan_pid = p.pid) AS \"in_use!\" \
+         FROM commission_plans p WHERE p.pid = $1 FOR UPDATE OF p",
+        pid
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    let plan = PlanView::try_from(row)?;
     if plan.quotas > 0 {
         return Err(conflict("a quota is still paid under this plan"));
     }
-    txn.execute_raw(stmt(
-        "DELETE FROM commission_plans WHERE pid = $1",
-        [pid.into()],
-    ))
-    .await?;
-    Audit::record(
-        &txn,
+    sqlx::query!("DELETE FROM commission_plans WHERE pid = $1", pid)
+        .execute(&mut *txn)
+        .await?;
+    Audit::record_on(
+        &mut txn,
         "commission_plan",
         pid,
         "deleted",
@@ -215,34 +231,22 @@ pub(crate) struct QuotaPayload {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "Quota")]
 pub(crate) struct QuotaView {
-    #[schemars(with = "uuid::Uuid")]
-    pid: String,
+    pid: Uuid,
     owner_ref: String,
     period_from: NaiveDate,
     period_to: NaiveDate,
     currency: String,
     amount_minor: i64,
-    #[schemars(with = "Option<uuid::Uuid>")]
-    plan_pid: Option<String>,
+    plan_pid: Option<Uuid>,
     set_by: String,
 }
 
-const QUOTA_COLUMNS: &str =
-    "pid, owner_ref, period_from, period_to, currency, amount_minor, plan_pid, set_by";
-
-fn quota_view(row: &sea_orm::QueryResult) -> Result<QuotaView> {
-    Ok(QuotaView {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        owner_ref: row.try_get("", "owner_ref")?,
-        period_from: row.try_get("", "period_from")?,
-        period_to: row.try_get("", "period_to")?,
-        currency: row.try_get::<String>("", "currency")?.trim().to_string(),
-        amount_minor: row.try_get("", "amount_minor")?,
-        plan_pid: row
-            .try_get::<Option<Uuid>>("", "plan_pid")?
-            .map(|p| p.to_string()),
-        set_by: row.try_get("", "set_by")?,
-    })
+impl QuotaView {
+    /// The view of a row; `currency` is `char(3)`, so it is trimmed.
+    fn trimmed(mut self) -> Self {
+        self.currency = self.currency.trim().to_string();
+        self
+    }
 }
 
 /// What `GET /api/quotas` may be asked.
@@ -258,20 +262,17 @@ async fn list_quotas(
     State(ctx): State<AppContext>,
     axa::extract::Query(query): axa::extract::Query<QuotaQuery>,
 ) -> Result<Response> {
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {QUOTA_COLUMNS} FROM quotas WHERE ($1::text IS NULL OR owner_ref = $1) \
-                 ORDER BY period_from DESC, owner_ref, currency LIMIT $2"
-            ),
-            [
-                user_ref::normalise_opt(query.owner_ref).into(),
-                MAX_LISTED.into(),
-            ],
-        ))
-        .await?;
-    format::json(rows.iter().map(quota_view).collect::<Result<Vec<_>>>()?)
+    let rows = sqlx::query_as!(
+        QuotaView,
+        "SELECT pid, owner_ref, period_from, period_to, currency, amount_minor, plan_pid, set_by \
+         FROM quotas WHERE ($1::text IS NULL OR owner_ref = $1) \
+         ORDER BY period_from DESC, owner_ref, currency LIMIT $2",
+        user_ref::normalise_opt(query.owner_ref),
+        MAX_LISTED,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    format::json(rows.into_iter().map(QuotaView::trimmed).collect::<Vec<_>>())
 }
 
 /// `PUT /api/quotas` — set a quota; audited.
@@ -305,34 +306,32 @@ async fn set_quota(
     };
 
     let who = owner_of(&caller)?;
-    let txn = ctx.db.begin().await?;
+    let mut txn = db::pool(&ctx).begin().await?;
     let mut later = Problems::new();
     if let Some(plan) = payload.plan_pid
-        && txn
-            .query_one_raw(stmt(
-                "SELECT 1 FROM commission_plans WHERE pid = $1",
-                [plan.into()],
-            ))
-            .await?
-            .is_none()
+        && sqlx::query_scalar!(
+            "SELECT 1 AS \"one!\" FROM commission_plans WHERE pid = $1",
+            plan
+        )
+        .fetch_optional(&mut *txn)
+        .await?
+        .is_none()
     {
         later.push_field("plan_pid", "there is no such plan");
     }
     // One quota covers a day for a worker and currency, so attainment is never ambiguous.
-    if txn
-        .query_one_raw(stmt(
-            "SELECT 1 FROM quotas WHERE owner_ref = $1 AND currency = $2 \
-               AND period_from <= $4 AND period_to >= $3 \
-               AND NOT (period_from = $3 AND period_to = $4)",
-            [
-                payload.owner_ref.as_str().into(),
-                currency.as_str().into(),
-                payload.period_from.into(),
-                payload.period_to.into(),
-            ],
-        ))
-        .await?
-        .is_some()
+    if sqlx::query_scalar!(
+        "SELECT 1 AS \"one!\" FROM quotas WHERE owner_ref = $1 AND currency = $2 \
+           AND period_from <= $4 AND period_to >= $3 \
+           AND NOT (period_from = $3 AND period_to = $4)",
+        payload.owner_ref,
+        currency.as_str(),
+        payload.period_from,
+        payload.period_to,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .is_some()
     {
         later.push_field(
             "period_from",
@@ -340,35 +339,32 @@ async fn set_quota(
         );
     }
     later.finish()?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!(
-                "INSERT INTO quotas (pid, owner_ref, period_from, period_to, currency, \
-                                     amount_minor, plan_pid, set_by) \
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
-                 ON CONFLICT (owner_ref, period_from, period_to, currency) DO UPDATE SET \
-                   amount_minor = EXCLUDED.amount_minor, plan_pid = EXCLUDED.plan_pid, \
-                   set_by = EXCLUDED.set_by, updated_at = now() \
-                 RETURNING {QUOTA_COLUMNS}"
-            ),
-            [
-                Uuid::new_v4().into(),
-                payload.owner_ref.as_str().into(),
-                payload.period_from.into(),
-                payload.period_to.into(),
-                currency.as_str().into(),
-                payload.amount_minor.into(),
-                payload.plan_pid.into(),
-                who.into(),
-            ],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let made = quota_view(&row)?;
-    Audit::record(
-        &txn,
+    let made = sqlx::query_as!(
+        QuotaView,
+        "INSERT INTO quotas (pid, owner_ref, period_from, period_to, currency, \
+                             amount_minor, plan_pid, set_by) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
+         ON CONFLICT (owner_ref, period_from, period_to, currency) DO UPDATE SET \
+           amount_minor = EXCLUDED.amount_minor, plan_pid = EXCLUDED.plan_pid, \
+           set_by = EXCLUDED.set_by, updated_at = now() \
+         RETURNING pid, owner_ref, period_from, period_to, currency, amount_minor, plan_pid, \
+                   set_by",
+        Uuid::new_v4(),
+        payload.owner_ref,
+        payload.period_from,
+        payload.period_to,
+        currency.as_str(),
+        payload.amount_minor,
+        payload.plan_pid,
+        who,
+    )
+    .fetch_one(&mut *txn)
+    .await?
+    .trimmed();
+    Audit::record_on(
+        &mut txn,
         "quota",
-        row.try_get("", "pid")?,
+        made.pid,
         "set",
         caller.actor(),
         Some(serde_json::json!({
@@ -389,17 +385,20 @@ async fn remove_quota(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!("DELETE FROM quotas WHERE pid = $1 RETURNING {QUOTA_COLUMNS}"),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let gone = quota_view(&row)?;
-    Audit::record(
-        &txn,
+    let mut txn = db::pool(&ctx).begin().await?;
+    let gone = sqlx::query_as!(
+        QuotaView,
+        "DELETE FROM quotas WHERE pid = $1 \
+         RETURNING pid, owner_ref, period_from, period_to, currency, amount_minor, plan_pid, \
+                   set_by",
+        pid
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?
+    .trimmed();
+    Audit::record_on(
+        &mut txn,
         "quota",
         pid,
         "deleted",
@@ -446,12 +445,12 @@ pub(crate) struct SplitPayload {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "DealSplit")]
 pub(crate) struct SplitView {
-    #[schemars(with = "uuid::Uuid")]
-    deal_pid: String,
+    deal_pid: Uuid,
     /// Empty when the deal is credited wholly to its owner.
     shares: Vec<Share>,
 }
 
+/// A deal's split, for [`standings`] on a `SeaORM` connection.
 async fn shares_of<C: ConnectionTrait>(db: &C, deal: Uuid) -> Result<Vec<Share>> {
     db.query_all_raw(stmt(
         "SELECT owner_ref, share_bps FROM deal_splits WHERE deal_pid = $1 ORDER BY id",
@@ -468,11 +467,28 @@ async fn shares_of<C: ConnectionTrait>(db: &C, deal: Uuid) -> Result<Vec<Share>>
     .collect()
 }
 
-async fn deal_exists<C: ConnectionTrait>(db: &C, deal: Uuid) -> Result<()> {
-    db.query_one_raw(stmt(
-        "SELECT 1 FROM deals WHERE pid = $1 AND deleted_at IS NULL",
-        [deal.into()],
-    ))
+/// A deal's split.
+async fn shares(conn: &mut PgConnection, deal: Uuid) -> Result<Vec<Share>> {
+    Ok(sqlx::query!(
+        "SELECT owner_ref, share_bps FROM deal_splits WHERE deal_pid = $1 ORDER BY id",
+        deal
+    )
+    .fetch_all(conn)
+    .await?
+    .into_iter()
+    .map(|r| Share {
+        owner_ref: r.owner_ref,
+        share_bps: u32::try_from(r.share_bps).unwrap_or(0),
+    })
+    .collect())
+}
+
+async fn deal_exists(conn: &mut PgConnection, deal: Uuid) -> Result<()> {
+    sqlx::query_scalar!(
+        "SELECT 1 AS \"one!\" FROM deals WHERE pid = $1 AND deleted_at IS NULL",
+        deal
+    )
+    .fetch_optional(conn)
     .await?
     .map(|_| ())
     .ok_or(Error::NotFound)
@@ -481,10 +497,11 @@ async fn deal_exists<C: ConnectionTrait>(db: &C, deal: Uuid) -> Result<()> {
 /// `GET /api/quotas/splits/{pid}` — how a deal is credited. `404` for an unknown deal.
 #[debug_handler]
 async fn get_split(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
-    deal_exists(&ctx.db, pid).await?;
+    let mut conn = db::pool(&ctx).acquire().await?;
+    deal_exists(&mut conn, pid).await?;
     format::json(SplitView {
-        deal_pid: pid.to_string(),
-        shares: shares_of(&ctx.db, pid).await?,
+        deal_pid: pid,
+        shares: shares(&mut conn, pid).await?,
     })
 }
 
@@ -529,27 +546,24 @@ async fn set_split(
     }
     problems.finish()?;
     let who = owner_of(&caller)?;
-    let txn = ctx.db.begin().await?;
-    deal_exists(&txn, pid).await?;
-    txn.execute_raw(stmt(
-        "DELETE FROM deal_splits WHERE deal_pid = $1",
-        [pid.into()],
-    ))
-    .await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    deal_exists(&mut txn, pid).await?;
+    sqlx::query!("DELETE FROM deal_splits WHERE deal_pid = $1", pid)
+        .execute(&mut *txn)
+        .await?;
     for share in &payload.shares {
-        txn.execute_raw(stmt(
+        sqlx::query!(
             "INSERT INTO deal_splits (deal_pid, owner_ref, share_bps, set_by) VALUES ($1, $2, $3, $4)",
-            [
-                pid.into(),
-                share.owner_ref.as_str().into(),
-                i32::try_from(share.share_bps).unwrap_or(0).into(),
-                who.as_str().into(),
-            ],
-        ))
+            pid,
+            share.owner_ref,
+            i32::try_from(share.share_bps).unwrap_or(0),
+            who,
+        )
+        .execute(&mut *txn)
         .await?;
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "deal_split",
         pid,
         "set",
@@ -559,7 +573,7 @@ async fn set_split(
     .await?;
     txn.commit().await?;
     format::json(SplitView {
-        deal_pid: pid.to_string(),
+        deal_pid: pid,
         shares: payload.shares,
     })
 }
@@ -572,17 +586,14 @@ async fn remove_split(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let gone = txn
-        .execute_raw(stmt(
-            "DELETE FROM deal_splits WHERE deal_pid = $1",
-            [pid.into()],
-        ))
+    let mut txn = db::pool(&ctx).begin().await?;
+    let gone = sqlx::query!("DELETE FROM deal_splits WHERE deal_pid = $1", pid)
+        .execute(&mut *txn)
         .await?;
     if gone.rows_affected() == 0 {
         return Err(Error::NotFound);
     }
-    Audit::record(&txn, "deal_split", pid, "deleted", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "deal_split", pid, "deleted", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -626,61 +637,52 @@ struct ClawbackQuery {
 
 /// What a worker is credited for a won, live deal before any clawback: `(currency, minor units)`,
 /// or `None` when the deal is not won or does not credit them.
-async fn credit_of<C: ConnectionTrait>(
-    db: &C,
+async fn credit_of(
+    conn: &mut PgConnection,
     deal: Uuid,
     owner: &str,
 ) -> Result<Option<(String, i64)>> {
-    let Some(row) = db
-        .query_one_raw(stmt(
-            "SELECT trim(currency) AS currency, amount_minor, owner_ref FROM deals \
-             WHERE pid = $1 AND won AND deleted_at IS NULL",
-            [deal.into()],
-        ))
-        .await?
+    let Some(row) = sqlx::query!(
+        "SELECT trim(currency) AS \"currency!\", amount_minor, owner_ref FROM deals \
+         WHERE pid = $1 AND won AND deleted_at IS NULL",
+        deal
+    )
+    .fetch_optional(&mut *conn)
+    .await?
     else {
         return Ok(None);
     };
-    let amount: i64 = row.try_get("", "amount_minor")?;
-    let shares = shares_of(db, deal).await?;
-    let part = if shares.is_empty() {
-        (row.try_get::<Option<String>>("", "owner_ref")?.as_deref() == Some(owner))
-            .then_some(amount)
+    let split = shares(conn, deal).await?;
+    let part = if split.is_empty() {
+        (row.owner_ref.as_deref() == Some(owner)).then_some(row.amount_minor)
     } else {
-        let bps: Vec<u32> = shares.iter().map(|s| s.share_bps).collect();
-        shares
+        let bps: Vec<u32> = split.iter().map(|s| s.share_bps).collect();
+        split
             .iter()
             .position(|s| s.owner_ref == owner)
-            .map(|i| quota::split(amount, &bps)[i])
+            .map(|i| quota::split(row.amount_minor, &bps)[i])
     };
-    Ok(part.map(|p| (row.try_get("", "currency").unwrap_or_default(), p)))
+    Ok(part.map(|p| (row.currency, p)))
 }
 
-async fn clawbacks_of<C: ConnectionTrait>(db: &C, deal: Uuid) -> Result<Vec<ClawbackView>> {
-    db.query_all_raw(stmt(
+async fn clawbacks_of(conn: &mut PgConnection, deal: Uuid) -> Result<Vec<ClawbackView>> {
+    Ok(sqlx::query_as!(
+        ClawbackView,
         "SELECT owner_ref, amount_minor, reason, set_by FROM deal_clawbacks \
          WHERE deal_pid = $1 ORDER BY id",
-        [deal.into()],
-    ))
-    .await?
-    .iter()
-    .map(|r| {
-        Ok(ClawbackView {
-            owner_ref: r.try_get("", "owner_ref")?,
-            amount_minor: r.try_get("", "amount_minor")?,
-            reason: r.try_get("", "reason")?,
-            set_by: r.try_get("", "set_by")?,
-        })
-    })
-    .collect()
+        deal
+    )
+    .fetch_all(conn)
+    .await?)
 }
 
 /// `GET /api/quotas/clawbacks/{pid}` — what has been taken back on a deal. `404` for an unknown
 /// deal.
 #[debug_handler]
 async fn get_clawbacks(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
-    deal_exists(&ctx.db, pid).await?;
-    format::json(clawbacks_of(&ctx.db, pid).await?)
+    let mut conn = db::pool(&ctx).acquire().await?;
+    deal_exists(&mut conn, pid).await?;
+    format::json(clawbacks_of(&mut conn, pid).await?)
 }
 
 /// `PUT /api/quotas/clawbacks/{pid}` — take an amount back from one worker's credit for a won
@@ -708,9 +710,9 @@ async fn set_clawback(
     }
     problems.finish()?;
     let who = owner_of(&caller)?;
-    let txn = ctx.db.begin().await?;
-    deal_exists(&txn, pid).await?;
-    let Some((_, credit)) = credit_of(&txn, pid, &payload.owner_ref).await? else {
+    let mut txn = db::pool(&ctx).begin().await?;
+    deal_exists(&mut txn, pid).await?;
+    let Some((_, credit)) = credit_of(&mut txn, pid, &payload.owner_ref).await? else {
         return Err(super::unprocessable(
             "/owner_ref: the deal is not won, or does not credit that worker",
         ));
@@ -720,22 +722,21 @@ async fn set_clawback(
             "/amount_minor: no more than the worker's credit for the deal",
         ));
     }
-    txn.execute_raw(stmt(
+    sqlx::query!(
         "INSERT INTO deal_clawbacks (deal_pid, owner_ref, amount_minor, reason, set_by) \
          VALUES ($1, $2, $3, $4, $5) \
          ON CONFLICT (deal_pid, owner_ref) DO UPDATE SET amount_minor = EXCLUDED.amount_minor, \
            reason = EXCLUDED.reason, set_by = EXCLUDED.set_by",
-        [
-            pid.into(),
-            payload.owner_ref.as_str().into(),
-            payload.amount_minor.into(),
-            reason.map(str::to_string).into(),
-            who.as_str().into(),
-        ],
-    ))
+        pid,
+        payload.owner_ref,
+        payload.amount_minor,
+        reason,
+        who,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "deal_clawback",
         pid,
         "set",
@@ -745,7 +746,7 @@ async fn set_clawback(
         })),
     )
     .await?;
-    let all = clawbacks_of(&txn, pid).await?;
+    let all = clawbacks_of(&mut txn, pid).await?;
     txn.commit().await?;
     format::json(all)
 }
@@ -760,18 +761,19 @@ async fn remove_clawback(
     axa::extract::Query(mut query): axa::extract::Query<ClawbackQuery>,
 ) -> Result<Response> {
     query.owner_ref = user_ref::normalise(&query.owner_ref);
-    let txn = ctx.db.begin().await?;
-    let gone = txn
-        .execute_raw(stmt(
-            "DELETE FROM deal_clawbacks WHERE deal_pid = $1 AND owner_ref = $2",
-            [pid.into(), query.owner_ref.as_str().into()],
-        ))
-        .await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let gone = sqlx::query!(
+        "DELETE FROM deal_clawbacks WHERE deal_pid = $1 AND owner_ref = $2",
+        pid,
+        query.owner_ref,
+    )
+    .execute(&mut *txn)
+    .await?;
     if gone.rows_affected() == 0 {
         return Err(Error::NotFound);
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "deal_clawback",
         pid,
         "deleted",

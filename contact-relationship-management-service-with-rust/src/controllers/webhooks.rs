@@ -1,18 +1,19 @@
 //! Outbound webhooks (CRM-R28): subscriptions that are told when records change.
 //!
 //! Admin or service callers only (the route prefix derives the destructive action, see
-//! [`crate::auth::policy`]). The relay itself is in [`crate::webhooks`].
+//! [`crate::auth::policy`]). The relay itself is in [`crate::webhooks`]. Runs on `sqlx` (CRM-D24,
+//! CRM-T206).
 
 use crate::controllers::PidPath;
 use crate::json::Json;
 use axa::prelude::*;
 use chrono::{DateTime, Duration, Utc};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::unprocessable;
 use crate::auth::MaybeAuthUser;
+use crate::db;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::webhooks as rules;
 use crate::validation::Problems;
@@ -86,10 +87,6 @@ pub(crate) struct DeliveryView {
     created_at: DateTime<Utc>,
 }
 
-fn sql(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
 fn patterns_of(value: serde_json::Value) -> Vec<String> {
     serde_json::from_value(value).unwrap_or_default()
 }
@@ -117,15 +114,10 @@ async fn create(
     let (Ok(address), Ok(events)) = (address, events) else {
         return Err(Error::BadRequest("invalid".into()));
     };
-    let live = ctx
-        .db
-        .query_one_raw(sql(
-            "SELECT COUNT(*) AS n FROM webhook_subscriptions WHERE enabled",
-            [],
-        ))
-        .await?
-        .and_then(|r| r.try_get::<i64>("", "n").ok())
-        .unwrap_or(0);
+    let live =
+        sqlx::query_scalar!("SELECT COUNT(*) AS \"n!\" FROM webhook_subscriptions WHERE enabled")
+            .fetch_one(db::pool(&ctx))
+            .await?;
     if live >= MAX_SUBSCRIPTIONS {
         return Err(unprocessable(
             "at most 20 webhook subscriptions can be live",
@@ -133,25 +125,24 @@ async fn create(
     }
     let pid = Uuid::new_v4();
     let secret = rules::new_secret();
-    let txn = ctx.db.begin().await?;
+    let mut txn = db::pool(&ctx).begin().await?;
     // Stamped here, not by the database's default: the relay compares this with an event's
     // `occurred_at`, which `streaming` stamps from this clock, and the two clocks can differ.
-    txn.execute_raw(sql(
+    sqlx::query!(
         "INSERT INTO webhook_subscriptions (pid, url, events, secret, created_by, created_at) \
          VALUES ($1, $2, $3, $4, $5, $6)",
-        [
-            pid.into(),
-            address.clone().into(),
-            serde_json::json!(events).into(),
-            crate::crypto::seal(&secret).into(),
-            caller.actor().map(str::to_string).into(),
-            crate::clock::now().into(),
-        ],
-    ))
+        pid,
+        address,
+        serde_json::json!(events),
+        crate::crypto::seal(&secret),
+        caller.actor(),
+        crate::clock::now(),
+    )
+    .execute(&mut *txn)
     .await?;
     // The address is not written to the audit trail: it can carry a token in its path.
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "webhook_subscription",
         pid,
         "webhook_subscription_created",
@@ -171,27 +162,26 @@ async fn create(
 /// `GET /api/webhook-subscriptions`.
 #[debug_handler]
 async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = ctx
-        .db
-        .query_all_raw(sql(
-            "SELECT pid, url, events, enabled, disabled_reason, created_at, \
-                    (previous_secret IS NOT NULL AND previous_secret_expires_at > now()) AS rotating \
-             FROM webhook_subscriptions ORDER BY id",
-            [],
-        ))
-        .await?;
-    let mut out = Vec::with_capacity(rows.len());
-    for row in rows {
-        out.push(SubscriptionView {
-            pid: row.try_get("", "pid")?,
-            url: row.try_get("", "url")?,
-            events: patterns_of(row.try_get("", "events")?),
-            enabled: row.try_get("", "enabled")?,
-            disabled_reason: row.try_get("", "disabled_reason")?,
-            rotating: row.try_get("", "rotating")?,
-            created_at: row.try_get("", "created_at")?,
-        });
-    }
+    let rows = sqlx::query!(
+        "SELECT pid, url, events, enabled, disabled_reason, created_at, \
+                COALESCE(previous_secret IS NOT NULL AND previous_secret_expires_at > now(), FALSE) \
+                  AS \"rotating!\" \
+         FROM webhook_subscriptions ORDER BY id"
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    let out: Vec<SubscriptionView> = rows
+        .into_iter()
+        .map(|row| SubscriptionView {
+            pid: row.pid,
+            url: row.url,
+            events: patterns_of(row.events),
+            enabled: row.enabled,
+            disabled_reason: row.disabled_reason,
+            rotating: row.rotating,
+            created_at: row.created_at,
+        })
+        .collect();
     format::json(out)
 }
 
@@ -202,25 +192,24 @@ async fn remove(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(sql(
-            "SELECT id FROM webhook_subscriptions WHERE pid = $1 FOR UPDATE",
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let id: i32 = row.try_get("", "id")?;
-    txn.execute_raw(sql(
+    let mut txn = db::pool(&ctx).begin().await?;
+    let id = sqlx::query_scalar!(
+        "SELECT id FROM webhook_subscriptions WHERE pid = $1 FOR UPDATE",
+        pid
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    sqlx::query!(
         "UPDATE webhook_subscriptions SET enabled = FALSE, disabled_at = now(), \
          disabled_reason = COALESCE(disabled_reason, 'removed'), updated_at = now() WHERE id = $1",
-        [id.into()],
-    ))
+        id
+    )
+    .execute(&mut *txn)
     .await?;
-    let cancelled =
-        crate::webhooks::cancel_pending(&txn, "subscription_id = $1", id.into(), "removed").await?;
-    Audit::record(
-        &txn,
+    let cancelled = crate::webhooks::cancel_pending(&mut txn, id, "removed").await?;
+    Audit::record_on(
+        &mut txn,
         "webhook_subscription",
         pid,
         "webhook_subscription_removed",
@@ -242,24 +231,22 @@ async fn rotate_secret(
 ) -> Result<Response> {
     let secret = rules::new_secret();
     let until = crate::clock::now() + Duration::hours(rules::ROTATION_GRACE_HOURS);
-    let txn = ctx.db.begin().await?;
-    let changed = txn
-        .execute_raw(sql(
-            "UPDATE webhook_subscriptions SET previous_secret = secret, \
-             previous_secret_expires_at = $3, secret = $2, updated_at = now() WHERE pid = $1",
-            [
-                pid.into(),
-                crate::crypto::seal(&secret).into(),
-                until.into(),
-            ],
-        ))
-        .await?
-        .rows_affected();
+    let mut txn = db::pool(&ctx).begin().await?;
+    let changed = sqlx::query!(
+        "UPDATE webhook_subscriptions SET previous_secret = secret, \
+         previous_secret_expires_at = $3, secret = $2, updated_at = now() WHERE pid = $1",
+        pid,
+        crate::crypto::seal(&secret),
+        until,
+    )
+    .execute(&mut *txn)
+    .await?
+    .rows_affected();
     if changed == 0 {
         return Err(Error::NotFound);
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "webhook_subscription",
         pid,
         "webhook_secret_rotated",
@@ -278,41 +265,28 @@ async fn rotate_secret(
 /// `GET /api/webhook-subscriptions/{pid}/deliveries`: the latest deliveries, newest first.
 #[debug_handler]
 async fn deliveries(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
-    if ctx
-        .db
-        .query_one_raw(sql(
-            "SELECT 1 FROM webhook_subscriptions WHERE pid = $1",
-            [pid.into()],
-        ))
-        .await?
-        .is_none()
+    let pool = db::pool(&ctx);
+    if sqlx::query_scalar!(
+        "SELECT 1 AS \"one!\" FROM webhook_subscriptions WHERE pid = $1",
+        pid
+    )
+    .fetch_optional(pool)
+    .await?
+    .is_none()
     {
         return Err(Error::NotFound);
     }
-    let rows = ctx
-        .db
-        .query_all_raw(sql(
-            "SELECT d.event_id, d.entity_pid, d.status, d.attempts, d.next_attempt_at, \
-                    d.last_status, d.last_error, d.delivered_at, d.created_at \
-             FROM webhook_deliveries d JOIN webhook_subscriptions s ON s.id = d.subscription_id \
-             WHERE s.pid = $1 ORDER BY d.id DESC LIMIT $2",
-            [pid.into(), LOG_LIMIT.into()],
-        ))
-        .await?;
-    let mut out = Vec::with_capacity(rows.len());
-    for row in rows {
-        out.push(DeliveryView {
-            event_id: row.try_get("", "event_id")?,
-            entity_pid: row.try_get("", "entity_pid")?,
-            status: row.try_get("", "status")?,
-            attempts: row.try_get("", "attempts")?,
-            next_attempt_at: row.try_get("", "next_attempt_at")?,
-            last_status: row.try_get("", "last_status")?,
-            last_error: row.try_get("", "last_error")?,
-            delivered_at: row.try_get("", "delivered_at")?,
-            created_at: row.try_get("", "created_at")?,
-        });
-    }
+    let out = sqlx::query_as!(
+        DeliveryView,
+        "SELECT d.event_id, d.entity_pid, d.status, d.attempts, d.next_attempt_at, \
+                d.last_status, d.last_error, d.delivered_at, d.created_at \
+         FROM webhook_deliveries d JOIN webhook_subscriptions s ON s.id = d.subscription_id \
+         WHERE s.pid = $1 ORDER BY d.id DESC LIMIT $2",
+        pid,
+        LOG_LIMIT,
+    )
+    .fetch_all(pool)
+    .await?;
     format::json(out)
 }
 
@@ -320,8 +294,12 @@ async fn deliveries(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Res
 /// on a schedule (every minute is typical).
 #[debug_handler]
 async fn relay(State(ctx): State<AppContext>) -> Result<Response> {
-    let report =
-        crate::webhooks::run(&ctx.db, &crate::webhooks::HttpSender, crate::clock::now()).await?;
+    let report = crate::webhooks::run(
+        db::pool(&ctx),
+        &crate::webhooks::HttpSender,
+        crate::clock::now(),
+    )
+    .await?;
     format::json(report)
 }
 

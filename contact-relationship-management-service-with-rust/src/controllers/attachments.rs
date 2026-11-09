@@ -4,6 +4,9 @@
 //! is scanned when a scan command is configured, and is stored outside the database under a random
 //! id. A download is always an attachment, served with the type the allow-list gives, never the
 //! one the uploader claimed. Without `CRM_ATTACHMENT_DIR` attachments are off, and say so.
+//!
+//! The routes run on `sqlx` (CRM-D24, CRM-T206). [`export_for`] and [`erase_rows`] stay on
+//! `ConnectionTrait` for the privacy routes, which call them inside a `SeaORM` transaction.
 
 use std::path::PathBuf;
 
@@ -13,7 +16,7 @@ use axum::body::Bytes;
 use axum::extract::DefaultBodyLimit;
 use axum::http::{HeaderName, StatusCode, header};
 use axum::response::IntoResponse;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -22,6 +25,7 @@ use super::custom_fields::subject;
 use super::{PidPath, record_rejection, unprocessable};
 use crate::attachments::{self as store, StoreError};
 use crate::auth::MaybeAuthUser;
+use crate::db;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::attachments as rules;
 use crate::settings;
@@ -40,8 +44,7 @@ pub(crate) struct UploadQuery {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "Attachment")]
 pub(crate) struct AttachmentView {
-    #[schemars(with = "uuid::Uuid")]
-    pid: String,
+    pid: Uuid,
     name: String,
     content_type: String,
     size_bytes: i64,
@@ -57,9 +60,36 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
 
 const COLUMNS: &str = "pid, subject_kind, subject_pid, name, content_type, size_bytes, sha256, uploaded_by, created_at";
 
+/// An attachment row, as the routes read it.
+struct Stored {
+    pid: Uuid,
+    subject_kind: String,
+    subject_pid: Uuid,
+    name: String,
+    content_type: String,
+    size_bytes: i64,
+    sha256: String,
+    uploaded_by: Option<String>,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl From<Stored> for AttachmentView {
+    fn from(row: Stored) -> Self {
+        Self {
+            pid: row.pid,
+            name: row.name,
+            content_type: row.content_type,
+            size_bytes: row.size_bytes,
+            sha256: row.sha256,
+            uploaded_by: row.uploaded_by,
+            created_at: row.created_at,
+        }
+    }
+}
+
 fn view(row: &sea_orm::QueryResult) -> Result<AttachmentView> {
     Ok(AttachmentView {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
+        pid: row.try_get("", "pid")?,
         name: row.try_get("", "name")?,
         content_type: row.try_get("", "content_type")?,
         size_bytes: row.try_get("", "size_bytes")?,
@@ -121,17 +151,21 @@ async fn list_for(
     )
     .await?;
     refuse_masked(masked)?;
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {COLUMNS} FROM attachments WHERE subject_kind = $1 AND subject_pid = $2 \
-                 ORDER BY id"
-            ),
-            [entity.into(), pid.into()],
-        ))
-        .await?;
-    format::json(rows.iter().map(view).collect::<Result<Vec<_>>>()?)
+    let rows = sqlx::query_as!(
+        Stored,
+        "SELECT pid, subject_kind, subject_pid, name, content_type, size_bytes, sha256, \
+                uploaded_by, created_at \
+         FROM attachments WHERE subject_kind = $1 AND subject_pid = $2 ORDER BY id",
+        entity,
+        pid,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    format::json(
+        rows.into_iter()
+            .map(AttachmentView::from)
+            .collect::<Vec<_>>(),
+    )
 }
 
 /// What to answer when a file was not stored; an infected one is also audited.
@@ -146,17 +180,22 @@ async fn refused(
     match error {
         StoreError::Infected => {
             let note = Some(serde_json::json!({ "subject_kind": entity, "subject_pid": pid }));
-            match Audit::record(
-                &ctx.db,
-                "attachment",
-                key,
-                "refused_infected",
-                caller.actor(),
-                note,
-            )
-            .await
-            {
-                Ok(_) => unprocessable("the file was refused by the malware scan"),
+            let audited = async {
+                let mut txn = db::pool(ctx).begin().await?;
+                Audit::record_on(
+                    &mut txn,
+                    "attachment",
+                    key,
+                    "refused_infected",
+                    caller.actor(),
+                    note,
+                )
+                .await?;
+                txn.commit().await
+            }
+            .await;
+            match audited {
+                Ok(()) => unprocessable("the file was refused by the malware scan"),
                 Err(error) => error.into(),
             }
         }
@@ -191,15 +230,13 @@ async fn upload_to(
     let cfg = settings::current();
     let (clean, kind) =
         rules::check(name, &body, cfg.attachment_max_bytes).map_err(|why| unprocessable(&why))?;
-    let held: i64 = ctx
-        .db
-        .query_one_raw(stmt(
-            "SELECT count(*) AS n FROM attachments WHERE subject_kind = $1 AND subject_pid = $2",
-            [entity.into(), pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?
-        .try_get("", "n")?;
+    let held = sqlx::query_scalar!(
+        "SELECT count(*) AS \"n!\" FROM attachments WHERE subject_kind = $1 AND subject_pid = $2",
+        entity,
+        pid,
+    )
+    .fetch_one(db::pool(&ctx))
+    .await?;
     if held >= rules::MAX_PER_RECORD {
         return Err(unprocessable(&format!(
             "a record may have at most {} files",
@@ -212,30 +249,27 @@ async fn upload_to(
     }
     let digest = hex(&body);
     let saved = async {
-        let txn = ctx.db.begin().await?;
-        let row = txn
-            .query_one_raw(stmt(
-                &format!(
-                    "INSERT INTO attachments (pid, subject_kind, subject_pid, name, content_type, \
-                     size_bytes, sha256, uploaded_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
-                     RETURNING {COLUMNS}"
-                ),
-                [
-                    key.into(),
-                    entity.into(),
-                    pid.into(),
-                    clean.clone().into(),
-                    kind.content_type.to_string().into(),
-                    i64::try_from(body.len()).unwrap_or(i64::MAX).into(),
-                    digest.clone().into(),
-                    caller.actor().map(ToString::to_string).into(),
-                ],
-            ))
-            .await?
-            .ok_or(Error::NotFound)?;
+        let mut txn = db::pool(&ctx).begin().await?;
+        let row = sqlx::query_as!(
+            Stored,
+            "INSERT INTO attachments (pid, subject_kind, subject_pid, name, content_type, \
+             size_bytes, sha256, uploaded_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
+             RETURNING pid, subject_kind, subject_pid, name, content_type, size_bytes, sha256, \
+                       uploaded_by, created_at",
+            key,
+            entity,
+            pid,
+            clean,
+            kind.content_type,
+            i64::try_from(body.len()).unwrap_or(i64::MAX),
+            digest,
+            caller.actor(),
+        )
+        .fetch_one(&mut *txn)
+        .await?;
         // The audit row has the digest and size, not the name: a name can be personal.
-        Audit::record(
-            &txn,
+        Audit::record_on(
+            &mut txn,
             "attachment",
             key,
             "uploaded",
@@ -247,7 +281,7 @@ async fn upload_to(
         )
         .await?;
         txn.commit().await?;
-        view(&row)
+        Ok::<_, Error>(AttachmentView::from(row))
     }
     .await;
     match saved {
@@ -265,30 +299,24 @@ async fn find_for(
     caller: &MaybeAuthUser,
     pid: Uuid,
     action: authentication_verifier::Action,
-) -> Result<sea_orm::QueryResult> {
-    let row = ctx
-        .db
-        .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM attachments WHERE pid = $1"),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let kind: String = row.try_get("", "subject_kind")?;
-    let entity = match kind.as_str() {
+) -> Result<Stored> {
+    let row = sqlx::query_as!(
+        Stored,
+        "SELECT pid, subject_kind, subject_pid, name, content_type, size_bytes, sha256, \
+                uploaded_by, created_at \
+         FROM attachments WHERE pid = $1",
+        pid
+    )
+    .fetch_optional(db::pool(ctx))
+    .await?
+    .ok_or(Error::NotFound)?;
+    let entity = match row.subject_kind.as_str() {
         "contact" => "contact",
         "account" => "account",
         "deal" => "deal",
         _ => "lead",
     };
-    let masked = subject(
-        &ctx.db,
-        caller,
-        entity,
-        row.try_get("", "subject_pid")?,
-        action,
-    )
-    .await?;
+    let masked = subject(&ctx.db, caller, entity, row.subject_pid, action).await?;
     refuse_masked(masked)?;
     Ok(row)
 }
@@ -306,8 +334,7 @@ async fn content(
         tracing::error!(%error, %pid, "attachment file unreadable");
         unavailable("the file is not available")
     })?;
-    let expected: String = row.try_get("", "sha256")?;
-    if hex(&bytes) != expected {
+    if hex(&bytes) != row.sha256 {
         tracing::error!(%pid, "attachment file does not match its digest");
         return Err(unavailable("the stored file failed its integrity check"));
     }
@@ -321,13 +348,11 @@ async fn content(
         None,
     )
     .await?;
-    let name: String = row.try_get("", "name")?;
-    let content_type: String = row.try_get("", "content_type")?;
     Ok((
         StatusCode::OK,
         [
-            (header::CONTENT_TYPE, content_type),
-            (header::CONTENT_DISPOSITION, rules::disposition(&name)),
+            (header::CONTENT_TYPE, row.content_type),
+            (header::CONTENT_DISPOSITION, rules::disposition(&row.name)),
             (
                 HeaderName::from_static("x-content-type-options"),
                 "nosniff".to_string(),
@@ -347,10 +372,11 @@ async fn remove(
 ) -> Result<Response> {
     let dir = directory()?;
     find_for(&ctx, &caller, pid, authentication_verifier::Action::Write).await?;
-    let txn = ctx.db.begin().await?;
-    txn.execute_raw(stmt("DELETE FROM attachments WHERE pid = $1", [pid.into()]))
+    let mut txn = db::pool(&ctx).begin().await?;
+    sqlx::query!("DELETE FROM attachments WHERE pid = $1", pid)
+        .execute(&mut *txn)
         .await?;
-    Audit::record(&txn, "attachment", pid, "deleted", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "attachment", pid, "deleted", caller.actor(), None).await?;
     txn.commit().await?;
     if let Err(error) = store::remove(&dir, pid).await {
         tracing::error!(%error, %pid, "attachment file not removed");

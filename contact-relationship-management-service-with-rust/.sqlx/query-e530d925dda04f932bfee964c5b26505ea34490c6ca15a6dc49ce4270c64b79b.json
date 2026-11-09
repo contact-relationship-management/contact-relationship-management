@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE notifications SET read_at = now() WHERE recipient_ref = $1 AND suppressed = FALSE AND read_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e530d925dda04f932bfee964c5b26505ea34490c6ca15a6dc49ce4270c64b79b"
+}

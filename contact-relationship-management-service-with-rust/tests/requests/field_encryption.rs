@@ -91,7 +91,7 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
         // Rotation: new first key, old key kept for reading; everything is
         // re-sealed under the new key and still reads.
         crypto::install(Some(keyring(&[("k2", 2), ("k1", 1)])));
-        let report = rotate(&ctx.db).await.unwrap();
+        let report = rotate(db::pool(&ctx)).await.unwrap();
         assert!(report.iter().any(|(_, n)| *n > 0), "{report:?}");
         let after = stored(
             &ctx.db,
@@ -102,7 +102,7 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
         let reread: Value = request.get(&format!("/api/contacts/{pid}")).await.json();
         assert_eq!(reread["activities"][0]["summary"], "legacy plaintext");
         // Idempotent: a second run changes nothing.
-        assert!(rotate(&ctx.db).await.unwrap().iter().all(|(_, n)| *n == 0));
+        assert!(rotate(db::pool(&ctx)).await.unwrap().iter().all(|(_, n)| *n == 0));
 
         // Retire k2 without rotating: the data is unreadable, loudly.
         crypto::install(Some(keyring(&[("k3", 3)])));
@@ -111,7 +111,7 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
 
         // Put the world back for the other tests in this process.
         crypto::install(Some(keyring(&[("k2", 2)])));
-        rotate(&ctx.db).await.ok();
+        rotate(db::pool(&ctx)).await.ok();
         crypto::install(None);
         ctx.db
             .execute_unprepared("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'")
