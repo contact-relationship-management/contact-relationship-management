@@ -384,6 +384,13 @@ impl App {
         let guard = std::sync::Arc::new(rate_limit::Guard::from_env(
             ctx.environment.is_production_like(),
         ));
+        let address_lockout = rate_limit::address_lockout(
+            std::env::var(rate_limit::ADDRESS_LOCKOUT_VAR)
+                .ok()
+                .as_deref(),
+            guard.failure_window_secs(),
+        )
+        .map_err(|why| Error::string(&why))?;
         let cache = ctx
             .shared_store
             .get_ref::<Cache>()
@@ -407,7 +414,17 @@ impl App {
             .layer(axum::middleware::from_fn_with_state(
                 (guard, shared),
                 middleware::abuse_guard::abuse_guard_mw,
-            ))
+            ));
+        // CRM-T224: axa's lockout by client address, outside the abuse guard and sign-in so it
+        // sees their `401`s, and inside `axa`'s stack so it reads the address that stack resolved.
+        let api = match address_lockout {
+            Some(limiter) => api.layer(axum::middleware::from_fn_with_state(
+                limiter,
+                axa::ratelimit::lock_out_failures,
+            )),
+            None => api,
+        };
+        let api = api
             .layer(axum::middleware::from_fn(
                 crate::version::require_version_mw,
             ))

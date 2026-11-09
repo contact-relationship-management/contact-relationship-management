@@ -81,6 +81,32 @@ impl Guard {
     }
 }
 
+/// The setting for axa's lockout by client address (CRM-T224).
+pub const ADDRESS_LOCKOUT_VAR: &str = "LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT";
+
+/// axa's `lock_out_failures`, from [`ADDRESS_LOCKOUT_VAR`]: after `count` `401`s from one client
+/// address within `window_secs`, every request from that address is refused with `429` until the
+/// window ends, signed in or not. It counts by address alone and in this process alone, unlike
+/// [`Guard::failures`], which counts a verified caller by subject and can share counts through
+/// Redis. Unset, empty or `0` is off.
+///
+/// # Errors
+///
+/// When the value is not a whole number, so a mistyped setting stops the start rather than
+/// leaving the lockout off unseen.
+pub fn address_lockout(value: Option<&str>, window_secs: u64) -> Result<Option<Limiter>, String> {
+    let value = value.map(str::trim).unwrap_or_default();
+    if value.is_empty() {
+        return Ok(None);
+    }
+    let count: u32 = value.parse().map_err(|_| {
+        format!("{ADDRESS_LOCKOUT_VAR} must be a whole number of failures, or 0 for off")
+    })?;
+    let window = NonZeroU32::new(u32::try_from(window_secs.max(1)).unwrap_or(u32::MAX))
+        .unwrap_or(NonZeroU32::MIN);
+    Ok(NonZeroU32::new(count).map(|count| Limiter::new(count, window)))
+}
+
 /// A limit whose number is a setting that can change while the service runs (the web forms'
 /// and the public knowledge base's, CRM-R31). An axa [`Limiter`] has a fixed number, so a new
 /// one is made when the setting changes, and the counts start again then.
@@ -222,6 +248,27 @@ mod tests {
             "a new setting starts the count again"
         );
         assert!(limit.check(0, "a").is_ok(), "zero is off");
+    }
+
+    #[test]
+    fn the_address_lockout_is_off_unless_given_a_count() {
+        for off in [None, Some(""), Some("  "), Some("0")] {
+            assert!(address_lockout(off, 300).unwrap().is_none(), "{off:?}");
+        }
+        assert!(address_lockout(Some(" 5 "), 300).unwrap().is_some());
+        for wrong in ["five", "-1", "2.5", "99999999999"] {
+            let why = address_lockout(Some(wrong), 300).unwrap_err();
+            assert!(why.contains(ADDRESS_LOCKOUT_VAR), "{why}");
+            assert!(!why.contains(wrong), "the value is not quoted: {why}");
+        }
+    }
+
+    #[test]
+    fn the_address_lockout_refuses_after_the_count() {
+        let limiter = address_lockout(Some("2"), 300).unwrap().unwrap();
+        assert!(limiter.check("ip:203.0.113.9").allowed);
+        assert!(limiter.check("ip:203.0.113.9").allowed);
+        assert!(!limiter.check("ip:203.0.113.9").allowed);
     }
 
     #[test]

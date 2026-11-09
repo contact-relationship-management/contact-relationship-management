@@ -10,6 +10,7 @@ use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use contact_relationship_management::app::App;
 use contact_relationship_management::auth;
+use contact_relationship_management::rate_limit;
 use contact_relationship_management::settings;
 use ed25519_dalek::SigningKey;
 use rusty_paseto::core::{Footer, Key, Paseto, PasetoAsymmetricPrivateKey, Payload, Public, V4};
@@ -189,6 +190,7 @@ async fn a_verified_subject_has_one_budget_of_its_own() {
 async fn made_up_tokens_lock_out_their_address_and_not_the_signed_in() {
     set("CRM_RATE_LIMIT_PER_MIN", "0");
     set("CRM_AUTH_FAIL_LIMIT", "2");
+    set(rate_limit::ADDRESS_LOCKOUT_VAR, "0");
     let (kid, _sign_in) = sign_in_required();
     request::<App, _, _>(|request, _ctx| async move {
         let mut answers = Vec::new();
@@ -214,6 +216,68 @@ async fn made_up_tokens_lock_out_their_address_and_not_the_signed_in() {
         signed_in.assert_status_ok();
     })
     .await;
+}
+
+/// axa's lockout by address (CRM-T224): after the count, the address is refused whoever calls
+/// from it, signed in or not, and the probes still answer. The service's own lockout is off, so
+/// the `429` is axa's.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+async fn the_address_lockout_refuses_the_address_after_the_count() {
+    set("CRM_RATE_LIMIT_PER_MIN", "0");
+    set("CRM_AUTH_FAIL_LIMIT", "0");
+    set(rate_limit::ADDRESS_LOCKOUT_VAR, "2");
+    let (kid, _sign_in) = sign_in_required();
+    request::<App, _, _>(|request, _ctx| async move {
+        let signed_in = request
+            .get("/api/contacts")
+            .add_header("authorization", token(&kid, "person-a", "one"))
+            .await;
+        signed_in.assert_status_ok();
+        let mut answers = Vec::new();
+        for attempt in 0..3 {
+            let answer = request
+                .get("/api/contacts")
+                .add_header("authorization", format!("Bearer forged-{attempt}"))
+                .await;
+            answers.push(answer.status_code());
+        }
+        assert_eq!(
+            answers,
+            [
+                StatusCode::UNAUTHORIZED,
+                StatusCode::UNAUTHORIZED,
+                StatusCode::TOO_MANY_REQUESTS,
+            ],
+        );
+        let locked = request
+            .get("/api/contacts")
+            .add_header("authorization", token(&kid, "person-a", "one"))
+            .await;
+        locked.assert_status(StatusCode::TOO_MANY_REQUESTS);
+        assert!(locked.headers().contains_key("retry-after"));
+        request.get("/_health").await.assert_status_ok();
+    })
+    .await;
+    set(rate_limit::ADDRESS_LOCKOUT_VAR, "0");
+}
+
+/// A count that is not a whole number stops the start rather than leaving the lockout off.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+async fn a_mistyped_address_lockout_stops_the_start() {
+    set(rate_limit::ADDRESS_LOCKOUT_VAR, "ten");
+    let booted = axa::testing::boot_test::<App>().await;
+    set(rate_limit::ADDRESS_LOCKOUT_VAR, "0");
+    let Err(error) = booted else {
+        panic!("the app started with a mistyped lockout");
+    };
+    assert!(
+        error.to_string().contains(rate_limit::ADDRESS_LOCKOUT_VAR),
+        "{error}"
+    );
 }
 
 /// `/mcp` calls the router directly, past the stack that resolves the address, so the address has

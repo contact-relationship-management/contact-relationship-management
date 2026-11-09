@@ -36,6 +36,11 @@ Commands assume the container images from the repository's `Containerfile`s.
    right, and only as far as the proxies on this list. A bad entry trusts none. The UI's BFF does
    not append, so list it only if something in front of it does the appending for it.
    `CRM_TRUST_FORWARDED_FOR` is no longer read, and a start with it set logs a warning.
+   `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT=N` adds axa's lockout by address (CRM-T224): after N
+   `401`s from one address in the window above, that address answers `429` until the window ends,
+   signed-in callers at it included. It is off unless set, counts in each replica on its own, and
+   behind the BFF one address is every browser, so set it there only knowing a few made-up tokens
+   would lock everyone out for the window. A value that is not a whole number stops the start.
 9. Set `CRM_CORS_ORIGIN` only if a browser must call the service directly.
    Keep the hosts' clocks and the database's in sync (NTP). Record times follow the
    database's clock (CRM-T221), measured again every minute, and a host more than a second

@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — lockout by client address (CRM-T224, 2026-11-09)
+
+- `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT` turns on axa's lockout: after that many failed sign-ins
+  from one address, the address is refused for the window. Off unless set.
+
 ### Fixed — one clock for records (CRM-T221, 2026-11-08)
 
 - Reminders, deadlines and record times no longer move when the application host's clock and the

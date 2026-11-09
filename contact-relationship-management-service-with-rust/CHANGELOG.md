@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — lockout by client address (CRM-T224)
+
+- `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT=N` layers `axa::ratelimit::lock_out_failures` outside the
+  abuse guard: after N `401`s from one address within `CRM_AUTH_FAIL_WINDOW_SECS`, the address
+  answers `429` with `Retry-After` until the window ends, signed in or not. Unset or `0` is off; a
+  value that is not a whole number stops the start. It counts by address and per process, unlike
+  `CRM_AUTH_FAIL_LIMIT`.
+
 ### Fixed — one clock for records (CRM-T221)
 
 - Record times follow the database's clock. `clock::now()` is the host's clock moved by the gap
