@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM taggings WHERE subject_pid = $1 AND NOT (tag_pid = ANY($2))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c07e26b70af6e5be8968297395af31ae3a6fae5ef3f60fe411d64c67bd1d6179"
+}

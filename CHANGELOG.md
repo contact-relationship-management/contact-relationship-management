@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — more of the service on sqlx (CRM-T205, 2026-11-09)
+
+- Saved views, reports, email templates, business calendars, teams, territories, exchange rates,
+  tags and search read and write through `sqlx`. Nothing a client sees changes.
+
 ### Added — lockout by client address (CRM-T224, 2026-11-09)
 
 - `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT` turns on axa's lockout: after that many failed sign-ins

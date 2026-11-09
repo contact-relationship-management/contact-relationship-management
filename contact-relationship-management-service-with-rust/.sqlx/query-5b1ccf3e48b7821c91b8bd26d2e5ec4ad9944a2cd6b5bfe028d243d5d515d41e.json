@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.territory_pid AS \"territory_pid?\", trim(d.currency) AS \"currency!\",\n             d.amount_minor\n           FROM deals d\n           LEFT JOIN accounts c ON c.pid = d.account_pid\n           LEFT JOIN territory_accounts a ON a.organization_ref = c.organization_ref\n           WHERE d.won AND d.deleted_at IS NULL AND d.closed_at IS NOT NULL\n             AND (d.closed_at AT TIME ZONE $3::text)::date BETWEEN $1 AND $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "territory_pid?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "territory_accounts",
+            "name": "territory_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "currency!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "amount_minor",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "amount_minor"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      null,
+      false
+    ]
+  },
+  "hash": "5b1ccf3e48b7821c91b8bd26d2e5ec4ad9944a2cd6b5bfe028d243d5d515d41e"
+}

@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.organization_ref, t.name FROM territory_accounts a JOIN territories t ON t.pid = a.territory_pid WHERE a.organization_ref = ANY($1) AND lower(t.name) <> lower($2) ORDER BY a.organization_ref LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "organization_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "territory_accounts",
+            "name": "organization_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "territories",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "305784c9f83e9e78d525db01a09e0dcc7746d62878b810e0f58b6df4966252b0"
+}

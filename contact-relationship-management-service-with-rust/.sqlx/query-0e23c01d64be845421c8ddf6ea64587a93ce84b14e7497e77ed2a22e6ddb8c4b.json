@@ -1,0 +1,106 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO fx_rates (pid, from_currency, to_currency, rate_ppb, effective_on, source, set_by) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (from_currency, to_currency, effective_on) DO UPDATE SET rate_ppb = EXCLUDED.rate_ppb, source = EXCLUDED.source, set_by = EXCLUDED.set_by, updated_at = now() RETURNING pid, from_currency, to_currency, rate_ppb, effective_on, source, set_by",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "from_currency",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "from_currency"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "to_currency",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "to_currency"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "rate_ppb",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "rate_ppb"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "effective_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "effective_on"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "source",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "set_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "set_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bpchar",
+        "Bpchar",
+        "Int8",
+        "Date",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0e23c01d64be845421c8ddf6ea64587a93ce84b14e7497e77ed2a22e6ddb8c4b"
+}

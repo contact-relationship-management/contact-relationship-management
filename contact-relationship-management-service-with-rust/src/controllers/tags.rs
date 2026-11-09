@@ -4,15 +4,20 @@
 //! select by them (any of), and a list can be narrowed to one. A tag on a person is personal data:
 //! it is hidden from a masked read, listed in a subject-access export, and deleted when the contact
 //! is erased.
+//!
+//! The writes and the tag list run on `sqlx` (CRM-D24, CRM-T205). The readers other modules call
+//! stay on `ConnectionTrait` until those callers move.
 
 use axa::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::custom_fields::subject;
 use super::{PidPath, PidRef, record_rejection, unprocessable};
 use crate::auth::MaybeAuthUser;
+use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::tags as rules;
@@ -56,17 +61,6 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
-fn view(row: &sea_orm::QueryResult) -> Result<TagView> {
-    Ok(TagView {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        name: row.try_get("", "name")?,
-        uses: row.try_get("", "uses")?,
-    })
-}
-
-const COLUMNS: &str =
-    "t.pid, t.name, (SELECT count(*) FROM taggings g WHERE g.tag_pid = t.pid) AS uses";
-
 fn taken() -> Error {
     unprocessable("a tag with that name already exists")
 }
@@ -74,14 +68,22 @@ fn taken() -> Error {
 /// `GET /api/tags`.
 #[debug_handler]
 async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM tags t ORDER BY lower(t.name), t.id"),
-            [],
-        ))
-        .await?;
-    format::json(rows.iter().map(view).collect::<Result<Vec<_>>>()?)
+    let rows = sqlx::query!(
+        r#"SELECT t.pid, t.name,
+             (SELECT count(*) FROM taggings g WHERE g.tag_pid = t.pid) AS "uses!"
+           FROM tags t ORDER BY lower(t.name), t.id"#,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    format::json(
+        rows.into_iter()
+            .map(|row| TagView {
+                pid: row.pid.to_string(),
+                name: row.name,
+                uses: row.uses,
+            })
+            .collect::<Vec<_>>(),
+    )
 }
 
 /// `POST /api/tags`.
@@ -92,8 +94,8 @@ async fn create(
     Json(payload): Json<TagPayload>,
 ) -> Result<Response> {
     let name = rules::normalise(&payload.name).map_err(|why| unprocessable(&why))?;
-    let txn = ctx.db.begin().await?;
-    let held = count_tags(&txn).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let held = count_tags(&mut txn).await?;
     if held >= rules::MAX_TAGS {
         return Err(unprocessable(&format!(
             "there are already {} tags",
@@ -101,29 +103,28 @@ async fn create(
         )));
     }
     let pid = Uuid::new_v4();
-    let inserted = txn
-        .execute_raw(stmt(
-            "INSERT INTO tags (pid, name) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-            [pid.into(), name.into()],
-        ))
-        .await?
-        .rows_affected();
+    let inserted = sqlx::query!(
+        "INSERT INTO tags (pid, name) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        pid,
+        name,
+    )
+    .execute(&mut *txn)
+    .await?
+    .rows_affected();
     if inserted == 0 {
         return Err(taken());
     }
-    Audit::record(&txn, "tag", pid, "created", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "tag", pid, "created", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
     })
 }
 
-async fn count_tags<C: ConnectionTrait>(db: &C) -> Result<i64> {
-    Ok(db
-        .query_one_raw(stmt("SELECT count(*) AS n FROM tags", []))
-        .await?
-        .ok_or(Error::NotFound)?
-        .try_get("", "n")?)
+async fn count_tags(conn: &mut PgConnection) -> Result<i64> {
+    Ok(sqlx::query_scalar!(r#"SELECT count(*) AS "n!" FROM tags"#)
+        .fetch_one(conn)
+        .await?)
 }
 
 /// `PUT /api/tags/{pid}` — rename; every record keeps it.
@@ -135,12 +136,9 @@ async fn rename(
     Json(payload): Json<TagPayload>,
 ) -> Result<Response> {
     let name = rules::normalise(&payload.name).map_err(|why| unprocessable(&why))?;
-    let txn = ctx.db.begin().await?;
-    let changed = txn
-        .execute_raw(stmt(
-            "UPDATE tags SET name = $2 WHERE pid = $1",
-            [pid.into(), name.into()],
-        ))
+    let mut txn = db::pool(&ctx).begin().await?;
+    let changed = sqlx::query!("UPDATE tags SET name = $2 WHERE pid = $1", pid, name)
+        .execute(&mut *txn)
         .await;
     if changed.is_err() {
         return Err(taken());
@@ -148,7 +146,7 @@ async fn rename(
     if changed.is_ok_and(|r| r.rows_affected() == 0) {
         return Err(Error::NotFound);
     }
-    Audit::record(&txn, "tag", pid, "renamed", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "tag", pid, "renamed", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -162,23 +160,20 @@ async fn remove(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let removed = txn
-        .execute_raw(stmt(
-            "DELETE FROM taggings WHERE tag_pid = $1",
-            [pid.into()],
-        ))
+    let mut txn = db::pool(&ctx).begin().await?;
+    let removed = sqlx::query!("DELETE FROM taggings WHERE tag_pid = $1", pid)
+        .execute(&mut *txn)
         .await?
         .rows_affected();
-    let gone = txn
-        .execute_raw(stmt("DELETE FROM tags WHERE pid = $1", [pid.into()]))
+    let gone = sqlx::query!("DELETE FROM tags WHERE pid = $1", pid)
+        .execute(&mut *txn)
         .await?
         .rows_affected();
     if gone == 0 {
         return Err(Error::NotFound);
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "tag",
         pid,
         "deleted",
@@ -284,52 +279,55 @@ async fn put_tags(
     .await?;
     refuse_masked(masked)?;
     let wanted = rules::set_of(&payload.tags).map_err(|why| unprocessable(&why))?;
-    let txn = ctx.db.begin().await?;
+    let mut txn = db::pool(&ctx).begin().await?;
     // Every name becomes a tag if it is not one yet.
     let mut keep = Vec::new();
     for name in &wanted {
-        let found = txn
-            .query_one_raw(stmt(
-                "SELECT pid FROM tags WHERE lower(name) = $1",
-                [rules::key(name).into()],
-            ))
-            .await?;
-        let tag: Uuid = if let Some(row) = found {
-            row.try_get("", "pid")?
+        let found = sqlx::query_scalar!(
+            "SELECT pid FROM tags WHERE lower(name) = $1",
+            rules::key(name),
+        )
+        .fetch_optional(&mut *txn)
+        .await?;
+        let tag: Uuid = if let Some(pid) = found {
+            pid
         } else {
-            if count_tags(&txn).await? >= rules::MAX_TAGS {
+            if count_tags(&mut txn).await? >= rules::MAX_TAGS {
                 return Err(unprocessable(&format!(
                     "there are already {} tags",
                     rules::MAX_TAGS
                 )));
             }
             let made = Uuid::new_v4();
-            txn.execute_raw(stmt(
-                "INSERT INTO tags (pid, name) VALUES ($1, $2)",
-                [made.into(), name.clone().into()],
-            ))
-            .await?;
-            Audit::record(&txn, "tag", made, "created", caller.actor(), None).await?;
+            sqlx::query!("INSERT INTO tags (pid, name) VALUES ($1, $2)", made, name)
+                .execute(&mut *txn)
+                .await?;
+            Audit::record_on(&mut txn, "tag", made, "created", caller.actor(), None).await?;
             made
         };
         keep.push(tag);
     }
-    txn.execute_raw(stmt(
+    sqlx::query!(
         "DELETE FROM taggings WHERE subject_pid = $1 AND NOT (tag_pid = ANY($2))",
-        [pid.into(), keep.clone().into()],
-    ))
+        pid,
+        &keep,
+    )
+    .execute(&mut *txn)
     .await?;
     for tag in &keep {
-        txn.execute_raw(stmt(
+        sqlx::query!(
             "INSERT INTO taggings (tag_pid, subject_kind, subject_pid) VALUES ($1, $2, $3) \
              ON CONFLICT DO NOTHING",
-            [(*tag).into(), entity.into(), pid.into()],
-        ))
+            tag,
+            entity,
+            pid,
+        )
+        .execute(&mut *txn)
         .await?;
     }
     // The audit row counts the tags and names none: a tag can be about a person.
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         entity,
         pid,
         "tags_set",

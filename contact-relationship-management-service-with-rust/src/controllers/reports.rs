@@ -4,9 +4,14 @@
 //! ([`crate::rules::reports`]); the answer is computed here, in the database, and carries the date
 //! it was read (`as_of`). Saved reports belong to one worker and can be shared, like saved views;
 //! running a shared one is the aggregate read of whoever runs it, so sharing shares no access.
+//!
+//! The routes run on `sqlx` (CRM-D24, CRM-T205). A report's statement is built by
+//! [`rules::plan_in`] from a closed list of parts and binds every value, so the macros cannot check
+//! it and the soft-delete census in `db.rs` cannot see it; `rules::reports` keeps each kind of
+//! record to its live rows (`deleted_at IS NULL`). The conversions and the organization's calendar still go through `SeaORM` helpers.
 
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::{AssertSqlSafe, PgConnection, Row as _};
 use uuid::Uuid;
 
 use axa::prelude::*;
@@ -15,6 +20,7 @@ use super::fx_rates::{RateUsed, Unconverted};
 use super::views::owner_of;
 use super::{PidPath, PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
+use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::reports::{self as rules, Bind, MAX_GROUPS, Spec};
@@ -160,10 +166,6 @@ async fn converted(ctx: &AppContext, spec: &Spec, raw: Vec<rules::Cell>) -> Resu
     })
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
 fn problems_of(found: Vec<(String, String)>) -> Result<()> {
     let mut problems = Problems::new();
     for (member, message) in found {
@@ -188,15 +190,14 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
             "a report on amounts or tags needs an unmasked read".to_string(),
         )));
     }
-    let values: Vec<Value> = plan
-        .binds
-        .iter()
-        .map(|b| match b {
-            Bind::List(list) => serde_json::json!(list).into(),
-            Bind::Day(day) => (*day).into(),
-        })
-        .collect();
-    let found = ctx.db.query_all_raw(stmt(&plan.sql, values)).await?;
+    let mut query = sqlx::query(AssertSqlSafe(plan.sql.as_str()));
+    for bind in &plan.binds {
+        query = match bind {
+            Bind::List(list) => query.bind(serde_json::json!(list)),
+            Bind::Day(day) => query.bind(*day),
+        };
+    }
+    let found = query.fetch_all(db::pool(ctx)).await?;
     if plan.by_day && found.len() > rules::MAX_DAY_CELLS {
         return Err(unprocessable(
             "that report spans too many closing days to convert at each day's rate; narrow it \
@@ -206,16 +207,16 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
     let mut cells = Vec::with_capacity(found.len());
     for row in &found {
         cells.push(rules::Cell {
-            group: row.try_get::<String>("", "grp")?,
+            group: row.try_get::<String, _>("grp")?,
             currency: if plan.per_currency {
-                row.try_get("", "currency")?
+                row.try_get("currency")?
             } else {
                 None
             },
-            value: row.try_get::<i64>("", "value")?,
-            n: row.try_get::<i64>("", "n")?,
+            value: row.try_get::<i64, _>("value")?,
+            n: row.try_get::<i64, _>("n")?,
             day: if plan.by_day {
-                row.try_get("", "day")?
+                row.try_get("day")?
             } else {
                 None
             },
@@ -273,20 +274,26 @@ async fn run_adhoc(
     format::json(answer(&ctx, &caller, spec).await?)
 }
 
-const COLUMNS: &str = "pid, owner_ref, name, spec, shared, updated_at";
+/// A saved report, as `reports` holds it.
+struct Stored {
+    pid: Uuid,
+    owner_ref: String,
+    name: String,
+    spec: serde_json::Value,
+    shared: bool,
+    updated_at: chrono::DateTime<chrono::Utc>,
+}
 
-fn view(row: &sea_orm::QueryResult, me: &str) -> Result<ReportView> {
-    let owner: String = row.try_get("", "owner_ref")?;
-    let spec: serde_json::Value = row.try_get("", "spec")?;
+fn view(row: Stored, me: &str) -> Result<ReportView> {
     Ok(ReportView {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        mine: owner == me,
-        owner_ref: owner,
-        name: row.try_get("", "name")?,
-        spec: serde_json::from_value(spec)
+        pid: row.pid.to_string(),
+        mine: row.owner_ref == me,
+        owner_ref: row.owner_ref,
+        name: row.name,
+        spec: serde_json::from_value(row.spec)
             .map_err(|_| Error::string("a stored report does not read"))?,
-        shared: row.try_get("", "shared")?,
-        updated_at: row.try_get("", "updated_at")?,
+        shared: row.shared,
+        updated_at: row.updated_at,
     })
 }
 
@@ -315,18 +322,16 @@ fn taken() -> Error {
 #[debug_handler]
 async fn list(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
     let me = owner_of(&caller)?;
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {COLUMNS} FROM reports WHERE owner_ref = $1 OR shared \
-                 ORDER BY (owner_ref = $1) DESC, lower(name), id"
-            ),
-            [me.clone().into()],
-        ))
-        .await?;
+    let rows = sqlx::query_as!(
+        Stored,
+        "SELECT pid, owner_ref, name, spec, shared, updated_at FROM reports \
+         WHERE owner_ref = $1 OR shared ORDER BY (owner_ref = $1) DESC, lower(name), id",
+        me,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
     format::json(
-        rows.iter()
+        rows.into_iter()
             .map(|r| view(r, &me))
             .collect::<Result<Vec<_>>>()?,
     )
@@ -342,39 +347,36 @@ async fn create(
     validate(&payload)?;
     let me = owner_of(&caller)?;
     let pid = Uuid::new_v4();
-    let txn = ctx.db.begin().await?;
-    let owned: i64 = txn
-        .query_one_raw(stmt(
-            "SELECT count(*) AS n FROM reports WHERE owner_ref = $1",
-            [me.clone().into()],
-        ))
-        .await?
-        .map_or(0, |r| r.try_get::<i64>("", "n").unwrap_or(0));
+    let mut txn = db::pool(&ctx).begin().await?;
+    let owned = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM reports WHERE owner_ref = $1"#,
+        me,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
     if owned >= rules::MAX_PER_OWNER {
         return Err(unprocessable(&format!(
             "you can keep at most {} reports",
             rules::MAX_PER_OWNER
         )));
     }
-    let inserted = txn
-        .execute_raw(stmt(
-            "INSERT INTO reports (pid, owner_ref, name, spec, shared) VALUES ($1, $2, $3, $4, $5) \
-             ON CONFLICT DO NOTHING",
-            [
-                pid.into(),
-                me.into(),
-                payload.name.trim().to_string().into(),
-                serde_json::json!(payload.spec).into(),
-                payload.shared.into(),
-            ],
-        ))
-        .await?
-        .rows_affected();
+    let inserted = sqlx::query!(
+        "INSERT INTO reports (pid, owner_ref, name, spec, shared) VALUES ($1, $2, $3, $4, $5) \
+         ON CONFLICT DO NOTHING",
+        pid,
+        me,
+        payload.name.trim(),
+        serde_json::json!(payload.spec),
+        payload.shared,
+    )
+    .execute(&mut *txn)
+    .await?
+    .rows_affected();
     if inserted == 0 {
         return Err(taken());
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "report",
         pid,
         "created",
@@ -389,19 +391,17 @@ async fn create(
 }
 
 /// Lock the report and say who owns it, or why the caller cannot change it.
-async fn owned(txn: &sea_orm::DatabaseTransaction, pid: Uuid, me: &str) -> Result<bool> {
-    let row = txn
-        .query_one_raw(stmt(
-            "SELECT owner_ref, shared FROM reports WHERE pid = $1 FOR UPDATE",
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let owner: String = row.try_get("", "owner_ref")?;
-    let shared: bool = row.try_get("", "shared")?;
-    if owner == me {
-        Ok(shared)
-    } else if shared {
+async fn owned(conn: &mut PgConnection, pid: Uuid, me: &str) -> Result<bool> {
+    let row = sqlx::query!(
+        "SELECT owner_ref, shared FROM reports WHERE pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(conn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    if row.owner_ref == me {
+        Ok(row.shared)
+    } else if row.shared {
         Err(Error::CustomError(
             axum::http::StatusCode::FORBIDDEN,
             axa::error::ErrorDetail::new("forbidden", "only the owner can change a report"),
@@ -421,24 +421,22 @@ async fn replace(
 ) -> Result<Response> {
     validate(&payload)?;
     let me = owner_of(&caller)?;
-    let txn = ctx.db.begin().await?;
-    owned(&txn, pid, &me).await?;
-    let changed = txn
-        .execute_raw(stmt(
-            "UPDATE reports SET name = $2, spec = $3, shared = $4, updated_at = now() WHERE pid = $1",
-            [
-                pid.into(),
-                payload.name.trim().to_string().into(),
-                serde_json::json!(payload.spec).into(),
-                payload.shared.into(),
-            ],
-        ))
-        .await;
+    let mut txn = db::pool(&ctx).begin().await?;
+    owned(&mut txn, pid, &me).await?;
+    let changed = sqlx::query!(
+        "UPDATE reports SET name = $2, spec = $3, shared = $4, updated_at = now() WHERE pid = $1",
+        pid,
+        payload.name.trim(),
+        serde_json::json!(payload.spec),
+        payload.shared,
+    )
+    .execute(&mut *txn)
+    .await;
     if changed.is_err() {
         return Err(taken());
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "report",
         pid,
         "updated",
@@ -460,11 +458,12 @@ async fn remove(
     PidPath(pid): PidPath,
 ) -> Result<Response> {
     let me = owner_of(&caller)?;
-    let txn = ctx.db.begin().await?;
-    owned(&txn, pid, &me).await?;
-    txn.execute_raw(stmt("DELETE FROM reports WHERE pid = $1", [pid.into()]))
+    let mut txn = db::pool(&ctx).begin().await?;
+    owned(&mut txn, pid, &me).await?;
+    sqlx::query!("DELETE FROM reports WHERE pid = $1", pid)
+        .execute(&mut *txn)
         .await?;
-    Audit::record(&txn, "report", pid, "deleted", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "report", pid, "deleted", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -479,15 +478,17 @@ async fn run_saved(
     PidPath(pid): PidPath,
 ) -> Result<Response> {
     let me = owner_of(&caller)?;
-    let row = ctx
-        .db
-        .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM reports WHERE pid = $1 AND (owner_ref = $2 OR shared)"),
-            [pid.into(), me.clone().into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let saved = view(&row, &me)?;
+    let row = sqlx::query_as!(
+        Stored,
+        "SELECT pid, owner_ref, name, spec, shared, updated_at FROM reports \
+         WHERE pid = $1 AND (owner_ref = $2 OR shared)",
+        pid,
+        me,
+    )
+    .fetch_optional(db::pool(&ctx))
+    .await?
+    .ok_or(Error::NotFound)?;
+    let saved = view(row, &me)?;
     format::json(answer(&ctx, &caller, saved.spec).await?)
 }
 

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SET LOCAL pg_trgm.word_similarity_threshold = 0.45",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "41922f4b090fad98e42edd39dfaf224e06d4cb0f68f7d0631d3e7a5b10f3e389"
+}

@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO territories (pid, name, owner_ref, set_by) VALUES ($1, $2, $3, $4) ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, owner_ref = EXCLUDED.owner_ref, set_by = EXCLUDED.set_by, updated_at = now() RETURNING pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "territories",
+            "name": "pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8ad4e5149dc26f01acf649fab7a626cda05470cb272349834bf5baa878ce7271"
+}

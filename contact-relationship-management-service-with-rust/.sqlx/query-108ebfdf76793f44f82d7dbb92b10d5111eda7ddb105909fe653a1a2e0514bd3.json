@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, from_currency, to_currency, rate_ppb, effective_on, source, set_by FROM fx_rates ORDER BY effective_on DESC, from_currency, to_currency LIMIT $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "from_currency",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "from_currency"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "to_currency",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "to_currency"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "rate_ppb",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "rate_ppb"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "effective_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "effective_on"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "source",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "set_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "set_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "108ebfdf76793f44f82d7dbb92b10d5111eda7ddb105909fe653a1a2e0514bd3"
+}

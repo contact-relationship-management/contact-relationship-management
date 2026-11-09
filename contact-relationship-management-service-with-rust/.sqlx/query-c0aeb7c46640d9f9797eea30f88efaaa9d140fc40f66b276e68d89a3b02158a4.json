@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE email_templates SET name = $2, subject = $3, body = $4, fallbacks = $5, language = $6, updated_at = now() WHERE pid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Jsonb",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c0aeb7c46640d9f9797eea30f88efaaa9d140fc40f66b276e68d89a3b02158a4"
+}

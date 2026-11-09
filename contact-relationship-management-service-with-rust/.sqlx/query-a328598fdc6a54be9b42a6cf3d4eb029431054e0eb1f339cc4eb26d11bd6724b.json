@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO territory_accounts (organization_ref, territory_pid) VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a328598fdc6a54be9b42a6cf3d4eb029431054e0eb1f339cc4eb26d11bd6724b"
+}

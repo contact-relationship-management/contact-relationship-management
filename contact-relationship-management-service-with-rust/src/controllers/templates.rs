@@ -3,12 +3,16 @@
 //! A template is written once and filled in per recipient when a campaign or a nurture step makes
 //! its message. The parsing, checking and rendering are in [`crate::rules::templates`]; this module
 //! stores templates and gathers a contact's values.
+//!
+//! The routes run on `sqlx` (CRM-D24, CRM-T205). [`load`], [`contact_values`], [`content_for`]
+//! and [`exists`] stay on `ConnectionTrait` until the campaign and nurture code that calls them
+//! moves.
 
 use std::collections::BTreeMap;
 
 use axa::extract::Query;
 use axa::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -16,6 +20,7 @@ use super::merge::conflict;
 use super::{PidPath, PidRef, unprocessable};
 use crate::auth::MaybeAuthUser;
 use crate::clients;
+use crate::db;
 use crate::json::Json;
 use crate::models::_entities::{accounts, contacts};
 use crate::models::audit_logs::Model as Audit;
@@ -118,23 +123,31 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
-const COLUMNS: &str = "t.pid, t.name, t.subject, t.body, t.fallbacks, t.language, t.updated_at, \
-    (SELECT count(*) FROM campaigns c WHERE c.template_pid = t.pid AND c.deleted_at IS NULL) \
-    + (SELECT count(*) FROM nurture_steps s WHERE s.template_pid = t.pid \
-       AND s.deleted_at IS NULL) AS in_use";
+/// A stored template and how many live campaigns and nurture steps name it.
+struct Row {
+    pid: Uuid,
+    name: String,
+    subject: String,
+    body: String,
+    fallbacks: serde_json::Value,
+    language: Option<String>,
+    in_use: i64,
+    updated_at: chrono::DateTime<chrono::Utc>,
+}
 
-fn view(row: &sea_orm::QueryResult) -> Result<TemplateView> {
-    let fallbacks: serde_json::Value = row.try_get("", "fallbacks")?;
-    Ok(TemplateView {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        name: row.try_get("", "name")?,
-        subject: row.try_get("", "subject")?,
-        body: row.try_get("", "body")?,
-        fallbacks: serde_json::from_value(fallbacks).unwrap_or_default(),
-        language: row.try_get("", "language")?,
-        in_use: row.try_get("", "in_use")?,
-        updated_at: row.try_get("", "updated_at")?,
-    })
+impl From<Row> for TemplateView {
+    fn from(row: Row) -> Self {
+        Self {
+            pid: row.pid.to_string(),
+            name: row.name,
+            subject: row.subject,
+            body: row.body,
+            fallbacks: serde_json::from_value(row.fallbacks).unwrap_or_default(),
+            language: row.language,
+            in_use: row.in_use,
+            updated_at: row.updated_at,
+        }
+    }
 }
 
 fn validate(payload: &TemplatePayload) -> Result<()> {
@@ -200,44 +213,46 @@ async fn tokens(Query(query): Query<TokensQuery>) -> Result<Response> {
 /// `GET /api/email-templates`.
 #[debug_handler]
 async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM email_templates t ORDER BY lower(t.name), t.id"),
-            [],
-        ))
-        .await?;
-    format::json(rows.iter().map(view).collect::<Result<Vec<_>>>()?)
+    let rows = sqlx::query_as!(
+        Row,
+        r#"SELECT t.pid, t.name, t.subject, t.body, t.fallbacks, t.language, t.updated_at,
+             (SELECT count(*) FROM campaigns c
+              WHERE c.template_pid = t.pid AND c.deleted_at IS NULL)
+             + (SELECT count(*) FROM nurture_steps s
+                WHERE s.template_pid = t.pid AND s.deleted_at IS NULL) AS "in_use!"
+           FROM email_templates t ORDER BY lower(t.name), t.id"#,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    format::json(rows.into_iter().map(TemplateView::from).collect::<Vec<_>>())
 }
 
 /// `GET /api/email-templates/{pid}`.
 #[debug_handler]
 async fn show(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
-    let row = ctx
-        .db
-        .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM email_templates t WHERE t.pid = $1"),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    format::json(view(&row)?)
+    let row = sqlx::query_as!(
+        Row,
+        r#"SELECT t.pid, t.name, t.subject, t.body, t.fallbacks, t.language, t.updated_at,
+             (SELECT count(*) FROM campaigns c
+              WHERE c.template_pid = t.pid AND c.deleted_at IS NULL)
+             + (SELECT count(*) FROM nurture_steps s
+                WHERE s.template_pid = t.pid AND s.deleted_at IS NULL) AS "in_use!"
+           FROM email_templates t WHERE t.pid = $1"#,
+        pid,
+    )
+    .fetch_optional(db::pool(&ctx))
+    .await?
+    .ok_or(Error::NotFound)?;
+    format::json(TemplateView::from(row))
 }
 
-fn bind(payload: &TemplatePayload) -> Vec<Value> {
-    vec![
-        payload.name.trim().to_string().into(),
-        payload.subject.clone().into(),
-        payload.body.clone().into(),
-        serde_json::json!(payload.fallbacks).into(),
-        payload
-            .language
-            .as_deref()
-            .map(str::trim)
-            .filter(|l| !l.is_empty())
-            .map(str::to_string)
-            .into(),
-    ]
+/// The language as stored: trimmed, and absent when blank.
+fn language_of(payload: &TemplatePayload) -> Option<&str> {
+    payload
+        .language
+        .as_deref()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
 }
 
 /// `POST /api/email-templates`.
@@ -249,21 +264,32 @@ async fn create(
 ) -> Result<Response> {
     validate(&payload)?;
     let pid = Uuid::new_v4();
-    let mut values = vec![pid.into()];
-    values.extend(bind(&payload));
-    let txn = ctx.db.begin().await?;
-    let inserted = txn
-        .execute_raw(stmt(
-            "INSERT INTO email_templates (pid, name, subject, body, fallbacks, language) \
-             VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING",
-            values,
-        ))
-        .await?
-        .rows_affected();
+    let mut txn = db::pool(&ctx).begin().await?;
+    let inserted = sqlx::query!(
+        "INSERT INTO email_templates (pid, name, subject, body, fallbacks, language) \
+         VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING",
+        pid,
+        payload.name.trim(),
+        payload.subject,
+        payload.body,
+        serde_json::json!(payload.fallbacks),
+        language_of(&payload),
+    )
+    .execute(&mut *txn)
+    .await?
+    .rows_affected();
     if inserted == 0 {
         return Err(taken());
     }
-    Audit::record(&txn, "email_template", pid, "created", caller.actor(), None).await?;
+    Audit::record_on(
+        &mut txn,
+        "email_template",
+        pid,
+        "created",
+        caller.actor(),
+        None,
+    )
+    .await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -279,16 +305,19 @@ async fn replace(
     Json(payload): Json<TemplatePayload>,
 ) -> Result<Response> {
     validate(&payload)?;
-    let mut values = vec![pid.into()];
-    values.extend(bind(&payload));
-    let txn = ctx.db.begin().await?;
-    let changed = txn
-        .execute_raw(stmt(
-            "UPDATE email_templates SET name = $2, subject = $3, body = $4, fallbacks = $5, \
-             language = $6, updated_at = now() WHERE pid = $1",
-            values,
-        ))
-        .await;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let changed = sqlx::query!(
+        "UPDATE email_templates SET name = $2, subject = $3, body = $4, fallbacks = $5, \
+         language = $6, updated_at = now() WHERE pid = $1",
+        pid,
+        payload.name.trim(),
+        payload.subject,
+        payload.body,
+        serde_json::json!(payload.fallbacks),
+        language_of(&payload),
+    )
+    .execute(&mut *txn)
+    .await;
     // The only constraint a replace can break is the unique name.
     if changed.is_err() {
         return Err(taken());
@@ -296,7 +325,15 @@ async fn replace(
     if changed.is_ok_and(|r| r.rows_affected() == 0) {
         return Err(Error::NotFound);
     }
-    Audit::record(&txn, "email_template", pid, "updated", caller.actor(), None).await?;
+    Audit::record_on(
+        &mut txn,
+        "email_template",
+        pid,
+        "updated",
+        caller.actor(),
+        None,
+    )
+    .await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -310,25 +347,35 @@ async fn remove(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM email_templates t WHERE t.pid = $1 FOR UPDATE OF t"),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    if view(&row)?.in_use > 0 {
+    let mut txn = db::pool(&ctx).begin().await?;
+    let in_use = sqlx::query_scalar!(
+        r#"SELECT (SELECT count(*) FROM campaigns c
+              WHERE c.template_pid = t.pid AND c.deleted_at IS NULL)
+             + (SELECT count(*) FROM nurture_steps s
+                WHERE s.template_pid = t.pid AND s.deleted_at IS NULL) AS "in_use!"
+           FROM email_templates t WHERE t.pid = $1 FOR UPDATE OF t"#,
+        pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    if in_use > 0 {
         return Err(conflict(
             "a campaign or nurture step still uses this template",
         ));
     }
-    txn.execute_raw(stmt(
-        "DELETE FROM email_templates WHERE pid = $1",
-        [pid.into()],
-    ))
+    sqlx::query!("DELETE FROM email_templates WHERE pid = $1", pid)
+        .execute(&mut *txn)
+        .await?;
+    Audit::record_on(
+        &mut txn,
+        "email_template",
+        pid,
+        "deleted",
+        caller.actor(),
+        None,
+    )
     .await?;
-    Audit::record(&txn, "email_template", pid, "deleted", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),

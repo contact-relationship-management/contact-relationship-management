@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT territory_pid, organization_ref FROM territory_accounts ORDER BY organization_ref",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "territory_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "territory_accounts",
+            "name": "territory_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "territory_accounts",
+            "name": "organization_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "da85a41cad9869c53912f1a71e4c79f36d2954d97a7ea602f125752eaab13e6d"
+}

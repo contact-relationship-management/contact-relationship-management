@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT (SELECT count(*) FROM campaigns c\n              WHERE c.template_pid = t.pid AND c.deleted_at IS NULL)\n             + (SELECT count(*) FROM nurture_steps s\n                WHERE s.template_pid = t.pid AND s.deleted_at IS NULL) AS \"in_use!\"\n           FROM email_templates t WHERE t.pid = $1 FOR UPDATE OF t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "in_use!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "059dfdb4cda07bc19f81def145b862bf9ccc5e79b7ea1a692981a82af84ec351"
+}

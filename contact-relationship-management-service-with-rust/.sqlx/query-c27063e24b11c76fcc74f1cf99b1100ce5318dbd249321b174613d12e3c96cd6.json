@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM fx_rates WHERE pid = $1 RETURNING pid, from_currency, to_currency, rate_ppb, effective_on, source, set_by",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "from_currency",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "from_currency"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "to_currency",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "to_currency"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "rate_ppb",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "rate_ppb"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "effective_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "effective_on"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "source",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "set_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "fx_rates",
+            "name": "set_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c27063e24b11c76fcc74f1cf99b1100ce5318dbd249321b174613d12e3c96cd6"
+}

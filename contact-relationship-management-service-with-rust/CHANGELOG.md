@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — nine controllers on sqlx (CRM-T205, CRM-D24)
+
+- The routes of `views`, `reports`, `templates`, `calendars`, `teams`, `territories`, `fx_rates`,
+  `tags` and `search` run on `sqlx::query!` in `sqlx` transactions, auditing through
+  `Audit::record_on`. Helpers other modules call in `SeaORM` transactions stay on
+  `ConnectionTrait`; `PUT /api/quotas/teams` reaches `put_team` through `db::Bridge`. `.sqlx/`
+  gains 49 entries.
+
 ### Added — lockout by client address (CRM-T224)
 
 - `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT=N` layers `axa::ratelimit::lock_out_failures` outside the

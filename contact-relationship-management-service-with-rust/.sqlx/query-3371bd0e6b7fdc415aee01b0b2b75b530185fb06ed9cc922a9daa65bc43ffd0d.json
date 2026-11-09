@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM taggings WHERE tag_pid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3371bd0e6b7fdc415aee01b0b2b75b530185fb06ed9cc922a9daa65bc43ffd0d"
+}

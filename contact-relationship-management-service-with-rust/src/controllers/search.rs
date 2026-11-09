@@ -1,15 +1,20 @@
 //! `GET /api/search?q=` (CRM-R33): names and titles across the main records.
+//!
+//! The search runs on `sqlx` (CRM-D24, CRM-T205). Its statement is built from
+//! `migration::search_docs::SOURCES`, so the macros cannot check it: every branch names
+//! `deleted_at`, which the soft-delete census in `db.rs` cannot see here.
 
 use axa::extract::Query;
 use axa::prelude::*;
 use axum::http::Uri;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::AssertSqlSafe;
 use uuid::Uuid;
 
 use super::paging::Page;
 use super::unprocessable;
 use crate::auth::{self, MaybeAuthUser};
+use crate::db;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::search as rules;
 
@@ -59,32 +64,30 @@ async fn search(
     };
     let page = Page::new(&uri, PAGE_CAP)?;
     let (limit, offset) = page.bounds();
-    let txn = ctx.db.begin().await?;
+    let mut txn = db::pool(&ctx).begin().await?;
     // Fuzzy matches below the default 0.6 are what a typo needs.
-    txn.execute_unprepared("SET LOCAL pg_trgm.word_similarity_threshold = 0.45")
+    sqlx::query!("SET LOCAL pg_trgm.word_similarity_threshold = 0.45")
+        .execute(&mut *txn)
         .await?;
-    let rows = txn
-        .query_all_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            crate::search::query(),
-            [
-                Value::from(tsquery),
-                Value::from(rules::phrase(&words)),
-                Value::from(limit),
-                Value::from(offset),
-            ],
-        ))
-        .await?;
+    // Built from a fixed table in the code, never from what the caller sent, which is bound.
+    let rows: Vec<(String, Uuid, String, Option<String>)> =
+        sqlx::query_as(AssertSqlSafe(crate::search::query()))
+            .bind(tsquery)
+            .bind(rules::phrase(&words))
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&mut *txn)
+            .await?;
     txn.commit().await?;
-    let mut found = Vec::with_capacity(rows.len());
-    for row in &rows {
-        found.push(SearchHit {
-            kind: row.try_get("", "kind")?,
-            pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-            title: row.try_get("", "title")?,
-            detail: row.try_get("", "detail")?,
-        });
-    }
+    let found: Vec<SearchHit> = rows
+        .into_iter()
+        .map(|(kind, pid, title, detail)| SearchHit {
+            kind,
+            pid: pid.to_string(),
+            title,
+            detail,
+        })
+        .collect();
     let (found, more) = page.split(found);
     let mut shown = Vec::with_capacity(found.len());
     for hit in found {

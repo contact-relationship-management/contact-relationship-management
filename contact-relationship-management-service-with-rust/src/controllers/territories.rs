@@ -10,13 +10,14 @@ use std::str::FromStr;
 use axa::prelude::*;
 use chrono::NaiveDate;
 use entity_ref::{EntityRef, EntityType};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::views::owner_of;
 use super::{PidPath, PidRef};
 use crate::auth::MaybeAuthUser;
+use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::quota;
@@ -31,10 +32,6 @@ const MAX_LISTED: i64 = 500;
 const MAX_PERIOD_DAYS: i64 = 366;
 /// The period read when none is asked for, in days.
 const DEFAULT_PERIOD_DAYS: i64 = 90;
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
 
 /// `PUT /api/quotas/territories` body: sets the territory of that name (any case), replacing its
 /// accounts and worker.
@@ -63,44 +60,42 @@ pub(crate) struct TerritoryView {
     set_by: String,
 }
 
-async fn territories<C: ConnectionTrait>(db: &C) -> Result<Vec<TerritoryView>> {
-    let rows = db
-        .query_all_raw(stmt(
-            "SELECT pid, name, owner_ref, set_by FROM territories ORDER BY lower(name) LIMIT $1",
-            [MAX_LISTED.into()],
-        ))
-        .await?;
+async fn territories(conn: &mut PgConnection) -> Result<Vec<TerritoryView>> {
+    let rows = sqlx::query!(
+        "SELECT pid, name, owner_ref, set_by FROM territories ORDER BY lower(name) LIMIT $1",
+        MAX_LISTED,
+    )
+    .fetch_all(&mut *conn)
+    .await?;
     let mut by_pid: BTreeMap<Uuid, Vec<String>> = BTreeMap::new();
-    for row in db
-        .query_all_raw(stmt(
-            "SELECT territory_pid, organization_ref FROM territory_accounts ORDER BY organization_ref",
-            [],
-        ))
-        .await?
+    for row in sqlx::query!(
+        "SELECT territory_pid, organization_ref FROM territory_accounts ORDER BY organization_ref",
+    )
+    .fetch_all(&mut *conn)
+    .await?
     {
         by_pid
-            .entry(row.try_get("", "territory_pid")?)
+            .entry(row.territory_pid)
             .or_default()
-            .push(row.try_get("", "organization_ref")?);
+            .push(row.organization_ref);
     }
-    rows.iter()
-        .map(|row| {
-            let pid: Uuid = row.try_get("", "pid")?;
-            Ok(TerritoryView {
-                pid: pid.to_string(),
-                name: row.try_get("", "name")?,
-                owner_ref: row.try_get("", "owner_ref")?,
-                accounts: by_pid.remove(&pid).unwrap_or_default(),
-                set_by: row.try_get("", "set_by")?,
-            })
+    Ok(rows
+        .into_iter()
+        .map(|row| TerritoryView {
+            pid: row.pid.to_string(),
+            name: row.name,
+            owner_ref: row.owner_ref,
+            accounts: by_pid.remove(&row.pid).unwrap_or_default(),
+            set_by: row.set_by,
         })
-        .collect()
+        .collect())
 }
 
 /// `GET /api/quotas/territories` — the territories, by name.
 #[debug_handler]
 async fn list_territories(State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(territories(&ctx.db).await?)
+    let mut conn = db::pool(&ctx).acquire().await?;
+    format::json(territories(&mut conn).await?)
 }
 
 /// `PUT /api/quotas/territories` — set a territory; audited. `422` naming `/name`, `/owner_ref` or
@@ -135,53 +130,52 @@ async fn set_territory(
         return Err(super::unprocessable("the territory cannot be set"));
     };
     let who = owner_of(&caller)?;
-    let txn = ctx.db.begin().await?;
-    let taken = txn
-        .query_all_raw(stmt(
-            "SELECT a.organization_ref, t.name FROM territory_accounts a \
-             JOIN territories t ON t.pid = a.territory_pid \
-             WHERE a.organization_ref = ANY($1) AND lower(t.name) <> lower($2) \
-             ORDER BY a.organization_ref LIMIT 1",
-            [refs.clone().into(), name.as_str().into()],
-        ))
-        .await?;
-    if let Some(row) = taken.first() {
-        let other: String = row.try_get("", "name")?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let taken = sqlx::query!(
+        "SELECT a.organization_ref, t.name FROM territory_accounts a \
+         JOIN territories t ON t.pid = a.territory_pid \
+         WHERE a.organization_ref = ANY($1) AND lower(t.name) <> lower($2) \
+         ORDER BY a.organization_ref LIMIT 1",
+        &refs,
+        name,
+    )
+    .fetch_optional(&mut *txn)
+    .await?;
+    if let Some(row) = taken {
         return Err(super::unprocessable(&format!(
-            "/accounts: {} is already in the territory {other}",
-            row.try_get::<String>("", "organization_ref")?
+            "/accounts: {} is already in the territory {}",
+            row.organization_ref, row.name
         )));
     }
-    let row = txn
-        .query_one_raw(stmt(
-            "INSERT INTO territories (pid, name, owner_ref, set_by) VALUES ($1, $2, $3, $4) \
-             ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, \
-               owner_ref = EXCLUDED.owner_ref, set_by = EXCLUDED.set_by, updated_at = now() \
-             RETURNING pid",
-            [
-                Uuid::new_v4().into(),
-                name.as_str().into(),
-                payload.owner_ref.clone().into(),
-                who.into(),
-            ],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let pid: Uuid = row.try_get("", "pid")?;
-    txn.execute_raw(stmt(
+    let pid = sqlx::query_scalar!(
+        "INSERT INTO territories (pid, name, owner_ref, set_by) VALUES ($1, $2, $3, $4) \
+         ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, \
+           owner_ref = EXCLUDED.owner_ref, set_by = EXCLUDED.set_by, updated_at = now() \
+         RETURNING pid",
+        Uuid::new_v4(),
+        name,
+        payload.owner_ref,
+        who,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    sqlx::query!(
         "DELETE FROM territory_accounts WHERE territory_pid = $1",
-        [pid.into()],
-    ))
+        pid
+    )
+    .execute(&mut *txn)
     .await?;
     for account in &refs {
-        txn.execute_raw(stmt(
+        sqlx::query!(
             "INSERT INTO territory_accounts (organization_ref, territory_pid) VALUES ($1, $2)",
-            [account.as_str().into(), pid.into()],
-        ))
+            account,
+            pid,
+        )
+        .execute(&mut *txn)
         .await?;
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "territory",
         pid,
         "set",
@@ -191,7 +185,7 @@ async fn set_territory(
         })),
     )
     .await?;
-    let made = territories(&txn)
+    let made = territories(&mut txn)
         .await?
         .into_iter()
         .find(|t| t.pid == pid.to_string())
@@ -208,14 +202,14 @@ async fn remove_territory(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let gone = txn
-        .execute_raw(stmt("DELETE FROM territories WHERE pid = $1", [pid.into()]))
+    let mut txn = db::pool(&ctx).begin().await?;
+    let gone = sqlx::query!("DELETE FROM territories WHERE pid = $1", pid)
+        .execute(&mut *txn)
         .await?;
     if gone.rows_affected() == 0 {
         return Err(Error::NotFound);
     }
-    Audit::record(&txn, "territory", pid, "deleted", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "territory", pid, "deleted", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -291,36 +285,34 @@ async fn territory_attainment(
             "/from: not after /to, and at most {MAX_PERIOD_DAYS} days before it"
         )));
     }
-    let all = territories(&ctx.db).await?;
-    // The days deals closed on are the organization's (CRM-T181).
+    // The days deals closed on are the organization's (CRM-T181); its zone is bound, where the
+    // `SeaORM` query wrote it into the SQL. Read before the connection below is taken, so a pool
+    // of one is not asked for a second.
     let calendar = super::organization::periods(&ctx.db).await?;
-    let closed_on = crate::rules::periods::local_day("d.closed_at", &calendar);
-    let deals = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT a.territory_pid, trim(d.currency) AS currency, d.amount_minor \
-                 FROM deals d \
-                 LEFT JOIN accounts c ON c.pid = d.account_pid \
-                 LEFT JOIN territory_accounts a ON a.organization_ref = c.organization_ref \
-                 WHERE d.won AND d.deleted_at IS NULL AND d.closed_at IS NOT NULL \
-                   AND {closed_on} BETWEEN $1 AND $2"
-            ),
-            [from.into(), to.into()],
-        ))
-        .await?;
+    let mut conn = db::pool(&ctx).acquire().await?;
+    let all = territories(&mut conn).await?;
+    let deals = sqlx::query!(
+        r#"SELECT a.territory_pid AS "territory_pid?", trim(d.currency) AS "currency!",
+             d.amount_minor
+           FROM deals d
+           LEFT JOIN accounts c ON c.pid = d.account_pid
+           LEFT JOIN territory_accounts a ON a.organization_ref = c.organization_ref
+           WHERE d.won AND d.deleted_at IS NULL AND d.closed_at IS NOT NULL
+             AND (d.closed_at AT TIME ZONE $3::text)::date BETWEEN $1 AND $2"#,
+        from,
+        to,
+        calendar.zone.name(),
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    drop(conn);
     // (territory, currency) -> (minor units, deals); the territory is `None` when unassigned.
     let mut sums: BTreeMap<(Option<Uuid>, String), (i64, i64)> = BTreeMap::new();
-    for deal in &deals {
-        let slot = sums
-            .entry((
-                deal.try_get("", "territory_pid")?,
-                deal.try_get("", "currency")?,
-            ))
-            .or_default();
+    for deal in deals {
+        let slot = sums.entry((deal.territory_pid, deal.currency)).or_default();
         slot.0 = slot
             .0
-            .checked_add(deal.try_get::<i64>("", "amount_minor")?)
+            .checked_add(deal.amount_minor)
             .ok_or_else(too_large)?;
         slot.1 += 1;
     }

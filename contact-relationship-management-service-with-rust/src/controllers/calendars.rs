@@ -3,16 +3,20 @@
 //! A calendar is working hours, a time zone and holidays. An SLA policy may name one, and then
 //! the deadlines of the tickets opened under it are counted in working time. The counting is in
 //! [`crate::rules::calendar`].
+//!
+//! The routes run on `sqlx` (CRM-D24, CRM-T205). [`load`] and [`exists`] stay on `ConnectionTrait`
+//! until the SLA handlers in `support.rs` that call them move.
 
 use axa::prelude::*;
 use chrono::NaiveDate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::merge::conflict;
 use super::{PidPath, PidRef, unprocessable};
 use crate::auth::MaybeAuthUser;
+use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::calendar::{Calendar, Week};
@@ -52,20 +56,25 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
-const COLUMNS: &str = "c.pid, c.name, c.timezone, c.week, c.holidays, \
-    (SELECT count(*) FROM sla_policies p WHERE p.calendar_pid = c.pid AND p.deleted_at IS NULL) AS in_use";
+/// A stored calendar and how many live SLA policies name it.
+struct Row {
+    pid: Uuid,
+    name: String,
+    timezone: String,
+    week: serde_json::Value,
+    holidays: serde_json::Value,
+    in_use: i64,
+}
 
-fn view(row: &sea_orm::QueryResult) -> Result<CalendarView> {
-    let week: serde_json::Value = row.try_get("", "week")?;
-    let holidays: serde_json::Value = row.try_get("", "holidays")?;
-    Ok(CalendarView {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        name: row.try_get("", "name")?,
-        timezone: row.try_get("", "timezone")?,
-        week: serde_json::from_value(week).unwrap_or_default(),
-        holidays: serde_json::from_value(holidays).unwrap_or_default(),
-        in_use: row.try_get("", "in_use")?,
-    })
+fn view(row: Row) -> CalendarView {
+    CalendarView {
+        pid: row.pid.to_string(),
+        name: row.name,
+        timezone: row.timezone,
+        week: serde_json::from_value(row.week).unwrap_or_default(),
+        holidays: serde_json::from_value(row.holidays).unwrap_or_default(),
+        in_use: row.in_use,
+    }
 }
 
 /// The calendar `pid`, ready to count on; `None` when it is gone or no longer builds.
@@ -76,15 +85,18 @@ fn view(row: &sea_orm::QueryResult) -> Result<CalendarView> {
 pub(crate) async fn load<C: ConnectionTrait>(db: &C, pid: Uuid) -> Result<Option<Calendar>> {
     let Some(row) = db
         .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM business_calendars c WHERE c.pid = $1"),
+            "SELECT timezone, week, holidays FROM business_calendars WHERE pid = $1",
             [pid.into()],
         ))
         .await?
     else {
         return Ok(None);
     };
-    let stored = view(&row)?;
-    Ok(Calendar::build(&stored.timezone, &stored.week, &stored.holidays).ok())
+    let timezone: String = row.try_get("", "timezone")?;
+    let week: Week = serde_json::from_value(row.try_get("", "week")?).unwrap_or_default();
+    let holidays: Vec<NaiveDate> =
+        serde_json::from_value(row.try_get("", "holidays")?).unwrap_or_default();
+    Ok(Calendar::build(&timezone, &week, &holidays).ok())
 }
 
 /// Whether the calendar exists.
@@ -113,43 +125,44 @@ fn taken() -> Error {
     unprocessable("a calendar with that name already exists")
 }
 
-fn binds(payload: &CalendarPayload) -> Vec<Value> {
+/// The holidays as stored: in order, each once.
+fn holidays_of(payload: &CalendarPayload) -> serde_json::Value {
     let mut holidays = payload.holidays.clone();
     holidays.sort_unstable();
     holidays.dedup();
-    vec![
-        payload.name.trim().to_string().into(),
-        payload.timezone.clone().into(),
-        serde_json::json!(payload.week).into(),
-        serde_json::json!(holidays).into(),
-    ]
+    serde_json::json!(holidays)
 }
 
 /// `GET /api/business-calendars`.
 #[debug_handler]
 async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM business_calendars c ORDER BY lower(c.name), c.id"),
-            [],
-        ))
-        .await?;
-    format::json(rows.iter().map(view).collect::<Result<Vec<_>>>()?)
+    let rows = sqlx::query_as!(
+        Row,
+        r#"SELECT c.pid, c.name, c.timezone, c.week, c.holidays,
+             (SELECT count(*) FROM sla_policies p
+              WHERE p.calendar_pid = c.pid AND p.deleted_at IS NULL) AS "in_use!"
+           FROM business_calendars c ORDER BY lower(c.name), c.id"#,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    format::json(rows.into_iter().map(view).collect::<Vec<_>>())
 }
 
 /// `GET /api/business-calendars/{pid}`.
 #[debug_handler]
 async fn show(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
-    let row = ctx
-        .db
-        .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM business_calendars c WHERE c.pid = $1"),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    format::json(view(&row)?)
+    let row = sqlx::query_as!(
+        Row,
+        r#"SELECT c.pid, c.name, c.timezone, c.week, c.holidays,
+             (SELECT count(*) FROM sla_policies p
+              WHERE p.calendar_pid = c.pid AND p.deleted_at IS NULL) AS "in_use!"
+           FROM business_calendars c WHERE c.pid = $1"#,
+        pid,
+    )
+    .fetch_optional(db::pool(&ctx))
+    .await?
+    .ok_or(Error::NotFound)?;
+    format::json(view(row))
 }
 
 /// `POST /api/business-calendars`.
@@ -161,22 +174,24 @@ async fn create(
 ) -> Result<Response> {
     validate(&payload)?;
     let pid = Uuid::new_v4();
-    let mut values = vec![pid.into()];
-    values.extend(binds(&payload));
-    let txn = ctx.db.begin().await?;
-    let inserted = txn
-        .execute_raw(stmt(
-            "INSERT INTO business_calendars (pid, name, timezone, week, holidays) \
-             VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING",
-            values,
-        ))
-        .await?
-        .rows_affected();
+    let mut txn = db::pool(&ctx).begin().await?;
+    let inserted = sqlx::query!(
+        "INSERT INTO business_calendars (pid, name, timezone, week, holidays) \
+         VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING",
+        pid,
+        payload.name.trim(),
+        payload.timezone,
+        serde_json::json!(payload.week),
+        holidays_of(&payload),
+    )
+    .execute(&mut *txn)
+    .await?
+    .rows_affected();
     if inserted == 0 {
         return Err(taken());
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "business_calendar",
         pid,
         "created",
@@ -200,16 +215,18 @@ async fn replace(
     Json(payload): Json<CalendarPayload>,
 ) -> Result<Response> {
     validate(&payload)?;
-    let mut values = vec![pid.into()];
-    values.extend(binds(&payload));
-    let txn = ctx.db.begin().await?;
-    let changed = txn
-        .execute_raw(stmt(
-            "UPDATE business_calendars SET name = $2, timezone = $3, week = $4, holidays = $5, \
-             updated_at = now() WHERE pid = $1",
-            values,
-        ))
-        .await;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let changed = sqlx::query!(
+        "UPDATE business_calendars SET name = $2, timezone = $3, week = $4, holidays = $5, \
+         updated_at = now() WHERE pid = $1",
+        pid,
+        payload.name.trim(),
+        payload.timezone,
+        serde_json::json!(payload.week),
+        holidays_of(&payload),
+    )
+    .execute(&mut *txn)
+    .await;
     // The only constraint a replace can break is the unique name.
     if changed.is_err() {
         return Err(taken());
@@ -217,8 +234,8 @@ async fn replace(
     if changed.is_ok_and(|r| r.rows_affected() == 0) {
         return Err(Error::NotFound);
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "business_calendar",
         pid,
         "updated",
@@ -239,24 +256,24 @@ async fn remove(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM business_calendars c WHERE c.pid = $1 FOR UPDATE OF c"),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    if view(&row)?.in_use > 0 {
+    let mut txn = db::pool(&ctx).begin().await?;
+    let in_use = sqlx::query_scalar!(
+        r#"SELECT (SELECT count(*) FROM sla_policies p
+              WHERE p.calendar_pid = c.pid AND p.deleted_at IS NULL) AS "in_use!"
+           FROM business_calendars c WHERE c.pid = $1 FOR UPDATE OF c"#,
+        pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    if in_use > 0 {
         return Err(conflict("an SLA policy still uses this calendar"));
     }
-    txn.execute_raw(stmt(
-        "DELETE FROM business_calendars WHERE pid = $1",
-        [pid.into()],
-    ))
-    .await?;
-    Audit::record(
-        &txn,
+    sqlx::query!("DELETE FROM business_calendars WHERE pid = $1", pid)
+        .execute(&mut *txn)
+        .await?;
+    Audit::record_on(
+        &mut txn,
         "business_calendar",
         pid,
         "deleted",

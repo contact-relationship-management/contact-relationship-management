@@ -3,12 +3,17 @@
 //! `/api/quotas/teams` is kept by hand and audited; `GET /api/quotas/team-attainment` adds the
 //! standings of each team's workers. Both sit under the admin-only `/api/quotas` prefix: what a
 //! team is paid is no more everyone's to read than what a person is.
+//!
+//! The routes run on `sqlx` (CRM-D24, CRM-T205). [`put_team`] stays on `ConnectionTrait`, because
+//! the WPM import in `bridges.rs` calls it inside a `SeaORM` transaction; `PUT` lends it its own
+//! `sqlx` transaction through `db::Bridge`. The standings and the audited read still go through
+//! `SeaORM` helpers, outside any transaction.
 
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
 use chrono::NaiveDate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -16,6 +21,7 @@ use super::quotas::standings;
 use super::views::owner_of;
 use super::{PidPath, PidRef};
 use crate::auth::MaybeAuthUser;
+use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::analytics::{self, Ratio};
@@ -67,17 +73,46 @@ fn team_view(row: &sea_orm::QueryResult) -> Result<TeamView> {
 
 const TEAM_COLUMNS: &str = "pid, name, members, set_by";
 
+/// A stored team, as `sqlx` reads it.
+struct TeamRow {
+    pid: Uuid,
+    name: String,
+    members: serde_json::Value,
+    set_by: String,
+}
+
+impl TryFrom<TeamRow> for TeamView {
+    type Error = Error;
+
+    fn try_from(row: TeamRow) -> Result<Self> {
+        Ok(Self {
+            pid: row.pid.to_string(),
+            name: row.name,
+            members: serde_json::from_value(row.members)
+                .map_err(|e| Error::string(&e.to_string()))?,
+            set_by: row.set_by,
+        })
+    }
+}
+
+/// The teams, by name, at most [`MAX_LISTED`].
+async fn all_teams(ctx: &AppContext) -> Result<Vec<TeamView>> {
+    sqlx::query_as!(
+        TeamRow,
+        "SELECT pid, name, members, set_by FROM teams ORDER BY lower(name) LIMIT $1",
+        MAX_LISTED,
+    )
+    .fetch_all(db::pool(ctx))
+    .await?
+    .into_iter()
+    .map(TeamView::try_from)
+    .collect()
+}
+
 /// `GET /api/quotas/teams` — the teams, by name.
 #[debug_handler]
 async fn list_teams(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!("SELECT {TEAM_COLUMNS} FROM teams ORDER BY lower(name) LIMIT $1"),
-            [MAX_LISTED.into()],
-        ))
-        .await?;
-    format::json(rows.iter().map(team_view).collect::<Result<Vec<_>>>()?)
+    format::json(all_teams(&ctx).await?)
 }
 
 /// Set the team of `name` (any case) to `members` inside `txn`, audited; `via` names what caused it
@@ -153,8 +188,16 @@ async fn set_team(
         return Err(super::unprocessable("the team cannot be set"));
     };
     let who = owner_of(&caller)?;
-    let txn = ctx.db.begin().await?;
-    let made = put_team(&txn, &who, caller.actor(), &name, &payload.members, None).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let made = put_team(
+        &db::Bridge::new(&mut txn),
+        &who,
+        caller.actor(),
+        &name,
+        &payload.members,
+        None,
+    )
+    .await?;
     txn.commit().await?;
     format::json(made)
 }
@@ -167,14 +210,14 @@ async fn remove_team(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let gone = txn
-        .execute_raw(stmt("DELETE FROM teams WHERE pid = $1", [pid.into()]))
+    let mut txn = db::pool(&ctx).begin().await?;
+    let gone = sqlx::query!("DELETE FROM teams WHERE pid = $1", pid)
+        .execute(&mut *txn)
         .await?;
     if gone.rows_affected() == 0 {
         return Err(Error::NotFound);
     }
-    Audit::record(&txn, "team", pid, "deleted", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "team", pid, "deleted", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -245,17 +288,10 @@ async fn team_attainment(
         Some(at) => at,
         None => super::organization::caller_today(&ctx.db, &headers).await?,
     };
-    let teams = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!("SELECT {TEAM_COLUMNS} FROM teams ORDER BY lower(name) LIMIT $1"),
-            [MAX_LISTED.into()],
-        ))
-        .await?;
+    let teams = all_teams(&ctx).await?;
     let standing = standings(&ctx.db, at, None).await?;
     let mut rows = Vec::with_capacity(teams.len());
-    for team in teams.iter().map(team_view) {
-        let team = team?;
+    for team in teams {
         let mine: Vec<_> = standing
             .iter()
             .filter(|s| team.members.contains(&s.owner_ref))

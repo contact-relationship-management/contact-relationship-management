@@ -3,16 +3,20 @@
 //! Rates are entered by hand, one per pair and day, each with its source; nothing is fetched. A
 //! report that converts reads them through [`crate::rules::fx`]. Changing a rate is a write and is
 //! audited with the pair, the rate, the day and the source.
+//!
+//! The routes run on `sqlx` (CRM-D24, CRM-T205). The conversions below stay on `ConnectionTrait`
+//! until the reports that call them move.
 
 use axa::prelude::*;
 use chrono::NaiveDate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
+use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::views::owner_of;
 use super::{PidPath, PidRef};
 use crate::auth::MaybeAuthUser;
+use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::fx::{self, Rate};
@@ -58,21 +62,29 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
     Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
-const COLUMNS: &str = "pid, from_currency, to_currency, rate_ppb, effective_on, source, set_by";
+/// A stored rate, as `sqlx` reads it.
+struct Row {
+    pid: Uuid,
+    from_currency: String,
+    to_currency: String,
+    rate_ppb: i64,
+    effective_on: NaiveDate,
+    source: String,
+    set_by: String,
+}
 
-fn view(row: &sea_orm::QueryResult) -> Result<RateView> {
-    Ok(RateView {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        from: row
-            .try_get::<String>("", "from_currency")?
-            .trim()
-            .to_string(),
-        to: row.try_get::<String>("", "to_currency")?.trim().to_string(),
-        rate: fx::format_rate(row.try_get("", "rate_ppb")?),
-        effective_on: row.try_get("", "effective_on")?,
-        source: row.try_get("", "source")?,
-        set_by: row.try_get("", "set_by")?,
-    })
+impl From<Row> for RateView {
+    fn from(row: Row) -> Self {
+        Self {
+            pid: row.pid.to_string(),
+            from: row.from_currency.trim().to_string(),
+            to: row.to_currency.trim().to_string(),
+            rate: fx::format_rate(row.rate_ppb),
+            effective_on: row.effective_on,
+            source: row.source,
+            set_by: row.set_by,
+        }
+    }
 }
 
 /// Every recorded rate that involves `currency`, for a conversion into or out of it.
@@ -269,17 +281,15 @@ pub(crate) async fn convert_rows_dated(
 /// `GET /api/fx-rates` — the recorded rates, newest first (at most 1000).
 #[debug_handler]
 async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {COLUMNS} FROM fx_rates \
-                 ORDER BY effective_on DESC, from_currency, to_currency LIMIT $1"
-            ),
-            [MAX_LISTED.into()],
-        ))
-        .await?;
-    format::json(rows.iter().map(view).collect::<Result<Vec<_>>>()?)
+    let rows = sqlx::query_as!(
+        Row,
+        "SELECT pid, from_currency, to_currency, rate_ppb, effective_on, source, set_by \
+         FROM fx_rates ORDER BY effective_on DESC, from_currency, to_currency LIMIT $1",
+        MAX_LISTED,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    format::json(rows.into_iter().map(RateView::from).collect::<Vec<_>>())
 }
 
 /// `PUT /api/fx-rates` — set a rate; audited.
@@ -311,34 +321,30 @@ async fn set(
     };
 
     let who = owner_of(&caller)?;
-    let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!(
-                "INSERT INTO fx_rates (pid, from_currency, to_currency, rate_ppb, effective_on, \
-                                       source, set_by) \
-                 VALUES ($1, $2, $3, $4, $5, $6, $7) \
-                 ON CONFLICT (from_currency, to_currency, effective_on) DO UPDATE SET \
-                   rate_ppb = EXCLUDED.rate_ppb, source = EXCLUDED.source, \
-                   set_by = EXCLUDED.set_by, updated_at = now() \
-                 RETURNING {COLUMNS}"
-            ),
-            [
-                Uuid::new_v4().into(),
-                from.as_str().into(),
-                to.as_str().into(),
-                ppb.into(),
-                payload.effective_on.into(),
-                source.as_str().into(),
-                who.into(),
-            ],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let made = view(&row)?;
-    let pid: Uuid = row.try_get("", "pid")?;
-    Audit::record(
-        &txn,
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = sqlx::query_as!(
+        Row,
+        "INSERT INTO fx_rates (pid, from_currency, to_currency, rate_ppb, effective_on, \
+                               source, set_by) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7) \
+         ON CONFLICT (from_currency, to_currency, effective_on) DO UPDATE SET \
+           rate_ppb = EXCLUDED.rate_ppb, source = EXCLUDED.source, \
+           set_by = EXCLUDED.set_by, updated_at = now() \
+         RETURNING pid, from_currency, to_currency, rate_ppb, effective_on, source, set_by",
+        Uuid::new_v4(),
+        from.as_str(),
+        to.as_str(),
+        ppb,
+        payload.effective_on,
+        source.as_str(),
+        who,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    let pid = row.pid;
+    let made = RateView::from(row);
+    Audit::record_on(
+        &mut txn,
         "fx_rate",
         pid,
         "set",
@@ -360,17 +366,19 @@ async fn remove(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!("DELETE FROM fx_rates WHERE pid = $1 RETURNING {COLUMNS}"),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let gone = view(&row)?;
-    Audit::record(
-        &txn,
+    let mut txn = db::pool(&ctx).begin().await?;
+    let gone: RateView = sqlx::query_as!(
+        Row,
+        "DELETE FROM fx_rates WHERE pid = $1 \
+         RETURNING pid, from_currency, to_currency, rate_ppb, effective_on, source, set_by",
+        pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?
+    .into();
+    Audit::record_on(
+        &mut txn,
         "fx_rate",
         pid,
         "deleted",

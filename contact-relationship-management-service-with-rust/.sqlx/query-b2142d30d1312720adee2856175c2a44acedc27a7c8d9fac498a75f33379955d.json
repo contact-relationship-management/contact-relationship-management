@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE saved_views SET kind = $2, name = $3, filter = $4, sort_field = $5, sort_direction = $6, columns = $7, shared = $8, updated_at = now() WHERE pid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Jsonb",
+        "Varchar",
+        "Varchar",
+        "Jsonb",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b2142d30d1312720adee2856175c2a44acedc27a7c8d9fac498a75f33379955d"
+}
