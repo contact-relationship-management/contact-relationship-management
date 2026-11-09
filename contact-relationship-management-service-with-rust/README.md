@@ -7,7 +7,8 @@ forecasting, consent-first email campaigns / segments / nurture
 sequences, support tickets with SLA tracking, a versioned knowledge
 base, and derived dashboards (win rate, pipeline value, campaign
 ROI, CLV, SLA health). Implemented in Rust on
-[Axum](https://docs.rs/axum) and [axa](https://crates.io/crates/axa) (SeaORM + PostgreSQL). No built-in
+[Axum](https://docs.rs/axum) and [axa](https://crates.io/crates/axa)
+(PostgreSQL through sqlx and SeaORM, moving to sqlx under CRM-D24). No built-in
 UI — the
 [Svelte sibling](../contact-relationship-management-ui-with-svelte/)
 provides the sales, marketing, and support client.

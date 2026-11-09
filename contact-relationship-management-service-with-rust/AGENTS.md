@@ -6,7 +6,8 @@ subproject. Read this **before** opening a PR.
 ## What this project is
 
 A **back-end JSON API**, written in Rust on [Axum](https://docs.rs/axum) and
-[axa](https://crates.io/crates/axa) (SeaORM + PostgreSQL), for contact relationship management:
+[axa](https://crates.io/crates/axa) (PostgreSQL through sqlx and SeaORM, moving to
+sqlx under CRM-D24), for contact relationship management:
 contacts and accounts with relationship timelines, leads with
 rule-based scoring, deal pipelines (Kanban) and stage-weighted
 forecasting, email campaigns / segments / nurture sequences with

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `rust-version` is 1.97, down from 1.99 (CRM-T225). The code built and its tests passed on 1.97.1. Not published.
+
 ## 0.2.0
 
 Breaking. Published to crates.io on 2026-10-31 by the maintainer; the service depends on it from the same day.

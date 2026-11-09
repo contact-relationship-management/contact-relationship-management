@@ -9,7 +9,8 @@ Entry point for AI coding agents at the repository root. Three projects live her
 | Matcher (pure Rust library) | `contact-relationship-management-matcher-with-rust` | [README.md](contact-relationship-management-matcher-with-rust/README.md) |
 | Client UI (SvelteKit, Svelte 5) | `contact-relationship-management-ui-with-svelte` | [AGENTS.md](contact-relationship-management-ui-with-svelte/AGENTS.md) |
 
-Rust 1.99.1 (pinned in `rust-toolchain.toml`), Node 26, pnpm, Podman.
+Rust 1.99.1 (pinned in `rust-toolchain.toml`; the crates declare `rust-version = "1.97"`, two releases back), Node 26, pnpm,
+Podman.
 
 ## Works on its own
 

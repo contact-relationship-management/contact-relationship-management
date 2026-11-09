@@ -4,7 +4,7 @@
 name = "contact-relationship-management"
 version = "0.1.5"
 edition = "2024"
-rust-version = "1.99"
+rust-version = "1.97"
 publish = true
 default-run = "contact-relationship-management"
 authors = ["Joel Parker Henderson <joel@joelparkerhenderson.com>"]

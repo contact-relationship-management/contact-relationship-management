@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — minimum Rust 1.97 (CRM-T225)
+
+- `rust-version` is 1.97 here and in `migration`. The published matcher 0.2.0 still declares
+  1.99, so a 1.97 build of the service waits on its next release.
+
 ### Changed — nine controllers on sqlx (CRM-T205, CRM-D24)
 
 - The routes of `views`, `reports`, `templates`, `calendars`, `teams`, `territories`, `fx_rates`,

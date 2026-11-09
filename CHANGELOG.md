@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — dependencies and minimum Rust (CRM-T225, 2026-11-09)
+
+- Front-end and CI tool updates, the Lily Design System's latest releases, and the Rust crates
+  declare 1.97 as their minimum (the toolchain stays at 1.99.1).
+
 ### Changed — more of the service on sqlx (CRM-T205, 2026-11-09)
 
 - Saved views, reports, email templates, business calendars, teams, territories, exchange rates,
