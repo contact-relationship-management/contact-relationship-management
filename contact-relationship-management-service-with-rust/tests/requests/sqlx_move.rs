@@ -5,7 +5,6 @@
 use axa::AppContext;
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use contact_relationship_management::controllers::organization;
 use contact_relationship_management::db::{self, Bridge};
 use contact_relationship_management::models::_entities::{activities, contacts};
 use contact_relationship_management::models::audit_logs::{self, Model as Audit, verify_chain};
@@ -298,14 +297,6 @@ async fn the_bridge_carries_what_seaorm_code_does() {
         )
         .await
         .unwrap();
-        assert_eq!(
-            organization::periods(&bridge)
-                .await
-                .unwrap()
-                .fiscal_start_month,
-            1
-        );
-        assert_eq!(organization::stalled_after_days(&bridge).await.unwrap(), 14);
 
         // A failed statement is `SeaORM`'s error, so a helper handles it the same.
         let refused = bridge

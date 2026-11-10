@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM workflow_runs WHERE workflow_pid = $1 AND outcome = ANY($2) AND created_at > now() - interval '1 minute'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "6fa002ee04dfdc465464f807f9146573f57c21bd3f5997910e0541760e1f30f7"
+}

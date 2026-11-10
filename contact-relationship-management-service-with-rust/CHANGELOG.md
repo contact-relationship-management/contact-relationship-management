@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — workflow engine and consents on sqlx (CRM-T215, CRM-D24)
+
+- `workflows`, `consents`, `consent_profiles`, `nurture::enrol_in`, the organization's readers
+  and `quotas::standings` on `sqlx`; the engine takes a `PgConnection`, the readers any executor.
+- The attainment read binds the organization's zone.
+
 ### Changed — sales and workflow rules on sqlx (CRM-T214, CRM-D24)
 
 - `controllers::sales` and `controllers::workflows` on `query!`; `capture_lead` and

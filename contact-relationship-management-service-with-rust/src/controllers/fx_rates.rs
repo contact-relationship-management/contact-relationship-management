@@ -168,7 +168,7 @@ pub(crate) async fn convert_sums(
     sums: &[(String, String, i64)],
 ) -> Result<Done> {
     // The organization's today (CRM-T171): a rate dated today there is not in the future.
-    let today = super::organization::organization_today(&ctx.db).await?;
+    let today = super::organization::organization_today(crate::db::pool(ctx)).await?;
     let day = rate_date.unwrap_or(today);
     if day > today {
         let mut problems = Problems::new();

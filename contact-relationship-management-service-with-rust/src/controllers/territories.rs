@@ -275,7 +275,7 @@ async fn territory_attainment(
 ) -> Result<Response> {
     let to = match query.to {
         Some(to) => to,
-        None => super::organization::caller_today(&ctx.db, &headers).await?,
+        None => super::organization::caller_today(crate::db::pool(&ctx), &headers).await?,
     };
     let from = query
         .from
@@ -288,7 +288,7 @@ async fn territory_attainment(
     // The days deals closed on are the organization's (CRM-T181); its zone is bound, where the
     // `SeaORM` query wrote it into the SQL. Read before the connection below is taken, so a pool
     // of one is not asked for a second.
-    let calendar = super::organization::periods(&ctx.db).await?;
+    let calendar = super::organization::periods(crate::db::pool(&ctx)).await?;
     let mut conn = db::pool(&ctx).acquire().await?;
     let all = territories(&mut conn).await?;
     let deals = sqlx::query!(

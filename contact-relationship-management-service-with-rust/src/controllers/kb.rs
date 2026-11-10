@@ -77,7 +77,7 @@ enum Visit {
 /// logged, never shown: a reader is not refused an article because a counter could not be
 /// written.
 async fn bump(ctx: &AppContext, article: Uuid, visit: Visit) {
-    let day = match super::organization::organization_today(&ctx.db).await {
+    let day = match super::organization::organization_today(crate::db::pool(ctx)).await {
         Ok(day) => day,
         Err(error) => {
             tracing::warn!(%error, "could not count a knowledge-base visit");
@@ -366,7 +366,7 @@ async fn deflection(
     }
     // The organization's days (CRM-T179): the counts are kept by them, and a ticket counts on
     // the day it was opened there.
-    let calendar = super::organization::periods(&ctx.db).await?;
+    let calendar = super::organization::periods(crate::db::pool(&ctx)).await?;
     let to = crate::rules::periods::today_in(crate::clock::now(), calendar.zone);
     let from = to - chrono::Duration::days(days - 1);
     let pool = db::pool(&ctx);

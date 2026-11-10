@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT scan_after_id, every_minutes FROM workflows WHERE pid = $1 AND enabled FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "scan_after_id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "scan_after_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "every_minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "every_minutes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "b27b565a64e9c24efb9fe785d89a7d869a3e8769c0f8db0a55668028a79456ee"
+}

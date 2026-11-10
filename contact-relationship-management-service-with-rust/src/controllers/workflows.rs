@@ -333,7 +333,7 @@ async fn dry_run(
         conditions: stored.conditions,
         actions: stored.actions,
     };
-    let result: DryRun = engine::dry_run(&ctx.db, &workflow).await?;
+    let result: DryRun = engine::dry_run(&mut *pool.acquire().await?, &workflow).await?;
     Audit::record_read_on(
         pool,
         "workflow",
@@ -384,7 +384,7 @@ async fn runs(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Re
 #[debug_handler]
 async fn run_due(State(ctx): State<AppContext>) -> Result<Response> {
     format::json(Sweep {
-        runs: engine::run_due(&ctx.db).await?,
+        runs: engine::run_due(db::pool(&ctx)).await?,
     })
 }
 

@@ -286,10 +286,10 @@ async fn team_attainment(
 ) -> Result<Response> {
     let at = match query.at {
         Some(at) => at,
-        None => super::organization::caller_today(&ctx.db, &headers).await?,
+        None => super::organization::caller_today(crate::db::pool(&ctx), &headers).await?,
     };
     let teams = all_teams(&ctx).await?;
-    let standing = standings(&ctx.db, at, None).await?;
+    let standing = standings(crate::db::pool(&ctx), at, None).await?;
     let mut rows = Vec::with_capacity(teams.len());
     for team in teams {
         let mine: Vec<_> = standing

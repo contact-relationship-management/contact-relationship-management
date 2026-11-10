@@ -278,7 +278,7 @@ impl BackgroundWorker<()> for NotificationSweepWorker {
             );
         }
         // The same minute tick runs the scheduled workflows (CRM-R40).
-        crate::workflows::run_due(&self.ctx.db).await?;
+        crate::workflows::run_due(db::pool(&self.ctx)).await?;
         Ok(())
     }
 }

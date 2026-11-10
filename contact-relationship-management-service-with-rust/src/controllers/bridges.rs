@@ -510,7 +510,7 @@ async fn employment_check(
     let source = format!("overlap:{check_id}");
     // The day CRM records the employment from: CRM's own, in the organization's zone (CRM-T179).
     // WPM's answer carries no date (WPM-R208), so this is not a value of the bridge contract.
-    let today = super::organization::organization_today(&ctx.db).await?;
+    let today = super::organization::organization_today(crate::db::pool(&ctx)).await?;
     let mut txn = pool.begin().await?;
     for person_ref in &workers {
         record_worker(

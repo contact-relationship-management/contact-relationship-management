@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO notifications (pid, recipient_ref, kind, subject_kind, subject_pid, source_pid, source_key, suppressed) VALUES ($1, $2, 'workflow', $3, $4, $5, $6, FALSE) ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Uuid",
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f955466f81af9b2a2f71b28b549922c0167cfcc4e8294fd08a2a22f6036a6d87"
+}

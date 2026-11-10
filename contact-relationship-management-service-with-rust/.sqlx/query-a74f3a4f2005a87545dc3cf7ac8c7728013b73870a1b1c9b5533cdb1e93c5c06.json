@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT time_zone, fiscal_year_start_month, stalled_after_days FROM organization_settings WHERE id = 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time_zone",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "organization_settings",
+            "name": "time_zone"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "fiscal_year_start_month",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "organization_settings",
+            "name": "fiscal_year_start_month"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "stalled_after_days",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "organization_settings",
+            "name": "stalled_after_days"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a74f3a4f2005a87545dc3cf7ac8c7728013b73870a1b1c9b5533cdb1e93c5c06"
+}

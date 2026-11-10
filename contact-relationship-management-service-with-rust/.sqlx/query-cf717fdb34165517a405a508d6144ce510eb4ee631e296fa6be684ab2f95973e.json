@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT assign_cursor FROM workflows WHERE pid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "assign_cursor",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "assign_cursor"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cf717fdb34165517a405a508d6144ce510eb4ee631e296fa6be684ab2f95973e"
+}

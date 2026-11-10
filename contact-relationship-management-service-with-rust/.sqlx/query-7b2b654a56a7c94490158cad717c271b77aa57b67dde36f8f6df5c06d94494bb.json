@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.pid FROM contacts c WHERE c.deleted_at IS NULL AND c.merged_into_pid IS NULL AND (NOT $2 OR EXISTS (SELECT 1 FROM deals d WHERE d.primary_contact_pid = c.pid AND d.deleted_at IS NULL)) ORDER BY c.id LIMIT $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7b2b654a56a7c94490158cad717c271b77aa57b67dde36f8f6df5c06d94494bb"
+}

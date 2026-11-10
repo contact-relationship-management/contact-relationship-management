@@ -141,6 +141,10 @@ mod tests {
             "src/controllers/sales.rs",
             "a converted lead's new contact binds `EncryptedText`, which seals the channel",
         ),
+        (
+            "src/workflows.rs",
+            "a task's summary and a set channel bind `EncryptedText`, which seals them",
+        ),
     ];
 
     fn lower_words(sql: &str) -> Vec<String> {

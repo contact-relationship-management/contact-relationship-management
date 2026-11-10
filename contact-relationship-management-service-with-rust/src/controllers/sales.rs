@@ -3,7 +3,7 @@
 //! terminal closes, and the stage-weighted forecast.
 
 use crate::controllers::PidPath;
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::json::Json;
 use crate::models::DateTimeWithTimeZone;
 use crate::models::encrypted::EncryptedText;
@@ -203,7 +203,7 @@ pub(crate) async fn capture_lead(
     if new.source != "import" {
         let event = crate::workflows::Event::lead(row.pid);
         // The workflow engine takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
-        crate::workflows::fire(&Bridge::new(txn), &event, 0, actor).await?;
+        crate::workflows::fire(txn, &event, 0, actor).await?;
         // An action may have changed the lead (assigned an owner).
         row = rows::lead(&mut *txn, row.pid)
             .await?
@@ -703,7 +703,7 @@ async fn last_activities(
 /// The deals with their stalled flag, at `now`.
 async fn listed(ctx: &AppContext, rows: Vec<deals::Model>) -> Result<Vec<ListedDeal>> {
     use crate::rules::stalled;
-    let days = super::organization::stalled_after_days(&ctx.db).await?;
+    let days = super::organization::stalled_after_days(crate::db::pool(ctx)).await?;
     let pids: Vec<Uuid> = rows.iter().map(|d| d.pid).collect();
     let activity = last_activities(db::pool(ctx), &pids).await?;
     let now = crate::clock::now();
@@ -892,7 +892,7 @@ async fn deal_stage(
     if kind == "deal_stage_changed" {
         let event = crate::workflows::Event::deal_stage(row.pid, row.primary_contact_pid);
         // The workflow engine takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
-        crate::workflows::fire(&Bridge::new(&mut txn), &event, 0, caller.actor()).await?;
+        crate::workflows::fire(&mut txn, &event, 0, caller.actor()).await?;
     }
     txn.commit().await?;
     match kind {
@@ -1052,7 +1052,7 @@ async fn forecast_snapshot(
     let inputs = forecast_inputs(pool, &open).await?;
     let totals = analytics::forecast_by_currency(&inputs).map_err(|e| unprocessable(&e))?;
     // The day in the organization's zone, not UTC's (CRM-T171).
-    let taken_on = super::organization::organization_today(&ctx.db).await?;
+    let taken_on = super::organization::organization_today(crate::db::pool(&ctx)).await?;
     let mut txn = pool.begin().await?;
     let row = sqlx::query_as!(
         forecast_snapshots::Model,

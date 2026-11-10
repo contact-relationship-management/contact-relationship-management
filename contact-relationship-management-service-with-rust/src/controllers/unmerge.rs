@@ -25,7 +25,7 @@ use super::merge::{MOVES, authorize_destructive, conflict, ids, lock_rows, pick_
 use super::privacy::TOMBSTONE_PERSON;
 use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::models::_entities::{contact_merges, contacts};
 use crate::models::DateTimeWithTimeZone;
 use crate::models::audit_logs::Model as Audit;
@@ -338,12 +338,11 @@ async fn bring_back(
     }
     // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
     if result == "withdrawn" {
-        crate::consents::exit_enrolments(&Bridge::new(txn), merged.pid, tokens::DEFAULT_PURPOSE)
-            .await?;
+        crate::consents::exit_enrolments(&mut *txn, merged.pid, tokens::DEFAULT_PURPOSE).await?;
     }
     // The other purposes follow the same rule, each on its own (CRM-R29).
     let purposes = crate::consents::tighten(
-        &Bridge::new(txn),
+        &mut *txn,
         merged.pid,
         survivor.pid,
         &format!("unmerge:{}", survivor.pid),

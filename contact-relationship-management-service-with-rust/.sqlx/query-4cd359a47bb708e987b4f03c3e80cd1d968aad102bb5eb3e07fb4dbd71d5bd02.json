@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO contact_consents (contact_pid, purpose, state, changed_at) VALUES ($1, $2, $3, $4) ON CONFLICT (contact_pid, purpose, channel) DO UPDATE SET state = $3, changed_at = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4cd359a47bb708e987b4f03c3e80cd1d968aad102bb5eb3e07fb4dbd71d5bd02"
+}

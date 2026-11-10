@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO nurture_enrollments (pid, sequence_pid, contact_pid, current_step, next_due_at, status) VALUES ($1, $2, $3, 0, $4, 'active')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ac7f08cdf5e5b50ce16c1d43c3fb1895f4a3b73d42e7e8387121b7c707199b5d"
+}

@@ -4,12 +4,14 @@
 //!
 //! **No profile is today's rule.** When no row applies to a recipient the decision is opt-in, and no evidence is
 //! read: only `granted` sends.
+//!
+//! On `sqlx` since CRM-T215 (CRM-D24).
 
 use std::collections::BTreeMap;
 
 use chrono::{DateTime, NaiveDate, Utc};
-use sea_orm::{ConnectionTrait, DatabaseBackend, DbErr, Statement, Value};
 use serde::Serialize;
+use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
 use crate::models::_entities::contacts;
@@ -17,10 +19,6 @@ use crate::rules::consent_regime::{
     self as regime, Acknowledgement, Basis, Blocked, Layer, Link, MessageRules, Regime, Row, Rules,
     Status, Step,
 };
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
 
 /// Everything the resolver needs, read once per send or preview.
 #[derive(Debug, Clone, Default)]
@@ -38,59 +36,52 @@ pub struct Loaded {
 /// # Errors
 ///
 /// A database error.
-pub async fn load<C: ConnectionTrait>(db: &C) -> Result<Loaded, DbErr> {
+pub async fn load(db: &mut PgConnection) -> Result<Loaded, sqlx::Error> {
     let mut loaded = Loaded::default();
-    for row in db
-        .query_all_raw(stmt(
-            "SELECT code, layer, parent FROM consent_jurisdictions ORDER BY code",
-            [],
-        ))
+    for row in sqlx::query!("SELECT code, layer, parent FROM consent_jurisdictions ORDER BY code")
+        .fetch_all(&mut *db)
         .await?
     {
-        let layer: String = row.try_get("", "layer")?;
         loaded.links.push(Link {
-            code: row.try_get("", "code")?,
-            layer: Layer::parse(&layer).unwrap_or(Layer::National),
-            parent: row.try_get("", "parent")?,
+            code: row.code,
+            layer: Layer::parse(&row.layer).unwrap_or(Layer::National),
+            parent: row.parent,
         });
     }
-    for row in db
-        .query_all_raw(stmt(
-            "SELECT id, code, key, value, effective_from, effective_to, source, status \
-             FROM consent_profile_rows ORDER BY id",
-            [],
-        ))
-        .await?
+    for row in sqlx::query!(
+        "SELECT id, code, key, value, effective_from, effective_to, source, status \
+         FROM consent_profile_rows ORDER BY id"
+    )
+    .fetch_all(&mut *db)
+    .await?
     {
-        let key: String = row.try_get("", "key")?;
-        let raw: serde_json::Value = row.try_get("", "value")?;
-        let status: String = row.try_get("", "status")?;
-        let (Ok(value), Some(status)) = (regime::validate(&key, &raw), Status::parse(&status))
-        else {
+        let (Ok(value), Some(status)) = (
+            regime::validate(&row.key, &row.value),
+            Status::parse(&row.status),
+        ) else {
             continue;
         };
         loaded.rows.push(Row {
-            code: row.try_get("", "code")?,
-            key,
+            code: row.code,
+            key: row.key,
             value,
-            effective_from: row.try_get("", "effective_from")?,
-            effective_to: row.try_get("", "effective_to")?,
-            source: row.try_get("", "source")?,
+            effective_from: row.effective_from,
+            effective_to: row.effective_to,
+            source: row.source,
             status,
-            seq: row.try_get("", "id")?,
+            seq: row.id,
         });
     }
-    for row in db
-        .query_all_raw(stmt(
-            "SELECT code, max(through_id) AS through_id FROM consent_profile_acknowledgements \
-             GROUP BY code",
-            [],
-        ))
-        .await?
+    for row in sqlx::query!(
+        "SELECT code, max(through_id) AS \"through_id!\" FROM consent_profile_acknowledgements \
+         GROUP BY code"
+    )
+    .fetch_all(&mut *db)
+    .await?
     {
         loaded.acks.push(Acknowledgement {
-            code: row.try_get("", "code")?,
-            through_seq: row.try_get("", "through_id")?,
+            code: row.code,
+            through_seq: row.through_id,
         });
     }
     Ok(loaded)
@@ -132,34 +123,31 @@ impl Loaded {
 /// # Errors
 ///
 /// A database error.
-pub async fn evidence<C: ConnectionTrait>(
-    db: &C,
+pub async fn evidence<'e>(
+    db: impl PgExecutor<'e>,
     contact: Uuid,
-) -> Result<Vec<regime::Evidence>, DbErr> {
-    let rows = db
-        .query_all_raw(stmt(
-            "SELECT 'won_deal' AS kind, pid, closed_at AS at, NULL::varchar AS purpose FROM deals \
-               WHERE primary_contact_pid = $1 AND won AND closed_at IS NOT NULL AND deleted_at IS NULL \
-             UNION ALL \
-             SELECT 'inquiry', pid, created_at, purpose FROM form_submissions WHERE contact_pid = $1 \
-             UNION ALL \
-             SELECT 'inquiry', pid, opened_at, NULL FROM tickets \
-               WHERE contact_pid = $1 AND deleted_at IS NULL",
-            [contact.into()],
-        ))
-        .await?;
-    let mut out = Vec::new();
-    for row in rows {
-        let at: DateTime<chrono::FixedOffset> = row.try_get("", "at")?;
-        let pid: Uuid = row.try_get("", "pid")?;
-        out.push(regime::Evidence {
-            kind: row.try_get("", "kind")?,
-            pid: pid.to_string(),
-            at: at.to_utc(),
-            purpose: row.try_get("", "purpose")?,
-        });
-    }
-    Ok(out)
+) -> Result<Vec<regime::Evidence>, sqlx::Error> {
+    Ok(sqlx::query!(
+        "SELECT 'won_deal' AS \"kind!\", pid AS \"pid!\", closed_at AS \"at!\", \
+           NULL::varchar AS purpose FROM deals \
+           WHERE primary_contact_pid = $1 AND won AND closed_at IS NOT NULL AND deleted_at IS NULL \
+         UNION ALL \
+         SELECT 'inquiry', pid, created_at, purpose FROM form_submissions WHERE contact_pid = $1 \
+         UNION ALL \
+         SELECT 'inquiry', pid, opened_at, NULL FROM tickets \
+           WHERE contact_pid = $1 AND deleted_at IS NULL",
+        contact,
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|row| regime::Evidence {
+        kind: row.kind,
+        pid: row.pid.to_string(),
+        at: row.at,
+        purpose: row.purpose,
+    })
+    .collect())
 }
 
 /// A purpose, as an administrator keeps it (CRM-D21, "Purposes an administrator edits").
@@ -185,28 +173,23 @@ pub struct Purpose {
 /// # Errors
 ///
 /// A database error.
-pub async fn purposes<C: ConnectionTrait>(db: &C) -> Result<Vec<Purpose>, DbErr> {
-    let rows = db
-        .query_all_raw(stmt(
-            "SELECT key, position, names, descriptions, active, soft_opt_in_eligible \
-             FROM consent_purposes ORDER BY position",
-            [],
-        ))
-        .await?;
-    let mut out = Vec::new();
-    for row in rows {
-        let names: serde_json::Value = row.try_get("", "names")?;
-        let descriptions: serde_json::Value = row.try_get("", "descriptions")?;
-        out.push(Purpose {
-            key: row.try_get("", "key")?,
-            position: row.try_get("", "position")?,
-            names: serde_json::from_value(names).unwrap_or_default(),
-            descriptions: serde_json::from_value(descriptions).unwrap_or_default(),
-            active: row.try_get("", "active")?,
-            soft_opt_in_eligible: row.try_get("", "soft_opt_in_eligible")?,
-        });
-    }
-    Ok(out)
+pub async fn purposes<'e>(db: impl PgExecutor<'e>) -> Result<Vec<Purpose>, sqlx::Error> {
+    Ok(sqlx::query!(
+        "SELECT key, position, names, descriptions, active, soft_opt_in_eligible \
+         FROM consent_purposes ORDER BY position"
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|row| Purpose {
+        key: row.key,
+        position: row.position,
+        names: serde_json::from_value(row.names).unwrap_or_default(),
+        descriptions: serde_json::from_value(row.descriptions).unwrap_or_default(),
+        active: row.active,
+        soft_opt_in_eligible: row.soft_opt_in_eligible,
+    })
+    .collect())
 }
 
 /// The purpose named `key`, if it exists.
@@ -214,7 +197,10 @@ pub async fn purposes<C: ConnectionTrait>(db: &C) -> Result<Vec<Purpose>, DbErr>
 /// # Errors
 ///
 /// A database error.
-pub async fn purpose<C: ConnectionTrait>(db: &C, key: &str) -> Result<Option<Purpose>, DbErr> {
+pub async fn purpose<'e>(
+    db: impl PgExecutor<'e>,
+    key: &str,
+) -> Result<Option<Purpose>, sqlx::Error> {
     Ok(purposes(db).await?.into_iter().find(|p| p.key == key))
 }
 
@@ -223,10 +209,10 @@ pub async fn purpose<C: ConnectionTrait>(db: &C, key: &str) -> Result<Option<Pur
 /// # Errors
 ///
 /// A database error.
-pub async fn purpose_at<C: ConnectionTrait>(
-    db: &C,
+pub async fn purpose_at<'e>(
+    db: impl PgExecutor<'e>,
     position: i32,
-) -> Result<Option<Purpose>, DbErr> {
+) -> Result<Option<Purpose>, sqlx::Error> {
     Ok(purposes(db)
         .await?
         .into_iter()
@@ -280,25 +266,25 @@ impl Decision {
 /// # Errors
 ///
 /// A database error.
-pub async fn state_on<C: ConnectionTrait>(
-    db: &C,
+pub async fn state_on<'e>(
+    db: impl PgExecutor<'e>,
     contact: &contacts::Model,
     purpose: &str,
     channel: &str,
-) -> Result<String, DbErr> {
+) -> Result<String, sqlx::Error> {
     if channel == regime::SEND_CHANNEL {
         return crate::consents::state_of(db, contact, purpose).await;
     }
-    let row = db
-        .query_one_raw(stmt(
-            "SELECT state FROM contact_consents WHERE contact_pid = $1 AND purpose = $2 AND channel = $3",
-            [contact.pid.into(), purpose.into(), channel.into()],
-        ))
-        .await?;
-    Ok(match row {
-        Some(row) => row.try_get("", "state")?,
-        None => "never".to_string(),
-    })
+    Ok(sqlx::query_scalar!(
+        "SELECT state FROM contact_consents WHERE contact_pid = $1 AND purpose = $2 \
+         AND channel = $3",
+        contact.pid,
+        purpose,
+        channel,
+    )
+    .fetch_optional(db)
+    .await?
+    .unwrap_or_else(|| "never".to_string()))
 }
 
 /// Decide whether a message for `purpose` on `channel` may go to `contact`, sent under `send_code` (the campaign's
@@ -309,8 +295,8 @@ pub async fn state_on<C: ConnectionTrait>(
 ///
 /// A database error.
 #[allow(clippy::too_many_arguments)] // the decision's inputs, each named in the design
-pub async fn decide<C: ConnectionTrait>(
-    db: &C,
+pub async fn decide(
+    db: &mut PgConnection,
     loaded: &Loaded,
     contact: &contacts::Model,
     purpose: &str,
@@ -318,8 +304,8 @@ pub async fn decide<C: ConnectionTrait>(
     send_code: Option<&str>,
     now: DateTime<Utc>,
     as_of: NaiveDate,
-) -> Result<Decision, DbErr> {
-    let state = state_on(db, contact, purpose, channel).await?;
+) -> Result<Decision, sqlx::Error> {
+    let state = state_on(&mut *db, contact, purpose, channel).await?;
     let code = regime::applicable_code(contact.consent_jurisdiction.as_deref(), send_code)
         .map(ToString::to_string);
     let rules = loaded.rules(channel, code.as_deref(), as_of);
@@ -327,10 +313,10 @@ pub async fn decide<C: ConnectionTrait>(
         && matches!(state.as_str(), "never" | "pending");
     let (eligible, evidence) = if needs_evidence {
         (
-            crate::consent_profiles::purpose(db, purpose)
+            crate::consent_profiles::purpose(&mut *db, purpose)
                 .await?
                 .is_some_and(|p| p.soft_opt_in_eligible),
-            evidence(db, contact.pid).await?,
+            evidence(&mut *db, contact.pid).await?,
         )
     } else {
         (false, Vec::new())

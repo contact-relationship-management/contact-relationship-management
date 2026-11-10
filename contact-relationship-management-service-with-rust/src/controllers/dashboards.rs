@@ -528,7 +528,7 @@ async fn account_clv(
     if let (Some(target), true, false) = (&query.convert_to, query.rate_basis.is_some(), masked) {
         // Each deal at the rate of the day it closed, rounded once per deal (CRM-R70); the day is
         // the organization's (CRM-T181).
-        let calendar = super::organization::periods(&ctx.db).await?;
+        let calendar = super::organization::periods(crate::db::pool(&ctx)).await?;
         let deals_by_day: Vec<(chrono::NaiveDate, String, i64)> = won
             .iter()
             .map(|deal| {

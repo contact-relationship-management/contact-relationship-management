@@ -21,7 +21,7 @@ use uuid::Uuid;
 
 use super::marketing::consent::apply_consent_in;
 use super::sales::{NewLead, capture_lead};
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::mail;
 use crate::models::_entities::contacts;
 use crate::models::audit_logs::Model as Audit;
@@ -290,7 +290,7 @@ async fn accept(
     let contact = find_or_create_contact(&mut txn, &person_ref, name, &actor).await?;
     let lead_pid = find_or_create_lead(&mut txn, &contact, name, email, &actor).await?;
     // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
-    let state = crate::consents::state_of(&Bridge::new(&mut txn), &contact, &form.purpose).await?;
+    let state = crate::consents::state_of(&mut *txn, &contact, &form.purpose).await?;
     if state != "pending" && state != "granted" {
         apply_consent_in(
             &mut txn,
@@ -549,13 +549,8 @@ pub(crate) async fn on_confirmed(
         .fetch_one(&mut *txn)
         .await?;
         if !already {
-            super::marketing::nurture::enrol_in(
-                &Bridge::new(&mut *txn),
-                &sequence,
-                contact,
-                Some("web_form"),
-            )
-            .await?;
+            super::marketing::nurture::enrol_in(&mut *txn, &sequence, contact, Some("web_form"))
+                .await?;
         }
     }
     sqlx::query!(

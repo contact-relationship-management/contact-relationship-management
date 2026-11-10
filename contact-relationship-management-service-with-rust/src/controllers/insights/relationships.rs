@@ -228,7 +228,8 @@ pub(super) async fn memberships_view(
 ) -> Result<Response> {
     let window = days_or(query.days, 90);
     // The caller's day (CRM-T179), as attainment's.
-    let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
+    let today =
+        crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
     let horizon = today + chrono::Days::new(u64::try_from(window).unwrap_or(90));
     let rows: Vec<memberships::Model> = live!(memberships, &ctx);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);

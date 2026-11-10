@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT state FROM contact_consents WHERE contact_pid = $1 AND purpose = $2 AND channel = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "state",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contact_consents",
+            "name": "state"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "17efde0dde6e7922f2b7771656b30dfb6095755424bf1a3a1ed9bf2955aae4a1"
+}

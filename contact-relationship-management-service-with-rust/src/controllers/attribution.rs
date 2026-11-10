@@ -300,7 +300,7 @@ struct Asked {
 /// The won deals closed in the range, newest first, one more than the cap so a cut is seen.
 async fn won_deals(ctx: &AppContext, query: &AttributionQuery) -> Result<Vec<Won>> {
     // The days deals closed on are the organization's (CRM-T181), as its reports' days are.
-    let calendar = super::organization::periods(&ctx.db).await?;
+    let calendar = super::organization::periods(crate::db::pool(ctx)).await?;
     // `closed_on` is the closing day in that zone, bound by name as `rules::periods::local_day`
     // writes it.
     let rows = sqlx::query!(
@@ -529,7 +529,7 @@ async fn convert_credit(
         return Ok(Some(fx_rates::Done {
             rows,
             // Not shown: with a basis each deal has its own day, and the answer says `null`.
-            rate_date: super::organization::organization_today(&ctx.db).await?,
+            rate_date: super::organization::organization_today(crate::db::pool(ctx)).await?,
             rates,
             unconverted,
         }));

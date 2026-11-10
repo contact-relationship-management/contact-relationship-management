@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, name, trigger, conditions, actions FROM workflows WHERE enabled AND trigger = $1 ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "trigger",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "trigger"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "conditions",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "conditions"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "actions",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "actions"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7554d2e390b1f59653b877e40effc65055e333b96914e4dfe4e3d2fa2f3f6091"
+}

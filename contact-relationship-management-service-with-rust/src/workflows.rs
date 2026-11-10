@@ -5,21 +5,22 @@
 //! and the run log commit together or not at all. The actions of one run sit in a savepoint: if one
 //! fails, none of them stays, the run is logged as failed, and the triggering write is unharmed.
 //! A failed *log* write does fail the triggering write, like any audit row (CRM-R19).
+//!
+//! On `sqlx` since CRM-T215 (CRM-D24): a run takes the triggering write's connection, and its
+//! savepoint is SQL.
 
 use std::future::Future;
 use std::pin::Pin;
 
-use sea_orm::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait, DatabaseBackend,
-    DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Statement,
-    TransactionTrait, Value,
-};
 use serde::Serialize;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
-use crate::models::_entities::{activities, contacts, leads, nurture_enrollments};
+use crate::models::_entities::{contacts, leads};
+use crate::models::DateTimeWithTimeZone;
 use crate::models::audit_logs::Model as Audit;
-use crate::models::live::FindLive;
+use crate::models::encrypted::EncryptedText;
+use crate::models::rows;
 use crate::rules::segment::{ContactFacts, clauses_match};
 use crate::rules::workflows::{Action, Conditions, SCHEDULE_BATCH, SCHEDULE_SCAN, guard, pick};
 use crate::streaming;
@@ -115,56 +116,71 @@ fn limit(n: usize) -> i64 {
     i64::try_from(n).unwrap_or(i64::MAX)
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
+/// One `workflows` row as a run reads it.
+struct Stored {
+    pid: Uuid,
+    name: String,
+    trigger: String,
+    conditions: serde_json::Value,
+    actions: serde_json::Value,
 }
 
-fn read(row: &sea_orm::QueryResult) -> Result<Workflow> {
-    let conditions: serde_json::Value = row.try_get("", "conditions")?;
-    let actions: serde_json::Value = row.try_get("", "actions")?;
-    Ok(Workflow {
-        pid: row.try_get("", "pid")?,
-        name: row.try_get("", "name")?,
-        trigger: row.try_get("", "trigger")?,
-        conditions: serde_json::from_value(conditions).unwrap_or_default(),
-        actions: serde_json::from_value(actions).unwrap_or_default(),
-    })
+impl From<Stored> for Workflow {
+    fn from(row: Stored) -> Self {
+        Self {
+            pid: row.pid,
+            name: row.name,
+            trigger: row.trigger,
+            conditions: serde_json::from_value(row.conditions).unwrap_or_default(),
+            actions: serde_json::from_value(row.actions).unwrap_or_default(),
+        }
+    }
 }
 
 /// The enabled workflows with this trigger.
-async fn enabled<C: ConnectionTrait>(db: &C, trigger: &str) -> Result<Vec<Workflow>> {
-    let rows = db
-        .query_all_raw(stmt(
-            "SELECT pid, name, trigger, conditions, actions FROM workflows \
-             WHERE enabled AND trigger = $1 ORDER BY id",
-            [trigger.to_string().into()],
-        ))
-        .await?;
-    rows.iter().map(read).collect()
+async fn enabled<'e>(db: impl sqlx::PgExecutor<'e>, trigger: &str) -> Result<Vec<Workflow>> {
+    Ok(sqlx::query_as!(
+        Stored,
+        "SELECT pid, name, trigger, conditions, actions FROM workflows \
+         WHERE enabled AND trigger = $1 ORDER BY id",
+        trigger,
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(Into::into)
+    .collect())
 }
 
 /// A contact and the tier of its account, if it is live.
-async fn load<C: ConnectionTrait>(
-    db: &C,
+async fn load(
+    db: &mut PgConnection,
     pid: Uuid,
 ) -> Result<Option<(contacts::Model, Option<String>)>> {
-    let Some(contact) = contacts::Entity::find_live()
-        .filter(contacts::Column::Pid.eq(pid))
-        .filter(contacts::Column::MergedIntoPid.is_null())
-        .one(db)
-        .await?
+    let Some(contact) = sqlx::query_as!(
+        contacts::Model,
+        "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+        status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+        \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+        given_name, consent_jurisdiction FROM contacts WHERE pid = $1 AND deleted_at IS NULL AND \
+        merged_into_pid IS NULL",
+        pid,
+    )
+    .fetch_optional(&mut *db)
+    .await?
     else {
         return Ok(None);
     };
     let tier = match contact.account_pid {
-        Some(account) => db
-            .query_one_raw(stmt(
+        Some(account) => {
+            sqlx::query_scalar!(
                 "SELECT tier FROM accounts WHERE pid = $1 AND deleted_at IS NULL",
-                [account.into()],
-            ))
+                account,
+            )
+            .fetch_optional(&mut *db)
             .await?
-            .map(|r| r.try_get::<String>("", "tier"))
-            .transpose()?,
+        }
         None => None,
     };
     Ok(Some((contact, tier)))
@@ -223,11 +239,9 @@ impl Target {
 }
 
 /// The record an event is about, when it is still there.
-async fn load_target<C: ConnectionTrait>(db: &C, event: &Event) -> Result<Option<Target>> {
+async fn load_target(db: &mut PgConnection, event: &Event) -> Result<Option<Target>> {
     if event.subject_kind == "lead" {
-        return Ok(leads::Entity::find_live()
-            .filter(leads::Column::Pid.eq(event.subject_pid))
-            .one(db)
+        return Ok(rows::lead(&mut *db, event.subject_pid)
             .await?
             .map(|lead| Target::Lead(Box::new(lead))));
     }
@@ -245,33 +259,30 @@ async fn load_target<C: ConnectionTrait>(db: &C, event: &Event) -> Result<Option
 /// # Errors
 ///
 /// A database error, including a failed write of the run log.
-pub fn fire<'a, C: ConnectionTrait>(
-    txn: &'a C,
+pub fn fire<'a>(
+    txn: &'a mut PgConnection,
     event: &'a Event,
     depth: i32,
     actor: Option<&'a str>,
 ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>> {
     Box::pin(async move {
-        for workflow in enabled(txn, event.trigger).await? {
-            run_one(txn, &workflow, event, depth, actor).await?;
+        for workflow in enabled(&mut *txn, event.trigger).await? {
+            run_one(&mut *txn, &workflow, event, depth, actor).await?;
         }
         Ok(())
     })
 }
 
-/// How many runs of the workflow completed in the last minute.
-async fn recent_runs<C: ConnectionTrait>(db: &C, workflow: Uuid, outcomes: &str) -> Result<i64> {
-    let row = db
-        .query_one_raw(stmt(
-            &format!(
-                "SELECT count(*) AS n FROM workflow_runs WHERE workflow_pid = $1 \
-                 AND outcome IN ({outcomes}) AND created_at > now() - interval '1 minute'"
-            ),
-            [workflow.into()],
-        ))
-        .await?
-        .ok_or(axa::Error::NotFound)?;
-    Ok(row.try_get("", "n")?)
+/// How many runs of the workflow completed in the last minute with one of `outcomes`.
+async fn recent_runs(db: &mut PgConnection, workflow: Uuid, outcomes: &[&str]) -> Result<i64> {
+    Ok(sqlx::query_scalar!(
+        "SELECT count(*) AS \"n!\" FROM workflow_runs WHERE workflow_pid = $1 \
+         AND outcome = ANY($2) AND created_at > now() - interval '1 minute'",
+        workflow,
+        outcomes as &[&str],
+    )
+    .fetch_one(db)
+    .await?)
 }
 
 struct Logged<'a> {
@@ -285,29 +296,29 @@ struct Logged<'a> {
 }
 
 /// Write the run log row and its audit row.
-async fn log_run<C: ConnectionTrait>(txn: &C, log: &Logged<'_>, actor: Option<&str>) -> Result<()> {
-    txn.execute_raw(stmt(
+async fn log_run(txn: &mut PgConnection, log: &Logged<'_>, actor: Option<&str>) -> Result<()> {
+    sqlx::query!(
         "INSERT INTO workflow_runs (pid, workflow_pid, workflow_name, trigger, subject_kind, \
-         subject_pid, depth, outcome, reason, steps) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-        [
-            log.run.into(),
-            log.workflow.pid.into(),
-            log.workflow.name.clone().into(),
-            log.event.trigger.to_string().into(),
-            log.event.subject_kind.to_string().into(),
-            log.event.subject_pid.into(),
-            log.depth.into(),
-            log.outcome.to_string().into(),
-            log.reason.to_string().into(),
-            serde_json::json!(log.steps).into(),
-        ],
-    ))
+         subject_pid, depth, outcome, reason, steps) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+        log.run,
+        log.workflow.pid,
+        log.workflow.name,
+        log.event.trigger,
+        log.event.subject_kind,
+        log.event.subject_pid,
+        log.depth,
+        log.outcome,
+        log.reason,
+        serde_json::json!(log.steps),
+    )
+    .execute(&mut *txn)
     .await?;
     let action = match log.outcome {
         "done" => "fired",
         other => other,
     };
-    Audit::record(
+    Audit::record_on(
         txn,
         "workflow_run",
         log.run,
@@ -329,14 +340,14 @@ async fn log_run<C: ConnectionTrait>(txn: &C, log: &Logged<'_>, actor: Option<&s
 /// # Errors
 ///
 /// A database error outside the actions, or a failed write of the run log.
-pub async fn run_one<C: ConnectionTrait>(
-    txn: &C,
+pub async fn run_one(
+    txn: &mut PgConnection,
     workflow: &Workflow,
     event: &Event,
     depth: i32,
     actor: Option<&str>,
 ) -> Result<bool> {
-    let Some(target) = load_target(txn, event).await? else {
+    let Some(target) = load_target(&mut *txn, event).await? else {
         return Ok(false);
     };
     if !target.meets(&workflow.conditions) {
@@ -345,11 +356,11 @@ pub async fn run_one<C: ConnectionTrait>(
     let run = Uuid::new_v4();
     let held = guard(
         depth,
-        recent_runs(txn, workflow.pid, "'done', 'failed'").await?,
+        recent_runs(&mut *txn, workflow.pid, &["done", "failed"]).await?,
     );
     if let Some(why) = held {
         // One note a minute is enough; a storm must not fill the log.
-        if recent_runs(txn, workflow.pid, "'blocked'").await? == 0 {
+        if recent_runs(&mut *txn, workflow.pid, &["blocked"]).await? == 0 {
             let log = Logged {
                 run,
                 workflow,
@@ -359,7 +370,7 @@ pub async fn run_one<C: ConnectionTrait>(
                 reason: why,
                 steps: &[],
             };
-            log_run(txn, &log, actor).await?;
+            log_run(&mut *txn, &log, actor).await?;
         }
         return Ok(false);
     }
@@ -370,11 +381,11 @@ pub async fn run_one<C: ConnectionTrait>(
         workflow.conditions.describe()
     );
     let by = format!("workflow:{}", workflow.pid);
-    // A savepoint written as SQL, so the engine runs on any connection in a transaction (a
-    // `SeaORM` one or a `sqlx` one through `db::Bridge`), not only on `TransactionTrait`
-    // (CRM-D24). Named for the run, as a workflow's action can fire another inside this one.
+    // A savepoint written as SQL, named for the run, as a workflow's action can fire another
+    // inside this one (CRM-D24). The name is the run's id in hex, so it is safe in the SQL.
     let savepoint = format!("workflow_{}", run.simple());
-    txn.execute_unprepared(&format!("SAVEPOINT {savepoint}"))
+    sqlx::raw_sql(sqlx::AssertSqlSafe(format!("SAVEPOINT {savepoint}")))
+        .execute(&mut *txn)
         .await?;
     let mut steps = Vec::new();
     let mut failed = false;
@@ -386,7 +397,7 @@ pub async fn run_one<C: ConnectionTrait>(
             depth,
             by: &by,
         };
-        match act(txn, &ctx, &target, action).await {
+        match act(&mut *txn, &ctx, &target, action).await {
             Ok((result, detail)) => steps.push(step(action, result, detail)),
             Err(error) => {
                 tracing::warn!(%error, workflow = %workflow.pid, "workflow action failed");
@@ -396,19 +407,20 @@ pub async fn run_one<C: ConnectionTrait>(
             }
         }
     }
+    let end = if failed {
+        format!("ROLLBACK TO SAVEPOINT {savepoint}; RELEASE SAVEPOINT {savepoint}")
+    } else {
+        format!("RELEASE SAVEPOINT {savepoint}")
+    };
+    sqlx::raw_sql(sqlx::AssertSqlSafe(end))
+        .execute(&mut *txn)
+        .await?;
     if failed {
-        txn.execute_unprepared(&format!("ROLLBACK TO SAVEPOINT {savepoint}"))
-            .await?;
-        txn.execute_unprepared(&format!("RELEASE SAVEPOINT {savepoint}"))
-            .await?;
         for s in &mut steps {
             if s.result == "done" {
                 s.result = "rolled_back".to_string();
             }
         }
-    } else {
-        txn.execute_unprepared(&format!("RELEASE SAVEPOINT {savepoint}"))
-            .await?;
     }
     let outcome = if failed { "failed" } else { "done" };
     let log = Logged {
@@ -420,7 +432,7 @@ pub async fn run_one<C: ConnectionTrait>(
         reason: &reason,
         steps: &steps,
     };
-    log_run(txn, &log, actor).await?;
+    log_run(&mut *txn, &log, actor).await?;
     Ok(true)
 }
 
@@ -433,8 +445,8 @@ struct ActionContext<'a> {
 }
 
 /// Do one action; returns its result word and a reason.
-async fn act<C: ConnectionTrait>(
-    txn: &C,
+async fn act(
+    txn: &mut PgConnection,
     ctx: &ActionContext<'_>,
     target: &Target,
     action: &Action,
@@ -450,50 +462,46 @@ async fn act<C: ConnectionTrait>(
             // (CRM-T179).
             let due = match *due_in_days {
                 Some(d) => Some(
-                    crate::controllers::organization::organization_today(txn).await?
+                    crate::controllers::organization::organization_today(&mut *txn).await?
                         + chrono::Duration::days(i64::from(d)),
                 ),
                 None => None,
             };
-            let row = activities::ActiveModel {
-                pid: ActiveValue::set(Uuid::new_v4()),
-                subject_kind: ActiveValue::set(kind.to_string()),
-                subject_pid: ActiveValue::set(subject),
-                kind: ActiveValue::set("task".to_string()),
-                occurred_at: ActiveValue::set(crate::clock::now().into()),
-                actor_ref: ActiveValue::set(None),
-                summary: ActiveValue::set(summary.clone().into()),
-                due_on: ActiveValue::set(due),
-                assignee_ref: ActiveValue::set(assignee_ref.clone()),
-                remind_at: ActiveValue::set(None),
-                done: ActiveValue::set(false),
-                sentiment: ActiveValue::set(None),
-                deleted_at: ActiveValue::set(None),
-                ..Default::default()
-            }
-            .insert(txn)
+            // `summary` is sealed: binding `EncryptedText` seals it (CRM-T41).
+            let pid = Uuid::new_v4();
+            sqlx::query!(
+                "INSERT INTO activities (pid, subject_kind, subject_pid, kind, occurred_at, \
+                 summary, due_on, assignee_ref, done) \
+                 VALUES ($1, $2, $3, 'task', $4, $5, $6, $7, false)",
+                pid,
+                kind,
+                subject,
+                crate::clock::now(),
+                EncryptedText(summary.clone()) as _,
+                due,
+                assignee_ref.as_deref(),
+            )
+            .execute(&mut *txn)
             .await?;
-            Audit::record(txn, "activity", row.pid, "created", Some(ctx.by), None).await?;
+            Audit::record_on(txn, "activity", pid, "created", Some(ctx.by), None).await?;
             Ok(("done", "task created".to_string()))
         }
         Action::Notify { recipient_ref } => {
-            let made = txn
-                .execute_raw(stmt(
-                    "INSERT INTO notifications (pid, recipient_ref, kind, subject_kind, \
-                     subject_pid, source_pid, source_key, suppressed) \
-                     VALUES ($1, $2, 'workflow', $3, $4, $5, $6, FALSE) \
-                     ON CONFLICT DO NOTHING",
-                    [
-                        Uuid::new_v4().into(),
-                        recipient_ref.clone().into(),
-                        kind.into(),
-                        subject.into(),
-                        ctx.run.into(),
-                        ctx.index.to_string().into(),
-                    ],
-                ))
-                .await?
-                .rows_affected();
+            let made = sqlx::query!(
+                "INSERT INTO notifications (pid, recipient_ref, kind, subject_kind, \
+                 subject_pid, source_pid, source_key, suppressed) \
+                 VALUES ($1, $2, 'workflow', $3, $4, $5, $6, FALSE) \
+                 ON CONFLICT DO NOTHING",
+                Uuid::new_v4(),
+                recipient_ref,
+                kind,
+                subject,
+                ctx.run,
+                ctx.index.to_string(),
+            )
+            .execute(&mut *txn)
+            .await?
+            .rows_affected();
             Ok(if made == 0 {
                 ("skipped", "already notified".to_string())
             } else {
@@ -519,7 +527,7 @@ async fn act<C: ConnectionTrait>(
             Target::Contact(..) => Ok(("skipped", "assign_owner is about a lead".to_string())),
         },
         Action::SendWebhook { event } => {
-            streaming::emit_on(
+            streaming::emit_in(
                 txn,
                 "workflow",
                 event,
@@ -546,23 +554,21 @@ fn not_a_contact() -> (&'static str, String) {
 }
 
 /// How much work a worker has: open leads and open deals they own.
-async fn open_load<C: ConnectionTrait>(db: &C, worker: &str) -> Result<i64> {
-    let row = db
-        .query_one_raw(stmt(
-            "SELECT (SELECT count(*) FROM leads WHERE owner_ref = $1 AND deleted_at IS NULL \
-                       AND status IN ('new', 'contacted', 'qualified')) \
-                  + (SELECT count(*) FROM deals WHERE owner_ref = $1 AND deleted_at IS NULL \
-                       AND closed_at IS NULL) AS n",
-            [worker.to_string().into()],
-        ))
-        .await?
-        .ok_or(axa::Error::NotFound)?;
-    Ok(row.try_get("", "n")?)
+async fn open_load(db: &mut PgConnection, worker: &str) -> Result<i64> {
+    Ok(sqlx::query_scalar!(
+        "SELECT (SELECT count(*) FROM leads WHERE owner_ref = $1 AND deleted_at IS NULL \
+                   AND status IN ('new', 'contacted', 'qualified')) \
+              + (SELECT count(*) FROM deals WHERE owner_ref = $1 AND deleted_at IS NULL \
+                   AND closed_at IS NULL) AS \"n!\"",
+        worker,
+    )
+    .fetch_one(db)
+    .await?)
 }
 
 /// Give the lead an owner from the pool; a lead that already has one is left alone.
-async fn assign_owner<C: ConnectionTrait>(
-    txn: &C,
+async fn assign_owner(
+    txn: &mut PgConnection,
     ctx: &ActionContext<'_>,
     lead: &leads::Model,
     pool: &[String],
@@ -574,30 +580,32 @@ async fn assign_owner<C: ConnectionTrait>(
     }
     // The row lock on the workflow serializes concurrent assignments, so no two leads take the
     // same turn.
-    let cursor: i64 = txn
-        .query_one_raw(stmt(
-            "UPDATE workflows SET assign_cursor = assign_cursor + 1 WHERE pid = $1 \
-             RETURNING assign_cursor - 1 AS turn",
-            [ctx.workflow.into()],
-        ))
-        .await?
-        .ok_or(axa::Error::NotFound)?
-        .try_get("", "turn")?;
+    let cursor = sqlx::query_scalar!(
+        "UPDATE workflows SET assign_cursor = assign_cursor + 1 WHERE pid = $1 \
+         RETURNING assign_cursor - 1 AS \"turn!\"",
+        ctx.workflow,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(axa::Error::NotFound)?;
     let mut loads = Vec::new();
     if strategy == "least_open" {
         for worker in pool {
-            loads.push(open_load(txn, worker).await?);
+            loads.push(open_load(&mut *txn, worker).await?);
         }
     }
     let Some(chosen) = pick(strategy, pool.len(), cursor, &loads).and_then(|i| pool.get(i)) else {
         return Ok(("skipped", "the pool is empty".to_string()));
     };
-    txn.execute_raw(stmt(
-        "UPDATE leads SET owner_ref = $2, updated_at = now() WHERE pid = $1",
-        [lead.pid.into(), chosen.clone().into()],
-    ))
+    sqlx::query!(
+        "UPDATE leads SET owner_ref = $2, updated_at = now() WHERE pid = $1 \
+         AND deleted_at IS NULL",
+        lead.pid,
+        chosen,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
+    Audit::record_on(
         txn,
         "lead",
         lead.pid,
@@ -607,18 +615,17 @@ async fn assign_owner<C: ConnectionTrait>(
     )
     .await?;
     if notify {
-        txn.execute_raw(stmt(
+        sqlx::query!(
             "INSERT INTO notifications (pid, recipient_ref, kind, subject_kind, subject_pid, \
-             source_pid, source_key, suppressed) VALUES ($1, $2, 'workflow', 'lead', $3, $4, $5, FALSE) \
-             ON CONFLICT DO NOTHING",
-            [
-                Uuid::new_v4().into(),
-                chosen.clone().into(),
-                lead.pid.into(),
-                ctx.run.into(),
-                format!("{}-assigned", ctx.index).into(),
-            ],
-        ))
+             source_pid, source_key, suppressed) \
+             VALUES ($1, $2, 'workflow', 'lead', $3, $4, $5, FALSE) ON CONFLICT DO NOTHING",
+            Uuid::new_v4(),
+            chosen,
+            lead.pid,
+            ctx.run,
+            format!("{}-assigned", ctx.index),
+        )
+        .execute(&mut *txn)
         .await?;
     }
     Ok(("done", format!("assigned to {chosen} ({strategy})")))
@@ -634,8 +641,8 @@ fn current(contact: &contacts::Model, field: &str) -> Option<String> {
     }
 }
 
-async fn set_field<C: ConnectionTrait>(
-    txn: &C,
+async fn set_field(
+    txn: &mut PgConnection,
     ctx: &ActionContext<'_>,
     contact: &contacts::Model,
     field: &str,
@@ -644,17 +651,32 @@ async fn set_field<C: ConnectionTrait>(
     if current(contact, field).as_ref() == value {
         return Ok(("skipped", format!("{field} already has that value")));
     }
-    let mut active: contacts::ActiveModel = contact.clone().into();
+    let mut next = contact.clone();
     match field {
-        "job_title" => active.job_title = ActiveValue::set(value.cloned()),
-        "owner_ref" => active.owner_ref = ActiveValue::set(value.cloned()),
-        "preferred_channel" => {
-            active.preferred_channel = ActiveValue::set(value.cloned().unwrap_or_default().into());
-        }
-        _ => active.status = ActiveValue::set(value.cloned().unwrap_or_default()),
+        "job_title" => next.job_title = value.cloned(),
+        "owner_ref" => next.owner_ref = value.cloned(),
+        "preferred_channel" => next.preferred_channel = value.cloned().unwrap_or_default().into(),
+        _ => next.status = value.cloned().unwrap_or_default(),
     }
-    let row = active.update(txn).await?;
-    Audit::record(
+    // The four fields an action may set, from the contact as the run read it; `preferred_channel`
+    // is sealed, and binding `EncryptedText` seals it (CRM-T41).
+    let row = sqlx::query_as!(
+        contacts::Model,
+        "UPDATE contacts SET job_title = $2, owner_ref = $3, preferred_channel = $4, status = $5 \
+            WHERE id = $1 AND deleted_at IS NULL RETURNING created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+            status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+            \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+            given_name, consent_jurisdiction",
+        next.id,
+        next.job_title,
+        next.owner_ref,
+        EncryptedText(next.preferred_channel.0.clone()) as _,
+        next.status,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
         txn,
         "contact",
         row.pid,
@@ -663,7 +685,7 @@ async fn set_field<C: ConnectionTrait>(
         Some(serde_json::json!({ "fields": [field] })),
     )
     .await?;
-    streaming::emit_on(
+    streaming::emit_in(
         txn,
         "contact",
         "updated",
@@ -685,41 +707,42 @@ async fn set_field<C: ConnectionTrait>(
 }
 
 /// Why a contact cannot be enrolled in the sequence now, or the sequence if they can.
-async fn enrolment_blocker<C: ConnectionTrait>(
-    db: &C,
+async fn enrolment_blocker(
+    db: &mut PgConnection,
     contact: &contacts::Model,
     sequence_pid: Uuid,
 ) -> Result<std::result::Result<crate::models::_entities::nurture_sequences::Model, String>> {
-    let Ok(sequence) = crate::models::records::find_sequence(db, sequence_pid).await else {
+    let Some(sequence) = rows::sequence(&mut *db, sequence_pid).await? else {
         return Ok(Err("the sequence no longer exists".to_string()));
     };
     // Consent is read now, inside the action, not taken from the trigger (CRM-R40).
-    if crate::consents::state_of(db, contact, &sequence.purpose).await? != "granted" {
+    if crate::consents::state_of(&mut *db, contact, &sequence.purpose).await? != "granted" {
         return Ok(Err(format!(
             "no {} consent at this moment",
             sequence.purpose
         )));
     }
-    let active = nurture_enrollments::Entity::find()
-        .filter(nurture_enrollments::Column::SequencePid.eq(sequence_pid))
-        .filter(nurture_enrollments::Column::ContactPid.eq(contact.pid))
-        .filter(nurture_enrollments::Column::Status.eq("active"))
-        .filter(nurture_enrollments::Column::DeletedAt.is_null())
-        .one(db)
-        .await?;
-    if active.is_some() {
+    let active = sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM nurture_enrollments WHERE sequence_pid = $1 \
+         AND contact_pid = $2 AND status = 'active' AND deleted_at IS NULL) AS \"found!\"",
+        sequence_pid,
+        contact.pid,
+    )
+    .fetch_one(&mut *db)
+    .await?;
+    if active {
         return Ok(Err("already enrolled in that sequence".to_string()));
     }
     Ok(Ok(sequence))
 }
 
-async fn enrol<C: ConnectionTrait>(
-    txn: &C,
+async fn enrol(
+    txn: &mut PgConnection,
     ctx: &ActionContext<'_>,
     contact: &contacts::Model,
     sequence_pid: Uuid,
 ) -> Result<(&'static str, String)> {
-    let sequence = match enrolment_blocker(txn, contact, sequence_pid).await? {
+    let sequence = match enrolment_blocker(&mut *txn, contact, sequence_pid).await? {
         Ok(sequence) => sequence,
         Err(why) => return Ok(("skipped", why)),
     };
@@ -733,8 +756,8 @@ async fn enrol<C: ConnectionTrait>(
 }
 
 /// What a workflow would do for one contact, changing nothing.
-async fn preview<C: ConnectionTrait>(
-    db: &C,
+async fn preview(
+    db: &mut PgConnection,
     contact: &contacts::Model,
     action: &Action,
 ) -> Result<Step> {
@@ -788,25 +811,20 @@ const SAMPLES: usize = 5;
 /// # Errors
 ///
 /// A database error.
-pub async fn dry_run<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Result<DryRun> {
+pub async fn dry_run(db: &mut PgConnection, workflow: &Workflow) -> Result<DryRun> {
     if workflow.trigger == "lead_created" {
         return dry_run_leads(db, workflow).await;
     }
-    let only_deal_contacts = if workflow.trigger == "deal_stage_changed" {
-        "AND EXISTS (SELECT 1 FROM deals d WHERE d.primary_contact_pid = c.pid \
-         AND d.deleted_at IS NULL)"
-    } else {
-        ""
-    };
-    let rows = db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT c.pid FROM contacts c WHERE c.deleted_at IS NULL \
-                 AND c.merged_into_pid IS NULL {only_deal_contacts} ORDER BY c.id LIMIT $1"
-            ),
-            [limit(SCHEDULE_SCAN + 1).into()],
-        ))
-        .await?;
+    // A `deal_stage_changed` workflow looks only at contacts that are a deal's primary contact.
+    let rows = sqlx::query_scalar!(
+        "SELECT c.pid FROM contacts c WHERE c.deleted_at IS NULL \
+         AND c.merged_into_pid IS NULL AND (NOT $2 OR EXISTS (SELECT 1 FROM deals d \
+         WHERE d.primary_contact_pid = c.pid AND d.deleted_at IS NULL)) ORDER BY c.id LIMIT $1",
+        limit(SCHEDULE_SCAN + 1),
+        workflow.trigger == "deal_stage_changed",
+    )
+    .fetch_all(&mut *db)
+    .await?;
     let truncated = rows.len() > SCHEDULE_SCAN;
     let mut out = DryRun {
         examined: 0,
@@ -816,7 +834,7 @@ pub async fn dry_run<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Result<
     };
     for row in rows.iter().take(SCHEDULE_SCAN) {
         out.examined += 1;
-        let Some((contact, tier)) = load(db, row.try_get("", "pid")?).await? else {
+        let Some((contact, tier)) = load(&mut *db, *row).await? else {
             continue;
         };
         if !meets(&workflow.conditions, &contact, tier) {
@@ -826,7 +844,7 @@ pub async fn dry_run<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Result<
         if out.samples.len() < SAMPLES {
             let mut steps = Vec::new();
             for action in &workflow.actions {
-                steps.push(preview(db, &contact, action).await?);
+                steps.push(preview(&mut *db, &contact, action).await?);
             }
             out.samples.push(Sample {
                 subject_kind: "contact".to_string(),
@@ -841,19 +859,15 @@ pub async fn dry_run<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Result<
 /// The dry run of a `lead_created` workflow: the newest leads, and what would be done for each.
 /// A lead that already has an owner shows the assignment skipped; for the others the pool is
 /// walked from where the cursor now stands, without moving it.
-async fn dry_run_leads<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Result<DryRun> {
-    let rows = leads::Entity::find_live()
-        .order_by_desc(leads::Column::Id)
-        .limit(u64::try_from(SCHEDULE_SCAN + 1).unwrap_or(u64::MAX))
-        .all(db)
-        .await?;
-    let cursor: i64 = db
-        .query_one_raw(stmt(
-            "SELECT assign_cursor FROM workflows WHERE pid = $1",
-            [workflow.pid.into()],
-        ))
-        .await?
-        .map_or(Ok(0), |r| r.try_get("", "assign_cursor"))?;
+async fn dry_run_leads(db: &mut PgConnection, workflow: &Workflow) -> Result<DryRun> {
+    let rows = rows::newest_leads(&mut *db, limit(SCHEDULE_SCAN + 1)).await?;
+    let cursor = sqlx::query_scalar!(
+        "SELECT assign_cursor FROM workflows WHERE pid = $1",
+        workflow.pid,
+    )
+    .fetch_optional(&mut *db)
+    .await?
+    .unwrap_or(0);
     let mut out = DryRun {
         examined: 0,
         would_fire: 0,
@@ -878,7 +892,7 @@ async fn dry_run_leads<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Resul
                     let mut loads = Vec::new();
                     if strategy == "least_open" {
                         for worker in pool {
-                            loads.push(open_load(db, worker).await?);
+                            loads.push(open_load(&mut *db, worker).await?);
                         }
                     }
                     let chosen =
@@ -912,10 +926,10 @@ async fn dry_run_leads<C: ConnectionTrait>(db: &C, workflow: &Workflow) -> Resul
 ///
 /// A database error reading the workflows; a failure inside one workflow's slice is logged and
 /// leaves that workflow for the next tick.
-pub async fn run_due(db: &DatabaseConnection) -> Result<u64> {
+pub async fn run_due(pool: &PgPool) -> Result<u64> {
     let mut made = 0;
-    for workflow in enabled(db, "schedule").await? {
-        match tick(db, &workflow).await {
+    for workflow in enabled(pool, "schedule").await? {
+        match tick(pool, &workflow).await {
             Ok(n) => made += n,
             Err(error) => {
                 tracing::warn!(%error, workflow = %workflow.pid, "scheduled workflow failed");
@@ -925,56 +939,58 @@ pub async fn run_due(db: &DatabaseConnection) -> Result<u64> {
     Ok(made)
 }
 
-async fn tick(db: &DatabaseConnection, workflow: &Workflow) -> Result<u64> {
-    let txn = db.begin().await?;
+async fn tick(pool: &PgPool, workflow: &Workflow) -> Result<u64> {
+    let mut txn = pool.begin().await?;
     // One replica at a time; the others skip this workflow until the next tick.
-    let locked = txn
-        .query_one_raw(stmt(
-            "SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) AS ok",
-            [format!("workflow:{}", workflow.pid).into()],
-        ))
-        .await?
-        .map(|r| r.try_get::<bool>("", "ok"))
-        .transpose()?
-        .unwrap_or(false);
+    let locked = sqlx::query_scalar!(
+        "SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) AS \"ok!\"",
+        format!("workflow:{}", workflow.pid),
+    )
+    .fetch_one(&mut *txn)
+    .await?;
     if !locked {
         return Ok(0);
     }
-    let state = txn
-        .query_one_raw(stmt(
-            "SELECT scan_after_id, every_minutes FROM workflows WHERE pid = $1 AND enabled FOR UPDATE",
-            [workflow.pid.into()],
-        ))
-        .await?;
-    let Some(state) = state else { return Ok(0) };
-    let after: i32 = state.try_get("", "scan_after_id")?;
-    let every: i32 = state
-        .try_get::<Option<i32>>("", "every_minutes")?
-        .unwrap_or(60);
-    let rows = txn
-        .query_all_raw(stmt(
-            "SELECT c.id, c.pid FROM contacts c WHERE c.deleted_at IS NULL \
-             AND c.merged_into_pid IS NULL AND c.id > $2 \
-             AND NOT EXISTS (SELECT 1 FROM workflow_runs r WHERE r.workflow_pid = $1 \
-                 AND r.subject_pid = c.pid AND r.outcome IN ('done', 'failed') \
-                 AND r.created_at > now() - make_interval(mins => $3)) \
-             ORDER BY c.id LIMIT $4",
-            [
-                workflow.pid.into(),
-                after.into(),
-                every.into(),
-                limit(SCHEDULE_SCAN).into(),
-            ],
-        ))
-        .await?;
+    let Some(state) = sqlx::query!(
+        "SELECT scan_after_id, every_minutes FROM workflows WHERE pid = $1 AND enabled FOR UPDATE",
+        workflow.pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    else {
+        return Ok(0);
+    };
+    let after = state.scan_after_id;
+    let every = state.every_minutes.unwrap_or(60);
+    let rows = sqlx::query!(
+        "SELECT c.id, c.pid FROM contacts c WHERE c.deleted_at IS NULL \
+         AND c.merged_into_pid IS NULL AND c.id > $2 \
+         AND NOT EXISTS (SELECT 1 FROM workflow_runs r WHERE r.workflow_pid = $1 \
+             AND r.subject_pid = c.pid AND r.outcome IN ('done', 'failed') \
+             AND r.created_at > now() - make_interval(mins => $3)) \
+         ORDER BY c.id LIMIT $4",
+        workflow.pid,
+        after,
+        every,
+        limit(SCHEDULE_SCAN),
+    )
+    .fetch_all(&mut *txn)
+    .await?;
     let exhausted = rows.len() < SCHEDULE_SCAN;
     let mut cursor = after;
     let mut ran = 0_usize;
     let mut stopped_early = false;
     for row in &rows {
-        let pid: Uuid = row.try_get("", "pid")?;
-        cursor = row.try_get("", "id")?;
-        if run_one(&txn, workflow, &Event::contact("schedule", pid), 0, None).await? {
+        cursor = row.id;
+        if run_one(
+            &mut txn,
+            workflow,
+            &Event::contact("schedule", row.pid),
+            0,
+            None,
+        )
+        .await?
+        {
             ran += 1;
             if ran >= SCHEDULE_BATCH {
                 stopped_early = true;
@@ -985,10 +1001,12 @@ async fn tick(db: &DatabaseConnection, workflow: &Workflow) -> Result<u64> {
     if exhausted && !stopped_early {
         cursor = 0;
     }
-    txn.execute_raw(stmt(
+    sqlx::query!(
         "UPDATE workflows SET scan_after_id = $2 WHERE pid = $1",
-        [workflow.pid.into(), cursor.into()],
-    ))
+        workflow.pid,
+        cursor,
+    )
+    .execute(&mut *txn)
     .await?;
     txn.commit().await?;
     Ok(u64::try_from(ran).unwrap_or(u64::MAX))

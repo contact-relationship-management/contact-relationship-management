@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT code, layer, parent FROM consent_jurisdictions ORDER BY code",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "code",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "consent_jurisdictions",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "layer",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "consent_jurisdictions",
+            "name": "layer"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "parent",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "consent_jurisdictions",
+            "name": "parent"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "9a95a0eb8847f127ca7bb0ac2b3206af7a41bbb97d151a741ab7d72145434d66"
+}

@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT purpose, state, changed_at FROM contact_consents WHERE contact_pid = $1 AND channel = 'email'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "purpose",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contact_consents",
+            "name": "purpose"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "state",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contact_consents",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "changed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "contact_consents",
+            "name": "changed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9a97f7461de5c672a8cc8ab62d29224ade878cb258916e0655e9beeafd3f2f48"
+}

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workflows SET assign_cursor = assign_cursor + 1 WHERE pid = $1 RETURNING assign_cursor - 1 AS \"turn!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "turn!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e8bc86c290403e5c589c3739731bbfe44fa6dbe2965851cb79b85e095dad23d1"
+}

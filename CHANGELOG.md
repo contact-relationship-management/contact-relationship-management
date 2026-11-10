@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the workflow engine and consent per purpose on sqlx (CRM-T215, 2026-11-10)
+
+- Workflows, consent per purpose, consent profiles and the organization's calendar run on
+  `sqlx`. Nothing a caller sees changes.
+
 ### Changed — leads, deals, the forecast and workflow rules on sqlx (CRM-T214, 2026-11-10)
 
 - Leads, pipelines, deals, the forecast and the workflow rules' endpoints run on `sqlx`. Nothing

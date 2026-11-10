@@ -393,7 +393,7 @@ async fn commit(
     headers: axum::http::HeaderMap,
     Json(payload): Json<CommitPayload>,
 ) -> Result<Response> {
-    let today = super::organization::caller_today(&ctx.db, &headers).await?;
+    let today = super::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
     let mut problems = Problems::new();
     problems.require_text("source_note", &payload.source_note);
     problems.cap_text("source_note", &payload.source_note);

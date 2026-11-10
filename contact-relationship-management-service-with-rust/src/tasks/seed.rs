@@ -195,7 +195,9 @@ impl Task for Seed {
         }
         // Exchange rates between several pairs, not all from one currency (CRM-R50).
         // The organization's "today", as the rate routes' (CRM-T179).
-        let today = crate::controllers::organization::organization_today(db).await?;
+        let today =
+            crate::controllers::organization::organization_today(db.get_postgres_connection_pool())
+                .await?;
         for (from, to, rate) in RATES {
             let ppb = crate::rules::fx::parse_rate(rate).map_err(|why| Error::string(&why))?;
             db.execute_raw(Statement::from_sql_and_values(

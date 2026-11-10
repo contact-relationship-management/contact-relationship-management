@@ -3,7 +3,7 @@
 //! and activities. Every mutation runs on one transaction (CRM-D9).
 
 use crate::controllers::PidPath;
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::json::Json;
 use crate::models::DateTimeWithTimeZone;
 use crate::models::encrypted::EncryptedText;
@@ -284,7 +284,7 @@ async fn create_contact(
     .await?;
     // The workflow engine takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
     workflows::fire(
-        &Bridge::new(&mut txn),
+        &mut txn,
         &workflows::Event::contact("contact_created", row.pid),
         0,
         caller.actor(),
@@ -417,7 +417,7 @@ async fn update_contact(
     )
     .await?;
     workflows::fire(
-        &Bridge::new(&mut txn),
+        &mut txn,
         &workflows::Event::contact("contact_updated", row.pid),
         0,
         caller.actor(),

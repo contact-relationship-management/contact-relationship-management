@@ -7,14 +7,13 @@
 //! an administrator may change it (the policy derives `Destructive` for the `PUT`), and a change
 //! is audited with both values.
 //!
-//! The two routes run on `sqlx` (CRM-D24). The public readers below stay on `ConnectionTrait` until
-//! their callers move, because `workflows.rs` calls one inside a `SeaORM` transaction; they read
-//! the same row, and what a row means is in `periods_from` and `stalled_from` for both.
+//! The routes and the public readers below run on `sqlx` (CRM-D24, CRM-T215); the readers take
+//! any executor, so the workflow engine reads them inside its run's transaction. What a row means
+//! is in `periods_from` and `stalled_from`.
 
 use axa::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use super::views::owner_of;
@@ -79,14 +78,21 @@ async fn stored(pool: &PgPool) -> Result<Option<Stored>> {
     .await?)
 }
 
-async fn row(db: &impl ConnectionTrait) -> Result<Option<sea_orm::QueryResult>> {
-    Ok(db
-        .query_one_raw(Statement::from_string(
-            DatabaseBackend::Postgres,
-            "SELECT time_zone, fiscal_year_start_month, stalled_after_days \
-             FROM organization_settings WHERE id = 1",
-        ))
-        .await?)
+/// The calendar part of the stored row: the zone, the fiscal month and the stalled days.
+struct Calendar {
+    time_zone: String,
+    fiscal_year_start_month: i16,
+    stalled_after_days: i16,
+}
+
+async fn row<'e>(db: impl PgExecutor<'e>) -> Result<Option<Calendar>> {
+    Ok(sqlx::query_as!(
+        Calendar,
+        "SELECT time_zone, fiscal_year_start_month, stalled_after_days \
+         FROM organization_settings WHERE id = 1"
+    )
+    .fetch_optional(db)
+    .await?)
 }
 
 /// The calendar a stored zone and month stand for; a value no longer known falls back.
@@ -110,13 +116,10 @@ fn stalled_from(days: i16) -> u32 {
 /// # Errors
 ///
 /// A database error.
-pub async fn periods(db: &impl ConnectionTrait) -> Result<Periods> {
-    let Some(row) = row(db).await? else {
-        return Ok(Periods::default());
-    };
-    let zone: String = row.try_get("", "time_zone")?;
-    let month: i16 = row.try_get("", "fiscal_year_start_month")?;
-    Ok(periods_from(&zone, month))
+pub async fn periods<'e>(db: impl PgExecutor<'e>) -> Result<Periods> {
+    Ok(row(db).await?.map_or_else(Periods::default, |row| {
+        periods_from(&row.time_zone, row.fiscal_year_start_month)
+    }))
 }
 
 /// After how many days an open deal is stalled; the starting 14 when none is stored.
@@ -124,12 +127,10 @@ pub async fn periods(db: &impl ConnectionTrait) -> Result<Periods> {
 /// # Errors
 ///
 /// A database error.
-pub async fn stalled_after_days(db: &impl ConnectionTrait) -> Result<u32> {
-    let Some(row) = row(db).await? else {
-        return Ok(stalled::DEFAULT_DAYS);
-    };
-    let days: i16 = row.try_get("", "stalled_after_days")?;
-    Ok(stalled_from(days))
+pub async fn stalled_after_days<'e>(db: impl PgExecutor<'e>) -> Result<u32> {
+    Ok(row(db).await?.map_or(stalled::DEFAULT_DAYS, |row| {
+        stalled_from(row.stalled_after_days)
+    }))
 }
 
 /// "Today" for the caller of a request: in the zone it names in `CRM-Time-Zone`, else the
@@ -138,8 +139,8 @@ pub async fn stalled_after_days(db: &impl ConnectionTrait) -> Result<u32> {
 /// # Errors
 ///
 /// A database error.
-pub async fn caller_today(
-    db: &impl ConnectionTrait,
+pub async fn caller_today<'e>(
+    db: impl PgExecutor<'e>,
     headers: &axum::http::HeaderMap,
 ) -> Result<chrono::NaiveDate> {
     let org = periods(db).await?;
@@ -155,7 +156,7 @@ pub async fn caller_today(
 /// # Errors
 ///
 /// A database error.
-pub async fn organization_today(db: &impl ConnectionTrait) -> Result<chrono::NaiveDate> {
+pub async fn organization_today<'e>(db: impl PgExecutor<'e>) -> Result<chrono::NaiveDate> {
     Ok(periods::today_in(
         crate::clock::now(),
         periods(db).await?.zone,

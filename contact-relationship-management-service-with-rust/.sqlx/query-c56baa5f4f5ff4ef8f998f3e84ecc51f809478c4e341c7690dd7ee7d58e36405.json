@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT (SELECT count(*) FROM leads WHERE owner_ref = $1 AND deleted_at IS NULL AND status IN ('new', 'contacted', 'qualified')) + (SELECT count(*) FROM deals WHERE owner_ref = $1 AND deleted_at IS NULL AND closed_at IS NULL) AS \"n!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c56baa5f4f5ff4ef8f998f3e84ecc51f809478c4e341c7690dd7ee7d58e36405"
+}

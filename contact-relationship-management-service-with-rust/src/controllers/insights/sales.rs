@@ -255,7 +255,8 @@ pub(super) async fn followups(
     headers: HeaderMap,
 ) -> Result<Response> {
     // The caller's day (CRM-T179), as attainment's.
-    let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
+    let today =
+        crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
     let horizon = today + chrono::Days::new(30);
     let rows: Vec<activities::Model> =
         rows::open_dated_activities(db::pool(&ctx), query.kind.as_deref()).await?;
@@ -316,7 +317,8 @@ pub(super) async fn pipeline_hygiene(
     let threshold = days_or(query.days, 14);
     let now = crate::clock::now();
     // An expected close day is a civil date: compared with the caller's day (CRM-T179).
-    let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
+    let today =
+        crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
     let open: Vec<deals::Model> = rows::open_deals(db::pool(&ctx)).await?;
     // Only the leads the rule is about, not all of them.
     let lead_rows: Vec<leads::Model> = rows::unworked_leads(db::pool(&ctx)).await?;

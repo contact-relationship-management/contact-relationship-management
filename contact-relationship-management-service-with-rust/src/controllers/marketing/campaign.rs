@@ -297,10 +297,7 @@ pub(super) async fn deliver_one(
     // so read the contact again immediately before sending (CRM-D6).
     let contact = rows::contact(&mut *conn, item.contact_pid).await?;
     let granted = match &contact {
-        Some(c) => {
-            crate::consents::state_of(&Bridge::new(&mut conn), c, &campaign.purpose).await?
-                == "granted"
-        }
+        Some(c) => crate::consents::state_of(&mut *conn, c, &campaign.purpose).await? == "granted",
         None => false,
     };
     let Some(contact) = contact.filter(|_| granted) else {
@@ -815,7 +812,7 @@ pub(super) async fn campaign_funnel(
         // Each deal at the rate of the day it closed, rounded once per deal (CRM-R86); what had
         // no rate on its day is all that stays listed apart. The day is the organization's
         // (CRM-T181).
-        let calendar = crate::controllers::organization::periods(&ctx.db).await?;
+        let calendar = crate::controllers::organization::periods(crate::db::pool(&ctx)).await?;
         let foreign: Vec<(chrono::NaiveDate, String, i64)> = attributed_deals
             .iter()
             .filter(|deal| !deal.currency.eq_ignore_ascii_case(&campaign.currency))
@@ -871,7 +868,10 @@ pub(super) async fn campaign_funnel(
             Some(match query.rate_date {
                 Some(day) => day,
                 // The exchange-rate "today" is the organization's (CRM-T171, CRM-T179).
-                None => crate::controllers::organization::organization_today(&ctx.db).await?,
+                None => {
+                    crate::controllers::organization::organization_today(crate::db::pool(&ctx))
+                        .await?
+                }
             }),
             Vec::new(),
             Vec::new(),

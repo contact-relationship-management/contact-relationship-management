@@ -5,17 +5,15 @@
 //! [`crate::auth::policy::ADMIN_ONLY_PREFIXES`]): what a person is paid is neither theirs to set
 //! nor everyone's to read.
 //!
-//! The routes that write run on `sqlx` (CRM-D24, CRM-T206). The attainment read, [`standings`],
-//! stays on `ConnectionTrait`: `teams` calls it too, and it builds the organization's day into its
-//! SQL at run time.
+//! Everything runs on `sqlx` (CRM-D24, CRM-T206); the attainment read, [`standings`], since
+//! CRM-T215, with the organization's zone bound in place of written into its SQL.
 
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
 use chrono::NaiveDate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
-use sqlx::PgConnection;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use super::merge::conflict;
@@ -35,10 +33,6 @@ use crate::validation::Problems;
 const MAX_LISTED: i64 = 1000;
 /// Longest period a quota may cover, in days.
 const MAX_PERIOD_DAYS: i64 = 366;
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
 
 // ------------------------------------------------------------------ plans
 
@@ -450,21 +444,19 @@ pub(crate) struct SplitView {
     shares: Vec<Share>,
 }
 
-/// A deal's split, for [`standings`] on a `SeaORM` connection.
-async fn shares_of<C: ConnectionTrait>(db: &C, deal: Uuid) -> Result<Vec<Share>> {
-    db.query_all_raw(stmt(
+async fn shares_of(pool: &PgPool, deal: Uuid) -> Result<Vec<Share>> {
+    Ok(sqlx::query!(
         "SELECT owner_ref, share_bps FROM deal_splits WHERE deal_pid = $1 ORDER BY id",
-        [deal.into()],
-    ))
+        deal,
+    )
+    .fetch_all(pool)
     .await?
-    .iter()
-    .map(|r| {
-        Ok(Share {
-            owner_ref: r.try_get("", "owner_ref")?,
-            share_bps: u32::try_from(r.try_get::<i32>("", "share_bps")?).unwrap_or(0),
-        })
+    .into_iter()
+    .map(|r| Share {
+        owner_ref: r.owner_ref,
+        share_bps: u32::try_from(r.share_bps).unwrap_or(0),
     })
-    .collect()
+    .collect())
 }
 
 /// A deal's split.
@@ -842,56 +834,52 @@ pub(crate) struct AttainmentReport {
 /// The won, live deals closed in the period that are credited to `owner`, as `(currency, amount
 /// credited)`: the whole amount for a deal they own that is not split, and their share of one that
 /// is (CRM-R65).
-async fn credited_deals<C: ConnectionTrait>(
-    db: &C,
+async fn credited_deals(
+    pool: &PgPool,
     owner: &str,
     from: NaiveDate,
     to: NaiveDate,
 ) -> Result<Vec<(String, i64)>> {
     // The days deals closed on are the organization's (CRM-T181), as a quota's period is.
-    let calendar = super::organization::periods(db).await?;
-    let closed_on = crate::rules::periods::local_day("d.closed_at", &calendar);
-    let deals = db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT d.pid, trim(d.currency) AS currency, d.amount_minor, d.owner_ref \
-                 FROM deals d \
-                 WHERE d.won AND d.deleted_at IS NULL AND d.closed_at IS NOT NULL \
-                   AND {closed_on} BETWEEN $2 AND $3 \
-                   AND (d.owner_ref = $1 OR EXISTS \
-                        (SELECT 1 FROM deal_splits s WHERE s.deal_pid = d.pid AND s.owner_ref = $1))"
-            ),
-            [owner.into(), from.into(), to.into()],
-        ))
-        .await?;
+    let calendar = super::organization::periods(pool).await?;
+    let deals = sqlx::query!(
+        "SELECT d.pid, trim(d.currency) AS \"currency!\", d.amount_minor, d.owner_ref \
+         FROM deals d \
+         WHERE d.won AND d.deleted_at IS NULL AND d.closed_at IS NOT NULL \
+           AND (d.closed_at AT TIME ZONE $4)::date BETWEEN $2 AND $3 \
+           AND (d.owner_ref = $1 OR EXISTS \
+                (SELECT 1 FROM deal_splits s WHERE s.deal_pid = d.pid AND s.owner_ref = $1))",
+        owner,
+        from,
+        to,
+        calendar.zone.name(),
+    )
+    .fetch_all(pool)
+    .await?;
     let mut credited = Vec::new();
-    for deal in &deals {
-        let pid: Uuid = deal.try_get("", "pid")?;
-        let amount: i64 = deal.try_get("", "amount_minor")?;
-        let shares = shares_of(db, pid).await?;
+    for deal in deals {
+        let shares = shares_of(pool, deal.pid).await?;
         let mine = if shares.is_empty() {
-            (deal.try_get::<Option<String>>("", "owner_ref")?.as_deref() == Some(owner))
-                .then_some(amount)
+            (deal.owner_ref.as_deref() == Some(owner)).then_some(deal.amount_minor)
         } else {
             let bps: Vec<u32> = shares.iter().map(|s| s.share_bps).collect();
             shares
                 .iter()
                 .position(|s| s.owner_ref == owner)
-                .map(|i| quota::split(amount, &bps)[i])
+                .map(|i| quota::split(deal.amount_minor, &bps)[i])
         };
         // A clawback takes from the worker's credit, never below nothing; a deal wholly clawed back
         // no longer counts (CRM-R68).
-        let clawed: Option<i64> = db
-            .query_one_raw(stmt(
-                "SELECT amount_minor FROM deal_clawbacks WHERE deal_pid = $1 AND owner_ref = $2",
-                [pid.into(), owner.into()],
-            ))
-            .await?
-            .map(|r| r.try_get("", "amount_minor"))
-            .transpose()?;
+        let clawed = sqlx::query_scalar!(
+            "SELECT amount_minor FROM deal_clawbacks WHERE deal_pid = $1 AND owner_ref = $2",
+            deal.pid,
+            owner,
+        )
+        .fetch_optional(pool)
+        .await?;
         let mine = mine.map(|part| part.saturating_sub(clawed.unwrap_or(0)).max(0));
         if let Some(part) = mine.filter(|p| *p > 0) {
-            credited.push((deal.try_get("", "currency")?, part));
+            credited.push((deal.currency, part));
         }
     }
     Ok(credited)
@@ -899,35 +887,32 @@ async fn credited_deals<C: ConnectionTrait>(
 
 /// Every quota whose period contains `at` (of `owner_filter` alone, when given) with the revenue its
 /// worker's credited deals reached and the commission its plan pays.
-pub(super) async fn standings<C: ConnectionTrait>(
-    db: &C,
+pub(super) async fn standings(
+    pool: &PgPool,
     at: NaiveDate,
     owner_filter: Option<String>,
 ) -> Result<Vec<Attainment>> {
-    let quotas = db
-        .query_all_raw(stmt(
-            "SELECT q.pid, q.owner_ref, q.period_from, q.period_to, q.currency, q.amount_minor, \
-                    p.name AS plan_name, p.tiers AS plan_tiers \
-             FROM quotas q LEFT JOIN commission_plans p ON p.pid = q.plan_pid \
-             WHERE q.period_from <= $1 AND q.period_to >= $1 \
-               AND ($2::text IS NULL OR q.owner_ref = $2) \
-             ORDER BY q.owner_ref, q.currency LIMIT $3",
-            [
-                at.into(),
-                owner_filter.map_or(Value::String(None), Value::from),
-                MAX_LISTED.into(),
-            ],
-        ))
-        .await?;
+    let quotas = sqlx::query!(
+        "SELECT q.pid, q.owner_ref, q.period_from, q.period_to, trim(q.currency) AS \"currency!\", \
+                q.amount_minor, p.name AS \"plan_name?\", p.tiers AS \"plan_tiers?\" \
+         FROM quotas q LEFT JOIN commission_plans p ON p.pid = q.plan_pid \
+         WHERE q.period_from <= $1 AND q.period_to >= $1 \
+           AND ($2::text IS NULL OR q.owner_ref = $2) \
+         ORDER BY q.owner_ref, q.currency LIMIT $3",
+        at,
+        owner_filter,
+        MAX_LISTED,
+    )
+    .fetch_all(pool)
+    .await?;
     let mut rows = Vec::with_capacity(quotas.len());
-    for q in &quotas {
-        let owner: String = q.try_get("", "owner_ref")?;
-        let (from, to): (NaiveDate, NaiveDate) =
-            (q.try_get("", "period_from")?, q.try_get("", "period_to")?);
-        let currency = q.try_get::<String>("", "currency")?.trim().to_string();
-        let quota_minor: i64 = q.try_get("", "amount_minor")?;
+    for q in quotas {
+        let owner = q.owner_ref;
+        let (from, to) = (q.period_from, q.period_to);
+        let currency = q.currency;
+        let quota_minor = q.amount_minor;
         let (mut revenue, mut deals, mut other) = (0_i64, 0_i64, BTreeMap::new());
-        for (c, credited) in credited_deals(db, &owner, from, to).await? {
+        for (c, credited) in credited_deals(pool, &owner, from, to).await? {
             if c == currency {
                 revenue = revenue.saturating_add(credited);
                 deals += 1;
@@ -937,7 +922,7 @@ pub(super) async fn standings<C: ConnectionTrait>(
             }
         }
         let tiers: Option<Vec<Tier>> = q
-            .try_get::<Option<serde_json::Value>>("", "plan_tiers")?
+            .plan_tiers
             .map(serde_json::from_value)
             .transpose()
             .map_err(|e| Error::string(&e.to_string()))?;
@@ -946,7 +931,7 @@ pub(super) async fn standings<C: ConnectionTrait>(
             .map(|t| quota::bands(quota_minor, revenue, t))
             .unwrap_or_default();
         rows.push(Attainment {
-            quota_pid: q.try_get::<Uuid>("", "pid")?.to_string(),
+            quota_pid: q.pid.to_string(),
             owner_ref: owner,
             period_from: from,
             period_to: to,
@@ -957,7 +942,7 @@ pub(super) async fn standings<C: ConnectionTrait>(
             attainment: quota::attainment(quota_minor, revenue),
             remaining_minor: quota::remaining(quota_minor, revenue),
             other_currencies: other,
-            plan: q.try_get("", "plan_name")?,
+            plan: q.plan_name,
             commission_minor: tiers.as_ref().map(|_| quota::commission(&bands)),
             bands,
         });
@@ -977,9 +962,14 @@ async fn attainment(
     // Today in the caller's zone, else the organization's (CRM-T171), not UTC's.
     let at = match query.at {
         Some(at) => at,
-        None => super::organization::caller_today(&ctx.db, &headers).await?,
+        None => super::organization::caller_today(crate::db::pool(&ctx), &headers).await?,
     };
-    let rows = standings(&ctx.db, at, user_ref::normalise_opt(query.owner_ref)).await?;
+    let rows = standings(
+        crate::db::pool(&ctx),
+        at,
+        user_ref::normalise_opt(query.owner_ref),
+    )
+    .await?;
     Audit::record_read(
         &ctx.db,
         "quota",

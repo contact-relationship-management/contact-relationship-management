@@ -24,7 +24,7 @@ use uuid::Uuid;
 use super::privacy::TOMBSTONE_PERSON;
 use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::models::_entities::contacts;
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
@@ -320,16 +320,12 @@ async fn combine(
     // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
     if consent == "withdrawn" {
         // A withdrawal exits every active enrolment of that purpose, moved ones included.
-        crate::consents::exit_enrolments(&Bridge::new(txn), pid, tokens::DEFAULT_PURPOSE).await?;
+        crate::consents::exit_enrolments(&mut *txn, pid, tokens::DEFAULT_PURPOSE).await?;
     }
     // The other purposes follow the same rule, each on its own (CRM-R29).
-    let purposes = crate::consents::tighten(
-        &Bridge::new(txn),
-        pid,
-        merged.pid,
-        &format!("merge:{}", merged.pid),
-    )
-    .await?;
+    let purposes =
+        crate::consents::tighten(&mut *txn, pid, merged.pid, &format!("merge:{}", merged.pid))
+            .await?;
     Ok((filled, consent, purposes))
 }
 

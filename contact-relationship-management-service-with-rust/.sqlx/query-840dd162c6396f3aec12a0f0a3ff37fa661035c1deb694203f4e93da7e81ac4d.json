@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.pid, trim(d.currency) AS \"currency!\", d.amount_minor, d.owner_ref FROM deals d WHERE d.won AND d.deleted_at IS NULL AND d.closed_at IS NOT NULL AND (d.closed_at AT TIME ZONE $4)::date BETWEEN $2 AND $3 AND (d.owner_ref = $1 OR EXISTS (SELECT 1 FROM deal_splits s WHERE s.deal_pid = d.pid AND s.owner_ref = $1))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "currency!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "amount_minor",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "amount_minor"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "owner_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "owner_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Date",
+        "Date",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      true
+    ]
+  },
+  "hash": "840dd162c6396f3aec12a0f0a3ff37fa661035c1deb694203f4e93da7e81ac4d"
+}

@@ -607,7 +607,7 @@ async fn commit_contacts(
     headers: axum::http::HeaderMap,
     Json(payload): Json<ContactCommitPayload>,
 ) -> Result<Response> {
-    let today = super::organization::caller_today(&ctx.db, &headers).await?;
+    let today = super::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
     check_commit(&payload.source_note, payload.obtained_on, today)?;
     let table = read(&payload.csv)?;
     let (reports, judged) = analyse_contacts(&ctx, &caller, &table, &payload.mapping).await?;
@@ -681,7 +681,7 @@ async fn commit_accounts(
     headers: axum::http::HeaderMap,
     Json(payload): Json<AccountCommitPayload>,
 ) -> Result<Response> {
-    let today = super::organization::caller_today(&ctx.db, &headers).await?;
+    let today = super::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
     check_commit(&payload.source_note, payload.obtained_on, today)?;
     let table = read(&payload.csv)?;
     let (reports, judged) = analyse_accounts(&ctx, &table, &payload.mapping).await?;

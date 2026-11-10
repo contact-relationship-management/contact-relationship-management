@@ -177,7 +177,7 @@ fn problems_of(found: Vec<(String, String)>) -> Result<()> {
 /// Answer a specification as the caller.
 async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<ReportResult> {
     // Months, fiscal quarters and years in the organization's calendar (CRM-T171).
-    let periods = super::organization::periods(&ctx.db).await?;
+    let periods = super::organization::periods(crate::db::pool(ctx)).await?;
     let plan = rules::plan_in(&spec, &periods).map_err(|found| match problems_of(found) {
         Err(error) => error,
         Ok(()) => unprocessable("the report cannot be run"),

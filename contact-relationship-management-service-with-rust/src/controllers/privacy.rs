@@ -111,7 +111,7 @@ async fn subject_access(
         as_of: crate::clock::now(),
         contact: contact.clone(),
         consent_history: rows::all_consent_events_of(&mut *conn, cpid).await?,
-        consent_purposes: crate::consents::all(&Bridge::new(&mut conn), &contact).await?,
+        consent_purposes: crate::consents::all(&mut *conn, &contact).await?,
         activities: rows::all_activities_about(&mut *conn, cpid).await?,
         leads: rows::all_leads_of_contact(&mut *conn, cpid).await?,
         deals_as_primary_contact: rows::all_deals_of_contact(&mut *conn, cpid).await?,

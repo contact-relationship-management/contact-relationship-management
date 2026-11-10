@@ -8,7 +8,7 @@ use super::{
 use axa::extract::Query;
 use sqlx::{PgConnection, PgPool};
 
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::models::rows;
 
 use crate::rules::public_text::{self, Text};
@@ -181,10 +181,8 @@ pub(super) async fn unsubscribe_post(
         // person gets the same confirmation. The consent helpers are still on `SeaORM`, and
         // `Bridge` runs them in this transaction.
         if let Some(contact) = rows::contact(&mut *txn, contact_pid).await? {
-            let purpose =
-                crate::consents::purpose_of_message(&Bridge::new(&mut txn), message_pid).await?;
-            let state =
-                crate::consents::state_of(&Bridge::new(&mut txn), &contact, &purpose).await?;
+            let purpose = crate::consents::purpose_of_message(&mut *txn, message_pid).await?;
+            let state = crate::consents::state_of(&mut *txn, &contact, &purpose).await?;
             if state != "withdrawn" {
                 apply_consent_in(
                     &mut txn,
@@ -295,7 +293,7 @@ async fn engagement_allowed(txn: &mut PgConnection, message_id: &str) -> Result<
         |row| row.purpose,
     );
     Ok(
-        crate::consents::state_of(&Bridge::new(txn), &contact, &purpose).await? == "granted"
+        crate::consents::state_of(&mut *txn, &contact, &purpose).await? == "granted"
             && deliveries::suppression(&mut *txn, contact_pid)
                 .await?
                 .is_none(),
@@ -347,8 +345,7 @@ pub(super) async fn apply_event(
                 // A spam complaint is a no to everything.
                 if let Some(contact) = rows::contact(&mut *txn, contact_pid).await? {
                     for purpose in tokens::PURPOSES {
-                        let state =
-                            crate::consents::state_of(&Bridge::new(txn), &contact, purpose).await?;
+                        let state = crate::consents::state_of(&mut *txn, &contact, purpose).await?;
                         if state != "withdrawn" {
                             apply_consent_in(
                                 &mut *txn,
@@ -531,7 +528,7 @@ pub(super) async fn confirm_post(
         let Some(contact) = rows::contact(&mut *txn, contact_pid).await? else {
             return Ok(None);
         };
-        let state = crate::consents::state_of(&Bridge::new(&mut txn), &contact, purpose).await?;
+        let state = crate::consents::state_of(&mut *txn, &contact, purpose).await?;
         let result = match state.as_str() {
             "granted" => Some(true),
             "pending" => {
@@ -594,7 +591,7 @@ async fn preferences_html(
         .await?
         .ok_or(axa::Error::NotFound)?;
     let mut rows = String::new();
-    for entry in crate::consents::all(&Bridge::new(&mut conn), &contact).await? {
+    for entry in crate::consents::all(&mut *conn, &contact).await? {
         let (action, label) = if entry.state == "granted" {
             ("withdrawn", text.stop)
         } else {
@@ -693,9 +690,7 @@ pub(super) async fn preferences_post(
         let contact = rows::contact(&mut *txn, spent.contact)
             .await?
             .ok_or(axa::Error::NotFound)?;
-        if crate::consents::state_of(&Bridge::new(&mut txn), &contact, purpose).await?
-            != choice.action
-        {
+        if crate::consents::state_of(&mut *txn, &contact, purpose).await? != choice.action {
             apply_consent_in(
                 &mut txn,
                 contact,

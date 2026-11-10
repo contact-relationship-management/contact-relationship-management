@@ -8,7 +8,6 @@
 //! flow); a periodic `bg_pg` worker is the roadmap seam.
 
 use axa::prelude::*;
-use sea_orm::QueryOrder;
 use serde::Deserialize;
 use uuid::Uuid;
 

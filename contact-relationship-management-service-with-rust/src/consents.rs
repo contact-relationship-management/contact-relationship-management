@@ -3,12 +3,14 @@
 //! The default purpose (`marketing`) lives in `contacts.marketing_consent`, as it always has, so
 //! everything that read it still works. Every other purpose is a row in `contact_consents`; no
 //! row means `never`. Only `granted` allows a send.
+//!
+//! On `sqlx` since CRM-T215 (CRM-D24).
 
 use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
-use sea_orm::{ConnectionTrait, DatabaseBackend, DbErr, Statement, Value};
 use serde::Serialize;
+use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
 use crate::models::_entities::contacts;
@@ -26,33 +28,25 @@ pub struct PurposeState {
     pub changed_at: Option<DateTime<Utc>>,
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
 /// The states held for the non-default purposes, with when they changed.
 ///
 /// # Errors
 ///
 /// A database error.
-pub async fn others<C: ConnectionTrait>(
-    db: &C,
+pub async fn others<'e>(
+    db: impl PgExecutor<'e>,
     contact: Uuid,
-) -> Result<BTreeMap<String, (String, DateTime<Utc>)>, DbErr> {
-    let rows = db
-        .query_all_raw(stmt(
-            "SELECT purpose, state, changed_at FROM contact_consents WHERE contact_pid = $1 AND channel = 'email'",
-            [contact.into()],
-        ))
-        .await?;
-    let mut out = BTreeMap::new();
-    for row in rows {
-        out.insert(
-            row.try_get("", "purpose")?,
-            (row.try_get("", "state")?, row.try_get("", "changed_at")?),
-        );
-    }
-    Ok(out)
+) -> Result<BTreeMap<String, (String, DateTime<Utc>)>, sqlx::Error> {
+    Ok(sqlx::query!(
+        "SELECT purpose, state, changed_at FROM contact_consents WHERE contact_pid = $1 \
+         AND channel = 'email'",
+        contact,
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|row| (row.purpose, (row.state, row.changed_at)))
+    .collect())
 }
 
 /// The contact's state for `purpose`. A purpose nobody has asked about is `never`.
@@ -60,11 +54,11 @@ pub async fn others<C: ConnectionTrait>(
 /// # Errors
 ///
 /// A database error.
-pub async fn state_of<C: ConnectionTrait>(
-    db: &C,
+pub async fn state_of<'e>(
+    db: impl PgExecutor<'e>,
     contact: &contacts::Model,
     purpose: &str,
-) -> Result<String, DbErr> {
+) -> Result<String, sqlx::Error> {
     if purpose == DEFAULT_PURPOSE {
         return Ok(contact.marketing_consent.clone());
     }
@@ -79,10 +73,10 @@ pub async fn state_of<C: ConnectionTrait>(
 /// # Errors
 ///
 /// A database error.
-pub async fn all<C: ConnectionTrait>(
-    db: &C,
+pub async fn all<'e>(
+    db: impl PgExecutor<'e>,
     contact: &contacts::Model,
-) -> Result<Vec<PurposeState>, DbErr> {
+) -> Result<Vec<PurposeState>, sqlx::Error> {
     let mut held = others(db, contact.pid).await?;
     Ok(PURPOSES
         .iter()
@@ -115,19 +109,23 @@ pub async fn all<C: ConnectionTrait>(
 /// # Errors
 ///
 /// A database error.
-pub async fn set_other<C: ConnectionTrait>(
-    db: &C,
+pub async fn set_other<'e>(
+    db: impl PgExecutor<'e>,
     contact: Uuid,
     purpose: &str,
     state: &str,
     at: DateTime<Utc>,
-) -> Result<(), DbErr> {
-    db.execute_raw(stmt(
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
         "INSERT INTO contact_consents (contact_pid, purpose, state, changed_at) \
          VALUES ($1, $2, $3, $4) \
          ON CONFLICT (contact_pid, purpose, channel) DO UPDATE SET state = $3, changed_at = $4",
-        [contact.into(), purpose.into(), state.into(), at.into()],
-    ))
+        contact,
+        purpose,
+        state,
+        at,
+    )
+    .execute(db)
     .await
     .map(|_| ())
 }
@@ -137,17 +135,21 @@ pub async fn set_other<C: ConnectionTrait>(
 /// # Errors
 ///
 /// A database error.
-pub async fn exit_enrolments<C: ConnectionTrait>(
-    db: &C,
+pub async fn exit_enrolments<'e>(
+    db: impl PgExecutor<'e>,
     contact: Uuid,
     purpose: &str,
-) -> Result<u64, DbErr> {
-    db.execute_raw(stmt(
+) -> Result<u64, sqlx::Error> {
+    // A deleted sequence's enrolments are exited too, as before: the withdrawal covers them.
+    sqlx::query!(
         "UPDATE nurture_enrollments SET status = 'exited', next_due_at = NULL \
          WHERE contact_pid = $1 AND status = 'active' AND deleted_at IS NULL \
-         AND sequence_pid IN (SELECT pid FROM nurture_sequences WHERE purpose = $2)",
-        [contact.into(), purpose.into()],
-    ))
+         AND sequence_pid IN (SELECT pid FROM nurture_sequences WHERE purpose = $2 \
+         /* whatever the sequence's deleted_at */)",
+        contact,
+        purpose,
+    )
+    .execute(db)
     .await
     .map(|r| r.rows_affected())
 }
@@ -158,22 +160,22 @@ pub async fn exit_enrolments<C: ConnectionTrait>(
 /// # Errors
 ///
 /// A database error.
-pub async fn purpose_of_message<C: ConnectionTrait>(
-    db: &C,
+pub async fn purpose_of_message<'e>(
+    db: impl PgExecutor<'e>,
     message: Uuid,
-) -> Result<String, DbErr> {
-    let row = db
-        .query_one_raw(stmt(
-            "SELECT purpose FROM campaigns WHERE pid = $1 \
-             UNION ALL \
-             SELECT q.purpose FROM nurture_steps s JOIN nurture_sequences q ON q.pid = s.sequence_pid \
-             WHERE s.pid = $1 LIMIT 1",
-            [message.into()],
-        ))
-        .await?;
-    Ok(row
-        .and_then(|r| r.try_get::<String>("", "purpose").ok())
-        .unwrap_or_else(|| DEFAULT_PURPOSE.to_string()))
+) -> Result<String, sqlx::Error> {
+    // The message was sent, so its campaign or sequence counts deleted or not, as before.
+    Ok(sqlx::query_scalar!(
+        "SELECT purpose AS \"purpose!\" FROM campaigns WHERE pid = $1 \
+         /* whatever deleted_at holds: the mail went out */ \
+         UNION ALL \
+         SELECT q.purpose FROM nurture_steps s JOIN nurture_sequences q ON q.pid = s.sequence_pid \
+         WHERE s.pid = $1 LIMIT 1",
+        message,
+    )
+    .fetch_optional(db)
+    .await?
+    .unwrap_or_else(|| DEFAULT_PURPOSE.to_string()))
 }
 
 /// How one non-default purpose combined in a merge or an unmerge.
@@ -198,14 +200,14 @@ pub struct PurposeOutcome {
 /// # Errors
 ///
 /// A database error.
-pub async fn tighten<C: ConnectionTrait>(
-    db: &C,
+pub async fn tighten(
+    db: &mut PgConnection,
     target: Uuid,
     other: Uuid,
     source: &str,
-) -> Result<Vec<PurposeOutcome>, DbErr> {
-    let mine = others(db, target).await?;
-    let theirs = others(db, other).await?;
+) -> Result<Vec<PurposeOutcome>, sqlx::Error> {
+    let mine = others(&mut *db, target).await?;
+    let theirs = others(&mut *db, other).await?;
     let now = crate::clock::now();
     let mut out = Vec::new();
     for purpose in PURPOSES.iter().filter(|p| **p != DEFAULT_PURPOSE) {
@@ -219,22 +221,21 @@ pub async fn tighten<C: ConnectionTrait>(
         }
         let result = crate::rules::merge::stricter_consent(&before, &other_state).to_string();
         if result != before {
-            set_other(db, target, purpose, &result, now).await?;
-            db.execute_raw(stmt(
-                "INSERT INTO consent_events (pid, contact_pid, action, source, purpose, occurred_at) \
-                 VALUES ($1, $2, $3, $4, $5, $6)",
-                [
-                    Uuid::new_v4().into(),
-                    target.into(),
-                    result.clone().into(),
-                    source.into(),
-                    (*purpose).into(),
-                    now.into(),
-                ],
-            ))
+            set_other(&mut *db, target, purpose, &result, now).await?;
+            sqlx::query!(
+                "INSERT INTO consent_events (pid, contact_pid, action, source, purpose, \
+                 occurred_at) VALUES ($1, $2, $3, $4, $5, $6)",
+                Uuid::new_v4(),
+                target,
+                result,
+                source,
+                *purpose,
+                now,
+            )
+            .execute(&mut *db)
             .await?;
             if result == "withdrawn" {
-                exit_enrolments(db, target, purpose).await?;
+                exit_enrolments(&mut *db, target, purpose).await?;
             }
         }
         out.push(PurposeOutcome {

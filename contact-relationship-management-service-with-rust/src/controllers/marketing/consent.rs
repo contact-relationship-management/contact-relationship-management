@@ -56,7 +56,7 @@ pub(super) async fn contact_facts(
     };
     // The consent, tag and employment helpers are still on `SeaORM`; `Bridge` runs them on `conn`.
     Ok(segment_rules::ContactFacts {
-        consent: crate::consents::state_of(&Bridge::new(conn), contact, purpose).await?,
+        consent: crate::consents::state_of(&mut *conn, contact, purpose).await?,
         status: contact.status.clone(),
         channel: contact.preferred_channel.as_str().to_string(),
         account_tier: tier,
@@ -153,18 +153,11 @@ pub(crate) async fn apply_consent_in(
         .await?;
     } else {
         // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
-        crate::consents::set_other(
-            &Bridge::new(txn),
-            contact_pid,
-            purpose,
-            action,
-            now.to_utc(),
-        )
-        .await?;
+        crate::consents::set_other(&mut *txn, contact_pid, purpose, action, now.to_utc()).await?;
     }
     if action == "withdrawn" {
         // Exit every active enrolment in a sequence sent under this purpose.
-        crate::consents::exit_enrolments(&Bridge::new(txn), contact_pid, purpose).await?;
+        crate::consents::exit_enrolments(&mut *txn, contact_pid, purpose).await?;
     }
     let kind = format!("consent_{action}");
     Audit::record_on(
@@ -206,7 +199,7 @@ pub(super) async fn consent_purposes(
     let contact = find_contact(pool, pid).await?;
     let mut conn = pool.acquire().await?;
     format::json(ConsentPurposes {
-        purposes: crate::consents::all(&Bridge::new(&mut conn), &contact).await?,
+        purposes: crate::consents::all(&mut *conn, &contact).await?,
     })
 }
 
@@ -253,7 +246,7 @@ pub(super) async fn request_consent(
     let contact = find_contact(pool, pid).await?;
     let state = {
         let mut conn = pool.acquire().await?;
-        crate::consents::state_of(&Bridge::new(&mut conn), &contact, &payload.purpose).await?
+        crate::consents::state_of(&mut *conn, &contact, &payload.purpose).await?
     };
     if state == "granted" {
         return Err(unprocessable("that purpose is already granted"));

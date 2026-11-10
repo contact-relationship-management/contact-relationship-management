@@ -1,10 +1,10 @@
 //! Nurture sequences: create, enrol, and the idempotent advance sweep (CRM-R9, CRM-D8).
 
 use super::{
-    ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait, Error,
-    MaybeAuthUser, Metrics, PidRef, Problems, QueryFilter, QueryOrder, Response, Result, State,
-    Uuid, clients, contacts, debug_handler, deliveries, format, mail, nurture_enrollments,
-    nurture_sequences, nurture_steps, streaming, tokens, unprocessable, with_unsubscribe,
+    AppContext, Audit, Deserialize, Error, MaybeAuthUser, Metrics, PidRef, Problems, Response,
+    Result, State, Uuid, clients, contacts, debug_handler, deliveries, format, mail,
+    nurture_enrollments, nurture_sequences, nurture_steps, streaming, tokens, unprocessable,
+    with_unsubscribe,
 };
 use sqlx::PgConnection;
 
@@ -164,22 +164,15 @@ pub(super) async fn enroll(
     let mut txn = pool.begin().await?;
     // The consent helpers and `enrol_in`, which the workflow engine shares, are on
     // `ConnectionTrait`; `Bridge` runs them in this transaction.
-    if crate::consents::state_of(&Bridge::new(&mut txn), &contact, &sequence.purpose).await?
-        != "granted"
-    {
+    if crate::consents::state_of(&mut *txn, &contact, &sequence.purpose).await? != "granted" {
         return Err(unprocessable(&format!(
             "contact has not granted {} consent",
             sequence.purpose
         )));
     }
-    let pid = enrol_in(
-        &Bridge::new(&mut txn),
-        &sequence,
-        contact.pid,
-        caller.actor(),
-    )
-    .await?
-    .ok_or_else(|| unprocessable("sequence has no steps"))?;
+    let pid = enrol_in(&mut txn, &sequence, contact.pid, caller.actor())
+        .await?
+        .ok_or_else(|| unprocessable("sequence has no steps"))?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -188,36 +181,33 @@ pub(super) async fn enroll(
 
 /// Start `contact` on `sequence`, due after its first step's delay, inside the caller's
 /// transaction. The caller has checked consent. `None` when the sequence has no steps.
-pub(crate) async fn enrol_in<C: sea_orm::ConnectionTrait>(
-    txn: &C,
+pub(crate) async fn enrol_in(
+    txn: &mut PgConnection,
     sequence: &nurture_sequences::Model,
     contact: Uuid,
     actor: Option<&str>,
 ) -> Result<Option<Uuid>> {
-    let Some(first_step) = nurture_steps::Entity::find()
-        .filter(nurture_steps::Column::SequencePid.eq(sequence.pid))
-        .filter(nurture_steps::Column::DeletedAt.is_null())
-        .order_by_asc(nurture_steps::Column::Position)
-        .one(txn)
+    let Some(first) = rows::steps_of(&mut *txn, sequence.pid)
         .await?
+        .into_iter()
+        .next()
     else {
         return Ok(None);
     };
-    let due = crate::clock::now() + chrono::Duration::hours(i64::from(first_step.delay_hours));
-    let row = nurture_enrollments::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        sequence_pid: ActiveValue::set(sequence.pid),
-        contact_pid: ActiveValue::set(contact),
-        current_step: ActiveValue::set(0),
-        next_due_at: ActiveValue::set(Some(due.into())),
-        status: ActiveValue::set("active".to_string()),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(txn)
+    let due = crate::clock::now() + chrono::Duration::hours(i64::from(first.delay_hours));
+    let pid = Uuid::new_v4();
+    sqlx::query!(
+        "INSERT INTO nurture_enrollments (pid, sequence_pid, contact_pid, current_step, \
+         next_due_at, status) VALUES ($1, $2, $3, 0, $4, 'active')",
+        pid,
+        sequence.pid,
+        contact,
+        due,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(txn, "nurture_enrollment", row.pid, "created", actor, None).await?;
-    Ok(Some(row.pid))
+    Audit::record_on(txn, "nurture_enrollment", pid, "created", actor, None).await?;
+    Ok(Some(pid))
 }
 
 /// What happened to one real nurture-step send.
@@ -421,7 +411,7 @@ async fn send_gate(
     .await?
     .map_or_else(|| tokens::DEFAULT_PURPOSE.to_string(), |q| q.purpose);
     // The consent and employment helpers are still on `SeaORM`; `Bridge` runs them here.
-    if crate::consents::state_of(&Bridge::new(txn), contact, &purpose).await? != "granted" {
+    if crate::consents::state_of(&mut *txn, contact, &purpose).await? != "granted" {
         return Ok(Gate::Exit);
     }
     if crate::models::employments::is_employee(&Bridge::new(txn), contact.pid).await? {
