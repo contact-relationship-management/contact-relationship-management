@@ -1,0 +1,170 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT created_at, updated_at, id, pid, priority, first_response_minutes, resolution_minutes, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", calendar_pid, max_wait_minutes, wait_limit_action, escalate_to, auto_close_days FROM sla_policies WHERE deleted_at IS NULL ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "priority",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "priority"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "first_response_minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "first_response_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "resolution_minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "resolution_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "calendar_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "calendar_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "max_wait_minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "max_wait_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "wait_limit_action",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "wait_limit_action"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "escalate_to",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "escalate_to"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "auto_close_days",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sla_policies",
+            "name": "auto_close_days"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "c112fc1aa3ee3dd8f9aaa96cb54cc27dfc54a5cdf9b925f8867590a0ad869cea"
+}

@@ -4,13 +4,13 @@
 //! the deadlines of the tickets opened under it are counted in working time. The counting is in
 //! [`crate::rules::calendar`].
 //!
-//! The routes run on `sqlx` (CRM-D24, CRM-T205). [`load`] and [`exists`] stay on `ConnectionTrait`
-//! until the SLA handlers in `support.rs` that call them move.
+//! The routes run on `sqlx` (CRM-D24, CRM-T205), and so do [`load`] and [`exists`], which the SLA
+//! handlers in `support.rs` call (CRM-T208).
 
 use axa::prelude::*;
 use chrono::NaiveDate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::PgExecutor;
 use uuid::Uuid;
 
 use super::merge::conflict;
@@ -52,10 +52,6 @@ pub(crate) struct CalendarView {
     in_use: i64,
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
 /// A stored calendar and how many live SLA policies name it.
 struct Row {
     pid: Uuid,
@@ -82,32 +78,29 @@ fn view(row: Row) -> CalendarView {
 /// # Errors
 ///
 /// A database error.
-pub(crate) async fn load<C: ConnectionTrait>(db: &C, pid: Uuid) -> Result<Option<Calendar>> {
-    let Some(row) = db
-        .query_one_raw(stmt(
-            "SELECT timezone, week, holidays FROM business_calendars WHERE pid = $1",
-            [pid.into()],
-        ))
-        .await?
+pub(crate) async fn load<'e>(db: impl PgExecutor<'e>, pid: Uuid) -> Result<Option<Calendar>> {
+    let Some(row) = sqlx::query!(
+        "SELECT timezone, week, holidays FROM business_calendars WHERE pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await?
     else {
         return Ok(None);
     };
-    let timezone: String = row.try_get("", "timezone")?;
-    let week: Week = serde_json::from_value(row.try_get("", "week")?).unwrap_or_default();
-    let holidays: Vec<NaiveDate> =
-        serde_json::from_value(row.try_get("", "holidays")?).unwrap_or_default();
-    Ok(Calendar::build(&timezone, &week, &holidays).ok())
+    let week: Week = serde_json::from_value(row.week).unwrap_or_default();
+    let holidays: Vec<NaiveDate> = serde_json::from_value(row.holidays).unwrap_or_default();
+    Ok(Calendar::build(&row.timezone, &week, &holidays).ok())
 }
 
 /// Whether the calendar exists.
-pub(crate) async fn exists<C: ConnectionTrait>(db: &C, pid: Uuid) -> Result<bool> {
-    Ok(db
-        .query_one_raw(stmt(
-            "SELECT 1 AS one FROM business_calendars WHERE pid = $1",
-            [pid.into()],
-        ))
-        .await?
-        .is_some())
+pub(crate) async fn exists<'e>(db: impl PgExecutor<'e>, pid: Uuid) -> Result<bool> {
+    Ok(sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM business_calendars WHERE pid = $1) AS \"exists!\"",
+        pid,
+    )
+    .fetch_one(db)
+    .await?)
 }
 
 fn validate(payload: &CalendarPayload) -> Result<()> {

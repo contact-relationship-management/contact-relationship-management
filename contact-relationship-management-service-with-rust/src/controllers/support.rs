@@ -4,20 +4,21 @@
 
 use crate::controllers::PidPath;
 use crate::json::Json;
-use crate::models::live::FindLive;
 use axa::extract::Query;
 use axa::prelude::*;
-use sea_orm::{QueryOrder, TransactionTrait};
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::paging::Page;
 use super::{PidRef, StatusPayload, unprocessable};
 use crate::auth::MaybeAuthUser;
+use crate::db;
 use crate::metrics::Metrics;
-use crate::models::_entities::{activities, articles, contacts, sla_policies, tickets};
+use crate::models::_entities::{activities, tickets};
+use crate::models::DateTimeWithTimeZone;
 use crate::models::audit_logs::Model as Audit;
-use crate::models::records;
+use crate::models::rows;
 use crate::rules::calendar::Calendar;
 use crate::rules::{lifecycle, sla, tokens};
 use crate::streaming;
@@ -103,20 +104,15 @@ fn default_ticket_channel() -> String {
 
 /// The SLA targets for a priority, with the business calendar they are counted on, when a policy
 /// exists.
-async fn targets_for<C: sea_orm::ConnectionTrait>(
-    db: &C,
+async fn targets_for(
+    conn: &mut PgConnection,
     priority: &str,
 ) -> Result<Option<(sla::Targets, Option<Calendar>)>> {
-    let policy = sla_policies::Entity::find()
-        .filter(sla_policies::Column::Priority.eq(priority))
-        .filter(sla_policies::Column::DeletedAt.is_null())
-        .one(db)
-        .await?;
-    let Some(p) = policy else {
+    let Some(p) = rows::sla_policy_of_priority(&mut *conn, priority).await? else {
         return Ok(None);
     };
     let calendar = match p.calendar_pid {
-        Some(pid) => super::calendars::load(db, pid).await?,
+        Some(pid) => super::calendars::load(&mut *conn, pid).await?,
         None => None,
     };
     Ok(Some((
@@ -126,6 +122,11 @@ async fn targets_for<C: sea_orm::ConnectionTrait>(
         },
         calendar,
     )))
+}
+
+/// The live ticket `pid`, or `404`.
+async fn find_ticket<'e>(db: impl sqlx::PgExecutor<'e>, pid: Uuid) -> Result<tickets::Model> {
+    rows::ticket(db, pid).await?.ok_or(Error::NotFound)
 }
 
 /// `POST /api/sla-policies`.
@@ -168,31 +169,34 @@ async fn create_policy(
         problems.push_field("escalate_to", "only with the escalate action");
     }
     problems.finish()?;
+    let pool = db::pool(&ctx);
     if let Some(calendar) = payload.calendar_pid
-        && !super::calendars::exists(&ctx.db, calendar).await?
+        && !super::calendars::exists(pool, calendar).await?
     {
         return Err(unprocessable("that business calendar does not exist"));
     }
-    let txn = ctx.db.begin().await?;
-    let row = sla_policies::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        priority: ActiveValue::set(payload.priority.clone()),
-        first_response_minutes: ActiveValue::set(payload.first_response_minutes),
-        resolution_minutes: ActiveValue::set(payload.resolution_minutes),
-        calendar_pid: ActiveValue::set(payload.calendar_pid),
-        max_wait_minutes: ActiveValue::set(payload.max_wait_minutes),
-        wait_limit_action: ActiveValue::set(action.to_string()),
-        escalate_to: ActiveValue::set(payload.escalate_to.clone()),
-        auto_close_days: ActiveValue::set(payload.auto_close_days),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let pid = Uuid::new_v4();
+    let mut txn = pool.begin().await?;
+    sqlx::query!(
+        "INSERT INTO sla_policies (pid, priority, first_response_minutes, resolution_minutes, \
+         calendar_pid, max_wait_minutes, wait_limit_action, escalate_to, auto_close_days) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        pid,
+        payload.priority,
+        payload.first_response_minutes,
+        payload.resolution_minutes,
+        payload.calendar_pid,
+        payload.max_wait_minutes,
+        action,
+        payload.escalate_to,
+        payload.auto_close_days,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(&txn, "sla_policy", row.pid, "created", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "sla_policy", pid, "created", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
-        pid: row.pid.to_string(),
+        pid: pid.to_string(),
     })
 }
 
@@ -205,22 +209,27 @@ async fn set_policy_calendar(
     PidPath(pid): PidPath,
     Json(payload): Json<PolicyCalendarPayload>,
 ) -> Result<Response> {
+    let pool = db::pool(&ctx);
     if let Some(calendar) = payload.calendar_pid
-        && !super::calendars::exists(&ctx.db, calendar).await?
+        && !super::calendars::exists(pool, calendar).await?
     {
         return Err(unprocessable("that business calendar does not exist"));
     }
-    let policy = sla_policies::Entity::find_live()
-        .filter(sla_policies::Column::Pid.eq(pid))
-        .one(&ctx.db)
-        .await?
-        .ok_or(Error::NotFound)?;
-    let txn = ctx.db.begin().await?;
-    let mut active: sla_policies::ActiveModel = policy.into();
-    active.calendar_pid = ActiveValue::set(payload.calendar_pid);
-    let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
+    let mut txn = pool.begin().await?;
+    let row = sqlx::query_as!(
+        crate::models::_entities::sla_policies::Model,
+        "UPDATE sla_policies SET calendar_pid = $2 WHERE pid = $1 AND deleted_at IS NULL \
+            RETURNING created_at, updated_at, id, pid, priority, first_response_minutes, \
+            resolution_minutes, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", calendar_pid, \
+            max_wait_minutes, wait_limit_action, escalate_to, auto_close_days",
+        pid,
+        payload.calendar_pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    Audit::record_on(
+        &mut txn,
         "sla_policy",
         row.pid,
         "calendar_set",
@@ -235,11 +244,7 @@ async fn set_policy_calendar(
 /// `GET /api/sla-policies`.
 #[debug_handler]
 async fn list_policies(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = sla_policies::Entity::find_live()
-        .order_by_asc(sla_policies::Column::Id)
-        .all(&ctx.db)
-        .await?;
-    format::json(rows)
+    format::json(rows::sla_policies(db::pool(&ctx)).await?)
 }
 
 /// `POST /api/tickets` — open; deadlines derive from the priority's
@@ -257,61 +262,61 @@ async fn create_ticket(
     payload.assignee_ref = crate::rules::user_ref::normalise_opt(payload.assignee_ref.take());
     problems.user_opt("assignee_ref", payload.assignee_ref.as_deref());
     problems.finish()?;
+    let pool = db::pool(&ctx);
     let account_pid = if let Some(contact) = payload.contact_pid {
-        records::find_contact(&ctx.db, contact).await?.account_pid
+        rows::contact(pool, contact)
+            .await?
+            .ok_or(Error::NotFound)?
+            .account_pid
     } else {
         None
     };
-    let opened_at: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
-    let deadlines = targets_for(&ctx.db, &payload.priority)
+    let opened_at: DateTimeWithTimeZone = crate::clock::now().into();
+    let mut txn = pool.begin().await?;
+    let deadlines = targets_for(&mut txn, &payload.priority)
         .await?
         .map(|(targets, calendar)| sla::deadlines_on(opened_at, targets, calendar.as_ref()));
-    let txn = ctx.db.begin().await?;
-    let row = tickets::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        contact_pid: ActiveValue::set(payload.contact_pid),
-        account_pid: ActiveValue::set(account_pid),
-        assignee_ref: ActiveValue::set(payload.assignee_ref.clone()),
-        title: ActiveValue::set(payload.title.clone()),
-        priority: ActiveValue::set(payload.priority.clone()),
-        channel: ActiveValue::set(payload.channel.clone()),
-        status: ActiveValue::set("open".to_string()),
-        opened_at: ActiveValue::set(opened_at),
-        first_response_due_at: ActiveValue::set(
-            deadlines.as_ref().map(|d| d.first_response_due_at),
-        ),
-        resolution_due_at: ActiveValue::set(deadlines.as_ref().map(|d| d.resolution_due_at)),
-        first_responded_at: ActiveValue::set(None),
-        resolved_at: ActiveValue::set(None),
-        first_response_breached: ActiveValue::set(false),
-        resolution_breached: ActiveValue::set(false),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let pid = Uuid::new_v4();
+    sqlx::query!(
+        "INSERT INTO tickets (pid, contact_pid, account_pid, assignee_ref, title, priority, \
+         channel, status, opened_at, first_response_due_at, resolution_due_at, \
+         first_response_breached, resolution_breached) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8, $9, $10, false, false)",
+        pid,
+        payload.contact_pid,
+        account_pid,
+        payload.assignee_ref,
+        payload.title,
+        payload.priority,
+        payload.channel,
+        opened_at,
+        deadlines.as_ref().map(|d| d.first_response_due_at),
+        deadlines.as_ref().map(|d| d.resolution_due_at),
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "ticket",
-        row.pid,
+        pid,
         "ticket_opened",
         caller.actor(),
         None,
     )
     .await?;
-    streaming::emit_on(
-        &txn,
+    streaming::emit_in(
+        &mut txn,
         "ticket",
         "ticket_opened",
-        &row.pid.to_string(),
-        &row.title,
+        &pid.to_string(),
+        &payload.title,
         caller.actor(),
         None,
     )
     .await?;
     txn.commit().await?;
     format::json(PidRef {
-        pid: row.pid.to_string(),
+        pid: pid.to_string(),
     })
 }
 
@@ -331,20 +336,11 @@ async fn list_tickets(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 1000)?;
-    let mut query = tickets::Entity::find_live();
-    if let Some(status) = &params.status {
-        query = query.filter(tickets::Column::Status.eq(status));
-    }
-    let rows = page
-        .apply(
-            query
-                .order_by_asc(tickets::Column::BoardPosition)
-                .order_by_asc(tickets::Column::Id),
-        )
-        .all(&ctx.db)
-        .await?;
+    let (limit, offset) = page.bounds();
+    let pool = db::pool(&ctx);
+    let rows = rows::tickets_page(pool, params.status.as_deref(), limit, offset).await?;
     let (rows, more) = page.split(rows);
-    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
+    let now: DateTimeWithTimeZone = crate::clock::now().into();
     let rows: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|ticket| {
@@ -364,8 +360,8 @@ async fn list_tickets(
             value
         })
         .collect();
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        pool,
         "ticket",
         Uuid::nil(),
         "ticket_list_read",
@@ -401,13 +397,11 @@ struct WaitSweep {
 async fn sweep_waiting(
     ctx: &AppContext,
     caller: &MaybeAuthUser,
-    now: chrono::DateTime<chrono::FixedOffset>,
+    now: DateTimeWithTimeZone,
 ) -> Result<WaitSweep> {
+    let pool = db::pool(ctx);
     let limits: std::collections::HashMap<String, (i32, String, Option<String>)> =
-        sla_policies::Entity::find()
-            .filter(sla_policies::Column::DeletedAt.is_null())
-            .filter(sla_policies::Column::MaxWaitMinutes.is_not_null())
-            .all(&ctx.db)
+        rows::sla_policies(pool)
             .await?
             .into_iter()
             .filter_map(|p| {
@@ -419,12 +413,11 @@ async fn sweep_waiting(
     if limits.is_empty() {
         return Ok(done);
     }
-    let waiting = tickets::Entity::find_live()
-        .filter(tickets::Column::Status.eq("pending"))
-        .filter(tickets::Column::WaitLimitExceededAt.is_null())
-        .all(&ctx.db)
-        .await?;
-    for ticket in waiting {
+    let waiting = rows::tickets_with_status(pool, &["pending"]).await?;
+    for ticket in waiting
+        .into_iter()
+        .filter(|t| t.wait_limit_exceeded_at.is_none())
+    {
         let (Some((limit, action, escalate_to)), Some(since)) =
             (limits.get(&ticket.priority), ticket.paused_at)
         else {
@@ -435,20 +428,26 @@ async fn sweep_waiting(
         }
         let (pid, title) = (ticket.pid, ticket.title.clone());
         if action == "resolve" {
-            transition(ctx, caller, ticket, "resolved", Some("wait_limit")).await?;
+            transition(ctx, caller, pid, "resolved", Some("wait_limit")).await?;
             done.resolved += 1;
         } else {
-            let txn = ctx.db.begin().await?;
-            let mut active: tickets::ActiveModel = ticket.into();
-            active.wait_limit_exceeded_at = ActiveValue::set(Some(now));
-            if action == "escalate" {
-                active.assignee_ref = ActiveValue::set(escalate_to.clone());
+            let escalate = action == "escalate";
+            let mut txn = pool.begin().await?;
+            sqlx::query!(
+                "UPDATE tickets SET wait_limit_exceeded_at = $2, \
+                 assignee_ref = CASE WHEN $3 THEN $4 ELSE assignee_ref END \
+                 WHERE id = $1 AND deleted_at IS NULL",
+                ticket.id,
+                now,
+                escalate,
+                escalate_to.as_deref(),
+            )
+            .execute(&mut *txn)
+            .await?;
+            if escalate {
                 done.escalated += 1;
-            }
-            active.update(&txn).await?;
-            if action == "escalate" {
-                Audit::record(
-                    &txn,
+                Audit::record_on(
+                    &mut txn,
                     "ticket",
                     pid,
                     "ticket_escalated",
@@ -459,8 +458,9 @@ async fn sweep_waiting(
             }
             txn.commit().await?;
         }
-        streaming::emit_on(
-            &ctx.db,
+        let mut conn = pool.acquire().await?;
+        streaming::emit_in(
+            &mut conn,
             "ticket",
             "ticket_wait_limit_exceeded",
             &pid.to_string(),
@@ -480,12 +480,10 @@ async fn sweep_waiting(
 async fn sweep_closing(
     ctx: &AppContext,
     caller: &MaybeAuthUser,
-    now: chrono::DateTime<chrono::FixedOffset>,
+    now: DateTimeWithTimeZone,
 ) -> Result<u64> {
-    let days: std::collections::HashMap<String, i32> = sla_policies::Entity::find()
-        .filter(sla_policies::Column::DeletedAt.is_null())
-        .filter(sla_policies::Column::AutoCloseDays.is_not_null())
-        .all(&ctx.db)
+    let pool = db::pool(ctx);
+    let days: std::collections::HashMap<String, i32> = rows::sla_policies(pool)
         .await?
         .into_iter()
         .filter_map(|p| p.auto_close_days.map(|d| (p.priority, d)))
@@ -493,11 +491,7 @@ async fn sweep_closing(
     if days.is_empty() {
         return Ok(0);
     }
-    let resolved = tickets::Entity::find_live()
-        .filter(tickets::Column::Status.eq("resolved"))
-        .filter(tickets::Column::ResolvedAt.is_not_null())
-        .all(&ctx.db)
-        .await?;
+    let resolved = rows::tickets_with_status(pool, &["resolved"]).await?;
     let mut closed = 0;
     for ticket in resolved {
         let (Some(limit), Some(since)) = (days.get(&ticket.priority), ticket.resolved_at) else {
@@ -506,7 +500,7 @@ async fn sweep_closing(
         if now - since <= chrono::Duration::days(i64::from(*limit)) {
             continue;
         }
-        transition(ctx, caller, ticket, "closed", Some("auto_close")).await?;
+        transition(ctx, caller, ticket.pid, "closed", Some("auto_close")).await?;
         closed += 1;
     }
     Ok(closed)
@@ -534,9 +528,10 @@ async fn get_ticket(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let ticket = records::find_ticket(&ctx.db, pid).await?;
-    Audit::record_read(
-        &ctx.db,
+    let pool = db::pool(&ctx);
+    let ticket = find_ticket(pool, pid).await?;
+    Audit::record_read_on(
+        pool,
         "ticket",
         ticket.pid,
         "ticket_read",
@@ -544,13 +539,7 @@ async fn get_ticket(
         None,
     )
     .await?;
-    let activity_rows = activities::Entity::find()
-        .filter(activities::Column::SubjectKind.eq("ticket"))
-        .filter(activities::Column::SubjectPid.eq(ticket.pid))
-        .filter(activities::Column::DeletedAt.is_null())
-        .order_by_asc(activities::Column::Id)
-        .all(&ctx.db)
-        .await?;
+    let activity_rows = rows::activities_of(pool, "ticket", ticket.pid).await?;
     format::json(TicketDetail {
         reference: reference(ticket.pid),
         ticket,
@@ -568,13 +557,13 @@ struct Resumed {
 
 /// Work out what resuming a ticket that was paused at `paused_at` does at `now`: each deadline moves
 /// by the waiting that counted against it, in working time on the policy's calendar.
-async fn resume_clock<C: sea_orm::ConnectionTrait>(
-    db: &C,
+async fn resume_clock(
+    conn: &mut PgConnection,
     ticket: &tickets::Model,
-    paused_at: chrono::DateTime<chrono::FixedOffset>,
-    now: chrono::DateTime<chrono::FixedOffset>,
+    paused_at: DateTimeWithTimeZone,
+    now: DateTimeWithTimeZone,
 ) -> Result<Resumed> {
-    let policy = targets_for(db, &ticket.priority).await?;
+    let policy = targets_for(conn, &ticket.priority).await?;
     let calendar = policy.as_ref().and_then(|(_, calendar)| calendar.as_ref());
     let paused = sla::Paused {
         first_response_seconds: ticket.first_response_paused_seconds
@@ -612,8 +601,7 @@ async fn ticket_status(
     let mut problems = Problems::new();
     problems.require_token("to", tokens::TICKET_STATUSES, &payload.to);
     problems.finish()?;
-    let ticket = records::find_ticket(&ctx.db, pid).await?;
-    transition(&ctx, &caller, ticket, &payload.to, None).await
+    transition(&ctx, &caller, pid, &payload.to, None).await
 }
 
 /// The reference a reply carries for the ticket `pid` (CRM-R88): `T-` and the first eight hex
@@ -663,29 +651,23 @@ async fn recognise_reply(ctx: &AppContext, mail: &InboundMail) -> Result<&'stati
     let Some(digits) = reference_in(&mail.subject) else {
         return Ok("no_reference");
     };
-    let found = ctx
-        .db
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DatabaseBackend::Postgres,
-            "SELECT pid FROM tickets WHERE deleted_at IS NULL AND pid::text LIKE $1 LIMIT 2",
-            [format!("{digits}%").into()],
-        ))
-        .await?;
+    let pool = db::pool(ctx);
+    let found = sqlx::query_scalar!(
+        "SELECT pid FROM tickets WHERE deleted_at IS NULL AND pid::text LIKE $1 LIMIT 2",
+        format!("{digits}%"),
+    )
+    .fetch_all(pool)
+    .await?;
     let pid: Uuid = match found.as_slice() {
         [] => return Ok("unknown_ticket"),
-        [one] => one.try_get("", "pid")?,
+        [one] => *one,
         _ => return Ok("ambiguous_reference"),
     };
-    let ticket = records::find_ticket(&ctx.db, pid).await?;
+    let ticket = find_ticket(pool, pid).await?;
     // The sender must be the person the ticket is about: the mailbox the person service gives for
     // its contact, not an address the message names for itself.
     let contact = match ticket.contact_pid {
-        Some(contact_pid) => {
-            contacts::Entity::find_live()
-                .filter(contacts::Column::Pid.eq(contact_pid))
-                .one(&ctx.db)
-                .await?
-        }
+        Some(contact_pid) => rows::contact(pool, contact_pid).await?,
         None => None,
     };
     let known = match &contact {
@@ -700,7 +682,7 @@ async fn recognise_reply(ctx: &AppContext, mail: &InboundMail) -> Result<&'stati
             transition(
                 ctx,
                 &MaybeAuthUser(None),
-                ticket,
+                ticket.pid,
                 "open",
                 Some("inbound_mail"),
             )
@@ -744,9 +726,9 @@ async fn ticket_customer_reply(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let ticket = records::find_ticket(&ctx.db, pid).await?;
+    let ticket = find_ticket(db::pool(&ctx), pid).await?;
     match ticket.status.as_str() {
-        "pending" => transition(&ctx, &caller, ticket, "open", Some("customer_reply")).await,
+        "pending" => transition(&ctx, &caller, pid, "open", Some("customer_reply")).await,
         "open" => format::json(ticket),
         other => Err(unprocessable(&format!(
             "a customer reply does not reopen a {other} ticket"
@@ -754,57 +736,84 @@ async fn ticket_customer_reply(
     }
 }
 
-/// Move `ticket` to `to`, resuming or stopping its SLA clock (CRM-R55); `via` names what caused it.
+/// Move the ticket `pid` to `to`, resuming or stopping its SLA clock (CRM-R55); `via` names what
+/// caused it. The ticket is read again and locked in the transaction that changes it, so the
+/// change is decided on the row as it is.
 async fn transition(
     ctx: &AppContext,
     caller: &MaybeAuthUser,
-    ticket: tickets::Model,
+    pid: Uuid,
     to: &str,
     via: Option<&str>,
 ) -> Result<Response> {
-    let payload = StatusPayload { to: to.to_string() };
-    lifecycle::check("ticket", lifecycle::TICKET, &ticket.status, &payload.to)
+    let mut txn = db::pool(ctx).begin().await?;
+    let ticket = rows::ticket_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    lifecycle::check("ticket", lifecycle::TICKET, &ticket.status, to)
         .map_err(|e| unprocessable(&e.to_string()))?;
     // The SLA clock stops while the ticket waits for the customer and starts again when it leaves
     // `pending`, moving each deadline by the waiting that counted against it (CRM-R55).
-    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
+    let now: DateTimeWithTimeZone = crate::clock::now().into();
     let resumed = match ticket.paused_at {
         Some(paused_at) if ticket.status == "pending" => {
-            Some(resume_clock(&ctx.db, &ticket, paused_at, now).await?)
+            Some(resume_clock(&mut txn, &ticket, paused_at, now).await?)
         }
         _ => None,
     };
-    let txn = ctx.db.begin().await?;
     let from = ticket.status.clone();
     let title = ticket.title.clone();
-    let mut active: tickets::ActiveModel = ticket.into();
-    active.status = ActiveValue::set(payload.to.clone());
-    if payload.to == "pending" {
-        active.paused_at = ActiveValue::set(Some(now));
+    let mut next = ticket;
+    next.status = to.to_string();
+    if to == "pending" {
+        next.paused_at = Some(now);
     } else if let Some(resumed) = resumed {
-        active.paused_at = ActiveValue::set(None);
-        active.wait_limit_exceeded_at = ActiveValue::set(None);
-        active.first_response_paused_seconds =
-            ActiveValue::set(resumed.paused.first_response_seconds);
-        active.resolution_paused_seconds = ActiveValue::set(resumed.paused.resolution_seconds);
+        next.paused_at = None;
+        next.wait_limit_exceeded_at = None;
+        next.first_response_paused_seconds = resumed.paused.first_response_seconds;
+        next.resolution_paused_seconds = resumed.paused.resolution_seconds;
         if let Some(deadlines) = resumed.deadlines {
-            active.first_response_due_at = ActiveValue::set(Some(deadlines.first_response_due_at));
-            active.resolution_due_at = ActiveValue::set(Some(deadlines.resolution_due_at));
+            next.first_response_due_at = Some(deadlines.first_response_due_at);
+            next.resolution_due_at = Some(deadlines.resolution_due_at);
         }
     }
-    if payload.to == "resolved" {
-        active.resolved_at = ActiveValue::set(Some(crate::clock::now().into()));
-    } else if payload.to == "open" && from == "resolved" {
-        active.resolved_at = ActiveValue::set(None); // reopen clears it
+    if to == "resolved" {
+        next.resolved_at = Some(crate::clock::now().into());
+    } else if to == "open" && from == "resolved" {
+        next.resolved_at = None; // reopen clears it
     }
-    let row = active.update(&txn).await?;
-    let kind = match payload.to.as_str() {
+    let row = sqlx::query_as!(
+        tickets::Model,
+        "UPDATE tickets SET status = $2, paused_at = $3, wait_limit_exceeded_at = $4, \
+            first_response_paused_seconds = $5, resolution_paused_seconds = $6, \
+            first_response_due_at = $7, resolution_due_at = $8, resolved_at = $9 WHERE id = $1 \
+            RETURNING created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+            priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+            DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+            first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+            \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+            DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+            wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\"",
+        next.id,
+        next.status,
+        next.paused_at,
+        next.wait_limit_exceeded_at,
+        next.first_response_paused_seconds,
+        next.resolution_paused_seconds,
+        next.first_response_due_at,
+        next.resolution_due_at,
+        next.resolved_at,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    let kind = match to {
         "resolved" => "ticket_resolved",
         "closed" => "ticket_closed",
         _ => "ticket_status_changed",
     };
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "ticket",
         row.pid,
         kind,
@@ -815,8 +824,8 @@ async fn transition(
         }),
     )
     .await?;
-    streaming::emit_on(
-        &txn,
+    streaming::emit_in(
+        &mut txn,
         "ticket",
         kind,
         &row.pid.to_string(),
@@ -842,27 +851,41 @@ async fn ticket_priority(
     problems.require_token("priority", tokens::PRIORITIES, &payload.priority);
     problems.require_text("reason", &payload.reason);
     problems.finish()?;
-    let ticket = records::find_ticket(&ctx.db, pid).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let ticket = rows::ticket_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     // Waiting for the customer already counted stays counted (CRM-R55).
     let paused = sla::Paused {
         first_response_seconds: ticket.first_response_paused_seconds,
         resolution_seconds: ticket.resolution_paused_seconds,
     };
-    let deadlines = targets_for(&ctx.db, &payload.priority)
+    let deadlines = targets_for(&mut txn, &payload.priority)
         .await?
         .map(|(targets, calendar)| {
             sla::deadlines_paused(ticket.opened_at, targets, calendar.as_ref(), paused)
         });
-    let txn = ctx.db.begin().await?;
     let from = ticket.priority.clone();
-    let mut active: tickets::ActiveModel = ticket.into();
-    active.priority = ActiveValue::set(payload.priority.clone());
-    active.first_response_due_at =
-        ActiveValue::set(deadlines.as_ref().map(|d| d.first_response_due_at));
-    active.resolution_due_at = ActiveValue::set(deadlines.as_ref().map(|d| d.resolution_due_at));
-    let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
+    let row = sqlx::query_as!(
+        tickets::Model,
+        "UPDATE tickets SET priority = $2, first_response_due_at = $3, resolution_due_at = $4 \
+            WHERE id = $1 RETURNING created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+            priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+            DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+            first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+            \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+            DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+            wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\"",
+        ticket.id,
+        payload.priority,
+        deadlines.as_ref().map(|d| d.first_response_due_at),
+        deadlines.as_ref().map(|d| d.resolution_due_at),
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
+        &mut txn,
         "ticket",
         row.pid,
         "priority_changed",
@@ -879,11 +902,9 @@ async fn ticket_priority(
 /// stored flag is still false flip and emit).
 #[debug_handler]
 async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
-    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
-    let open = tickets::Entity::find_live()
-        .filter(tickets::Column::Status.is_in(["open", "pending", "resolved"]))
-        .all(&ctx.db)
-        .await?;
+    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let pool = db::pool(&ctx);
+    let open = rows::tickets_with_status(pool, &["open", "pending", "resolved"]).await?;
     let mut breaches = 0_u64;
     for ticket in open {
         let clock = sla::clock_now(now, ticket.paused_at);
@@ -898,21 +919,21 @@ async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Resu
         if !new_first && !new_resolution {
             continue;
         }
-        let txn = ctx.db.begin().await?;
-        let pid = ticket.pid;
-        let mut active: tickets::ActiveModel = ticket.into();
-        if new_first {
-            active.first_response_breached = ActiveValue::set(true);
-        }
-        if new_resolution {
-            active.resolution_breached = ActiveValue::set(true);
-        }
-        active.update(&txn).await?;
-        streaming::emit_on(
-            &txn,
+        let mut txn = pool.begin().await?;
+        sqlx::query!(
+            "UPDATE tickets SET first_response_breached = first_response_breached OR $2, \
+             resolution_breached = resolution_breached OR $3 WHERE id = $1 AND deleted_at IS NULL",
+            ticket.id,
+            new_first,
+            new_resolution,
+        )
+        .execute(&mut *txn)
+        .await?;
+        streaming::emit_in(
+            &mut txn,
             "ticket",
             "sla_breached",
-            &pid.to_string(),
+            &ticket.pid.to_string(),
             "",
             caller.actor(),
             Some(serde_json::json!({
@@ -947,23 +968,22 @@ async fn create_article(
     problems.require_text("body", &payload.body);
     problems.cap_opt("keywords", payload.keywords.as_deref());
     problems.finish()?;
-    let txn = ctx.db.begin().await?;
-    let row = articles::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        title: ActiveValue::set(payload.title.clone()),
-        body: ActiveValue::set(payload.body.clone()),
-        keywords: ActiveValue::set(payload.keywords.clone()),
-        status: ActiveValue::set("draft".to_string()),
-        version: ActiveValue::set(1),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let pid = Uuid::new_v4();
+    let mut txn = db::pool(&ctx).begin().await?;
+    sqlx::query!(
+        "INSERT INTO articles (pid, title, body, keywords, status, version) \
+         VALUES ($1, $2, $3, $4, 'draft', 1)",
+        pid,
+        payload.title,
+        payload.body,
+        payload.keywords,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(&txn, "article", row.pid, "created", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "article", pid, "created", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
-        pid: row.pid.to_string(),
+        pid: pid.to_string(),
     })
 }
 
@@ -980,22 +1000,40 @@ async fn update_article(
     problems.require_text("title", &payload.title);
     problems.require_text("body", &payload.body);
     problems.finish()?;
-    let article = records::find_article(&ctx.db, pid).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let article = rows::article_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     if article.status == "archived" {
         return Err(unprocessable("archived articles are read-only"));
     }
-    let txn = ctx.db.begin().await?;
-    let published = article.status == "published";
-    let version = article.version;
-    let mut active: articles::ActiveModel = article.into();
-    active.title = ActiveValue::set(payload.title.clone());
-    active.body = ActiveValue::set(payload.body.clone());
-    active.keywords = ActiveValue::set(payload.keywords.clone());
-    if published {
-        active.version = ActiveValue::set(version + 1);
-    }
-    let row = active.update(&txn).await?;
-    Audit::record(&txn, "article", row.pid, "updated", caller.actor(), None).await?;
+    let version = if article.status == "published" {
+        article.version + 1
+    } else {
+        article.version
+    };
+    let row = sqlx::query_as!(
+        crate::models::_entities::articles::Model,
+        "UPDATE articles SET title = $2, body = $3, keywords = $4, version = $5 WHERE id = $1 \
+            RETURNING created_at, updated_at, id, pid, title, body, keywords, status, version, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\"",
+        article.id,
+        payload.title,
+        payload.body,
+        payload.keywords,
+        version,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
+        &mut txn,
+        "article",
+        row.pid,
+        "updated",
+        caller.actor(),
+        None,
+    )
+    .await?;
     txn.commit().await?;
     format::json(row)
 }
@@ -1011,21 +1049,29 @@ async fn article_status(
     let mut problems = Problems::new();
     problems.require_token("to", tokens::ARTICLE_STATUSES, &payload.to);
     problems.finish()?;
-    let article = records::find_article(&ctx.db, pid).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let article = rows::article_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     lifecycle::check("article", lifecycle::ARTICLE, &article.status, &payload.to)
         .map_err(|e| unprocessable(&e.to_string()))?;
-    let txn = ctx.db.begin().await?;
-    let mut active: articles::ActiveModel = article.into();
-    active.status = ActiveValue::set(payload.to.clone());
-    let row = active.update(&txn).await?;
+    let row = sqlx::query_as!(
+        crate::models::_entities::articles::Model,
+        "UPDATE articles SET status = $2 WHERE id = $1 RETURNING created_at, updated_at, id, pid, title, body, keywords, status, version, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\"",
+        article.id,
+        payload.to,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
     let kind = if payload.to == "published" {
         "article_published"
     } else {
         "updated"
     };
-    Audit::record(&txn, "article", row.pid, kind, caller.actor(), None).await?;
-    streaming::emit_on(
-        &txn,
+    Audit::record_on(&mut txn, "article", row.pid, kind, caller.actor(), None).await?;
+    streaming::emit_in(
+        &mut txn,
         "article",
         kind,
         &row.pid.to_string(),
@@ -1053,20 +1099,21 @@ async fn list_articles(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 500)?;
-    let mut query = articles::Entity::find_live();
+    let (limit, offset) = page.bounds();
     // Search in SQL, before the page is cut: filtering after the cut would
     // hide matches that sit beyond the first page.
-    if let Some(q) = params.q.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
-        let escaped = axa::cursor_pagination::escape_like(&q.to_lowercase());
-        query = query.filter(sea_orm::sea_query::Expr::cust_with_values(
-            "(lower(title) LIKE $1 OR lower(coalesce(keywords, '')) LIKE $1)",
-            [format!("%{escaped}%")],
-        ));
-    }
-    let rows = page
-        .apply(query.order_by_asc(articles::Column::Id))
-        .all(&ctx.db)
-        .await?;
+    let pattern = params
+        .q
+        .as_deref()
+        .map(str::trim)
+        .filter(|q| !q.is_empty())
+        .map(|q| {
+            format!(
+                "%{}%",
+                axa::cursor_pagination::escape_like(&q.to_lowercase())
+            )
+        });
+    let rows = rows::articles_page(db::pool(&ctx), pattern.as_deref(), limit, offset).await?;
     let (rows, more) = page.split(rows);
     page.respond(rows, more)
 }
@@ -1089,12 +1136,9 @@ async fn suggested_articles(
     State(ctx): State<AppContext>,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let ticket = records::find_ticket(&ctx.db, pid).await?;
-    let published = articles::Entity::find_live()
-        .filter(articles::Column::Status.eq("published"))
-        .order_by_asc(articles::Column::Id)
-        .all(&ctx.db)
-        .await?;
+    let pool = db::pool(&ctx);
+    let ticket = find_ticket(pool, pid).await?;
+    let published = rows::published_articles_by_id(pool).await?;
     let texts: Vec<_> = published
         .iter()
         .map(|a| (a.title.clone(), a.keywords.clone(), a.body.clone()))

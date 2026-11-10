@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE tickets SET first_response_breached = first_response_breached OR $2, resolution_breached = resolution_breached OR $3 WHERE id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8764c31a74c584102bed281f89cddbf287689e280715d7683178842de218de7d"
+}

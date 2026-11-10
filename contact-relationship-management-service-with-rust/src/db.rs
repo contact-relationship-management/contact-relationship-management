@@ -103,10 +103,16 @@ mod tests {
 
     /// Who may write a sealed column in SQL, and why. A write here must bind `EncryptedText`, or
     /// have a reason not to.
-    const SEALED_WRITERS: &[(&str, &str)] = &[(
-        "src/controllers/privacy.rs",
-        "erasure writes a plaintext tombstone on purpose",
-    )];
+    const SEALED_WRITERS: &[(&str, &str)] = &[
+        (
+            "src/controllers/board.rs",
+            "an activity's edit binds `EncryptedText`, which seals the summary",
+        ),
+        (
+            "src/controllers/privacy.rs",
+            "erasure writes a plaintext tombstone on purpose",
+        ),
+    ];
 
     fn lower_words(sql: &str) -> Vec<String> {
         sql.split(|c: char| !c.is_alphanumeric() && c != '_')

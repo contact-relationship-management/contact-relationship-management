@@ -12,18 +12,16 @@ use crate::json::Json;
 use axa::error::ErrorDetail;
 use axa::prelude::*;
 use axum::http::StatusCode;
-use sea_orm::{
-    ActiveValue, ConnectionTrait, DatabaseBackend, QueryOrder, Statement, TransactionTrait, Value,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 
 use super::record_rejection;
 use crate::auth::{self, MaybeAuthUser};
+use crate::db;
 use crate::models::_entities::external_links;
 use crate::models::audit_logs::Model as Audit;
-use crate::models::records;
+use crate::models::rows;
 use crate::rules::external_links as rules;
 use crate::validation::Problems;
 
@@ -45,16 +43,6 @@ pub(crate) struct LinkPayload {
     pub external_id: Option<String>,
 }
 
-/// The table behind each subject kind.
-fn table_of(kind: &str) -> &'static str {
-    match kind {
-        "contact" => "contacts",
-        "account" => "accounts",
-        "deal" => "deals",
-        _ => "leads",
-    }
-}
-
 /// Check the record exists and is live. For a contact, also apply the
 /// per-record access policy.
 async fn check_subject(
@@ -64,24 +52,44 @@ async fn check_subject(
     pid: Uuid,
     action: authentication_verifier::Action,
 ) -> Result<()> {
-    if kind == "contact" {
-        let contact = records::find_contact(&ctx.db, pid).await?;
-        auth::authorize_record(caller, action, &auth::contact_resource_attrs(&contact))
-            .map_err(record_rejection)?;
-        return Ok(());
-    }
-    let found = ctx
-        .db
-        .query_one_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            format!(
-                "SELECT 1 FROM {} WHERE pid = $1 AND deleted_at IS NULL",
-                table_of(kind)
-            ),
-            [Value::from(pid)],
-        ))
-        .await?;
-    if found.is_none() {
+    let pool = db::pool(ctx);
+    // One checked statement per table, in place of a table name written into the SQL.
+    let found = match kind {
+        "contact" => {
+            let contact = rows::contact(pool, pid).await?.ok_or(Error::NotFound)?;
+            auth::authorize_record(caller, action, &auth::contact_resource_attrs(&contact))
+                .map_err(record_rejection)?;
+            return Ok(());
+        }
+        "account" => {
+            sqlx::query_scalar!(
+                "SELECT EXISTS (SELECT 1 FROM accounts WHERE pid = $1 AND deleted_at IS NULL) \
+             AS \"found!\"",
+                pid,
+            )
+            .fetch_one(pool)
+            .await?
+        }
+        "deal" => {
+            sqlx::query_scalar!(
+                "SELECT EXISTS (SELECT 1 FROM deals WHERE pid = $1 AND deleted_at IS NULL) \
+             AS \"found!\"",
+                pid,
+            )
+            .fetch_one(pool)
+            .await?
+        }
+        _ => {
+            sqlx::query_scalar!(
+                "SELECT EXISTS (SELECT 1 FROM leads WHERE pid = $1 AND deleted_at IS NULL) \
+             AS \"found!\"",
+                pid,
+            )
+            .fetch_one(pool)
+            .await?
+        }
+    };
+    if !found {
         return Err(Error::NotFound);
     }
     Ok(())
@@ -110,12 +118,16 @@ async fn list_for(
         authentication_verifier::Action::Read,
     )
     .await?;
-    let links = external_links::Entity::find()
-        .filter(external_links::Column::SubjectKind.eq(kind))
-        .filter(external_links::Column::SubjectPid.eq(pid))
-        .order_by_asc(external_links::Column::Id)
-        .all(&ctx.db)
-        .await?;
+    let links = sqlx::query_as!(
+        external_links::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, system, url, external_id, \
+        label, created_by FROM external_links WHERE subject_kind = $1 AND subject_pid = $2 ORDER BY \
+        id",
+        kind,
+        pid,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
     format::json(ExternalLinks {
         links,
         systems: rules::SYSTEM_TOKENS,
@@ -155,13 +167,15 @@ async fn create_for(
     )
     .await?;
 
-    let txn = ctx.db.begin().await?;
-    let existing = external_links::Entity::find()
-        .filter(external_links::Column::SubjectKind.eq(kind))
-        .filter(external_links::Column::SubjectPid.eq(pid))
-        .all(&txn)
-        .await?;
-    if existing.iter().any(|l| l.url == address) {
+    let mut txn = db::pool(&ctx).begin().await?;
+    let existing = sqlx::query_scalar!(
+        "SELECT url FROM external_links WHERE subject_kind = $1 AND subject_pid = $2",
+        kind,
+        pid,
+    )
+    .fetch_all(&mut *txn)
+    .await?;
+    if existing.contains(&address) {
         return Err(Error::CustomError(
             StatusCode::CONFLICT,
             ErrorDetail::new("conflict", "this record already has that link"),
@@ -170,21 +184,24 @@ async fn create_for(
     if existing.len() as u64 >= MAX_PER_SUBJECT {
         return Err(super::unprocessable("a record can carry at most 50 links"));
     }
-    let link = external_links::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        subject_kind: ActiveValue::set(kind.to_string()),
-        subject_pid: ActiveValue::set(pid),
-        system: ActiveValue::set(payload.system.clone()),
-        url: ActiveValue::set(address),
-        external_id: ActiveValue::set(payload.external_id.filter(|s| !s.trim().is_empty())),
-        label: ActiveValue::set(payload.label.filter(|s| !s.trim().is_empty())),
-        created_by: ActiveValue::set(caller.actor().map(str::to_string)),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let link = sqlx::query_as!(
+        external_links::Model,
+        "INSERT INTO external_links (pid, subject_kind, subject_pid, system, url, external_id, label, \
+        created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING created_at, updated_at, id, \
+        pid, subject_kind, subject_pid, system, url, external_id, label, created_by",
+        Uuid::new_v4(),
+        kind,
+        pid,
+        payload.system,
+        address,
+        payload.external_id.filter(|s| !s.trim().is_empty()),
+        payload.label.filter(|s| !s.trim().is_empty()),
+        caller.actor(),
+    )
+    .fetch_one(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         kind,
         pid,
         "external_link_added",
@@ -203,12 +220,16 @@ async fn remove(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let link = external_links::Entity::find()
-        .filter(external_links::Column::Pid.eq(pid))
-        .one(&txn)
-        .await?
-        .ok_or(Error::NotFound)?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let link = sqlx::query_as!(
+        external_links::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, system, url, external_id, \
+        label, created_by FROM external_links WHERE pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
     let kind = match link.subject_kind.as_str() {
         "contact" => "contact",
         "account" => "account",
@@ -216,7 +237,9 @@ async fn remove(
         _ => "lead",
     };
     if kind == "contact" {
-        let contact = records::find_contact(&txn, link.subject_pid).await?;
+        let contact = rows::contact(&mut *txn, link.subject_pid)
+            .await?
+            .ok_or(Error::NotFound)?;
         auth::authorize_record(
             &caller,
             authentication_verifier::Action::Write,
@@ -224,11 +247,11 @@ async fn remove(
         )
         .map_err(record_rejection)?;
     }
-    external_links::Entity::delete_by_id(link.id)
-        .exec(&txn)
+    sqlx::query!("DELETE FROM external_links WHERE id = $1", link.id)
+        .execute(&mut *txn)
         .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         kind,
         link.subject_pid,
         "external_link_removed",

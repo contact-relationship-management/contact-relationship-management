@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE tickets SET wait_limit_exceeded_at = $2, assignee_ref = CASE WHEN $3 THEN $4 ELSE assignee_ref END WHERE id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Timestamptz",
+        "Bool",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fa70f5c8e3db0aaf4afd05bcef6844611274b8568224b92cb70f6275e8979155"
+}

@@ -1,0 +1,304 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\" FROM tickets WHERE deleted_at IS NULL AND pid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "contact_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "contact_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "account_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "account_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "assignee_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "assignee_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "title",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "priority",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "priority"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "channel",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "channel"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "opened_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "opened_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "first_response_due_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "first_response_due_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "resolution_due_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "resolution_due_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "first_responded_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "first_responded_at"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "resolved_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "resolved_at"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "first_response_breached",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "first_response_breached"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "resolution_breached",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "resolution_breached"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "board_position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "board_position"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "paused_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "paused_at"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "first_response_paused_seconds",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "first_response_paused_seconds"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "resolution_paused_seconds",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "resolution_paused_seconds"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "wait_limit_exceeded_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "wait_limit_exceeded_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "3250d833ef8981209840bc24d38b4d44164768f113117b24234ea22916f070b9"
+}

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — support, board and external links on sqlx (CRM-T208, CRM-D24)
+
+- `controllers::support`, `board` and `external_links` on `query!`/`query_as!`; `calendars::load`
+  and `exists` take any executor. `models::rows` gains by-pid, column and locked finders.
+- Status, priority, article and activity changes re-read the row `FOR UPDATE` in their transaction.
+- `models::DateTimeWithTimeZone`, so `sqlx` code names no `SeaORM` type.
+- `board.rs` writes `activities.summary` through `EncryptedText`; the sealed-writer census lists it.
+- `.sqlx/` gains 50 entries.
+
 ### Changed — axa 0.11.0 (CRM-T228, CRM-D23)
 
 - axa 0.11.0 and `axa-test` 0.2.0. **Breaking:** the database URL is read from `DB_URL`; the

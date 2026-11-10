@@ -125,6 +125,48 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
     .await;
 }
 
+/// An activity's summary edited through the board (`PUT /api/activities/{pid}`, on `sqlx` since
+/// CRM-T208) is sealed at rest and reads back as plaintext.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn an_edited_summary_is_sealed_at_rest() {
+    request::<App, _, _>(|request, ctx| async move {
+        crypto::install(Some(keyring(&[("k1", 1)])));
+        let pid = seed_contact!(&request, "Edited Summary").await;
+        let created: Value = request
+            .post("/api/activities")
+            .json(&json!({ "subject_kind": "contact", "subject_pid": pid,
+                           "kind": "note", "summary": "First words" }))
+            .await
+            .json();
+        let activity = created["pid"].as_str().unwrap().to_string();
+        let edited = request
+            .put(&format!("/api/activities/{activity}"))
+            .json(&json!({ "summary": "Second thoughts" }))
+            .await;
+        edited.assert_status_ok();
+        assert_eq!(edited.json::<Value>()["summary"], "Second thoughts");
+        let at_rest = stored(
+            &ctx.db,
+            &format!("SELECT summary AS v FROM activities WHERE pid = '{activity}'"),
+        )
+        .await;
+        assert!(at_rest[0].starts_with("enc:v1:k1:"), "{}", at_rest[0]);
+        assert!(!at_rest[0].contains("thoughts"));
+        crypto::install(None);
+        ctx.db
+            .execute_unprepared("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'")
+            .await
+            .unwrap();
+        ctx.db
+            .execute_unprepared("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'")
+            .await
+            .unwrap();
+    })
+    .await;
+}
+
 /// `sqlx` seals and opens as `SeaORM` does: each reads what the other wrote, and a value that cannot
 /// be opened is an error, never ciphertext shown as text (CRM-D24).
 #[tokio::test]

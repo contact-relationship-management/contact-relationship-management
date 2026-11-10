@@ -9,14 +9,14 @@
 //! the `Model` and to every finder of that table.
 
 use chrono::{DateTime, Utc};
-use sea_orm::prelude::DateTimeWithTimeZone;
-use sqlx::PgPool;
+use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use crate::models::_entities::{
     accounts, activities, articles, audit_logs, contacts, deals, forecast_snapshots, leads,
-    memberships, partnerships, pipeline_stages, tickets,
+    memberships, partnerships, pipeline_stages, sla_policies, tickets,
 };
+use crate::models::DateTimeWithTimeZone;
 
 /// Every live account.
 ///
@@ -324,5 +324,499 @@ pub async fn published_article(
         pid,
     )
     .fetch_optional(pool)
+    .await
+}
+
+/// The live ticket `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn ticket<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<tickets::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        tickets::Model,
+        "SELECT created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+        priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+        DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+        first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+        \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+        DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+        wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\" FROM tickets WHERE \
+        deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live ticket `pid`, locked for this transaction.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn ticket_for_update<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<tickets::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        tickets::Model,
+        "SELECT created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+        priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+        DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+        first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+        \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+        DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+        wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\" FROM tickets WHERE \
+        deleted_at IS NULL AND pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// Live tickets in one of `statuses`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn tickets_with_status<'e>(
+    db: impl PgExecutor<'e>,
+    statuses: &[&str],
+) -> Result<Vec<tickets::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        tickets::Model,
+        "SELECT created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+        priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+        DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+        first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+        \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+        DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+        wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\" FROM tickets WHERE \
+        deleted_at IS NULL AND status = ANY($1) ORDER BY id",
+        statuses as &[&str],
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// One page of live tickets, of one status when `status` is given, in board order.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn tickets_page<'e>(
+    db: impl PgExecutor<'e>,
+    status: Option<&str>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<tickets::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        tickets::Model,
+        "SELECT created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+        priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+        DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+        first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+        \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+        DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+        wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\" FROM tickets WHERE \
+        deleted_at IS NULL AND ($1::text IS NULL OR status = $1) ORDER BY board_position, id LIMIT \
+        $2 OFFSET $3",
+        status,
+        limit,
+        offset,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live tickets of one status column, in board order.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn ticket_column<'e>(
+    db: impl PgExecutor<'e>,
+    status: &str,
+) -> Result<Vec<tickets::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        tickets::Model,
+        "SELECT created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+        priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+        DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+        first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+        \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+        DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+        wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\" FROM tickets WHERE \
+        deleted_at IS NULL AND status = $1 ORDER BY board_position, id",
+        status,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live SLA policy `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn sla_policy<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<sla_policies::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        sla_policies::Model,
+        "SELECT created_at, updated_at, id, pid, priority, first_response_minutes, \
+        resolution_minutes, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", calendar_pid, \
+        max_wait_minutes, wait_limit_action, escalate_to, auto_close_days FROM sla_policies WHERE \
+        deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// Every live SLA policy.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn sla_policies<'e>(
+    db: impl PgExecutor<'e>,
+) -> Result<Vec<sla_policies::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        sla_policies::Model,
+        "SELECT created_at, updated_at, id, pid, priority, first_response_minutes, \
+        resolution_minutes, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", calendar_pid, \
+        max_wait_minutes, wait_limit_action, escalate_to, auto_close_days FROM sla_policies WHERE \
+        deleted_at IS NULL ORDER BY id",
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live SLA policy of one priority, the oldest when there are several.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn sla_policy_of_priority<'e>(
+    db: impl PgExecutor<'e>,
+    priority: &str,
+) -> Result<Option<sla_policies::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        sla_policies::Model,
+        "SELECT created_at, updated_at, id, pid, priority, first_response_minutes, \
+        resolution_minutes, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", calendar_pid, \
+        max_wait_minutes, wait_limit_action, escalate_to, auto_close_days FROM sla_policies WHERE \
+        deleted_at IS NULL AND priority = $1 ORDER BY id LIMIT 1",
+        priority,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live article `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn article<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<articles::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        articles::Model,
+        "SELECT created_at, updated_at, id, pid, title, body, keywords, status, version, deleted_at \
+        AS \"deleted_at: DateTimeWithTimeZone\" FROM articles WHERE deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// One page of live articles whose title or keywords match `pattern` (a `LIKE` pattern, lower case), when given.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn articles_page<'e>(
+    db: impl PgExecutor<'e>,
+    pattern: Option<&str>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<articles::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        articles::Model,
+        "SELECT created_at, updated_at, id, pid, title, body, keywords, status, version, deleted_at \
+        AS \"deleted_at: DateTimeWithTimeZone\" FROM articles WHERE deleted_at IS NULL AND ($1::text \
+        IS NULL OR lower(title) LIKE $1 OR lower(coalesce(keywords, '')) LIKE $1) ORDER BY id LIMIT \
+        $2 OFFSET $3",
+        pattern,
+        limit,
+        offset,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every live published article.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn published_articles_by_id<'e>(
+    db: impl PgExecutor<'e>,
+) -> Result<Vec<articles::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        articles::Model,
+        "SELECT created_at, updated_at, id, pid, title, body, keywords, status, version, deleted_at \
+        AS \"deleted_at: DateTimeWithTimeZone\" FROM articles WHERE deleted_at IS NULL AND status = \
+        'published' ORDER BY id",
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live activities of one subject, oldest first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn activities_of<'e>(
+    db: impl PgExecutor<'e>,
+    kind: &str,
+    subject: Uuid,
+) -> Result<Vec<activities::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        activities::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
+        actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
+        sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities \
+        WHERE deleted_at IS NULL AND subject_kind = $1 AND subject_pid = $2 ORDER BY id",
+        kind,
+        subject,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live activity `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn activity<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<activities::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        activities::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
+        actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
+        sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities \
+        WHERE deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live contact `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn contact<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<contacts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        contacts::Model,
+        "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+        status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+        \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+        given_name, consent_jurisdiction FROM contacts WHERE deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live deal `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn deal<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<deals::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        deals::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+        pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+        source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at FROM deals WHERE deleted_at \
+        IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live deal `pid`, locked for this transaction.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn deal_for_update<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<deals::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        deals::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+        pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+        source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at FROM deals WHERE deleted_at \
+        IS NULL AND pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The open live deals of one stage, in board order.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn deal_column<'e>(
+    db: impl PgExecutor<'e>,
+    stage: Uuid,
+) -> Result<Vec<deals::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        deals::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+        pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+        source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at FROM deals WHERE deleted_at \
+        IS NULL AND closed_at IS NULL AND stage_pid = $1 ORDER BY kanban_position, id",
+        stage,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live lead `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn lead<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<leads::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        leads::Model,
+        "SELECT created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+        email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", board_position, owner_ref FROM leads WHERE deleted_at IS NULL AND pid \
+        = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live lead `pid`, locked for this transaction.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn lead_for_update<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<leads::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        leads::Model,
+        "SELECT created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+        email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", board_position, owner_ref FROM leads WHERE deleted_at IS NULL AND pid \
+        = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live leads of one status column, in board order, the higher score first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn lead_column<'e>(
+    db: impl PgExecutor<'e>,
+    status: &str,
+) -> Result<Vec<leads::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        leads::Model,
+        "SELECT created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+        email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", board_position, owner_ref FROM leads WHERE deleted_at IS NULL AND \
+        status = $1 ORDER BY board_position, score DESC, id",
+        status,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live article `pid`, locked for this transaction.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn article_for_update<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<articles::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        articles::Model,
+        "SELECT created_at, updated_at, id, pid, title, body, keywords, status, version, deleted_at \
+        AS \"deleted_at: DateTimeWithTimeZone\" FROM articles WHERE deleted_at IS NULL AND pid = $1 \
+        FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live activity `pid`, locked for this transaction.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn activity_for_update<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<activities::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        activities::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
+        actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
+        sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities \
+        WHERE deleted_at IS NULL AND pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
     .await
 }

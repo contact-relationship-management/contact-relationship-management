@@ -15,3 +15,7 @@ pub mod event_outbox;
 pub mod live;
 pub mod records;
 pub mod rows;
+
+/// A `timestamptz` as the models carry it: the instant with its offset. The same type as
+/// `SeaORM`'s alias, named here so `sqlx` code does not reach into `SeaORM` for it (CRM-D24).
+pub type DateTimeWithTimeZone = chrono::DateTime<chrono::FixedOffset>;

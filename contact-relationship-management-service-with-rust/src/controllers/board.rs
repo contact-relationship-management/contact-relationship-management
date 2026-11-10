@@ -15,15 +15,18 @@
 use crate::controllers::PidPath;
 use crate::json::Json;
 use axa::prelude::*;
-use sea_orm::{QueryOrder, TransactionTrait};
 use serde::Deserialize;
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
+use crate::db;
 use crate::models::_entities::{activities, deals, leads, tickets};
+use crate::models::DateTimeWithTimeZone;
 use crate::models::audit_logs::Model as Audit;
-use crate::models::records;
+use crate::models::encrypted::EncryptedText;
+use crate::models::rows;
 use crate::validation::Problems;
 
 /// `PUT /api/deals/{pid}` body; absent fields stay as they are.
@@ -95,6 +98,43 @@ fn place(index: usize) -> i32 {
     i32::try_from(index).unwrap_or(i32::MAX)
 }
 
+/// The cards of a column, by `id`, whose stored place is not the one `order` gives them.
+fn moves(column: &[(i32, Uuid, i32)], pid: Uuid, position: i32) -> Vec<(i32, i32)> {
+    let order: Vec<Uuid> = column.iter().map(|(_, p, _)| *p).collect();
+    new_order(&order, pid, position)
+        .iter()
+        .enumerate()
+        .filter_map(|(index, p)| {
+            column
+                .iter()
+                .find(|(_, q, _)| q == p)
+                .filter(|(_, _, at)| *at != place(index))
+                .map(|(id, _, _)| (*id, place(index)))
+        })
+        .collect()
+}
+
+/// The open deal `pid`, locked, that `caller` may change.
+async fn open_deal_to_change(
+    conn: &mut PgConnection,
+    caller: &MaybeAuthUser,
+    pid: Uuid,
+) -> Result<deals::Model> {
+    let deal = rows::deal_for_update(conn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    auth::authorize_record(
+        caller,
+        authentication_verifier::Action::Write,
+        &auth::deal_resource_attrs(&deal),
+    )
+    .map_err(record_rejection)?;
+    if deal.closed_at.is_some() {
+        return Err(unprocessable("deal is closed — reopen it first"));
+    }
+    Ok(deal)
+}
+
 /// `PUT /api/deals/{pid}` — edit an open deal in place.
 #[debug_handler]
 async fn edit_deal(
@@ -111,43 +151,49 @@ async fn edit_deal(
         problems.push("amount_minor must not be negative");
     }
     problems.finish()?;
-    let txn = ctx.db.begin().await?;
-    let deal = deals::Entity::find()
-        .filter(deals::Column::Pid.eq(pid))
-        .filter(deals::Column::DeletedAt.is_null())
-        .lock_exclusive()
-        .one(&txn)
-        .await?
-        .ok_or(Error::NotFound)?;
-    auth::authorize_record(
-        &caller,
-        authentication_verifier::Action::Write,
-        &auth::deal_resource_attrs(&deal),
-    )
-    .map_err(record_rejection)?;
-    if deal.closed_at.is_some() {
-        return Err(unprocessable("deal is closed — reopen it first"));
-    }
+    let mut txn = db::pool(&ctx).begin().await?;
+    let deal = open_deal_to_change(&mut txn, &caller, pid).await?;
     let mut changed = Vec::new();
-    let mut active: deals::ActiveModel = deal.into();
-    if let Some(name) = payload.name {
-        active.name = ActiveValue::set(name.trim().to_string());
-        changed.push("name");
-    }
-    if let Some(amount) = payload.amount_minor {
-        active.amount_minor = ActiveValue::set(amount);
-        changed.push("amount_minor");
-    }
-    if let Some(day) = payload.expected_close_on {
-        active.expected_close_on = ActiveValue::set(Some(day));
-        changed.push("expected_close_on");
-    }
+    let name = match payload.name {
+        Some(name) => {
+            changed.push("name");
+            name.trim().to_string()
+        }
+        None => deal.name,
+    };
+    let amount = match payload.amount_minor {
+        Some(amount) => {
+            changed.push("amount_minor");
+            amount
+        }
+        None => deal.amount_minor,
+    };
+    let close_on = match payload.expected_close_on {
+        Some(day) => {
+            changed.push("expected_close_on");
+            Some(day)
+        }
+        None => deal.expected_close_on,
+    };
     if changed.is_empty() {
         return Err(unprocessable("nothing to change"));
     }
-    let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
+    let row = sqlx::query_as!(
+        deals::Model,
+        "UPDATE deals SET name = $2, amount_minor = $3, expected_close_on = $4 WHERE id = $1 \
+            RETURNING created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+            pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+            source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at",
+        deal.id,
+        name,
+        amount,
+        close_on,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
+        &mut txn,
         "deal",
         row.pid,
         "updated",
@@ -173,13 +219,21 @@ async fn edit_lead(
     };
     problems.require_text("display_name", &name);
     problems.finish()?;
-    let lead = records::find_lead(&ctx.db, pid).await?;
-    let txn = ctx.db.begin().await?;
-    let mut active: leads::ActiveModel = lead.into();
-    active.display_name = ActiveValue::set(name.trim().to_string());
-    let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = sqlx::query_as!(
+        leads::Model,
+        "UPDATE leads SET display_name = $2 WHERE pid = $1 AND deleted_at IS NULL \
+            RETURNING created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+            email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", board_position, owner_ref",
+        pid,
+        name.trim(),
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    Audit::record_on(
+        &mut txn,
         "lead",
         row.pid,
         "updated",
@@ -205,13 +259,26 @@ async fn edit_ticket(
     };
     problems.require_text("title", &title);
     problems.finish()?;
-    let ticket = records::find_ticket(&ctx.db, pid).await?;
-    let txn = ctx.db.begin().await?;
-    let mut active: tickets::ActiveModel = ticket.into();
-    active.title = ActiveValue::set(title.trim().to_string());
-    let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = sqlx::query_as!(
+        tickets::Model,
+        "UPDATE tickets SET title = $2 WHERE pid = $1 AND deleted_at IS NULL \
+            RETURNING created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+            priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+            DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+            first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+            \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+            DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+            wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\"",
+        pid,
+        title.trim(),
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    Audit::record_on(
+        &mut txn,
         "ticket",
         row.pid,
         "updated",
@@ -231,45 +298,26 @@ async fn deal_position(
     PidPath(pid): PidPath,
     Json(payload): Json<PositionPayload>,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let deal = deals::Entity::find()
-        .filter(deals::Column::Pid.eq(pid))
-        .filter(deals::Column::DeletedAt.is_null())
-        .lock_exclusive()
-        .one(&txn)
+    let pool = db::pool(&ctx);
+    let mut txn = pool.begin().await?;
+    let deal = open_deal_to_change(&mut txn, &caller, pid).await?;
+    let column: Vec<_> = rows::deal_column(&mut *txn, deal.stage_pid)
         .await?
-        .ok_or(Error::NotFound)?;
-    auth::authorize_record(
-        &caller,
-        authentication_verifier::Action::Write,
-        &auth::deal_resource_attrs(&deal),
-    )
-    .map_err(record_rejection)?;
-    if deal.closed_at.is_some() {
-        return Err(unprocessable("deal is closed — reopen it first"));
-    }
-    let column = deals::Entity::find()
-        .filter(deals::Column::StagePid.eq(deal.stage_pid))
-        .filter(deals::Column::DeletedAt.is_null())
-        .filter(deals::Column::ClosedAt.is_null())
-        .order_by_asc(deals::Column::KanbanPosition)
-        .order_by_asc(deals::Column::Id)
-        .all(&txn)
+        .into_iter()
+        .map(|r| (r.id, r.pid, r.kanban_position))
+        .collect();
+    for (id, at) in moves(&column, pid, payload.position) {
+        sqlx::query!(
+            "UPDATE deals SET kanban_position = $2 WHERE id = $1 AND deleted_at IS NULL",
+            id,
+            at
+        )
+        .execute(&mut *txn)
         .await?;
-    let order: Vec<Uuid> = column.iter().map(|r| r.pid).collect();
-    for (index, p) in new_order(&order, pid, payload.position).iter().enumerate() {
-        if let Some(row) = column.iter().find(|r| r.pid == *p)
-            && row.kanban_position != place(index)
-        {
-            let mut active: deals::ActiveModel = row.clone().into();
-            active.kanban_position = ActiveValue::set(place(index));
-            active.update(&txn).await?;
-        }
     }
-    Audit::record(&txn, "deal", pid, "reordered", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "deal", pid, "reordered", caller.actor(), None).await?;
     txn.commit().await?;
-    let row = records::find_deal(&ctx.db, pid).await?;
-    format::json(row)
+    format::json(rows::deal(pool, pid).await?.ok_or(Error::NotFound)?)
 }
 
 /// `PUT /api/leads/{pid}/position` — reorder a lead within its status column.
@@ -280,36 +328,28 @@ async fn lead_position(
     PidPath(pid): PidPath,
     Json(payload): Json<PositionPayload>,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let lead = leads::Entity::find()
-        .filter(leads::Column::Pid.eq(pid))
-        .filter(leads::Column::DeletedAt.is_null())
-        .lock_exclusive()
-        .one(&txn)
+    let pool = db::pool(&ctx);
+    let mut txn = pool.begin().await?;
+    let lead = rows::lead_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
-    let column = leads::Entity::find()
-        .filter(leads::Column::Status.eq(lead.status.clone()))
-        .filter(leads::Column::DeletedAt.is_null())
-        .order_by_asc(leads::Column::BoardPosition)
-        .order_by_desc(leads::Column::Score)
-        .order_by_asc(leads::Column::Id)
-        .all(&txn)
+    let column: Vec<_> = rows::lead_column(&mut *txn, &lead.status)
+        .await?
+        .into_iter()
+        .map(|r| (r.id, r.pid, r.board_position))
+        .collect();
+    for (id, at) in moves(&column, pid, payload.position) {
+        sqlx::query!(
+            "UPDATE leads SET board_position = $2 WHERE id = $1 AND deleted_at IS NULL",
+            id,
+            at
+        )
+        .execute(&mut *txn)
         .await?;
-    let order: Vec<Uuid> = column.iter().map(|r| r.pid).collect();
-    for (index, p) in new_order(&order, pid, payload.position).iter().enumerate() {
-        if let Some(row) = column.iter().find(|r| r.pid == *p)
-            && row.board_position != place(index)
-        {
-            let mut active: leads::ActiveModel = row.clone().into();
-            active.board_position = ActiveValue::set(place(index));
-            active.update(&txn).await?;
-        }
     }
-    Audit::record(&txn, "lead", pid, "reordered", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "lead", pid, "reordered", caller.actor(), None).await?;
     txn.commit().await?;
-    let row = records::find_lead(&ctx.db, pid).await?;
-    format::json(row)
+    format::json(rows::lead(pool, pid).await?.ok_or(Error::NotFound)?)
 }
 
 /// `PUT /api/tickets/{pid}/position` — reorder a ticket within its status column.
@@ -320,35 +360,28 @@ async fn ticket_position(
     PidPath(pid): PidPath,
     Json(payload): Json<PositionPayload>,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let ticket = tickets::Entity::find()
-        .filter(tickets::Column::Pid.eq(pid))
-        .filter(tickets::Column::DeletedAt.is_null())
-        .lock_exclusive()
-        .one(&txn)
+    let pool = db::pool(&ctx);
+    let mut txn = pool.begin().await?;
+    let ticket = rows::ticket_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
-    let column = tickets::Entity::find()
-        .filter(tickets::Column::Status.eq(ticket.status.clone()))
-        .filter(tickets::Column::DeletedAt.is_null())
-        .order_by_asc(tickets::Column::BoardPosition)
-        .order_by_asc(tickets::Column::Id)
-        .all(&txn)
+    let column: Vec<_> = rows::ticket_column(&mut *txn, &ticket.status)
+        .await?
+        .into_iter()
+        .map(|r| (r.id, r.pid, r.board_position))
+        .collect();
+    for (id, at) in moves(&column, pid, payload.position) {
+        sqlx::query!(
+            "UPDATE tickets SET board_position = $2 WHERE id = $1 AND deleted_at IS NULL",
+            id,
+            at
+        )
+        .execute(&mut *txn)
         .await?;
-    let order: Vec<Uuid> = column.iter().map(|r| r.pid).collect();
-    for (index, p) in new_order(&order, pid, payload.position).iter().enumerate() {
-        if let Some(row) = column.iter().find(|r| r.pid == *p)
-            && row.board_position != place(index)
-        {
-            let mut active: tickets::ActiveModel = row.clone().into();
-            active.board_position = ActiveValue::set(place(index));
-            active.update(&txn).await?;
-        }
     }
-    Audit::record(&txn, "ticket", pid, "reordered", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "ticket", pid, "reordered", caller.actor(), None).await?;
     txn.commit().await?;
-    let row = records::find_ticket(&ctx.db, pid).await?;
-    format::json(row)
+    format::json(rows::ticket(pool, pid).await?.ok_or(Error::NotFound)?)
 }
 
 /// `PUT /api/activities/{pid}` — change a follow-up's due day or summary.
@@ -374,10 +407,8 @@ async fn edit_activity(
     {
         return Err(unprocessable("nothing to change"));
     }
-    let row = activities::Entity::find()
-        .filter(activities::Column::Pid.eq(pid))
-        .filter(activities::Column::DeletedAt.is_null())
-        .one(&ctx.db)
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = rows::activity_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
     if payload.due_on.is_some() && row.due_on.is_none() {
@@ -390,33 +421,47 @@ async fn edit_activity(
         return Err(unprocessable("a finished activity cannot be changed"));
     }
     let from = row.due_on;
-    let txn = ctx.db.begin().await?;
     let mut changed = Vec::new();
-    let mut active: activities::ActiveModel = row.into();
+    let mut next = row;
     if let Some(day) = payload.due_on {
-        active.due_on = ActiveValue::set(Some(day));
+        next.due_on = Some(day);
         changed.push("due_on");
     }
     if let Some(summary) = payload.summary {
-        active.summary = ActiveValue::set(summary.trim().to_string().into());
+        next.summary = summary.trim().to_string().into();
         changed.push("summary");
     }
     if let Some(assignee) = payload.assignee_ref {
-        active.assignee_ref = ActiveValue::set(Some(assignee));
+        next.assignee_ref = Some(assignee);
         changed.push("assignee_ref");
     }
     if let Some(at) = payload.remind_at {
-        active.remind_at = ActiveValue::set(Some(at));
+        next.remind_at = Some(at);
         changed.push("remind_at");
     }
-    let row = active.update(&txn).await?;
+    let remind_at: Option<DateTimeWithTimeZone> = next.remind_at;
+    // `summary` is sealed: binding `EncryptedText` seals it on the way in (CRM-T41).
+    let row = sqlx::query_as!(
+        activities::Model,
+        "UPDATE activities SET due_on = $2, summary = $3, assignee_ref = $4, remind_at = $5 \
+            WHERE id = $1 RETURNING created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
+            actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
+            sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\"",
+        next.id,
+        next.due_on,
+        EncryptedText(next.summary.0.clone()) as _,
+        next.assignee_ref,
+        remind_at,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
     let details = serde_json::json!({
         "fields": changed,
         "from_due_on": from.map(|d| d.to_string()),
         "to_due_on": row.due_on.map(|d| d.to_string()),
     });
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "activity",
         row.pid,
         if payload.due_on.is_some() {

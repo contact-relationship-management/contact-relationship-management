@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT timezone, week, holidays FROM business_calendars WHERE pid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "timezone",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "business_calendars",
+            "name": "timezone"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "week",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "business_calendars",
+            "name": "week"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "holidays",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "business_calendars",
+            "name": "holidays"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cc8fc7efb2abd0a68a4522a925e2a69760abebd9944392e674ecf7879bdf6f27"
+}

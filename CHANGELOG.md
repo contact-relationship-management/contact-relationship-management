@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — support, the board and external links on sqlx (CRM-T208, 2026-11-10)
+
+- Tickets, SLA policies, articles, board edits and external links read and write through `sqlx`.
+  A ticket's or an article's change is now decided on the row as locked in its transaction.
+
 ### Changed — axa 0.11.0: new probes and `DB_URL` (CRM-T228, 2026-11-10)
 
 - **Breaking for deployments.** The database setting is `DB_URL`, not `DATABASE_URL`, and the
