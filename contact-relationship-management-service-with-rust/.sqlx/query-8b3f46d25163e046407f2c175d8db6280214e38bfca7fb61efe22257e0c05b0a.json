@@ -1,0 +1,266 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, given_name, consent_jurisdiction FROM contacts WHERE deleted_at IS NULL ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "person_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "person_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "account_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "account_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "owner_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "owner_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "display_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "job_title",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "job_title"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "preferred_channel",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "preferred_channel"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "marketing_consent",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "marketing_consent"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "consent_changed_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "consent_changed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "stakeholder_role",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "stakeholder_role"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "influence",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "influence"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "interest",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "interest"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "merged_into_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "merged_into_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "family_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "family_name"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "given_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "given_name"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "consent_jurisdiction",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "consent_jurisdiction"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "8b3f46d25163e046407f2c175d8db6280214e38bfca7fb61efe22257e0c05b0a"
+}

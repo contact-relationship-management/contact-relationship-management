@@ -1,12 +1,12 @@
 //! Sales insights: stale-deal aging, follow-ups, pipeline hygiene, the executive pack and forecast trends.
 
 use super::{
-    AppContext, ColumnTrait, DaysQuery, Deserialize, EntityTrait, HeaderMap, MaybeAuthUser,
-    PaginatorTrait, QueryFilter, QueryOrder, Response, Result, State, Uuid, WindowQuery,
-    activities, audit_logs, auth, conditional, consent_events, days_or, deals, debug_handler,
-    forecast_snapshots, leads, parse_instant, pipeline_stages, record_rejection, tickets,
+    AppContext, DaysQuery, Deserialize, HeaderMap, MaybeAuthUser, Response, Result, State, Uuid,
+    WindowQuery, activities, auth, conditional, days_or, deals, debug_handler, forecast_snapshots,
+    leads, parse_instant, record_rejection,
 };
-use crate::models::live::FindLive;
+use crate::db;
+use crate::models::rows;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
 // `ETag` is taken, and the schema says it is always there.
@@ -173,19 +173,12 @@ pub(super) async fn stale_deals(
 ) -> Result<Response> {
     let threshold = days_or(query.days, 14);
     let now = crate::clock::now();
-    let open: Vec<deals::Model> = deals::Entity::find_live()
-        .filter(deals::Column::ClosedAt.is_null())
-        .all(&ctx.db)
-        .await?;
-    let stage_names: std::collections::BTreeMap<Uuid, String> = live!(pipeline_stages, &ctx.db)
+    let open: Vec<deals::Model> = rows::open_deals(db::pool(&ctx)).await?;
+    let stage_names: std::collections::BTreeMap<Uuid, String> = live!(pipeline_stages, &ctx)
         .into_iter()
         .map(|stage| (stage.pid, stage.name))
         .collect();
-    let moves = audit_logs::Entity::find()
-        .filter(audit_logs::Column::Entity.eq("deal"))
-        .filter(audit_logs::Column::Action.eq("deal_stage_changed"))
-        .all(&ctx.db)
-        .await?;
+    let moves = rows::deal_audits(db::pool(&ctx), &["deal_stage_changed"]).await?;
     let mut last_move: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
         std::collections::BTreeMap::new();
     for row in &moves {
@@ -264,13 +257,8 @@ pub(super) async fn followups(
     // The caller's day (CRM-T179), as attainment's.
     let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
     let horizon = today + chrono::Days::new(30);
-    let mut find = activities::Entity::find_live()
-        .filter(activities::Column::Done.eq(false))
-        .filter(activities::Column::DueOn.is_not_null());
-    if let Some(kind) = query.kind.as_deref() {
-        find = find.filter(activities::Column::Kind.eq(kind));
-    }
-    let rows: Vec<activities::Model> = find.all(&ctx.db).await?;
+    let rows: Vec<activities::Model> =
+        rows::open_dated_activities(db::pool(&ctx), query.kind.as_deref()).await?;
     let view = |activity: &activities::Model| Followup {
         pid: activity.pid,
         kind: activity.kind.clone(),
@@ -329,17 +317,11 @@ pub(super) async fn pipeline_hygiene(
     let now = crate::clock::now();
     // An expected close day is a civil date: compared with the caller's day (CRM-T179).
     let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
-    let open: Vec<deals::Model> = deals::Entity::find_live()
-        .filter(deals::Column::ClosedAt.is_null())
-        .all(&ctx.db)
-        .await?;
+    let open: Vec<deals::Model> = rows::open_deals(db::pool(&ctx)).await?;
     // Only the leads the rule is about, not all of them.
-    let lead_rows: Vec<leads::Model> = leads::Entity::find_live()
-        .filter(leads::Column::Status.is_in(["new", "contacted"]))
-        .all(&ctx.db)
-        .await?;
+    let lead_rows: Vec<leads::Model> = rows::unworked_leads(db::pool(&ctx)).await?;
     let touches: std::collections::HashMap<(String, Uuid), chrono::DateTime<chrono::Utc>> =
-        super::rollup::touches(&ctx.db)
+        super::rollup::touches(crate::db::pool(&ctx))
             .await?
             .into_iter()
             .map(|t| ((t.subject_kind, t.subject_pid), t.last_at))
@@ -448,11 +430,7 @@ pub(super) async fn executive(
     let in_window = |at: chrono::DateTime<chrono::Utc>| at >= from && at <= to;
 
     // Only the deals closed in the window.
-    let deal_rows: Vec<deals::Model> = deals::Entity::find_live()
-        .filter(deals::Column::ClosedAt.gte(from))
-        .filter(deals::Column::ClosedAt.lte(to))
-        .all(&ctx.db)
-        .await?;
+    let deal_rows: Vec<deals::Model> = rows::deals_closed_between(db::pool(&ctx), from, to).await?;
     let mut won = 0usize;
     let mut lost = 0usize;
     let mut won_value: std::collections::BTreeMap<String, i64> = std::collections::BTreeMap::new();
@@ -475,40 +453,64 @@ pub(super) async fn executive(
             *lost_reasons.entry(reason).or_default() += 1;
         }
     }
-    let new_leads = leads::Entity::find_live()
-        .filter(leads::Column::CreatedAt.gte(from))
-        .filter(leads::Column::CreatedAt.lte(to))
-        .count(&ctx.db)
-        .await?;
-    let tickets_opened = tickets::Entity::find_live()
-        .filter(tickets::Column::OpenedAt.gte(from))
-        .filter(tickets::Column::OpenedAt.lte(to))
-        .count(&ctx.db)
-        .await?;
+    let pool = db::pool(&ctx);
+    let count = |n: i64| u64::try_from(n).unwrap_or(0);
+    let new_leads = count(
+        sqlx::query_scalar!(
+            "SELECT count(*) AS \"n!\" FROM leads \
+             WHERE deleted_at IS NULL AND created_at >= $1 AND created_at <= $2",
+            from,
+            to,
+        )
+        .fetch_one(pool)
+        .await?,
+    );
+    let tickets_opened = count(
+        sqlx::query_scalar!(
+            "SELECT count(*) AS \"n!\" FROM tickets \
+             WHERE deleted_at IS NULL AND opened_at >= $1 AND opened_at <= $2",
+            from,
+            to,
+        )
+        .fetch_one(pool)
+        .await?,
+    );
     // Counted in the database, not by loading every audit row of the window.
     let audited = |entity: &'static str, action: &'static str| {
-        audit_logs::Entity::find()
-            .filter(audit_logs::Column::CreatedAt.gte(from))
-            .filter(audit_logs::Column::CreatedAt.lte(to))
-            .filter(audit_logs::Column::Entity.eq(entity))
-            .filter(audit_logs::Column::Action.eq(action))
-            .count(&ctx.db)
+        sqlx::query_scalar!(
+            "SELECT count(*) AS \"n!\" FROM audit_logs \
+             WHERE created_at >= $1 AND created_at <= $2 AND entity = $3 AND action = $4",
+            from,
+            to,
+            entity,
+            action,
+        )
+        .fetch_one(pool)
     };
     let tickets_resolved =
         usize::try_from(audited("ticket", "resolved").await?).unwrap_or(usize::MAX);
     let campaigns_started =
         usize::try_from(audited("campaign", "running").await?).unwrap_or(usize::MAX);
-    let activities_logged = activities::Entity::find_live()
-        .filter(activities::Column::OccurredAt.gte(from))
-        .filter(activities::Column::OccurredAt.lte(to))
-        .count(&ctx.db)
-        .await?;
-    let consent_withdrawals = consent_events::Entity::find()
-        .filter(consent_events::Column::Action.eq("withdrawn"))
-        .filter(consent_events::Column::OccurredAt.gte(from))
-        .filter(consent_events::Column::OccurredAt.lte(to))
-        .count(&ctx.db)
-        .await?;
+    let activities_logged = count(
+        sqlx::query_scalar!(
+            "SELECT count(*) AS \"n!\" FROM activities \
+             WHERE deleted_at IS NULL AND occurred_at >= $1 AND occurred_at <= $2",
+            from,
+            to,
+        )
+        .fetch_one(pool)
+        .await?,
+    );
+    let consent_withdrawals = count(
+        sqlx::query_scalar!(
+            "SELECT count(*) AS \"n!\" FROM consent_events \
+             WHERE action = 'withdrawn' AND occurred_at >= $1 AND occurred_at <= $2",
+            from,
+            to,
+        )
+        .fetch_one(pool)
+        .await?,
+    );
     Ok(conditional(
         &headers,
         serde_json::json!(ExecutivePack {
@@ -540,10 +542,7 @@ pub(super) async fn forecast_trends(
     headers: HeaderMap,
 ) -> Result<Response> {
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
-    let rows: Vec<forecast_snapshots::Model> = forecast_snapshots::Entity::find_live()
-        .order_by_asc(forecast_snapshots::Column::TakenOn)
-        .all(&ctx.db)
-        .await?;
+    let rows: Vec<forecast_snapshots::Model> = rows::forecast_snapshots(db::pool(&ctx)).await?;
     let series: Vec<TrendPoint> = rows
         .iter()
         .take(200)

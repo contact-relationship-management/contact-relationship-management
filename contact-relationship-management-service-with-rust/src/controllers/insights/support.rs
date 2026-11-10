@@ -1,10 +1,6 @@
 //! Support insights: the SLA register and per-assignee workload.
 
-use super::{
-    AppContext, ColumnTrait, HeaderMap, QueryFilter, Response, Result, State, conditional,
-    debug_handler, tickets,
-};
-use crate::models::live::FindLive;
+use super::{AppContext, HeaderMap, Response, Result, State, conditional, debug_handler, tickets};
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
 // `ETag` is taken, and the schema says it is always there.
@@ -55,10 +51,8 @@ pub(super) async fn sla_register(
 ) -> Result<Response> {
     let now = crate::clock::now();
     let at_risk_horizon = now + chrono::Duration::hours(4);
-    let open: Vec<tickets::Model> = tickets::Entity::find_live()
-        .filter(tickets::Column::Status.is_in(["open", "pending"]))
-        .all(&ctx.db)
-        .await?;
+    let open: Vec<tickets::Model> =
+        crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?;
     let mut breaches: Vec<(i64, Breach)> = Vec::new();
     let mut workload: std::collections::BTreeMap<String, (usize, usize, usize)> =
         std::collections::BTreeMap::new();

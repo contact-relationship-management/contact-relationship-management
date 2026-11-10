@@ -3,20 +3,18 @@
 //! honest ratios, `as_of`-stamped, ETag-conditional.
 
 use crate::controllers::PidPath;
-use crate::models::live::FindLive;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use axa::extract::Query;
 use axa::prelude::*;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::IntoResponse;
-use sea_orm::QuerySelect;
 use serde::{Deserialize, Serialize};
 
 use super::sales;
 use crate::auth::MaybeAuthUser;
 use crate::metrics::Metrics;
-use crate::models::_entities::{activities, deals, tickets};
+use crate::models::_entities::deals;
 use crate::models::records;
 use crate::rules::{analytics, sla};
 
@@ -50,34 +48,28 @@ pub(crate) fn conditional(headers: &HeaderMap, payload: serde_json::Value) -> Re
 /// number of open deals. One grouped query, whatever the number of deals; a
 /// total beyond `i64` saturates, as the sum always did.
 async fn open_deals_by_stage(
-    db: &sea_orm::DatabaseConnection,
+    pool: &sqlx::PgPool,
 ) -> Result<(
     std::collections::BTreeMap<String, (usize, std::collections::BTreeMap<String, i64>)>,
     usize,
 )> {
-    use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
-    let rows = db
-        .query_all_raw(Statement::from_string(
-            DatabaseBackend::Postgres,
-            "SELECT s.name AS stage, d.currency AS currency, COUNT(*) AS n, \
-                    SUM(d.amount_minor)::text AS total \
-             FROM deals d JOIN pipeline_stages s ON s.pid = d.stage_pid \
-             WHERE d.deleted_at IS NULL AND d.closed_at IS NULL \
-             GROUP BY s.name, d.currency",
-        ))
-        .await?;
-    let model = |e: sea_orm::DbErr| Error::Model(ModelError::from(e));
+    let rows = sqlx::query!(
+        "SELECT s.name AS stage, d.currency AS currency, COUNT(*) AS \"n!\", \
+                SUM(d.amount_minor)::text AS \"total!\" \
+         FROM deals d JOIN pipeline_stages s ON s.pid = d.stage_pid \
+         WHERE d.deleted_at IS NULL AND d.closed_at IS NULL \
+         GROUP BY s.name, d.currency"
+    )
+    .fetch_all(pool)
+    .await?;
     let mut totals: std::collections::BTreeMap<
         String,
         (usize, std::collections::BTreeMap<String, i64>),
     > = std::collections::BTreeMap::new();
     let mut open_deals = 0usize;
-    for row in &rows {
-        let stage: String = row.try_get("", "stage").map_err(model)?;
-        let currency: String = row.try_get("", "currency").map_err(model)?;
-        let n: i64 = row.try_get("", "n").map_err(model)?;
-        let total: String = row.try_get("", "total").map_err(model)?;
-        let n = usize::try_from(n).unwrap_or(0);
+    for row in rows {
+        let (stage, currency, total) = (row.stage, row.currency, row.total);
+        let n = usize::try_from(row.n).unwrap_or(0);
         let total = total.parse::<i128>().map_or(0, |t| {
             i64::try_from(t).unwrap_or(if t < 0 { i64::MIN } else { i64::MAX })
         });
@@ -231,7 +223,7 @@ async fn sales_dashboard(
         i64::try_from(lost).unwrap_or(i64::MAX),
     );
     // Pipeline value by stage, per currency.
-    let (totals, open_deals) = open_deals_by_stage(&ctx.db).await?;
+    let (totals, open_deals) = open_deals_by_stage(crate::db::pool(&ctx)).await?;
     // Counts and structure stay visible when masked; the money is absent, never zero.
     let by_stage: std::collections::BTreeMap<String, StageTotals> = totals
         .into_iter()
@@ -264,10 +256,7 @@ async fn sales_dashboard(
 #[debug_handler]
 async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Result<Response> {
     let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
-    let open = tickets::Entity::find_live()
-        .filter(tickets::Column::Status.is_in(["open", "pending"]))
-        .all(&ctx.db)
-        .await?;
+    let open = crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?;
     let mut by_priority: std::collections::BTreeMap<String, (i64, i64)> =
         std::collections::BTreeMap::new();
     for ticket in &open {
@@ -527,11 +516,7 @@ async fn account_clv(
     // CLV is money: a masked collection read gets the count of won deals, not the figures.
     let masked = crate::auth::aggregate_masked(&caller).map_err(super::record_rejection)?;
     let account = records::find_account(&ctx.db, pid).await?;
-    let won = deals::Entity::find_live()
-        .filter(deals::Column::AccountPid.eq(account.pid))
-        .filter(deals::Column::Won.eq(true))
-        .all(&ctx.db)
-        .await?;
+    let won = crate::models::rows::won_deals_of_account(crate::db::pool(&ctx), account.pid).await?;
     let inputs: Vec<(i64, String)> = won
         .iter()
         .map(|deal| (deal.amount_minor, deal.currency.clone()))
@@ -644,16 +629,16 @@ async fn activity_dashboard(
     Query(params): Query<ActivityParams>,
 ) -> Result<Response> {
     let since = crate::clock::now() - chrono::Duration::days(params.days.clamp(1, 365));
-    let counts: Vec<(String, i64)> = activities::Entity::find()
-        .select_only()
-        .column(activities::Column::Kind)
-        .column_as(activities::Column::Id.count(), "n")
-        .filter(activities::Column::DeletedAt.is_null())
-        .filter(activities::Column::OccurredAt.gte(since))
-        .group_by(activities::Column::Kind)
-        .into_tuple()
-        .all(&ctx.db)
-        .await?;
+    let counts: Vec<(String, i64)> = sqlx::query!(
+        "SELECT kind, COUNT(id) AS \"n!\" FROM activities \
+         WHERE deleted_at IS NULL AND occurred_at >= $1 GROUP BY kind",
+        since,
+    )
+    .fetch_all(crate::db::pool(&ctx))
+    .await?
+    .into_iter()
+    .map(|row| (row.kind, row.n))
+    .collect();
     let total: i64 = counts.iter().map(|(_, n)| n).sum();
     let by_kind: std::collections::BTreeMap<String, i64> = counts.into_iter().collect();
     format::json(ActivityDashboard {

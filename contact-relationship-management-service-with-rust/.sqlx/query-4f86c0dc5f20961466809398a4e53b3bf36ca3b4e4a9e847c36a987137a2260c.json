@@ -1,0 +1,98 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, amount_minor, currency, source_campaign_pid, created_at, closed_at AS \"closed_at!\", (closed_at AT TIME ZONE $4)::date AS \"closed_on!\" FROM deals WHERE won AND deleted_at IS NULL AND closed_at IS NOT NULL AND ($1::date IS NULL OR (closed_at AT TIME ZONE $4)::date >= $1::date) AND ($2::date IS NULL OR (closed_at AT TIME ZONE $4)::date <= $2::date) ORDER BY closed_at DESC, id LIMIT $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "amount_minor",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "amount_minor"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "currency",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "currency"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "source_campaign_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "source_campaign_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "closed_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "closed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "closed_on!",
+        "type_info": "Date",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "4f86c0dc5f20961466809398a4e53b3bf36ca3b4e4a9e847c36a987137a2260c"
+}

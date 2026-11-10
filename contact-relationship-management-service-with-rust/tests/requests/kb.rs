@@ -189,3 +189,49 @@ async fn a_client_over_its_limit_is_told_to_wait() {
     })
     .await;
 }
+
+/// CRM-T207: a published article that has been deleted is not listed, found, read or voted on.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+async fn a_deleted_article_is_not_found() {
+    use sea_orm::ConnectionTrait;
+    let _scope = scoped(|s| {
+        s.public_kb = true;
+        s.public_kb_client_limit = 0;
+    });
+    request::<App, _, _>(|request, ctx| async move {
+        let pid = article!(&request, "Withdrawn guide", "Old advice", ["published"]);
+        request
+            .get(&format!("/kb/articles/{pid}"))
+            .await
+            .assert_status_ok();
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE articles SET deleted_at = now() WHERE pid = '{pid}'"
+            ))
+            .await
+            .unwrap();
+        let listed: Value = request.get("/kb/articles").await.json();
+        assert!(
+            listed
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|a| a["pid"] != pid.as_str()),
+            "{listed}"
+        );
+        let found: Value = request.get("/kb/articles?q=withdrawn").await.json();
+        assert!(found.as_array().unwrap().is_empty(), "{found}");
+        request
+            .get(&format!("/kb/articles/{pid}"))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+        request
+            .post(&format!("/kb/articles/{pid}/feedback"))
+            .json(&json!({ "helpful": true }))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+    })
+    .await;
+}

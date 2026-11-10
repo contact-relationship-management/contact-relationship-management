@@ -74,15 +74,16 @@ pub(super) async fn dpo(
     let window_days = days_or(query.days, 30);
     let now = crate::clock::now();
     let since = now - chrono::Days::new(u64::try_from(window_days).unwrap_or(30));
-    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
+    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let mut coverage: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     for contact in &contact_rows {
         *coverage
             .entry(contact.marketing_consent.as_str())
             .or_default() += 1;
     }
-    let withdrawals_in_window = super::rollup::withdrawals_since(&ctx.db, since).await?;
-    let per_source = super::rollup::consent_events_by_source(&ctx.db).await?;
+    let withdrawals_in_window =
+        super::rollup::withdrawals_since(crate::db::pool(&ctx), since).await?;
+    let per_source = super::rollup::consent_events_by_source(crate::db::pool(&ctx)).await?;
     // Duplicate hygiene: live contacts sharing a person_ref.
     let mut by_person: std::collections::BTreeMap<&str, Vec<&contacts::Model>> =
         std::collections::BTreeMap::new();
@@ -138,9 +139,9 @@ pub(super) async fn consent_by_account(
     let window = days_or(query.days, 30);
     let now = crate::clock::now();
     let since = now - chrono::Days::new(u64::try_from(window).unwrap_or(30));
-    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
-    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
-    let withdrawals = super::rollup::withdrawals_by_account(&ctx.db, since).await?;
+    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
+    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
+    let withdrawals = super::rollup::withdrawals_by_account(crate::db::pool(&ctx), since).await?;
     let rows: Vec<ConsentAccount> = account_rows
         .iter()
         .map(|account| {

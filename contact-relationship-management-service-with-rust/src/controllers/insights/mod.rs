@@ -14,7 +14,6 @@
 
 use axa::prelude::*;
 use axum::http::HeaderMap;
-use sea_orm::{PaginatorTrait, QueryOrder};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -22,18 +21,17 @@ use super::dashboards::conditional;
 use super::record_rejection;
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{
-    accounts, activities, audit_logs, consent_events, contacts, deals, forecast_snapshots, leads,
-    memberships, partnerships, pipeline_stages, tickets,
+    accounts, activities, contacts, deals, forecast_snapshots, leads, memberships, partnerships,
+    pipeline_stages, tickets,
 };
 use crate::models::records;
 use crate::rules::engagement as engagement_rules;
 
-/// Load all live rows of one entity (soft-deleted excluded).
+/// Load all live rows of one entity (soft-deleted excluded), through its
+/// `sqlx` finder in [`crate::models::rows`].
 macro_rules! live {
-    ($module:ident, $db:expr) => {
-        <$module::Entity as crate::models::live::FindLive>::find_live()
-            .all($db)
-            .await?
+    ($module:ident, $ctx:expr) => {
+        crate::models::rows::$module(crate::db::pool($ctx)).await?
     };
 }
 

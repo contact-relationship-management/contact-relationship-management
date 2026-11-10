@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — insights, dashboards, attribution and kb on sqlx (CRM-T207, CRM-D24)
+
+- `models::rows`: sixteen `query_as!` finders into the entities' `Model`s, soft-deleted rows left
+  out. The insight rollups, dashboards, attribution and the knowledge base run on `query!`; the
+  organization's zone is bound by name, and the visit counter is one statement per count.
+  `Audit::record_read_on` takes the pool.
+- Fixed: `GET /api/attribution` named a soft-deleted campaign; it is `(deleted campaign)`.
+- `.sqlx/` gains 39 entries.
+
 ### Changed — `cargo audit` ignores RUSTSEC-2026-0459 (CRM-T227, CRM-T34)
 
 - New `.cargo/audit.toml` ignores the advisory against `libsqlite3-sys` 0.37.0, locked through

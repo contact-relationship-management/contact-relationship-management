@@ -157,6 +157,26 @@ impl Model {
         Ok(row)
     }
 
+    /// [`Self::record_read`] on `sqlx` (CRM-D24): the read's audit row in a transaction of its
+    /// own, on the shared pool.
+    ///
+    /// # Errors
+    ///
+    /// When the transaction or insert fails; callers should fail the read.
+    pub async fn record_read_on(
+        pool: &sqlx::PgPool,
+        entity: &str,
+        entity_pid: Uuid,
+        action: &str,
+        actor: Option<&str>,
+        snapshot: Option<serde_json::Value>,
+    ) -> Result<Self, sqlx::Error> {
+        let mut txn = pool.begin().await?;
+        let row = Self::record_on(&mut txn, entity, entity_pid, action, actor, snapshot).await?;
+        txn.commit().await?;
+        Ok(row)
+    }
+
     /// Most-recent audit entries, capped at `limit`.
     ///
     /// # Errors

@@ -1,11 +1,10 @@
 //! Outreach insights: contact cadence, engagement, the funnel and membership counts.
 
 use super::{
-    AppContext, ColumnTrait, DaysQuery, Deserialize, EntityTrait, HeaderMap, QueryFilter, Response,
-    Result, State, Uuid, accounts, audit_logs, conditional, contacts, days_or, deals,
-    debug_handler, memberships, pipeline_stages, records, tickets,
+    AppContext, DaysQuery, Deserialize, HeaderMap, Response, Result, State, Uuid, accounts,
+    conditional, contacts, days_or, deals, debug_handler, memberships, pipeline_stages, records,
+    tickets,
 };
-use crate::models::live::FindLive;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
 // `ETag` is taken, and the schema says it is always there.
@@ -144,9 +143,9 @@ pub(super) async fn cadence(
 ) -> Result<Response> {
     let threshold = days_or(query.days, 30);
     let now = crate::clock::now();
-    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
-    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
-    let touches = super::rollup::touches(&ctx.db).await?;
+    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
+    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
+    let touches = super::rollup::touches(crate::db::pool(&ctx)).await?;
 
     let mut last_contact_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
         std::collections::BTreeMap::new();
@@ -253,7 +252,7 @@ pub(super) async fn engagement(
     let window = days_or(query.days, 90);
     let now = crate::clock::now();
     let since = now - chrono::Days::new(u64::try_from(window).unwrap_or(90));
-    let groups = super::rollup::engagement_counts(&ctx.db, since, now).await?;
+    let groups = super::rollup::engagement_counts(crate::db::pool(&ctx), since, now).await?;
     let mut per_recorder_month: std::collections::BTreeMap<String, usize> =
         std::collections::BTreeMap::new();
     let mut per_kind: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
@@ -299,21 +298,19 @@ pub(super) async fn funnel(
     headers: HeaderMap,
 ) -> Result<Response> {
     let pipeline = records::find_pipeline(&ctx.db, records::parse_pid(&query.pipeline)?).await?;
-    let mut stages: Vec<pipeline_stages::Model> = live!(pipeline_stages, &ctx.db)
+    let mut stages: Vec<pipeline_stages::Model> = live!(pipeline_stages, &ctx)
         .into_iter()
         .filter(|stage| stage.pipeline_pid == pipeline.pid)
         .collect();
     stages.sort_by_key(|stage| stage.position);
-    let pipeline_deals: Vec<deals::Model> = deals::Entity::find_live()
-        .filter(deals::Column::PipelinePid.eq(pipeline.pid))
-        .all(&ctx.db)
-        .await?;
+    let pipeline_deals: Vec<deals::Model> =
+        crate::models::rows::deals_in_pipeline(crate::db::pool(&ctx), pipeline.pid).await?;
     let deal_pids: std::collections::HashSet<Uuid> = pipeline_deals.iter().map(|d| d.pid).collect();
-    let audit_rows = audit_logs::Entity::find()
-        .filter(audit_logs::Column::Entity.eq("deal"))
-        .filter(audit_logs::Column::Action.is_in(["deal_stage_changed", "deal_won", "deal_lost"]))
-        .all(&ctx.db)
-        .await?;
+    let audit_rows = crate::models::rows::deal_audits(
+        crate::db::pool(&ctx),
+        &["deal_stage_changed", "deal_won", "deal_lost"],
+    )
+    .await?;
     // Distinct deals that ever entered each stage, from to_stage.
     let mut entered: std::collections::BTreeMap<Uuid, std::collections::HashSet<Uuid>> =
         std::collections::BTreeMap::new();
@@ -398,14 +395,12 @@ pub(super) async fn members(
 ) -> Result<Response> {
     let threshold = days_or(query.days, 30);
     let now = crate::clock::now();
-    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
-    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
-    let touches = super::rollup::touches(&ctx.db).await?;
-    let ticket_rows: Vec<tickets::Model> = tickets::Entity::find_live()
-        .filter(tickets::Column::Status.is_in(["open", "pending"]))
-        .all(&ctx.db)
-        .await?;
-    let membership_rows: Vec<memberships::Model> = live!(memberships, &ctx.db);
+    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
+    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
+    let touches = super::rollup::touches(crate::db::pool(&ctx)).await?;
+    let ticket_rows: Vec<tickets::Model> =
+        crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?;
+    let membership_rows: Vec<memberships::Model> = live!(memberships, &ctx);
     let membership_of: std::collections::BTreeMap<Uuid, &memberships::Model> =
         membership_rows.iter().map(|m| (m.account_pid, m)).collect();
     let account_of: std::collections::BTreeMap<Uuid, Option<Uuid>> = contact_rows

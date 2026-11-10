@@ -7,16 +7,20 @@ use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::controllers::organization;
 use contact_relationship_management::db::{self, Bridge};
-use contact_relationship_management::models::_entities::activities;
+use contact_relationship_management::models::_entities::{activities, contacts};
 use contact_relationship_management::models::audit_logs::{self, Model as Audit, verify_chain};
+use contact_relationship_management::models::live::FindLive;
+use contact_relationship_management::models::rows;
 use contact_relationship_management::streaming;
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ConnectionTrait, DatabaseBackend, DbErr, EntityTrait,
-    IntoActiveModel, QuerySelect, RuntimeErr, Statement, TransactionTrait,
+    IntoActiveModel, QueryFilter, QueryOrder, QuerySelect, RuntimeErr, Statement, TransactionTrait,
 };
 use serde_json::{Value, json};
 use serial_test::serial;
 use uuid::Uuid;
+
+use super::seed_contact;
 
 /// What `jsonb` rewrites: key order, a number's text, an escape. The hash is of the stored form.
 fn snapshot() -> Value {
@@ -316,6 +320,85 @@ async fn the_bridge_carries_what_seaorm_code_does() {
         );
         // `bridge` is not used again, so its borrow of `txn` has ended.
         txn.rollback().await.unwrap();
+    })
+    .await;
+}
+
+/// CRM-T207: a `sqlx` finder reads what `find_live` reads, row for row: the sealed columns opened,
+/// a soft-deleted row left out, and the same filter.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+async fn the_sqlx_finders_read_what_find_live_reads() {
+    use base64::Engine;
+    use contact_relationship_management::crypto::{self, Keyring};
+    use sea_orm::ColumnTrait;
+    request::<App, _, _>(|request, ctx| async move {
+        let key = base64::engine::general_purpose::STANDARD.encode([7u8; 32]);
+        crypto::install(Some(Keyring::from_spec(&format!("k1:{key}")).unwrap()));
+        let kept = seed_contact!(&request, "Kept Contact").await;
+        let gone = seed_contact!(&request, "Gone Contact").await;
+        for (summary, due_on) in [
+            ("Call back about renewal", Some("2030-01-10")),
+            ("A note", None),
+        ] {
+            request
+                .post("/api/activities")
+                .json(&json!({ "subject_kind": "contact", "subject_pid": kept,
+                               "kind": "task", "summary": summary, "due_on": due_on }))
+                .await
+                .assert_status_ok();
+        }
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE contacts SET deleted_at = now() WHERE pid = '{gone}'"
+            ))
+            .await
+            .unwrap();
+
+        let through_sqlx = rows::contacts(db::pool(&ctx)).await.unwrap();
+        let through_seaorm = contacts::Entity::find_live()
+            .order_by_asc(contacts::Column::Id)
+            .all(&ctx.db)
+            .await
+            .unwrap();
+        assert_eq!(through_sqlx, through_seaorm);
+        let pids: Vec<String> = through_sqlx.iter().map(|c| c.pid.to_string()).collect();
+        assert!(pids.contains(&kept) && !pids.contains(&gone), "{pids:?}");
+        let stored: String =
+            sqlx::query_scalar("SELECT preferred_channel FROM contacts WHERE pid = $1")
+                .bind(Uuid::parse_str(&kept).unwrap())
+                .fetch_one(db::pool(&ctx))
+                .await
+                .unwrap();
+        assert!(stored.starts_with("enc:v1:k1:"), "{stored}");
+        let channel = through_sqlx
+            .iter()
+            .find(|c| c.pid.to_string() == kept)
+            .unwrap()
+            .preferred_channel
+            .to_string();
+        assert!(!channel.starts_with("enc:"), "{channel}");
+
+        let open = rows::open_dated_activities(db::pool(&ctx), Some("task"))
+            .await
+            .unwrap();
+        let open_seaorm = activities::Entity::find_live()
+            .filter(activities::Column::Done.eq(false))
+            .filter(activities::Column::DueOn.is_not_null())
+            .filter(activities::Column::Kind.eq("task"))
+            .order_by_asc(activities::Column::Id)
+            .all(&ctx.db)
+            .await
+            .unwrap();
+        assert_eq!(open, open_seaorm);
+        let mine: Vec<String> = open
+            .iter()
+            .filter(|a| a.subject_pid.to_string() == kept)
+            .map(|a| a.summary.to_string())
+            .collect();
+        assert_eq!(mine, ["Call back about renewal"]);
+        crypto::install(None);
     })
     .await;
 }

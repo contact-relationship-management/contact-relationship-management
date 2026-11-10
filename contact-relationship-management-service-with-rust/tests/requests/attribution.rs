@@ -731,3 +731,54 @@ async fn an_open_too_soon_after_sending_is_left_out_and_the_decay_half_life_can_
     })
     .await;
 }
+
+/// CRM-T207: a campaign deleted since keeps its credit and is named `(deleted campaign)`, as the
+/// answer's schema says.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+async fn a_deleted_campaign_keeps_its_credit_and_loses_its_name() {
+    request::<App, _, _>(|request, ctx| async move {
+        let segment = request
+            .post("/api/segments")
+            .json(&json!({ "name": "Everyone", "filter": {} }))
+            .await
+            .json::<Value>()["pid"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let retired = campaign!(&request, segment, "Retired");
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        won_deal!(
+            &request,
+            pipeline,
+            stages,
+            json!({ "name": "R1", "amount_minor": 3_000, "currency": "USD",
+                    "source_campaign_pid": retired })
+        );
+        let named = |answer: &Value| {
+            answer["campaigns"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|c| c["campaign_pid"] == retired.as_str())
+                .map(|c| c["name"].clone())
+        };
+        let before: Value = request.get("/api/attribution").await.json();
+        assert_eq!(named(&before), Some(json!("Retired")), "{before}");
+        ctx.db
+            .execute_unprepared(&format!(
+                "UPDATE campaigns SET deleted_at = now() WHERE pid = '{retired}'"
+            ))
+            .await
+            .unwrap();
+        let after: Value = request.get("/api/attribution").await.json();
+        assert_eq!(named(&after), Some(json!("(deleted campaign)")), "{after}");
+        assert_eq!(
+            earned(&after, "(deleted campaign)", "USD"),
+            3_000,
+            "{after}"
+        );
+    })
+    .await;
+}

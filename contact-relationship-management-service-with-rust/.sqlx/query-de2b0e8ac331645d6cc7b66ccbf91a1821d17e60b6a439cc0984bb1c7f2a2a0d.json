@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(SUM(views), 0)::bigint AS \"views!\", COALESCE(SUM(helpful_yes), 0)::bigint AS \"yes!\", COALESCE(SUM(helpful_no), 0)::bigint AS \"no!\", COALESCE(SUM(searches), 0)::bigint AS \"searches!\", COALESCE(SUM(searches_empty), 0)::bigint AS \"empty!\" FROM kb_daily WHERE day BETWEEN $1 AND $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "views!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "yes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "no!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "searches!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "empty!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "de2b0e8ac331645d6cc7b66ccbf91a1821d17e60b6a439cc0984bb1c7f2a2a0d"
+}

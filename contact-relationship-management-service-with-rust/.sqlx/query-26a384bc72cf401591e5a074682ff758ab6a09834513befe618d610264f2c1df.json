@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT k.article_pid AS pid, COALESCE(a.title, '(deleted article)') AS \"title!\", SUM(k.views)::bigint AS \"views!\", SUM(k.helpful_yes)::bigint AS \"yes!\", SUM(k.helpful_no)::bigint AS \"no!\" FROM kb_daily k LEFT JOIN articles a ON a.pid = k.article_pid AND a.deleted_at IS NULL WHERE k.day BETWEEN $1 AND $2 AND k.article_pid <> $3 GROUP BY k.article_pid, a.title HAVING SUM(k.views) > 0 ORDER BY 3 DESC, 2 LIMIT 10",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "kb_daily",
+            "name": "article_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "title!",
+        "type_info": "Varchar",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "views!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "yes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "no!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "26a384bc72cf401591e5a074682ff758ab6a09834513befe618d610264f2c1df"
+}

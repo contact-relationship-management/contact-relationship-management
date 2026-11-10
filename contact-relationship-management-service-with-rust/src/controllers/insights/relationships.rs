@@ -100,10 +100,10 @@ pub(super) async fn stakeholders(
     headers: HeaderMap,
 ) -> Result<Response> {
     let now = crate::clock::now();
-    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx.db);
-    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
+    let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
+    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let last_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
-        super::rollup::touches(&ctx.db)
+        super::rollup::touches(crate::db::pool(&ctx))
             .await?
             .into_iter()
             .filter(|t| t.subject_kind == "contact")
@@ -177,8 +177,8 @@ pub(super) async fn partnerships_register(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let rows: Vec<partnerships::Model> = live!(partnerships, &ctx.db);
-    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
+    let rows: Vec<partnerships::Model> = live!(partnerships, &ctx);
+    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let names: std::collections::BTreeMap<Uuid, &str> = account_rows
         .iter()
         .map(|a| (a.pid, a.display_name.as_str()))
@@ -230,8 +230,8 @@ pub(super) async fn memberships_view(
     // The caller's day (CRM-T179), as attainment's.
     let today = crate::controllers::organization::caller_today(&ctx.db, &headers).await?;
     let horizon = today + chrono::Days::new(u64::try_from(window).unwrap_or(90));
-    let rows: Vec<memberships::Model> = live!(memberships, &ctx.db);
-    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx.db);
+    let rows: Vec<memberships::Model> = live!(memberships, &ctx);
+    let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let names: std::collections::BTreeMap<Uuid, &str> = account_rows
         .iter()
         .map(|a| (a.pid, a.display_name.as_str()))

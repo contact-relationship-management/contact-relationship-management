@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO kb_daily (day, article_pid, views) VALUES ($2, $1, 1) ON CONFLICT (day, article_pid) DO UPDATE SET views = kb_daily.views + 1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "36c37bbea24151f0ba5a32dc46cb1575b04c0fcebf0d2bbb289f7219b4d3eb8a"
+}

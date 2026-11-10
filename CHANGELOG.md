@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — insights, dashboards, attribution and the knowledge base on sqlx (CRM-T207, 2026-11-10)
+
+- These read through `sqlx`. Attribution now names a deleted campaign `(deleted campaign)`, as its
+  schema always said, where it kept the old name.
+
 ### Changed — one advisory ignored, with its reason (CRM-T227, 2026-11-10)
 
 - `cargo audit` ignores RUSTSEC-2026-0459, C SQLite in a crate that is locked but never built,

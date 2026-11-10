@@ -7,7 +7,6 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use chrono::{DateTime, NaiveDate, Utc};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -145,10 +144,6 @@ struct Won {
     /// The day it closed on in the organization's zone (CRM-T181), for `from`/`to` and its
     /// close-day rate.
     closed_on: NaiveDate,
-}
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
 /// The kinds of e-mail touch that count.
@@ -306,38 +301,35 @@ struct Asked {
 async fn won_deals(ctx: &AppContext, query: &AttributionQuery) -> Result<Vec<Won>> {
     // The days deals closed on are the organization's (CRM-T181), as its reports' days are.
     let calendar = super::organization::periods(&ctx.db).await?;
-    let closed_on = crate::rules::periods::local_day("closed_at", &calendar);
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT pid, amount_minor, currency, source_campaign_pid, created_at, closed_at, \
-                        {closed_on} AS closed_on FROM deals \
-                 WHERE won AND deleted_at IS NULL AND closed_at IS NOT NULL \
-                   AND ($1::date IS NULL OR {closed_on} >= $1::date) \
-                   AND ($2::date IS NULL OR {closed_on} <= $2::date) \
-                 ORDER BY closed_at DESC, id LIMIT $3"
-            ),
-            [
-                query.from.into(),
-                query.to.into(),
-                i64::try_from(MAX_DEALS + 1).unwrap_or(i64::MAX).into(),
-            ],
-        ))
-        .await?;
-    rows.iter()
-        .map(|row| {
-            Ok(Won {
-                pid: row.try_get("", "pid")?,
-                amount_minor: row.try_get("", "amount_minor")?,
-                currency: row.try_get("", "currency")?,
-                source_campaign: row.try_get("", "source_campaign_pid")?,
-                created_at: row.try_get("", "created_at")?,
-                closed_at: row.try_get("", "closed_at")?,
-                closed_on: row.try_get("", "closed_on")?,
-            })
+    // `closed_on` is the closing day in that zone, bound by name as `rules::periods::local_day`
+    // writes it.
+    let rows = sqlx::query!(
+        "SELECT pid, amount_minor, currency, source_campaign_pid, created_at, \
+                closed_at AS \"closed_at!\", \
+                (closed_at AT TIME ZONE $4)::date AS \"closed_on!\" FROM deals \
+         WHERE won AND deleted_at IS NULL AND closed_at IS NOT NULL \
+           AND ($1::date IS NULL OR (closed_at AT TIME ZONE $4)::date >= $1::date) \
+           AND ($2::date IS NULL OR (closed_at AT TIME ZONE $4)::date <= $2::date) \
+         ORDER BY closed_at DESC, id LIMIT $3",
+        query.from,
+        query.to,
+        i64::try_from(MAX_DEALS + 1).unwrap_or(i64::MAX),
+        calendar.zone.name(),
+    )
+    .fetch_all(crate::db::pool(ctx))
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| Won {
+            pid: row.pid,
+            amount_minor: row.amount_minor,
+            currency: row.currency,
+            source_campaign: row.source_campaign_pid,
+            created_at: row.created_at,
+            closed_at: row.closed_at,
+            closed_on: row.closed_on,
         })
-        .collect()
+        .collect())
 }
 
 /// The touches on those deals: e-mails sent to the deal's primary contact, and campaign leads of
@@ -358,71 +350,63 @@ async fn touches_of(
         .map(|(_, name)| name)
         .collect();
     let pids: Vec<String> = deals.iter().map(|d| d.pid.to_string()).collect();
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            "SELECT d.pid AS deal_pid, e.campaign_pid, e.sent_at AS at \
-               FROM deals d JOIN email_deliveries e ON e.contact_pid = d.primary_contact_pid \
-              WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
-                AND $3::bool AND e.state = 'sent' AND e.sent_at IS NOT NULL \
-                AND e.sent_at <= d.closed_at \
-                AND e.sent_at >= d.closed_at - make_interval(days => $2::int) \
-             UNION ALL \
-             SELECT d.pid, e.campaign_pid, ev.received_at \
-               FROM deals d JOIN email_deliveries e ON e.contact_pid = d.primary_contact_pid \
-               JOIN email_events ev ON ev.message_id = e.message_id \
-              WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
-                AND ev.event IN (SELECT jsonb_array_elements_text($4::jsonb)) \
-                AND ($5::int = 0 OR ev.event <> 'opened' \
-                     OR ev.received_at >= e.sent_at + make_interval(secs => $5::int)) \
-                AND ($6::int = 0 OR ev.event <> 'clicked' \
-                     OR ev.received_at >= e.sent_at + make_interval(secs => $6::int)) \
-                AND ev.received_at <= d.closed_at \
-                AND ev.received_at >= d.closed_at - make_interval(days => $2::int) \
-             UNION ALL \
-             SELECT d.pid, l.campaign_pid, l.created_at \
-               FROM deals d JOIN leads l ON l.contact_pid = d.primary_contact_pid \
-              WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
-                AND l.campaign_pid IS NOT NULL AND l.deleted_at IS NULL \
-                AND l.created_at <= d.closed_at \
-                AND l.created_at >= d.closed_at - make_interval(days => $2::int)",
-            [
-                serde_json::json!(pids).into(),
-                i32::try_from(days).unwrap_or(i32::MAX).into(),
-                kinds.sent.into(),
-                serde_json::json!(engagement).into(),
-                i32::try_from(min_open_seconds).unwrap_or(i32::MAX).into(),
-                i32::try_from(min_click_seconds).unwrap_or(i32::MAX).into(),
-            ],
-        ))
-        .await?;
+    let rows = sqlx::query!(
+        "SELECT d.pid AS \"deal_pid!\", e.campaign_pid AS \"campaign_pid!\", \
+                e.sent_at AS \"at!\" \
+           FROM deals d JOIN email_deliveries e ON e.contact_pid = d.primary_contact_pid \
+          WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
+            AND $3::bool AND e.state = 'sent' AND e.sent_at IS NOT NULL \
+            AND e.sent_at <= d.closed_at \
+            AND e.sent_at >= d.closed_at - make_interval(days => $2::int) \
+         UNION ALL \
+         SELECT d.pid, e.campaign_pid, ev.received_at \
+           FROM deals d JOIN email_deliveries e ON e.contact_pid = d.primary_contact_pid \
+           JOIN email_events ev ON ev.message_id = e.message_id \
+          WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
+            AND ev.event IN (SELECT jsonb_array_elements_text($4::jsonb)) \
+            AND ($5::int = 0 OR ev.event <> 'opened' \
+                 OR ev.received_at >= e.sent_at + make_interval(secs => $5::int)) \
+            AND ($6::int = 0 OR ev.event <> 'clicked' \
+                 OR ev.received_at >= e.sent_at + make_interval(secs => $6::int)) \
+            AND ev.received_at <= d.closed_at \
+            AND ev.received_at >= d.closed_at - make_interval(days => $2::int) \
+         UNION ALL \
+         SELECT d.pid, l.campaign_pid, l.created_at \
+           FROM deals d JOIN leads l ON l.contact_pid = d.primary_contact_pid \
+          WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) \
+            AND l.campaign_pid IS NOT NULL AND l.deleted_at IS NULL \
+            AND l.created_at <= d.closed_at \
+            AND l.created_at >= d.closed_at - make_interval(days => $2::int)",
+        serde_json::json!(pids),
+        i32::try_from(days).unwrap_or(i32::MAX),
+        kinds.sent,
+        serde_json::json!(engagement),
+        i32::try_from(min_open_seconds).unwrap_or(i32::MAX),
+        i32::try_from(min_click_seconds).unwrap_or(i32::MAX),
+    )
+    .fetch_all(crate::db::pool(ctx))
+    .await?;
     let mut by_deal: HashMap<Uuid, Vec<Touch>> = HashMap::new();
-    for row in &rows {
-        by_deal
-            .entry(row.try_get("", "deal_pid")?)
-            .or_default()
-            .push(Touch {
-                campaign: row.try_get("", "campaign_pid")?,
-                at: row.try_get("", "at")?,
-            });
+    for row in rows {
+        by_deal.entry(row.deal_pid).or_default().push(Touch {
+            campaign: row.campaign_pid,
+            at: row.at,
+        });
     }
     Ok(by_deal)
 }
 
-/// Names of the campaigns, by id.
+/// Names of the live campaigns, by id; a deleted one is named `(deleted campaign)` by the caller.
 async fn names_of(ctx: &AppContext, ids: &BTreeSet<Uuid>) -> Result<HashMap<Uuid, String>> {
     let list: Vec<String> = ids.iter().map(ToString::to_string).collect();
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            "SELECT pid, name FROM campaigns \
-             WHERE pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid)",
-            [serde_json::json!(list).into()],
-        ))
-        .await?;
-    rows.iter()
-        .map(|row| Ok((row.try_get("", "pid")?, row.try_get("", "name")?)))
-        .collect()
+    let rows = sqlx::query!(
+        "SELECT pid, name FROM campaigns \
+         WHERE deleted_at IS NULL AND pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid)",
+        serde_json::json!(list),
+    )
+    .fetch_all(crate::db::pool(ctx))
+    .await?;
+    Ok(rows.into_iter().map(|row| (row.pid, row.name)).collect())
 }
 
 /// Add `amount` to a currency's total.
@@ -652,8 +636,8 @@ async fn run(
             .then_with(|| a.name.cmp(&b.name))
     });
 
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        crate::db::pool(&ctx),
         "attribution",
         Uuid::nil(),
         "attribution_run",

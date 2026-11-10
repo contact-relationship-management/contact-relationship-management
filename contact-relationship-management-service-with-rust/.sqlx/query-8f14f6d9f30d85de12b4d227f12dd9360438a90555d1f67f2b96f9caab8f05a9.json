@@ -1,0 +1,67 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT actor_ref, to_char(occurred_at AT TIME ZONE 'UTC', 'YYYY-MM') AS \"month!\", kind, sentiment, COUNT(*) AS \"count!\" FROM activities WHERE deleted_at IS NULL AND occurred_at >= $1 AND occurred_at <= $2 GROUP BY 1, 2, 3, 4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "actor_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "actor_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "month!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "sentiment",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "sentiment"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      true,
+      null,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "8f14f6d9f30d85de12b4d227f12dd9360438a90555d1f67f2b96f9caab8f05a9"
+}

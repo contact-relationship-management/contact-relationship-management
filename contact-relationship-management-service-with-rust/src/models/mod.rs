@@ -14,3 +14,4 @@ pub mod encrypted;
 pub mod event_outbox;
 pub mod live;
 pub mod records;
+pub mod rows;

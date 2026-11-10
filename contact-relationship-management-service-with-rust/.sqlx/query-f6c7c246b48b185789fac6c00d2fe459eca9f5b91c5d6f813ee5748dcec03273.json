@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.pid AS \"deal_pid!\", e.campaign_pid AS \"campaign_pid!\", e.sent_at AS \"at!\" FROM deals d JOIN email_deliveries e ON e.contact_pid = d.primary_contact_pid WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) AND $3::bool AND e.state = 'sent' AND e.sent_at IS NOT NULL AND e.sent_at <= d.closed_at AND e.sent_at >= d.closed_at - make_interval(days => $2::int) UNION ALL SELECT d.pid, e.campaign_pid, ev.received_at FROM deals d JOIN email_deliveries e ON e.contact_pid = d.primary_contact_pid JOIN email_events ev ON ev.message_id = e.message_id WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) AND ev.event IN (SELECT jsonb_array_elements_text($4::jsonb)) AND ($5::int = 0 OR ev.event <> 'opened' OR ev.received_at >= e.sent_at + make_interval(secs => $5::int)) AND ($6::int = 0 OR ev.event <> 'clicked' OR ev.received_at >= e.sent_at + make_interval(secs => $6::int)) AND ev.received_at <= d.closed_at AND ev.received_at >= d.closed_at - make_interval(days => $2::int) UNION ALL SELECT d.pid, l.campaign_pid, l.created_at FROM deals d JOIN leads l ON l.contact_pid = d.primary_contact_pid WHERE d.pid IN (SELECT jsonb_array_elements_text($1::jsonb)::uuid) AND l.campaign_pid IS NOT NULL AND l.deleted_at IS NULL AND l.created_at <= d.closed_at AND l.created_at >= d.closed_at - make_interval(days => $2::int)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "deal_pid!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "campaign_pid!",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "at!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Int4",
+        "Bool",
+        "Jsonb",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "f6c7c246b48b185789fac6c00d2fe459eca9f5b91c5d6f813ee5748dcec03273"
+}

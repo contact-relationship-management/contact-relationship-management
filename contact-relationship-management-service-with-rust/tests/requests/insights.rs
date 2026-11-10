@@ -239,3 +239,22 @@ async fn insight_cache_hits_then_write_invalidates() {
     })
     .await;
 }
+
+/// CRM-T207: a view of one record answers `404` for a record that is not there.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+async fn a_view_of_a_missing_record_is_not_found() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let missing = uuid::Uuid::new_v4();
+        request
+            .get(&format!("/api/insights/funnel?pipeline={missing}"))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+        request
+            .get(&format!("/api/accounts/{missing}/clv"))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+    })
+    .await;
+}
