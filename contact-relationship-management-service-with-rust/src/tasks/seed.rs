@@ -10,12 +10,9 @@
 
 use axa::prelude::*;
 use axa::task::{TaskInfo, Vars};
-use sea_orm::{ActiveValue, ConnectionTrait, DbBackend, Statement};
 use uuid::Uuid;
 
-use crate::models::_entities::{
-    accounts, contacts, deals, leads, pipeline_stages, pipelines, sla_policies,
-};
+use crate::models::encrypted::EncryptedText;
 
 /// The seeded deals' currency and amount in that currency's minor unit (CRM-R50): yen have no
 /// decimal places, Kuwaiti dinars three, the rest two. Fictional amounts.
@@ -90,58 +87,53 @@ impl Task for Seed {
 
     #[allow(clippy::too_many_lines)] // one linear walk building the demo book
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> Result<()> {
-        let db = &ctx.db;
+        // One transaction, so a seed that fails leaves nothing half made (CRM-T216).
+        let mut txn = crate::db::pool(ctx).begin().await?;
         // Accounts + contacts.
         let tiers = ["customer", "customer", "prospect", "partner", "prospect"];
         let mut account_pids = Vec::new();
         for (index, tier) in tiers.iter().enumerate() {
-            let account = accounts::ActiveModel {
-                pid: ActiveValue::set(Uuid::new_v4()),
-                organization_ref: ActiveValue::set(format!("organization:{}", Uuid::new_v4())),
-                owner_ref: ActiveValue::set(Some(format!("person:{}", Uuid::new_v4()))),
-                display_name: ActiveValue::set(format!("Demo Account {:02}", index + 1)),
-                tier: ActiveValue::set((*tier).to_string()),
-                industry: ActiveValue::set(Some("technology".to_string())),
-                deleted_at: ActiveValue::set(None),
-                ..Default::default()
-            }
-            .insert(db)
+            let account = Uuid::new_v4();
+            sqlx::query!(
+                "INSERT INTO accounts (pid, organization_ref, owner_ref, display_name, tier, \
+                 industry) VALUES ($1, $2, $3, $4, $5, 'technology')",
+                account,
+                format!("organization:{}", Uuid::new_v4()),
+                format!("person:{}", Uuid::new_v4()),
+                format!("Demo Account {:02}", index + 1),
+                tier,
+            )
+            .execute(&mut *txn)
             .await?;
-            account_pids.push(account.pid);
+            account_pids.push(account);
             for c in 0..3 {
                 let (display, given, family) = CONTACT_NAMES[(index * 3 + c) % CONTACT_NAMES.len()];
-                contacts::ActiveModel {
-                    pid: ActiveValue::set(Uuid::new_v4()),
-                    person_ref: ActiveValue::set(format!("person:{}", Uuid::new_v4())),
-                    account_pid: ActiveValue::set(Some(account.pid)),
-                    owner_ref: ActiveValue::set(None),
-                    display_name: ActiveValue::set(display.to_string()),
-                    given_name: ActiveValue::set(given.map(str::to_string)),
-                    family_name: ActiveValue::set(family.map(str::to_string)),
-                    status: ActiveValue::set("active".to_string()),
-                    job_title: ActiveValue::set(Some("Buyer".to_string())),
-                    preferred_channel: ActiveValue::set("email".into()),
-                    // Two of three consented, one never — the segment
-                    // gate is visible in the demo.
-                    marketing_consent: ActiveValue::set(
-                        if c == 2 { "never" } else { "granted" }.to_string(),
-                    ),
-                    consent_changed_at: ActiveValue::set(None),
-                    deleted_at: ActiveValue::set(None),
-                    ..Default::default()
-                }
-                .insert(db)
+                // Two of three consented, one never — the segment gate is visible in the demo.
+                // `preferred_channel` is sealed: binding `EncryptedText` seals it (CRM-T41).
+                sqlx::query!(
+                    "INSERT INTO contacts (pid, person_ref, account_pid, display_name, given_name, \
+                     family_name, status, job_title, preferred_channel, marketing_consent) \
+                     VALUES ($1, $2, $3, $4, $5, $6, 'active', 'Buyer', $7, $8)",
+                    Uuid::new_v4(),
+                    format!("person:{}", Uuid::new_v4()),
+                    account,
+                    display,
+                    given,
+                    family,
+                    EncryptedText::from("email") as _,
+                    if c == 2 { "never" } else { "granted" },
+                )
+                .execute(&mut *txn)
                 .await?;
             }
         }
         // One pipeline with five stages.
-        let pipeline = pipelines::ActiveModel {
-            pid: ActiveValue::set(Uuid::new_v4()),
-            name: ActiveValue::set("New Business".to_string()),
-            deleted_at: ActiveValue::set(None),
-            ..Default::default()
-        }
-        .insert(db)
+        let pipeline = Uuid::new_v4();
+        sqlx::query!(
+            "INSERT INTO pipelines (pid, name) VALUES ($1, 'New Business')",
+            pipeline,
+        )
+        .execute(&mut *txn)
         .await?;
         let stage_defs = [
             ("Qualification", 10, false, false),
@@ -152,70 +144,64 @@ impl Task for Seed {
         ];
         let mut stage_pids = Vec::new();
         for (position, (name, probability, is_won, is_lost)) in stage_defs.iter().enumerate() {
-            let stage = pipeline_stages::ActiveModel {
-                pid: ActiveValue::set(Uuid::new_v4()),
-                pipeline_pid: ActiveValue::set(pipeline.pid),
-                name: ActiveValue::set((*name).to_string()),
-                position: ActiveValue::set(i32::try_from(position).unwrap_or(0)),
-                probability_percent: ActiveValue::set(*probability),
-                is_won: ActiveValue::set(*is_won),
-                is_lost: ActiveValue::set(*is_lost),
-                deleted_at: ActiveValue::set(None),
-                ..Default::default()
-            }
-            .insert(db)
+            let stage = Uuid::new_v4();
+            sqlx::query!(
+                "INSERT INTO pipeline_stages (pid, pipeline_pid, name, position, \
+                 probability_percent, is_won, is_lost) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                stage,
+                pipeline,
+                name,
+                i32::try_from(position).unwrap_or(0),
+                probability,
+                is_won,
+                is_lost,
+            )
+            .execute(&mut *txn)
             .await?;
-            stage_pids.push(stage.pid);
+            stage_pids.push(stage);
         }
         // Deals across the stages (some closed).
         for (i, (currency, amount_minor)) in DEAL_AMOUNTS.iter().enumerate() {
             let stage_index = i % 5;
             let closed = stage_index >= 3;
-            deals::ActiveModel {
-                pid: ActiveValue::set(Uuid::new_v4()),
-                account_pid: ActiveValue::set(Some(account_pids[i % account_pids.len()])),
-                primary_contact_pid: ActiveValue::set(None),
-                owner_ref: ActiveValue::set(Some(format!("person:{}", Uuid::new_v4()))),
-                pipeline_pid: ActiveValue::set(pipeline.pid),
-                stage_pid: ActiveValue::set(stage_pids[stage_index]),
-                name: ActiveValue::set(format!("Demo Deal {:02}", i + 1)),
-                amount_minor: ActiveValue::set(*amount_minor),
-                currency: ActiveValue::set((*currency).to_string()),
-                expected_close_on: ActiveValue::set(chrono::NaiveDate::from_ymd_opt(2026, 9, 30)),
-                kanban_position: ActiveValue::set(i32::try_from(i).unwrap_or(0)),
-                source_campaign_pid: ActiveValue::set(None),
-                closed_at: ActiveValue::set(closed.then(|| crate::clock::now().into())),
-                won: ActiveValue::set(stage_index == 3),
-                lost_reason: ActiveValue::set((stage_index == 4).then(|| "budget cut".to_string())),
-                deleted_at: ActiveValue::set(None),
-                ..Default::default()
-            }
-            .insert(db)
+            sqlx::query!(
+                "INSERT INTO deals (pid, account_pid, owner_ref, pipeline_pid, stage_pid, name, \
+                 amount_minor, currency, expected_close_on, kanban_position, closed_at, won, \
+                 lost_reason) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+                Uuid::new_v4(),
+                account_pids[i % account_pids.len()],
+                format!("person:{}", Uuid::new_v4()),
+                pipeline,
+                stage_pids[stage_index],
+                format!("Demo Deal {:02}", i + 1),
+                amount_minor,
+                currency,
+                chrono::NaiveDate::from_ymd_opt(2026, 9, 30),
+                i32::try_from(i).unwrap_or(0),
+                closed.then(crate::clock::now),
+                stage_index == 3,
+                (stage_index == 4).then_some("budget cut"),
+            )
+            .execute(&mut *txn)
             .await?;
         }
         // Exchange rates between several pairs, not all from one currency (CRM-R50).
         // The organization's "today", as the rate routes' (CRM-T179).
-        let today =
-            crate::controllers::organization::organization_today(db.get_postgres_connection_pool())
-                .await?;
+        let today = crate::controllers::organization::organization_today(&mut *txn).await?;
         for (from, to, rate) in RATES {
             let ppb = crate::rules::fx::parse_rate(rate).map_err(|why| Error::string(&why))?;
-            db.execute_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
+            sqlx::query!(
                 "INSERT INTO fx_rates (pid, from_currency, to_currency, rate_ppb, effective_on, \
                                        source, set_by) \
-                 VALUES ($1, $2, $3, $4, $5, $6, $7) \
+                 VALUES ($1, $2, $3, $4, $5, 'synthetic demo rate', 'person:seed') \
                  ON CONFLICT (from_currency, to_currency, effective_on) DO NOTHING",
-                [
-                    Uuid::new_v4().into(),
-                    (*from).into(),
-                    (*to).into(),
-                    ppb.into(),
-                    today.into(),
-                    "synthetic demo rate".into(),
-                    "person:seed".into(),
-                ],
-            ))
+                Uuid::new_v4(),
+                from,
+                to,
+                ppb,
+                today,
+            )
+            .execute(&mut *txn)
             .await?;
         }
         // Leads in every status.
@@ -223,22 +209,18 @@ impl Task for Seed {
             .iter()
             .enumerate()
         {
-            leads::ActiveModel {
-                pid: ActiveValue::set(Uuid::new_v4()),
-                source: ActiveValue::set(if i % 2 == 0 { "web" } else { "referral" }.to_string()),
-                campaign_pid: ActiveValue::set(None),
-                contact_pid: ActiveValue::set(None),
-                display_name: ActiveValue::set(format!("Demo Lead {:02}", i + 1)),
-                email: ActiveValue::set(Some(format!("lead{i}@initech.example"))),
-                email_domain: ActiveValue::set(Some("initech.example".to_string())),
-                score: ActiveValue::set(if i % 2 == 0 { 10 } else { 30 }),
-                campaign_click: ActiveValue::set(false),
-                unsubscribed: ActiveValue::set(false),
-                status: ActiveValue::set((*status).to_string()),
-                deleted_at: ActiveValue::set(None),
-                ..Default::default()
-            }
-            .insert(db)
+            sqlx::query!(
+                "INSERT INTO leads (pid, source, display_name, email, email_domain, score, \
+                 campaign_click, unsubscribed, status) \
+                 VALUES ($1, $2, $3, $4, 'initech.example', $5, false, false, $6)",
+                Uuid::new_v4(),
+                if i % 2 == 0 { "web" } else { "referral" },
+                format!("Demo Lead {:02}", i + 1),
+                format!("lead{i}@initech.example"),
+                if i % 2 == 0 { 10 } else { 30 },
+                status,
+            )
+            .execute(&mut *txn)
             .await?;
         }
         // SLA policies for every priority.
@@ -248,17 +230,18 @@ impl Task for Seed {
             ("high", 60, 480),
             ("urgent", 15, 240),
         ] {
-            sla_policies::ActiveModel {
-                pid: ActiveValue::set(Uuid::new_v4()),
-                priority: ActiveValue::set(priority.to_string()),
-                first_response_minutes: ActiveValue::set(first),
-                resolution_minutes: ActiveValue::set(resolution),
-                deleted_at: ActiveValue::set(None),
-                ..Default::default()
-            }
-            .insert(db)
+            sqlx::query!(
+                "INSERT INTO sla_policies (pid, priority, first_response_minutes, \
+                 resolution_minutes) VALUES ($1, $2, $3, $4)",
+                Uuid::new_v4(),
+                priority,
+                first,
+                resolution,
+            )
+            .execute(&mut *txn)
             .await?;
         }
+        txn.commit().await?;
         tracing::info!("seeded synthetic book of business");
         println!(
             "seeded: 5 accounts, 15 contacts, 1 pipeline, {} deals, {} exchange rates, 5 leads, \

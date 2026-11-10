@@ -282,7 +282,6 @@ async fn create_contact(
         None,
     )
     .await?;
-    // The workflow engine takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
     workflows::fire(
         &mut txn,
         &workflows::Event::contact("contact_created", row.pid),
@@ -438,7 +437,7 @@ async fn list_contacts(
     let page = Page::new(&uri, 1000)?;
     let (limit, offset) = page.bounds();
     let pool = db::pool(&ctx);
-    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(&ctx.db, "contact", &tag)
+    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(db::pool(&ctx), "contact", &tag)
         .await?
         .map(|pids| pids.into_iter().collect());
     let rows = rows::contacts_page(pool, tagged.as_deref(), limit, offset).await?;
@@ -679,7 +678,8 @@ async fn get_contact(
         deals: deals_json,
         tickets: tickets_json,
         truncated,
-        employments: crate::models::employments::of_contact(&ctx.db, contact.pid).await?,
+        employments: crate::models::employments::of_contact(crate::db::pool(&ctx), contact.pid)
+            .await?,
     })
 }
 
@@ -1105,7 +1105,7 @@ async fn list_accounts(
     let page = Page::new(&uri, 500)?;
     let (limit, offset) = page.bounds();
     let pool = db::pool(&ctx);
-    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(&ctx.db, "account", &tag)
+    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(db::pool(&ctx), "account", &tag)
         .await?
         .map(|pids| pids.into_iter().collect());
     let rows = rows::accounts_page(pool, tagged.as_deref(), limit, offset).await?;

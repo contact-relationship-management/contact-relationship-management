@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO fx_rates (pid, from_currency, to_currency, rate_ppb, effective_on, source, set_by) VALUES ($1, $2, $3, $4, $5, 'synthetic demo rate', 'person:seed') ON CONFLICT (from_currency, to_currency, effective_on) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bpchar",
+        "Bpchar",
+        "Int8",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "177f98414f1f96f732278e4179ebfdad5670d5ee37a01dea70cf5f9abac1a894"
+}

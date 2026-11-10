@@ -95,7 +95,8 @@ async fn search(
         // Only contacts and deals carry record-level attributes; the rest are decided on the
         // entity, which the blanket guard has already done.
         let allowed = if matches!(hit.kind.as_str(), "contact" | "deal") && auth::require_auth() {
-            match crate::notifications::subject_attrs(&ctx.db, &hit.kind, pid).await? {
+            match crate::notifications::subject_attrs(crate::db::pool(&ctx), &hit.kind, pid).await?
+            {
                 Some(attrs) => caller.claims().is_some_and(|c| auth::may_read(c, &attrs)),
                 None => false,
             }
@@ -106,8 +107,8 @@ async fn search(
             shown.push(hit);
         }
     }
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        crate::db::pool(&ctx),
         "search",
         Uuid::nil(),
         "search",

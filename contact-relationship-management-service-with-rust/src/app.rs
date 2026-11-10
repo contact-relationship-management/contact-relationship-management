@@ -404,7 +404,7 @@ impl App {
                 middleware::insight_cache::insight_cache_mw,
             ))
             .layer(axum::middleware::from_fn_with_state(
-                ctx.db.clone(),
+                crate::db::pool(ctx).clone(),
                 middleware::insight_audit::insight_audit_mw,
             ))
             .layer(axum::middleware::from_fn(
@@ -444,7 +444,7 @@ impl App {
         let inner = api.clone().layer(axum::extract::DefaultBodyLimit::max(
             ctx.config.http.body_limit,
         ));
-        let router = crate::mcp::router(inner, ctx.db.clone()).merge(api);
+        let router = crate::mcp::router(inner, crate::db::pool(ctx).clone()).merge(api);
         Ok(if ctx.environment.is_production_like() {
             middleware::secure_headers::install(router)
         } else {

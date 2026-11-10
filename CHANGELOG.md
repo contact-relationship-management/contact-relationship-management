@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the last helpers, the audit trail and the seed on sqlx (CRM-T216, 2026-11-10)
+
+- Every handler and helper now runs on `sqlx`; only the migrations and the entity types are left
+  on `SeaORM`. Nothing a caller sees changes.
+
 ### Changed — the workflow engine and consent per purpose on sqlx (CRM-T215, 2026-11-10)
 
 - Workflows, consent per purpose, consent profiles and the organization's calendar run on

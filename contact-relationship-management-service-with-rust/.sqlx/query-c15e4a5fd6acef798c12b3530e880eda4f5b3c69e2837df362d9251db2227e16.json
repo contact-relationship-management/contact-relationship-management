@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO wpm_events (event_id, kind, outcome) VALUES ($1, $2, 'received') ON CONFLICT (event_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c15e4a5fd6acef798c12b3530e880eda4f5b3c69e2837df362d9251db2227e16"
+}

@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT person_ref FROM contacts WHERE deleted_at IS NULL ORDER BY person_ref",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "person_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "person_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "035cf12ffc7d0819fa445be1cbc5c9264e9c0edd825ed8102d7ac029fe236a78"
+}

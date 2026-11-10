@@ -1,20 +1,15 @@
 //! The move from `SeaORM` to `sqlx` (CRM-D24): while the two share a database, what one writes the
-//! other must read, one audit chain takes both, and a `SeaORM` helper can run inside a `sqlx`
-//! transaction. These go with the code they prove: when `SeaORM` goes, so do they.
+//! other must read, and one audit chain takes both. These go with the code they prove: when
+//! `SeaORM` goes, so do they. (The tests of `db::Bridge` went with it in CRM-T216.)
 
-use axa::AppContext;
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use contact_relationship_management::db::{self, Bridge};
+use contact_relationship_management::db;
 use contact_relationship_management::models::_entities::{activities, contacts};
 use contact_relationship_management::models::audit_logs::{self, Model as Audit, verify_chain};
 use contact_relationship_management::models::live::FindLive;
 use contact_relationship_management::models::rows;
-use contact_relationship_management::streaming;
-use sea_orm::{
-    ActiveModelTrait, ActiveValue, ConnectionTrait, DatabaseBackend, DbErr, EntityTrait,
-    IntoActiveModel, QueryFilter, QueryOrder, QuerySelect, RuntimeErr, Statement, TransactionTrait,
-};
+use sea_orm::{ConnectionTrait, EntityTrait, QueryFilter, QueryOrder};
 use serde_json::{Value, json};
 use serial_test::serial;
 use uuid::Uuid;
@@ -26,22 +21,16 @@ fn snapshot() -> Value {
     json!({ "zeta": 1, "alpha": { "b": "é\n", "a": [1, 2.5, null] }, "n": null, "big": 1e3 })
 }
 
-async fn count(ctx: &AppContext, sql: &'static str, pid: Uuid) -> i64 {
-    sqlx::query_scalar::<_, i64>(sql)
-        .bind(pid)
-        .fetch_one(db::pool(ctx))
-        .await
-        .unwrap()
-}
-
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_chain_written_by_both_libraries_verifies() {
     request::<App, _, _>(|_request, ctx| async move {
         let pid = Uuid::new_v4();
-        let txn = ctx.db.begin().await.unwrap();
-        let first = Audit::record(&txn, "test", pid, "seaorm", Some("a"), Some(snapshot()))
+        // `SeaORM`'s writer is gone (CRM-T216); a row written by it earlier still chains, which the
+        // migrated chains of a deployed database prove. Here, three writes in two transactions.
+        let mut txn = db::pool(&ctx).begin().await.unwrap();
+        let first = Audit::record_on(&mut txn, "test", pid, "sqlx", Some("a"), Some(snapshot()))
             .await
             .unwrap();
         txn.commit().await.unwrap();
@@ -50,26 +39,18 @@ async fn a_chain_written_by_both_libraries_verifies() {
         let second = Audit::record_on(&mut txn, "test", pid, "sqlx", None, Some(snapshot()))
             .await
             .unwrap();
-        // A block, not `drop`: whether `Bridge` has drop glue depends on the platform, and on
-        // Linux clippy refuses `drop` of a value without it.
-        let third = {
-            let bridge = Bridge::new(&mut txn);
-            Audit::record(&bridge, "test", pid, "bridge", Some("a"), None)
-                .await
-                .unwrap()
-        };
-        let fourth = Audit::record_on(&mut txn, "test", pid, "sqlx", Some("a"), None)
+        let third = Audit::record_on(&mut txn, "test", pid, "sqlx", Some("a"), None)
             .await
             .unwrap();
         txn.commit().await.unwrap();
 
-        let links = [&first, &second, &third, &fourth];
+        let links = [&first, &second, &third];
         for pair in links.windows(2) {
             assert_eq!(pair[1].prev_hash, pair[0].hash);
         }
-        let verdict = verify_chain(&ctx.db).await.unwrap();
+        let verdict = verify_chain(db::pool(&ctx)).await.unwrap();
         assert_eq!(verdict.first_break, None, "{verdict:?}");
-        assert_eq!(verdict.head, fourth.hash);
+        assert_eq!(verdict.head, third.hash);
     })
     .await;
 }
@@ -104,27 +85,22 @@ async fn both_libraries_can_write_the_chain_at_once() {
                 txn.commit().await.unwrap();
             })
         });
-        let by_seaorm = (0..40).map(|_| {
-            let db = sea_orm::DatabaseConnection::from(racing.clone());
+        // A second batch of writers on the same racing pool: `SeaORM`'s writer is gone (CRM-T216),
+        // so all 80 race through `record_on` for the one lock.
+        let by_more = (0..40).map(|_| {
+            let racing = racing.clone();
             tokio::spawn(async move {
-                let txn = db.begin().await.unwrap();
-                Audit::record(
-                    &txn,
-                    "test",
-                    Uuid::new_v4(),
-                    "seaorm",
-                    None,
-                    Some(snapshot()),
-                )
-                .await
-                .unwrap();
+                let mut txn = racing.begin().await.unwrap();
+                Audit::record_on(&mut txn, "test", Uuid::new_v4(), "sqlx", None, None)
+                    .await
+                    .unwrap();
                 txn.commit().await.unwrap();
             })
         });
-        for writer in by_sqlx.chain(by_seaorm).collect::<Vec<_>>() {
+        for writer in by_sqlx.chain(by_more).collect::<Vec<_>>() {
             writer.await.unwrap();
         }
-        let verdict = verify_chain(&ctx.db).await.unwrap();
+        let verdict = verify_chain(db::pool(&ctx)).await.unwrap();
         assert_eq!(verdict.first_break, None, "{verdict:?}");
         assert!(verdict.rows >= 80, "{verdict:?}");
     })
@@ -166,151 +142,6 @@ async fn a_row_reads_the_same_through_both_libraries() {
 
         let set: Value = request.get("/api/settings/organization").await.json();
         assert!(set["updated_at"].as_str().unwrap().ends_with('Z'), "{set}");
-    })
-    .await;
-}
-
-#[tokio::test]
-#[serial]
-#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
-async fn a_seaorm_helper_commits_and_rolls_back_with_the_sqlx_transaction() {
-    request::<App, _, _>(|_request, ctx| async move {
-        const AUDITED: &str = "SELECT count(*) FROM audit_logs WHERE entity_pid = $1";
-        const NOTED: &str = "SELECT count(*) FROM activities WHERE subject_pid = $1";
-        let pid = Uuid::new_v4();
-        for (keep, audited, noted) in [(false, 0, 0), (true, 1, 1)] {
-            let mut txn = db::pool(&ctx).begin().await.unwrap();
-            {
-                let bridge = Bridge::new(&mut txn);
-                Audit::record(&bridge, "test", pid, "bridge", None, None)
-                    .await
-                    .unwrap();
-                note(pid).insert(&bridge).await.unwrap();
-            }
-            if keep {
-                txn.commit().await.unwrap();
-            } else {
-                txn.rollback().await.unwrap();
-            }
-            assert_eq!(count(&ctx, AUDITED, pid).await, audited);
-            assert_eq!(count(&ctx, NOTED, pid).await, noted);
-        }
-    })
-    .await;
-}
-
-fn note(subject: Uuid) -> activities::ActiveModel {
-    activities::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        subject_kind: ActiveValue::set("contact".to_string()),
-        subject_pid: ActiveValue::set(subject),
-        kind: ActiveValue::set("note".to_string()),
-        occurred_at: ActiveValue::set(contact_relationship_management::clock::now().into()),
-        actor_ref: ActiveValue::set(None),
-        summary: ActiveValue::set("through the bridge".into()),
-        due_on: ActiveValue::set(Some(chrono::NaiveDate::from_ymd_opt(2026, 11, 7).unwrap())),
-        remind_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-}
-
-/// What the unmoved helpers use, each on a transaction `sqlx` owns: entity insert with `RETURNING`,
-/// partial update, row lock, typed binds and `NULL`s, raw statements, and the real helpers.
-#[tokio::test]
-#[serial]
-#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
-async fn the_bridge_carries_what_seaorm_code_does() {
-    request::<App, _, _>(|_request, ctx| async move {
-        let subject = Uuid::new_v4();
-        let mut txn = db::pool(&ctx).begin().await.unwrap();
-        let bridge = Bridge::new(&mut txn);
-
-        let inserted = note(subject).insert(&bridge).await.unwrap();
-        assert!(inserted.id > 0, "RETURNING gave the row");
-        assert_eq!(inserted.summary.as_str(), "through the bridge");
-        assert_eq!(inserted.actor_ref, None);
-        assert_eq!(
-            inserted.due_on,
-            chrono::NaiveDate::from_ymd_opt(2026, 11, 7)
-        );
-
-        let locked = activities::Entity::find_by_id(inserted.id)
-            .lock_exclusive()
-            .one(&bridge)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(locked, inserted);
-        let missing = activities::Entity::find_by_id(-1).one(&bridge).await;
-        assert_eq!(missing.unwrap(), None);
-
-        let mut change = inserted.clone().into_active_model();
-        change.sentiment = ActiveValue::set(Some("positive".to_string()));
-        let changed = change.update(&bridge).await.unwrap();
-        assert_eq!(changed.sentiment.as_deref(), Some("positive"));
-        assert_eq!(changed.summary, inserted.summary);
-
-        let rows = bridge
-            .query_all_raw(Statement::from_sql_and_values(
-                DatabaseBackend::Postgres,
-                "SELECT $1::uuid AS a, $2::bool AS b, $3::jsonb AS c, $4::text AS d, $5::int2 AS e",
-                [
-                    subject.into(),
-                    true.into(),
-                    snapshot().into(),
-                    Option::<String>::None.into(),
-                    7_i16.into(),
-                ],
-            ))
-            .await
-            .unwrap();
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].try_get::<Uuid>("", "a").unwrap(), subject);
-        assert!(rows[0].try_get::<bool>("", "b").unwrap());
-        assert_eq!(rows[0].try_get::<Value>("", "c").unwrap(), snapshot());
-        assert_eq!(rows[0].try_get::<Option<String>>("", "d").unwrap(), None);
-        assert_eq!(rows[0].try_get::<i16>("", "e").unwrap(), 7);
-        let touched = bridge
-            .execute_unprepared("SET LOCAL lock_timeout = '1s'")
-            .await
-            .unwrap();
-        assert_eq!(touched.rows_affected(), 0);
-        let stated = bridge
-            .execute_raw(Statement::from_sql_and_values(
-                DatabaseBackend::Postgres,
-                "UPDATE activities SET done = $1 WHERE id = $2",
-                [true.into(), inserted.id.into()],
-            ))
-            .await
-            .unwrap();
-        assert_eq!(stated.rows_affected(), 1);
-
-        // Real helpers, the way a moved handler will call them.
-        streaming::emit_on(
-            &bridge,
-            "activity",
-            "noted",
-            &subject.to_string(),
-            "A note",
-            None,
-            None,
-        )
-        .await
-        .unwrap();
-
-        // A failed statement is `SeaORM`'s error, so a helper handles it the same.
-        let refused = bridge
-            .execute_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT * FROM no_such_table",
-            ))
-            .await;
-        assert!(
-            matches!(refused, Err(DbErr::Exec(RuntimeErr::SqlxError(_)))),
-            "{refused:?}"
-        );
-        // `bridge` is not used again, so its borrow of `txn` has ended.
-        txn.rollback().await.unwrap();
     })
     .await;
 }

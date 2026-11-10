@@ -23,8 +23,8 @@ use axum::http::{HeaderMap, Method, Request, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::{Router, body::Body};
-use sea_orm::DatabaseConnection;
 use serde_json::{Value, json};
+use sqlx::PgPool;
 use std::net::IpAddr;
 use tower::ServiceExt as _;
 use uuid::Uuid;
@@ -62,12 +62,12 @@ mod code {
 pub struct Mcp {
     /// The service's own router, with every layer, but without this endpoint.
     inner: Router,
-    db: DatabaseConnection,
+    db: PgPool,
 }
 
 /// The MCP route. `inner` is the service's router as it will be served, cloned before this
 /// route is added to it, so a tool can never call `/mcp` again.
-pub fn router(inner: Router, db: DatabaseConnection) -> Router {
+pub fn router(inner: Router, db: PgPool) -> Router {
     Router::new()
         .route("/mcp", post(handle))
         .with_state(Mcp { inner, db })
@@ -471,7 +471,7 @@ async fn audit(
         "kind": kind,
         "target": target,
     });
-    Audit::record_read(
+    Audit::record_read_on(
         &mcp.db,
         "mcp",
         Uuid::new_v4(),

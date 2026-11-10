@@ -202,7 +202,6 @@ pub(crate) async fn capture_lead(
     // A lead brought in by a list import starts no workflow (CRM-R43), like imported contacts.
     if new.source != "import" {
         let event = crate::workflows::Event::lead(row.pid);
-        // The workflow engine takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
         crate::workflows::fire(txn, &event, 0, actor).await?;
         // An action may have changed the lead (assigned an owner).
         row = rows::lead(&mut *txn, row.pid)
@@ -262,7 +261,7 @@ async fn list_leads(
     let page = Page::new(&uri, 1000)?;
     let (limit, offset) = page.bounds();
     let pool = db::pool(&ctx);
-    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(&ctx.db, "lead", &tag)
+    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(db::pool(&ctx), "lead", &tag)
         .await?
         .map(|pids| pids.into_iter().collect());
     let rows = rows::leads_page(pool, tagged.as_deref(), limit, offset).await?;
@@ -742,7 +741,7 @@ async fn list_deals(
     let page = Page::new(&uri, 2000)?;
     let (limit, offset) = page.bounds();
     let pool = db::pool(&ctx);
-    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(&ctx.db, "deal", &tag)
+    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(db::pool(&ctx), "deal", &tag)
         .await?
         .map(|pids| pids.into_iter().collect());
     let rows = rows::deals_page(pool, params.pipeline, tagged.as_deref(), limit, offset).await?;
@@ -891,7 +890,6 @@ async fn deal_stage(
     .await?;
     if kind == "deal_stage_changed" {
         let event = crate::workflows::Event::deal_stage(row.pid, row.primary_contact_pid);
-        // The workflow engine takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
         crate::workflows::fire(&mut txn, &event, 0, caller.actor()).await?;
     }
     txn.commit().await?;

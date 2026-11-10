@@ -15,7 +15,6 @@ use super::sales;
 use crate::auth::MaybeAuthUser;
 use crate::metrics::Metrics;
 use crate::models::_entities::deals;
-use crate::models::records;
 use crate::rules::{analytics, sla};
 
 /// Weak-ETag helper over the payload **without** `as_of` (the tag
@@ -515,7 +514,9 @@ async fn account_clv(
     check_clv_query(&query)?;
     // CLV is money: a masked collection read gets the count of won deals, not the figures.
     let masked = crate::auth::aggregate_masked(&caller).map_err(super::record_rejection)?;
-    let account = records::find_account(&ctx.db, pid).await?;
+    let account = crate::models::rows::account(crate::db::pool(&ctx), pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     let won = crate::models::rows::won_deals_of_account(crate::db::pool(&ctx), account.pid).await?;
     let inputs: Vec<(i64, String)> = won
         .iter()

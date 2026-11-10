@@ -2,8 +2,7 @@
 
 use super::{
     AppContext, DaysQuery, Deserialize, HeaderMap, Response, Result, State, Uuid, accounts,
-    conditional, contacts, days_or, deals, debug_handler, memberships, pipeline_stages, records,
-    tickets,
+    conditional, contacts, days_or, deals, debug_handler, memberships, pipeline_stages, tickets,
 };
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
@@ -297,7 +296,12 @@ pub(super) async fn funnel(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let pipeline = records::find_pipeline(&ctx.db, records::parse_pid(&query.pipeline)?).await?;
+    let pipeline = crate::models::rows::pipeline(
+        crate::db::pool(&ctx),
+        crate::models::records::parse_pid(&query.pipeline)?,
+    )
+    .await?
+    .ok_or(axa::Error::NotFound)?;
     let mut stages: Vec<pipeline_stages::Model> = live!(pipeline_stages, &ctx)
         .into_iter()
         .filter(|stage| stage.pipeline_pid == pipeline.pid)

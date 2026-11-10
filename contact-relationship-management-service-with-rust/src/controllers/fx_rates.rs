@@ -4,12 +4,10 @@
 //! report that converts reads them through [`crate::rules::fx`]. Changing a rate is a write and is
 //! audited with the pair, the rate, the day and the source.
 //!
-//! The routes run on `sqlx` (CRM-D24, CRM-T205). The conversions below stay on `ConnectionTrait`
-//! until the reports that call them move.
+//! Everything runs on `sqlx` (CRM-D24, CRM-T205); the conversions' rate reader since CRM-T216.
 
 use axa::prelude::*;
 use chrono::NaiveDate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -58,10 +56,6 @@ pub(crate) struct RateView {
     set_by: String,
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
 /// A stored rate, as `sqlx` reads it.
 struct Row {
     pid: Uuid,
@@ -92,31 +86,26 @@ impl From<Row> for RateView {
 /// # Errors
 ///
 /// When the query fails.
-pub(crate) async fn rates_involving<C: ConnectionTrait>(
-    db: &C,
+pub(crate) async fn rates_involving<'e>(
+    db: impl sqlx::PgExecutor<'e>,
     currency: &str,
 ) -> Result<Vec<Rate>> {
-    let rows = db
-        .query_all_raw(stmt(
-            "SELECT from_currency, to_currency, rate_ppb, effective_on, source FROM fx_rates \
-             WHERE from_currency = $1 OR to_currency = $1",
-            [currency.into()],
-        ))
-        .await?;
-    rows.iter()
-        .map(|row| {
-            Ok(Rate {
-                from: row
-                    .try_get::<String>("", "from_currency")?
-                    .trim()
-                    .to_string(),
-                to: row.try_get::<String>("", "to_currency")?.trim().to_string(),
-                ppb: row.try_get("", "rate_ppb")?,
-                effective_on: row.try_get("", "effective_on")?,
-                source: row.try_get("", "source")?,
-            })
-        })
-        .collect()
+    Ok(sqlx::query!(
+        "SELECT trim(from_currency) AS \"from_currency!\", trim(to_currency) AS \"to_currency!\", \
+         rate_ppb, effective_on, source FROM fx_rates WHERE from_currency = $1 OR to_currency = $1",
+        currency,
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|row| Rate {
+        from: row.from_currency,
+        to: row.to_currency,
+        ppb: row.rate_ppb,
+        effective_on: row.effective_on,
+        source: row.source,
+    })
+    .collect())
 }
 
 /// An exchange rate a conversion used (CRM-R50).
@@ -175,7 +164,7 @@ pub(crate) async fn convert_sums(
         problems.push_field(member, "is in the future");
         problems.finish()?;
     }
-    let rates = rates_involving(&ctx.db, target).await?;
+    let rates = rates_involving(db::pool(ctx), target).await?;
     let done = fx::convert_rows(sums, target, day, &rates);
     Ok(Done {
         rows: done.rows,
@@ -215,7 +204,7 @@ pub(crate) async fn convert_dated(
     target: &str,
     deals: &[(NaiveDate, String, i64)],
 ) -> Result<(i64, Vec<RateUsed>, Vec<Unconverted>)> {
-    let rates = rates_involving(&ctx.db, target).await?;
+    let rates = rates_involving(db::pool(ctx), target).await?;
     let done = fx::convert_dated(deals, target, &rates);
     Ok((
         done.total,
@@ -252,7 +241,7 @@ pub(crate) async fn convert_rows_dated(
     target: &str,
     rows: &[(String, NaiveDate, String, i64)],
 ) -> Result<(Vec<(String, i64)>, Vec<RateUsed>, Vec<Unconverted>)> {
-    let rates = rates_involving(&ctx.db, target).await?;
+    let rates = rates_involving(db::pool(ctx), target).await?;
     let done = fx::convert_rows_dated(rows, target, &rates);
     Ok((
         done.rows,

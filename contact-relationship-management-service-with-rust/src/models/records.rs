@@ -1,15 +1,7 @@
-//! Shared record helpers: `ActiveModelBehavior` impls for every domain
-//! entity plus the per-entity `find_*` finders (active = not
-//! soft-deleted).
-//!
-//! The finders return the **axa** `Result` with `Error::NotFound` on
-//! a missing row (not `ModelError::EntityNotFound`): an unmapped model
-//! error would become a 500,
-//! so mapping here keeps every `GET /…/{pid}` contract an honest 404
-//! (family lesson, pinned in the request tests).
+//! Shared record helpers: `ActiveModelBehavior` impls for every domain entity, and
+//! [`parse_pid`]. The finders are in [`super::rows`] on `sqlx` (CRM-D24, CRM-T216).
 
 use axa::prelude::*;
-use sea_orm::ConnectionTrait;
 use uuid::Uuid;
 
 use super::_entities::{
@@ -45,38 +37,3 @@ impl ActiveModelBehavior for articles::ActiveModel {}
 pub fn parse_pid(pid: &str) -> Result<Uuid> {
     Uuid::parse_str(pid).map_err(|_| Error::NotFound)
 }
-
-/// Generate the per-entity `find_*` finder: the row with this `pid`
-/// whose `deleted_at` is null, else `Error::NotFound`.
-macro_rules! find_active_by_pid {
-    ($fn_name:ident, $module:ident) => {
-        /// Find the active (not soft-deleted) row by public id.
-        ///
-        /// # Errors
-        ///
-        /// [`Error::NotFound`] when absent or soft-deleted; any query
-        /// error otherwise.
-        pub async fn $fn_name<C: ConnectionTrait>(db: &C, pid: Uuid) -> Result<$module::Model> {
-            let row = $module::Entity::find()
-                .filter($module::Column::Pid.eq(pid))
-                .filter($module::Column::DeletedAt.is_null())
-                .one(db)
-                .await
-                .map_err(|e| Error::Model(ModelError::from(e)))?;
-            row.ok_or(Error::NotFound)
-        }
-    };
-}
-
-find_active_by_pid!(find_contact, contacts);
-find_active_by_pid!(find_account, accounts);
-find_active_by_pid!(find_lead, leads);
-find_active_by_pid!(find_pipeline, pipelines);
-find_active_by_pid!(find_stage, pipeline_stages);
-find_active_by_pid!(find_deal, deals);
-find_active_by_pid!(find_segment, segments);
-find_active_by_pid!(find_campaign, campaigns);
-find_active_by_pid!(find_sequence, nurture_sequences);
-find_active_by_pid!(find_enrollment, nurture_enrollments);
-find_active_by_pid!(find_ticket, tickets);
-find_active_by_pid!(find_article, articles);

@@ -338,8 +338,8 @@ async fn territory_attainment(
                 .unwrap_or_default(),
         })
         .collect::<Vec<_>>();
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        crate::db::pool(&ctx),
         "territory",
         Uuid::nil(),
         "attainment_read",

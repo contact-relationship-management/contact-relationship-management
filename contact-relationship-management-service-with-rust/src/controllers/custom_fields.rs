@@ -4,13 +4,12 @@
 //! record sets its values. Each field declares its sensitivity ([`rules::SENSITIVITIES`]), and that
 //! decides masking, storage, subject access and erasure for its values.
 //!
-//! The routes run on `sqlx` (CRM-D24, CRM-T206). [`subject`] and [`export_for`] stay on
-//! `ConnectionTrait` for the modules that call them inside `SeaORM` transactions.
+//! The routes run on `sqlx` (CRM-D24, CRM-T206), and so, since CRM-T216, do [`subject`] and
+//! [`export_for`].
 
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
 use uuid::Uuid;
@@ -22,7 +21,7 @@ use crate::crypto;
 use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
-use crate::models::records;
+use crate::models::rows;
 use crate::rules::custom_fields as rules;
 use crate::validation::Problems;
 
@@ -110,26 +109,6 @@ struct Def {
     position: i32,
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
-const COLUMNS: &str = "pid, entity, key, label, kind, choices, sensitivity, position";
-
-fn read(row: &sea_orm::QueryResult) -> Result<Def> {
-    let choices: serde_json::Value = row.try_get("", "choices")?;
-    Ok(Def {
-        pid: row.try_get("", "pid")?,
-        entity: row.try_get("", "entity")?,
-        key: row.try_get("", "key")?,
-        label: row.try_get("", "label")?,
-        kind: row.try_get("", "kind")?,
-        choices: serde_json::from_value(choices).unwrap_or_default(),
-        sensitivity: row.try_get("", "sensitivity")?,
-        position: row.try_get("", "position")?,
-    })
-}
-
 /// A `custom_field_defs` row as `sqlx` reads it.
 struct DefRow {
     pid: Uuid,
@@ -180,20 +159,6 @@ impl Def {
     fn personal(&self) -> bool {
         self.sensitivity != "business"
     }
-}
-
-/// The declared fields, for [`export_for`] on a `SeaORM` connection.
-async fn defs_of<C: ConnectionTrait>(db: &C, entity: Option<&str>) -> Result<Vec<Def>> {
-    let rows = db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {COLUMNS} FROM custom_field_defs \
-                 WHERE ($1::text IS NULL OR entity = $1) ORDER BY entity, position, id"
-            ),
-            [entity.map(ToString::to_string).into()],
-        ))
-        .await?;
-    rows.iter().map(read).collect()
 }
 
 /// The declared fields of `entity`, or of every entity.
@@ -411,8 +376,8 @@ async fn remove(
 }
 
 /// Check the record exists and the caller may act on it; says whether the caller's read is masked.
-pub(super) async fn subject<C: ConnectionTrait>(
-    db: &C,
+pub(super) async fn subject(
+    pool: &sqlx::PgPool,
     caller: &MaybeAuthUser,
     entity: &str,
     pid: Uuid,
@@ -420,17 +385,17 @@ pub(super) async fn subject<C: ConnectionTrait>(
 ) -> Result<bool> {
     let attrs = match entity {
         "contact" => Some(auth::contact_resource_attrs(
-            &records::find_contact(db, pid).await?,
+            &rows::contact(pool, pid).await?.ok_or(Error::NotFound)?,
         )),
         "deal" => Some(auth::deal_resource_attrs(
-            &records::find_deal(db, pid).await?,
+            &rows::deal(pool, pid).await?.ok_or(Error::NotFound)?,
         )),
         "account" => {
-            records::find_account(db, pid).await?;
+            rows::account(pool, pid).await?.ok_or(Error::NotFound)?;
             None
         }
         _ => {
-            records::find_lead(db, pid).await?;
+            rows::lead(pool, pid).await?.ok_or(Error::NotFound)?;
             None
         }
     };
@@ -506,7 +471,7 @@ async fn get_values(
     pid: Uuid,
 ) -> Result<Response> {
     let masked = subject(
-        &ctx.db,
+        db::pool(&ctx),
         &caller,
         entity,
         pid,
@@ -525,7 +490,7 @@ async fn put_values(
     payload: ValuesPayload,
 ) -> Result<Response> {
     subject(
-        &ctx.db,
+        db::pool(&ctx),
         &caller,
         entity,
         pid,
@@ -632,34 +597,32 @@ record_routes!(deal_values, set_deal_values, "deal");
 /// # Errors
 ///
 /// A database or key error.
-pub(crate) async fn export_for<C: ConnectionTrait>(
-    db: &C,
+pub(crate) async fn export_for(
+    conn: &mut PgConnection,
     contact: Uuid,
 ) -> Result<Vec<serde_json::Value>> {
-    let defs = defs_of(db, Some("contact")).await?;
-    let rows = db
-        .query_all_raw(stmt(
-            "SELECT field_pid, subject_pid, value FROM custom_field_values WHERE subject_pid = $1 \
-             OR subject_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1) \
-             ORDER BY id",
-            [contact.into()],
-        ))
-        .await?;
+    let defs = defs(&mut *conn, Some("contact")).await?;
+    let rows = sqlx::query!(
+        "SELECT field_pid, subject_pid, value FROM custom_field_values WHERE subject_pid = $1 \
+         OR subject_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1 \
+         /* whatever deleted_at holds: a merged duplicate is the subject's */) ORDER BY id",
+        contact,
+    )
+    .fetch_all(&mut *conn)
+    .await?;
     let mut out = Vec::new();
     for row in rows {
-        let field: Uuid = row.try_get("", "field_pid")?;
-        let Some(def) = defs.iter().find(|d| d.pid == field) else {
+        let Some(def) = defs.iter().find(|d| d.pid == row.field_pid) else {
             continue;
         };
-        let raw: String = row.try_get("", "value")?;
         let value = if def.sealed() {
-            crypto::open(&raw).map_err(|e| Error::string(&e.to_string()))?
+            crypto::open(&row.value).map_err(|e| Error::string(&e.to_string()))?
         } else {
-            raw
+            row.value
         };
         out.push(serde_json::json!({
             "key": def.key, "label": def.label, "sensitivity": def.sensitivity,
-            "from_contact": row.try_get::<Uuid>("", "subject_pid")?,
+            "from_contact": row.subject_pid,
             "value": rules::to_json(&def.kind, &value),
         }));
     }

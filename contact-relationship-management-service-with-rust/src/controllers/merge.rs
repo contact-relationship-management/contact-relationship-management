@@ -317,7 +317,6 @@ async fn combine(
         .execute(&mut *txn)
         .await?;
     }
-    // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
     if consent == "withdrawn" {
         // A withdrawal exits every active enrolment of that purpose, moved ones included.
         crate::consents::exit_enrolments(&mut *txn, pid, tokens::DEFAULT_PURPOSE).await?;

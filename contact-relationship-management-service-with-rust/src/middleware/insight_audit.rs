@@ -12,7 +12,7 @@ use crate::auth;
 /// /api/insights/*` writes a `insight_read` entry naming the view and the
 /// caller. Fails closed — an unaudited disclosure is worse than an error.
 pub(crate) async fn insight_audit_mw(
-    axum::extract::State(db): axum::extract::State<sea_orm::DatabaseConnection>,
+    axum::extract::State(db): axum::extract::State<sqlx::PgPool>,
     req: Request,
     next: Next,
 ) -> Response {
@@ -31,7 +31,7 @@ pub(crate) async fn insight_audit_mw(
         return response;
     }
     let view = path.trim_start_matches("/api/insights/").to_string();
-    match crate::models::audit_logs::Model::record_read(
+    match crate::models::audit_logs::Model::record_read_on(
         &db,
         "insight",
         uuid::Uuid::nil(),

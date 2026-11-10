@@ -5,18 +5,15 @@
 //! each fire once, so a second sweep, a second replica or a retry makes nothing more. A
 //! notification holds no record text.
 //!
-//! The sweep runs on `sqlx` (CRM-D24, CRM-T206); [`subject_attrs`] stays on `ConnectionTrait`
-//! for the read handlers that call it, and the sweep reaches it through [`crate::db::Bridge`].
+//! The sweep runs on `sqlx` (CRM-D24, CRM-T206), and so, since CRM-T216, does [`subject_attrs`].
 
 use std::collections::BTreeMap;
 
-use sea_orm::{ConnectionTrait, DatabaseBackend, DbErr, Statement, Value};
 use serde::Serialize;
-use sqlx::{PgConnection, PgPool};
+use sqlx::{PgConnection, PgExecutor, PgPool};
 use uuid::Uuid;
 
-use crate::models::_entities::{contacts, deals};
-use crate::models::live::FindLive;
+use crate::models::rows;
 
 /// The most candidates handled per kind in one sweep; the rest wait for the next.
 const BATCH: i64 = 500;
@@ -31,10 +28,6 @@ pub struct Outcome {
     pub suppressed: u64,
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
 /// The attributes the policy matches on for the record a notification is about, or `None` when
 /// the record is gone. Only contacts and deals carry record-level attributes; the others are
 /// decided on the entity alone.
@@ -42,39 +35,49 @@ fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
 /// # Errors
 ///
 /// A database error.
-pub async fn subject_attrs<C: ConnectionTrait>(
-    db: &C,
+pub async fn subject_attrs<'e>(
+    db: impl PgExecutor<'e>,
     kind: &str,
     pid: Uuid,
-) -> Result<Option<BTreeMap<String, Vec<String>>>, DbErr> {
-    use sea_orm::{ColumnTrait, QueryFilter};
-    match kind {
-        "contact" => Ok(contacts::Entity::find_live()
-            .filter(contacts::Column::Pid.eq(pid))
-            .one(db)
+) -> Result<Option<BTreeMap<String, Vec<String>>>, sqlx::Error> {
+    // One checked statement per kind, in place of a table name written into the SQL.
+    let live = |found: bool| found.then(BTreeMap::new);
+    Ok(match kind {
+        "contact" => rows::contact(db, pid)
             .await?
-            .map(|c| crate::auth::contact_resource_attrs(&c))),
-        "deal" => Ok(deals::Entity::find_live()
-            .filter(deals::Column::Pid.eq(pid))
-            .one(db)
+            .map(|c| crate::auth::contact_resource_attrs(&c)),
+        "deal" => rows::deal(db, pid)
             .await?
-            .map(|d| crate::auth::deal_resource_attrs(&d))),
-        "account" | "lead" | "ticket" => {
-            let table = match kind {
-                "account" => "accounts",
-                "lead" => "leads",
-                _ => "tickets",
-            };
-            let found = db
-                .query_one_raw(stmt(
-                    &format!("SELECT 1 AS one FROM {table} WHERE pid = $1 AND deleted_at IS NULL"),
-                    [pid.into()],
-                ))
-                .await?;
-            Ok(found.map(|_| BTreeMap::new()))
-        }
-        _ => Ok(None),
-    }
+            .map(|d| crate::auth::deal_resource_attrs(&d)),
+        "account" => live(
+            sqlx::query_scalar!(
+                "SELECT EXISTS (SELECT 1 FROM accounts WHERE pid = $1 AND deleted_at IS NULL) \
+                 AS \"found!\"",
+                pid,
+            )
+            .fetch_one(db)
+            .await?,
+        ),
+        "lead" => live(
+            sqlx::query_scalar!(
+                "SELECT EXISTS (SELECT 1 FROM leads WHERE pid = $1 AND deleted_at IS NULL) \
+                 AS \"found!\"",
+                pid,
+            )
+            .fetch_one(db)
+            .await?,
+        ),
+        "ticket" => live(
+            sqlx::query_scalar!(
+                "SELECT EXISTS (SELECT 1 FROM tickets WHERE pid = $1 AND deleted_at IS NULL) \
+                 AS \"found!\"",
+                pid,
+            )
+            .fetch_one(db)
+            .await?,
+        ),
+        _ => None,
+    })
 }
 
 /// One thing that is due and would notify `recipient`.
@@ -184,10 +187,7 @@ pub async fn sweep(pool: &PgPool) -> axa::Result<Outcome> {
     due.extend(due_breaches(&mut conn).await?);
     let mut outcome = Outcome::default();
     for item in due {
-        let attrs = {
-            let bridge = crate::db::Bridge::new(&mut conn);
-            subject_attrs(&bridge, &item.subject_kind, item.subject_pid).await?
-        };
+        let attrs = subject_attrs(&mut *conn, &item.subject_kind, item.subject_pid).await?;
         let readable = attrs.is_some_and(|attrs| {
             crate::auth::may_read(&crate::auth::claims_for_worker(&item.recipient), &attrs)
         });

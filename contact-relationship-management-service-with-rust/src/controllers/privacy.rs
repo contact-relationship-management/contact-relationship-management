@@ -12,7 +12,7 @@
 //! integer, and they are reviewed by hand. Every other statement is checked and binds its values.
 
 use crate::controllers::PidPath;
-use crate::db::{self, Bridge};
+use crate::db;
 use axa::prelude::*;
 use serde::Serialize;
 use sqlx::{AssertSqlSafe, PgConnection};
@@ -105,8 +105,6 @@ async fn subject_access(
     let cpid = contact.pid;
     // Every row keyed to the contact, deleted or not: a soft-deleted row is still the subject's.
     let mut conn = pool.acquire().await?;
-    // The consent, field, file, tag and employment helpers are on `ConnectionTrait`; `Bridge` runs
-    // them on this connection.
     let export = SubjectAccessExport {
         as_of: crate::clock::now(),
         contact: contact.clone(),
@@ -119,12 +117,12 @@ async fn subject_access(
         nurture_enrollments: rows::all_enrollments_of_contact(&mut *conn, cpid).await?,
         email_deliveries: rows::all_deliveries_of_contact(&mut *conn, cpid).await?,
         external_links: rows::all_links_of_subject(&mut *conn, cpid).await?,
-        custom_fields: super::custom_fields::export_for(&Bridge::new(&mut conn), cpid).await?,
-        attachments: super::attachments::export_for(&Bridge::new(&mut conn), cpid).await?,
-        tags: super::tags::export_for(&Bridge::new(&mut conn), cpid).await?,
-        employments: crate::models::employments::of_contact(&Bridge::new(&mut conn), cpid).await?,
+        custom_fields: super::custom_fields::export_for(&mut conn, cpid).await?,
+        attachments: super::attachments::export_for(&mut *conn, cpid).await?,
+        tags: super::tags::export_for(&mut *conn, cpid).await?,
+        employments: crate::models::employments::of_contact(&mut *conn, cpid).await?,
         employment_last_events: crate::models::employments::last_events_of(
-            &Bridge::new(&mut conn),
+            &mut *conn,
             &contact.person_ref,
         )
         .await?,
@@ -190,9 +188,8 @@ async fn has_active_nurture(conn: &mut PgConnection, contact_pid: Uuid) -> Resul
 /// Delete what is attached to a contact being erased: its files (the rows here; the caller removes
 /// the files once the transaction has committed) and its tags' taggings.
 async fn erase_attached(txn: &mut PgConnection, contact: Uuid) -> Result<(Vec<Uuid>, u64)> {
-    // The file and tag helpers are on `ConnectionTrait`; `Bridge` runs them in this transaction.
-    let files = super::attachments::erase_rows(&Bridge::new(txn), contact).await?;
-    let tags = super::tags::erase_rows(&Bridge::new(txn), contact).await?;
+    let files = super::attachments::erase_rows(&mut *txn, contact).await?;
+    let tags = super::tags::erase_rows(&mut *txn, contact).await?;
     Ok((files, tags))
 }
 
@@ -407,8 +404,7 @@ async fn erase(
         .await?,
     );
     let employment_events_deleted =
-        crate::models::employments::forget_last_events(&Bridge::new(&mut txn), &person_refs)
-            .await?;
+        crate::models::employments::forget_last_events(&mut *txn, &person_refs).await?;
     // Identity fields scrubbed in place; the row soft-deleted.
     let now: crate::models::DateTimeWithTimeZone = crate::clock::now().into();
     sqlx::query!(

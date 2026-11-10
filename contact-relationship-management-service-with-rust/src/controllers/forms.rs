@@ -289,7 +289,6 @@ async fn accept(
     let mut txn = pool.begin().await?;
     let contact = find_or_create_contact(&mut txn, &person_ref, name, &actor).await?;
     let lead_pid = find_or_create_lead(&mut txn, &contact, name, email, &actor).await?;
-    // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
     let state = crate::consents::state_of(&mut *txn, &contact, &form.purpose).await?;
     if state != "pending" && state != "granted" {
         apply_consent_in(

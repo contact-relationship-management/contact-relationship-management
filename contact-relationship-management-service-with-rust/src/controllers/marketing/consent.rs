@@ -8,7 +8,7 @@ use super::{
 use sqlx::{PgConnection, PgPool};
 
 use crate::controllers::PidPath;
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::json::Json;
 use crate::models::rows;
 
@@ -54,14 +54,13 @@ pub(super) async fn contact_facts(
         }
         None => None,
     };
-    // The consent, tag and employment helpers are still on `SeaORM`; `Bridge` runs them on `conn`.
     Ok(segment_rules::ContactFacts {
         consent: crate::consents::state_of(&mut *conn, contact, purpose).await?,
         status: contact.status.clone(),
         channel: contact.preferred_channel.as_str().to_string(),
         account_tier: tier,
-        tags: crate::controllers::tags::names_of(&Bridge::new(conn), contact.pid).await?,
-        employee: crate::models::employments::is_employee(&Bridge::new(conn), contact.pid).await?,
+        tags: crate::controllers::tags::names_of(&mut *conn, contact.pid).await?,
+        employee: crate::models::employments::is_employee(&mut *conn, contact.pid).await?,
     })
 }
 
@@ -152,7 +151,6 @@ pub(crate) async fn apply_consent_in(
         .execute(&mut *txn)
         .await?;
     } else {
-        // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
         crate::consents::set_other(&mut *txn, contact_pid, purpose, action, now.to_utc()).await?;
     }
     if action == "withdrawn" {

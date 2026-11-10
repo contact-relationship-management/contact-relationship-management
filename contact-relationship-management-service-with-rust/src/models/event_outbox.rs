@@ -2,17 +2,16 @@
 //! the durable event bus (Phase 2; `agents/share/event-bus.md` §3).
 //!
 //! [`OutboxInsert::from_envelope`] is the **pure** envelope→row mapping
-//! (unit-testable DB-free). [`OutboxInsert::insert_on`] performs the
-//! in-transaction `INSERT` — generic over [`ConnectionTrait`] so the
-//! handler passes its own `&DatabaseTransaction`, giving the entity
-//! write and the event one commit boundary. [`Model::unpublished`] /
+//! (unit-testable DB-free). [`OutboxInsert::insert_in`] performs the
+//! in-transaction `INSERT` on the handler's own connection, giving the
+//! entity write and the event one commit boundary. [`Model::unpublished`] /
 //! [`Model::mark_published`] are the Phase-3 relay's poll + ack
 //! (roadmap; the relay itself is not built yet).
 
 use axa::prelude::*;
-use sea_orm::sea_query::Expr;
-use sea_orm::{ConnectionTrait, QueryOrder, QuerySelect, prelude::DateTimeWithTimeZone};
-use sqlx::PgConnection;
+use sqlx::{PgConnection, PgPool};
+
+use crate::models::DateTimeWithTimeZone;
 use uuid::Uuid;
 
 pub use super::_entities::event_outbox::{self, ActiveModel, Entity, Model};
@@ -65,35 +64,7 @@ impl OutboxInsert {
         })
     }
 
-    /// Build the `ActiveModel` (`published_at` starts `NULL`).
-    fn active_model(&self) -> ActiveModel {
-        event_outbox::ActiveModel {
-            event_id: ActiveValue::set(self.event_id),
-            entity: ActiveValue::set(self.entity.clone()),
-            entity_pid: ActiveValue::set(self.entity_pid),
-            kind: ActiveValue::set(self.kind.clone()),
-            occurred_at: ActiveValue::set(self.occurred_at),
-            actor: ActiveValue::set(self.actor.clone()),
-            schema_version: ActiveValue::set(self.schema_version),
-            payload: ActiveValue::set(self.payload.clone()),
-            published_at: ActiveValue::set(None),
-            ..Default::default()
-        }
-    }
-
-    /// Durably enqueue this event **on the given connection** — pass a
-    /// `&DatabaseTransaction` to share the mutation's commit boundary.
-    ///
-    /// # Errors
-    ///
-    /// When the insert fails (e.g. a duplicate `event_id`).
-    pub async fn insert_on<C: ConnectionTrait>(&self, conn: &C) -> ModelResult<Model> {
-        let row = self.active_model().insert(conn).await?;
-        Ok(row)
-    }
-
-    /// [`Self::insert_on`] for a handler on `sqlx` (CRM-D24): it takes a connection, so the event
-    /// shares the mutation's commit boundary.
+    /// Insert the row on the mutation's connection, so the event shares its commit boundary.
     ///
     /// # Errors
     ///
@@ -126,39 +97,39 @@ impl Model {
     /// # Errors
     ///
     /// When the query fails.
-    pub async fn recent(db: &DatabaseConnection, limit: u64) -> ModelResult<Vec<EventView>> {
-        let rows = event_outbox::Entity::find()
-            .order_by_desc(event_outbox::Column::Id)
-            .limit(limit)
-            .all(db)
-            .await?;
-        let views = rows
-            .iter()
-            .filter_map(|row| serde_json::from_value::<Envelope>(row.payload.clone()).ok())
-            .map(|env| EventView::from(&env))
-            .collect();
-        Ok(views)
+    pub async fn recent(pool: &PgPool, limit: i64) -> Result<Vec<EventView>, sqlx::Error> {
+        Ok(sqlx::query_scalar!(
+            "SELECT payload FROM event_outbox ORDER BY id DESC LIMIT $1",
+            limit,
+        )
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .filter_map(|payload| serde_json::from_value::<Envelope>(payload).ok())
+        .map(|env| EventView::from(&env))
+        .collect())
     }
 
     /// The Phase-3 relay poll: oldest unpublished rows in id order,
     /// claimed with `FOR UPDATE SKIP LOCKED` (SEC-B6). Call inside the
-    /// relay's transaction.
+    /// relay's transaction. The table's `webhook_fanned_out_at` is not in the `Model`, so it is not
+    /// read here.
     ///
     /// # Errors
     ///
     /// When the query fails.
-    pub async fn unpublished<C: ConnectionTrait>(db: &C, limit: u64) -> ModelResult<Vec<Self>> {
-        let rows = event_outbox::Entity::find()
-            .filter(event_outbox::Column::PublishedAt.is_null())
-            .order_by_asc(event_outbox::Column::Id)
-            .limit(limit)
-            .lock_with_behavior(
-                sea_orm::sea_query::LockType::Update,
-                sea_orm::sea_query::LockBehavior::SkipLocked,
-            )
-            .all(db)
-            .await?;
-        Ok(rows)
+    pub async fn unpublished(
+        conn: &mut PgConnection,
+        limit: i64,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Self,
+            "SELECT created_at, updated_at, id, event_id, entity, entity_pid, kind, occurred_at, actor, schema_version, payload, published_at AS \"published_at: DateTimeWithTimeZone\" FROM event_outbox WHERE published_at IS NULL ORDER BY id LIMIT $1 \
+             FOR UPDATE SKIP LOCKED",
+            limit,
+        )
+        .fetch_all(conn)
+        .await
     }
 
     /// The Phase-3 relay ack: stamp `published_at = now()` on `ids`.
@@ -166,16 +137,14 @@ impl Model {
     /// # Errors
     ///
     /// When the update fails.
-    pub async fn mark_published<C: ConnectionTrait>(db: &C, ids: &[i32]) -> ModelResult<u64> {
-        if ids.is_empty() {
-            return Ok(0);
-        }
-        let res = event_outbox::Entity::update_many()
-            .col_expr(event_outbox::Column::PublishedAt, Expr::current_timestamp())
-            .filter(event_outbox::Column::Id.is_in(ids.iter().copied()))
-            .exec(db)
-            .await?;
-        Ok(res.rows_affected)
+    pub async fn mark_published(conn: &mut PgConnection, ids: &[i32]) -> Result<u64, sqlx::Error> {
+        Ok(sqlx::query!(
+            "UPDATE event_outbox SET published_at = now() WHERE id = ANY($1)",
+            ids,
+        )
+        .execute(conn)
+        .await?
+        .rows_affected())
     }
 }
 

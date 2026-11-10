@@ -22,7 +22,7 @@ use super::teams::{TeamView, put_team};
 use super::views::owner_of;
 use crate::auth::MaybeAuthUser;
 use crate::clients::{self, Mode};
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::quota;
 
@@ -230,18 +230,7 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
             });
             continue;
         }
-        // `put_team` takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
-        teams.push(
-            put_team(
-                &Bridge::new(&mut txn),
-                &who,
-                caller.actor(),
-                &name,
-                &members,
-                Some("wpm"),
-            )
-            .await?,
-        );
+        teams.push(put_team(&mut txn, &who, caller.actor(), &name, &members, Some("wpm")).await?);
     }
     txn.commit().await?;
     format::json(ImportView {
@@ -329,9 +318,8 @@ async fn wpm_event(
     let decision = wpm_events::decide(&event).map_err(|why| super::unprocessable(&why))?;
     let mut txn = db::pool(&ctx).begin().await?;
     // The id is claimed first, in the same transaction as the change: a retry that arrives while
-    // this one runs waits on the row, then finds it. The employment helpers are still on
-    // `SeaORM`; `Bridge` runs them in this transaction.
-    if !employments::claim_event(&Bridge::new(&mut txn), &event.id, &event.kind).await? {
+    // this one runs waits on the row, then finds it.
+    if !employments::claim_event(&mut *txn, &event.id, &event.kind).await? {
         txn.commit().await?;
         return format::json(WpmEventView {
             result: "duplicate",
@@ -347,7 +335,7 @@ async fn wpm_event(
             (result, None, changed)
         }
     };
-    employments::settle_event(&Bridge::new(&mut txn), &event.id, result).await?;
+    employments::settle_event(&mut *txn, &event.id, result).await?;
     txn.commit().await?;
     format::json(WpmEventView {
         result,
@@ -366,19 +354,18 @@ async fn apply_handoff(
     event_id: &str,
 ) -> Result<(&'static str, usize)> {
     use crate::models::employments;
-    let pids = employments::contacts_of(&Bridge::new(txn), &h.person_ref).await?;
+    let pids = employments::contacts_of(&mut *txn, &h.person_ref).await?;
     if pids.is_empty() {
         // Nothing is kept about a person who is not a contact, not even the order.
         return Ok(("no_contact", 0));
     }
-    employments::lock_order(&Bridge::new(txn), &h.person_ref, &h.organization_ref).await?;
-    let last =
-        employments::last_applied(&Bridge::new(txn), &h.person_ref, &h.organization_ref).await?;
+    employments::lock_order(&mut *txn, &h.person_ref, &h.organization_ref).await?;
+    let last = employments::last_applied(&mut *txn, &h.person_ref, &h.organization_ref).await?;
     if crate::rules::wpm_events::is_stale(last, h.stamp()) {
         return Ok(("stale", 0));
     }
     employments::note_applied(
-        &Bridge::new(txn),
+        &mut *txn,
         &h.person_ref,
         &h.organization_ref,
         if hired { "hired" } else { "left" },
@@ -390,7 +377,7 @@ async fn apply_handoff(
     for pid in &pids {
         let done = if hired {
             employments::record(
-                &Bridge::new(txn),
+                &mut *txn,
                 *pid,
                 &h.person_ref,
                 &h.organization_ref,
@@ -399,7 +386,7 @@ async fn apply_handoff(
             )
             .await?
         } else {
-            employments::end(&Bridge::new(txn), *pid, &h.organization_ref).await?
+            employments::end(&mut *txn, *pid, &h.organization_ref).await?
         };
         if done {
             changed += 1;
@@ -474,7 +461,7 @@ async fn employment_check(
     let pool = db::pool(&ctx);
     let refs = {
         let mut conn = pool.acquire().await?;
-        employments::live_person_refs(&Bridge::new(&mut conn)).await?
+        employments::live_person_refs(&mut *conn).await?
     };
     let batches = rules::batches(refs, super::privacy::TOMBSTONE_PERSON);
     let asked = batches.iter().map(Vec::len).sum();
@@ -555,8 +542,8 @@ async fn record_worker(
 ) -> Result<()> {
     use crate::models::employments;
     use crate::rules::employment_check::{self as rules, Action, LastEvent};
-    employments::lock_order(&Bridge::new(txn), person_ref, organization_ref).await?;
-    let last = match employments::last_kind(&Bridge::new(txn), person_ref, organization_ref)
+    employments::lock_order(&mut *txn, person_ref, organization_ref).await?;
+    let last = match employments::last_kind(&mut *txn, person_ref, organization_ref)
         .await?
         .as_deref()
     {
@@ -568,16 +555,10 @@ async fn record_worker(
         view.left_by_event += 1;
         return Ok(());
     }
-    for pid in employments::contacts_of(&Bridge::new(txn), person_ref).await? {
-        let recorded = employments::record(
-            &Bridge::new(txn),
-            pid,
-            person_ref,
-            organization_ref,
-            today,
-            source,
-        )
-        .await?;
+    for pid in employments::contacts_of(&mut *txn, person_ref).await? {
+        let recorded =
+            employments::record(&mut *txn, pid, person_ref, organization_ref, today, source)
+                .await?;
         if recorded {
             view.recorded += 1;
             Audit::record_on(

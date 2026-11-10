@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM taggings g WHERE ((g.subject_kind = 'contact' AND (g.subject_pid = $1 OR g.subject_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1))) OR (g.subject_kind = 'lead' AND g.subject_pid IN (SELECT pid FROM leads WHERE contact_pid = $1))) /* whatever deleted_at holds: a merged duplicate and a lead are the subject's */",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1434d1390abeef26410442ba1e2d35af570b3cbaf277f18d8f6b7a68c512e03e"
+}

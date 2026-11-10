@@ -234,8 +234,8 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
     } = converted(ctx, &spec, cells).await?;
     let truncated = rows.len() > MAX_GROUPS;
     rows.truncate(MAX_GROUPS);
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        crate::db::pool(ctx),
         "report",
         Uuid::nil(),
         "report_run",

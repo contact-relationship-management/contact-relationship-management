@@ -4,16 +4,15 @@
 //! its message. The parsing, checking and rendering are in [`crate::rules::templates`]; this module
 //! stores templates and gathers a contact's values.
 //!
-//! The routes run on `sqlx` (CRM-D24, CRM-T205). [`load`], [`contact_values`], [`content_for`]
-//! and [`exists`] stay on `ConnectionTrait` until the campaign and nurture code that calls them
-//! moves.
+//! The routes run on `sqlx` (CRM-D24, CRM-T205), and so, since CRM-T216, do [`load`],
+//! [`contact_values`], [`content_for`] and [`exists`], which campaigns and nurture steps call.
 
 use std::collections::BTreeMap;
 
 use axa::extract::Query;
 use axa::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
 use super::merge::conflict;
@@ -22,7 +21,7 @@ use crate::auth::MaybeAuthUser;
 use crate::clients;
 use crate::db;
 use crate::json::Json;
-use crate::models::_entities::{accounts, contacts};
+use crate::models::_entities::contacts;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::templates as rules;
 use crate::validation::Problems;
@@ -117,10 +116,6 @@ pub(crate) struct TokenInfo {
     fallback: Option<String>,
     /// Whether every template body must contain it.
     required: bool,
-}
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
 /// A stored template and how many live campaigns and nurture steps name it.
@@ -433,28 +428,24 @@ async fn preview(Json(payload): Json<PreviewPayload>) -> Result<Response> {
 const PREVIEW_UNSUBSCRIBE: &str = "https://example.invalid/unsubscribe/preview";
 
 /// A saved template, or `None` when it is gone.
-pub(crate) async fn load(db: &impl ConnectionTrait, pid: Uuid) -> Result<Option<Template>> {
-    let Some(row) = db
-        .query_one_raw(stmt(
-            "SELECT subject, body, fallbacks, language FROM email_templates WHERE pid = $1",
-            [pid.into()],
-        ))
-        .await?
-    else {
-        return Ok(None);
-    };
-    let fallbacks: serde_json::Value = row.try_get("", "fallbacks")?;
-    Ok(Some(Template {
-        subject: row.try_get("", "subject")?,
-        body: row.try_get("", "body")?,
-        fallbacks: serde_json::from_value(fallbacks).unwrap_or_default(),
-        language: row.try_get("", "language")?,
+pub(crate) async fn load<'e>(db: impl PgExecutor<'e>, pid: Uuid) -> Result<Option<Template>> {
+    Ok(sqlx::query!(
+        "SELECT subject, body, fallbacks, language FROM email_templates WHERE pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await?
+    .map(|row| Template {
+        subject: row.subject,
+        body: row.body,
+        fallbacks: serde_json::from_value(row.fallbacks).unwrap_or_default(),
+        language: row.language,
     }))
 }
 
 /// The values a contact supplies to the tokens. A token the contact has no value for is left out.
-pub(crate) async fn contact_values(
-    db: &impl ConnectionTrait,
+pub(crate) async fn contact_values<'e>(
+    db: impl PgExecutor<'e>,
     contact: &contacts::Model,
 ) -> Result<BTreeMap<String, String>> {
     let mut values = BTreeMap::new();
@@ -471,13 +462,7 @@ pub(crate) async fn contact_values(
         values.insert("job_title".to_string(), title.clone());
     }
     let account = match contact.account_pid {
-        Some(pid) => {
-            accounts::Entity::find()
-                .filter(accounts::Column::Pid.eq(pid))
-                .filter(accounts::Column::DeletedAt.is_null())
-                .one(db)
-                .await?
-        }
+        Some(pid) => crate::models::rows::account(db, pid).await?,
         None => None,
     };
     if let Some(account) = &account {
@@ -500,15 +485,15 @@ pub(crate) async fn contact_values(
 /// gone. `unsubscribe_url` is the contact's signed link; real sending always has one, so an absent
 /// link only happens when nothing is mailed.
 pub(crate) async fn content_for(
-    db: &impl ConnectionTrait,
+    db: &mut PgConnection,
     pid: Uuid,
     contact: &contacts::Model,
     unsubscribe_url: Option<&str>,
 ) -> Result<Option<(String, String)>> {
-    let Some(template) = load(db, pid).await? else {
+    let Some(template) = load(&mut *db, pid).await? else {
         return Ok(None);
     };
-    let values = contact_values(db, contact).await?;
+    let values = contact_values(&mut *db, contact).await?;
     let rendered = rules::render(
         &template.subject,
         &template.body,
@@ -523,7 +508,7 @@ pub(crate) async fn content_for(
 }
 
 /// Whether template `pid` exists.
-pub(crate) async fn exists(db: &impl ConnectionTrait, pid: Uuid) -> Result<bool> {
+pub(crate) async fn exists<'e>(db: impl PgExecutor<'e>, pid: Uuid) -> Result<bool> {
     Ok(load(db, pid).await?.is_some())
 }
 

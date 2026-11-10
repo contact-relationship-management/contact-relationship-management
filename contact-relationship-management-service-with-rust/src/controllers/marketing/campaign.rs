@@ -10,7 +10,7 @@ use sqlx::PgConnection;
 
 use crate::controllers::PidPath;
 use crate::controllers::templates;
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::json::Json;
 use crate::models::DateTimeWithTimeZone;
 use crate::models::encrypted::EncryptedText;
@@ -101,7 +101,7 @@ pub(super) async fn create_campaign(
         rows::segment(pool, segment).await?.ok_or(Error::NotFound)?;
     }
     if let Some(template) = payload.template_pid
-        && !templates::exists(&ctx.db, template).await?
+        && !templates::exists(pool, template).await?
     {
         return Err(unprocessable("template_pid is not an email template"));
     }
@@ -245,7 +245,7 @@ pub(super) fn with_unsubscribe(body: String, url: Option<&str>) -> String {
 /// has one (which carries its own unsubscribe link), else its own subject and body with the
 /// generic unsubscribe footer. `None` when the template is gone.
 async fn campaign_content(
-    db: &impl sea_orm::ConnectionTrait,
+    db: &mut PgConnection,
     campaign: &campaigns::Model,
     contact: &contacts::Model,
     unsubscribe_url: Option<&str>,
@@ -271,8 +271,7 @@ pub(super) async fn skip_reason(
     if deliveries::is_suppressed(&mut *conn, contact_pid).await? {
         return Ok(Some("mailbox suppressed after a bounce or complaint"));
     }
-    // The employment helpers are still on `SeaORM`; `Bridge` runs this one on `conn`.
-    if crate::models::employments::is_employee(&Bridge::new(conn), contact_pid).await? {
+    if crate::models::employments::is_employee(&mut *conn, contact_pid).await? {
         return Ok(Some("an employee, by the worker service: marketing paused"));
     }
     if !audience.contains(&contact_pid) {
@@ -335,7 +334,7 @@ pub(super) async fn deliver_one(
         let Some((subject, text)) =
             // On the connection this send holds: a second one from the pool would wait on it.
             campaign_content(
-                &Bridge::new(&mut conn),
+                &mut conn,
                 campaign,
                 &contact,
                 unsubscribe_url.as_deref(),

@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT organization_ref, since FROM contact_employments WHERE contact_pid = $1 ORDER BY organization_ref",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "organization_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contact_employments",
+            "name": "organization_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "since",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "contact_employments",
+            "name": "since"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "07a2e996448fdb915195279e18fa3e2861faec719fa9e175f616080f546d8ccd"
+}

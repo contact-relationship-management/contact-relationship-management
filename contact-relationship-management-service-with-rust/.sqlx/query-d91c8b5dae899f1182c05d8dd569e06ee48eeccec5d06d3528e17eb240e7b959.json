@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM employment_last_events WHERE person_ref = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d91c8b5dae899f1182c05d8dd569e06ee48eeccec5d06d3528e17eb240e7b959"
+}

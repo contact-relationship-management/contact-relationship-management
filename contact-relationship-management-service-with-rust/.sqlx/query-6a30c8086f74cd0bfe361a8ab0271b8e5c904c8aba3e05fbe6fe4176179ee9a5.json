@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO pipelines (pid, name) VALUES ($1, 'New Business')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a30c8086f74cd0bfe361a8ab0271b8e5c904c8aba3e05fbe6fe4176179ee9a5"
+}

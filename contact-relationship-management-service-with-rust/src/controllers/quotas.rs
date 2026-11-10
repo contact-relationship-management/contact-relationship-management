@@ -970,8 +970,8 @@ async fn attainment(
         user_ref::normalise_opt(query.owner_ref),
     )
     .await?;
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        crate::db::pool(&ctx),
         "quota",
         Uuid::nil(),
         "attainment_read",

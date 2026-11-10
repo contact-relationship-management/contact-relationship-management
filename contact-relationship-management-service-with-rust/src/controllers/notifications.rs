@@ -77,11 +77,7 @@ fn recipient_of(caller: &MaybeAuthUser, query: &InboxQuery) -> Result<String> {
 }
 
 /// Whether the caller may read the record this notification is about.
-async fn visible(
-    db: &sea_orm::DatabaseConnection,
-    caller: &MaybeAuthUser,
-    n: &Notification,
-) -> Result<bool> {
+async fn visible(db: &sqlx::PgPool, caller: &MaybeAuthUser, n: &Notification) -> Result<bool> {
     let Some(attrs) = inbox::subject_attrs(db, &n.subject_kind, n.subject_pid).await? else {
         return Ok(false);
     };
@@ -118,7 +114,7 @@ async fn list(
     let (all, more) = page.split(all);
     let mut shown = Vec::with_capacity(all.len());
     for n in all {
-        if visible(&ctx.db, &caller, &n).await? {
+        if visible(db::pool(&ctx), &caller, &n).await? {
             shown.push(n);
         }
     }
@@ -156,7 +152,7 @@ async fn unread_count(
     let capped = i64::try_from(rows.len()).unwrap_or(i64::MAX) > COUNT_CAP;
     let mut unread = 0_u64;
     for n in rows.iter().take(usize::try_from(COUNT_CAP).unwrap_or(0)) {
-        if visible(&ctx.db, &caller, n).await? {
+        if visible(db::pool(&ctx), &caller, n).await? {
             unread += 1;
         }
     }

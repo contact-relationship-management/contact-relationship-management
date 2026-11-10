@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT t.name FROM taggings g JOIN tags t ON t.pid = g.tag_pid WHERE g.subject_pid = $1 ORDER BY lower(t.name)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tags",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2845bc36c29898c540cde0c1ebfc1fdd873be5441d0ebe97d1974a244f4067bd"
+}

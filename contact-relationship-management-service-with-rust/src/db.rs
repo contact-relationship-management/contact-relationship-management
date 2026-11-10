@@ -1,98 +1,14 @@
 //! Plain SQL (CRM-D24): each query is written out with `sqlx::query!` and checked against the
 //! schema at build time, so a reviewer reads exactly what runs. While `SeaORM` is being retired,
-//! both share one pool. A handler moves whole, because a transaction belongs to one library and
-//! cannot span the two; [`Bridge`] carries a moved handler's transaction into a helper that has
-//! not moved yet.
+//! both share one pool.
 
-use async_trait::async_trait;
 use axa::AppContext;
-use sea_orm::sea_query::Values;
-use sea_orm::{ConnectionTrait, DbBackend, DbErr, ExecResult, QueryResult, RuntimeErr, Statement};
-use sea_query_sqlx::SqlxValues;
-use sqlx::{AssertSqlSafe, Executor, PgConnection, PgPool, Postgres};
-use tokio::sync::Mutex;
+use sqlx::PgPool;
 
 /// The connection pool, which is `SeaORM`'s own.
 #[must_use]
 pub fn pool(ctx: &AppContext) -> &PgPool {
     ctx.db.get_postgres_connection_pool()
-}
-
-/// A `sqlx` connection that `SeaORM` code can run on, so a moved handler can call a helper that
-/// has not moved, inside its own transaction. It goes when the last helper has moved.
-///
-/// It lends only [`ConnectionTrait`]. A helper that begins a transaction or a savepoint through
-/// `TransactionTrait` does not compile against it, which is the safe way for that to fail.
-pub struct Bridge<'c> {
-    // `ConnectionTrait` takes `&self`, and a connection runs one statement at a time.
-    conn: Mutex<&'c mut PgConnection>,
-}
-
-impl<'c> Bridge<'c> {
-    /// Lend `conn` to `SeaORM` code until this value is dropped.
-    pub fn new(conn: &'c mut PgConnection) -> Self {
-        Self {
-            conn: Mutex::new(conn),
-        }
-    }
-}
-
-/// The statement as `sqlx` runs it, with the values `SeaORM` built.
-fn query(stmt: &Statement) -> sqlx::query::Query<'_, Postgres, SqlxValues> {
-    let values = stmt.values.clone().unwrap_or(Values(Vec::new()));
-    sqlx::query_with(AssertSqlSafe(stmt.sql.as_str()), SqlxValues(values))
-}
-
-/// The errors `SeaORM`'s own driver gives, so a helper handles them the same here.
-fn exec_err(error: sqlx::Error) -> DbErr {
-    DbErr::Exec(RuntimeErr::SqlxError(error.into()))
-}
-
-fn query_err(error: sqlx::Error) -> DbErr {
-    DbErr::Query(RuntimeErr::SqlxError(error.into()))
-}
-
-#[async_trait]
-impl ConnectionTrait for Bridge<'_> {
-    fn get_database_backend(&self) -> DbBackend {
-        DbBackend::Postgres
-    }
-
-    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
-        let mut conn = self.conn.lock().await;
-        query(&stmt)
-            .execute(&mut **conn)
-            .await
-            .map(Into::into)
-            .map_err(exec_err)
-    }
-
-    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
-        let mut conn = self.conn.lock().await;
-        (&mut **conn)
-            .execute(AssertSqlSafe(sql.to_owned()))
-            .await
-            .map(Into::into)
-            .map_err(exec_err)
-    }
-
-    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
-        let mut conn = self.conn.lock().await;
-        query(&stmt)
-            .fetch_optional(&mut **conn)
-            .await
-            .map(|row| row.map(Into::into))
-            .map_err(query_err)
-    }
-
-    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        let mut conn = self.conn.lock().await;
-        query(&stmt)
-            .fetch_all(&mut **conn)
-            .await
-            .map(|rows| rows.into_iter().map(Into::into).collect())
-            .map_err(query_err)
-    }
 }
 
 #[cfg(test)]
@@ -140,6 +56,10 @@ mod tests {
         (
             "src/controllers/sales.rs",
             "a converted lead's new contact binds `EncryptedText`, which seals the channel",
+        ),
+        (
+            "src/tasks/seed.rs",
+            "a seeded contact's channel binds `EncryptedText`, which seals it",
         ),
         (
             "src/workflows.rs",

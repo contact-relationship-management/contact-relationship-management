@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO contact_employments (contact_pid, person_ref, organization_ref, since, source_event_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (contact_pid, organization_ref) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Date",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "25331316957044ca8014cc88401dcef8ee4bdb7e19e1d3122b8706bd095c9ba5"
+}

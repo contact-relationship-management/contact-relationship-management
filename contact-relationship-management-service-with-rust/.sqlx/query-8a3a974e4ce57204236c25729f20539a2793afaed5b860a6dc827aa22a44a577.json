@@ -1,0 +1,67 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO teams (pid, name, members, set_by) VALUES ($1, $2, $3::jsonb, $4) ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, members = EXCLUDED.members, set_by = EXCLUDED.set_by, updated_at = now() RETURNING pid, name, members, set_by",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "teams",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "teams",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "members",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "teams",
+            "name": "members"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "set_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "teams",
+            "name": "set_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Jsonb",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8a3a974e4ce57204236c25729f20539a2793afaed5b860a6dc827aa22a44a577"
+}

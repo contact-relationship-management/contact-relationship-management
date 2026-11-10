@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO leads (pid, source, display_name, email, email_domain, score, campaign_click, unsubscribed, status) VALUES ($1, $2, $3, $4, 'initech.example', $5, false, false, $6)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f38232689ea40d16610de3d4a004e4bbd0482592e9407d8125ac6d05d922e611"
+}

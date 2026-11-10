@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM attachments WHERE ((subject_kind = 'contact' AND (subject_pid = $1 OR subject_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1))) OR (subject_kind = 'lead' AND subject_pid IN (SELECT pid FROM leads WHERE contact_pid = $1))) /* whatever deleted_at holds: a merged duplicate and a lead are the subject's */ RETURNING pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "attachments",
+            "name": "pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d2ad6a5164b251e9ed4cd15ce57762c8e910be71cfec79eae374cfe1250c6903"
+}

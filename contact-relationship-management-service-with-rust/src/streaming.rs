@@ -22,7 +22,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 
-use sea_orm::ConnectionTrait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -161,38 +160,9 @@ pub fn transport() -> EventTransport {
     crate::settings::current().event_transport
 }
 
-/// Emit one event **on the given connection** under the active
-/// transport: `outbox` inserts the `event_outbox` row on `conn` (pass
-/// the mutation's transaction — one commit boundary); `memory` pushes
-/// to the in-process ring buffer.
-///
-/// # Errors
-///
-/// When the outbox insert fails (the `memory` path is infallible).
-pub async fn emit_on<C: ConnectionTrait>(
-    conn: &C,
-    entity: &str,
-    kind: &str,
-    pid: &str,
-    name: &str,
-    actor: Option<&str>,
-    data: Option<serde_json::Value>,
-) -> axa::Result<()> {
-    let env = envelope(entity, kind, pid, name, actor, data);
-    if transport().is_outbox() {
-        OutboxInsert::from_envelope(&env, crate::clock::now().into())
-            .map_err(axa::Error::Model)?
-            .insert_on(conn)
-            .await
-            .map_err(axa::Error::Model)?;
-    } else {
-        remember(env);
-    }
-    Ok(())
-}
-
-/// [`emit_on`] for a handler on `sqlx` (CRM-D24): `conn` is the mutation's transaction, so under
-/// the `outbox` transport the event commits with it.
+/// Emit one event on the mutation's connection under the active transport: `outbox` inserts the
+/// `event_outbox` row on `conn`, so the event commits with the mutation; `memory` pushes to the
+/// in-process ring buffer.
 ///
 /// # Errors
 ///

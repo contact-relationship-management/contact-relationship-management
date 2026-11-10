@@ -20,7 +20,6 @@ use std::sync::OnceLock;
 use axa::cursor_pagination::{CursorKey, CursorLimits, CursorPage};
 use axa::prelude::*;
 use axum::http::Uri;
-use sea_orm::{EntityTrait, QuerySelect, Select};
 use serde::Serialize;
 
 /// The setting that holds the key cursors are signed with, 32 bytes or more.
@@ -94,15 +93,6 @@ impl Page {
             max_limit: cap,
         };
         Ok(Self(CursorPage::new(key, limits, uri)?))
-    }
-
-    /// Restrict `select` to this page, fetching one extra row to learn
-    /// whether another page exists.
-    #[must_use]
-    pub fn apply<E: EntityTrait>(&self, select: Select<E>) -> Select<E> {
-        select
-            .offset(self.0.offset())
-            .limit(self.0.limit().saturating_add(1))
     }
 
     /// `LIMIT` and `OFFSET` as `sqlx` binds them, the limit one more than the page: the probe

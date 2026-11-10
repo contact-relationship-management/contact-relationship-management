@@ -5,8 +5,8 @@
 //! id. A download is always an attachment, served with the type the allow-list gives, never the
 //! one the uploader claimed. Without `CRM_ATTACHMENT_DIR` attachments are off, and say so.
 //!
-//! The routes run on `sqlx` (CRM-D24, CRM-T206). [`export_for`] and [`erase_rows`] stay on
-//! `ConnectionTrait` for the privacy routes, which call them inside a `SeaORM` transaction.
+//! The routes run on `sqlx` (CRM-D24, CRM-T206), and so, since CRM-T216, do [`export_for`] and
+//! [`erase_rows`], which the privacy routes call.
 
 use std::path::PathBuf;
 
@@ -16,7 +16,6 @@ use axum::body::Bytes;
 use axum::extract::DefaultBodyLimit;
 use axum::http::{HeaderName, StatusCode, header};
 use axum::response::IntoResponse;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -54,12 +53,6 @@ pub(crate) struct AttachmentView {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
-const COLUMNS: &str = "pid, subject_kind, subject_pid, name, content_type, size_bytes, sha256, uploaded_by, created_at";
-
 /// An attachment row, as the routes read it.
 struct Stored {
     pid: Uuid,
@@ -85,18 +78,6 @@ impl From<Stored> for AttachmentView {
             created_at: row.created_at,
         }
     }
-}
-
-fn view(row: &sea_orm::QueryResult) -> Result<AttachmentView> {
-    Ok(AttachmentView {
-        pid: row.try_get("", "pid")?,
-        name: row.try_get("", "name")?,
-        content_type: row.try_get("", "content_type")?,
-        size_bytes: row.try_get("", "size_bytes")?,
-        sha256: row.try_get("", "sha256")?,
-        uploaded_by: row.try_get("", "uploaded_by")?,
-        created_at: row.try_get("", "created_at")?,
-    })
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -143,7 +124,7 @@ async fn list_for(
     pid: Uuid,
 ) -> Result<Response> {
     let masked = subject(
-        &ctx.db,
+        crate::db::pool(&ctx),
         &caller,
         entity,
         pid,
@@ -220,7 +201,7 @@ async fn upload_to(
 ) -> Result<Response> {
     let dir = directory()?;
     subject(
-        &ctx.db,
+        crate::db::pool(&ctx),
         &caller,
         entity,
         pid,
@@ -316,7 +297,14 @@ async fn find_for(
         "deal" => "deal",
         _ => "lead",
     };
-    let masked = subject(&ctx.db, caller, entity, row.subject_pid, action).await?;
+    let masked = subject(
+        crate::db::pool(ctx),
+        caller,
+        entity,
+        row.subject_pid,
+        action,
+    )
+    .await?;
     refuse_masked(masked)?;
     Ok(row)
 }
@@ -339,8 +327,8 @@ async fn content(
         return Err(unavailable("the stored file failed its integrity check"));
     }
     // A download of personal content is audited like any other disclosure.
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        crate::db::pool(&ctx),
         "attachment",
         pid,
         "downloaded",
@@ -415,57 +403,41 @@ record_routes!(account_files, upload_account_file, "account");
 record_routes!(lead_files, upload_lead_file, "lead");
 record_routes!(deal_files, upload_deal_file, "deal");
 
-/// A contact's attached files, as metadata, for the subject-access export: the contact's own, those
-/// of contacts merged into it, and those of the leads an erasure would scrub.
-///
-/// # Errors
-///
-/// A database error.
-pub(crate) async fn export_for<C: ConnectionTrait>(
-    db: &C,
+pub(crate) async fn export_for<'e>(
+    db: impl sqlx::PgExecutor<'e>,
     contact: Uuid,
 ) -> Result<Vec<AttachmentView>> {
-    let rows = db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {COLUMNS} FROM attachments WHERE {} ORDER BY id",
-                owned_by(contact)
-            ),
-            [],
-        ))
-        .await?;
-    rows.iter().map(view).collect()
-}
-
-/// The SQL condition for "belongs to this contact, a contact merged into it, or a lead of it".
-fn owned_by(contact: Uuid) -> String {
-    format!(
-        "((subject_kind = 'contact' AND (subject_pid = '{contact}' OR subject_pid IN \
-           (SELECT pid FROM contacts WHERE merged_into_pid = '{contact}'))) \
-         OR (subject_kind = 'lead' AND subject_pid IN \
-           (SELECT pid FROM leads WHERE contact_pid = '{contact}')))"
+    Ok(sqlx::query_as!(
+        Stored,
+        "SELECT pid, subject_kind, subject_pid, name, content_type, size_bytes, sha256, \
+         uploaded_by, created_at FROM attachments WHERE ((subject_kind = 'contact' AND (subject_pid = $1 OR subject_pid IN \
+           (SELECT pid FROM contacts WHERE merged_into_pid = $1))) \
+     OR (subject_kind = 'lead' AND subject_pid IN \
+           (SELECT pid FROM leads WHERE contact_pid = $1))) \
+         /* whatever deleted_at holds: a merged duplicate and a lead are the subject's */ ORDER BY id",
+        contact,
     )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(Into::into)
+    .collect())
 }
 
-/// Delete a contact's attachment rows (see [`export_for`] for whose) and say which files to remove
-/// once the transaction has committed.
-///
-/// # Errors
-///
-/// A database error.
-pub(crate) async fn erase_rows<C: ConnectionTrait>(db: &C, contact: Uuid) -> Result<Vec<Uuid>> {
-    let rows = db
-        .query_all_raw(stmt(
-            &format!(
-                "DELETE FROM attachments WHERE {} RETURNING pid",
-                owned_by(contact)
-            ),
-            [],
-        ))
-        .await?;
-    rows.iter()
-        .map(|r| r.try_get("", "pid").map_err(Into::into))
-        .collect()
+pub(crate) async fn erase_rows<'e>(
+    db: impl sqlx::PgExecutor<'e>,
+    contact: Uuid,
+) -> Result<Vec<Uuid>> {
+    Ok(sqlx::query_scalar!(
+        "DELETE FROM attachments WHERE ((subject_kind = 'contact' AND (subject_pid = $1 OR subject_pid IN \
+           (SELECT pid FROM contacts WHERE merged_into_pid = $1))) \
+     OR (subject_kind = 'lead' AND subject_pid IN \
+           (SELECT pid FROM leads WHERE contact_pid = $1))) \
+         /* whatever deleted_at holds: a merged duplicate and a lead are the subject's */ RETURNING pid",
+        contact,
+    )
+    .fetch_all(db)
+    .await?)
 }
 
 /// Remove files from disk after the rows are gone; returns how many could not be removed.

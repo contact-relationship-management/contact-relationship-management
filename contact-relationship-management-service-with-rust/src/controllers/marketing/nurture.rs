@@ -10,7 +10,7 @@ use sqlx::PgConnection;
 
 use crate::controllers::PidPath;
 use crate::controllers::templates;
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::json::Json;
 use crate::models::DateTimeWithTimeZone;
 use crate::models::encrypted::EncryptedText;
@@ -91,7 +91,7 @@ pub(super) async fn create_sequence(
     problems.finish()?;
     for step in &payload.steps {
         if let Some(template) = step.template_pid
-            && !templates::exists(&ctx.db, template).await?
+            && !templates::exists(db::pool(&ctx), template).await?
         {
             return Err(unprocessable(
                 "steps[].template_pid is not an email template",
@@ -162,8 +162,6 @@ pub(super) async fn enroll(
         .await?
         .ok_or(Error::NotFound)?;
     let mut txn = pool.begin().await?;
-    // The consent helpers and `enrol_in`, which the workflow engine shares, are on
-    // `ConnectionTrait`; `Bridge` runs them in this transaction.
     if crate::consents::state_of(&mut *txn, &contact, &sequence.purpose).await? != "granted" {
         return Err(unprocessable(&format!(
             "contact has not granted {} consent",
@@ -260,14 +258,8 @@ pub(super) async fn send_step(
     // The unsubscribe token names the step where a campaign would be named.
     let unsubscribe_url = crate::unsubscribe::current().map(|u| u.url(contact.pid, step.pid));
     let content = if let Some(template) = step.template_pid {
-        // The templates' loader takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
-        let made = templates::content_for(
-            &Bridge::new(txn),
-            template,
-            contact,
-            unsubscribe_url.as_deref(),
-        )
-        .await?;
+        let made =
+            templates::content_for(txn, template, contact, unsubscribe_url.as_deref()).await?;
         let Some(content) = made else {
             let why = "permanent: the email template is gone";
             deliveries::settle(&mut *txn, row_id, "failed", None, Some(why)).await?;
@@ -410,11 +402,10 @@ async fn send_gate(
     .fetch_optional(&mut *txn)
     .await?
     .map_or_else(|| tokens::DEFAULT_PURPOSE.to_string(), |q| q.purpose);
-    // The consent and employment helpers are still on `SeaORM`; `Bridge` runs them here.
     if crate::consents::state_of(&mut *txn, contact, &purpose).await? != "granted" {
         return Ok(Gate::Exit);
     }
-    if crate::models::employments::is_employee(&Bridge::new(txn), contact.pid).await? {
+    if crate::models::employments::is_employee(&mut *txn, contact.pid).await? {
         return Ok(Gate::Hold);
     }
     Ok(Gate::Go)

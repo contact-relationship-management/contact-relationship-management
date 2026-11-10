@@ -4,17 +4,15 @@
 //! standings of each team's workers. Both sit under the admin-only `/api/quotas` prefix: what a
 //! team is paid is no more everyone's to read than what a person is.
 //!
-//! The routes run on `sqlx` (CRM-D24, CRM-T205). [`put_team`] stays on `ConnectionTrait`, because
-//! the WPM import in `bridges.rs` calls it inside a `SeaORM` transaction; `PUT` lends it its own
-//! `sqlx` transaction through `db::Bridge`. The standings and the audited read still go through
-//! `SeaORM` helpers, outside any transaction.
+//! Everything runs on `sqlx` (CRM-D24, CRM-T205); [`put_team`], which the WPM import in
+//! `bridges.rs` also calls, takes the caller's transaction since CRM-T216.
 
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
 use chrono::NaiveDate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::quotas::standings;
@@ -33,10 +31,6 @@ use crate::validation::Problems;
 const MAX_MEMBERS: usize = 50;
 /// Most teams listed.
 const MAX_LISTED: i64 = 500;
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
 
 /// `PUT /api/quotas/teams` body: sets the team of that name (any case), replacing its workers.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -60,18 +54,6 @@ pub(crate) struct TeamView {
     members: Vec<String>,
     set_by: String,
 }
-
-fn team_view(row: &sea_orm::QueryResult) -> Result<TeamView> {
-    let members: serde_json::Value = row.try_get("", "members")?;
-    Ok(TeamView {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        name: row.try_get("", "name")?,
-        members: serde_json::from_value(members).map_err(|e| Error::string(&e.to_string()))?,
-        set_by: row.try_get("", "set_by")?,
-    })
-}
-
-const TEAM_COLUMNS: &str = "pid, name, members, set_by";
 
 /// A stored team, as `sqlx` reads it.
 struct TeamRow {
@@ -117,8 +99,8 @@ async fn list_teams(State(ctx): State<AppContext>) -> Result<Response> {
 
 /// Set the team of `name` (any case) to `members` inside `txn`, audited; `via` names what caused it
 /// (the worker service import, CRM-R73).
-pub(super) async fn put_team<C: ConnectionTrait>(
-    txn: &C,
+pub(super) async fn put_team(
+    txn: &mut PgConnection,
     who: &str,
     actor: Option<&str>,
     name: &str,
@@ -126,28 +108,25 @@ pub(super) async fn put_team<C: ConnectionTrait>(
     via: Option<&str>,
 ) -> Result<TeamView> {
     let members_json = serde_json::to_value(members).map_err(|e| Error::string(&e.to_string()))?;
-    let row = txn
-        .query_one_raw(stmt(
-            &format!(
-                "INSERT INTO teams (pid, name, members, set_by) VALUES ($1, $2, $3::jsonb, $4) \
-                 ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, \
-                   members = EXCLUDED.members, set_by = EXCLUDED.set_by, updated_at = now() \
-                 RETURNING {TEAM_COLUMNS}"
-            ),
-            [
-                Uuid::new_v4().into(),
-                name.into(),
-                members_json.into(),
-                who.into(),
-            ],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    let made = team_view(&row)?;
-    Audit::record(
+    let row = sqlx::query_as!(
+        TeamRow,
+        "INSERT INTO teams (pid, name, members, set_by) VALUES ($1, $2, $3::jsonb, $4) \
+         ON CONFLICT ((lower(name))) DO UPDATE SET name = EXCLUDED.name, \
+           members = EXCLUDED.members, set_by = EXCLUDED.set_by, updated_at = now() \
+         RETURNING pid, name, members, set_by",
+        Uuid::new_v4(),
+        name,
+        members_json,
+        who,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    let pid = row.pid;
+    let made = TeamView::try_from(row)?;
+    Audit::record_on(
         txn,
         "team",
-        row.try_get("", "pid")?,
+        pid,
         "set",
         actor,
         Some(match via {
@@ -190,7 +169,7 @@ async fn set_team(
     let who = owner_of(&caller)?;
     let mut txn = db::pool(&ctx).begin().await?;
     let made = put_team(
-        &db::Bridge::new(&mut txn),
+        &mut txn,
         &who,
         caller.actor(),
         &name,
@@ -341,8 +320,8 @@ async fn team_attainment(
             other_currencies: other,
         });
     }
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        crate::db::pool(&ctx),
         "team",
         Uuid::nil(),
         "attainment_read",

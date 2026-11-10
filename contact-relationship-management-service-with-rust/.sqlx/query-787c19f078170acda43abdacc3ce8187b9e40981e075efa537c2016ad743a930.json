@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT organization_ref, kind, occurred_at, effective_on FROM employment_last_events WHERE person_ref = $1 ORDER BY organization_ref",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "organization_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "employment_last_events",
+            "name": "organization_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "employment_last_events",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "occurred_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "employment_last_events",
+            "name": "occurred_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "effective_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "employment_last_events",
+            "name": "effective_on"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "787c19f078170acda43abdacc3ce8187b9e40981e075efa537c2016ad743a930"
+}

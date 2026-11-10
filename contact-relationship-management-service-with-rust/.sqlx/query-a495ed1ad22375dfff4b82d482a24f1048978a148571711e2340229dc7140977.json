@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT t.name FROM taggings g JOIN tags t ON t.pid = g.tag_pid WHERE ((g.subject_kind = 'contact' AND (g.subject_pid = $1 OR g.subject_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1))) OR (g.subject_kind = 'lead' AND g.subject_pid IN (SELECT pid FROM leads WHERE contact_pid = $1))) /* whatever deleted_at holds: a merged duplicate and a lead are the subject's */ ORDER BY t.name",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tags",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a495ed1ad22375dfff4b82d482a24f1048978a148571711e2340229dc7140977"
+}

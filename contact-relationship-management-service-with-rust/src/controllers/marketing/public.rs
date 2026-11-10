@@ -178,8 +178,7 @@ pub(super) async fn unsubscribe_post(
         let mut txn = db::pool(&ctx).begin().await?;
         // The link withdraws the purpose of the message it came from, and no other. A
         // contact already erased or already withdrawn needs nothing more; either way the
-        // person gets the same confirmation. The consent helpers are still on `SeaORM`, and
-        // `Bridge` runs them in this transaction.
+        // person gets the same confirmation.
         if let Some(contact) = rows::contact(&mut *txn, contact_pid).await? {
             let purpose = crate::consents::purpose_of_message(&mut *txn, message_pid).await?;
             let state = crate::consents::state_of(&mut *txn, &contact, &purpose).await?;
@@ -311,7 +310,6 @@ pub(super) async fn apply_event(
     if matches!(event_name, "opened" | "clicked") && !engagement_allowed(txn, message_id).await? {
         return Ok("ignored");
     }
-    // The delivery helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
     let effect = deliveries::record_event(&mut *txn, message_id, event_name).await?;
     Ok(match effect {
         deliveries::EventEffect::UnknownMessage => "unknown_message",

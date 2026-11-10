@@ -771,7 +771,7 @@ async fn the_form_s_refusals_are_in_the_language_of_the_request() {
     .await;
 }
 
-/// A workflow on `lead_created` runs inside the form's `sqlx` transaction, through `db::Bridge`,
+/// A workflow on `lead_created` runs inside the form's `sqlx` transaction,
 /// with its savepoint written as SQL (CRM-T209): a failing action undoes the run's own writes and
 /// spares the lead, and the run log says so.
 #[tokio::test]

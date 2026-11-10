@@ -5,11 +5,9 @@
 //! it is hidden from a masked read, listed in a subject-access export, and deleted when the contact
 //! is erased.
 //!
-//! The writes and the tag list run on `sqlx` (CRM-D24, CRM-T205). The readers other modules call
-//! stay on `ConnectionTrait` until those callers move.
+//! Everything runs on `sqlx` (CRM-D24, CRM-T205); the readers other modules call since CRM-T216.
 
 use axa::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
 use uuid::Uuid;
@@ -55,10 +53,6 @@ pub(crate) struct TagView {
 pub(crate) struct TagFilter {
     #[serde(default)]
     pub tag: Option<String>,
-}
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
 fn taken() -> Error {
@@ -187,32 +181,21 @@ async fn remove(
     })
 }
 
-/// The names of the tags a record carries, in alphabetical order.
-///
-/// # Errors
-///
-/// A database error.
-pub(crate) async fn names_of<C: ConnectionTrait>(db: &C, subject_pid: Uuid) -> Result<Vec<String>> {
-    let rows = db
-        .query_all_raw(stmt(
-            "SELECT t.name FROM taggings g JOIN tags t ON t.pid = g.tag_pid \
-             WHERE g.subject_pid = $1 ORDER BY lower(t.name)",
-            [subject_pid.into()],
-        ))
-        .await?;
-    rows.iter()
-        .map(|r| r.try_get("", "name").map_err(Into::into))
-        .collect()
+pub(crate) async fn names_of<'e>(
+    db: impl sqlx::PgExecutor<'e>,
+    subject_pid: Uuid,
+) -> Result<Vec<String>> {
+    Ok(sqlx::query_scalar!(
+        "SELECT t.name FROM taggings g JOIN tags t ON t.pid = g.tag_pid \
+         WHERE g.subject_pid = $1 ORDER BY lower(t.name)",
+        subject_pid,
+    )
+    .fetch_all(db)
+    .await?)
 }
 
-/// The records of `kind` that carry the tag named by `filter`, or `None` for no filter. An unknown
-/// tag gives an empty list (nothing carries it).
-///
-/// # Errors
-///
-/// A tag name that cannot be one, or a database error.
-pub(crate) async fn filter_pids<C: ConnectionTrait>(
-    db: &C,
+pub(crate) async fn filter_pids<'e>(
+    db: impl sqlx::PgExecutor<'e>,
     kind: &str,
     filter: &TagFilter,
 ) -> Result<Option<Vec<Uuid>>> {
@@ -220,17 +203,16 @@ pub(crate) async fn filter_pids<C: ConnectionTrait>(
         return Ok(None);
     };
     let name = rules::normalise(raw).map_err(|why| unprocessable(&why))?;
-    let rows = db
-        .query_all_raw(stmt(
+    Ok(Some(
+        sqlx::query_scalar!(
             "SELECT g.subject_pid FROM taggings g JOIN tags t ON t.pid = g.tag_pid \
              WHERE g.subject_kind = $1 AND lower(t.name) = $2",
-            [kind.into(), rules::key(&name).into()],
-        ))
-        .await?;
-    rows.iter()
-        .map(|r| r.try_get("", "subject_pid").map_err(Into::into))
-        .collect::<Result<Vec<Uuid>>>()
-        .map(Some)
+            kind,
+            rules::key(&name),
+        )
+        .fetch_all(db)
+        .await?,
+    ))
 }
 
 /// A masked read may not see tags: they say things about a person.
@@ -251,7 +233,7 @@ async fn get_tags(
     pid: Uuid,
 ) -> Result<Response> {
     let masked = subject(
-        &ctx.db,
+        crate::db::pool(&ctx),
         &caller,
         entity,
         pid,
@@ -259,7 +241,7 @@ async fn get_tags(
     )
     .await?;
     refuse_masked(masked)?;
-    format::json(names_of(&ctx.db, pid).await?)
+    format::json(names_of(crate::db::pool(&ctx), pid).await?)
 }
 
 async fn put_tags(
@@ -270,7 +252,7 @@ async fn put_tags(
     payload: RecordTagsPayload,
 ) -> Result<Response> {
     let masked = subject(
-        &ctx.db,
+        crate::db::pool(&ctx),
         &caller,
         entity,
         pid,
@@ -336,7 +318,7 @@ async fn put_tags(
     )
     .await?;
     txn.commit().await?;
-    format::json(names_of(&ctx.db, pid).await?)
+    format::json(names_of(crate::db::pool(&ctx), pid).await?)
 }
 
 macro_rules! record_routes {
@@ -367,50 +349,35 @@ record_routes!(account_tags, set_account_tags, "account");
 record_routes!(lead_tags, set_lead_tags, "lead");
 record_routes!(deal_tags, set_deal_tags, "deal");
 
-/// The tags of a contact, of contacts merged into it and of its leads, for a subject-access
-/// export.
-///
-/// # Errors
-///
-/// A database error.
-pub(crate) async fn export_for<C: ConnectionTrait>(db: &C, contact: Uuid) -> Result<Vec<String>> {
-    let rows = db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT DISTINCT t.name FROM taggings g JOIN tags t ON t.pid = g.tag_pid \
-                 WHERE {} ORDER BY t.name",
-                owned_by(contact)
-            ),
-            [],
-        ))
-        .await?;
-    rows.iter()
-        .map(|r| r.try_get("", "name").map_err(Into::into))
-        .collect()
-}
-
-/// Delete the taggings of a contact being erased (see [`export_for`] for whose); returns how many.
-///
-/// # Errors
-///
-/// A database error.
-pub(crate) async fn erase_rows<C: ConnectionTrait>(db: &C, contact: Uuid) -> Result<u64> {
-    Ok(db
-        .execute_raw(stmt(
-            &format!("DELETE FROM taggings g WHERE {}", owned_by(contact)),
-            [],
-        ))
-        .await?
-        .rows_affected())
-}
-
-fn owned_by(contact: Uuid) -> String {
-    format!(
-        "((g.subject_kind = 'contact' AND (g.subject_pid = '{contact}' OR g.subject_pid IN \
-           (SELECT pid FROM contacts WHERE merged_into_pid = '{contact}'))) \
-         OR (g.subject_kind = 'lead' AND g.subject_pid IN \
-           (SELECT pid FROM leads WHERE contact_pid = '{contact}')))"
+pub(crate) async fn export_for<'e>(
+    db: impl sqlx::PgExecutor<'e>,
+    contact: Uuid,
+) -> Result<Vec<String>> {
+    Ok(sqlx::query_scalar!(
+        "SELECT DISTINCT t.name FROM taggings g JOIN tags t ON t.pid = g.tag_pid \
+         WHERE ((g.subject_kind = 'contact' AND (g.subject_pid = $1 OR g.subject_pid IN \
+           (SELECT pid FROM contacts WHERE merged_into_pid = $1))) \
+     OR (g.subject_kind = 'lead' AND g.subject_pid IN \
+           (SELECT pid FROM leads WHERE contact_pid = $1))) \
+         /* whatever deleted_at holds: a merged duplicate and a lead are the subject's */ ORDER BY t.name",
+        contact,
     )
+    .fetch_all(db)
+    .await?)
+}
+
+pub(crate) async fn erase_rows<'e>(db: impl sqlx::PgExecutor<'e>, contact: Uuid) -> Result<u64> {
+    Ok(sqlx::query!(
+        "DELETE FROM taggings g WHERE ((g.subject_kind = 'contact' AND (g.subject_pid = $1 OR g.subject_pid IN \
+           (SELECT pid FROM contacts WHERE merged_into_pid = $1))) \
+     OR (g.subject_kind = 'lead' AND g.subject_pid IN \
+           (SELECT pid FROM leads WHERE contact_pid = $1))) \
+         /* whatever deleted_at holds: a merged duplicate and a lead are the subject's */",
+        contact,
+    )
+    .execute(db)
+    .await?
+    .rows_affected())
 }
 
 /// The tag routes.

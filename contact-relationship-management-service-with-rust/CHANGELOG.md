@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — last helpers on sqlx; `db::Bridge` removed (CRM-T216, CRM-D24)
+
+- `employments`, the tag, attachment and custom-field helpers, templates, `put_team`,
+  `subject_attrs`, `rates_involving`, `audit_logs`, `event_outbox`, the insight-audit middleware,
+  the MCP audit and `task seed` on `sqlx`.
+- Removed: `db::Bridge`, `Audit::record`, `Audit::record_read`, `streaming::emit_on`,
+  `Page::apply` and the `records::find_*` finders.
+- The seed runs in one transaction; `seed.rs` joins the sealed-writer census.
+
 ### Changed — workflow engine and consents on sqlx (CRM-T215, CRM-D24)
 
 - `workflows`, `consents`, `consent_profiles`, `nurture::enrol_in`, the organization's readers

@@ -6,10 +6,7 @@
 //! relevant — which is what the owner-scoped query filters on).
 
 use axa::prelude::*;
-use sea_orm::{
-    ConnectionTrait, DatabaseBackend, QueryOrder, QuerySelect, Statement, TransactionTrait,
-};
-use sqlx::PgConnection;
+use sqlx::{PgConnection, PgPool};
 
 use crate::rules::audit_chain;
 use uuid::Uuid;
@@ -19,70 +16,10 @@ pub use super::_entities::audit_logs::{self, ActiveModel, Entity, Model};
 impl ActiveModelBehavior for super::_entities::audit_logs::ActiveModel {}
 
 impl Model {
-    /// Record one audit entry. `actor` is the caller's `sub` (user
-    /// `pid`) when a verified token was presented, else `None`.
-    ///
-    /// Generic over [`ConnectionTrait`] so it runs on the handler's
-    /// `&DatabaseTransaction` — the audit row commits **with** the
-    /// mutation it records (family invariant 8), never separately.
-    ///
-    /// # Errors
-    ///
-    /// When the insert fails.
-    pub async fn record<C: ConnectionTrait>(
-        db: &C,
-        entity: &str,
-        entity_pid: Uuid,
-        action: &str,
-        actor: Option<&str>,
-        snapshot: Option<serde_json::Value>,
-    ) -> ModelResult<Self> {
-        // Serialize chain writers: the previous hash must be read and the new
-        // row appended without another writer slipping in between. The lock
-        // is released when the surrounding transaction ends.
-        let backend = db.get_database_backend();
-        if backend == DatabaseBackend::Postgres {
-            db.execute_raw(Statement::from_string(
-                backend,
-                "SELECT pg_advisory_xact_lock(7203197)".to_string(),
-            ))
-            .await?;
-        }
-        let prev_hash = audit_logs::Entity::find()
-            .order_by_desc(audit_logs::Column::Id)
-            .one(db)
-            .await?
-            .and_then(|row| row.hash)
-            .unwrap_or_default();
-        let entry = audit_logs::ActiveModel {
-            entity: ActiveValue::set(entity.to_string()),
-            entity_pid: ActiveValue::set(entity_pid),
-            action: ActiveValue::set(action.to_string()),
-            actor: ActiveValue::set(actor.map(ToString::to_string)),
-            snapshot: ActiveValue::set(snapshot),
-            prev_hash: ActiveValue::set(Some(prev_hash)),
-            ..Default::default()
-        }
-        .insert(db)
-        .await?;
-        // Hash the row as the database stored it (jsonb normalises the
-        // snapshot), so the verifier recomputes the identical bytes.
-        let chain_hash = chain_hash_of(&entry);
-        db.execute_raw(Statement::from_sql_and_values(
-            backend,
-            "UPDATE audit_logs SET hash = $1 WHERE id = $2",
-            [chain_hash.clone().into(), entry.id.into()],
-        ))
-        .await?;
-        Ok(Self {
-            hash: Some(chain_hash),
-            ..entry
-        })
-    }
-
-    /// [`Self::record`] for a handler on `sqlx` (CRM-D24). It takes a connection, never the pool,
-    /// so an audit row cannot commit apart from its mutation. Both versions take the same lock, so
-    /// they can write one chain side by side.
+    /// Record one audit entry in the caller's transaction. `actor` is the caller's `sub` when a
+    /// verified token was presented, else `None`. It takes a connection, never the pool, so an
+    /// audit row cannot commit apart from its mutation (family invariant 8). Chain writers are
+    /// serialized by an advisory lock held until the transaction ends.
     ///
     /// # Errors
     ///
@@ -134,31 +71,10 @@ impl Model {
         })
     }
 
-    /// Record a **read** of personal data (CRM-T40) in its own short
-    /// transaction, so the chain lock is taken and released around just the
-    /// audit row. A single-record read passes that record's pid; a list read
-    /// passes [`Uuid::nil`] and a summary snapshot (count, never the rows).
-    ///
-    /// # Errors
-    ///
-    /// When the transaction or insert fails; callers should fail the read,
-    /// because an unaudited disclosure is worse than an error.
-    pub async fn record_read(
-        db: &DatabaseConnection,
-        entity: &str,
-        entity_pid: Uuid,
-        action: &str,
-        actor: Option<&str>,
-        snapshot: Option<serde_json::Value>,
-    ) -> ModelResult<Self> {
-        let txn = db.begin().await?;
-        let row = Self::record(&txn, entity, entity_pid, action, actor, snapshot).await?;
-        txn.commit().await?;
-        Ok(row)
-    }
-
-    /// [`Self::record_read`] on `sqlx` (CRM-D24): the read's audit row in a transaction of its
-    /// own, on the shared pool.
+    /// Record a **read** of personal data (CRM-T40) in its own short transaction, so the chain
+    /// lock is taken and released around just the audit row. A single-record read passes that
+    /// record's pid; a list read passes [`Uuid::nil`] and a summary snapshot (count, never the
+    /// rows).
     ///
     /// # Errors
     ///
@@ -182,13 +98,14 @@ impl Model {
     /// # Errors
     ///
     /// When the query fails.
-    pub async fn recent(db: &DatabaseConnection, limit: u64) -> ModelResult<Vec<Self>> {
-        let rows = audit_logs::Entity::find()
-            .order_by_desc(audit_logs::Column::Id)
-            .limit(limit)
-            .all(db)
-            .await?;
-        Ok(rows)
+    pub async fn recent(pool: &PgPool, limit: i64) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Self,
+            "SELECT created_at, updated_at, id, entity, entity_pid, action, actor, snapshot, prev_hash, hash FROM audit_logs ORDER BY id DESC LIMIT $1",
+            limit,
+        )
+        .fetch_all(pool)
+        .await
     }
 
     /// Audit entries for one record, most-recent first.
@@ -196,36 +113,38 @@ impl Model {
     /// # Errors
     ///
     /// When the query fails.
-    pub async fn for_entity(db: &DatabaseConnection, entity_pid: Uuid) -> ModelResult<Vec<Self>> {
-        let rows = audit_logs::Entity::find()
-            .filter(audit_logs::Column::EntityPid.eq(entity_pid))
-            .order_by_desc(audit_logs::Column::Id)
-            .all(db)
-            .await?;
-        Ok(rows)
+    pub async fn for_entity(pool: &PgPool, entity_pid: Uuid) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Self,
+            "SELECT created_at, updated_at, id, entity, entity_pid, action, actor, snapshot, prev_hash, hash FROM audit_logs WHERE entity_pid = $1 ORDER BY id DESC",
+            entity_pid,
+        )
+        .fetch_all(pool)
+        .await
     }
 
-    /// The owner-scoped query: entries since `since` whose
-    /// snapshot names this `owner`, most-recent first, capped at
-    /// `limit`. The filter is applied over the snapshot JSON in Rust
-    /// (cross-backend; the candidate set is already time-bounded).
+    /// The owner-scoped query: entries since `since` whose snapshot names this `owner`,
+    /// most-recent first, capped at `limit`. The filter is applied over the snapshot JSON in Rust
+    /// (the candidate set is already time-bounded).
     ///
     /// # Errors
     ///
     /// When the query fails.
     pub async fn for_owner_since(
-        db: &DatabaseConnection,
+        pool: &PgPool,
         owner: &str,
         since: chrono::DateTime<chrono::FixedOffset>,
-        limit: u64,
-    ) -> ModelResult<Vec<Self>> {
-        let rows = audit_logs::Entity::find()
-            .filter(audit_logs::Column::CreatedAt.gte(since))
-            .order_by_desc(audit_logs::Column::Id)
-            .limit(limit.saturating_mul(10)) // headroom before the in-app filter
-            .all(db)
-            .await?;
-        let rows = rows
+        limit: i64,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        let rows = sqlx::query_as!(
+            Self,
+            "SELECT created_at, updated_at, id, entity, entity_pid, action, actor, snapshot, prev_hash, hash FROM audit_logs WHERE created_at >= $1 ORDER BY id DESC LIMIT $2",
+            since,
+            limit.saturating_mul(10), // headroom before the in-app filter
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(rows
             .into_iter()
             .filter(|row| {
                 row.snapshot
@@ -235,8 +154,7 @@ impl Model {
                     == Some(owner)
             })
             .take(usize::try_from(limit).unwrap_or(usize::MAX))
-            .collect();
-        Ok(rows)
+            .collect())
     }
 }
 
@@ -264,10 +182,9 @@ pub fn chain_hash_of(row: &Model) -> String {
 /// # Errors
 ///
 /// When the query fails.
-pub async fn verify_chain(db: &DatabaseConnection) -> ModelResult<audit_chain::Verdict> {
-    let rows = audit_logs::Entity::find()
-        .order_by_asc(audit_logs::Column::Id)
-        .all(db)
+pub async fn verify_chain(pool: &PgPool) -> Result<audit_chain::Verdict, sqlx::Error> {
+    let rows = sqlx::query_as!(Model, "SELECT created_at, updated_at, id, entity, entity_pid, action, actor, snapshot, prev_hash, hash FROM audit_logs ORDER BY id")
+        .fetch_all(pool)
         .await?;
     let prepared: Vec<(String, String, Option<String>)> = rows
         .iter()

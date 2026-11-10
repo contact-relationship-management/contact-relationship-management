@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO accounts (pid, organization_ref, owner_ref, display_name, tier, industry) VALUES ($1, $2, $3, $4, $5, 'technology')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "242592aed7a12d52f50ca59e0363ae3d0deea0c2a00205460ee49e580518d2e6"
+}
