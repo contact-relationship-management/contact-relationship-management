@@ -113,6 +113,14 @@ mod tests {
             "a form's new contact binds `EncryptedText`, which seals the channel",
         ),
         (
+            "src/controllers/marketing/campaign.rs",
+            "a campaign's touch activity binds `EncryptedText`, which seals the summary",
+        ),
+        (
+            "src/controllers/marketing/nurture.rs",
+            "a nurture step's touch activity binds `EncryptedText`, which seals the summary",
+        ),
+        (
             "src/controllers/privacy.rs",
             "erasure writes a plaintext tombstone on purpose",
         ),

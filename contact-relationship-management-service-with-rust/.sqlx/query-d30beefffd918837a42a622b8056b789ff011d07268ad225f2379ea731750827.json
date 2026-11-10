@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE email_deliveries SET state = $2, message_id = $3, error = $4, sent_at = CASE WHEN $5 THEN now() ELSE sent_at END, updated_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d30beefffd918837a42a622b8056b789ff011d07268ad225f2379ea731750827"
+}

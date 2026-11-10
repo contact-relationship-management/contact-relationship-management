@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE contacts SET marketing_consent = $2, consent_changed_at = $3 WHERE id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Varchar",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6f59cc9252f0bc6cf39493ce681fdcc8627f8cb824504f788f8d6360a6f2f862"
+}

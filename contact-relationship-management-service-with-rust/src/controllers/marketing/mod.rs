@@ -8,7 +8,7 @@
 //! flow); a periodic `bg_pg` worker is the roadmap seam.
 
 use axa::prelude::*;
-use sea_orm::{QueryOrder, QuerySelect, TransactionTrait};
+use sea_orm::QueryOrder;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -18,12 +18,11 @@ use crate::clients;
 use crate::mail;
 use crate::metrics::Metrics;
 use crate::models::_entities::{
-    accounts, activities, campaigns, consent_events, contacts, deals, nurture_enrollments,
-    nurture_sequences, nurture_steps, segments,
+    campaigns, consent_events, contacts, nurture_enrollments, nurture_sequences, nurture_steps,
+    segments,
 };
 use crate::models::audit_logs::Model as Audit;
 use crate::models::deliveries;
-use crate::models::records;
 use crate::rules::{analytics, lifecycle, segment as segment_rules, tokens};
 use crate::streaming;
 use crate::validation::Problems;

@@ -180,7 +180,6 @@ fn spawn_break_glass_refresh(ctx: &AppContext, poll: Option<redis_store::Shared>
 /// Drop expired idempotency keys and spent link tokens, every hour.
 fn spawn_token_sweep(ctx: &AppContext) {
     // CRM-T52: drop idempotency keys past their 24 hours.
-    let idem_db = ctx.db.clone();
     let pool = crate::db::pool(ctx).clone();
     tokio::spawn(async move {
         loop {
@@ -193,7 +192,7 @@ fn spawn_token_sweep(ctx: &AppContext) {
                 tracing::warn!(%error, "idempotency cleanup failed");
             }
             // CRM-R79: link tokens that expired or were spent more than a week ago.
-            if let Err(error) = crate::link_tokens::sweep(&idem_db).await {
+            if let Err(error) = crate::link_tokens::sweep(&pool).await {
                 tracing::warn!(%error, "link token cleanup failed");
             }
             tokio::time::sleep(std::time::Duration::from_hours(1)).await;

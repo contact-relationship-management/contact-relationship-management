@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — consent, segments, campaigns and nurture on sqlx (CRM-T211, 2026-11-10)
+
+- The marketing handlers, deliveries and link tokens run on `sqlx`. A segment's preview sample is
+  the first five matching contacts by creation order.
+
 ### Changed — imports and family bridges on sqlx (CRM-T210, 2026-11-10)
 
 - Lead, contact and account imports and the PPM and WPM bridges run on `sqlx`. Nothing a caller

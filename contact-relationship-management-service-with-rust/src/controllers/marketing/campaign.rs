@@ -1,16 +1,28 @@
 //! Campaigns: create, status, the send run and its worker, deliveries, suppression, funnel (CRM-R8).
 
 use super::{
-    ActiveModelTrait, ActiveValue, AppContext, Audit, BackgroundWorker, ColumnTrait, Deserialize,
-    EntityTrait, Error, MaybeAuthUser, PidRef, Problems, QueryFilter, QueryOrder, Response, Result,
-    State, StatusPayload, TransactionTrait, Uuid, activities, analytics, async_trait, campaigns,
-    clients, contacts, deals, debug_handler, deliveries, evaluate_segment, format, lifecycle, mail,
-    records, streaming, tokens, unprocessable,
+    AppContext, Audit, BackgroundWorker, Deserialize, Error, MaybeAuthUser, PidRef, Problems,
+    Response, Result, State, StatusPayload, Uuid, analytics, async_trait, campaigns, clients,
+    contacts, debug_handler, deliveries, evaluate_segment, format, lifecycle, mail, streaming,
+    tokens, unprocessable,
 };
+use sqlx::PgConnection;
+
 use crate::controllers::PidPath;
 use crate::controllers::templates;
+use crate::db::{self, Bridge};
 use crate::json::Json;
-use crate::models::live::FindLive;
+use crate::models::DateTimeWithTimeZone;
+use crate::models::encrypted::EncryptedText;
+use crate::models::rows;
+
+/// The live campaign `pid`, or `404`.
+pub(super) async fn find_campaign<'e>(
+    db: impl sqlx::PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<campaigns::Model> {
+    rows::campaign(db, pid).await?.ok_or(Error::NotFound)
+}
 
 /// `POST /api/campaigns` body.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -84,46 +96,41 @@ pub(super) async fn create_campaign(
         );
     }
     problems.finish()?;
+    let pool = db::pool(&ctx);
     if let Some(segment) = payload.segment_pid {
-        records::find_segment(&ctx.db, segment).await?;
+        rows::segment(pool, segment).await?.ok_or(Error::NotFound)?;
     }
     if let Some(template) = payload.template_pid
         && !templates::exists(&ctx.db, template).await?
     {
         return Err(unprocessable("template_pid is not an email template"));
     }
-    let txn = ctx.db.begin().await?;
-    let row = campaigns::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        kind: ActiveValue::set(payload.kind.clone()),
-        purpose: ActiveValue::set(
-            payload
-                .purpose
-                .clone()
-                .unwrap_or_else(|| tokens::DEFAULT_PURPOSE.to_string()),
-        ),
-        name: ActiveValue::set(payload.name.clone()),
-        status: ActiveValue::set("draft".to_string()),
-        cost_minor: ActiveValue::set(payload.cost_minor),
-        currency: ActiveValue::set(payload.currency.clone()),
-        segment_pid: ActiveValue::set(payload.segment_pid),
-        recipients: ActiveValue::set(0),
-        delivered: ActiveValue::set(0),
-        opened: ActiveValue::set(0),
-        clicked: ActiveValue::set(0),
-        unsubscribed: ActiveValue::set(0),
-        subject: ActiveValue::set(payload.subject.clone()),
-        body: ActiveValue::set(payload.body.clone()),
-        template_pid: ActiveValue::set(payload.template_pid),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let pid = Uuid::new_v4();
+    let mut txn = pool.begin().await?;
+    sqlx::query!(
+        "INSERT INTO campaigns (pid, kind, purpose, name, status, cost_minor, currency, \
+         segment_pid, recipients, delivered, opened, clicked, unsubscribed, subject, body, \
+         template_pid) VALUES ($1, $2, $3, $4, 'draft', $5, $6, $7, 0, 0, 0, 0, 0, $8, $9, $10)",
+        pid,
+        payload.kind,
+        payload
+            .purpose
+            .as_deref()
+            .unwrap_or(tokens::DEFAULT_PURPOSE),
+        payload.name,
+        payload.cost_minor,
+        payload.currency,
+        payload.segment_pid,
+        payload.subject,
+        payload.body,
+        payload.template_pid,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(&txn, "campaign", row.pid, "created", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "campaign", pid, "created", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
-        pid: row.pid.to_string(),
+        pid: pid.to_string(),
     })
 }
 
@@ -135,10 +142,7 @@ pub(super) async fn list_campaigns(
 ) -> Result<Response> {
     let masked =
         crate::auth::aggregate_masked(&caller).map_err(crate::controllers::record_rejection)?;
-    let rows = campaigns::Entity::find_live()
-        .order_by_asc(campaigns::Column::Id)
-        .all(&ctx.db)
-        .await?;
+    let rows = rows::campaigns(db::pool(&ctx)).await?;
     if masked {
         let masked_rows: Vec<serde_json::Value> = rows
             .iter()
@@ -160,7 +164,10 @@ pub(super) async fn campaign_status(
     let mut problems = Problems::new();
     problems.require_token("to", tokens::CAMPAIGN_STATUSES, &payload.to);
     problems.finish()?;
-    let campaign = records::find_campaign(&ctx.db, pid).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let campaign = rows::campaign_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     lifecycle::check(
         "campaign",
         lifecycle::CAMPAIGN,
@@ -168,19 +175,26 @@ pub(super) async fn campaign_status(
         &payload.to,
     )
     .map_err(|e| unprocessable(&e.to_string()))?;
-    let txn = ctx.db.begin().await?;
     let from = campaign.status.clone();
     let name = campaign.name.clone();
-    let mut active: campaigns::ActiveModel = campaign.into();
-    active.status = ActiveValue::set(payload.to.clone());
-    let row = active.update(&txn).await?;
+    let row = sqlx::query_as!(
+        campaigns::Model,
+        "UPDATE campaigns SET status = $2 WHERE id = $1 RETURNING created_at, updated_at, id, pid, kind, name, status, cost_minor, currency, \
+            segment_pid, recipients, delivered, opened, clicked, unsubscribed, deleted_at AS \
+            \"deleted_at: DateTimeWithTimeZone\", subject, body, purpose, template_pid, \
+            consent_jurisdiction",
+        campaign.id,
+        payload.to,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
     let kind = match payload.to.as_str() {
         "running" => "campaign_started",
         "completed" => "campaign_completed",
         _ => "campaign_status_changed",
     };
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "campaign",
         row.pid,
         kind,
@@ -188,8 +202,8 @@ pub(super) async fn campaign_status(
         Some(serde_json::json!({ "from": from })),
     )
     .await?;
-    streaming::emit_on(
-        &txn,
+    streaming::emit_in(
+        &mut txn,
         "campaign",
         kind,
         &row.pid.to_string(),
@@ -231,7 +245,7 @@ pub(super) fn with_unsubscribe(body: String, url: Option<&str>) -> String {
 /// has one (which carries its own unsubscribe link), else its own subject and body with the
 /// generic unsubscribe footer. `None` when the template is gone.
 async fn campaign_content(
-    db: &sea_orm::DatabaseConnection,
+    db: &impl sea_orm::ConnectionTrait,
     campaign: &campaigns::Model,
     contact: &contacts::Model,
     unsubscribe_url: Option<&str>,
@@ -250,14 +264,15 @@ async fn campaign_content(
 
 /// Why a consented contact is still not mailed this time, if so.
 pub(super) async fn skip_reason(
-    db: &sea_orm::DatabaseConnection,
+    conn: &mut PgConnection,
     contact_pid: Uuid,
     audience: &std::collections::HashSet<Uuid>,
 ) -> Result<Option<&'static str>> {
-    if deliveries::is_suppressed(db, contact_pid).await? {
+    if deliveries::is_suppressed(&mut *conn, contact_pid).await? {
         return Ok(Some("mailbox suppressed after a bounce or complaint"));
     }
-    if crate::models::employments::is_employee(db, contact_pid).await? {
+    // The employment helpers are still on `SeaORM`; `Bridge` runs this one on `conn`.
+    if crate::models::employments::is_employee(&Bridge::new(conn), contact_pid).await? {
         return Ok(Some("an employee, by the worker service: marketing paused"));
     }
     if !audience.contains(&contact_pid) {
@@ -276,20 +291,21 @@ pub(super) async fn deliver_one(
     audience: &std::collections::HashSet<Uuid>,
     outcome: &mut RunOutcome,
 ) -> Result<()> {
+    let pool = db::pool(ctx);
+    let mut conn = pool.acquire().await?;
     // The audience was listed a moment ago and consent can change at any time,
     // so read the contact again immediately before sending (CRM-D6).
-    let contact = contacts::Entity::find()
-        .filter(contacts::Column::Pid.eq(item.contact_pid))
-        .filter(contacts::Column::DeletedAt.is_null())
-        .one(&ctx.db)
-        .await?;
+    let contact = rows::contact(&mut *conn, item.contact_pid).await?;
     let granted = match &contact {
-        Some(c) => crate::consents::state_of(&ctx.db, c, &campaign.purpose).await? == "granted",
+        Some(c) => {
+            crate::consents::state_of(&Bridge::new(&mut conn), c, &campaign.purpose).await?
+                == "granted"
+        }
         None => false,
     };
     let Some(contact) = contact.filter(|_| granted) else {
         deliveries::settle(
-            &ctx.db,
+            &mut *conn,
             item.id,
             "suppressed",
             None,
@@ -299,15 +315,15 @@ pub(super) async fn deliver_one(
         outcome.suppressed += 1;
         return Ok(());
     };
-    if let Some(reason) = skip_reason(&ctx.db, contact.pid, audience).await? {
-        deliveries::settle(&ctx.db, item.id, "suppressed", None, Some(reason)).await?;
+    if let Some(reason) = skip_reason(&mut conn, contact.pid, audience).await? {
+        deliveries::settle(&mut *conn, item.id, "suppressed", None, Some(reason)).await?;
         outcome.suppressed += 1;
         return Ok(());
     }
     let (message_id, provider_id) = if sender.needs_address() {
         let Some(address) = clients::email_address(&contact.person_ref).await else {
             deliveries::settle(
-                &ctx.db,
+                &mut *conn,
                 item.id,
                 "no_address",
                 None,
@@ -320,10 +336,17 @@ pub(super) async fn deliver_one(
         let unsubscribe_url =
             crate::unsubscribe::current().map(|u| u.url(contact.pid, campaign.pid));
         let Some((subject, text)) =
-            campaign_content(&ctx.db, campaign, &contact, unsubscribe_url.as_deref()).await?
+            // On the connection this send holds: a second one from the pool would wait on it.
+            campaign_content(
+                &Bridge::new(&mut conn),
+                campaign,
+                &contact,
+                unsubscribe_url.as_deref(),
+            )
+            .await?
         else {
             let why = "permanent: the email template is gone";
-            deliveries::settle(&ctx.db, item.id, "failed", None, Some(why)).await?;
+            deliveries::settle(&mut *conn, item.id, "failed", None, Some(why)).await?;
             outcome.failed += 1;
             return Ok(());
         };
@@ -338,7 +361,7 @@ pub(super) async fn deliver_one(
         match sender.send(&message).await {
             Ok(provider_id) => (message.message_id, provider_id),
             Err(error) => {
-                deliveries::settle(&ctx.db, item.id, "failed", None, Some(&error.describe()))
+                deliveries::settle(&mut *conn, item.id, "failed", None, Some(&error.describe()))
                     .await?;
                 outcome.failed += 1;
                 return Ok(());
@@ -347,27 +370,24 @@ pub(super) async fn deliver_one(
     } else {
         (sender.new_message_id(), None)
     };
+    drop(conn);
     // The delivery row and the touch activity commit together.
-    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
-    let txn = ctx.db.begin().await?;
-    deliveries::settle(&txn, item.id, "sent", Some(&message_id), None).await?;
+    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let mut txn = pool.begin().await?;
+    deliveries::settle(&mut *txn, item.id, "sent", Some(&message_id), None).await?;
     if let Some(provider_id) = &provider_id {
-        deliveries::note_provider_id(&txn, item.id, provider_id).await?;
+        deliveries::note_provider_id(&mut *txn, item.id, provider_id).await?;
     }
-    activities::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        subject_kind: ActiveValue::set("contact".to_string()),
-        subject_pid: ActiveValue::set(contact.pid),
-        kind: ActiveValue::set("email".to_string()),
-        occurred_at: ActiveValue::set(now),
-        actor_ref: ActiveValue::set(None),
-        summary: ActiveValue::set(format!("Campaign touch: {}", campaign.name).into()),
-        due_on: ActiveValue::set(None),
-        done: ActiveValue::set(false),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    // `summary` is sealed: binding `EncryptedText` seals it (CRM-T41).
+    sqlx::query!(
+        "INSERT INTO activities (pid, subject_kind, subject_pid, kind, occurred_at, summary, \
+         done) VALUES ($1, 'contact', $2, 'email', $3, $4, false)",
+        Uuid::new_v4(),
+        contact.pid,
+        now,
+        EncryptedText(format!("Campaign touch: {}", campaign.name)) as _,
+    )
+    .execute(&mut *txn)
     .await?;
     txn.commit().await?;
     outcome.sent += 1;
@@ -413,7 +433,8 @@ pub(super) async fn run_campaign(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let campaign = records::find_campaign(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let campaign = find_campaign(pool, pid).await?;
     let sender = mail::current();
     check_runnable(&campaign, &sender)?;
     if !sender.needs_address() {
@@ -428,7 +449,7 @@ pub(super) async fn run_campaign(
         },
     )
     .await?;
-    let row = records::find_campaign(&ctx.db, campaign.pid).await?;
+    let row = find_campaign(pool, campaign.pid).await?;
     // Queued (still `scheduled`) or running: the work is not finished.
     let status = if row.status == "completed" {
         axum::http::StatusCode::OK
@@ -484,26 +505,34 @@ pub(super) async fn run_batch(
     campaign_pid: Uuid,
     actor: Option<&str>,
 ) -> Result<(campaigns::Model, u64)> {
-    let campaign = records::find_campaign(&ctx.db, campaign_pid).await?;
+    let pool = db::pool(ctx);
+    let campaign = find_campaign(pool, campaign_pid).await?;
     let sender = mail::current();
     check_runnable(&campaign, &sender)?;
     let segment_pid = campaign
         .segment_pid
         .ok_or_else(|| unprocessable("campaign has no segment"))?;
-    let segment = records::find_segment(&ctx.db, segment_pid).await?;
-    let audience = evaluate_segment(&ctx.db, &segment, &campaign.purpose).await?;
+    let segment = rows::segment(pool, segment_pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    let audience = evaluate_segment(pool, &segment, &campaign.purpose).await?;
     let audience_pids: std::collections::HashSet<Uuid> = audience.iter().map(|c| c.pid).collect();
     let pids: Vec<Uuid> = audience.iter().map(|c| c.pid).collect();
-    deliveries::ensure_rows(&ctx.db, campaign.pid, &pids).await?;
+    deliveries::ensure_rows(&mut *pool.acquire().await?, campaign.pid, &pids).await?;
 
     let campaign_pid = campaign.pid;
-    let name = campaign.name.clone();
-    let was_scheduled = campaign.status == "scheduled";
     let mut campaign = campaign;
-    if was_scheduled {
-        let mut active: campaigns::ActiveModel = campaign.clone().into();
-        active.status = ActiveValue::set("running".to_string());
-        campaign = active.update(&ctx.db).await?;
+    if campaign.status == "scheduled" {
+        campaign = sqlx::query_as!(
+            campaigns::Model,
+            "UPDATE campaigns SET status = 'running' WHERE id = $1 RETURNING created_at, updated_at, id, pid, kind, name, status, cost_minor, currency, \
+            segment_pid, recipients, delivered, opened, clicked, unsubscribed, deleted_at AS \
+            \"deleted_at: DateTimeWithTimeZone\", subject, body, purpose, template_pid, \
+            consent_jurisdiction",
+            campaign.id,
+        )
+        .fetch_one(pool)
+        .await?;
     }
 
     let limit = if sender.needs_address() {
@@ -511,19 +540,20 @@ pub(super) async fn run_batch(
     } else {
         i64::from(i32::MAX)
     };
-    let claimed = deliveries::claim(&ctx.db, campaign_pid, limit).await?;
+    let claimed = deliveries::claim(pool, campaign_pid, limit).await?;
     let mut outcome = RunOutcome::default();
     for item in claimed {
         deliver_one(ctx, &campaign, &sender, item, &audience_pids, &mut outcome).await?;
     }
 
-    let remaining = deliveries::retriable(&ctx.db, campaign_pid).await?;
-    let counts = deliveries::summary(&ctx.db, campaign_pid).await?;
+    let remaining = deliveries::retriable(pool, campaign_pid).await?;
+    let counts = deliveries::summary(pool, campaign_pid).await?;
     let sent_total = counts.get("sent").copied().unwrap_or(0);
     let recipients = i32::try_from(sent_total).unwrap_or(i32::MAX);
     if sender.needs_address() {
-        Audit::record(
-            &ctx.db,
+        let mut txn = pool.begin().await?;
+        Audit::record_on(
+            &mut txn,
             "campaign",
             campaign_pid,
             "campaign_run",
@@ -535,26 +565,51 @@ pub(super) async fn run_batch(
             })),
         )
         .await?;
+        txn.commit().await?;
     }
-    let txn = ctx.db.begin().await?;
-    let mut active: campaigns::ActiveModel = campaign.into();
-    active.recipients = ActiveValue::set(recipients);
-    if remaining == 0 {
-        active.status = ActiveValue::set("completed".to_string());
-        if sender.is_simulated() {
-            // Deterministic demo engagement: all delivered, 3/5 opened, 1/4
-            // clicked, none unsubscribed by the simulation. A real sender
-            // leaves these at zero: SMTP acceptance is not delivery, and the
-            // provider's delivery, open and click events are not wired yet.
-            active.delivered = ActiveValue::set(recipients);
-            active.opened = ActiveValue::set(recipients * 3 / 5);
-            active.clicked = ActiveValue::set(recipients / 4);
-        }
-    }
-    let row = active.update(&txn).await?;
-    if remaining == 0 {
-        Audit::record(
-            &txn,
+    let row = close_batch(pool, &campaign, recipients, remaining == 0, &sender, actor).await?;
+    Ok((row, outcome.sent))
+}
+
+/// The closing update of one batch: the recipients so far and, when nothing is left to send, the
+/// campaign completed, audited and announced.
+async fn close_batch(
+    pool: &sqlx::PgPool,
+    campaign: &campaigns::Model,
+    recipients: i32,
+    done: bool,
+    sender: &mail::Sender,
+    actor: Option<&str>,
+) -> Result<campaigns::Model> {
+    let (campaign_pid, name) = (campaign.pid, &campaign.name);
+    // Deterministic demo engagement: all delivered, 3/5 opened, 1/4 clicked, none unsubscribed by
+    // the simulation. A real sender leaves these alone: SMTP acceptance is not delivery, and the
+    // provider's events count them as they come, so they are never written back from this run.
+    let simulated = done && sender.is_simulated();
+    let mut txn = pool.begin().await?;
+    let row = sqlx::query_as!(
+        campaigns::Model,
+        "UPDATE campaigns SET recipients = $2, \
+            status = CASE WHEN $3 THEN 'completed' ELSE status END, \
+            delivered = CASE WHEN $4 THEN $2 ELSE delivered END, \
+            opened = CASE WHEN $4 THEN $5 ELSE opened END, \
+            clicked = CASE WHEN $4 THEN $6 ELSE clicked END \
+            WHERE id = $1 RETURNING created_at, updated_at, id, pid, kind, name, status, cost_minor, currency, \
+            segment_pid, recipients, delivered, opened, clicked, unsubscribed, deleted_at AS \
+            \"deleted_at: DateTimeWithTimeZone\", subject, body, purpose, template_pid, \
+            consent_jurisdiction",
+        campaign.id,
+        recipients,
+        done,
+        simulated,
+        recipients * 3 / 5,
+        recipients / 4,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    if done {
+        Audit::record_on(
+            &mut txn,
             "campaign",
             campaign_pid,
             "campaign_completed",
@@ -562,19 +617,19 @@ pub(super) async fn run_batch(
             Some(serde_json::json!({ "recipients": recipients })),
         )
         .await?;
-        streaming::emit_on(
-            &txn,
+        streaming::emit_in(
+            &mut txn,
             "campaign",
             "campaign_completed",
             &campaign_pid.to_string(),
-            &name,
+            name,
             actor,
             None,
         )
         .await?;
     }
     txn.commit().await?;
-    Ok((row, outcome.sent))
+    Ok(row)
 }
 
 /// `GET /api/campaigns/{pid}/deliveries`: the send, counted by state.
@@ -630,10 +685,11 @@ pub(super) async fn campaign_deliveries(
     State(ctx): State<AppContext>,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let campaign = records::find_campaign(&ctx.db, pid).await?;
-    let by_state = deliveries::summary(&ctx.db, campaign.pid).await?;
+    let pool = db::pool(&ctx);
+    let campaign = find_campaign(pool, pid).await?;
+    let by_state = deliveries::summary(pool, campaign.pid).await?;
     let total: i64 = by_state.values().sum();
-    let remaining = deliveries::retriable(&ctx.db, campaign.pid).await?;
+    let remaining = deliveries::retriable(pool, campaign.pid).await?;
     format::json(Deliveries {
         campaign_pid: campaign.pid,
         total,
@@ -650,10 +706,11 @@ pub(super) async fn email_suppression(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, pid).await?;
-    let found = deliveries::suppression(&ctx.db, contact.pid).await?;
-    Audit::record(
-        &ctx.db,
+    let pool = db::pool(&ctx);
+    let contact = rows::contact(pool, pid).await?.ok_or(Error::NotFound)?;
+    let found = deliveries::suppression(pool, contact.pid).await?;
+    Audit::record_read_on(
+        pool,
         "contact",
         contact.pid,
         "email_suppression_read",
@@ -678,14 +735,15 @@ pub(super) async fn clear_email_suppression(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, pid).await?;
-    let txn = ctx.db.begin().await?;
-    let removed = deliveries::unsuppress(&txn, contact.pid).await?;
+    let pool = db::pool(&ctx);
+    let contact = rows::contact(pool, pid).await?.ok_or(Error::NotFound)?;
+    let mut txn = pool.begin().await?;
+    let removed = deliveries::unsuppress(&mut *txn, contact.pid).await?;
     if !removed {
         return Err(Error::NotFound);
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "contact",
         contact.pid,
         "email_suppression_cleared",
@@ -728,18 +786,15 @@ pub(super) async fn campaign_funnel(
     problems.finish()?;
     let masked =
         crate::auth::aggregate_masked(&caller).map_err(crate::controllers::record_rejection)?;
-    let campaign = records::find_campaign(&ctx.db, pid).await?;
-    let lead_rows = crate::models::_entities::leads::Entity::find()
-        .filter(crate::models::_entities::leads::Column::CampaignPid.eq(campaign.pid))
-        .filter(crate::models::_entities::leads::Column::DeletedAt.is_null())
-        .all(&ctx.db)
-        .await?;
-    let attributed_deals = deals::Entity::find()
-        .filter(deals::Column::SourceCampaignPid.eq(campaign.pid))
-        .filter(deals::Column::DeletedAt.is_null())
-        .filter(deals::Column::Won.eq(true))
-        .all(&ctx.db)
-        .await?;
+    let pool = db::pool(&ctx);
+    let campaign = find_campaign(pool, pid).await?;
+    let leads = sqlx::query_scalar!(
+        "SELECT COUNT(*) AS \"n!\" FROM leads WHERE campaign_pid = $1 AND deleted_at IS NULL",
+        campaign.pid,
+    )
+    .fetch_one(pool)
+    .await?;
+    let attributed_deals = rows::won_deals_of_campaign(pool, campaign.pid).await?;
     // Won revenue in the campaign's currency only (per-currency
     // honesty: other currencies are listed, never summed in).
     let mut same_currency_revenue: i64 = 0;
@@ -831,7 +886,7 @@ pub(super) async fn campaign_funnel(
     }
     format::json(CampaignFunnel {
         campaign,
-        leads: lead_rows.len(),
+        leads: usize::try_from(leads).unwrap_or(0),
         won_deals: attributed_deals.len(),
         won_revenue_minor: (!masked).then_some(same_currency_revenue),
         won_revenue_other_currencies: (!masked).then_some(other_currency),

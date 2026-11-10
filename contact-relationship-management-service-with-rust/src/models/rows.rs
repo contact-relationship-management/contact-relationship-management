@@ -13,8 +13,9 @@ use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use crate::models::_entities::{
-    accounts, activities, articles, audit_logs, contacts, deals, forecast_snapshots, leads,
-    memberships, nurture_sequences, partnerships, pipeline_stages, sla_policies, tickets,
+    accounts, activities, articles, audit_logs, campaigns, contacts, deals, forecast_snapshots,
+    leads, memberships, nurture_sequences, nurture_steps, partnerships, pipeline_stages, segments,
+    sla_policies, tickets,
 };
 use crate::models::DateTimeWithTimeZone;
 
@@ -902,6 +903,159 @@ pub async fn newest_leads<'e>(
         DateTimeWithTimeZone\", board_position, owner_ref FROM leads WHERE deleted_at IS NULL ORDER \
         BY id DESC LIMIT $1",
         limit,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live campaign `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn campaign<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<campaigns::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        campaigns::Model,
+        "SELECT created_at, updated_at, id, pid, kind, name, status, cost_minor, currency, \
+        segment_pid, recipients, delivered, opened, clicked, unsubscribed, deleted_at AS \
+        \"deleted_at: DateTimeWithTimeZone\", subject, body, purpose, template_pid, \
+        consent_jurisdiction FROM campaigns WHERE deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live campaign `pid`, locked for this transaction.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn campaign_for_update<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<campaigns::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        campaigns::Model,
+        "SELECT created_at, updated_at, id, pid, kind, name, status, cost_minor, currency, \
+        segment_pid, recipients, delivered, opened, clicked, unsubscribed, deleted_at AS \
+        \"deleted_at: DateTimeWithTimeZone\", subject, body, purpose, template_pid, \
+        consent_jurisdiction FROM campaigns WHERE deleted_at IS NULL AND pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// Every live campaign.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn campaigns<'e>(db: impl PgExecutor<'e>) -> Result<Vec<campaigns::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        campaigns::Model,
+        "SELECT created_at, updated_at, id, pid, kind, name, status, cost_minor, currency, \
+        segment_pid, recipients, delivered, opened, clicked, unsubscribed, deleted_at AS \
+        \"deleted_at: DateTimeWithTimeZone\", subject, body, purpose, template_pid, \
+        consent_jurisdiction FROM campaigns WHERE deleted_at IS NULL ORDER BY id",
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live segment `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn segment<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<segments::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        segments::Model,
+        "SELECT created_at, updated_at, id, pid, name, filter, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\" FROM segments WHERE deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// Every live segment.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn segments<'e>(db: impl PgExecutor<'e>) -> Result<Vec<segments::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        segments::Model,
+        "SELECT created_at, updated_at, id, pid, name, filter, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\" FROM segments WHERE deleted_at IS NULL ORDER BY id",
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live won deals attributed to one campaign.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn won_deals_of_campaign<'e>(
+    db: impl PgExecutor<'e>,
+    campaign: Uuid,
+) -> Result<Vec<deals::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        deals::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+        pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+        source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at FROM deals WHERE deleted_at \
+        IS NULL AND source_campaign_pid = $1 AND won ORDER BY id",
+        campaign,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every live nurture sequence.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn sequences<'e>(
+    db: impl PgExecutor<'e>,
+) -> Result<Vec<nurture_sequences::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        nurture_sequences::Model,
+        "SELECT created_at, updated_at, id, pid, name, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", purpose, consent_jurisdiction FROM nurture_sequences WHERE deleted_at \
+        IS NULL ORDER BY id",
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live steps of one nurture sequence, in order.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn steps_of<'e>(
+    db: impl PgExecutor<'e>,
+    sequence: Uuid,
+) -> Result<Vec<nurture_steps::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        nurture_steps::Model,
+        "SELECT created_at, updated_at, id, pid, sequence_pid, position, delay_hours, template_ref, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", subject, body, template_pid FROM \
+        nurture_steps WHERE deleted_at IS NULL AND sequence_pid = $1 ORDER BY position, id",
+        sequence,
     )
     .fetch_all(db)
     .await

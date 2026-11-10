@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT created_at, updated_at, id, pid, sequence_pid, contact_pid, current_step, next_due_at AS \"next_due_at: DateTimeWithTimeZone\", status, deleted_at AS \"deleted_at: DateTimeWithTimeZone\" FROM nurture_enrollments WHERE pid = $1 AND status = 'active' AND deleted_at IS NULL FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "sequence_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "sequence_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "contact_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "contact_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "current_step",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "current_step"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "next_due_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "next_due_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "deleted_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "dde52d251ce7bcd21722d927fdae5e0bf3035b361b8a2216d745c4cb75758a6c"
+}

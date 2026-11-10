@@ -1,16 +1,20 @@
 //! Nurture sequences: create, enrol, and the idempotent advance sweep (CRM-R9, CRM-D8).
 
 use super::{
-    ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait,
-    MaybeAuthUser, Metrics, PidRef, Problems, QueryFilter, QueryOrder, QuerySelect, Response,
-    Result, State, TransactionTrait, Uuid, activities, clients, contacts, debug_handler,
-    deliveries, format, mail, nurture_enrollments, nurture_sequences, nurture_steps, records,
-    streaming, tokens, unprocessable, with_unsubscribe,
+    ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait, Error,
+    MaybeAuthUser, Metrics, PidRef, Problems, QueryFilter, QueryOrder, Response, Result, State,
+    Uuid, clients, contacts, debug_handler, deliveries, format, mail, nurture_enrollments,
+    nurture_sequences, nurture_steps, streaming, tokens, unprocessable, with_unsubscribe,
 };
+use sqlx::PgConnection;
+
 use crate::controllers::PidPath;
 use crate::controllers::templates;
+use crate::db::{self, Bridge};
 use crate::json::Json;
-use crate::models::live::FindLive;
+use crate::models::DateTimeWithTimeZone;
+use crate::models::encrypted::EncryptedText;
+use crate::models::rows;
 
 /// `POST /api/nurture-sequences` body.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -94,45 +98,44 @@ pub(super) async fn create_sequence(
             ));
         }
     }
-    let txn = ctx.db.begin().await?;
-    let sequence = nurture_sequences::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        name: ActiveValue::set(payload.name.clone()),
-        purpose: ActiveValue::set(
-            payload
-                .purpose
-                .clone()
-                .unwrap_or_else(|| tokens::DEFAULT_PURPOSE.to_string()),
-        ),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let sequence = Uuid::new_v4();
+    let mut txn = db::pool(&ctx).begin().await?;
+    sqlx::query!(
+        "INSERT INTO nurture_sequences (pid, name, purpose) VALUES ($1, $2, $3)",
+        sequence,
+        payload.name,
+        payload
+            .purpose
+            .as_deref()
+            .unwrap_or(tokens::DEFAULT_PURPOSE),
+    )
+    .execute(&mut *txn)
     .await?;
     for (position, step) in payload.steps.iter().enumerate() {
-        nurture_steps::ActiveModel {
-            pid: ActiveValue::set(Uuid::new_v4()),
-            sequence_pid: ActiveValue::set(sequence.pid),
-            position: ActiveValue::set(i32::try_from(position).unwrap_or(i32::MAX)),
-            delay_hours: ActiveValue::set(step.delay_hours),
-            template_ref: ActiveValue::set(if step.template_ref.trim().is_empty() {
-                step.template_pid.map(|p| p.to_string()).unwrap_or_default()
-            } else {
-                step.template_ref.clone()
-            }),
-            subject: ActiveValue::set(step.subject.clone()),
-            body: ActiveValue::set(step.body.clone()),
-            template_pid: ActiveValue::set(step.template_pid),
-            deleted_at: ActiveValue::set(None),
-            ..Default::default()
-        }
-        .insert(&txn)
+        let template_ref = if step.template_ref.trim().is_empty() {
+            step.template_pid.map(|p| p.to_string()).unwrap_or_default()
+        } else {
+            step.template_ref.clone()
+        };
+        sqlx::query!(
+            "INSERT INTO nurture_steps (pid, sequence_pid, position, delay_hours, template_ref, \
+             subject, body, template_pid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+            Uuid::new_v4(),
+            sequence,
+            i32::try_from(position).unwrap_or(i32::MAX),
+            step.delay_hours,
+            template_ref,
+            step.subject,
+            step.body,
+            step.template_pid,
+        )
+        .execute(&mut *txn)
         .await?;
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "nurture_sequence",
-        sequence.pid,
+        sequence,
         "created",
         caller.actor(),
         None,
@@ -140,7 +143,7 @@ pub(super) async fn create_sequence(
     .await?;
     txn.commit().await?;
     format::json(PidRef {
-        pid: sequence.pid.to_string(),
+        pid: sequence.to_string(),
     })
 }
 
@@ -153,18 +156,30 @@ pub(super) async fn enroll(
     PidPath(pid): PidPath,
     Json(payload): Json<EnrollPayload>,
 ) -> Result<Response> {
-    let sequence = records::find_sequence(&ctx.db, pid).await?;
-    let contact = records::find_contact(&ctx.db, payload.contact_pid).await?;
-    if crate::consents::state_of(&ctx.db, &contact, &sequence.purpose).await? != "granted" {
+    let pool = db::pool(&ctx);
+    let sequence = rows::sequence(pool, pid).await?.ok_or(Error::NotFound)?;
+    let contact = rows::contact(pool, payload.contact_pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    let mut txn = pool.begin().await?;
+    // The consent helpers and `enrol_in`, which the workflow engine shares, are on
+    // `ConnectionTrait`; `Bridge` runs them in this transaction.
+    if crate::consents::state_of(&Bridge::new(&mut txn), &contact, &sequence.purpose).await?
+        != "granted"
+    {
         return Err(unprocessable(&format!(
             "contact has not granted {} consent",
             sequence.purpose
         )));
     }
-    let txn = ctx.db.begin().await?;
-    let pid = enrol_in(&txn, &sequence, contact.pid, caller.actor())
-        .await?
-        .ok_or_else(|| unprocessable("sequence has no steps"))?;
+    let pid = enrol_in(
+        &Bridge::new(&mut txn),
+        &sequence,
+        contact.pid,
+        caller.actor(),
+    )
+    .await?
+    .ok_or_else(|| unprocessable("sequence has no steps"))?;
     txn.commit().await?;
     format::json(PidRef {
         pid: pid.to_string(),
@@ -221,7 +236,7 @@ pub(super) enum StepSend {
 /// transaction rather than a second connection: the pool can be a single
 /// connection, and holding one while waiting for another would stall.
 pub(super) async fn send_step(
-    txn: &sea_orm::DatabaseTransaction,
+    txn: &mut PgConnection,
     sender: &mail::Sender,
     contact: &contacts::Model,
     step: &nurture_steps::Model,
@@ -230,21 +245,42 @@ pub(super) async fn send_step(
     if let (true, Some(id)) = (state == "sent", message_id) {
         return Ok(StepSend::Sent(id));
     }
-    if deliveries::is_suppressed(txn, contact.pid).await? {
-        deliveries::settle(txn, row_id, "suppressed", None, Some("mailbox suppressed")).await?;
+    if deliveries::is_suppressed(&mut *txn, contact.pid).await? {
+        deliveries::settle(
+            &mut *txn,
+            row_id,
+            "suppressed",
+            None,
+            Some("mailbox suppressed"),
+        )
+        .await?;
         return Ok(StepSend::Exit);
     }
     let Some(address) = clients::email_address(&contact.person_ref).await else {
-        deliveries::settle(txn, row_id, "no_address", None, Some("no address on file")).await?;
+        deliveries::settle(
+            &mut *txn,
+            row_id,
+            "no_address",
+            None,
+            Some("no address on file"),
+        )
+        .await?;
         return Ok(StepSend::Retry("no address"));
     };
     // The unsubscribe token names the step where a campaign would be named.
     let unsubscribe_url = crate::unsubscribe::current().map(|u| u.url(contact.pid, step.pid));
     let content = if let Some(template) = step.template_pid {
-        let made = templates::content_for(txn, template, contact, unsubscribe_url.as_deref());
-        let Some(content) = made.await? else {
+        // The templates' loader takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
+        let made = templates::content_for(
+            &Bridge::new(txn),
+            template,
+            contact,
+            unsubscribe_url.as_deref(),
+        )
+        .await?;
+        let Some(content) = made else {
             let why = "permanent: the email template is gone";
-            deliveries::settle(txn, row_id, "failed", None, Some(why)).await?;
+            deliveries::settle(&mut *txn, row_id, "failed", None, Some(why)).await?;
             return Ok(StepSend::Exit);
         };
         content
@@ -257,7 +293,7 @@ pub(super) async fn send_step(
         )
     } else {
         deliveries::settle(
-            txn,
+            &mut *txn,
             row_id,
             "failed",
             None,
@@ -276,14 +312,14 @@ pub(super) async fn send_step(
     };
     match sender.send(&message).await {
         Ok(provider_id) => {
-            deliveries::settle(txn, row_id, "sent", Some(&message.message_id), None).await?;
+            deliveries::settle(&mut *txn, row_id, "sent", Some(&message.message_id), None).await?;
             if let Some(provider_id) = provider_id {
-                deliveries::note_provider_id(txn, row_id, &provider_id).await?;
+                deliveries::note_provider_id(&mut *txn, row_id, &provider_id).await?;
             }
             Ok(StepSend::Sent(message.message_id))
         }
         Err(error) => {
-            deliveries::settle(txn, row_id, "failed", None, Some(&error.describe())).await?;
+            deliveries::settle(&mut *txn, row_id, "failed", None, Some(&error.describe())).await?;
             if matches!(error, mail::SendError::Permanent(_)) {
                 Ok(StepSend::Exit)
             } else {
@@ -293,63 +329,59 @@ pub(super) async fn send_step(
     }
 }
 
-/// The touch activity for a nurture step that went out.
+/// The touch activity for a nurture step that went out. `summary` is sealed: binding
+/// `EncryptedText` seals it (CRM-T41).
 pub(super) async fn record_step_touch(
-    txn: &sea_orm::DatabaseTransaction,
+    txn: &mut PgConnection,
     contact_pid: Uuid,
     step: &nurture_steps::Model,
-    now: chrono::DateTime<chrono::FixedOffset>,
+    now: DateTimeWithTimeZone,
 ) -> Result<()> {
-    activities::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        subject_kind: ActiveValue::set("contact".to_string()),
-        subject_pid: ActiveValue::set(contact_pid),
-        kind: ActiveValue::set("email".to_string()),
-        occurred_at: ActiveValue::set(now),
-        actor_ref: ActiveValue::set(None),
-        summary: ActiveValue::set(
-            format!("Nurture step {} ({})", step.position, step.template_ref).into(),
-        ),
-        due_on: ActiveValue::set(None),
-        done: ActiveValue::set(false),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(txn)
+    sqlx::query!(
+        "INSERT INTO activities (pid, subject_kind, subject_pid, kind, occurred_at, summary, \
+         done) VALUES ($1, 'contact', $2, 'email', $3, $4, false)",
+        Uuid::new_v4(),
+        contact_pid,
+        now,
+        EncryptedText(format!(
+            "Nurture step {} ({})",
+            step.position, step.template_ref
+        )) as _,
+    )
+    .execute(txn)
     .await?;
     Ok(())
 }
 
 /// End an enrolment early (consent withdrawn, mailbox suppressed, send refused).
 pub(super) async fn exit_enrollment(
-    row: nurture_enrollments::Model,
-    txn: &sea_orm::DatabaseTransaction,
+    row: &nurture_enrollments::Model,
+    txn: &mut PgConnection,
 ) -> Result<()> {
-    let mut active: nurture_enrollments::ActiveModel = row.into();
-    active.status = ActiveValue::set("exited".to_string());
-    active.next_due_at = ActiveValue::set(None);
-    active.update(txn).await?;
+    sqlx::query!(
+        "UPDATE nurture_enrollments SET status = 'exited', next_due_at = NULL \
+         WHERE id = $1 AND deleted_at IS NULL",
+        row.id,
+    )
+    .execute(txn)
+    .await?;
     Ok(())
 }
 
-/// Move an enrolment past the step just sent: to the next step (due after its
-/// delay) or to `completed`. Returns the update and whether it completed.
+/// Where an enrolment goes past the step just sent: the next step (due after its delay) or
+/// `completed`, as `(current_step, next_due_at, status)`; and whether it completed.
 pub(super) fn advance_enrollment(
-    row: nurture_enrollments::Model,
+    row: &nurture_enrollments::Model,
     steps: &[nurture_steps::Model],
-    now: chrono::DateTime<chrono::FixedOffset>,
-) -> (nurture_enrollments::ActiveModel, bool) {
+    now: DateTimeWithTimeZone,
+) -> ((i32, Option<DateTimeWithTimeZone>, &'static str), bool) {
     let next_index = row.current_step + 1;
-    let mut active: nurture_enrollments::ActiveModel = row.into();
-    active.current_step = ActiveValue::set(next_index);
-    if let Some(next_step) = steps.get(usize::try_from(next_index).unwrap_or(usize::MAX)) {
-        let next_due = now + chrono::Duration::hours(i64::from(next_step.delay_hours));
-        active.next_due_at = ActiveValue::set(Some(next_due));
-        (active, false)
-    } else {
-        active.status = ActiveValue::set("completed".to_string());
-        active.next_due_at = ActiveValue::set(None);
-        (active, true)
+    match steps.get(usize::try_from(next_index).unwrap_or(usize::MAX)) {
+        Some(next_step) => {
+            let next_due = now + chrono::Duration::hours(i64::from(next_step.delay_hours));
+            ((next_index, Some(next_due), "active"), false)
+        }
+        None => ((next_index, None, "completed"), true),
     }
 }
 
@@ -376,19 +408,23 @@ enum Gate {
 /// The send-time checks for a step of `sequence_pid` to `contact`: consent for the sequence's
 /// purpose, then employment.
 async fn send_gate(
-    txn: &sea_orm::DatabaseTransaction,
+    txn: &mut PgConnection,
     contact: &contacts::Model,
     sequence_pid: Uuid,
 ) -> Result<Gate> {
-    let purpose = nurture_sequences::Entity::find()
-        .filter(nurture_sequences::Column::Pid.eq(sequence_pid))
-        .one(txn)
-        .await?
-        .map_or_else(|| tokens::DEFAULT_PURPOSE.to_string(), |q| q.purpose);
-    if crate::consents::state_of(txn, contact, &purpose).await? != "granted" {
+    // A deleted sequence keeps its purpose for an enrolment still under way, as before.
+    let purpose = sqlx::query!(
+        "SELECT purpose, deleted_at FROM nurture_sequences WHERE pid = $1",
+        sequence_pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .map_or_else(|| tokens::DEFAULT_PURPOSE.to_string(), |q| q.purpose);
+    // The consent and employment helpers are still on `SeaORM`; `Bridge` runs them here.
+    if crate::consents::state_of(&Bridge::new(txn), contact, &purpose).await? != "granted" {
         return Ok(Gate::Exit);
     }
-    if crate::models::employments::is_employee(txn, contact.pid).await? {
+    if crate::models::employments::is_employee(&Bridge::new(txn), contact.pid).await? {
         return Ok(Gate::Hold);
     }
     Ok(Gate::Go)
@@ -405,105 +441,152 @@ pub(super) async fn advance_nurture(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
 ) -> Result<Response> {
-    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
-    let due = nurture_enrollments::Entity::find()
-        .filter(nurture_enrollments::Column::Status.eq("active"))
-        .filter(nurture_enrollments::Column::DeletedAt.is_null())
-        .filter(nurture_enrollments::Column::NextDueAt.lte(now))
-        .limit(500)
-        .all(&ctx.db)
-        .await?;
+    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let pool = db::pool(&ctx);
+    let due = sqlx::query_scalar!(
+        "SELECT pid FROM nurture_enrollments WHERE status = 'active' AND deleted_at IS NULL \
+         AND next_due_at <= $1 ORDER BY id LIMIT 500",
+        now,
+    )
+    .fetch_all(pool)
+    .await?;
     let sender = mail::current();
     let mut sent = 0_u64;
     let mut completed = 0_u64;
     let mut held = 0_u64;
     for enrollment in due {
-        let txn = ctx.db.begin().await?;
-        // Re-load + lock: the sweep is safe to run concurrently.
-        let Some(row) = nurture_enrollments::Entity::find()
-            .filter(nurture_enrollments::Column::Pid.eq(enrollment.pid))
-            .filter(nurture_enrollments::Column::Status.eq("active"))
-            .lock_exclusive()
-            .one(&txn)
-            .await?
-        else {
-            txn.commit().await?;
-            continue;
-        };
-        if row.next_due_at.is_none_or(|d| d > now) {
-            txn.commit().await?;
-            continue; // another sweep advanced it already
-        }
-        // Send-time consent re-check (CRM-D6).
-        let contact = records::find_contact(&txn, row.contact_pid).await?;
-        let gate = send_gate(&txn, &contact, row.sequence_pid).await?;
-        if !matches!(gate, Gate::Go) {
-            if matches!(gate, Gate::Exit) {
-                exit_enrollment(row, &txn).await?;
-            } else {
-                held += 1;
+        match advance_one(pool, &sender, &caller, enrollment, now).await? {
+            Step::Sent { finished } => {
+                sent += 1;
+                completed += u64::from(finished);
             }
-            txn.commit().await?;
-            continue;
+            Step::Completed => completed += 1,
+            Step::Held => held += 1,
+            Step::Skipped => {}
         }
-        let steps = nurture_steps::Entity::find()
-            .filter(nurture_steps::Column::SequencePid.eq(row.sequence_pid))
-            .filter(nurture_steps::Column::DeletedAt.is_null())
-            .order_by_asc(nurture_steps::Column::Position)
-            .all(&txn)
-            .await?;
-        let Some(step) = steps.get(usize::try_from(row.current_step).unwrap_or(usize::MAX)) else {
-            let mut active: nurture_enrollments::ActiveModel = row.into();
-            active.status = ActiveValue::set("completed".to_string());
-            active.next_due_at = ActiveValue::set(None);
-            active.update(&txn).await?;
-            txn.commit().await?;
-            completed += 1;
-            continue;
-        };
-        // The real sender mails the step first; the simulated one does not.
-        let message_id = if sender.needs_address() {
-            match send_step(&txn, &sender, &contact, step).await? {
-                StepSend::Sent(id) => Some(id),
-                StepSend::Retry(why) => {
-                    txn.commit().await?;
-                    tracing::warn!(enrolment = %row.pid, why, "nurture step not sent; retry next sweep");
-                    held += 1;
-                    continue;
-                }
-                StepSend::Exit => {
-                    exit_enrollment(row, &txn).await?;
-                    txn.commit().await?;
-                    continue;
-                }
-            }
-        } else {
-            None
-        };
-        // The touch activity + event.
-        record_step_touch(&txn, contact.pid, step, now).await?;
-        streaming::emit_on(
-            &txn,
-            "nurture_enrollment",
-            "nurture_step_sent",
-            &row.pid.to_string(),
-            &step.template_ref,
-            caller.actor(),
-            Some(serde_json::json!({ "step": step.position, "message_id": message_id })),
-        )
-        .await?;
-        let (active, finished) = advance_enrollment(row, &steps, now);
-        completed += u64::from(finished);
-        active.update(&txn).await?;
-        txn.commit().await?;
-        sent += 1;
-        Metrics::global().nurture_step_sent_total.inc();
     }
     format::json(NurtureSweep {
         sent,
         completed,
         held,
     })
+}
+
+/// What the sweep did with one due enrolment.
+enum Step {
+    /// The step went out; `finished` when it was the last.
+    Sent {
+        /// Whether the enrolment completed with it.
+        finished: bool,
+    },
+    /// No step was left, so the enrolment completed.
+    Completed,
+    /// The step waits: an employee, or a send to try again.
+    Held,
+    /// Nothing to count: another sweep had it, or the enrolment ended.
+    Skipped,
+}
+
+/// Advance one due enrolment in its own transaction, as [`advance_nurture`] describes.
+async fn advance_one(
+    pool: &sqlx::PgPool,
+    sender: &mail::Sender,
+    caller: &MaybeAuthUser,
+    enrollment: Uuid,
+    now: DateTimeWithTimeZone,
+) -> Result<Step> {
+    let mut txn = pool.begin().await?;
+    // Re-load + lock: the sweep is safe to run concurrently.
+    let Some(row) = sqlx::query_as!(
+        nurture_enrollments::Model,
+        "SELECT created_at, updated_at, id, pid, sequence_pid, contact_pid, current_step, next_due_at \
+        AS \"next_due_at: DateTimeWithTimeZone\", status, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\" FROM nurture_enrollments WHERE pid = $1 AND status = 'active' AND \
+        deleted_at IS NULL FOR UPDATE",
+        enrollment,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    else {
+        txn.commit().await?;
+        return Ok(Step::Skipped);
+    };
+    if row.next_due_at.is_none_or(|d| d > now) {
+        txn.commit().await?;
+        return Ok(Step::Skipped); // another sweep advanced it already
+    }
+    // Send-time consent re-check (CRM-D6).
+    let contact = rows::contact(&mut *txn, row.contact_pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    match send_gate(&mut txn, &contact, row.sequence_pid).await? {
+        Gate::Go => {}
+        Gate::Hold => {
+            txn.commit().await?;
+            return Ok(Step::Held);
+        }
+        Gate::Exit => {
+            exit_enrollment(&row, &mut txn).await?;
+            txn.commit().await?;
+            return Ok(Step::Skipped);
+        }
+    }
+    let steps = rows::steps_of(&mut *txn, row.sequence_pid).await?;
+    let Some(step) = steps.get(usize::try_from(row.current_step).unwrap_or(usize::MAX)) else {
+        sqlx::query!(
+            "UPDATE nurture_enrollments SET status = 'completed', next_due_at = NULL \
+             WHERE id = $1 AND deleted_at IS NULL",
+            row.id,
+        )
+        .execute(&mut *txn)
+        .await?;
+        txn.commit().await?;
+        return Ok(Step::Completed);
+    };
+    // The real sender mails the step first; the simulated one does not.
+    let message_id = if sender.needs_address() {
+        match send_step(&mut txn, sender, &contact, step).await? {
+            StepSend::Sent(id) => Some(id),
+            StepSend::Retry(why) => {
+                txn.commit().await?;
+                tracing::warn!(enrolment = %row.pid, why, "nurture step not sent; retry next sweep");
+                return Ok(Step::Held);
+            }
+            StepSend::Exit => {
+                exit_enrollment(&row, &mut txn).await?;
+                txn.commit().await?;
+                return Ok(Step::Skipped);
+            }
+        }
+    } else {
+        None
+    };
+    // The touch activity + event.
+    record_step_touch(&mut txn, contact.pid, step, now).await?;
+    streaming::emit_in(
+        &mut txn,
+        "nurture_enrollment",
+        "nurture_step_sent",
+        &row.pid.to_string(),
+        &step.template_ref,
+        caller.actor(),
+        Some(serde_json::json!({ "step": step.position, "message_id": message_id })),
+    )
+    .await?;
+    let ((current_step, next_due_at, status), finished) = advance_enrollment(&row, &steps, now);
+    sqlx::query!(
+        "UPDATE nurture_enrollments SET current_step = $2, next_due_at = $3, status = $4 \
+         WHERE id = $1 AND deleted_at IS NULL",
+        row.id,
+        current_step,
+        next_due_at,
+        status,
+    )
+    .execute(&mut *txn)
+    .await?;
+    txn.commit().await?;
+    Metrics::global().nurture_step_sent_total.inc();
+    Ok(Step::Sent { finished })
 }
 
 /// A nurture sequence with its steps and how many enrolments are active.
@@ -518,29 +601,22 @@ pub(crate) struct SequenceView {
 /// enrolment counts.
 #[debug_handler]
 pub(super) async fn list_sequences(State(ctx): State<AppContext>) -> Result<Response> {
-    use sea_orm::PaginatorTrait;
-    let rows = nurture_sequences::Entity::find_live()
-        .order_by_asc(nurture_sequences::Column::Id)
-        .all(&ctx.db)
-        .await?;
+    let pool = db::pool(&ctx);
+    let rows = rows::sequences(pool).await?;
     let mut out = Vec::with_capacity(rows.len());
     for sequence in rows {
-        let steps = nurture_steps::Entity::find()
-            .filter(nurture_steps::Column::SequencePid.eq(sequence.pid))
-            .filter(nurture_steps::Column::DeletedAt.is_null())
-            .order_by_asc(nurture_steps::Column::Position)
-            .all(&ctx.db)
-            .await?;
-        let active = nurture_enrollments::Entity::find()
-            .filter(nurture_enrollments::Column::SequencePid.eq(sequence.pid))
-            .filter(nurture_enrollments::Column::Status.eq("active"))
-            .filter(nurture_enrollments::Column::DeletedAt.is_null())
-            .count(&ctx.db)
-            .await?;
+        let steps = rows::steps_of(pool, sequence.pid).await?;
+        let active = sqlx::query_scalar!(
+            "SELECT COUNT(*) AS \"n!\" FROM nurture_enrollments WHERE sequence_pid = $1 \
+             AND status = 'active' AND deleted_at IS NULL",
+            sequence.pid,
+        )
+        .fetch_one(pool)
+        .await?;
         out.push(SequenceView {
             sequence,
             steps,
-            active_enrollments: active,
+            active_enrollments: u64::try_from(active).unwrap_or(0),
         });
     }
     format::json(out)

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO email_events (message_id, event) VALUES ($1, $2) ON CONFLICT (message_id, event) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a22252104449e88d12f433a1d4d6b93aaaace042ae14d512adaf4c570388f4f1"
+}

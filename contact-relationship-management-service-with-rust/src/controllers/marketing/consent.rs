@@ -1,13 +1,21 @@
 //! Consent: the send-path law (CRM-R6). Recording it, its history, and the shared checks.
 
 use super::{
-    ActiveModelTrait, ActiveValue, AppContext, Audit, ColumnTrait, Deserialize, EntityTrait,
-    MaybeAuthUser, Problems, QueryFilter, QueryOrder, Response, Result, State, TransactionTrait,
-    Uuid, accounts, consent_events, contacts, debug_handler, format, records, segment_rules,
-    streaming, tokens, unprocessable,
+    AppContext, Audit, Deserialize, Error, MaybeAuthUser, Problems, Response, Result, State, Uuid,
+    consent_events, contacts, debug_handler, format, segment_rules, streaming, tokens,
+    unprocessable,
 };
+use sqlx::{PgConnection, PgPool};
+
 use crate::controllers::PidPath;
+use crate::db::{self, Bridge};
 use crate::json::Json;
+use crate::models::rows;
+
+/// The live contact `pid`, or `404`.
+async fn find_contact(pool: &PgPool, pid: Uuid) -> Result<contacts::Model> {
+    rows::contact(pool, pid).await?.ok_or(Error::NotFound)
+}
 
 /// `POST /api/contacts/{pid}/consent` body.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -30,28 +38,30 @@ pub(crate) struct ConsentRequestPayload {
 }
 
 /// The contact's segment facts (consent for `purpose` + status + channel + tier).
-pub(super) async fn contact_facts<C: sea_orm::ConnectionTrait>(
-    db: &C,
+pub(super) async fn contact_facts(
+    conn: &mut PgConnection,
     contact: &contacts::Model,
     purpose: &str,
 ) -> Result<segment_rules::ContactFacts> {
-    let tier = if let Some(account_pid) = contact.account_pid {
-        accounts::Entity::find()
-            .filter(accounts::Column::Pid.eq(account_pid))
-            .filter(accounts::Column::DeletedAt.is_null())
-            .one(db)
+    let tier = match contact.account_pid {
+        Some(account_pid) => {
+            sqlx::query_scalar!(
+                "SELECT tier FROM accounts WHERE pid = $1 AND deleted_at IS NULL",
+                account_pid,
+            )
+            .fetch_optional(&mut *conn)
             .await?
-            .map(|a| a.tier)
-    } else {
-        None
+        }
+        None => None,
     };
+    // The consent, tag and employment helpers are still on `SeaORM`; `Bridge` runs them on `conn`.
     Ok(segment_rules::ContactFacts {
-        consent: crate::consents::state_of(db, contact, purpose).await?,
+        consent: crate::consents::state_of(&Bridge::new(conn), contact, purpose).await?,
         status: contact.status.clone(),
         channel: contact.preferred_channel.as_str().to_string(),
         account_tier: tier,
-        tags: crate::controllers::tags::names_of(db, contact.pid).await?,
-        employee: crate::models::employments::is_employee(db, contact.pid).await?,
+        tags: crate::controllers::tags::names_of(&Bridge::new(conn), contact.pid).await?,
+        employee: crate::models::employments::is_employee(&Bridge::new(conn), contact.pid).await?,
     })
 }
 
@@ -71,9 +81,10 @@ pub(super) async fn record_consent(
     problems.require_text("source", &payload.source);
     problems.token_opt("purpose", tokens::PURPOSES, payload.purpose.as_deref());
     problems.finish()?;
-    let contact = records::find_contact(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let contact = find_contact(pool, pid).await?;
     apply_consent(
-        &ctx.db,
+        pool,
         contact,
         payload
             .purpose
@@ -93,56 +104,70 @@ pub(super) async fn record_consent(
 /// public unsubscribe link, the confirmation link and the preference page, so
 /// all leave the same evidence.
 pub(super) async fn apply_consent(
-    db: &sea_orm::DatabaseConnection,
+    pool: &PgPool,
     contact: contacts::Model,
     purpose: &str,
     action: &str,
     source: &str,
     actor: Option<&str>,
 ) -> Result<()> {
-    let txn = db.begin().await?;
-    apply_consent_in(&txn, contact, purpose, action, source, actor).await?;
+    let mut txn = pool.begin().await?;
+    apply_consent_in(&mut txn, contact, purpose, action, source, actor).await?;
     txn.commit().await?;
     Ok(())
 }
 
 /// The body of [`apply_consent`], inside the caller's transaction. `action` is the
 /// new state: `granted`, `withdrawn` or `pending`.
-pub(crate) async fn apply_consent_in<C: sea_orm::ConnectionTrait>(
-    txn: &C,
+pub(crate) async fn apply_consent_in(
+    txn: &mut PgConnection,
     contact: contacts::Model,
     purpose: &str,
     action: &str,
     source: &str,
     actor: Option<&str>,
 ) -> Result<()> {
-    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
-    consent_events::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        contact_pid: ActiveValue::set(contact.pid),
-        action: ActiveValue::set(action.to_string()),
-        source: ActiveValue::set(source.to_string()),
-        purpose: ActiveValue::set(purpose.to_string()),
-        occurred_at: ActiveValue::set(now),
-        ..Default::default()
-    }
-    .insert(txn)
+    let now: crate::models::DateTimeWithTimeZone = crate::clock::now().into();
+    sqlx::query!(
+        "INSERT INTO consent_events (pid, contact_pid, action, source, purpose, occurred_at) \
+         VALUES ($1, $2, $3, $4, $5, $6)",
+        Uuid::new_v4(),
+        contact.pid,
+        action,
+        source,
+        purpose,
+        now,
+    )
+    .execute(&mut *txn)
     .await?;
     let contact_pid = contact.pid;
     if purpose == tokens::DEFAULT_PURPOSE {
-        let mut active: contacts::ActiveModel = contact.into();
-        active.marketing_consent = ActiveValue::set(action.to_string());
-        active.consent_changed_at = ActiveValue::set(Some(now));
-        active.update(txn).await?;
+        sqlx::query!(
+            "UPDATE contacts SET marketing_consent = $2, consent_changed_at = $3 \
+             WHERE id = $1 AND deleted_at IS NULL",
+            contact.id,
+            action,
+            now,
+        )
+        .execute(&mut *txn)
+        .await?;
     } else {
-        crate::consents::set_other(txn, contact_pid, purpose, action, now.to_utc()).await?;
+        // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
+        crate::consents::set_other(
+            &Bridge::new(txn),
+            contact_pid,
+            purpose,
+            action,
+            now.to_utc(),
+        )
+        .await?;
     }
     if action == "withdrawn" {
         // Exit every active enrolment in a sequence sent under this purpose.
-        crate::consents::exit_enrolments(txn, contact_pid, purpose).await?;
+        crate::consents::exit_enrolments(&Bridge::new(txn), contact_pid, purpose).await?;
     }
     let kind = format!("consent_{action}");
-    Audit::record(
+    Audit::record_on(
         txn,
         "contact",
         contact_pid,
@@ -151,7 +176,7 @@ pub(crate) async fn apply_consent_in<C: sea_orm::ConnectionTrait>(
         Some(serde_json::json!({ "source": source, "purpose": purpose })),
     )
     .await?;
-    streaming::emit_on(
+    streaming::emit_in(
         txn,
         "contact",
         &kind,
@@ -177,9 +202,11 @@ pub(super) async fn consent_purposes(
     State(ctx): State<AppContext>,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let contact = find_contact(pool, pid).await?;
+    let mut conn = pool.acquire().await?;
     format::json(ConsentPurposes {
-        purposes: crate::consents::all(&ctx.db, &contact).await?,
+        purposes: crate::consents::all(&Bridge::new(&mut conn), &contact).await?,
     })
 }
 
@@ -222,8 +249,13 @@ pub(super) async fn request_consent(
     problems.require_text("source", &payload.source);
     problems.finish()?;
     let signer = unsubscriber()?;
-    let contact = records::find_contact(&ctx.db, pid).await?;
-    if crate::consents::state_of(&ctx.db, &contact, &payload.purpose).await? == "granted" {
+    let pool = db::pool(&ctx);
+    let contact = find_contact(pool, pid).await?;
+    let state = {
+        let mut conn = pool.acquire().await?;
+        crate::consents::state_of(&Bridge::new(&mut conn), &contact, &payload.purpose).await?
+    };
+    if state == "granted" {
         return Err(unprocessable("that purpose is already granted"));
     }
     let index = tokens::PURPOSES
@@ -233,7 +265,7 @@ pub(super) async fn request_consent(
         .ok_or_else(|| unprocessable("unknown purpose"))?;
     let expires_at = crate::clock::now() + chrono::Duration::days(CONFIRM_DAYS);
     apply_consent(
-        &ctx.db,
+        pool,
         contact,
         &payload.purpose,
         "pending",
@@ -242,7 +274,7 @@ pub(super) async fn request_consent(
     )
     .await?;
     let token =
-        crate::link_tokens::issue(&ctx.db, crate::link_tokens::CONFIRM, pid, index, expires_at)
+        crate::link_tokens::issue(pool, crate::link_tokens::CONFIRM, pid, index, expires_at)
             .await?;
     format::json(ConsentRequested {
         purpose: payload.purpose,
@@ -268,10 +300,11 @@ pub(super) async fn preferences_link(
     PidPath(pid): PidPath,
 ) -> Result<Response> {
     let signer = unsubscriber()?;
-    let contact = records::find_contact(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let contact = find_contact(pool, pid).await?;
     let expires_at = crate::clock::now() + chrono::Duration::days(PREFERENCES_DAYS);
     let token = crate::link_tokens::issue(
-        &ctx.db,
+        pool,
         crate::link_tokens::PREFERENCES,
         contact.pid,
         0,
@@ -292,14 +325,18 @@ pub(super) async fn consent_history(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, pid).await?;
-    let rows = consent_events::Entity::find()
-        .filter(consent_events::Column::ContactPid.eq(contact.pid))
-        .order_by_asc(consent_events::Column::Id)
-        .all(&ctx.db)
-        .await?;
-    Audit::record(
-        &ctx.db,
+    let pool = db::pool(&ctx);
+    let contact = find_contact(pool, pid).await?;
+    let rows = sqlx::query_as!(
+        consent_events::Model,
+        "SELECT created_at, updated_at, id, pid, contact_pid, action, source, occurred_at, \
+         purpose, channel FROM consent_events WHERE contact_pid = $1 ORDER BY id",
+        contact.pid,
+    )
+    .fetch_all(pool)
+    .await?;
+    Audit::record_read_on(
+        pool,
         "contact",
         contact.pid,
         "consent_history_read",

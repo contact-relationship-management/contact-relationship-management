@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE campaigns SET clicked = clicked + 1 WHERE pid = $1 /* whatever deleted_at holds: the mail went out */",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f7adf0827899bee642b0b681b811306300ab1fa8e56e206ab47708684274ae36"
+}

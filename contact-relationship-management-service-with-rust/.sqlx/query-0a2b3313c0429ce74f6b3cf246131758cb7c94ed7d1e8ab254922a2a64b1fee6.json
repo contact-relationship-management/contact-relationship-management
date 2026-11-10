@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid FROM nurture_enrollments WHERE status = 'active' AND deleted_at IS NULL AND next_due_at <= $1 ORDER BY id LIMIT 500",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0a2b3313c0429ce74f6b3cf246131758cb7c94ed7d1e8ab254922a2a64b1fee6"
+}

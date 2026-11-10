@@ -293,7 +293,7 @@ async fn accept(
     let state = crate::consents::state_of(&Bridge::new(&mut txn), &contact, &form.purpose).await?;
     if state != "pending" && state != "granted" {
         apply_consent_in(
-            &Bridge::new(&mut txn),
+            &mut txn,
             contact.clone(),
             &form.purpose,
             "pending",
@@ -482,7 +482,7 @@ async fn send_confirmation(
         }
     };
     let token = match crate::link_tokens::issue(
-        &Bridge::new(&mut conn),
+        &mut *conn,
         crate::link_tokens::CONFIRM,
         contact.pid,
         index,

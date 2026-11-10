@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) AS \"n!\" FROM email_deliveries WHERE campaign_pid = $1 AND ( state IN ('pending', 'sending') OR (state = 'failed' AND attempts < $2 AND (error IS NULL OR error NOT LIKE 'permanent:%')))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a96b8ae3150e20d24674255ee469cf8b81973e4027634f38fa8697f2c33742c3"
+}

@@ -9,11 +9,13 @@
 //!
 //! The unsubscribe link is deliberately not one of these: it must work from any old message, so it
 //! is a signed, stateless token (see [`crate::unsubscribe`]).
+//!
+//! On `sqlx` since CRM-T211 (CRM-D24).
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use sha2::{Digest, Sha256};
+use sqlx::PgExecutor;
 use uuid::Uuid;
 
 /// A confirmation link (double opt-in); `detail` is the purpose's index.
@@ -64,45 +66,49 @@ fn well_formed(token: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = sea_orm::Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
 /// Make a token of `kind` for `contact`, valid until `expires_at`, and return it. This is the only
 /// time the token itself exists here.
 ///
 /// # Errors
 ///
 /// When the row cannot be written.
-pub async fn issue<C: ConnectionTrait>(
-    db: &C,
+pub async fn issue<'e>(
+    db: impl PgExecutor<'e>,
     kind: &str,
     contact: Uuid,
     detail: u8,
     expires_at: DateTime<Utc>,
-) -> Result<String, sea_orm::DbErr> {
+) -> Result<String, sqlx::Error> {
     let token = generate();
-    db.execute_raw(stmt(
+    sqlx::query!(
         "INSERT INTO link_tokens (token_hash, kind, contact_pid, detail, expires_at) \
          VALUES ($1, $2, $3, $4, $5)",
-        [
-            hash(&token).into(),
-            kind.into(),
-            contact.into(),
-            i16::from(detail).into(),
-            expires_at.into(),
-        ],
-    ))
+        hash(&token),
+        kind,
+        contact,
+        i16::from(detail),
+        expires_at,
+    )
+    .execute(db)
     .await?;
     Ok(token)
 }
 
-fn target(row: &sea_orm::QueryResult) -> Result<Target, sea_orm::DbErr> {
-    Ok(Target {
-        contact: row.try_get("", "contact_pid")?,
-        detail: u8::try_from(row.try_get::<i16>("", "detail")?).unwrap_or(0),
-        expires_at: row.try_get("", "expires_at")?,
-    })
+/// A token's row as stored.
+struct Stored {
+    contact_pid: Uuid,
+    detail: i16,
+    expires_at: DateTime<Utc>,
+}
+
+impl From<Stored> for Target {
+    fn from(row: Stored) -> Self {
+        Self {
+            contact: row.contact_pid,
+            detail: u8::try_from(row.detail).unwrap_or(0),
+            expires_at: row.expires_at,
+        }
+    }
 }
 
 /// What an unspent, unexpired token of `kind` names, **without spending it**: for the page a link
@@ -111,23 +117,24 @@ fn target(row: &sea_orm::QueryResult) -> Result<Target, sea_orm::DbErr> {
 /// # Errors
 ///
 /// When the database cannot be read.
-pub async fn peek<C: ConnectionTrait>(
-    db: &C,
+pub async fn peek<'e>(
+    db: impl PgExecutor<'e>,
     kind: &str,
     token: &str,
-) -> Result<Option<Target>, sea_orm::DbErr> {
+) -> Result<Option<Target>, sqlx::Error> {
     if !well_formed(token) {
         return Ok(None);
     }
-    db.query_one_raw(stmt(
+    Ok(sqlx::query_as!(
+        Stored,
         "SELECT contact_pid, detail, expires_at FROM link_tokens \
          WHERE token_hash = $1 AND kind = $2 AND used_at IS NULL AND expires_at > now()",
-        [hash(token).into(), kind.into()],
-    ))
+        hash(token),
+        kind,
+    )
+    .fetch_optional(db)
     .await?
-    .as_ref()
-    .map(target)
-    .transpose()
+    .map(Into::into))
 }
 
 /// Spend a token of `kind`: the one request that finds it unspent and unexpired gets what it names,
@@ -136,24 +143,25 @@ pub async fn peek<C: ConnectionTrait>(
 /// # Errors
 ///
 /// When the database cannot be written.
-pub async fn consume<C: ConnectionTrait>(
-    db: &C,
+pub async fn consume<'e>(
+    db: impl PgExecutor<'e>,
     kind: &str,
     token: &str,
-) -> Result<Option<Target>, sea_orm::DbErr> {
+) -> Result<Option<Target>, sqlx::Error> {
     if !well_formed(token) {
         return Ok(None);
     }
-    db.query_one_raw(stmt(
+    Ok(sqlx::query_as!(
+        Stored,
         "UPDATE link_tokens SET used_at = now() \
          WHERE token_hash = $1 AND kind = $2 AND used_at IS NULL AND expires_at > now() \
          RETURNING contact_pid, detail, expires_at",
-        [hash(token).into(), kind.into()],
-    ))
+        hash(token),
+        kind,
+    )
+    .fetch_optional(db)
     .await?
-    .as_ref()
-    .map(target)
-    .transpose()
+    .map(Into::into))
 }
 
 /// Delete the rows of tokens that expired or were spent more than [`KEEP_DAYS`] ago.
@@ -161,14 +169,15 @@ pub async fn consume<C: ConnectionTrait>(
 /// # Errors
 ///
 /// When the database cannot be written.
-pub async fn sweep<C: ConnectionTrait>(db: &C) -> Result<u64, sea_orm::DbErr> {
-    let done = db
-        .execute_raw(stmt(
-            "DELETE FROM link_tokens WHERE expires_at < now() - make_interval(days => $1::int) \
-             OR used_at < now() - make_interval(days => $1::int)",
-            [KEEP_DAYS.into()],
-        ))
-        .await?;
+pub async fn sweep<'e>(db: impl PgExecutor<'e>) -> Result<u64, sqlx::Error> {
+    let days = i32::try_from(KEEP_DAYS).unwrap_or(i32::MAX);
+    let done = sqlx::query!(
+        "DELETE FROM link_tokens WHERE expires_at < now() - make_interval(days => $1) \
+         OR used_at < now() - make_interval(days => $1)",
+        days,
+    )
+    .execute(db)
+    .await?;
     Ok(done.rows_affected())
 }
 

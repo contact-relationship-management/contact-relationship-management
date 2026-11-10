@@ -1,13 +1,15 @@
 //! Segments and their preview (CRM-R7).
 
 use super::{
-    ActiveModelTrait, ActiveValue, AppContext, Audit, DatabaseConnection, Deserialize,
-    MaybeAuthUser, PidRef, Problems, QueryOrder, Response, Result, State, TransactionTrait, Uuid,
-    contact_facts, contacts, debug_handler, format, records, segment_rules, segments, tokens,
+    AppContext, Audit, Deserialize, Error, MaybeAuthUser, PidRef, Problems, Response, Result,
+    State, Uuid, contact_facts, contacts, debug_handler, format, segment_rules, segments, tokens,
 };
+use sqlx::PgPool;
+
 use crate::controllers::PidPath;
+use crate::db;
 use crate::json::Json;
-use crate::models::live::FindLive;
+use crate::models::rows;
 
 /// `POST /api/segments` body.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -45,35 +47,36 @@ pub(super) async fn create_segment(
         Err(why) => problems.push_field("filter.tags", why),
     }
     problems.finish()?;
-    let txn = ctx.db.begin().await?;
-    let row = segments::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        name: ActiveValue::set(payload.name.clone()),
-        filter: ActiveValue::set(serde_json::to_value(&filter).unwrap_or_default()),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let pid = Uuid::new_v4();
+    let mut txn = db::pool(&ctx).begin().await?;
+    sqlx::query!(
+        "INSERT INTO segments (pid, name, filter) VALUES ($1, $2, $3)",
+        pid,
+        payload.name,
+        serde_json::to_value(&filter).unwrap_or_default(),
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(&txn, "segment", row.pid, "created", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "segment", pid, "created", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
-        pid: row.pid.to_string(),
+        pid: pid.to_string(),
     })
 }
 
 /// The contacts a segment matches right now, gated on consent for `purpose`.
 pub(super) async fn evaluate_segment(
-    db: &DatabaseConnection,
+    pool: &PgPool,
     segment: &segments::Model,
     purpose: &str,
 ) -> Result<Vec<contacts::Model>> {
     let filter: segment_rules::Filter =
         serde_json::from_value(segment.filter.clone()).unwrap_or_default();
-    let all = contacts::Entity::find_live().all(db).await?;
+    let all = rows::contacts(pool).await?;
+    let mut conn = pool.acquire().await?;
     let mut matched = Vec::new();
     for contact in all {
-        let facts = contact_facts(db, &contact, purpose).await?;
+        let facts = contact_facts(&mut conn, &contact, purpose).await?;
         if segment_rules::matches(&filter, &facts) {
             matched.push(contact);
         }
@@ -106,9 +109,10 @@ pub(super) async fn preview_segment(
     let mut problems = Problems::new();
     problems.token_opt("purpose", tokens::PURPOSES, query.purpose.as_deref());
     problems.finish()?;
-    let segment = records::find_segment(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let segment = rows::segment(pool, pid).await?.ok_or(Error::NotFound)?;
     let purpose = query.purpose.as_deref().unwrap_or(tokens::DEFAULT_PURPOSE);
-    let matched = evaluate_segment(&ctx.db, &segment, purpose).await?;
+    let matched = evaluate_segment(pool, &segment, purpose).await?;
     let sample: Vec<_> = matched
         .iter()
         .take(5)
@@ -123,9 +127,5 @@ pub(super) async fn preview_segment(
 /// `GET /api/segments`.
 #[debug_handler]
 pub(super) async fn list_segments(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = segments::Entity::find_live()
-        .order_by_asc(segments::Column::Id)
-        .all(&ctx.db)
-        .await?;
-    format::json(rows)
+    format::json(rows::segments(db::pool(&ctx)).await?)
 }

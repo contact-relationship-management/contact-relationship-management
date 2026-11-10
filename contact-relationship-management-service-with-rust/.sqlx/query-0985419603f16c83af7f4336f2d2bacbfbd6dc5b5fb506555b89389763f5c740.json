@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE nurture_enrollments SET status = 'completed', next_due_at = NULL WHERE id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0985419603f16c83af7f4336f2d2bacbfbd6dc5b5fb506555b89389763f5c740"
+}

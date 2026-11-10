@@ -712,9 +712,11 @@ async fn a_link_token_works_once_even_when_used_twice_at_once_expires_and_goes_w
         .await;
         let fresh = request_consent!(request, pid, "product_updates");
         assert!(fresh["confirm_url"].is_string());
-        let swept = contact_relationship_management::link_tokens::sweep(&ctx.db)
-            .await
-            .unwrap();
+        let swept = contact_relationship_management::link_tokens::sweep(
+            contact_relationship_management::db::pool(&ctx),
+        )
+        .await
+        .unwrap();
         assert_eq!(swept, 2);
         assert_eq!(
             count(format!(

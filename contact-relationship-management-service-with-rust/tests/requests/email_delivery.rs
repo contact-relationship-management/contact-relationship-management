@@ -306,16 +306,17 @@ async fn two_runs_claim_different_rows() {
     request::<App, _, _>(|request, ctx| async move {
         let campaign = Uuid::new_v4();
         let contacts: Vec<Uuid> = (0..20).map(|_| Uuid::new_v4()).collect();
-        deliveries::ensure_rows(&ctx.db, campaign, &contacts)
+        let pool = contact_relationship_management::db::pool(&ctx);
+        deliveries::ensure_rows(&mut pool.acquire().await.unwrap(), campaign, &contacts)
             .await
             .unwrap();
         // Asking again adds nothing.
-        deliveries::ensure_rows(&ctx.db, campaign, &contacts)
+        deliveries::ensure_rows(&mut pool.acquire().await.unwrap(), campaign, &contacts)
             .await
             .unwrap();
         let (a, b) = tokio::join!(
-            deliveries::claim(&ctx.db, campaign, 20),
-            deliveries::claim(&ctx.db, campaign, 20),
+            deliveries::claim(pool, campaign, 20),
+            deliveries::claim(pool, campaign, 20),
         );
         let (a, b) = (a.unwrap(), b.unwrap());
         let mut all: Vec<i32> = a.iter().chain(b.iter()).map(|c| c.id).collect();
@@ -326,7 +327,7 @@ async fn two_runs_claim_different_rows() {
         assert_eq!(claimed, 20, "every row is claimed exactly once");
         // Everything is now `sending`, so a third claim finds nothing.
         assert!(
-            deliveries::claim(&ctx.db, campaign, 20)
+            deliveries::claim(pool, campaign, 20)
                 .await
                 .unwrap()
                 .is_empty()

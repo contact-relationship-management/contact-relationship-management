@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO email_suppressions (contact_pid, reason) VALUES ($1, $2) ON CONFLICT (contact_pid) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e62f140e4487280b16706bb9c490bc6810494c9e25232e1f8e6cd76c958b294c"
+}

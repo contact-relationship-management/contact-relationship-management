@@ -10,11 +10,14 @@
 //! accepted it), `failed` (retried while the error is transient and attempts
 //! remain), `no_address` and `suppressed` (the contact could not be mailed this
 //! time; both are tried again on the next run and do not block completion).
+//!
+//! On `sqlx` since CRM-T211 (CRM-D24): every statement is checked, and the two limits are bound,
+//! not written into the SQL.
 
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
 /// A transient failure is retried at most this many times.
@@ -37,22 +40,20 @@ pub struct Claimed {
 /// # Errors
 ///
 /// When a statement fails.
-pub async fn ensure_rows<C: ConnectionTrait>(
-    db: &C,
+pub async fn ensure_rows(
+    conn: &mut PgConnection,
     campaign_pid: Uuid,
     contacts: &[Uuid],
 ) -> Result<()> {
     for contact_pid in contacts {
-        db.execute_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
+        sqlx::query!(
             "INSERT INTO email_deliveries (pid, campaign_pid, contact_pid) \
              VALUES ($1, $2, $3) ON CONFLICT (campaign_pid, contact_pid) DO NOTHING",
-            [
-                Uuid::new_v4().into(),
-                campaign_pid.into(),
-                (*contact_pid).into(),
-            ],
-        ))
+            Uuid::new_v4(),
+            campaign_pid,
+            contact_pid,
+        )
+        .execute(&mut *conn)
         .await?;
     }
     Ok(())
@@ -64,39 +65,32 @@ pub async fn ensure_rows<C: ConnectionTrait>(
 /// # Errors
 ///
 /// When the statement fails.
-pub async fn claim<C: ConnectionTrait>(
-    db: &C,
+pub async fn claim<'e>(
+    db: impl PgExecutor<'e>,
     campaign_pid: Uuid,
     limit: i64,
 ) -> Result<Vec<Claimed>> {
-    let rows = db
-        .query_all_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            format!(
-                "UPDATE email_deliveries SET state = 'sending', attempts = attempts + 1, \
-                   updated_at = now() \
-                 WHERE id IN ( \
-                   SELECT id FROM email_deliveries WHERE campaign_pid = $1 AND ( \
-                     state IN ('pending', 'no_address', 'suppressed') \
-                     OR (state = 'failed' AND attempts < {MAX_ATTEMPTS} \
-                         AND (error IS NULL OR error NOT LIKE 'permanent:%')) \
-                     OR (state = 'sending' \
-                         AND updated_at < now() - interval '{ABANDONED_MINUTES} minutes')) \
-                   ORDER BY (state = 'pending') DESC, id LIMIT $2 \
-                   FOR UPDATE SKIP LOCKED) \
-                 RETURNING id, contact_pid"
-            ),
-            [campaign_pid.into(), limit.into()],
-        ))
-        .await?;
-    let mut claimed = Vec::with_capacity(rows.len());
-    for row in &rows {
-        claimed.push(Claimed {
-            id: row.try_get("", "id")?,
-            contact_pid: row.try_get("", "contact_pid")?,
-        });
-    }
-    Ok(claimed)
+    Ok(sqlx::query_as!(
+        Claimed,
+        "UPDATE email_deliveries SET state = 'sending', attempts = attempts + 1, \
+           updated_at = now() \
+         WHERE id IN ( \
+           SELECT id FROM email_deliveries WHERE campaign_pid = $1 AND ( \
+             state IN ('pending', 'no_address', 'suppressed') \
+             OR (state = 'failed' AND attempts < $3 \
+                 AND (error IS NULL OR error NOT LIKE 'permanent:%')) \
+             OR (state = 'sending' \
+                 AND updated_at < now() - make_interval(mins => $4))) \
+           ORDER BY (state = 'pending') DESC, id LIMIT $2 \
+           FOR UPDATE SKIP LOCKED) \
+         RETURNING id, contact_pid",
+        campaign_pid,
+        limit,
+        MAX_ATTEMPTS,
+        ABANDONED_MINUTES,
+    )
+    .fetch_all(db)
+    .await?)
 }
 
 /// Record the outcome of one claimed row.
@@ -104,25 +98,24 @@ pub async fn claim<C: ConnectionTrait>(
 /// # Errors
 ///
 /// When the statement fails.
-pub async fn settle<C: ConnectionTrait>(
-    db: &C,
+pub async fn settle<'e>(
+    db: impl PgExecutor<'e>,
     id: i32,
     state: &str,
     message_id: Option<&str>,
     error: Option<&str>,
 ) -> Result<()> {
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
+    sqlx::query!(
         "UPDATE email_deliveries SET state = $2, message_id = $3, error = $4, \
-           sent_at = CASE WHEN $2 = 'sent' THEN now() ELSE sent_at END, updated_at = now() \
+           sent_at = CASE WHEN $5 THEN now() ELSE sent_at END, updated_at = now() \
          WHERE id = $1",
-        [
-            id.into(),
-            state.into(),
-            message_id.map(ToString::to_string).into(),
-            error.map(ToString::to_string).into(),
-        ],
-    ))
+        id,
+        state,
+        message_id,
+        error,
+        state == "sent",
+    )
+    .execute(db)
     .await?;
     Ok(())
 }
@@ -132,23 +125,20 @@ pub async fn settle<C: ConnectionTrait>(
 /// # Errors
 ///
 /// When the query fails.
-pub async fn summary<C: ConnectionTrait>(
-    db: &C,
+pub async fn summary<'e>(
+    db: impl PgExecutor<'e>,
     campaign_pid: Uuid,
 ) -> Result<BTreeMap<String, i64>> {
-    let rows = db
-        .query_all_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "SELECT state, COUNT(*) AS n FROM email_deliveries \
-             WHERE campaign_pid = $1 GROUP BY state",
-            [campaign_pid.into()],
-        ))
-        .await?;
-    let mut out = BTreeMap::new();
-    for row in &rows {
-        out.insert(row.try_get("", "state")?, row.try_get("", "n")?);
-    }
-    Ok(out)
+    Ok(sqlx::query!(
+        "SELECT state, COUNT(*) AS \"n!\" FROM email_deliveries \
+         WHERE campaign_pid = $1 GROUP BY state",
+        campaign_pid,
+    )
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(|row| (row.state, row.n))
+    .collect())
 }
 
 /// How many rows a further run could still send: pending, abandoned, or failed
@@ -157,23 +147,17 @@ pub async fn summary<C: ConnectionTrait>(
 /// # Errors
 ///
 /// When the query fails.
-pub async fn retriable<C: ConnectionTrait>(db: &C, campaign_pid: Uuid) -> Result<i64> {
-    let row = db
-        .query_one_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            format!(
-                "SELECT COUNT(*) AS n FROM email_deliveries WHERE campaign_pid = $1 AND ( \
-                   state IN ('pending', 'sending') \
-                   OR (state = 'failed' AND attempts < {MAX_ATTEMPTS} \
-                       AND (error IS NULL OR error NOT LIKE 'permanent:%')))"
-            ),
-            [campaign_pid.into()],
-        ))
-        .await?;
-    Ok(match row {
-        Some(row) => row.try_get("", "n")?,
-        None => 0,
-    })
+pub async fn retriable<'e>(db: impl PgExecutor<'e>, campaign_pid: Uuid) -> Result<i64> {
+    Ok(sqlx::query_scalar!(
+        "SELECT COUNT(*) AS \"n!\" FROM email_deliveries WHERE campaign_pid = $1 AND ( \
+           state IN ('pending', 'sending') \
+           OR (state = 'failed' AND attempts < $2 \
+               AND (error IS NULL OR error NOT LIKE 'permanent:%')))",
+        campaign_pid,
+        MAX_ATTEMPTS,
+    )
+    .fetch_one(db)
+    .await?)
 }
 
 /// Whether the contact's mailbox is on the suppression list (a hard bounce or
@@ -182,15 +166,13 @@ pub async fn retriable<C: ConnectionTrait>(db: &C, campaign_pid: Uuid) -> Result
 /// # Errors
 ///
 /// When the query fails.
-pub async fn is_suppressed<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Result<bool> {
-    let row = db
-        .query_one_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "SELECT 1 AS one FROM email_suppressions WHERE contact_pid = $1",
-            [contact_pid.into()],
-        ))
-        .await?;
-    Ok(row.is_some())
+pub async fn is_suppressed<'e>(db: impl PgExecutor<'e>, contact_pid: Uuid) -> Result<bool> {
+    Ok(sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM email_suppressions WHERE contact_pid = $1) AS \"found!\"",
+        contact_pid,
+    )
+    .fetch_one(db)
+    .await?)
 }
 
 /// The suppression on a contact, as `(reason, created_at)`.
@@ -198,19 +180,17 @@ pub async fn is_suppressed<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Res
 /// # Errors
 ///
 /// When the query fails.
-pub async fn suppression<C: ConnectionTrait>(
-    db: &C,
+pub async fn suppression<'e>(
+    db: impl PgExecutor<'e>,
     contact_pid: Uuid,
 ) -> Result<Option<(String, chrono::DateTime<chrono::FixedOffset>)>> {
-    let row = db
-        .query_one_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "SELECT reason, created_at FROM email_suppressions WHERE contact_pid = $1",
-            [contact_pid.into()],
-        ))
-        .await?;
-    row.map(|row| Ok((row.try_get("", "reason")?, row.try_get("", "created_at")?)))
-        .transpose()
+    Ok(sqlx::query!(
+        "SELECT reason, created_at FROM email_suppressions WHERE contact_pid = $1",
+        contact_pid,
+    )
+    .fetch_optional(db)
+    .await?
+    .map(|row| (row.reason, row.created_at.into())))
 }
 
 /// Take a contact off the suppression list. Returns whether one was removed.
@@ -218,14 +198,13 @@ pub async fn suppression<C: ConnectionTrait>(
 /// # Errors
 ///
 /// When the statement fails.
-pub async fn unsuppress<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Result<bool> {
-    let done = db
-        .execute_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "DELETE FROM email_suppressions WHERE contact_pid = $1",
-            [contact_pid.into()],
-        ))
-        .await?;
+pub async fn unsuppress<'e>(db: impl PgExecutor<'e>, contact_pid: Uuid) -> Result<bool> {
+    let done = sqlx::query!(
+        "DELETE FROM email_suppressions WHERE contact_pid = $1",
+        contact_pid,
+    )
+    .execute(db)
+    .await?;
     Ok(done.rows_affected() > 0)
 }
 
@@ -251,39 +230,36 @@ pub enum EventEffect {
 /// # Errors
 ///
 /// When a statement fails.
-pub async fn record_event<C: ConnectionTrait>(
-    db: &C,
+pub async fn record_event(
+    conn: &mut PgConnection,
     message_id: &str,
     event: &str,
 ) -> Result<EventEffect> {
-    let found = db
-        .query_one_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "SELECT contact_pid, campaign_pid, message_id FROM email_deliveries \
-             WHERE message_id = $1 OR provider_id = $1 LIMIT 1",
-            [message_id.into()],
-        ))
-        .await?;
-    let Some(found) = found else {
+    let Some(found) = sqlx::query!(
+        "SELECT contact_pid, campaign_pid, message_id FROM email_deliveries \
+         WHERE message_id = $1 OR provider_id = $1 LIMIT 1",
+        message_id,
+    )
+    .fetch_optional(&mut *conn)
+    .await?
+    else {
         return Ok(EventEffect::UnknownMessage);
     };
     // An event may name the message by the provider's id; record it under ours.
-    let message_id: String = found.try_get("", "message_id")?;
-    let message_id = message_id.as_str();
-    let inserted = db
-        .execute_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "INSERT INTO email_events (message_id, event) VALUES ($1, $2) \
-             ON CONFLICT (message_id, event) DO NOTHING",
-            [message_id.into(), event.into()],
-        ))
-        .await?;
+    let inserted = sqlx::query!(
+        "INSERT INTO email_events (message_id, event) VALUES ($1, $2) \
+         ON CONFLICT (message_id, event) DO NOTHING",
+        found.message_id,
+        event,
+    )
+    .execute(&mut *conn)
+    .await?;
     if inserted.rows_affected() == 0 {
         return Ok(EventEffect::Duplicate);
     }
     Ok(EventEffect::Recorded {
-        contact_pid: found.try_get("", "contact_pid")?,
-        campaign_pid: found.try_get("", "campaign_pid")?,
+        contact_pid: found.contact_pid,
+        campaign_pid: found.campaign_pid,
     })
 }
 
@@ -293,16 +269,17 @@ pub async fn record_event<C: ConnectionTrait>(
 /// # Errors
 ///
 /// When the statement fails.
-pub async fn note_provider_id<C: ConnectionTrait>(
-    db: &C,
+pub async fn note_provider_id<'e>(
+    db: impl PgExecutor<'e>,
     id: i32,
     provider_id: &str,
 ) -> Result<()> {
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
+    sqlx::query!(
         "UPDATE email_deliveries SET provider_id = $2 WHERE id = $1",
-        [id.into(), provider_id.into()],
-    ))
+        id,
+        provider_id,
+    )
+    .execute(db)
     .await?;
     Ok(())
 }
@@ -312,13 +289,14 @@ pub async fn note_provider_id<C: ConnectionTrait>(
 /// # Errors
 ///
 /// When the statement fails.
-pub async fn suppress<C: ConnectionTrait>(db: &C, contact_pid: Uuid, reason: &str) -> Result<()> {
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
+pub async fn suppress<'e>(db: impl PgExecutor<'e>, contact_pid: Uuid, reason: &str) -> Result<()> {
+    sqlx::query!(
         "INSERT INTO email_suppressions (contact_pid, reason) VALUES ($1, $2) \
          ON CONFLICT (contact_pid) DO NOTHING",
-        [contact_pid.into(), reason.into()],
-    ))
+        contact_pid,
+        reason,
+    )
+    .execute(db)
     .await?;
     Ok(())
 }
@@ -329,64 +307,64 @@ pub async fn suppress<C: ConnectionTrait>(db: &C, contact_pid: Uuid, reason: &st
 /// # Errors
 ///
 /// When the statement fails.
-pub async fn find_message<C: ConnectionTrait>(
-    db: &C,
+pub async fn find_message<'e>(
+    db: impl PgExecutor<'e>,
     message_id: &str,
 ) -> Result<Option<(Uuid, Uuid)>> {
-    let found = db
-        .query_one_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "SELECT contact_pid, campaign_pid FROM email_deliveries \
-             WHERE message_id = $1 OR provider_id = $1 LIMIT 1",
-            [message_id.into()],
-        ))
-        .await?;
-    found
-        .map(|row| {
-            Ok((
-                row.try_get("", "contact_pid")?,
-                row.try_get("", "campaign_pid")?,
-            ))
-        })
-        .transpose()
+    Ok(sqlx::query!(
+        "SELECT contact_pid, campaign_pid FROM email_deliveries \
+         WHERE message_id = $1 OR provider_id = $1 LIMIT 1",
+        message_id,
+    )
+    .fetch_optional(db)
+    .await?
+    .map(|row| (row.contact_pid, row.campaign_pid)))
 }
 
 /// Count one first open or click on the campaign (a nurture step has no counter, so nothing
-/// changes for one).
+/// changes for one). A deleted campaign still counts what its mail did, as it always has.
 ///
 /// # Errors
 ///
 /// When the statement fails.
-pub async fn count_engagement<C: ConnectionTrait>(
-    db: &C,
+pub async fn count_engagement<'e>(
+    db: impl PgExecutor<'e>,
     campaign_pid: Uuid,
     event: &str,
 ) -> Result<()> {
-    let column = if event == "opened" {
-        "opened"
+    // One checked statement per counter, in place of a column name written into the SQL.
+    if event == "opened" {
+        sqlx::query!(
+            "UPDATE campaigns SET opened = opened + 1 WHERE pid = $1 \
+             /* whatever deleted_at holds: the mail went out */",
+            campaign_pid,
+        )
+        .execute(db)
+        .await?;
     } else {
-        "clicked"
-    };
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
-        format!("UPDATE campaigns SET {column} = {column} + 1 WHERE pid = $1"),
-        [campaign_pid.into()],
-    ))
-    .await?;
+        sqlx::query!(
+            "UPDATE campaigns SET clicked = clicked + 1 WHERE pid = $1 \
+             /* whatever deleted_at holds: the mail went out */",
+            campaign_pid,
+        )
+        .execute(db)
+        .await?;
+    }
     Ok(())
 }
 
-/// Count one confirmed delivery on the campaign.
+/// Count one confirmed delivery on the campaign, deleted or not, as [`count_engagement`] does.
 ///
 /// # Errors
 ///
 /// When the statement fails.
-pub async fn count_delivered<C: ConnectionTrait>(db: &C, campaign_pid: Uuid) -> Result<()> {
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
-        "UPDATE campaigns SET delivered = delivered + 1 WHERE pid = $1",
-        [campaign_pid.into()],
-    ))
+pub async fn count_delivered<'e>(db: impl PgExecutor<'e>, campaign_pid: Uuid) -> Result<()> {
+    sqlx::query!(
+        "UPDATE campaigns SET delivered = delivered + 1 WHERE pid = $1 \
+         /* whatever deleted_at holds: the mail went out */",
+        campaign_pid,
+    )
+    .execute(db)
     .await?;
     Ok(())
 }
@@ -397,24 +375,20 @@ pub async fn count_delivered<C: ConnectionTrait>(db: &C, campaign_pid: Uuid) -> 
 /// # Errors
 ///
 /// When a statement fails.
-pub async fn row_for<C: ConnectionTrait>(
-    db: &C,
+pub async fn row_for(
+    conn: &mut PgConnection,
     owner_pid: Uuid,
     contact_pid: Uuid,
 ) -> Result<(i32, String, Option<String>)> {
-    ensure_rows(db, owner_pid, &[contact_pid]).await?;
-    let row = db
-        .query_one_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            "SELECT id, state, message_id FROM email_deliveries \
-             WHERE campaign_pid = $1 AND contact_pid = $2",
-            [owner_pid.into(), contact_pid.into()],
-        ))
-        .await?
-        .ok_or_else(|| Error::string("delivery row vanished"))?;
-    Ok((
-        row.try_get("", "id")?,
-        row.try_get("", "state")?,
-        row.try_get("", "message_id")?,
-    ))
+    ensure_rows(conn, owner_pid, &[contact_pid]).await?;
+    let row = sqlx::query!(
+        "SELECT id, state, message_id FROM email_deliveries \
+         WHERE campaign_pid = $1 AND contact_pid = $2",
+        owner_pid,
+        contact_pid,
+    )
+    .fetch_optional(&mut *conn)
+    .await?
+    .ok_or_else(|| Error::string("delivery row vanished"))?;
+    Ok((row.id, row.state, row.message_id))
 }

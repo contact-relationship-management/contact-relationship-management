@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT contact_pid, campaign_pid FROM email_deliveries WHERE message_id = $1 OR provider_id = $1 LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contact_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "email_deliveries",
+            "name": "contact_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "campaign_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "email_deliveries",
+            "name": "campaign_pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "9f222ebaead5c2515cb709f4fc2b26a82225080335e30ffbde8d935ff110be16"
+}

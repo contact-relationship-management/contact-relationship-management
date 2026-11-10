@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM link_tokens WHERE expires_at < now() - make_interval(days => $1) OR used_at < now() - make_interval(days => $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2c82c1c0d57587353a74f332674111c50da6de4ded0cf538974a071231c4a943"
+}

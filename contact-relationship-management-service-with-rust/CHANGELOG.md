@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — marketing on sqlx (CRM-T211, CRM-D24)
+
+- `controllers::marketing::{consent, segment, campaign, nurture}`, `models::deliveries` and
+  `link_tokens` on `query!`; `apply_consent_in` takes a `PgConnection`.
+- A run's closing update writes the engagement counters only from the simulated sender.
+- Campaign and nurture touch activities seal their summary; the census lists both files.
+
 ### Changed — imports and bridges on sqlx (CRM-T210, CRM-D24)
 
 - `controllers::lead_imports`, `record_imports` and `bridges` in `sqlx` transactions; lead capture,

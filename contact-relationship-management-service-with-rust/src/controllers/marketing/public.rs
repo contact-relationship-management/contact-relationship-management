@@ -187,7 +187,7 @@ pub(super) async fn unsubscribe_post(
                 crate::consents::state_of(&Bridge::new(&mut txn), &contact, &purpose).await?;
             if state != "withdrawn" {
                 apply_consent_in(
-                    &Bridge::new(&mut txn),
+                    &mut txn,
                     contact,
                     &purpose,
                     "withdrawn",
@@ -275,8 +275,7 @@ pub(super) async fn email_webhook(
 /// campaign's purpose is still `granted`, and their mailbox is not suppressed. A message that is not
 /// ours is let through so the caller reports it as unknown.
 async fn engagement_allowed(txn: &mut PgConnection, message_id: &str) -> Result<bool> {
-    let Some((contact_pid, campaign_pid)) =
-        deliveries::find_message(&Bridge::new(txn), message_id).await?
+    let Some((contact_pid, campaign_pid)) = deliveries::find_message(&mut *txn, message_id).await?
     else {
         return Ok(true);
     };
@@ -297,7 +296,7 @@ async fn engagement_allowed(txn: &mut PgConnection, message_id: &str) -> Result<
     );
     Ok(
         crate::consents::state_of(&Bridge::new(txn), &contact, &purpose).await? == "granted"
-            && deliveries::suppression(&Bridge::new(txn), contact_pid)
+            && deliveries::suppression(&mut *txn, contact_pid)
                 .await?
                 .is_none(),
     )
@@ -315,7 +314,7 @@ pub(super) async fn apply_event(
         return Ok("ignored");
     }
     // The delivery helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
-    let effect = deliveries::record_event(&Bridge::new(txn), message_id, event_name).await?;
+    let effect = deliveries::record_event(&mut *txn, message_id, event_name).await?;
     Ok(match effect {
         deliveries::EventEffect::UnknownMessage => "unknown_message",
         deliveries::EventEffect::Duplicate => "duplicate",
@@ -325,14 +324,13 @@ pub(super) async fn apply_event(
         } => {
             match event_name {
                 "delivered" => {
-                    deliveries::count_delivered(&Bridge::new(txn), campaign_pid).await?;
+                    deliveries::count_delivered(&mut *txn, campaign_pid).await?;
                 }
                 "opened" | "clicked" => {
-                    deliveries::count_engagement(&Bridge::new(txn), campaign_pid, event_name)
-                        .await?;
+                    deliveries::count_engagement(&mut *txn, campaign_pid, event_name).await?;
                 }
                 "bounce_hard" | "complaint" => {
-                    deliveries::suppress(&Bridge::new(txn), contact_pid, event_name).await?;
+                    deliveries::suppress(&mut *txn, contact_pid, event_name).await?;
                     Audit::record_on(
                         txn,
                         "contact",
@@ -353,7 +351,7 @@ pub(super) async fn apply_event(
                             crate::consents::state_of(&Bridge::new(txn), &contact, purpose).await?;
                         if state != "withdrawn" {
                             apply_consent_in(
-                                &Bridge::new(txn),
+                                &mut *txn,
                                 contact.clone(),
                                 purpose,
                                 "withdrawn",
@@ -462,10 +460,9 @@ fn invalid_link(text: &Text, path: &str) -> Response {
 /// The purpose a confirmation token names, with the contact, **without spending it** (CRM-R79).
 async fn confirm_target(pool: &PgPool, token: &str) -> Option<(Uuid, &'static str)> {
     let mut conn = pool.acquire().await.ok()?;
-    let target =
-        crate::link_tokens::peek(&Bridge::new(&mut conn), crate::link_tokens::CONFIRM, token)
-            .await
-            .ok()??;
+    let target = crate::link_tokens::peek(&mut *conn, crate::link_tokens::CONFIRM, token)
+        .await
+        .ok()??;
     Some((
         target.contact,
         tokens::PURPOSES.get(usize::from(target.detail))?,
@@ -521,12 +518,8 @@ pub(super) async fn confirm_post(
     let mut purpose = "";
     let outcome: Result<Option<bool>> = async {
         let mut txn = db::pool(&ctx).begin().await?;
-        let Some(spent) = crate::link_tokens::consume(
-            &Bridge::new(&mut txn),
-            crate::link_tokens::CONFIRM,
-            &token,
-        )
-        .await?
+        let Some(spent) =
+            crate::link_tokens::consume(&mut *txn, crate::link_tokens::CONFIRM, &token).await?
         else {
             return Ok(None);
         };
@@ -542,15 +535,8 @@ pub(super) async fn confirm_post(
         let result = match state.as_str() {
             "granted" => Some(true),
             "pending" => {
-                apply_consent_in(
-                    &Bridge::new(&mut txn),
-                    contact,
-                    purpose,
-                    "granted",
-                    "double_opt_in",
-                    None,
-                )
-                .await?;
+                apply_consent_in(&mut txn, contact, purpose, "granted", "double_opt_in", None)
+                    .await?;
                 // A web form may have asked for a nurture sequence to start on confirmation (CRM-R31).
                 crate::controllers::forms::on_confirmed(&mut txn, contact_pid, purpose).await?;
                 Some(true)
@@ -589,14 +575,10 @@ pub(super) async fn confirm_post(
 /// The contact a preference link names, **without spending it** (CRM-R79).
 async fn preferences_contact(pool: &PgPool, token: &str) -> Option<Uuid> {
     let mut conn = pool.acquire().await.ok()?;
-    crate::link_tokens::peek(
-        &Bridge::new(&mut conn),
-        crate::link_tokens::PREFERENCES,
-        token,
-    )
-    .await
-    .ok()?
-    .map(|target| target.contact)
+    crate::link_tokens::peek(&mut *conn, crate::link_tokens::PREFERENCES, token)
+        .await
+        .ok()?
+        .map(|target| target.contact)
 }
 
 /// The preference page: each purpose with the choice that is not the current one.
@@ -703,12 +685,8 @@ pub(super) async fn preferences_post(
     let outcome: Result<Response> = async {
         let pool = db::pool(&ctx);
         let mut txn = pool.begin().await?;
-        let Some(spent) = crate::link_tokens::consume(
-            &Bridge::new(&mut txn),
-            crate::link_tokens::PREFERENCES,
-            &token,
-        )
-        .await?
+        let Some(spent) =
+            crate::link_tokens::consume(&mut *txn, crate::link_tokens::PREFERENCES, &token).await?
         else {
             return Ok(invalid_link(text, &path));
         };
@@ -719,7 +697,7 @@ pub(super) async fn preferences_post(
             != choice.action
         {
             apply_consent_in(
-                &Bridge::new(&mut txn),
+                &mut txn,
                 contact,
                 purpose,
                 &choice.action,
@@ -729,7 +707,7 @@ pub(super) async fn preferences_post(
             .await?;
         }
         let next = crate::link_tokens::issue(
-            &Bridge::new(&mut txn),
+            &mut *txn,
             crate::link_tokens::PREFERENCES,
             spent.contact,
             0,

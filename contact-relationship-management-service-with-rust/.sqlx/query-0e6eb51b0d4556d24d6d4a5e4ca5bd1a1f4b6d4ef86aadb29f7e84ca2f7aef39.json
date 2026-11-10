@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO email_deliveries (pid, campaign_pid, contact_pid) VALUES ($1, $2, $3) ON CONFLICT (campaign_pid, contact_pid) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0e6eb51b0d4556d24d6d4a5e4ca5bd1a1f4b6d4ef86aadb29f7e84ca2f7aef39"
+}
