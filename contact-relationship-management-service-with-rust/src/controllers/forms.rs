@@ -379,10 +379,9 @@ async fn find_or_create_lead(
     if let Some(lead) = open {
         return Ok(lead);
     }
-    // The lead holds the address's domain, which scoring uses, and no address. `capture_lead`
-    // is still on `SeaORM`, and fires workflows; `Bridge` runs it in this transaction.
+    // The lead holds the address's domain, which scoring uses, and no address.
     let (lead, _) = capture_lead(
-        &Bridge::new(txn),
+        txn,
         &NewLead {
             source: "web",
             campaign_pid: None,

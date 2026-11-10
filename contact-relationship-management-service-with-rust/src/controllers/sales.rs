@@ -3,24 +3,23 @@
 //! terminal closes, and the stage-weighted forecast.
 
 use crate::controllers::PidPath;
+use crate::db::{self, Bridge};
 use crate::json::Json;
-use crate::models::live::FindLive;
+use crate::models::DateTimeWithTimeZone;
+use crate::models::encrypted::EncryptedText;
+use crate::models::rows;
 use axa::extract::Query;
 use axa::prelude::*;
-use sea_orm::DatabaseTransaction;
-use sea_orm::{PaginatorTrait, QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use super::paging::Page;
 use super::{PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::metrics::Metrics;
-use crate::models::_entities::{
-    activities, contacts, deals, forecast_snapshots, leads, pipeline_stages, pipelines,
-};
+use crate::models::_entities::{deals, forecast_snapshots, leads, pipeline_stages, pipelines};
 use crate::models::audit_logs::Model as Audit;
-use crate::models::records;
 use crate::rules::{analytics, lifecycle, scoring, tokens};
 use crate::streaming;
 use crate::validation::Problems;
@@ -117,28 +116,26 @@ pub(crate) struct ReopenPayload {
 
 /// Derive the scoring facts for a lead from its rows (activities +
 /// linkage), then run the pure scorer.
-async fn score_lead<C: sea_orm::ConnectionTrait>(
-    db: &C,
+async fn score_lead<'e>(
+    db: impl sqlx::PgExecutor<'e>,
     lead: &leads::Model,
 ) -> Result<scoring::ScoreBreakdown> {
-    let activity_rows = activities::Entity::find()
-        .filter(activities::Column::SubjectKind.eq("lead"))
-        .filter(activities::Column::SubjectPid.eq(lead.pid))
-        .filter(activities::Column::DeletedAt.is_null())
-        .order_by_desc(activities::Column::OccurredAt)
-        .all(db)
-        .await?;
+    let activity = sqlx::query!(
+        "SELECT COUNT(*) AS \"n!\", MAX(occurred_at) AS last FROM activities \
+         WHERE subject_kind = 'lead' AND subject_pid = $1 AND deleted_at IS NULL",
+        lead.pid,
+    )
+    .fetch_one(db)
+    .await?;
     let now = crate::clock::now();
-    let days_since_last = activity_rows
-        .first()
-        .map(|a| (now - a.occurred_at.with_timezone(&chrono::Utc)).num_days());
+    let days_since_last = activity.last.map(|at| (now - at).num_days());
     let facts = scoring::LeadFacts {
         source: lead.source.clone(),
         campaign_attributed: lead.campaign_pid.is_some(),
         known_contact: lead.contact_pid.is_some(),
         email_domain: lead.email_domain.clone(),
         days_since_last_activity: days_since_last,
-        activity_count: i64::try_from(activity_rows.len()).unwrap_or(i64::MAX),
+        activity_count: activity.n,
         campaign_click: lead.campaign_click,
         unsubscribed: lead.unsubscribed,
     };
@@ -156,35 +153,42 @@ pub(crate) struct NewLead<'a> {
 }
 
 /// Insert a lead, score it, and write the `lead_captured` audit row and event, all in the
-/// caller's transaction. Shared by `POST /api/leads` and the web form (CRM-R31).
-pub(crate) async fn capture_lead<C: sea_orm::ConnectionTrait>(
-    txn: &C,
+/// caller's transaction. Shared by `POST /api/leads`, the web form (CRM-R31) and the lead import.
+pub(crate) async fn capture_lead(
+    txn: &mut PgConnection,
     new: &NewLead<'_>,
     actor: Option<&str>,
 ) -> Result<(leads::Model, scoring::ScoreBreakdown)> {
-    let mut row = leads::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        source: ActiveValue::set(new.source.to_string()),
-        campaign_pid: ActiveValue::set(new.campaign_pid),
-        contact_pid: ActiveValue::set(new.contact_pid),
-        display_name: ActiveValue::set(new.display_name.to_string()),
-        email: ActiveValue::set(new.email.map(ToString::to_string)),
-        email_domain: ActiveValue::set(new.email_domain.clone()),
-        score: ActiveValue::set(0),
-        campaign_click: ActiveValue::set(false),
-        unsubscribed: ActiveValue::set(false),
-        status: ActiveValue::set("new".to_string()),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(txn)
+    let row = sqlx::query_as!(
+        leads::Model,
+        "INSERT INTO leads (pid, source, campaign_pid, contact_pid, display_name, email, \
+            email_domain, score, campaign_click, unsubscribed, status) \
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 0, false, false, 'new') RETURNING created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+            email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", board_position, owner_ref",
+        Uuid::new_v4(),
+        new.source,
+        new.campaign_pid,
+        new.contact_pid,
+        new.display_name,
+        new.email,
+        new.email_domain,
+    )
+    .fetch_one(&mut *txn)
     .await?;
-    let breakdown = score_lead(txn, &row).await?;
-    let mut active: leads::ActiveModel = row.clone().into();
-    active.score = ActiveValue::set(breakdown.score);
-    row = active.update(txn).await?;
-    Audit::record(txn, "lead", row.pid, "lead_captured", actor, None).await?;
-    streaming::emit_on(
+    let breakdown = score_lead(&mut *txn, &row).await?;
+    let mut row = sqlx::query_as!(
+        leads::Model,
+        "UPDATE leads SET score = $2 WHERE id = $1 RETURNING created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+            email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", board_position, owner_ref",
+        row.id,
+        breakdown.score,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(txn, "lead", row.pid, "lead_captured", actor, None).await?;
+    streaming::emit_in(
         txn,
         "lead",
         "lead_captured",
@@ -198,9 +202,12 @@ pub(crate) async fn capture_lead<C: sea_orm::ConnectionTrait>(
     // A lead brought in by a list import starts no workflow (CRM-R43), like imported contacts.
     if new.source != "import" {
         let event = crate::workflows::Event::lead(row.pid);
-        crate::workflows::fire(txn, &event, 0, actor).await?;
+        // The workflow engine takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
+        crate::workflows::fire(&Bridge::new(txn), &event, 0, actor).await?;
         // An action may have changed the lead (assigned an owner).
-        row = records::find_lead(txn, row.pid).await?;
+        row = rows::lead(&mut *txn, row.pid)
+            .await?
+            .ok_or(Error::NotFound)?;
     }
     Ok((row, breakdown))
 }
@@ -217,17 +224,18 @@ async fn create_lead(
     problems.require_token("source", tokens::LEAD_SOURCES, &payload.source);
     problems.cap_opt("email", payload.email.as_deref());
     problems.finish()?;
+    let pool = db::pool(&ctx);
     if let Some(contact) = payload.contact_pid {
-        records::find_contact(&ctx.db, contact).await?;
+        rows::contact(pool, contact).await?.ok_or(Error::NotFound)?;
     }
     let email_domain = payload
         .email
         .as_deref()
         .and_then(|e| e.rsplit_once('@'))
         .map(|(_, domain)| domain.to_ascii_lowercase());
-    let txn = ctx.db.begin().await?;
+    let mut txn = pool.begin().await?;
     let (row, breakdown) = capture_lead(
-        &txn,
+        &mut txn,
         &NewLead {
             source: &payload.source,
             campaign_pid: payload.campaign_pid,
@@ -252,17 +260,15 @@ async fn list_leads(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 1000)?;
-    let mut query = leads::Entity::find_live()
-        .order_by_asc(leads::Column::BoardPosition)
-        .order_by_desc(leads::Column::Score)
-        .order_by_asc(leads::Column::Id);
-    if let Some(pids) = super::tags::filter_pids(&ctx.db, "lead", &tag).await? {
-        query = query.filter(leads::Column::Pid.is_in(pids));
-    }
-    let rows = page.apply(query).all(&ctx.db).await?;
+    let (limit, offset) = page.bounds();
+    let pool = db::pool(&ctx);
+    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(&ctx.db, "lead", &tag)
+        .await?
+        .map(|pids| pids.into_iter().collect());
+    let rows = rows::leads_page(pool, tagged.as_deref(), limit, offset).await?;
     let (rows, more) = page.split(rows);
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        pool,
         "lead",
         Uuid::nil(),
         "lead_list_read",
@@ -325,9 +331,10 @@ async fn get_lead(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let lead = records::find_lead(&ctx.db, pid).await?;
-    let breakdown = score_lead(&ctx.db, &lead).await?;
-    Audit::record_read(&ctx.db, "lead", lead.pid, "lead_read", caller.actor(), None).await?;
+    let pool = db::pool(&ctx);
+    let lead = rows::lead(pool, pid).await?.ok_or(Error::NotFound)?;
+    let breakdown = score_lead(pool, &lead).await?;
+    Audit::record_read_on(pool, "lead", lead.pid, "lead_read", caller.actor(), None).await?;
     format::json(LeadDetail {
         lead,
         score: breakdown,
@@ -338,7 +345,7 @@ async fn get_lead(
 /// contact keeps it; otherwise a new, never-consented contact is created from
 /// the lead and the `person_ref` the caller supplied.
 async fn contact_for_conversion(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     lead: &leads::Model,
     person_ref: Option<&String>,
 ) -> Result<Uuid> {
@@ -350,71 +357,51 @@ async fn contact_for_conversion(
     let mut problems = Problems::new();
     problems.require_ref("person_ref", entity_ref::EntityType::Person, person_ref);
     problems.finish()?;
-    let contact = contacts::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        person_ref: ActiveValue::set(person_ref.clone()),
-        account_pid: ActiveValue::set(None),
-        // The lead's owner carries over to the contact it becomes.
-        owner_ref: ActiveValue::set(lead.owner_ref.clone()),
-        display_name: ActiveValue::set(lead.display_name.clone()),
-        status: ActiveValue::set("active".to_string()),
-        job_title: ActiveValue::set(None),
-        given_name: ActiveValue::set(None),
-        family_name: ActiveValue::set(None),
-        preferred_channel: ActiveValue::set("email".into()),
-        marketing_consent: ActiveValue::set("never".to_string()),
-        consent_changed_at: ActiveValue::set(None),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(txn)
+    // The lead's owner carries over to the contact it becomes. `preferred_channel` is sealed:
+    // binding `EncryptedText` seals it (CRM-T41).
+    let pid = Uuid::new_v4();
+    sqlx::query!(
+        "INSERT INTO contacts (pid, person_ref, owner_ref, display_name, status, \
+         preferred_channel, marketing_consent) VALUES ($1, $2, $3, $4, 'active', $5, 'never')",
+        pid,
+        person_ref,
+        lead.owner_ref,
+        lead.display_name,
+        EncryptedText::from("email") as _,
+    )
+    .execute(&mut *txn)
     .await?;
-    Ok(contact.pid)
+    Ok(pid)
 }
 
 /// On conversion: open the deal in the first stage of its pipeline, with the
 /// converted contact as primary contact and, unless the request names one, the
 /// lead's campaign as its source.
 async fn open_deal_for_conversion(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     caller: &MaybeAuthUser,
     lead: &leads::Model,
     contact_pid: Uuid,
     deal: &DealPayload,
 ) -> Result<Uuid> {
-    let pipeline = records::find_pipeline(txn, deal.pipeline_pid).await?;
-    let first_stage = pipeline_stages::Entity::find()
-        .filter(pipeline_stages::Column::PipelinePid.eq(pipeline.pid))
-        .filter(pipeline_stages::Column::DeletedAt.is_null())
-        .order_by_asc(pipeline_stages::Column::Position)
-        .one(txn)
+    let pipeline = rows::pipeline(&mut *txn, deal.pipeline_pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    let first_stage = rows::first_stage_of(&mut *txn, pipeline.pid)
         .await?
         .ok_or_else(|| unprocessable("pipeline has no stages"))?;
     if deal.amount_minor < 0 {
         return Err(unprocessable("amount_minor must be non-negative"));
     }
-    let row = deals::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        account_pid: ActiveValue::set(deal.account_pid),
-        primary_contact_pid: ActiveValue::set(Some(contact_pid)),
-        owner_ref: ActiveValue::set(deal.owner_ref.clone()),
-        pipeline_pid: ActiveValue::set(pipeline.pid),
-        stage_pid: ActiveValue::set(first_stage.pid),
-        name: ActiveValue::set(deal.name.clone()),
-        amount_minor: ActiveValue::set(deal.amount_minor),
-        currency: ActiveValue::set(deal.currency.clone()),
-        expected_close_on: ActiveValue::set(deal.expected_close_on),
-        kanban_position: ActiveValue::set(0),
-        source_campaign_pid: ActiveValue::set(deal.source_campaign_pid.or(lead.campaign_pid)),
-        closed_at: ActiveValue::set(None),
-        won: ActiveValue::set(false),
-        lost_reason: ActiveValue::set(None),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(txn)
+    let row = insert_deal(
+        &mut *txn,
+        deal,
+        Some(contact_pid),
+        (pipeline.pid, first_stage.pid),
+        deal.source_campaign_pid.or(lead.campaign_pid),
+    )
     .await?;
-    streaming::emit_on(
+    streaming::emit_in(
         txn,
         "deal",
         "deal_opened",
@@ -425,6 +412,39 @@ async fn open_deal_for_conversion(
     )
     .await?;
     Ok(row.pid)
+}
+
+/// A new open deal in `stage` of `pipeline`, at the top of its column.
+async fn insert_deal<'e>(
+    db: impl sqlx::PgExecutor<'e>,
+    deal: &DealPayload,
+    primary_contact: Option<Uuid>,
+    (pipeline, stage): (Uuid, Uuid),
+    source_campaign: Option<Uuid>,
+) -> Result<deals::Model> {
+    Ok(sqlx::query_as!(
+        deals::Model,
+        "INSERT INTO deals (pid, account_pid, primary_contact_pid, owner_ref, pipeline_pid, \
+            stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+            source_campaign_pid, won) \
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0, $11, false) RETURNING created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+            pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+            source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at",
+        Uuid::new_v4(),
+        deal.account_pid,
+        primary_contact,
+        deal.owner_ref,
+        pipeline,
+        stage,
+        deal.name,
+        deal.amount_minor,
+        deal.currency,
+        deal.expected_close_on,
+        source_campaign,
+    )
+    .fetch_one(db)
+    .await?)
 }
 
 /// `POST /api/leads/{pid}/status` — one lifecycle transition;
@@ -443,32 +463,42 @@ async fn lead_status(
         problems.currency("deal.currency", &deal.currency);
     }
     problems.finish()?;
-    let lead = records::find_lead(&ctx.db, pid).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let lead = rows::lead_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     lifecycle::check("lead", lifecycle::LEAD, &lead.status, &payload.to)
         .map_err(|e| unprocessable(&e.to_string()))?;
-    let txn = ctx.db.begin().await?;
     let from = lead.status.clone();
     let converting = payload.to == "converted";
     let mut contact_pid = lead.contact_pid;
     let mut deal_pid = None;
     if converting {
-        let contact = contact_for_conversion(&txn, &lead, payload.person_ref.as_ref()).await?;
+        let contact = contact_for_conversion(&mut txn, &lead, payload.person_ref.as_ref()).await?;
         contact_pid = Some(contact);
         if let Some(deal) = &payload.deal {
-            deal_pid = Some(open_deal_for_conversion(&txn, &caller, &lead, contact, deal).await?);
+            deal_pid =
+                Some(open_deal_for_conversion(&mut txn, &caller, &lead, contact, deal).await?);
         }
     }
-    let mut active: leads::ActiveModel = lead.into();
-    active.status = ActiveValue::set(payload.to.clone());
-    active.contact_pid = ActiveValue::set(contact_pid);
-    let row = active.update(&txn).await?;
+    let row = sqlx::query_as!(
+        leads::Model,
+        "UPDATE leads SET status = $2, contact_pid = $3 WHERE id = $1 RETURNING created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+            email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", board_position, owner_ref",
+        lead.id,
+        payload.to,
+        contact_pid,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
     let kind = if converting {
         "lead_converted"
     } else {
         "lead_status_changed"
     };
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "lead",
         row.pid,
         kind,
@@ -476,8 +506,8 @@ async fn lead_status(
         Some(serde_json::json!({ "from": from, "to": payload.to })),
     )
     .await?;
-    streaming::emit_on(
-        &txn,
+    streaming::emit_in(
+        &mut txn,
         "lead",
         kind,
         &row.pid.to_string(),
@@ -521,60 +551,54 @@ async fn create_pipeline(
         }
     }
     problems.finish()?;
-    let txn = ctx.db.begin().await?;
-    let pipeline = pipelines::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        name: ActiveValue::set(payload.name.clone()),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let pipeline = Uuid::new_v4();
+    let mut txn = db::pool(&ctx).begin().await?;
+    sqlx::query!(
+        "INSERT INTO pipelines (pid, name) VALUES ($1, $2)",
+        pipeline,
+        payload.name,
+    )
+    .execute(&mut *txn)
     .await?;
     let mut stage_pids = Vec::with_capacity(payload.stages.len());
     for (position, stage) in payload.stages.iter().enumerate() {
-        let row = pipeline_stages::ActiveModel {
-            pid: ActiveValue::set(Uuid::new_v4()),
-            pipeline_pid: ActiveValue::set(pipeline.pid),
-            name: ActiveValue::set(stage.name.clone()),
-            position: ActiveValue::set(i32::try_from(position).unwrap_or(i32::MAX)),
-            probability_percent: ActiveValue::set(stage.probability_percent),
-            is_won: ActiveValue::set(stage.is_won),
-            is_lost: ActiveValue::set(stage.is_lost),
-            deleted_at: ActiveValue::set(None),
-            ..Default::default()
-        }
-        .insert(&txn)
+        let pid = Uuid::new_v4();
+        sqlx::query!(
+            "INSERT INTO pipeline_stages (pid, pipeline_pid, name, position, \
+             probability_percent, is_won, is_lost) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            pid,
+            pipeline,
+            stage.name,
+            i32::try_from(position).unwrap_or(i32::MAX),
+            stage.probability_percent,
+            stage.is_won,
+            stage.is_lost,
+        )
+        .execute(&mut *txn)
         .await?;
-        stage_pids.push(row.pid.to_string());
+        stage_pids.push(pid.to_string());
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "pipeline",
-        pipeline.pid,
+        pipeline,
         "created",
         caller.actor(),
         None,
     )
     .await?;
     txn.commit().await?;
-    format::json(serde_json::json!({ "pid": pipeline.pid, "stage_pids": stage_pids }))
+    format::json(serde_json::json!({ "pid": pipeline, "stage_pids": stage_pids }))
 }
 
 /// `GET /api/pipelines` — pipelines with their stages.
 #[debug_handler]
 async fn list_pipelines(State(ctx): State<AppContext>) -> Result<Response> {
-    let rows = pipelines::Entity::find_live()
-        .order_by_asc(pipelines::Column::Id)
-        .all(&ctx.db)
-        .await?;
+    let pool = db::pool(&ctx);
+    let rows = rows::pipelines(pool).await?;
     let mut out = Vec::with_capacity(rows.len());
     for pipeline in rows {
-        let stages = pipeline_stages::Entity::find()
-            .filter(pipeline_stages::Column::PipelinePid.eq(pipeline.pid))
-            .filter(pipeline_stages::Column::DeletedAt.is_null())
-            .order_by_asc(pipeline_stages::Column::Position)
-            .all(&ctx.db)
-            .await?;
+        let stages = rows::stages_of(pool, pipeline.pid).await?;
         out.push(PipelineWithStages { pipeline, stages });
     }
     format::json(out)
@@ -596,42 +620,36 @@ async fn create_deal(
         problems.push("amount_minor must be non-negative".to_string());
     }
     problems.finish()?;
-    let pipeline = records::find_pipeline(&ctx.db, payload.pipeline_pid).await?;
-    let first_stage = pipeline_stages::Entity::find()
-        .filter(pipeline_stages::Column::PipelinePid.eq(pipeline.pid))
-        .filter(pipeline_stages::Column::DeletedAt.is_null())
-        .order_by_asc(pipeline_stages::Column::Position)
-        .one(&ctx.db)
+    let pool = db::pool(&ctx);
+    let pipeline = rows::pipeline(pool, payload.pipeline_pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    let first_stage = rows::first_stage_of(pool, pipeline.pid)
         .await?
         .ok_or_else(|| unprocessable("pipeline has no stages"))?;
     if let Some(account) = payload.account_pid {
-        records::find_account(&ctx.db, account).await?;
+        rows::account(pool, account).await?.ok_or(Error::NotFound)?;
     }
-    let txn = ctx.db.begin().await?;
-    let row = deals::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        account_pid: ActiveValue::set(payload.account_pid),
-        primary_contact_pid: ActiveValue::set(payload.primary_contact_pid),
-        owner_ref: ActiveValue::set(payload.owner_ref.clone()),
-        pipeline_pid: ActiveValue::set(pipeline.pid),
-        stage_pid: ActiveValue::set(first_stage.pid),
-        name: ActiveValue::set(payload.name.clone()),
-        amount_minor: ActiveValue::set(payload.amount_minor),
-        currency: ActiveValue::set(payload.currency.clone()),
-        expected_close_on: ActiveValue::set(payload.expected_close_on),
-        kanban_position: ActiveValue::set(0),
-        source_campaign_pid: ActiveValue::set(payload.source_campaign_pid),
-        closed_at: ActiveValue::set(None),
-        won: ActiveValue::set(false),
-        lost_reason: ActiveValue::set(None),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let mut txn = pool.begin().await?;
+    let row = insert_deal(
+        &mut *txn,
+        &payload,
+        payload.primary_contact_pid,
+        (pipeline.pid, first_stage.pid),
+        payload.source_campaign_pid,
+    )
     .await?;
-    Audit::record(&txn, "deal", row.pid, "deal_opened", caller.actor(), None).await?;
-    streaming::emit_on(
-        &txn,
+    Audit::record_on(
+        &mut txn,
+        "deal",
+        row.pid,
+        "deal_opened",
+        caller.actor(),
+        None,
+    )
+    .await?;
+    streaming::emit_in(
+        &mut txn,
         "deal",
         "deal_opened",
         &row.pid.to_string(),
@@ -662,43 +680,32 @@ pub(crate) struct ListedDeal {
 
 /// The newest `occurred_at` that has happened of the live activities on each of `pids`.
 async fn last_activities(
-    db: &impl sea_orm::ConnectionTrait,
+    pool: &PgPool,
     pids: &[Uuid],
 ) -> Result<std::collections::HashMap<Uuid, chrono::DateTime<chrono::Utc>>> {
-    use sea_orm::sea_query::{Expr, Func};
     if pids.is_empty() {
         return Ok(std::collections::HashMap::new());
     }
-    let rows: Vec<(Uuid, sea_orm::prelude::DateTimeWithTimeZone)> = activities::Entity::find()
-        .select_only()
-        .column(activities::Column::SubjectPid)
-        .column_as(
-            Expr::expr(Func::max(Expr::col(activities::Column::OccurredAt))),
-            "at",
-        )
-        .filter(activities::Column::SubjectKind.eq("deal"))
-        .filter(activities::Column::DeletedAt.is_null())
-        .filter(activities::Column::OccurredAt.lte(crate::clock::now()))
-        .filter(activities::Column::SubjectPid.is_in(pids.iter().copied()))
-        .group_by(activities::Column::SubjectPid)
-        .into_tuple()
-        .all(db)
-        .await?;
-    Ok(rows
-        .into_iter()
-        .map(|(pid, at)| (pid, at.to_utc()))
-        .collect())
+    Ok(sqlx::query!(
+        "SELECT subject_pid, MAX(occurred_at) AS \"at!\" FROM activities \
+         WHERE subject_kind = 'deal' AND deleted_at IS NULL AND occurred_at <= $1 \
+         AND subject_pid = ANY($2) GROUP BY subject_pid",
+        crate::clock::now(),
+        pids,
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| (row.subject_pid, row.at))
+    .collect())
 }
 
 /// The deals with their stalled flag, at `now`.
-async fn listed(
-    db: &impl sea_orm::ConnectionTrait,
-    rows: Vec<deals::Model>,
-) -> Result<Vec<ListedDeal>> {
+async fn listed(ctx: &AppContext, rows: Vec<deals::Model>) -> Result<Vec<ListedDeal>> {
     use crate::rules::stalled;
-    let days = super::organization::stalled_after_days(db).await?;
+    let days = super::organization::stalled_after_days(&ctx.db).await?;
     let pids: Vec<Uuid> = rows.iter().map(|d| d.pid).collect();
-    let activity = last_activities(db, &pids).await?;
+    let activity = last_activities(db::pool(ctx), &pids).await?;
     let now = crate::clock::now();
     Ok(rows
         .into_iter()
@@ -733,25 +740,15 @@ async fn list_deals(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 2000)?;
-    let mut query = deals::Entity::find_live();
-    if let Some(pipeline) = params.pipeline {
-        query = query.filter(deals::Column::PipelinePid.eq(pipeline));
-    }
-    let tagged = super::tags::filter_pids(&ctx.db, "deal", &tag).await?;
-    if let Some(pids) = &tagged {
-        query = query.filter(deals::Column::Pid.is_in(pids.clone()));
-    }
-    let rows = page
-        .apply(
-            query
-                .order_by_asc(deals::Column::KanbanPosition)
-                .order_by_asc(deals::Column::Id),
-        )
-        .all(&ctx.db)
-        .await?;
+    let (limit, offset) = page.bounds();
+    let pool = db::pool(&ctx);
+    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(&ctx.db, "deal", &tag)
+        .await?
+        .map(|pids| pids.into_iter().collect());
+    let rows = rows::deals_page(pool, params.pipeline, tagged.as_deref(), limit, offset).await?;
     let (rows, more) = page.split(rows);
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        pool,
         "deal",
         Uuid::nil(),
         "deal_list_read",
@@ -759,7 +756,7 @@ async fn list_deals(
         Some(serde_json::json!({ "returned": rows.len() })),
     )
     .await?;
-    let rows = listed(&ctx.db, rows).await?;
+    let rows = listed(&ctx, rows).await?;
     page.respond(readable_deals(&rows, &caller, tagged.is_some()), more)
 }
 
@@ -808,12 +805,8 @@ async fn deal_stage(
     PidPath(pid): PidPath,
     Json(payload): Json<DealStagePayload>,
 ) -> Result<Response> {
-    let txn = ctx.db.begin().await?;
-    let deal = deals::Entity::find()
-        .filter(deals::Column::Pid.eq(pid))
-        .filter(deals::Column::DeletedAt.is_null())
-        .lock_exclusive()
-        .one(&txn)
+    let mut txn = db::pool(&ctx).begin().await?;
+    let deal = rows::deal_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
     auth::authorize_record(
@@ -825,7 +818,9 @@ async fn deal_stage(
     if deal.closed_at.is_some() {
         return Err(unprocessable("deal is closed — reopen it first"));
     }
-    let stage = records::find_stage(&txn, payload.stage_pid).await?;
+    let stage = rows::stage(&mut *txn, payload.stage_pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     if stage.pipeline_pid != deal.pipeline_pid {
         return Err(unprocessable("stage belongs to a different pipeline"));
     }
@@ -841,20 +836,30 @@ async fn deal_stage(
     }
     let from_stage = deal.stage_pid;
     let name = deal.name.clone();
-    let mut active: deals::ActiveModel = deal.into();
-    active.stage_pid = ActiveValue::set(stage.pid);
     // A stage move is a touch (CRM-D20); a move into the stage it is in still counts.
-    active.stage_moved_at = ActiveValue::set(crate::clock::now().into());
-    if let Some(position) = payload.kanban_position {
-        active.kanban_position = ActiveValue::set(position);
-    }
+    let now: DateTimeWithTimeZone = crate::clock::now().into();
     let terminal = stage.is_won || stage.is_lost;
-    if terminal {
-        active.closed_at = ActiveValue::set(Some(crate::clock::now().into()));
-        active.won = ActiveValue::set(stage.is_won);
-        active.lost_reason = ActiveValue::set(payload.lost_reason.clone());
-    }
-    let row = active.update(&txn).await?;
+    let row = sqlx::query_as!(
+        deals::Model,
+        "UPDATE deals SET stage_pid = $2, stage_moved_at = $3, \
+            kanban_position = COALESCE($4, kanban_position), \
+            closed_at = CASE WHEN $5 THEN $3 ELSE closed_at END, \
+            won = CASE WHEN $5 THEN $6 ELSE won END, \
+            lost_reason = CASE WHEN $5 THEN $7 ELSE lost_reason END \
+            WHERE id = $1 RETURNING created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+            pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+            source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at",
+        deal.id,
+        stage.pid,
+        now,
+        payload.kanban_position,
+        terminal,
+        stage.is_won,
+        payload.lost_reason,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
     let kind = if stage.is_won {
         "deal_won"
     } else if stage.is_lost {
@@ -862,8 +867,8 @@ async fn deal_stage(
     } else {
         "deal_stage_changed"
     };
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "deal",
         row.pid,
         kind,
@@ -874,8 +879,8 @@ async fn deal_stage(
         })),
     )
     .await?;
-    streaming::emit_on(
-        &txn,
+    streaming::emit_in(
+        &mut txn,
         "deal",
         kind,
         &row.pid.to_string(),
@@ -886,7 +891,8 @@ async fn deal_stage(
     .await?;
     if kind == "deal_stage_changed" {
         let event = crate::workflows::Event::deal_stage(row.pid, row.primary_contact_pid);
-        crate::workflows::fire(&txn, &event, 0, caller.actor()).await?;
+        // The workflow engine takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
+        crate::workflows::fire(&Bridge::new(&mut txn), &event, 0, caller.actor()).await?;
     }
     txn.commit().await?;
     match kind {
@@ -909,12 +915,8 @@ async fn reopen_deal(
     if payload.reason.trim().is_empty() {
         return Err(unprocessable("a reopen requires a reason"));
     }
-    let txn = ctx.db.begin().await?;
-    let deal = deals::Entity::find()
-        .filter(deals::Column::Pid.eq(pid))
-        .filter(deals::Column::DeletedAt.is_null())
-        .lock_exclusive()
-        .one(&txn)
+    let mut txn = db::pool(&ctx).begin().await?;
+    let deal = rows::deal_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
     auth::authorize_record(
@@ -927,24 +929,25 @@ async fn reopen_deal(
         return Err(unprocessable("deal is not closed"));
     }
     // Reopen into the pipeline's last non-terminal stage.
-    let target = pipeline_stages::Entity::find()
-        .filter(pipeline_stages::Column::PipelinePid.eq(deal.pipeline_pid))
-        .filter(pipeline_stages::Column::DeletedAt.is_null())
-        .filter(pipeline_stages::Column::IsWon.eq(false))
-        .filter(pipeline_stages::Column::IsLost.eq(false))
-        .order_by_desc(pipeline_stages::Column::Position)
-        .one(&txn)
+    let target = rows::last_open_stage_of(&mut *txn, deal.pipeline_pid)
         .await?
         .ok_or_else(|| unprocessable("pipeline has no open stage"))?;
-    let mut active: deals::ActiveModel = deal.into();
-    active.stage_pid = ActiveValue::set(target.pid);
-    active.stage_moved_at = ActiveValue::set(crate::clock::now().into());
-    active.closed_at = ActiveValue::set(None);
-    active.won = ActiveValue::set(false);
-    active.lost_reason = ActiveValue::set(None);
-    let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
+    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let row = sqlx::query_as!(
+        deals::Model,
+        "UPDATE deals SET stage_pid = $2, stage_moved_at = $3, closed_at = NULL, won = false, \
+            lost_reason = NULL WHERE id = $1 RETURNING created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+            pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+            source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at",
+        deal.id,
+        target.pid,
+        now,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
+        &mut txn,
         "deal",
         row.pid,
         "deal_reopened",
@@ -954,6 +957,24 @@ async fn reopen_deal(
     .await?;
     txn.commit().await?;
     format::json(row)
+}
+
+/// Each open deal with its stage's probability. A deal whose stage is gone is `404`, as before.
+async fn forecast_inputs(pool: &PgPool, open: &[deals::Model]) -> Result<Vec<analytics::OpenDeal>> {
+    let stages: std::collections::HashMap<Uuid, i32> = rows::pipeline_stages(pool)
+        .await?
+        .into_iter()
+        .map(|stage| (stage.pid, stage.probability_percent))
+        .collect();
+    open.iter()
+        .map(|deal| {
+            Ok(analytics::OpenDeal {
+                amount_minor: deal.amount_minor,
+                currency: deal.currency.clone(),
+                probability_percent: *stages.get(&deal.stage_pid).ok_or(Error::NotFound)?,
+            })
+        })
+        .collect()
 }
 
 /// `GET /api/forecast` — the live stage-weighted forecast per
@@ -974,19 +995,9 @@ async fn forecast(
     }
     problems.finish()?;
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
-    let open = deals::Entity::find_live()
-        .filter(deals::Column::ClosedAt.is_null())
-        .all(&ctx.db)
-        .await?;
-    let mut inputs = Vec::with_capacity(open.len());
-    for deal in &open {
-        let stage = records::find_stage(&ctx.db, deal.stage_pid).await?;
-        inputs.push(analytics::OpenDeal {
-            amount_minor: deal.amount_minor,
-            currency: deal.currency.clone(),
-            probability_percent: stage.probability_percent,
-        });
-    }
+    let pool = db::pool(&ctx);
+    let open = rows::open_deals(pool).await?;
+    let inputs = forecast_inputs(pool, &open).await?;
     let totals = analytics::forecast_by_currency(&inputs).map_err(|e| unprocessable(&e))?;
     Metrics::global()
         .deals_open
@@ -1036,34 +1047,25 @@ async fn forecast_snapshot(
     caller: MaybeAuthUser,
 ) -> Result<Response> {
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
-    let open = deals::Entity::find_live()
-        .filter(deals::Column::ClosedAt.is_null())
-        .all(&ctx.db)
-        .await?;
-    let mut inputs = Vec::with_capacity(open.len());
-    for deal in &open {
-        let stage = records::find_stage(&ctx.db, deal.stage_pid).await?;
-        inputs.push(analytics::OpenDeal {
-            amount_minor: deal.amount_minor,
-            currency: deal.currency.clone(),
-            probability_percent: stage.probability_percent,
-        });
-    }
+    let pool = db::pool(&ctx);
+    let open = rows::open_deals(pool).await?;
+    let inputs = forecast_inputs(pool, &open).await?;
     let totals = analytics::forecast_by_currency(&inputs).map_err(|e| unprocessable(&e))?;
     // The day in the organization's zone, not UTC's (CRM-T171).
     let taken_on = super::organization::organization_today(&ctx.db).await?;
-    let txn = ctx.db.begin().await?;
-    let row = forecast_snapshots::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        taken_on: ActiveValue::set(taken_on),
-        totals: ActiveValue::set(serde_json::to_value(&totals).unwrap_or_default()),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let mut txn = pool.begin().await?;
+    let row = sqlx::query_as!(
+        forecast_snapshots::Model,
+        "INSERT INTO forecast_snapshots (pid, taken_on, totals) VALUES ($1, $2, $3) RETURNING created_at, updated_at, id, pid, taken_on, totals, deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\"",
+        Uuid::new_v4(),
+        taken_on,
+        serde_json::to_value(&totals).unwrap_or_default(),
+    )
+    .fetch_one(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "forecast_snapshot",
         row.pid,
         "created",
@@ -1081,17 +1083,18 @@ async fn forecast_snapshot(
 
 /// Count helper for the win-rate dashboard (exposed here so sales
 /// owns the deal queries).
-pub(crate) async fn closed_counts(db: &DatabaseConnection) -> Result<(u64, u64)> {
-    let won = deals::Entity::find_live()
-        .filter(deals::Column::Won.eq(true))
-        .count(db)
-        .await?;
-    let lost = deals::Entity::find_live()
-        .filter(deals::Column::ClosedAt.is_not_null())
-        .filter(deals::Column::Won.eq(false))
-        .count(db)
-        .await?;
-    Ok((won, lost))
+pub(crate) async fn closed_counts(pool: &PgPool) -> Result<(u64, u64)> {
+    let counts = sqlx::query!(
+        "SELECT COUNT(*) FILTER (WHERE won) AS \"won!\", \
+         COUNT(*) FILTER (WHERE closed_at IS NOT NULL AND NOT won) AS \"lost!\" \
+         FROM deals WHERE deleted_at IS NULL",
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok((
+        u64::try_from(counts.won).unwrap_or(0),
+        u64::try_from(counts.lost).unwrap_or(0),
+    ))
 }
 
 /// The sales routes.

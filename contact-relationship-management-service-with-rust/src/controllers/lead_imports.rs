@@ -18,7 +18,7 @@ use super::relationships::{DUPLICATE_POOL, account_names, match_contact, matcher
 use super::sales::{NewLead, capture_lead};
 use super::{PidPath, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
-use crate::db::{self, Bridge};
+use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::models::rows;
@@ -434,9 +434,8 @@ async fn commit(
         let mut txn = pool.begin().await?;
         let mut made = Vec::with_capacity(batch.len());
         for row in batch {
-            // `capture_lead` is still on `SeaORM`; `Bridge` runs it in this transaction.
             let (lead, _) = capture_lead(
-                &Bridge::new(&mut txn),
+                &mut txn,
                 &NewLead {
                     source: "import",
                     campaign_pid: None,

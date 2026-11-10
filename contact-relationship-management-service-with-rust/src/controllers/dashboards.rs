@@ -217,7 +217,7 @@ async fn sales_dashboard(
     headers: HeaderMap,
 ) -> Result<Response> {
     let masked = crate::auth::aggregate_masked(&caller).map_err(super::record_rejection)?;
-    let (won, lost) = sales::closed_counts(&ctx.db).await?;
+    let (won, lost) = sales::closed_counts(crate::db::pool(&ctx)).await?;
     let rate = analytics::win_rate(
         i64::try_from(won).unwrap_or(i64::MAX),
         i64::try_from(lost).unwrap_or(i64::MAX),

@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — leads, deals, the forecast and workflow rules on sqlx (CRM-T214, 2026-11-10)
+
+- Leads, pipelines, deals, the forecast and the workflow rules' endpoints run on `sqlx`. Nothing
+  a caller sees changes.
+
 ### Changed — merge, unmerge and subject rights on sqlx (CRM-T213, 2026-11-10)
 
 - Merge, unmerge, subject access, erasure and retention run on `sqlx`. Erasure binds the contact

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workflows SET name = $2, enabled = $3, trigger = $4, every_minutes = $5, conditions = $6, actions = $7, scan_after_id = 0, updated_at = now() WHERE pid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Bool",
+        "Varchar",
+        "Int4",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "26f3586e931159b59e3e09211c7c7e483d1d10a94a06461d320033a06e3de4ae"
+}

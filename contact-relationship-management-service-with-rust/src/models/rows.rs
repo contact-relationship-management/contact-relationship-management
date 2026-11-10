@@ -15,8 +15,8 @@ use uuid::Uuid;
 use crate::models::_entities::{
     accounts, activities, articles, audit_logs, campaigns, consent_events, contacts, deals,
     email_deliveries, external_links, forecast_snapshots, leads, memberships, nurture_enrollments,
-    nurture_sequences, nurture_steps, partnerships, pipeline_stages, segments, sla_policies,
-    tickets, working_groups,
+    nurture_sequences, nurture_steps, partnerships, pipeline_stages, pipelines, segments,
+    sla_policies, tickets, working_groups,
 };
 use crate::models::DateTimeWithTimeZone;
 
@@ -1618,6 +1618,176 @@ pub async fn all_links_of_subject<'e>(
         "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, system, url, external_id, \
         label, created_by FROM external_links WHERE subject_pid = $1 ORDER BY id",
         subject,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live pipeline `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn pipeline<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<pipelines::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        pipelines::Model,
+        "SELECT created_at, updated_at, id, pid, name, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\" FROM pipelines WHERE deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// Every live pipeline.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn pipelines<'e>(db: impl PgExecutor<'e>) -> Result<Vec<pipelines::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        pipelines::Model,
+        "SELECT created_at, updated_at, id, pid, name, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\" FROM pipelines WHERE deleted_at IS NULL ORDER BY id",
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live stage `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn stage<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<pipeline_stages::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        pipeline_stages::Model,
+        "SELECT created_at, updated_at, id, pid, pipeline_pid, name, position, probability_percent, \
+        is_won, is_lost, deleted_at AS \"deleted_at: DateTimeWithTimeZone\" FROM pipeline_stages WHERE \
+        deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live stages of one pipeline, in order.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn stages_of<'e>(
+    db: impl PgExecutor<'e>,
+    pipeline: Uuid,
+) -> Result<Vec<pipeline_stages::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        pipeline_stages::Model,
+        "SELECT created_at, updated_at, id, pid, pipeline_pid, name, position, probability_percent, \
+        is_won, is_lost, deleted_at AS \"deleted_at: DateTimeWithTimeZone\" FROM pipeline_stages WHERE \
+        deleted_at IS NULL AND pipeline_pid = $1 ORDER BY position, id",
+        pipeline,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The first live stage of one pipeline.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn first_stage_of<'e>(
+    db: impl PgExecutor<'e>,
+    pipeline: Uuid,
+) -> Result<Option<pipeline_stages::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        pipeline_stages::Model,
+        "SELECT created_at, updated_at, id, pid, pipeline_pid, name, position, probability_percent, \
+        is_won, is_lost, deleted_at AS \"deleted_at: DateTimeWithTimeZone\" FROM pipeline_stages WHERE \
+        deleted_at IS NULL AND pipeline_pid = $1 ORDER BY position, id LIMIT 1",
+        pipeline,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The last live stage of one pipeline that is neither won nor lost.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn last_open_stage_of<'e>(
+    db: impl PgExecutor<'e>,
+    pipeline: Uuid,
+) -> Result<Option<pipeline_stages::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        pipeline_stages::Model,
+        "SELECT created_at, updated_at, id, pid, pipeline_pid, name, position, probability_percent, \
+        is_won, is_lost, deleted_at AS \"deleted_at: DateTimeWithTimeZone\" FROM pipeline_stages WHERE \
+        deleted_at IS NULL AND pipeline_pid = $1 AND NOT is_won AND NOT is_lost ORDER BY position \
+        DESC, id DESC LIMIT 1",
+        pipeline,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// One page of live leads, of `pids` only when given, in board order, the higher score first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn leads_page<'e>(
+    db: impl PgExecutor<'e>,
+    pids: Option<&[Uuid]>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<leads::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        leads::Model,
+        "SELECT created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+        email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", board_position, owner_ref FROM leads WHERE deleted_at IS NULL AND \
+        ($1::uuid[] IS NULL OR pid = ANY($1)) ORDER BY board_position, score DESC, id LIMIT $2 \
+        OFFSET $3",
+        pids,
+        limit,
+        offset,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// One page of live deals, of one pipeline and of `pids` only when given, in board order.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn deals_page<'e>(
+    db: impl PgExecutor<'e>,
+    pipeline: Option<Uuid>,
+    pids: Option<&[Uuid]>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<deals::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        deals::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+        pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+        source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at FROM deals WHERE deleted_at \
+        IS NULL AND ($1::uuid IS NULL OR pipeline_pid = $1) AND ($2::uuid[] IS NULL OR pid = \
+        ANY($2)) ORDER BY kanban_position, id LIMIT $3 OFFSET $4",
+        pipeline,
+        pids,
+        limit,
+        offset,
     )
     .fetch_all(db)
     .await

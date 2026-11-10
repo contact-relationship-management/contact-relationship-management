@@ -1,0 +1,266 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deals (pid, account_pid, primary_contact_pid, owner_ref, pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, source_campaign_pid, won) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0, $11, false) RETURNING created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "account_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "account_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "primary_contact_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "primary_contact_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "owner_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "owner_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "pipeline_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "pipeline_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "stage_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "stage_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "amount_minor",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "amount_minor"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "currency",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "currency"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "expected_close_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "expected_close_on"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "kanban_position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "kanban_position"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "source_campaign_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "source_campaign_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "closed_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "closed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "won",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "won"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "lost_reason",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "lost_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "stage_moved_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "deals",
+            "name": "stage_moved_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Int8",
+        "Varchar",
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "0f071e1b0c77de7c86931c507f7723ffb45d0ab0180a4f8225cd2869301b3e9f"
+}

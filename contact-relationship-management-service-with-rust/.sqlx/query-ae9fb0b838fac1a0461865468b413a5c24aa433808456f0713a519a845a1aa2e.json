@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, name, enabled, trigger, every_minutes, conditions, actions, updated_at FROM workflows WHERE pid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "trigger",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "trigger"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "every_minutes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "every_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "conditions",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "conditions"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "actions",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "actions"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "workflows",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ae9fb0b838fac1a0461865468b413a5c24aa433808456f0713a519a845a1aa2e"
+}

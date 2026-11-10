@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT subject_pid, MAX(occurred_at) AS \"at!\" FROM activities WHERE subject_kind = 'deal' AND deleted_at IS NULL AND occurred_at <= $1 AND subject_pid = ANY($2) GROUP BY subject_pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "subject_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "subject_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "at!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "aee196bbbfca36fcb6164bd19ec21b04ddc65772548fefe8f14e8d4a2dee3cfa"
+}

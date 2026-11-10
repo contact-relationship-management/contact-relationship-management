@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — sales and workflow rules on sqlx (CRM-T214, CRM-D24)
+
+- `controllers::sales` and `controllers::workflows` on `query!`; `capture_lead` and
+  `closed_counts` take `sqlx` handles.
+- `sales.rs` seals a converted lead's contact channel; the census lists it.
+
 ### Changed — merge, unmerge and privacy on sqlx (CRM-T213, CRM-D24)
 
 - `controllers::merge`, `unmerge` and `privacy` in `sqlx` transactions. The moves, the filled

@@ -1,0 +1,222 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, owner_ref FROM leads WHERE deleted_at IS NULL AND ($1::uuid[] IS NULL OR pid = ANY($1)) ORDER BY board_position, score DESC, id LIMIT $2 OFFSET $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "source",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "campaign_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "campaign_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "contact_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "contact_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "display_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "email",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "email_domain",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "email_domain"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "score",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "score"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "campaign_click",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "campaign_click"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "unsubscribed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "unsubscribed"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "board_position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "board_position"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "owner_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "owner_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "5edfa0e2267f775336828105ce1e2dabdcef60be08441e4c1f4cb242cf3ebd35"
+}
