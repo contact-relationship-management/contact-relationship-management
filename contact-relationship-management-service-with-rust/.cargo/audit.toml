@@ -1,0 +1,11 @@
+# `cargo audit` policy, read by `scripts/ci-check.sh supply-chain`. It scans
+# every crate in Cargo.lock; `cargo deny` (deny.toml) checks only what is built.
+
+[advisories]
+# RUSTSEC-2026-0459 (CRM-T227): C SQLite in libsqlite3-sys 0.37.0. It is locked
+# only because sqlx-sqlite 0.9.0, an optional backend of sqlx's macros, is in
+# Cargo.lock. Nothing here builds it (`cargo tree -i libsqlite3-sys --target
+# all` prints nothing, and cargo deny does not encounter it), and sqlx-sqlite
+# 0.9.0 caps it below 0.38, so the fix (0.39) cannot be locked. axa 0.10.0
+# ignores it the same way. Remove this when sqlx raises the cap.
+ignore = ["RUSTSEC-2026-0459"]

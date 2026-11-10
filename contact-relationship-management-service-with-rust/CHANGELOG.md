@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `cargo audit` ignores RUSTSEC-2026-0459 (CRM-T227, CRM-T34)
+
+- New `.cargo/audit.toml` ignores the advisory against `libsqlite3-sys` 0.37.0, locked through
+  `sqlx-sqlite` 0.9.0 and not built. Remove it when sqlx raises its cap below 0.38.
+
 ### Changed — axa 0.10.0 (CRM-T226, CRM-D23)
 
 - `axa` 0.10.0, taking in 0.8.0 to 0.9.1. The `testing` feature became the `axa-test` 0.1.0
