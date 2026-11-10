@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE working_group_members SET contact_pid = $1 WHERE group_pid = ANY($3) AND contact_pid = $2 RETURNING group_pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "group_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "working_group_members",
+            "name": "group_pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3724e1b51e40ae4e4da820ecf3aa27d9febd0876ca22694b47d71ace65e4d74a"
+}

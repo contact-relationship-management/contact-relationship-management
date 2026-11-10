@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE activities SET summary = $2 WHERE subject_kind = 'contact' AND subject_pid = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0a07be78e016d2704d3651d93b44b6b78c3a5ddbf78ed29652890d93b351d5ec"
+}

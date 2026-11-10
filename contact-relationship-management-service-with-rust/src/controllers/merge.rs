@@ -5,24 +5,27 @@
 //! suffix), runs in one transaction, and never leaves the survivor more
 //! permissive about consent than either contact was. With `dry_run` it does
 //! the same work and rolls it back, so the counts it returns are exact.
+//!
+//! On `sqlx` since CRM-T213 (CRM-D24). The moves of [`MOVES`] are built from that list at run time,
+//! as the unmerge's are, so the two cannot drift apart; every name in them comes from the list,
+//! every value is bound, and they are reviewed by hand. Every other statement is checked. A merge
+//! moves the merged contact's whole history, deleted rows included.
 
 use crate::controllers::PidPath;
 use crate::json::Json;
 use axa::error::ErrorDetail;
 use axa::prelude::*;
 use axum::http::StatusCode;
-use sea_orm::{
-    ActiveValue, ConnectionTrait, DatabaseBackend, DatabaseTransaction, QueryOrder, QuerySelect,
-    Statement, TransactionTrait, Value,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, json};
+use sqlx::{AssertSqlSafe, PgConnection};
 use uuid::Uuid;
 
 use super::privacy::TOMBSTONE_PERSON;
 use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
-use crate::models::_entities::{consent_events, contact_merges, contacts};
+use crate::db::{self, Bridge};
+use crate::models::_entities::contacts;
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
 use crate::rules::merge as rules;
@@ -98,51 +101,22 @@ fn usable(contact: &contacts::Model) -> Result<()> {
     Ok(())
 }
 
-/// Run `sql` with two contact pids and return the first column of each
+/// Run `sql`, built from [`MOVES`], with two contact pids and return the first column of each
 /// affected row as a string (a `pid`).
-async fn ids(
-    txn: &DatabaseTransaction,
-    sql: &str,
-    survivor: Uuid,
-    merged: Uuid,
+pub(super) async fn ids(
+    conn: &mut PgConnection,
+    sql: String,
+    first: Uuid,
+    second: Uuid,
 ) -> Result<Vec<String>> {
-    let rows = txn
-        .query_all_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            sql,
-            [Value::from(survivor), Value::from(merged)],
-        ))
-        .await?;
-    rows.iter()
-        .map(|row| {
-            row.try_get_by_index::<Uuid>(0)
-                .map(|id| id.to_string())
-                .map_err(|e| Error::Model(ModelError::from(e)))
-        })
-        .collect()
-}
-
-/// Run `sql` with two contact pids and return the first column of each row, a
-/// JSON document (`to_jsonb` of a row).
-async fn rows_json(
-    txn: &DatabaseTransaction,
-    sql: &str,
-    survivor: Uuid,
-    merged: Uuid,
-) -> Result<Vec<serde_json::Value>> {
-    let rows = txn
-        .query_all_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            sql,
-            [Value::from(survivor), Value::from(merged)],
-        ))
-        .await?;
-    rows.iter()
-        .map(|row| {
-            row.try_get_by_index::<serde_json::Value>(0)
-                .map_err(|e| Error::Model(ModelError::from(e)))
-        })
-        .collect()
+    Ok(sqlx::query_scalar::<_, Uuid>(AssertSqlSafe(sql))
+        .bind(first)
+        .bind(second)
+        .fetch_all(conn)
+        .await?
+        .into_iter()
+        .map(|id| id.to_string())
+        .collect())
 }
 
 /// What moved or was dropped, by table, as the ids and as the counts, and the
@@ -165,7 +139,7 @@ impl Changes {
 
 /// Move every row keyed to `merged` over to `survivor`, dropping the ones the
 /// survivor already has (the same nurture sequence, the same working group).
-async fn move_rows(txn: &DatabaseTransaction, survivor: Uuid, merged: Uuid) -> Result<Changes> {
+async fn move_rows(txn: &mut PgConnection, survivor: Uuid, merged: Uuid) -> Result<Changes> {
     let mut out = Changes::default();
     for (key, table, column, condition, id) in MOVES {
         let sql = format!(
@@ -173,95 +147,83 @@ async fn move_rows(txn: &DatabaseTransaction, survivor: Uuid, merged: Uuid) -> R
         );
         out.moved.insert(
             key.to_string(),
-            json!(ids(txn, &sql, survivor, merged).await?),
+            json!(ids(txn, sql, survivor, merged).await?),
         );
     }
     // An enrolment in a sequence the survivor is already in is dropped. Keep
     // the rows first: an unmerge restores them as they were.
-    out.dropped_rows.insert(
-        "nurture_enrollments".into(),
-        json!(
-            rows_json(
-                txn,
-                "SELECT to_jsonb(e) FROM nurture_enrollments e \
-                 WHERE e.contact_pid = $2 AND e.deleted_at IS NULL AND e.sequence_pid IN \
-                 (SELECT sequence_pid FROM nurture_enrollments WHERE contact_pid = $1 AND deleted_at IS NULL)",
-                survivor,
-                merged,
-            )
-            .await?
-        ),
-    );
-    let dropped = ids(
-        txn,
-        "UPDATE nurture_enrollments SET deleted_at = now(), status = 'exited', next_due_at = NULL \
-         WHERE contact_pid = $2 AND deleted_at IS NULL AND sequence_pid IN \
-         (SELECT sequence_pid FROM nurture_enrollments WHERE contact_pid = $1 AND deleted_at IS NULL) \
-         RETURNING pid",
+    let kept = sqlx::query_scalar!(
+        "SELECT to_jsonb(e) AS \"row!\" FROM nurture_enrollments e \
+         WHERE e.contact_pid = $2 AND e.deleted_at IS NULL AND e.sequence_pid IN \
+         (SELECT sequence_pid FROM nurture_enrollments WHERE contact_pid = $1 \
+         AND deleted_at IS NULL)",
         survivor,
         merged,
     )
+    .fetch_all(&mut *txn)
+    .await?;
+    out.dropped_rows
+        .insert("nurture_enrollments".into(), json!(kept));
+    let dropped = sqlx::query_scalar!(
+        "UPDATE nurture_enrollments SET deleted_at = now(), status = 'exited', next_due_at = NULL \
+         WHERE contact_pid = $2 AND deleted_at IS NULL AND sequence_pid IN \
+         (SELECT sequence_pid FROM nurture_enrollments WHERE contact_pid = $1 \
+         AND deleted_at IS NULL) RETURNING pid",
+        survivor,
+        merged,
+    )
+    .fetch_all(&mut *txn)
     .await?;
     out.dropped
         .insert("nurture_enrollments".into(), json!(dropped));
-    out.moved.insert(
-        "nurture_enrollments".into(),
-        json!(
-            ids(
-                txn,
-                "UPDATE nurture_enrollments SET contact_pid = $1 WHERE contact_pid = $2 \
-                 AND deleted_at IS NULL RETURNING pid",
-                survivor,
-                merged,
-            )
-            .await?
-        ),
-    );
+    let moved = sqlx::query_scalar!(
+        "UPDATE nurture_enrollments SET contact_pid = $1 WHERE contact_pid = $2 \
+         AND deleted_at IS NULL RETURNING pid",
+        survivor,
+        merged,
+    )
+    .fetch_all(&mut *txn)
+    .await?;
+    out.moved.insert("nurture_enrollments".into(), json!(moved));
     // A working-group seat the survivor already holds is dropped.
-    out.dropped_rows.insert(
-        "working_group_members".into(),
-        json!(
-            rows_json(
-                txn,
-                "SELECT to_jsonb(m) FROM working_group_members m WHERE m.contact_pid = $2 AND m.group_pid IN \
-                 (SELECT group_pid FROM working_group_members WHERE contact_pid = $1)",
-                survivor,
-                merged,
-            )
-            .await?
-        ),
-    );
-    let dropped = ids(
-        txn,
+    let kept = sqlx::query_scalar!(
+        "SELECT to_jsonb(m) AS \"row!\" FROM working_group_members m WHERE m.contact_pid = $2 \
+         AND m.group_pid IN (SELECT group_pid FROM working_group_members WHERE contact_pid = $1)",
+        survivor,
+        merged,
+    )
+    .fetch_all(&mut *txn)
+    .await?;
+    out.dropped_rows
+        .insert("working_group_members".into(), json!(kept));
+    let dropped = sqlx::query_scalar!(
         "DELETE FROM working_group_members WHERE contact_pid = $2 AND group_pid IN \
          (SELECT group_pid FROM working_group_members WHERE contact_pid = $1) \
          RETURNING group_pid",
         survivor,
         merged,
     )
+    .fetch_all(&mut *txn)
     .await?;
     out.dropped
         .insert("working_group_members".into(), json!(dropped));
-    out.moved.insert(
-        "working_group_members".into(),
-        json!(
-            ids(
-                txn,
-                "UPDATE working_group_members SET contact_pid = $1 WHERE contact_pid = $2 \
-                 RETURNING group_pid",
-                survivor,
-                merged,
-            )
-            .await?
-        ),
-    );
+    let moved = sqlx::query_scalar!(
+        "UPDATE working_group_members SET contact_pid = $1 WHERE contact_pid = $2 \
+         RETURNING group_pid",
+        survivor,
+        merged,
+    )
+    .fetch_all(&mut *txn)
+    .await?;
+    out.moved
+        .insert("working_group_members".into(), json!(moved));
     Ok(out)
 }
 
 /// Fill the survivor's empty fields from the merged contact, and set its
 /// consent to the stricter of the two. Returns the names of the fields filled.
 async fn combine(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     survivor: contacts::Model,
     merged: &contacts::Model,
 ) -> Result<(
@@ -320,61 +282,76 @@ async fn combine(
         rules::stricter_consent(&survivor.marketing_consent, &merged.marketing_consent).to_string();
     let consent_changed = consent != survivor.marketing_consent;
     let pid = survivor.pid;
-    let mut active: contacts::ActiveModel = survivor.clone().into();
-    active.account_pid = ActiveValue::set(rules::fill(survivor.account_pid, merged.account_pid));
-    active.owner_ref = ActiveValue::set(rules::fill(survivor.owner_ref, merged.owner_ref.clone()));
-    active.job_title = ActiveValue::set(rules::fill(survivor.job_title, merged.job_title.clone()));
-    active.given_name =
-        ActiveValue::set(rules::fill(survivor.given_name, merged.given_name.clone()));
-    active.family_name = ActiveValue::set(rules::fill(
-        survivor.family_name,
-        merged.family_name.clone(),
-    ));
-    active.stakeholder_role = ActiveValue::set(rules::fill(
-        survivor.stakeholder_role,
-        merged.stakeholder_role.clone(),
-    ));
-    active.influence = ActiveValue::set(rules::fill(survivor.influence, merged.influence));
-    active.interest = ActiveValue::set(rules::fill(survivor.interest, merged.interest));
+    let now: crate::models::DateTimeWithTimeZone = crate::clock::now().into();
+    // Both rows are locked, so each filled column is written from them.
+    sqlx::query!(
+        "UPDATE contacts SET account_pid = $2, owner_ref = $3, job_title = $4, given_name = $5, \
+         family_name = $6, stakeholder_role = $7, influence = $8, interest = $9, \
+         marketing_consent = $10, consent_changed_at = CASE WHEN $11 THEN $12 \
+         ELSE consent_changed_at END WHERE id = $1 AND deleted_at IS NULL",
+        survivor.id,
+        rules::fill(survivor.account_pid, merged.account_pid),
+        rules::fill(survivor.owner_ref, merged.owner_ref.clone()),
+        rules::fill(survivor.job_title, merged.job_title.clone()),
+        rules::fill(survivor.given_name, merged.given_name.clone()),
+        rules::fill(survivor.family_name, merged.family_name.clone()),
+        rules::fill(survivor.stakeholder_role, merged.stakeholder_role.clone()),
+        rules::fill(survivor.influence, merged.influence),
+        rules::fill(survivor.interest, merged.interest),
+        consent,
+        consent_changed,
+        now,
+    )
+    .execute(&mut *txn)
+    .await?;
     if consent_changed {
-        let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
-        active.marketing_consent = ActiveValue::set(consent.clone());
-        active.consent_changed_at = ActiveValue::set(Some(now));
-        consent_events::ActiveModel {
-            pid: ActiveValue::set(Uuid::new_v4()),
-            contact_pid: ActiveValue::set(pid),
-            action: ActiveValue::set(consent.clone()),
-            source: ActiveValue::set(format!("merge:{}", merged.pid)),
-            occurred_at: ActiveValue::set(now),
-            ..Default::default()
-        }
-        .insert(txn)
+        sqlx::query!(
+            "INSERT INTO consent_events (pid, contact_pid, action, source, occurred_at) \
+             VALUES ($1, $2, $3, $4, $5)",
+            Uuid::new_v4(),
+            pid,
+            consent,
+            format!("merge:{}", merged.pid),
+            now,
+        )
+        .execute(&mut *txn)
         .await?;
     }
-    active.update(txn).await?;
+    // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
     if consent == "withdrawn" {
         // A withdrawal exits every active enrolment of that purpose, moved ones included.
-        crate::consents::exit_enrolments(txn, pid, tokens::DEFAULT_PURPOSE).await?;
+        crate::consents::exit_enrolments(&Bridge::new(txn), pid, tokens::DEFAULT_PURPOSE).await?;
     }
     // The other purposes follow the same rule, each on its own (CRM-R29).
-    let purposes =
-        crate::consents::tighten(txn, pid, merged.pid, &format!("merge:{}", merged.pid)).await?;
+    let purposes = crate::consents::tighten(
+        &Bridge::new(txn),
+        pid,
+        merged.pid,
+        &format!("merge:{}", merged.pid),
+    )
+    .await?;
     Ok((filled, consent, purposes))
 }
 
 /// Lock both contacts, in a fixed order so two merges (or a merge and an
-/// unmerge) cannot cross.
+/// unmerge) cannot cross. A merged contact is deleted, so the rows are read whatever their
+/// `deleted_at`.
 pub(super) async fn lock_rows(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     merged_pid: Uuid,
     survivor_pid: Uuid,
 ) -> Result<Vec<contacts::Model>> {
-    Ok(contacts::Entity::find()
-        .filter(contacts::Column::Pid.is_in([merged_pid, survivor_pid]))
-        .order_by_asc(contacts::Column::Id)
-        .lock_exclusive()
-        .all(txn)
-        .await?)
+    Ok(sqlx::query_as!(
+        contacts::Model,
+        "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+        status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+        \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+        given_name, consent_jurisdiction FROM contacts WHERE pid = ANY($1) ORDER BY id FOR UPDATE",
+        &[merged_pid, survivor_pid] as &[Uuid],
+    )
+    .fetch_all(txn)
+    .await?)
 }
 
 /// `(merged, survivor)` out of locked rows, or `NotFound` if either is absent.
@@ -425,32 +402,31 @@ struct MergeDone<'a> {
 
 /// Write the ledger row (what an unmerge needs), the audit entry and the event.
 async fn record_merge(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     caller: &MaybeAuthUser,
     done: &MergeDone<'_>,
 ) -> Result<()> {
-    contact_merges::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        survivor_pid: ActiveValue::set(done.survivor_pid),
-        merged_pid: ActiveValue::set(done.merged.pid),
-        merged_person_ref: ActiveValue::set(done.merged.person_ref.clone()),
-        actor: ActiveValue::set(caller.actor().map(str::to_string)),
-        moved: ActiveValue::set(
-            json!({ "moved": done.moved.moved, "dropped": done.moved.dropped }),
-        ),
+    sqlx::query!(
+        "INSERT INTO contact_merges (pid, survivor_pid, merged_pid, merged_person_ref, actor, \
+         moved, before) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        Uuid::new_v4(),
+        done.survivor_pid,
+        done.merged.pid,
+        done.merged.person_ref,
+        caller.actor(),
+        json!({ "moved": done.moved.moved, "dropped": done.moved.dropped }),
         // What an unmerge needs. Ids, states and field names: no personal data.
-        before: ActiveValue::set(Some(json!({
+        json!({
             "version": 1,
             "survivor_consent": done.before.0,
             "merged_consent": done.before.1,
             "filled": done.filled,
             "dropped_rows": done.moved.dropped_rows,
-        }))),
-        ..Default::default()
-    }
-    .insert(txn)
+        }),
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
+    Audit::record_on(
         txn,
         "contact",
         done.survivor_pid,
@@ -466,7 +442,7 @@ async fn record_merge(
         })),
     )
     .await?;
-    streaming::emit_on(
+    streaming::emit_in(
         txn,
         "contact",
         "contacts_merged",
@@ -522,8 +498,8 @@ async fn merge(
         return Err(unprocessable("a contact cannot be merged into itself"));
     }
 
-    let txn = ctx.db.begin().await?;
-    let rows = lock_rows(&txn, merged_pid, survivor_pid).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let rows = lock_rows(&mut txn, merged_pid, survivor_pid).await?;
     let (merged, survivor) = pick_pair(&rows, merged_pid, survivor_pid)?;
     usable(&merged)?;
     usable(&survivor)?;
@@ -533,14 +509,19 @@ async fn merge(
         survivor.marketing_consent.clone(),
         merged.marketing_consent.clone(),
     );
-    let moved = move_rows(&txn, survivor_pid, merged_pid).await?;
-    let (filled, consent, purposes) = combine(&txn, survivor, &merged).await?;
+    let moved = move_rows(&mut txn, survivor_pid, merged_pid).await?;
+    let (filled, consent, purposes) = combine(&mut txn, survivor, &merged).await?;
 
-    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
-    let mut gone: contacts::ActiveModel = merged.clone().into();
-    gone.deleted_at = ActiveValue::set(Some(now));
-    gone.merged_into_pid = ActiveValue::set(Some(survivor_pid));
-    gone.update(&txn).await?;
+    let now: crate::models::DateTimeWithTimeZone = crate::clock::now().into();
+    sqlx::query!(
+        "UPDATE contacts SET deleted_at = $2, merged_into_pid = $3 WHERE id = $1 \
+         AND deleted_at IS NULL",
+        merged.id,
+        now,
+        survivor_pid,
+    )
+    .execute(&mut *txn)
+    .await?;
 
     let counts = Changes::counts(&moved.moved);
     let dropped = Changes::counts(&moved.dropped);
@@ -574,7 +555,7 @@ async fn merge(
         before: &before,
         consent: &consent,
     };
-    record_merge(&txn, &caller, &done).await?;
+    record_merge(&mut txn, &caller, &done).await?;
     txn.commit().await?;
     format::json(body)
 }

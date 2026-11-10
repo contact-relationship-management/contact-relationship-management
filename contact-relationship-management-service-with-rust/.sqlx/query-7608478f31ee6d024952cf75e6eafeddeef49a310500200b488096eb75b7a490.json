@@ -1,0 +1,160 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT created_at, updated_at, id, pid, survivor_pid, merged_pid, merged_person_ref, actor, moved, before, unmerged_at AS \"unmerged_at: DateTimeWithTimeZone\", unmerged_actor FROM contact_merges WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "survivor_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "survivor_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "merged_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "merged_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "merged_person_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "merged_person_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "actor",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "actor"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "moved",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "moved"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "before",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "before"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "unmerged_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "unmerged_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "unmerged_actor",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contact_merges",
+            "name": "unmerged_actor"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "7608478f31ee6d024952cf75e6eafeddeef49a310500200b488096eb75b7a490"
+}

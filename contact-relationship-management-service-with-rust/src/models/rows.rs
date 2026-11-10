@@ -13,9 +13,10 @@ use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use crate::models::_entities::{
-    accounts, activities, articles, audit_logs, campaigns, contacts, deals, forecast_snapshots,
-    leads, memberships, nurture_sequences, nurture_steps, partnerships, pipeline_stages, segments,
-    sla_policies, tickets, working_groups,
+    accounts, activities, articles, audit_logs, campaigns, consent_events, contacts, deals,
+    email_deliveries, external_links, forecast_snapshots, leads, memberships, nurture_enrollments,
+    nurture_sequences, nurture_steps, partnerships, pipeline_stages, segments, sla_policies,
+    tickets, working_groups,
 };
 use crate::models::DateTimeWithTimeZone;
 
@@ -1447,6 +1448,176 @@ pub async fn recent_activities_of_contacts<'e>(
         occurred_at DESC, id DESC LIMIT $2",
         contacts as &[Uuid],
         limit,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every consent event of one contact.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn all_consent_events_of<'e>(
+    db: impl PgExecutor<'e>,
+    contact: Uuid,
+) -> Result<Vec<consent_events::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        consent_events::Model,
+        "SELECT created_at, updated_at, id, pid, contact_pid, action, source, occurred_at, purpose, \
+        channel FROM consent_events WHERE contact_pid = $1 ORDER BY id",
+        contact,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every activity about one subject pid, deleted or not, for the subject's own export.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn all_activities_about<'e>(
+    db: impl PgExecutor<'e>,
+    subject: Uuid,
+) -> Result<Vec<activities::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        activities::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
+        actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
+        sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities \
+        WHERE subject_pid = $1 ORDER BY id",
+        subject,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every lead of one contact, deleted or not.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn all_leads_of_contact<'e>(
+    db: impl PgExecutor<'e>,
+    contact: Uuid,
+) -> Result<Vec<leads::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        leads::Model,
+        "SELECT created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+        email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", board_position, owner_ref FROM leads WHERE contact_pid = $1 ORDER BY \
+        id",
+        contact,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every deal naming one contact as primary, deleted or not.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn all_deals_of_contact<'e>(
+    db: impl PgExecutor<'e>,
+    contact: Uuid,
+) -> Result<Vec<deals::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        deals::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+        pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+        source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at FROM deals WHERE \
+        primary_contact_pid = $1 ORDER BY id",
+        contact,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every ticket of one contact, deleted or not.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn all_tickets_of_contact<'e>(
+    db: impl PgExecutor<'e>,
+    contact: Uuid,
+) -> Result<Vec<tickets::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        tickets::Model,
+        "SELECT created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+        priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+        DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+        first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+        \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+        DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+        wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\" FROM tickets WHERE \
+        contact_pid = $1 ORDER BY id",
+        contact,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every nurture enrolment of one contact, deleted or not.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn all_enrollments_of_contact<'e>(
+    db: impl PgExecutor<'e>,
+    contact: Uuid,
+) -> Result<Vec<nurture_enrollments::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        nurture_enrollments::Model,
+        "SELECT created_at, updated_at, id, pid, sequence_pid, contact_pid, current_step, next_due_at \
+        AS \"next_due_at: DateTimeWithTimeZone\", status, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\" FROM nurture_enrollments WHERE contact_pid = $1 ORDER BY id",
+        contact,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every email delivery to one contact, as its `Model` has it. The table's `basis` column (the
+/// consent basis a message was sent on, since migration 59) is not in the `Model`, so it is not
+/// read here: the subject-access export has never carried it (CRM-T213).
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn all_deliveries_of_contact<'e>(
+    db: impl PgExecutor<'e>,
+    contact: Uuid,
+) -> Result<Vec<email_deliveries::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        email_deliveries::Model,
+        "SELECT created_at, updated_at, id, pid, campaign_pid, contact_pid, state, attempts, \
+        message_id, provider_id, error, sent_at AS \"sent_at: DateTimeWithTimeZone\" \
+        FROM email_deliveries WHERE contact_pid = $1 ORDER BY id",
+        contact,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Every external link of one subject pid.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn all_links_of_subject<'e>(
+    db: impl PgExecutor<'e>,
+    subject: Uuid,
+) -> Result<Vec<external_links::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        external_links::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, system, url, external_id, \
+        label, created_by FROM external_links WHERE subject_pid = $1 ORDER BY id",
+        subject,
     )
     .fetch_all(db)
     .await

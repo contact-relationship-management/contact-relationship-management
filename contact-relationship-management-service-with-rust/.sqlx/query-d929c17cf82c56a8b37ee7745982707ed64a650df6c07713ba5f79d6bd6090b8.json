@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT to_jsonb(e) AS \"row!\" FROM nurture_enrollments e WHERE e.contact_pid = $2 AND e.deleted_at IS NULL AND e.sequence_pid IN (SELECT sequence_pid FROM nurture_enrollments WHERE contact_pid = $1 AND deleted_at IS NULL)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "row!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d929c17cf82c56a8b37ee7745982707ed64a650df6c07713ba5f79d6bd6090b8"
+}

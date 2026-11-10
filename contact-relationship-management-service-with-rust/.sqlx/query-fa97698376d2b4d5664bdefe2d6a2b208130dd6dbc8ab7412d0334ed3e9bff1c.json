@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT person_ref FROM contacts WHERE merged_into_pid = $1 /* deleted_at set or not: a merged duplicate is deleted */",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "person_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "person_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fa97698376d2b4d5664bdefe2d6a2b208130dd6dbc8ab7412d0334ed3e9bff1c"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM notifications WHERE subject_kind = 'contact' AND (subject_pid = $1 OR subject_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1 /* deleted_at set or not: a merged duplicate is deleted */))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "53ba3ec56f10970b0879d4ea695376df9241902ae26034333adb5fbdc3f49628"
+}

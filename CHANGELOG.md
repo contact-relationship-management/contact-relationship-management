@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — merge, unmerge and subject rights on sqlx (CRM-T213, 2026-11-10)
+
+- Merge, unmerge, subject access, erasure and retention run on `sqlx`. Erasure binds the contact
+  it erases instead of writing it into its SQL.
+
 ### Changed — contacts, accounts, activities and engagement on sqlx (CRM-T212, 2026-11-10)
 
 - Contacts, accounts, activities, stakeholders, partnerships, memberships and working groups read

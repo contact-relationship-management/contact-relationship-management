@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM working_group_members WHERE contact_pid = $2 AND group_pid IN (SELECT group_pid FROM working_group_members WHERE contact_pid = $1) RETURNING group_pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "group_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "working_group_members",
+            "name": "group_pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f7ae70e49d71d685aadd142f93dbb51207f30934c1c6a8067e5325200ea6b45a"
+}

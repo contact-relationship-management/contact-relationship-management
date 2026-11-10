@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE contacts SET display_name = $2, person_ref = $3, job_title = NULL, given_name = NULL, family_name = NULL, marketing_consent = 'withdrawn', deleted_at = $4 WHERE id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7a8cbe4e45c8cceaa6fd0ded55d249aace532e4aef46e18e415b5becad189ef3"
+}

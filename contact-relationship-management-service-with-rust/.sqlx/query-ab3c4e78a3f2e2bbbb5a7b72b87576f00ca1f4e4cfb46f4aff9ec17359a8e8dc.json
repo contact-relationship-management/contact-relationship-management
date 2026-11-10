@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) AS \"n!\" FROM contacts WHERE deleted_at IS NULL AND marketing_consent = 'withdrawn' AND consent_changed_at < $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ab3c4e78a3f2e2bbbb5a7b72b87576f00ca1f4e4cfb46f4aff9ec17359a8e8dc"
+}

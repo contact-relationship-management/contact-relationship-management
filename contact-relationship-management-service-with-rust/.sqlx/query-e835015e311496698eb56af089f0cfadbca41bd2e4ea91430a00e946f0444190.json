@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM contact_employments WHERE contact_pid = $1 OR contact_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1 /* deleted_at set or not: a merged duplicate is deleted */)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e835015e311496698eb56af089f0cfadbca41bd2e4ea91430a00e946f0444190"
+}

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE nurture_enrollments t SET deleted_at = r.deleted_at, status = r.status, next_due_at = r.next_due_at FROM jsonb_populate_record(NULL::nurture_enrollments, $1::jsonb) r WHERE t.pid = r.pid AND t.contact_pid = $2 RETURNING t.pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "69b4e6e66e56f16a06ae9dea13a86ed3bf45f6658afd3eb93a046949823a65fa"
+}

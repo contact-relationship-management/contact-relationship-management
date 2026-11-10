@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT to_jsonb(m) AS \"row!\" FROM working_group_members m WHERE m.contact_pid = $2 AND m.group_pid IN (SELECT group_pid FROM working_group_members WHERE contact_pid = $1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "row!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9d74084d9d5dee34b92ac67f21adfa52afdba8737f15003d2739f614f4ccbeab"
+}

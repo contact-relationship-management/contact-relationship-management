@@ -8,25 +8,28 @@
 //! again. It never widens consent. Work the survivor did after the merge stays
 //! with the survivor: an unmerge undoes the merge, it does not split two
 //! people's history by guesswork.
+//!
+//! On `sqlx` since CRM-T213 (CRM-D24). The moves back are built from [`MOVES`] at run time, as the
+//! merge's are, and a filled field's clearing from [`FILLABLE`]: every name comes from those
+//! lists, every value is bound, and they are reviewed by hand. Every other statement is checked.
 
 use crate::controllers::PidPath;
 use crate::json::Json;
 use axa::prelude::*;
-use sea_orm::{
-    ActiveValue, ConnectionTrait, DatabaseBackend, DatabaseTransaction, QueryOrder, Statement,
-    TransactionTrait, Value,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, json};
+use sqlx::{AssertSqlSafe, PgConnection};
 use uuid::Uuid;
 
-use super::merge::{MOVES, authorize_destructive, conflict, lock_rows, pick_pair};
+use super::merge::{MOVES, authorize_destructive, conflict, ids, lock_rows, pick_pair};
 use super::privacy::TOMBSTONE_PERSON;
 use super::{record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
-use crate::models::_entities::{consent_events, contact_merges, contacts};
+use crate::db::{self, Bridge};
+use crate::models::_entities::{contact_merges, contacts};
+use crate::models::DateTimeWithTimeZone;
 use crate::models::audit_logs::Model as Audit;
-use crate::models::records;
+use crate::models::rows;
 use crate::rules::merge as rules;
 use crate::rules::tokens;
 use crate::streaming;
@@ -68,33 +71,11 @@ fn ledger_ids(doc: &serde_json::Value, key: &str) -> Vec<Uuid> {
         .unwrap_or_default()
 }
 
-/// `ARRAY['…','…']::uuid[]` for ids that are already parsed UUIDs.
-fn uuid_array(ids: &[Uuid]) -> String {
-    let items: Vec<String> = ids.iter().map(|id| format!("'{id}'")).collect();
-    format!("ARRAY[{}]::uuid[]", items.join(","))
-}
-
-/// Run `sql` and count the rows it returns.
-async fn count(
-    txn: &DatabaseTransaction,
-    sql: &str,
-    values: impl IntoIterator<Item = Value>,
-) -> Result<usize> {
-    Ok(txn
-        .query_all_raw(Statement::from_sql_and_values(
-            DatabaseBackend::Postgres,
-            sql,
-            values,
-        ))
-        .await?
-        .len())
-}
-
 /// Give back the rows that still point at the survivor. Returns `(restored,
 /// left behind)` per table: a row is left behind when it has since been moved
 /// on, deleted or re-pointed.
 async fn restore_moved(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     ledger: &contact_merges::Model,
 ) -> Result<(
     Map<String, serde_json::Value>,
@@ -108,62 +89,55 @@ async fn restore_moved(
         left.insert(key.to_string(), json!(ids - back));
     };
     for (key, table, column, condition, id) in MOVES {
-        let ids = ledger_ids(&ledger.moved, key);
-        let back = if ids.is_empty() {
+        let moved = ledger_ids(&ledger.moved, key);
+        let back = if moved.is_empty() {
             0
         } else {
-            count(
-                txn,
-                &format!(
-                    "UPDATE {table} SET {column} = $1 WHERE {id} = ANY({}) AND {column} = $2 \
-                     AND {condition} RETURNING {id}",
-                    uuid_array(&ids)
-                ),
-                [Value::from(merged), Value::from(survivor)],
-            )
-            .await?
+            let sql = format!(
+                "UPDATE {table} SET {column} = $1 WHERE {id} = ANY($3) AND {column} = $2 \
+                 AND {condition} RETURNING {id}"
+            );
+            sqlx::query_scalar::<_, Uuid>(AssertSqlSafe(sql))
+                .bind(merged)
+                .bind(survivor)
+                .bind(&moved)
+                .fetch_all(&mut *txn)
+                .await?
+                .len()
         };
-        put(key, ids.len(), back);
+        put(key, moved.len(), back);
     }
-    let ids = ledger_ids(&ledger.moved, "nurture_enrollments");
-    let back = if ids.is_empty() {
-        0
-    } else {
-        count(
-            txn,
-            &format!(
-                "UPDATE nurture_enrollments SET contact_pid = $1 WHERE pid = ANY({}) \
-                 AND contact_pid = $2 AND deleted_at IS NULL RETURNING pid",
-                uuid_array(&ids)
-            ),
-            [Value::from(merged), Value::from(survivor)],
-        )
-        .await?
-    };
-    put("nurture_enrollments", ids.len(), back);
-    let ids = ledger_ids(&ledger.moved, "working_group_members");
-    let back = if ids.is_empty() {
-        0
-    } else {
-        count(
-            txn,
-            &format!(
-                "UPDATE working_group_members SET contact_pid = $1 WHERE group_pid = ANY({}) \
-                 AND contact_pid = $2 RETURNING group_pid",
-                uuid_array(&ids)
-            ),
-            [Value::from(merged), Value::from(survivor)],
-        )
-        .await?
-    };
-    put("working_group_members", ids.len(), back);
+    let moved = ledger_ids(&ledger.moved, "nurture_enrollments");
+    let back = sqlx::query_scalar!(
+        "UPDATE nurture_enrollments SET contact_pid = $1 WHERE pid = ANY($3) \
+         AND contact_pid = $2 AND deleted_at IS NULL RETURNING pid",
+        merged,
+        survivor,
+        &moved,
+    )
+    .fetch_all(&mut *txn)
+    .await?
+    .len();
+    put("nurture_enrollments", moved.len(), back);
+    let moved = ledger_ids(&ledger.moved, "working_group_members");
+    let back = sqlx::query_scalar!(
+        "UPDATE working_group_members SET contact_pid = $1 WHERE group_pid = ANY($3) \
+         AND contact_pid = $2 RETURNING group_pid",
+        merged,
+        survivor,
+        &moved,
+    )
+    .fetch_all(&mut *txn)
+    .await?
+    .len();
+    put("working_group_members", moved.len(), back);
     Ok((restored, left))
 }
 
 /// Put back the nurture enrolments and group seats the merge dropped because
 /// the survivor already had them. Returns how many of each.
 async fn restore_dropped(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     ledger: &contact_merges::Model,
     before: &serde_json::Value,
 ) -> Result<Map<String, serde_json::Value>> {
@@ -178,28 +152,33 @@ async fn restore_dropped(
     };
     let mut enrolments = 0;
     for row in rows("nurture_enrollments") {
-        enrolments += count(
-            txn,
+        // The row as the merge dropped it, deleted or not: its own `deleted_at` is put back.
+        enrolments += sqlx::query_scalar!(
             "UPDATE nurture_enrollments t SET deleted_at = r.deleted_at, status = r.status, \
              next_due_at = r.next_due_at \
              FROM jsonb_populate_record(NULL::nurture_enrollments, $1::jsonb) r \
              WHERE t.pid = r.pid AND t.contact_pid = $2 RETURNING t.pid",
-            [Value::from(row), Value::from(ledger.merged_pid)],
+            row,
+            ledger.merged_pid,
         )
-        .await?;
+        .fetch_all(&mut *txn)
+        .await?
+        .len();
     }
     out.insert("nurture_enrollments".into(), json!(enrolments));
     let mut seats = 0;
     for row in rows("working_group_members") {
-        seats += count(
-            txn,
+        seats += sqlx::query_scalar!(
             "INSERT INTO working_group_members (created_at, updated_at, group_pid, contact_pid) \
              SELECT r.created_at, r.updated_at, r.group_pid, r.contact_pid \
              FROM jsonb_populate_record(NULL::working_group_members, $1::jsonb) r \
              WHERE r.contact_pid = $2 ON CONFLICT DO NOTHING RETURNING group_pid",
-            [Value::from(row), Value::from(ledger.merged_pid)],
+            row,
+            ledger.merged_pid,
         )
-        .await?;
+        .fetch_all(&mut *txn)
+        .await?
+        .len();
     }
     out.insert("working_group_members".into(), json!(seats));
     Ok(out)
@@ -209,7 +188,7 @@ async fn restore_dropped(
 /// still holds the value copied from the merged contact. Returns `(cleared,
 /// kept)`: a field the survivor has changed since is kept.
 async fn clear_filled(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     ledger: &contact_merges::Model,
     before: &serde_json::Value,
 ) -> Result<(Vec<String>, Vec<String>)> {
@@ -224,19 +203,14 @@ async fn clear_filled(
         if !FILLABLE.contains(&name) {
             continue;
         }
-        let changed = count(
-            txn,
-            &format!(
-                "UPDATE contacts SET {name} = NULL WHERE pid = $1 AND {name} IS NOT NULL \
-                 AND {name} IS NOT DISTINCT FROM (SELECT {name} FROM contacts WHERE pid = $2) \
-                 RETURNING pid"
-            ),
-            [
-                Value::from(ledger.survivor_pid),
-                Value::from(ledger.merged_pid),
-            ],
-        )
-        .await?;
+        let sql = format!(
+            "UPDATE contacts SET {name} = NULL WHERE pid = $1 AND {name} IS NOT NULL \
+             AND {name} IS NOT DISTINCT FROM (SELECT {name} FROM contacts WHERE pid = $2) \
+             RETURNING pid"
+        );
+        let changed = ids(txn, sql, ledger.survivor_pid, ledger.merged_pid)
+            .await?
+            .len();
         if changed > 0 {
             cleared.push(name.to_string());
         } else {
@@ -248,21 +222,25 @@ async fn clear_filled(
 
 /// The newest merge of `merged_pid` that has not been undone, or the reason
 /// there is none.
-async fn open_ledger(txn: &DatabaseTransaction, merged_pid: Uuid) -> Result<contact_merges::Model> {
-    let ledger = contact_merges::Entity::find()
-        .filter(contact_merges::Column::MergedPid.eq(merged_pid))
-        .filter(contact_merges::Column::UnmergedAt.is_null())
-        .order_by_desc(contact_merges::Column::Id)
-        .one(txn)
-        .await?;
+async fn open_ledger(txn: &mut PgConnection, merged_pid: Uuid) -> Result<contact_merges::Model> {
+    let ledger = sqlx::query_as!(
+        contact_merges::Model,
+        "SELECT created_at, updated_at, id, pid, survivor_pid, merged_pid, merged_person_ref, actor, \
+        moved, before, unmerged_at AS \"unmerged_at: DateTimeWithTimeZone\", unmerged_actor FROM \
+        contact_merges WHERE merged_pid = $1 AND unmerged_at IS NULL ORDER BY id DESC LIMIT 1",
+        merged_pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?;
     if let Some(ledger) = ledger {
         return Ok(ledger);
     }
-    let known = contacts::Entity::find()
-        .filter(contacts::Column::Pid.eq(merged_pid))
-        .one(txn)
-        .await?;
-    Err(if known.is_some() {
+    // Deleted or not: a merged contact is deleted.
+    let known = sqlx::query!("SELECT deleted_at FROM contacts WHERE pid = $1", merged_pid,)
+        .fetch_optional(&mut *txn)
+        .await?
+        .is_some();
+    Err(if known {
         conflict("this contact has not been merged into another, or was already unmerged")
     } else {
         Error::NotFound
@@ -273,18 +251,23 @@ async fn open_ledger(txn: &DatabaseTransaction, merged_pid: Uuid) -> Result<cont
 /// row again under lock: another unmerge may have finished first. Returns
 /// `(ledger, merged, survivor)`.
 async fn lock_for_unmerge(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     ledger: &contact_merges::Model,
     merged_pid: Uuid,
 ) -> Result<(contact_merges::Model, contacts::Model, contacts::Model)> {
     let survivor_pid = ledger.survivor_pid;
     let rows = lock_rows(txn, merged_pid, survivor_pid).await?;
-    let ledger = contact_merges::Entity::find_by_id(ledger.id)
-        .lock_exclusive()
-        .one(txn)
-        .await?
-        .filter(|l| l.unmerged_at.is_none())
-        .ok_or_else(|| conflict("this merge was already undone"))?;
+    let ledger = sqlx::query_as!(
+        contact_merges::Model,
+        "SELECT created_at, updated_at, id, pid, survivor_pid, merged_pid, merged_person_ref, actor, \
+        moved, before, unmerged_at AS \"unmerged_at: DateTimeWithTimeZone\", unmerged_actor FROM \
+        contact_merges WHERE id = $1 FOR UPDATE",
+        ledger.id,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .filter(|l| l.unmerged_at.is_none())
+    .ok_or_else(|| conflict("this merge was already undone"))?;
     let (merged, survivor) = pick_pair(&rows, merged_pid, survivor_pid)?;
     Ok((ledger, merged, survivor))
 }
@@ -321,37 +304,46 @@ fn check_unmergeable(
 /// state and the survivor's, so a withdrawal made since the merge applies to
 /// both. Returns the returning contact's consent.
 async fn bring_back(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     merged: &contacts::Model,
     survivor: &contacts::Model,
-    now: chrono::DateTime<chrono::FixedOffset>,
+    now: DateTimeWithTimeZone,
 ) -> Result<(String, Vec<crate::consents::PurposeOutcome>)> {
     let result =
         rules::stricter_consent(&merged.marketing_consent, &survivor.marketing_consent).to_string();
-    let mut back: contacts::ActiveModel = merged.clone().into();
-    back.deleted_at = ActiveValue::set(None);
-    back.merged_into_pid = ActiveValue::set(None);
-    if result != merged.marketing_consent {
-        back.marketing_consent = ActiveValue::set(result.clone());
-        back.consent_changed_at = ActiveValue::set(Some(now));
-        consent_events::ActiveModel {
-            pid: ActiveValue::set(Uuid::new_v4()),
-            contact_pid: ActiveValue::set(merged.pid),
-            action: ActiveValue::set(result.clone()),
-            source: ActiveValue::set(format!("unmerge:{}", survivor.pid)),
-            occurred_at: ActiveValue::set(now),
-            ..Default::default()
-        }
-        .insert(txn)
+    let changed = result != merged.marketing_consent;
+    // The merged contact is deleted, and is made live again.
+    sqlx::query!(
+        "UPDATE contacts SET deleted_at = NULL, merged_into_pid = NULL, marketing_consent = $2, \
+         consent_changed_at = CASE WHEN $3 THEN $4 ELSE consent_changed_at END WHERE id = $1",
+        merged.id,
+        result,
+        changed,
+        now,
+    )
+    .execute(&mut *txn)
+    .await?;
+    if changed {
+        sqlx::query!(
+            "INSERT INTO consent_events (pid, contact_pid, action, source, occurred_at) \
+             VALUES ($1, $2, $3, $4, $5)",
+            Uuid::new_v4(),
+            merged.pid,
+            result,
+            format!("unmerge:{}", survivor.pid),
+            now,
+        )
+        .execute(&mut *txn)
         .await?;
     }
-    back.update(txn).await?;
+    // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
     if result == "withdrawn" {
-        crate::consents::exit_enrolments(txn, merged.pid, tokens::DEFAULT_PURPOSE).await?;
+        crate::consents::exit_enrolments(&Bridge::new(txn), merged.pid, tokens::DEFAULT_PURPOSE)
+            .await?;
     }
     // The other purposes follow the same rule, each on its own (CRM-R29).
     let purposes = crate::consents::tighten(
-        txn,
+        &Bridge::new(txn),
         merged.pid,
         survivor.pid,
         &format!("unmerge:{}", survivor.pid),
@@ -374,17 +366,21 @@ struct UnmergeDone<'a> {
 
 /// Close the ledger row, then write the audit entry and the event.
 async fn record_unmerge(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     caller: &MaybeAuthUser,
     ledger: contact_merges::Model,
-    now: chrono::DateTime<chrono::FixedOffset>,
+    now: DateTimeWithTimeZone,
     done: &UnmergeDone<'_>,
 ) -> Result<()> {
-    let mut closed: contact_merges::ActiveModel = ledger.into();
-    closed.unmerged_at = ActiveValue::set(Some(now));
-    closed.unmerged_actor = ActiveValue::set(caller.actor().map(str::to_string));
-    closed.update(txn).await?;
-    Audit::record(
+    sqlx::query!(
+        "UPDATE contact_merges SET unmerged_at = $2, unmerged_actor = $3 WHERE id = $1",
+        ledger.id,
+        now,
+        caller.actor(),
+    )
+    .execute(&mut *txn)
+    .await?;
+    Audit::record_on(
         txn,
         "contact",
         done.survivor_pid,
@@ -401,7 +397,7 @@ async fn record_unmerge(
         })),
     )
     .await?;
-    streaming::emit_on(
+    streaming::emit_in(
         txn,
         "contact",
         "contacts_unmerged",
@@ -425,18 +421,18 @@ async fn unmerge(
     problems.require_text("reason", &payload.reason);
     problems.finish()?;
 
-    let txn = ctx.db.begin().await?;
-    let ledger = open_ledger(&txn, merged_pid).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let ledger = open_ledger(&mut txn, merged_pid).await?;
     let survivor_pid = ledger.survivor_pid;
-    let (ledger, merged, survivor) = lock_for_unmerge(&txn, &ledger, merged_pid).await?;
+    let (ledger, merged, survivor) = lock_for_unmerge(&mut txn, &ledger, merged_pid).await?;
     let before = check_unmergeable(&ledger, &merged, &survivor)?;
     authorize_destructive(&caller, [&merged, &survivor])?;
 
-    let (restored, left_behind) = restore_moved(&txn, &ledger).await?;
-    let dropped_restored = restore_dropped(&txn, &ledger, &before).await?;
-    let (cleared, kept) = clear_filled(&txn, &ledger, &before).await?;
-    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
-    let (result, purposes) = bring_back(&txn, &merged, &survivor, now).await?;
+    let (restored, left_behind) = restore_moved(&mut txn, &ledger).await?;
+    let dropped_restored = restore_dropped(&mut txn, &ledger, &before).await?;
+    let (cleared, kept) = clear_filled(&mut txn, &ledger, &before).await?;
+    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let (result, purposes) = bring_back(&mut txn, &merged, &survivor, now).await?;
 
     let body = ContactUnmerge {
         survivor_pid,
@@ -469,7 +465,7 @@ async fn unmerge(
         cleared: &cleared,
         consent: &result,
     };
-    record_unmerge(&txn, &caller, ledger, now, &done).await?;
+    record_unmerge(&mut txn, &caller, ledger, now, &done).await?;
     txn.commit().await?;
     format::json(body)
 }
@@ -526,27 +522,33 @@ async fn merges(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let survivor = records::find_contact(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let survivor = rows::contact(pool, pid).await?.ok_or(Error::NotFound)?;
     auth::authorize_record(
         &caller,
         authentication_verifier::Action::Read,
         &auth::contact_resource_attrs(&survivor),
     )
     .map_err(record_rejection)?;
-    let ledger = contact_merges::Entity::find()
-        .filter(contact_merges::Column::SurvivorPid.eq(pid))
-        .filter(contact_merges::Column::UnmergedAt.is_null())
-        .order_by_desc(contact_merges::Column::Id)
-        .all(&ctx.db)
-        .await?;
+    let ledger = sqlx::query_as!(
+        contact_merges::Model,
+        "SELECT created_at, updated_at, id, pid, survivor_pid, merged_pid, merged_person_ref, actor, \
+        moved, before, unmerged_at AS \"unmerged_at: DateTimeWithTimeZone\", unmerged_actor FROM \
+        contact_merges WHERE survivor_pid = $1 AND unmerged_at IS NULL ORDER BY id DESC",
+        pid,
+    )
+    .fetch_all(pool)
+    .await?;
     let mut out = Vec::new();
     for entry in ledger {
         // The merged row may be gone (the retention sweep), and then so is the
-        // chance to undo it.
-        let Some(merged) = contacts::Entity::find()
-            .filter(contacts::Column::Pid.eq(entry.merged_pid))
-            .one(&ctx.db)
-            .await?
+        // chance to undo it. It is deleted, as a merged contact is.
+        let Some(merged) = sqlx::query!(
+            "SELECT display_name, person_ref, deleted_at FROM contacts WHERE pid = $1",
+            entry.merged_pid,
+        )
+        .fetch_optional(pool)
+        .await?
         else {
             continue;
         };

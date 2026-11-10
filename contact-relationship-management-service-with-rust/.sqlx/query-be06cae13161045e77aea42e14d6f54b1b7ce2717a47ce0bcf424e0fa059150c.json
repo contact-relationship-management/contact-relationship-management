@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE webhook_deliveries SET status = 'cancelled', last_error = 'contact erased', updated_at = now() WHERE status = 'pending' AND (entity_pid = $1 OR entity_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1 /* deleted_at set or not: a merged duplicate is deleted */))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be06cae13161045e77aea42e14d6f54b1b7ce2717a47ce0bcf424e0fa059150c"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE contact_merges SET merged_person_ref = $2 WHERE survivor_pid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a0373fe34298cee7e27c9c9c44ae7202ab5da158c4313fd04eec453a03e91608"
+}

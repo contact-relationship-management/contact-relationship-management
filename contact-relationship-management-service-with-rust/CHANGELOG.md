@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — merge, unmerge and privacy on sqlx (CRM-T213, CRM-D24)
+
+- `controllers::merge`, `unmerge` and `privacy` in `sqlx` transactions. The moves, the filled
+  fields and the retention loops stay built from their constant lists, reviewed by hand.
+- Erasure binds the pid in its thirteen statements and locks the contact first.
+- Found: the subject-access export omits `email_deliveries.basis` (not in the `Model`).
+
 ### Changed — relationships and engagement on sqlx (CRM-T212, CRM-D24)
 
 - `controllers::relationships` and `engagement` on `query!`; edits re-read the row `FOR UPDATE`.

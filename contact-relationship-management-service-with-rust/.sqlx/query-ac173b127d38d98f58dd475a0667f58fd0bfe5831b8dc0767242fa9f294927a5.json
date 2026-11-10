@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE nurture_enrollments SET deleted_at = now(), status = 'exited', next_due_at = NULL WHERE contact_pid = $2 AND deleted_at IS NULL AND sequence_pid IN (SELECT sequence_pid FROM nurture_enrollments WHERE contact_pid = $1 AND deleted_at IS NULL) RETURNING pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "nurture_enrollments",
+            "name": "pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ac173b127d38d98f58dd475a0667f58fd0bfe5831b8dc0767242fa9f294927a5"
+}

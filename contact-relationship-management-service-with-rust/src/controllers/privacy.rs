@@ -5,12 +5,17 @@
 //! [`crate::auth::DESTRUCTIVE_POST_SUFFIXES`]). CRM covers its own
 //! store only: what the upstream person/organization/worker services
 //! hold is the deployment's coordination duty, stated in the payloads.
+//!
+//! On `sqlx` since CRM-T213 (CRM-D24). The retention report and sweep run one statement per table
+//! of [`rules::SOFT_DELETED_TABLES`] and per log rule, built from those lists at run time so the
+//! census and the sweep share one list: every name comes from them, every number is a clamped
+//! integer, and they are reviewed by hand. Every other statement is checked and binds its values.
 
 use crate::controllers::PidPath;
-use crate::models::live::FindLive;
+use crate::db::{self, Bridge};
 use axa::prelude::*;
-use sea_orm::{ActiveValue, ConnectionTrait};
 use serde::Serialize;
+use sqlx::{AssertSqlSafe, PgConnection};
 use uuid::Uuid;
 
 use super::{record_rejection, unprocessable};
@@ -20,7 +25,7 @@ use crate::models::_entities::{
     nurture_enrollments, tickets,
 };
 use crate::models::audit_logs::Model as Audit;
-use crate::models::records;
+use crate::models::rows;
 use crate::rules::privacy as rules;
 
 /// The tombstone URN an erased contact's `person_ref` becomes: a
@@ -33,18 +38,6 @@ const ERASED: &str = "[erased]";
 /// Ticket statuses that count as a **live** engagement, blocking
 /// erasure (`rules::lifecycle::TICKET`: only these two are non-terminal).
 const OPEN_TICKET_STATUSES: [&str; 2] = ["open", "pending"];
-
-/// Rows keyed by one contact in `module` (helper macro: filter on the
-/// given column, return the models — no `deleted_at` filter,
-/// so a soft-deleted row still appears in the subject's own export).
-macro_rules! rows_for {
-    ($db:expr, $module:ident, $column:ident, $pid:expr) => {
-        $module::Entity::find()
-            .filter($module::Column::$column.eq($pid))
-            .all($db)
-            .await?
-    };
-}
 
 /// `GET /api/contacts/{pid}/subject-access`: everything CRM holds keyed to the contact.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -89,7 +82,8 @@ async fn subject_access(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let contact = rows::contact(pool, pid).await?.ok_or(Error::NotFound)?;
     let obligations = auth::authorize_record(
         &caller,
         authentication_verifier::Action::Read,
@@ -108,26 +102,32 @@ async fn subject_access(
                 .to_string(),
         )));
     }
-    let db = &ctx.db;
     let cpid = contact.pid;
+    // Every row keyed to the contact, deleted or not: a soft-deleted row is still the subject's.
+    let mut conn = pool.acquire().await?;
+    // The consent, field, file, tag and employment helpers are on `ConnectionTrait`; `Bridge` runs
+    // them on this connection.
     let export = SubjectAccessExport {
         as_of: crate::clock::now(),
         contact: contact.clone(),
-        consent_history: rows_for!(db, consent_events, ContactPid, cpid),
-        consent_purposes: crate::consents::all(db, &contact).await?,
-        activities: rows_for!(db, activities, SubjectPid, cpid),
-        leads: rows_for!(db, leads, ContactPid, cpid),
-        deals_as_primary_contact: rows_for!(db, deals, PrimaryContactPid, cpid),
-        tickets: rows_for!(db, tickets, ContactPid, cpid),
-        nurture_enrollments: rows_for!(db, nurture_enrollments, ContactPid, cpid),
-        email_deliveries: rows_for!(db, email_deliveries, ContactPid, cpid),
-        external_links: rows_for!(db, external_links, SubjectPid, cpid),
-        custom_fields: super::custom_fields::export_for(db, cpid).await?,
-        attachments: super::attachments::export_for(db, cpid).await?,
-        tags: super::tags::export_for(db, cpid).await?,
-        employments: crate::models::employments::of_contact(db, cpid).await?,
-        employment_last_events: crate::models::employments::last_events_of(db, &contact.person_ref)
-            .await?,
+        consent_history: rows::all_consent_events_of(&mut *conn, cpid).await?,
+        consent_purposes: crate::consents::all(&Bridge::new(&mut conn), &contact).await?,
+        activities: rows::all_activities_about(&mut *conn, cpid).await?,
+        leads: rows::all_leads_of_contact(&mut *conn, cpid).await?,
+        deals_as_primary_contact: rows::all_deals_of_contact(&mut *conn, cpid).await?,
+        tickets: rows::all_tickets_of_contact(&mut *conn, cpid).await?,
+        nurture_enrollments: rows::all_enrollments_of_contact(&mut *conn, cpid).await?,
+        email_deliveries: rows::all_deliveries_of_contact(&mut *conn, cpid).await?,
+        external_links: rows::all_links_of_subject(&mut *conn, cpid).await?,
+        custom_fields: super::custom_fields::export_for(&Bridge::new(&mut conn), cpid).await?,
+        attachments: super::attachments::export_for(&Bridge::new(&mut conn), cpid).await?,
+        tags: super::tags::export_for(&Bridge::new(&mut conn), cpid).await?,
+        employments: crate::models::employments::of_contact(&Bridge::new(&mut conn), cpid).await?,
+        employment_last_events: crate::models::employments::last_events_of(
+            &Bridge::new(&mut conn),
+            &contact.person_ref,
+        )
+        .await?,
         exclusions: [
             "campaign delivery/open/click counters: aggregate counters. Which messages were \
              sent to this contact is in email_deliveries (state, time and message id, no \
@@ -138,8 +138,9 @@ async fn subject_access(
              not CRM — coordinate subject access there too",
         ],
     };
-    Audit::record(
-        &ctx.db,
+    drop(conn);
+    Audit::record_read_on(
+        pool,
         "contact",
         cpid,
         "subject_access_exported",
@@ -152,61 +153,204 @@ async fn subject_access(
 
 /// Whether `contact_pid` currently has an open deal (naming it primary
 /// contact, not soft-deleted, not yet closed).
-async fn has_open_deal<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Result<bool> {
-    Ok(deals::Entity::find()
-        .filter(deals::Column::PrimaryContactPid.eq(contact_pid))
-        .filter(deals::Column::DeletedAt.is_null())
-        .filter(deals::Column::ClosedAt.is_null())
-        .one(db)
-        .await?
-        .is_some())
+async fn has_open_deal(conn: &mut PgConnection, contact_pid: Uuid) -> Result<bool> {
+    Ok(sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM deals WHERE primary_contact_pid = $1 \
+         AND deleted_at IS NULL AND closed_at IS NULL) AS \"found!\"",
+        contact_pid,
+    )
+    .fetch_one(conn)
+    .await?)
 }
 
 /// Whether `contact_pid` currently has an open (`open`/`pending`)
 /// support ticket.
-async fn has_open_ticket<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Result<bool> {
-    Ok(tickets::Entity::find()
-        .filter(tickets::Column::ContactPid.eq(contact_pid))
-        .filter(tickets::Column::DeletedAt.is_null())
-        .filter(tickets::Column::Status.is_in(OPEN_TICKET_STATUSES))
-        .one(db)
-        .await?
-        .is_some())
+async fn has_open_ticket(conn: &mut PgConnection, contact_pid: Uuid) -> Result<bool> {
+    Ok(sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM tickets WHERE contact_pid = $1 AND deleted_at IS NULL \
+         AND status = ANY($2)) AS \"found!\"",
+        contact_pid,
+        &OPEN_TICKET_STATUSES as &[&str],
+    )
+    .fetch_one(conn)
+    .await?)
 }
 
 /// Whether `contact_pid` currently has an active nurture enrolment.
-async fn has_active_nurture<C: ConnectionTrait>(db: &C, contact_pid: Uuid) -> Result<bool> {
-    Ok(nurture_enrollments::Entity::find()
-        .filter(nurture_enrollments::Column::ContactPid.eq(contact_pid))
-        .filter(nurture_enrollments::Column::DeletedAt.is_null())
-        .filter(nurture_enrollments::Column::Status.eq("active"))
-        .one(db)
-        .await?
-        .is_some())
-}
-
-/// The contact with its identity fields cleared and the row soft-deleted.
-fn scrub(contact: contacts::Model) -> contacts::ActiveModel {
-    let mut scrubbed: contacts::ActiveModel = contact.into();
-    scrubbed.display_name = ActiveValue::set(ERASED.to_string());
-    scrubbed.person_ref = ActiveValue::set(TOMBSTONE_PERSON.to_string());
-    scrubbed.job_title = ActiveValue::set(None);
-    scrubbed.given_name = ActiveValue::set(None);
-    scrubbed.family_name = ActiveValue::set(None);
-    scrubbed.marketing_consent = ActiveValue::set("withdrawn".to_string());
-    scrubbed.deleted_at = ActiveValue::set(Some(crate::clock::now().into()));
-    scrubbed
+async fn has_active_nurture(conn: &mut PgConnection, contact_pid: Uuid) -> Result<bool> {
+    Ok(sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM nurture_enrollments WHERE contact_pid = $1 \
+         AND deleted_at IS NULL AND status = 'active') AS \"found!\"",
+        contact_pid,
+    )
+    .fetch_one(conn)
+    .await?)
 }
 
 /// Delete what is attached to a contact being erased: its files (the rows here; the caller removes
 /// the files once the transaction has committed) and its tags' taggings.
-async fn erase_attached(
-    txn: &sea_orm::DatabaseTransaction,
-    contact: Uuid,
-) -> Result<(Vec<Uuid>, u64)> {
-    let files = super::attachments::erase_rows(txn, contact).await?;
-    let tags = super::tags::erase_rows(txn, contact).await?;
+async fn erase_attached(txn: &mut PgConnection, contact: Uuid) -> Result<(Vec<Uuid>, u64)> {
+    // The file and tag helpers are on `ConnectionTrait`; `Bridge` runs them in this transaction.
+    let files = super::attachments::erase_rows(&Bridge::new(txn), contact).await?;
+    let tags = super::tags::erase_rows(&Bridge::new(txn), contact).await?;
     Ok((files, tags))
+}
+
+/// Scrub what is keyed to the erased contact `cpid` and to the duplicates merged into it, one
+/// statement each, in the order of the audit row's counts. Returns the rows each one changed.
+#[allow(clippy::too_many_lines)] // one statement for each place the contact's data lives
+async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<Vec<u64>> {
+    let mut affected = Vec::new();
+    // Free text linked to this contact, and rows that are about it only. A plaintext tombstone on
+    // purpose: `[erased]` is not personal data.
+    affected.push(
+        sqlx::query!(
+            "UPDATE activities SET summary = $2 WHERE subject_kind = 'contact' \
+             AND subject_pid = $1 AND deleted_at IS NULL",
+            cpid,
+            ERASED,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    affected.push(
+        sqlx::query!(
+            "UPDATE leads SET display_name = $2, email = NULL \
+             WHERE contact_pid = $1 AND deleted_at IS NULL",
+            cpid,
+            ERASED,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    affected.push(
+        sqlx::query!(
+            "DELETE FROM working_group_members WHERE contact_pid = $1",
+            cpid
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    // Notifications about this contact and the duplicates merged into it (CRM-R32). The merged
+    // duplicates are deleted contacts, so they are found whatever their `deleted_at`.
+    affected.push(
+        sqlx::query!(
+            "DELETE FROM notifications WHERE subject_kind = 'contact' AND (subject_pid = $1 \
+             OR subject_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1 \
+             /* deleted_at set or not: a merged duplicate is deleted */))",
+            cpid,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    // Web form submissions of this contact and the duplicates merged into it (CRM-R31).
+    affected.push(
+        sqlx::query!(
+            "DELETE FROM form_submissions WHERE contact_pid = $1 OR contact_pid IN \
+             (SELECT pid FROM contacts WHERE merged_into_pid = $1 \
+             /* deleted_at set or not: a merged duplicate is deleted */)",
+            cpid,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    affected.push(
+        sqlx::query!(
+            "DELETE FROM external_links WHERE subject_kind = 'contact' AND subject_pid = $1",
+            cpid,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    // Queued webhook deliveries about this person or the duplicates merged into it (CRM-R28).
+    affected.push(
+        sqlx::query!(
+            "UPDATE webhook_deliveries SET status = 'cancelled', last_error = 'contact erased', \
+             updated_at = now() WHERE status = 'pending' AND (entity_pid = $1 OR entity_pid IN \
+             (SELECT pid FROM contacts WHERE merged_into_pid = $1 \
+             /* deleted_at set or not: a merged duplicate is deleted */))",
+            cpid,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    // Contacts merged into this one are the same person: scrub their identity too, and the
+    // person reference the merge ledger kept (CRM-R26). They are deleted already.
+    affected.push(
+        sqlx::query!(
+            "UPDATE contacts SET display_name = $2, person_ref = $3, job_title = NULL, \
+             given_name = NULL, family_name = NULL, marketing_consent = 'withdrawn' \
+             WHERE merged_into_pid = $1 /* deleted_at set or not: a merged duplicate is deleted */",
+            cpid,
+            ERASED,
+            TOMBSTONE_PERSON,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    affected.push(
+        sqlx::query!(
+            "UPDATE contact_merges SET merged_person_ref = $2 WHERE survivor_pid = $1",
+            cpid,
+            TOMBSTONE_PERSON,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    // Every purpose is withdrawn, for this contact and the duplicates merged into it (CRM-R29).
+    affected.push(
+        sqlx::query!(
+            "UPDATE contact_consents SET state = 'withdrawn', changed_at = now() \
+             WHERE contact_pid = $1 OR contact_pid IN \
+             (SELECT pid FROM contacts WHERE merged_into_pid = $1 \
+             /* deleted_at set or not: a merged duplicate is deleted */)",
+            cpid,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    // Mailed links that still work for this person or the duplicates merged into it (CRM-R79).
+    affected.push(
+        sqlx::query!(
+            "DELETE FROM link_tokens WHERE contact_pid = $1 OR contact_pid IN \
+             (SELECT pid FROM contacts WHERE merged_into_pid = $1 \
+             /* deleted_at set or not: a merged duplicate is deleted */)",
+            cpid,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    // What the worker service said of this person's employment, which names them (CRM-R92).
+    affected.push(
+        sqlx::query!(
+            "DELETE FROM contact_employments WHERE contact_pid = $1 OR contact_pid IN \
+             (SELECT pid FROM contacts WHERE merged_into_pid = $1 \
+             /* deleted_at set or not: a merged duplicate is deleted */)",
+            cpid,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
+    // The custom fields' own statement, built and reviewed in `custom_fields` (CRM-R41).
+    affected.push(
+        sqlx::raw_sql(AssertSqlSafe(super::custom_fields::erase_sql(cpid)))
+            .execute(&mut *txn)
+            .await?
+            .rows_affected(),
+    );
+    Ok(affected)
 }
 
 /// `POST /api/contacts/{pid}/erase` — anonymise (CRM-D14): scrub the
@@ -223,13 +367,15 @@ async fn erase_attached(
 /// continuity). Refused while a live engagement exists (CRM-R20).
 /// Destructive-classified; audited with counts.
 #[debug_handler]
-#[allow(clippy::too_many_lines)] // one statement for each place the contact's data lives
 async fn erase(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, pid).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let contact = rows::contact_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     auth::authorize_record(
         &caller,
         authentication_verifier::Action::Destructive,
@@ -238,9 +384,9 @@ async fn erase(
     .map_err(record_rejection)?;
     let cpid = contact.pid;
     let (open_deal, open_ticket, active_nurture) = (
-        has_open_deal(&ctx.db, cpid).await?,
-        has_open_ticket(&ctx.db, cpid).await?,
-        has_active_nurture(&ctx.db, cpid).await?,
+        has_open_deal(&mut txn, cpid).await?,
+        has_open_ticket(&mut txn, cpid).await?,
+        has_active_nurture(&mut txn, cpid).await?,
     );
     if !rules::erasable(open_deal, open_ticket, active_nurture) {
         return Err(unprocessable(
@@ -248,92 +394,39 @@ async fn erase(
              enrolment (a live engagement is the lawful basis for holding the data)",
         ));
     }
-    let txn = ctx.db.begin().await?;
     // The person references of this contact and the duplicates merged into it, read before they
     // are scrubbed: the order of their employment events is kept by reference (CRM-R93).
     let mut person_refs = vec![contact.person_ref.clone()];
-    for row in txn
-        .query_all_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DatabaseBackend::Postgres,
-            "SELECT person_ref FROM contacts WHERE merged_into_pid = $1",
-            [cpid.into()],
-        ))
-        .await?
-    {
-        person_refs.push(row.try_get("", "person_ref")?);
-    }
+    person_refs.extend(
+        sqlx::query_scalar!(
+            "SELECT person_ref FROM contacts WHERE merged_into_pid = $1 \
+             /* deleted_at set or not: a merged duplicate is deleted */",
+            cpid,
+        )
+        .fetch_all(&mut *txn)
+        .await?,
+    );
     let employment_events_deleted =
-        crate::models::employments::forget_last_events(&txn, &person_refs).await?;
+        crate::models::employments::forget_last_events(&Bridge::new(&mut txn), &person_refs)
+            .await?;
     // Identity fields scrubbed in place; the row soft-deleted.
-    let scrubbed = scrub(contact);
-    scrubbed.update(&txn).await?;
-    // Free text linked to this contact, and rows that are about it only.
-    let statements = [
-        format!(
-            "UPDATE activities SET summary = '{ERASED}' WHERE subject_kind = 'contact' \
-             AND subject_pid = '{cpid}' AND deleted_at IS NULL"
-        ),
-        format!(
-            "UPDATE leads SET display_name = '{ERASED}', email = NULL \
-             WHERE contact_pid = '{cpid}' AND deleted_at IS NULL"
-        ),
-        format!("DELETE FROM working_group_members WHERE contact_pid = '{cpid}'"),
-        // Notifications about this contact and the duplicates merged into it (CRM-R32).
-        format!(
-            "DELETE FROM notifications WHERE subject_kind = 'contact' AND (subject_pid = '{cpid}' \
-             OR subject_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}'))"
-        ),
-        // Web form submissions of this contact and the duplicates merged into it (CRM-R31).
-        format!(
-            "DELETE FROM form_submissions WHERE contact_pid = '{cpid}' OR contact_pid IN \
-             (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
-        ),
-        format!(
-            "DELETE FROM external_links WHERE subject_kind = 'contact' AND subject_pid = '{cpid}'"
-        ),
-        // Contacts merged into this one are the same person: scrub their
-        // identity too, and the person reference the merge ledger kept (CRM-R26).
-        // Queued webhook deliveries about this person or the duplicates merged into it (CRM-R28).
-        format!(
-            "UPDATE webhook_deliveries SET status = 'cancelled', last_error = 'contact erased', \
-             updated_at = now() WHERE status = 'pending' AND (entity_pid = '{cpid}' OR entity_pid IN \
-             (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}'))"
-        ),
-        format!(
-            "UPDATE contacts SET display_name = '{ERASED}', person_ref = '{TOMBSTONE_PERSON}', \
-             job_title = NULL, given_name = NULL, family_name = NULL, marketing_consent = 'withdrawn' WHERE merged_into_pid = '{cpid}'"
-        ),
-        format!(
-            "UPDATE contact_merges SET merged_person_ref = '{TOMBSTONE_PERSON}' \
-             WHERE survivor_pid = '{cpid}'"
-        ),
-        // Every purpose is withdrawn, for this contact and the duplicates merged into it (CRM-R29).
-        format!(
-            "UPDATE contact_consents SET state = 'withdrawn', changed_at = now() \
-             WHERE contact_pid = '{cpid}' OR contact_pid IN \
-             (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
-        ),
-        // Mailed links that still work for this person or the duplicates merged into it (CRM-R79).
-        format!(
-            "DELETE FROM link_tokens WHERE contact_pid = '{cpid}' OR contact_pid IN \
-             (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
-        ),
-        // What the worker service said of this person's employment, which names them (CRM-R92).
-        format!(
-            "DELETE FROM contact_employments WHERE contact_pid = '{cpid}' OR contact_pid IN \
-             (SELECT pid FROM contacts WHERE merged_into_pid = '{cpid}')"
-        ),
-    ];
-    let custom = super::custom_fields::erase_sql(cpid);
-    let mut affected = Vec::new();
-    for statement in statements.iter().chain(std::iter::once(&custom)) {
-        let result = txn.execute_unprepared(statement).await?;
-        affected.push(result.rows_affected());
-    }
+    let now: crate::models::DateTimeWithTimeZone = crate::clock::now().into();
+    sqlx::query!(
+        "UPDATE contacts SET display_name = $2, person_ref = $3, job_title = NULL, \
+         given_name = NULL, family_name = NULL, marketing_consent = 'withdrawn', deleted_at = $4 \
+         WHERE id = $1 AND deleted_at IS NULL",
+        contact.id,
+        ERASED,
+        TOMBSTONE_PERSON,
+        now,
+    )
+    .execute(&mut *txn)
+    .await?;
+    let affected = scrub_linked(&mut txn, cpid).await?;
     // The rows go in the transaction; the files go once it has committed.
-    let (files, tags_removed) = erase_attached(&txn, cpid).await?;
-    Audit::record(
-        &txn,
+    let (files, tags_removed) = erase_attached(&mut txn, cpid).await?;
+    Audit::record_on(
+        &mut txn,
         "contact",
         cpid,
         "erased",
@@ -489,48 +582,36 @@ fn log_condition(rule: &rules::LogRule) -> String {
 #[debug_handler]
 async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
     let days = horizon_days();
+    let pool = db::pool(&ctx);
     let mut tables = std::collections::BTreeMap::new();
     for table in rules::SOFT_DELETED_TABLES {
-        let count = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                format!(
-                    "SELECT COUNT(*) AS n FROM {table} \
-                     WHERE deleted_at < now() - interval '{days} days'"
-                ),
-            ))
-            .await?
-            .and_then(|row| row.try_get::<i64>("", "n").ok())
-            .unwrap_or(0);
+        // Built from the list at run time; reviewed by hand (see the module documentation).
+        let count: i64 = sqlx::query_scalar(AssertSqlSafe(format!(
+            "SELECT COUNT(*) FROM {table} WHERE deleted_at < now() - interval '{days} days'"
+        )))
+        .fetch_one(pool)
+        .await?;
         if count > 0 {
             tables.insert((*table).to_string(), count);
         }
     }
-    let withdrawn_consent_past_horizon = contacts::Entity::find_live()
-        .filter(contacts::Column::MarketingConsent.eq("withdrawn"))
-        .filter(
-            contacts::Column::ConsentChangedAt
-                .lt(crate::clock::now() - chrono::Duration::days(days)),
-        )
-        .all(&ctx.db)
-        .await?
-        .len();
+    let withdrawn = sqlx::query_scalar!(
+        "SELECT COUNT(*) AS \"n!\" FROM contacts WHERE deleted_at IS NULL \
+         AND marketing_consent = 'withdrawn' AND consent_changed_at < $1",
+        crate::clock::now() - chrono::Duration::days(days),
+    )
+    .fetch_one(pool)
+    .await?;
+    let withdrawn_consent_past_horizon = usize::try_from(withdrawn).unwrap_or(0);
     let mut logs = std::collections::BTreeMap::new();
     for rule in rules::log_rules(crate::models::deliveries::MAX_ATTEMPTS) {
-        let count = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                format!(
-                    "SELECT COUNT(*) AS n FROM {} WHERE {}",
-                    rule.table,
-                    log_condition(&rule)
-                ),
-            ))
-            .await?
-            .and_then(|row| row.try_get::<i64>("", "n").ok())
-            .unwrap_or(0);
+        let count: i64 = sqlx::query_scalar(AssertSqlSafe(format!(
+            "SELECT COUNT(*) FROM {} WHERE {}",
+            rule.table,
+            log_condition(&rule)
+        )))
+        .fetch_one(pool)
+        .await?;
         if count > 0 {
             logs.insert(rule.table.to_string(), count);
         }
@@ -560,15 +641,16 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
 #[debug_handler]
 async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
     let days = horizon_days();
-    let txn = ctx.db.begin().await?;
+    let mut txn = db::pool(&ctx).begin().await?;
     let mut deleted = std::collections::BTreeMap::new();
     let mut total: u64 = 0;
     for table in rules::SOFT_DELETED_TABLES {
-        let result = txn
-            .execute_unprepared(&format!(
-                "DELETE FROM {table} WHERE deleted_at < now() - interval '{days} days'"
-            ))
-            .await?;
+        // Built from the list at run time; reviewed by hand (see the module documentation).
+        let result = sqlx::raw_sql(AssertSqlSafe(format!(
+            "DELETE FROM {table} WHERE deleted_at < now() - interval '{days} days'"
+        )))
+        .execute(&mut *txn)
+        .await?;
         if result.rows_affected() > 0 {
             deleted.insert((*table).to_string(), result.rows_affected());
             total += result.rows_affected();
@@ -577,13 +659,13 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
     // Delivery and event logs that are finished with, on their own horizons (CRM-R81).
     let mut logs_deleted = std::collections::BTreeMap::new();
     for rule in rules::log_rules(crate::models::deliveries::MAX_ATTEMPTS) {
-        let result = txn
-            .execute_unprepared(&format!(
-                "DELETE FROM {} WHERE {}",
-                rule.table,
-                log_condition(&rule)
-            ))
-            .await?;
+        let result = sqlx::raw_sql(AssertSqlSafe(format!(
+            "DELETE FROM {} WHERE {}",
+            rule.table,
+            log_condition(&rule)
+        )))
+        .execute(&mut *txn)
+        .await?;
         if result.rows_affected() > 0 {
             logs_deleted.insert(rule.table.to_string(), result.rows_affected());
             total += result.rows_affected();
@@ -593,8 +675,8 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
         log_horizon(rules::Horizon::Event),
         log_horizon(rules::Horizon::Mail),
     );
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "retention",
         Uuid::nil(),
         "retention_swept",

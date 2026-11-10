@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO working_group_members (created_at, updated_at, group_pid, contact_pid) SELECT r.created_at, r.updated_at, r.group_pid, r.contact_pid FROM jsonb_populate_record(NULL::working_group_members, $1::jsonb) r WHERE r.contact_pid = $2 ON CONFLICT DO NOTHING RETURNING group_pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "group_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "working_group_members",
+            "name": "group_pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a175cb343b6a8a56391639eeb763bfb2747bf44b4e2e59fd9affac0b910f0c54"
+}

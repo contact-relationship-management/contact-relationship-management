@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE contact_consents SET state = 'withdrawn', changed_at = now() WHERE contact_pid = $1 OR contact_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1 /* deleted_at set or not: a merged duplicate is deleted */)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bf9c59d4af270642da6cb1aee7d142ec0007422b59392d08d5cb39b1dab807c9"
+}

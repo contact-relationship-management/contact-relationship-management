@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE leads SET display_name = $2, email = NULL WHERE contact_pid = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "565b1faf245b4cc7b30ce532fface95f645eec8a5baf8cbd8ecae461f581d43a"
+}

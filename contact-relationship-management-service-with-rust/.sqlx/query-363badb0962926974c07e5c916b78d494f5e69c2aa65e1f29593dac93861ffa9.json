@@ -1,0 +1,208 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities WHERE subject_pid = $1 ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "subject_kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "subject_kind"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "subject_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "subject_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "occurred_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "occurred_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "actor_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "actor_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "summary",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "summary"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "due_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "due_on"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "done",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "done"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "sentiment",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "sentiment"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "assignee_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "assignee_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "remind_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "activities",
+            "name": "remind_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "363badb0962926974c07e5c916b78d494f5e69c2aa65e1f29593dac93861ffa9"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM external_links WHERE subject_kind = 'contact' AND subject_pid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5f87c615eafe3002cae05eb76fb7953265abbcc5c35ece9e01df8810e01e5659"
+}
