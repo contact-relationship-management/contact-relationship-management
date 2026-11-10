@@ -4,9 +4,15 @@
 # nurture enrolments through the API, rolls the schema back three migrations (what v0.1.1
 # had: three migrations back), migrates forward with the data in place, then merges 150 pairs and checks.
 # Usage: N=300 scripts/migrate-with-data.sh   (needs podman, curl and the debug binary)
+# It rolls back with `db down`, which the SeaORM history had and the sqlx baseline (CRM-T229) does
+# not, so it runs only on a checkout from before CRM-T229 (9bcdd9c or earlier).
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 SVC="$(pwd)/contact-relationship-management-service-with-rust"
+if [[ -d "$SVC/migrations" ]]; then
+  echo "migrate-with-data.sh needs the SeaORM history's db down: run it on a checkout before CRM-T229" >&2
+  exit 2
+fi
 BIN=$SVC/target/debug/contact-relationship-management
 PG=crm-mig-pg RD=crm-mig-redis PGP=15440 RDP=16380 PORT=5181
 export DB_URL="postgres://loco:loco@localhost:$PGP/legacy" CRM_REDIS_URL="redis://localhost:$RDP"

@@ -6,7 +6,6 @@ use axa::{
     boot::{BootResult, TestApp},
     cli::{self, Cli, Command, DbCommand, parse_vars},
     config::{Config as ServiceConfig, Defaults, MB},
-    db::truncate_table,
     queue::{self, Queue, QueueOptions},
     redis::{Cache, CacheConfig},
     routes::AppRoutes,
@@ -15,12 +14,9 @@ use axa::{
     worker::{BackgroundWorker as _, WorkerMode},
 };
 use axum::Router as AxumRouter;
-use migration::{Migrator, MigratorTrait as _};
 use std::{sync::Arc, time::Duration};
 
-use crate::{
-    auth, controllers, middleware, models::_entities::prelude::*, rate_limit, redis_store, tasks,
-};
+use crate::{auth, controllers, middleware, rate_limit, redis_store, tasks};
 
 /// What this service does when the environment says nothing. The pool of one is for development
 /// and tests: production's size comes from `axa`, or `DB_MAX_CONNECTIONS`.
@@ -270,11 +266,21 @@ impl App {
                 "db down, db reset and db truncate refuse to run in production",
             ));
         }
+        let pool = crate::db::pool(ctx);
         match command {
-            DbCommand::Migrate => Migrator::up(&ctx.db, None).await?,
-            DbCommand::Down { steps } => Migrator::down(&ctx.db, Some(steps)).await?,
-            DbCommand::Reset => Migrator::fresh(&ctx.db).await?,
-            DbCommand::Status => Migrator::status(&ctx.db).await?,
+            DbCommand::Migrate => crate::schema::migrate(pool).await?,
+            DbCommand::Down { .. } => {
+                return Err(Error::string(
+                    "db down: the baseline has no down migration (CRM-T229); restore a backup, \
+                     or run db reset outside production",
+                ));
+            }
+            DbCommand::Reset => crate::schema::reset(pool).await?,
+            DbCommand::Status => {
+                for line in crate::schema::status(pool).await? {
+                    println!("{line}");
+                }
+            }
             DbCommand::Truncate => Self::truncate(ctx).await?,
         }
         Ok(())
@@ -302,7 +308,7 @@ impl App {
         axa::logger::init(env!("CARGO_CRATE_NAME"), &config.logger);
         let ctx = Self::context(environment, config, jobs).await?;
         if ctx.config.database.auto_migrate && !matches!(cli.command, Command::Db { .. }) {
-            Migrator::up(&ctx.db, None).await?;
+            crate::schema::migrate(crate::db::pool(&ctx)).await?;
         }
         match cli.command {
             Command::Start { .. } => {
@@ -485,44 +491,56 @@ impl App {
     ///
     /// A database error.
     pub async fn truncate(ctx: &AppContext) -> Result<()> {
-        {
-            use sea_orm::ConnectionTrait;
-            ctx.db
-                .execute_unprepared(
-                    "TRUNCATE wpm_events, contact_employments, fx_rates, reports, taggings, tags, record_imports, attachments, custom_field_values, custom_field_defs, workflow_runs, workflows, email_templates, saved_views, lead_imports, notifications, form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
-                     email_deliveries, email_events, email_suppressions",
-                )
+        let pool = crate::db::pool(ctx);
+        sqlx::raw_sql(
+            "TRUNCATE wpm_events, contact_employments, fx_rates, reports, taggings, tags, \
+             record_imports, attachments, custom_field_values, custom_field_defs, workflow_runs, \
+             workflows, email_templates, saved_views, lead_imports, notifications, \
+             form_submissions, webhook_deliveries, webhook_subscriptions, idempotency_keys, \
+             email_deliveries, email_events, email_suppressions",
+        )
+        .execute(pool)
+        .await?;
+        // Then row by row, children first, as `SeaORM`'s `truncate_table` did (CRM-T229).
+        for table in TRUNCATED_BY_DELETE {
+            sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table}")))
+                .execute(pool)
                 .await?;
         }
-        truncate_table(&ctx.db, EventOutbox).await?;
-        truncate_table(&ctx.db, AuditLogs).await?;
-        truncate_table(&ctx.db, Articles).await?;
-        truncate_table(&ctx.db, Tickets).await?;
-        truncate_table(&ctx.db, SlaPolicies).await?;
-        truncate_table(&ctx.db, NurtureEnrollments).await?;
-        truncate_table(&ctx.db, NurtureSteps).await?;
-        truncate_table(&ctx.db, NurtureSequences).await?;
-        truncate_table(&ctx.db, Campaigns).await?;
-        truncate_table(&ctx.db, Segments).await?;
-        truncate_table(&ctx.db, ForecastSnapshots).await?;
-        truncate_table(&ctx.db, Deals).await?;
-        truncate_table(&ctx.db, PipelineStages).await?;
-        truncate_table(&ctx.db, Pipelines).await?;
-        truncate_table(&ctx.db, Leads).await?;
-        truncate_table(&ctx.db, ConsentEvents).await?;
-        truncate_table(&ctx.db, Activities).await?;
-        truncate_table(&ctx.db, Contacts).await?;
-        truncate_table(&ctx.db, Accounts).await?;
         Ok(())
     }
 }
+
+/// The tables `db truncate` empties with `DELETE`, children before parents. Constant names, so the
+/// statement built from each is safe.
+const TRUNCATED_BY_DELETE: [&str; 19] = [
+    "event_outbox",
+    "audit_logs",
+    "articles",
+    "tickets",
+    "sla_policies",
+    "nurture_enrollments",
+    "nurture_steps",
+    "nurture_sequences",
+    "campaigns",
+    "segments",
+    "forecast_snapshots",
+    "deals",
+    "pipeline_stages",
+    "pipelines",
+    "leads",
+    "consent_events",
+    "activities",
+    "contacts",
+    "accounts",
+];
 
 impl TestApp for App {
     async fn boot_test() -> Result<BootResult> {
         let environment = Environment::Test;
         let config = service_config(&environment)?;
         let ctx = Self::context(environment, config, false).await?;
-        Migrator::fresh(&ctx.db).await.map_err(Error::from)?;
+        crate::schema::reset(crate::db::pool(&ctx)).await?;
         let router = Self::router(&ctx).await?;
         Ok(BootResult {
             app_context: ctx,

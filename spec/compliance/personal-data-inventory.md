@@ -55,8 +55,11 @@ history remain under a pid that no longer identifies anyone.
 
 ## Inventory
 
+A database the `SeaORM` migrations built before CRM-T229 also keeps their `seaql_migrations` table, which holds no personal data either.
+
 | Table | Personal data held | About | Retention | On erasure of a contact |
 |---|---|---|---|---|
+| `_sqlx_migrations` | None (schema version) | — | `manual` | Not applicable |
 | `accounts` | Organization reference, display name, owner reference, stakeholder role | Organizations; a rep (owner) | `swept` | Kept: an organization is not a person |
 | `activities` | Free-text summary, actor and assignee references, sentiment | Contacts, reps | `swept` | Summaries about the contact scrubbed; actor and assignee references kept |
 | `articles` | None (authored help text) | — | `swept` | Not applicable |
@@ -109,7 +112,6 @@ history remain under a pid that no longer identifies anyone.
 | `record_imports` | Who imported, source note, the pids created | Reps; contacts, leads | `manual` | Not applicable |
 | `reports` | Owner reference, name, the report's definition | Reps | `manual` | Not applicable |
 | `saved_views` | Owner reference, name, filters | Reps | `manual` | Not applicable |
-| `seaql_migrations` | None (schema version) | — | `manual` | Not applicable |
 | `segments` | None (a filter definition) | — | `swept` | Not applicable |
 | `sla_policies` | None | — | `swept` | Not applicable |
 | `taggings` | Tag and subject pids | Contacts, accounts | `manual` | Taggings of the contact deleted |

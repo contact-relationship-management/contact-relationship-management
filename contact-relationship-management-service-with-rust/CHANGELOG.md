@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — sqlx migrator and one baseline (CRM-T229, CRM-D24)
+
+- `migrations/20261110000000_baseline.sql` and `src/schema.rs` (`migrate`, `reset`, `status`)
+  replace `migration::Migrator` at start-up, in `db migrate`, `db reset`, `db status` and the
+  test boot. A `seaql_migrations` listing all 59 adopts the baseline through `Migrator::skip`.
+- `db down` is refused; `db truncate` empties the same tables without `truncate_table`.
+- `_sqlx_migrations` replaces `seaql_migrations` in the personal-data inventory.
+
 ### Changed — last helpers on sqlx; `db::Bridge` removed (CRM-T216, CRM-D24)
 
 - `employments`, the tag, attachment and custom-field helpers, templates, `put_team`,

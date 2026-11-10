@@ -13,7 +13,7 @@ adds its spec detail here in the same PR as the code.
 Per [architecture](../../spec/architecture.md) and the family
 [rust-loco-stack](../../../agents/share/rust-loco-stack.md):
 Rust 2024, Axum, axa, and SeaORM, PostgreSQL 18, crate-root
-`migration/`, conventional `src/controllers/` layout, pure
+`migrations/` (sqlx), conventional `src/controllers/` layout, pure
 `src/rules/` core, Postgres-queue background jobs (campaign send,
 notification sweep), stub-first upstream clients, offline PASETO + ABAC,
 OpenAPI/Swagger, `Accepts-version` header versioning, tracing +
@@ -58,12 +58,11 @@ OTLP, Podman.
   PPM and WPM bridges; `src/models/` has SeaORM entities for 26 tables
   in `_entities/` and helper modules (`employments`, `audit_logs`,
   `event_outbox`, `deliveries`, `records`, `live`, `encrypted`); the
-  other tables are reached by explicit SQL. Crate-root `migration/`
-  holds **54 migrations** (explicit SQL but for `audit_logs`), the latest
-  `m20261030_000054_person_user_refs` (CRM-D18); 000052 and 000053
-  added `wpm_events`, `contact_employments` and
-  `employment_last_events` (CRM-R92, CRM-R93). The database has 62
-  tables besides `seaql_migrations`, each listed in
+  other tables are reached by explicit SQL. `migrations/` holds the
+  `sqlx` baseline (CRM-T229): the schema the 59 `SeaORM` migrations in
+  crate-root `migration/` built, the latest
+  `m20261031_000059_consent_profiles`. The database has 67
+  tables besides `_sqlx_migrations`, each listed in
   [the personal-data inventory](../../spec/compliance/personal-data-inventory.md),
   which a request test keeps true.
 - **Users are `person:` references** (CRM-D18): `owner_of` and every

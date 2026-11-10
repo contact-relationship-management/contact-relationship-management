@@ -48,7 +48,8 @@ src/
 ├── streaming.rs          envelope + memory/outbox transports
 ├── validation.rs         caps + URN shapes + money → 422
 └── openapi.rs            OpenAPI 3 doc
-migration/                sea-orm-migration (crate root)
+migrations/               sqlx: the baseline, then each change (CRM-T229)
+migration/                the SeaORM history the baseline stands for, and search_docs
 ```
 
 Key decisions (numbered in [design.md](design.md)): normalized

@@ -43,6 +43,7 @@ mod record_imports;
 mod relationships;
 mod reports;
 mod sales;
+mod schema;
 mod search;
 mod sqlx_move;
 mod streaming;

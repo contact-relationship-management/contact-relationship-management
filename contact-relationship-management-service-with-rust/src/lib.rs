@@ -71,6 +71,7 @@ pub mod provider_cloud;
 pub mod rate_limit;
 pub mod redis_store;
 pub mod rules;
+pub mod schema;
 pub mod search;
 pub mod settings;
 pub mod streaming;

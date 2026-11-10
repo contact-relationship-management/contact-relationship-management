@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the schema on sqlx's migrator (CRM-T229, 2026-11-10)
+
+- One baseline stands for the 59 earlier migrations. A database they built takes it as applied
+  on its next `db migrate` and runs nothing; one with only part of them is refused.
+- `db down` is refused: the baseline has no down step. Undo a migration by restoring a backup.
+
 ### Changed — the last helpers, the audit trail and the seed on sqlx (CRM-T216, 2026-11-10)
 
 - Every handler and helper now runs on `sqlx`; only the migrations and the entity types are left

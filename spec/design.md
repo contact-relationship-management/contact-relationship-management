@@ -480,4 +480,4 @@ Each query is written out with `sqlx::query!`, so a reviewer reads what runs and
 - **Plain SQL can forget `deleted_at`,** which `find_live` could not. A census test reads `.sqlx/` and fails on a query that reads or updates a soft-deleted table without naming that column. It sees checked queries only, so one built at run time is reviewed by hand.
 - **Builds read `.sqlx/`,** with `SQLX_OFFLINE` set in `.cargo/config.toml`, so they need no database. `test-db` fails if the cache and the migrated schema have drifted. That check clears compiler caches, because a cache hit skips the macros and the check then passes without comparing anything.
 
-Still open: whether any database is deployed, when `seaql_migrations` may be dropped, and what `db truncate` should do.
+Still open: whether any database is deployed, when `seaql_migrations` may be dropped, and what `db truncate` should do. Until the owner decides, CRM-T229 takes the answer that undoes nothing: a database the history built is recognised and keeps `seaql_migrations`, and `db truncate` empties the tables it emptied before. `db down` has no step to undo while the baseline is the only migration, and is refused.

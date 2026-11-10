@@ -49,7 +49,11 @@ Commands assume the container images from the repository's `Containerfile`s.
 10. Run migrations as a separate, privileged step (`auto_migrate` is off in
    production). The runtime database role needs no DDL rights. `db down`, `db reset`
    and `db truncate` are refused in production, so undo a migration there by
-   restoring a backup. Elsewhere they need `AXA_DESTROY_DATA=true`.
+   restoring a backup. Elsewhere they need `AXA_DESTROY_DATA=true`; `db down` is refused
+   everywhere while the baseline is the only migration, as it has no down step (CRM-T229).
+   A database the `SeaORM` migrations built takes the baseline as applied on its first
+   `db migrate` and runs nothing; one with only part of that history is refused, and is
+   first migrated with an image from before CRM-T229.
     From the image: `podman run --rm --entrypoint /app/crm-service <env> <image> db migrate`
     (the image's entrypoint is `start`, so `db migrate` needs the override). The
     production config refuses to load without `DB_URL` and

@@ -85,7 +85,7 @@ printf '  image: %s\n' "${IMAGE}"
 podman image exists "${IMAGE}" || podman pull -q "${IMAGE}" >/dev/null \
   || { echo "cannot pull the image (a private package needs: gh auth token | podman login ghcr.io -u <user> --password-stdin)"; exit 2; }
 out="$(podman run --rm --network "${NET}" --entrypoint /app/crm-service "${common_env[@]}" "${IMAGE}" db migrate 2>&1)"
-check "the image's own 'db migrate' applies every migration" bash -c "[[ \"\$(podman exec ${PG} psql -U loco -d crm -Atc 'select count(*) from seaql_migrations')\" -ge 19 ]]"
+check "the image's own 'db migrate' applies every migration" bash -c "[[ \"\$(podman exec ${PG} psql -U loco -d crm -Atc 'select count(*) from _sqlx_migrations where success')\" -ge 1 ]]"
 [[ $? -ne 0 ]] && echo "${out}" | tail -5
 
 say "phase 1: production mode, hardened, authentication on"
