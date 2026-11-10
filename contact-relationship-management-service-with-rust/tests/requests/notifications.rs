@@ -2,7 +2,7 @@
 //! fires again, a record that is gone is suppressed, the inbox is the caller's own, and SLA
 //! breaches reach the assignee.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

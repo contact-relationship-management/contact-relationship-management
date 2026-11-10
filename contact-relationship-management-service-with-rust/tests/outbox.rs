@@ -4,7 +4,7 @@
 //! process-wide and read once.
 //! Run with `cargo test --test outbox -- --ignored`.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::streaming::{self, EventTransport};
 use contact_relationship_management::{app::App, db, settings};
 use serde_json::{Value, json};

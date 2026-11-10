@@ -1,7 +1,7 @@
 //! Lead import (CRM-R34): mapping, a bad row, duplicate advice, commit in batches, undo, no
 //! consent, and the audit rows.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

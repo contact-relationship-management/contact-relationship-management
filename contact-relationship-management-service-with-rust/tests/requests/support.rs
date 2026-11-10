@@ -2,7 +2,7 @@
 //! assignee first-response stamp, priority re-derivation, the
 //! once-per-breach sweep, and the versioned knowledge base.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

@@ -1,7 +1,7 @@
 //! Exchange rates and converted reports (CRM-R50): setting and replacing rates, what is refused,
 //! which rate a date picks, and what a report says it used and could not convert.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

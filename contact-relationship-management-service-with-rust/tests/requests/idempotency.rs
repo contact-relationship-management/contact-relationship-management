@@ -3,7 +3,7 @@
 //! record; a reused key with different content, a bad key, and a failed first
 //! attempt each behave as documented.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::{app::App, db, idempotency_store};
 use serde_json::{Value, json};
 use serial_test::serial;

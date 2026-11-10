@@ -4,7 +4,7 @@
 //! The sender is swapped for a recorder, so no network is used. A separate
 //! ignored test in `tests/smtp_live.rs` talks to a real server.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};
 use contact_relationship_management::models::deliveries;

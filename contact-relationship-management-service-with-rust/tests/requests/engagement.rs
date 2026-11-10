@@ -3,7 +3,7 @@
 //! funnel / member-health / consent-by-account views, the partnership
 //! lifecycle, memberships + renewals, and working groups.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use chrono::Duration;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};

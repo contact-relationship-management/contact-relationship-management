@@ -2,7 +2,7 @@
 //! segment preview → simulated campaign → nurture advance →
 //! unsubscribe exits everything and blocks the next send.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

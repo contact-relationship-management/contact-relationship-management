@@ -1,7 +1,7 @@
 //! Lead assignment (CRM-R44): `assign_owner` on a `lead_created` workflow, in turn or by load,
 //! the conditions on a lead's source, the run log, and what is left alone.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

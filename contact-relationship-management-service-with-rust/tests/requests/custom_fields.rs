@@ -1,7 +1,7 @@
 //! Typed custom fields (CRM-R41): declaring them, values checked against their kind, the
 //! sensitivity that decides sealing, subject access and erasure, and key rotation.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use contact_relationship_management::app::App;

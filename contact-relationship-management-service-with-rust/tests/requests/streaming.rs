@@ -1,7 +1,7 @@
 //! Events (in-memory transport): a committed write is visible at
 //! `/api/events/recent`, newest first, and a refused write emits nothing.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

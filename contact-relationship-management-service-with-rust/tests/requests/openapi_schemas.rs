@@ -2,7 +2,7 @@
 //! the request schemas, and real list responses satisfy the resource schemas
 //! (`OpenAPI` schemas drift silently unless something checks them).
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

@@ -1,7 +1,7 @@
 //! GDS API standards (CRM-T49): unknown request members are refused, and
 //! authenticated API responses say they must not be cached.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::json;
 use serial_test::serial;

@@ -2,7 +2,7 @@
 //! truncation, following it visits every row once, bad input is refused, and
 //! article search runs before the page is cut.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};

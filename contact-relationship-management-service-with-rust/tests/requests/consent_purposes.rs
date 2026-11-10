@@ -1,7 +1,7 @@
 //! Consent per purpose and double opt-in (CRM-R29): the send gate for each state, the
 //! confirmation and preference links, unsubscribe by purpose, and merge, unmerge and erasure.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::http::StatusCode;
 use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};

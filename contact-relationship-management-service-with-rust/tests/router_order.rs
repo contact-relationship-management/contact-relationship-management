@@ -6,7 +6,7 @@
 //! Run with `cargo test --test router_order -- --ignored`.
 
 use axa::problem::PROBLEM_JSON;
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::http::{Method, StatusCode};
 use contact_relationship_management::app::App;
 use serial_test::serial;

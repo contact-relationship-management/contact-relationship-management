@@ -3,7 +3,7 @@
 //! each view reports, so that how it is computed can change without the answers
 //! changing (CRM-T80).
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use chrono::Duration;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};

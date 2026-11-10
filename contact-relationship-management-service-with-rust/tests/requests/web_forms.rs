@@ -1,7 +1,7 @@
 //! Web form lead capture (CRM-R31): the origin check, the limits, the honeypot, double opt-in
 //! before any mail, the nurture enrolment on confirmation, and the audit rows.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::http::StatusCode;
 use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};

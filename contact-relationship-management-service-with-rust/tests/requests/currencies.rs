@@ -2,7 +2,7 @@
 //! is refused wherever a currency is taken, a missing one is refused and never assumed, and a
 //! conversion between currencies of different exponents scales by each one's own minor unit.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

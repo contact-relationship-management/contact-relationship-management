@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.10.0 (CRM-T226, CRM-D23)
+
+- `axa` 0.10.0, taking in 0.8.0 to 0.9.1. The `testing` feature became the `axa-test` 0.1.0
+  dev-dependency: tests use `axa_test::prelude` and `axa_test::TestServer`. The renamed axa crates
+  keep every feature and `axa::` path, so no source outside the tests changes. The job queue
+  (`axa-postgres-job-queue` 0.2.0) adds `axa_job_acts`, which `Queue::connect` creates.
+
 ### Changed — the hand-written SQL on sqlx (CRM-T206, CRM-D24)
 
 - `quotas`, `custom_fields`, `attachments`, `break_glass`, `webhooks` and `notifications` (routes,

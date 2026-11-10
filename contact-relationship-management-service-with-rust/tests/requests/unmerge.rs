@@ -1,7 +1,7 @@
 //! `POST /api/contacts/{pid}/unmerge` (CRM-R26): a merge is undone from its
 //! ledger, consent never widens, and what cannot be undone is refused.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
@@ -11,7 +11,7 @@ use super::a_person;
 use super::openapi_schemas::schema_check::{check, to_json_schema};
 use super::seed_contact;
 
-async fn contact(request: &axa::TestServer, name: &str, title: Option<&str>) -> String {
+async fn contact(request: &axa_test::TestServer, name: &str, title: Option<&str>) -> String {
     let created: Value = request
         .post("/api/contacts")
         .json(&json!({ "person_ref": a_person(), "display_name": name, "job_title": title }))
@@ -20,12 +20,12 @@ async fn contact(request: &axa::TestServer, name: &str, title: Option<&str>) -> 
     created["pid"].as_str().unwrap().to_string()
 }
 
-async fn post(request: &axa::TestServer, path: &str, body: Value) -> (u16, Value) {
+async fn post(request: &axa_test::TestServer, path: &str, body: Value) -> (u16, Value) {
     let response = request.post(path).json(&body).await;
     (response.status_code().as_u16(), response.json())
 }
 
-async fn merge(request: &axa::TestServer, from: &str, into: &str) -> u16 {
+async fn merge(request: &axa_test::TestServer, from: &str, into: &str) -> u16 {
     post(
         request,
         &format!("/api/contacts/{from}/merge"),
@@ -35,7 +35,7 @@ async fn merge(request: &axa::TestServer, from: &str, into: &str) -> u16 {
     .0
 }
 
-async fn unmerge(request: &axa::TestServer, pid: &str, dry_run: bool) -> (u16, Value) {
+async fn unmerge(request: &axa_test::TestServer, pid: &str, dry_run: bool) -> (u16, Value) {
     post(
         request,
         &format!("/api/contacts/{pid}/unmerge"),
@@ -44,7 +44,7 @@ async fn unmerge(request: &axa::TestServer, pid: &str, dry_run: bool) -> (u16, V
     .await
 }
 
-async fn activities(request: &axa::TestServer, pid: &str) -> usize {
+async fn activities(request: &axa_test::TestServer, pid: &str) -> usize {
     let export: Value = request
         .get(&format!("/api/contacts/{pid}/subject-access"))
         .await
@@ -52,7 +52,7 @@ async fn activities(request: &axa::TestServer, pid: &str) -> usize {
     export["activities"].as_array().unwrap().len()
 }
 
-async fn note(request: &axa::TestServer, pid: &str, summary: &str) {
+async fn note(request: &axa_test::TestServer, pid: &str, summary: &str) {
     request
         .post("/api/activities")
         .json(&json!({ "subject_kind": "contact", "subject_pid": pid,

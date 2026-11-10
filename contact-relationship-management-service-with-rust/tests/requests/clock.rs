@@ -1,7 +1,7 @@
 //! One clock for records (CRM-T221): the service's times follow the database's clock, however
 //! far the host's is from it.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::clock;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};

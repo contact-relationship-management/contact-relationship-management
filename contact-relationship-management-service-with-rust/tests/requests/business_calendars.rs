@@ -1,7 +1,7 @@
 //! Business calendars (CRM-R45): SLA targets counted in working time, holidays, a calendar changed
 //! or removed, and what is left as it was.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};

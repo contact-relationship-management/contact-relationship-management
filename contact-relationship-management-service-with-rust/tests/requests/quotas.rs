@@ -1,7 +1,7 @@
 //! Quotas, commission plans and attainment (CRM-R59): what is set by hand, what is refused, and
 //! what a worker's won deals reach.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

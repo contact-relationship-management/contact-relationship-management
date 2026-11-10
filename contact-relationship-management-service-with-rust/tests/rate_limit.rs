@@ -4,7 +4,7 @@
 //! Its own test binary because the limit is read from the environment when the
 //! app boots. Run with `cargo test --test rate_limit -- --ignored`.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::http::StatusCode;
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -269,7 +269,7 @@ async fn the_address_lockout_refuses_the_address_after_the_count() {
 #[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
 async fn a_mistyped_address_lockout_stops_the_start() {
     set(rate_limit::ADDRESS_LOCKOUT_VAR, "ten");
-    let booted = axa::testing::boot_test::<App>().await;
+    let booted = axa_test::prelude::boot_test::<App>().await;
     set(rate_limit::ADDRESS_LOCKOUT_VAR, "0");
     let Err(error) = booted else {
         panic!("the app started with a mistyped lockout");

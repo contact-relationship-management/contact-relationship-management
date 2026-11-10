@@ -1,7 +1,7 @@
 //! Explainable workflow rules (CRM-R40): each action, the dry run, the schedule, the loop guard,
 //! the consent re-check, and the run log that says why a run happened.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

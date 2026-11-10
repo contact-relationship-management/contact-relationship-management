@@ -1,6 +1,6 @@
 //! Saved views (CRM-R35): make, list, replace and delete; the closed sets; unique names.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

@@ -1,7 +1,7 @@
 //! Board edits (CRM-T55): edit a card in place, reorder it within its column,
 //! and move a follow-up to another day.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

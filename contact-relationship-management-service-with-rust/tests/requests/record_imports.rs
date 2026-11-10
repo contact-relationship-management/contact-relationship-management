@@ -1,7 +1,7 @@
 //! Contact and account import (CRM-R43): the preview, the person and organization lookups, the
 //! rows left out, no consent, no workflows, and undo.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::clients::Mode;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};

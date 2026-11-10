@@ -1,7 +1,7 @@
 //! Retention for the delivery and event logs (CRM-R81): rows that are finished with go once they
 //! are old enough, and nothing that something may still act on is touched.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::settings;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};

@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa 0.10.0 (CRM-T226, 2026-11-09)
+
+- The service moves to axa 0.10.0; its request-test helpers are the new `axa-test` crate. Nothing
+  a client sees changes.
+
 ### Changed — quotas, custom fields, webhooks and more on sqlx (CRM-T206, 2026-11-09)
 
 - Quotas and commission plans, custom fields, attachments, break-glass, webhooks, notifications

@@ -1,7 +1,7 @@
 //! Links to records in other systems (CRM-R27): added to four kinds of record,
 //! checked, moved with a merge and an unmerge, and deleted with an erasure.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
@@ -11,7 +11,7 @@ use super::a_person;
 use super::openapi_schemas::schema_check::{check, to_json_schema};
 use super::seed_contact;
 
-async fn contact(request: &axa::TestServer, name: &str) -> String {
+async fn contact(request: &axa_test::TestServer, name: &str) -> String {
     let created: Value = request
         .post("/api/contacts")
         .json(&json!({ "person_ref": a_person(), "display_name": name }))
@@ -21,7 +21,7 @@ async fn contact(request: &axa::TestServer, name: &str) -> String {
 }
 
 async fn add(
-    request: &axa::TestServer,
+    request: &axa_test::TestServer,
     plural: &str,
     pid: &str,
     system: &str,
@@ -34,7 +34,7 @@ async fn add(
     (response.status_code().as_u16(), response.json())
 }
 
-async fn links(request: &axa::TestServer, plural: &str, pid: &str) -> Vec<Value> {
+async fn links(request: &axa_test::TestServer, plural: &str, pid: &str) -> Vec<Value> {
     let body: Value = request
         .get(&format!("/api/{plural}/{pid}/external-links"))
         .await

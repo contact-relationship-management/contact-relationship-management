@@ -1,7 +1,7 @@
 //! Tags (CRM-R47): the labels, a record's set, the list filter, segments, subject access and
 //! erasure.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

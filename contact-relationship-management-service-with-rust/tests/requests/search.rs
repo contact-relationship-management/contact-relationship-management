@@ -1,6 +1,6 @@
 //! Search (CRM-R33): accents, typos, prefixes, every record kind, paging, and the audit row.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

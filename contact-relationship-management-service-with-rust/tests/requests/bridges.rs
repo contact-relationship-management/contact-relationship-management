@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};

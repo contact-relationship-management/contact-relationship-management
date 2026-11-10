@@ -1,7 +1,7 @@
 //! Email templates with merge tokens (CRM-R36): the closed token set, the unsubscribe link every
 //! body must carry, the synthetic preview, and campaigns and nurture steps that use a template.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};
 use contact_relationship_management::unsubscribe::{self, Unsubscriber};

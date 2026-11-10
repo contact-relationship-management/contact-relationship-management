@@ -1,7 +1,7 @@
 //! The MCP endpoint (CRM-R30): version rules, the tool list, and tool calls through the real stack.
 //! Who may do what is in `tests/enforcement.rs`, which runs with sign-in required.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::http::StatusCode;
 use contact_relationship_management::app::App;
 use contact_relationship_management::settings;

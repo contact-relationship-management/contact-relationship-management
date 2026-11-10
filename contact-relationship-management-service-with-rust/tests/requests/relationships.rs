@@ -1,7 +1,7 @@
 //! Contacts, accounts and activities: creation, lookup, refusals and the task
 //! lifecycle, through the routes.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::http::StatusCode;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};

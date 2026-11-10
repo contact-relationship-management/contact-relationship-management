@@ -2,7 +2,7 @@
 //! `pending`, a paused ticket does not breach, and leaving `pending` moves each deadline by the
 //! waiting that counted against it.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

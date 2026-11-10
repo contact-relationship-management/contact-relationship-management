@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::body::Bytes;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};

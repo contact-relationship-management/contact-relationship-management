@@ -5,7 +5,7 @@
 //! does; the retention report is horizon-floored and the sweep is
 //! audited even when it deletes nothing.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

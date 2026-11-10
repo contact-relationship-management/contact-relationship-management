@@ -1,7 +1,7 @@
 //! The organization's calendar (CRM-T171): its time zone for "today" and report months, and its
 //! fiscal year for fiscal quarters and years.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};

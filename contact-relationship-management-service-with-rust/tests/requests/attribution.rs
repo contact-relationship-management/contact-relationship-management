@@ -1,7 +1,7 @@
 //! Multi-touch attribution (CRM-R49): the touches a campaign has with the buyer, the three
 //! models, the window, what no campaign touched, and what is refused.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};

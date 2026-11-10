@@ -5,7 +5,7 @@
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;

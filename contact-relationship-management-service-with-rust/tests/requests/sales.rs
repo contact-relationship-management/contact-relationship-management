@@ -2,7 +2,7 @@
 //! pipeline → won, with the forecast reflecting every move, plus the
 //! unknown-pid 404 pins.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

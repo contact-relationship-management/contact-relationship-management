@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::models::deliveries::MAX_ATTEMPTS;
 use contact_relationship_management::rules::privacy::{SOFT_DELETED_TABLES, log_rules};

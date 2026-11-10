@@ -2,7 +2,7 @@
 //! surface returns plaintext, legacy plaintext still reads, key rotation
 //! re-seals, and a retired key fails loudly instead of returning garbage.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use contact_relationship_management::app::App;

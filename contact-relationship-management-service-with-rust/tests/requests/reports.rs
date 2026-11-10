@@ -1,7 +1,7 @@
 //! The report builder (CRM-R48): counts and per-currency sums grouped by a field, filters and a
 //! date range, what is refused, and saved reports.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;

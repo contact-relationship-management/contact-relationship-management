@@ -5,7 +5,7 @@
 
 use std::sync::Mutex;
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use axum::http::StatusCode;
 use chrono::{DateTime, Duration, Utc};
 use contact_relationship_management::app::App;

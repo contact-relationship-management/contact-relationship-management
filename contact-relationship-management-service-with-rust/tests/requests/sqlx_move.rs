@@ -3,7 +3,7 @@
 //! transaction. These go with the code they prove: when `SeaORM` goes, so do they.
 
 use axa::AppContext;
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::controllers::organization;
 use contact_relationship_management::db::{self, Bridge};

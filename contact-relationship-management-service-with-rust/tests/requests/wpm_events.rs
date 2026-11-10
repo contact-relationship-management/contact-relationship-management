@@ -2,7 +2,7 @@
 //! pausing marketing to an employee and lifting the pause when they leave, with the consent they
 //! had. No WPM runs here: the requests are made the way its `webhook_deliver` task makes them.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::rules::wpm_events::{TOLERANCE_SECS, sign};
 use contact_relationship_management::settings::{self, Settings};

@@ -1,7 +1,7 @@
 //! `GET /api/contacts/{pid}/duplicates` (CRM-R23): other contacts that are
 //! probably the same person, best first, with the reasons.
 
-use axa::testing::prelude::*;
+use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::clients;
 use serde_json::{Value, json};
@@ -10,7 +10,7 @@ use serial_test::serial;
 use super::a_person;
 use super::openapi_schemas::schema_check::{check, to_json_schema};
 
-async fn account(request: &axa::TestServer, name: &str) -> String {
+async fn account(request: &axa_test::TestServer, name: &str) -> String {
     let created: Value = request
         .post("/api/accounts")
         .json(&json!({
@@ -23,7 +23,7 @@ async fn account(request: &axa::TestServer, name: &str) -> String {
 }
 
 async fn contact(
-    request: &axa::TestServer,
+    request: &axa_test::TestServer,
     person_ref: &str,
     name: &str,
     title: Option<&str>,
