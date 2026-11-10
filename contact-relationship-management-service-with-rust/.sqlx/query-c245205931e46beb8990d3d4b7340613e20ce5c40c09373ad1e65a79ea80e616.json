@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT group_pid, COUNT(*) AS \"n!\" FROM working_group_members GROUP BY group_pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "group_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "working_group_members",
+            "name": "group_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "c245205931e46beb8990d3d4b7340613e20ce5c40c09373ad1e65a79ea80e616"
+}

@@ -3,8 +3,11 @@
 //! and activities. Every mutation runs on one transaction (CRM-D9).
 
 use crate::controllers::PidPath;
+use crate::db::{self, Bridge};
 use crate::json::Json;
-use crate::models::live::FindLive;
+use crate::models::DateTimeWithTimeZone;
+use crate::models::encrypted::EncryptedText;
+use crate::models::rows;
 use crate::rules::user_ref;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
@@ -12,8 +15,8 @@ use std::sync::OnceLock;
 use axa::extract::Query;
 use axa::prelude::*;
 use contact_relationship_management_matcher::{Contact as MatchContact, Matcher, Ranked, Verdict};
-use sea_orm::{QueryOrder, QuerySelect, TransactionTrait};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::paging::Page;
@@ -21,7 +24,6 @@ use super::{PidRef, record_rejection, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
 use crate::models::_entities::{accounts, activities, contacts, deals, tickets};
 use crate::models::audit_logs::Model as Audit;
-use crate::models::records;
 use crate::rules::tokens;
 use crate::streaming;
 use crate::validation::Problems;
@@ -198,6 +200,16 @@ fn default_tier() -> String {
     "prospect".to_string()
 }
 
+/// The live contact `pid`, or `404`.
+async fn find_contact(pool: &PgPool, pid: Uuid) -> Result<contacts::Model> {
+    rows::contact(pool, pid).await?.ok_or(Error::NotFound)
+}
+
+/// The live account `pid`, or `404`.
+async fn find_account<'e>(db: impl sqlx::PgExecutor<'e>, pid: Uuid) -> Result<accounts::Model> {
+    rows::account(db, pid).await?.ok_or(Error::NotFound)
+}
+
 /// `POST /api/contacts` — create the wrapper (consent starts `never`).
 #[debug_handler]
 async fn create_contact(
@@ -223,30 +235,36 @@ async fn create_contact(
     problems.cap_opt("given_name", payload.given_name.as_deref());
     problems.cap_opt("family_name", payload.family_name.as_deref());
     problems.finish()?;
+    let pool = db::pool(&ctx);
     if let Some(account) = payload.account_pid {
-        records::find_account(&ctx.db, account).await?;
+        find_account(pool, account).await?;
     }
-    let txn = ctx.db.begin().await?;
-    let row = contacts::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        person_ref: ActiveValue::set(payload.person_ref.clone()),
-        account_pid: ActiveValue::set(payload.account_pid),
-        owner_ref: ActiveValue::set(payload.owner_ref.clone()),
-        display_name: ActiveValue::set(payload.display_name.clone()),
-        status: ActiveValue::set("active".to_string()),
-        job_title: ActiveValue::set(payload.job_title.clone()),
-        given_name: ActiveValue::set(payload.given_name.clone()),
-        family_name: ActiveValue::set(payload.family_name.clone()),
-        preferred_channel: ActiveValue::set(payload.preferred_channel.clone().into()),
-        marketing_consent: ActiveValue::set("never".to_string()),
-        consent_changed_at: ActiveValue::set(None),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let mut txn = pool.begin().await?;
+    // `preferred_channel` is sealed: binding `EncryptedText` seals it (CRM-T41).
+    let row = sqlx::query_as!(
+        contacts::Model,
+        "INSERT INTO contacts (pid, person_ref, account_pid, owner_ref, display_name, status, \
+            job_title, given_name, family_name, preferred_channel, marketing_consent) \
+            VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8, $9, 'never') \
+            RETURNING created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+            status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+            \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+            given_name, consent_jurisdiction",
+        Uuid::new_v4(),
+        payload.person_ref,
+        payload.account_pid,
+        payload.owner_ref,
+        payload.display_name,
+        payload.job_title,
+        payload.given_name,
+        payload.family_name,
+        EncryptedText(payload.preferred_channel.clone()) as _,
+    )
+    .fetch_one(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "contact",
         row.pid,
         "created",
@@ -254,8 +272,8 @@ async fn create_contact(
         Some(serde_json::json!({ "owner": row.owner_ref })),
     )
     .await?;
-    streaming::emit_on(
-        &txn,
+    streaming::emit_in(
+        &mut txn,
         "contact",
         "created",
         &row.pid.to_string(),
@@ -264,8 +282,9 @@ async fn create_contact(
         None,
     )
     .await?;
+    // The workflow engine takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
     workflows::fire(
-        &txn,
+        &Bridge::new(&mut txn),
         &workflows::Event::contact("contact_created", row.pid),
         0,
         caller.actor(),
@@ -277,6 +296,40 @@ async fn create_contact(
     })
 }
 
+/// Write `change` into `next`; the names of the fields it set, in order.
+fn apply_change(next: &mut contacts::Model, change: ContactChange) -> Vec<&'static str> {
+    let mut changed = Vec::new();
+    if let Some(name) = change.display_name {
+        next.display_name = name;
+        changed.push("display_name");
+    }
+    if change.given_name.is_sent() {
+        next.given_name = change.given_name.into_value();
+        changed.push("given_name");
+    }
+    if change.family_name.is_sent() {
+        next.family_name = change.family_name.into_value();
+        changed.push("family_name");
+    }
+    if change.job_title.is_sent() {
+        next.job_title = change.job_title.into_value();
+        changed.push("job_title");
+    }
+    if change.owner_ref.is_sent() {
+        next.owner_ref = change.owner_ref.into_value();
+        changed.push("owner_ref");
+    }
+    if change.account_pid.is_sent() {
+        next.account_pid = change.account_pid.into_value();
+        changed.push("account_pid");
+    }
+    if let Some(v) = change.preferred_channel {
+        next.preferred_channel = v.into();
+        changed.push("preferred_channel");
+    }
+    changed
+}
+
 /// `PUT /api/contacts/{pid}` — change a contact's own fields (CRM-R38). The audit row names the
 /// fields that changed, never their values, so an erasure leaves no personal data behind.
 #[debug_handler]
@@ -286,7 +339,11 @@ async fn update_contact(
     PidPath(pid): PidPath,
     Json(mut change): Json<ContactChange>,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let mut txn = pool.begin().await?;
+    let contact = rows::contact_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     auth::authorize_record(
         &caller,
         authentication_verifier::Action::Write,
@@ -311,45 +368,37 @@ async fn update_contact(
     }
     problems.finish()?;
     if let Some(&account) = change.account_pid.set() {
-        records::find_account(&ctx.db, account).await?;
+        find_account(&mut *txn, account).await?;
     }
-    let mut changed = Vec::new();
-    let mut active: contacts::ActiveModel = contact.into();
-    if let Some(name) = change.display_name {
-        active.display_name = ActiveValue::set(name);
-        changed.push("display_name");
-    }
-    if change.given_name.is_sent() {
-        active.given_name = ActiveValue::set(change.given_name.into_value());
-        changed.push("given_name");
-    }
-    if change.family_name.is_sent() {
-        active.family_name = ActiveValue::set(change.family_name.into_value());
-        changed.push("family_name");
-    }
-    if change.job_title.is_sent() {
-        active.job_title = ActiveValue::set(change.job_title.into_value());
-        changed.push("job_title");
-    }
-    if change.owner_ref.is_sent() {
-        active.owner_ref = ActiveValue::set(change.owner_ref.into_value());
-        changed.push("owner_ref");
-    }
-    if change.account_pid.is_sent() {
-        active.account_pid = ActiveValue::set(change.account_pid.into_value());
-        changed.push("account_pid");
-    }
-    if let Some(v) = change.preferred_channel {
-        active.preferred_channel = ActiveValue::set(v.into());
-        changed.push("preferred_channel");
-    }
+    // The row is locked, so each column is written from it or from the change.
+    let mut next = contact;
+    let changed = apply_change(&mut next, change);
     if changed.is_empty() {
         return Err(unprocessable("nothing to change"));
     }
-    let txn = ctx.db.begin().await?;
-    let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
+    // `preferred_channel` is sealed: binding `EncryptedText` seals it (CRM-T41).
+    let row = sqlx::query_as!(
+        contacts::Model,
+        "UPDATE contacts SET display_name = $2, given_name = $3, family_name = $4, \
+            job_title = $5, owner_ref = $6, account_pid = $7, preferred_channel = $8 \
+            WHERE id = $1 RETURNING created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+            status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+            \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+            given_name, consent_jurisdiction",
+        next.id,
+        next.display_name,
+        next.given_name,
+        next.family_name,
+        next.job_title,
+        next.owner_ref,
+        next.account_pid,
+        EncryptedText(next.preferred_channel.0.clone()) as _,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
+        &mut txn,
         "contact",
         row.pid,
         "updated",
@@ -357,8 +406,8 @@ async fn update_contact(
         Some(serde_json::json!({ "fields": changed })),
     )
     .await?;
-    streaming::emit_on(
-        &txn,
+    streaming::emit_in(
+        &mut txn,
         "contact",
         "updated",
         &row.pid.to_string(),
@@ -368,7 +417,7 @@ async fn update_contact(
     )
     .await?;
     workflows::fire(
-        &txn,
+        &Bridge::new(&mut txn),
         &workflows::Event::contact("contact_updated", row.pid),
         0,
         caller.actor(),
@@ -387,17 +436,17 @@ async fn list_contacts(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 1000)?;
-    let mut query = contacts::Entity::find_live().order_by_asc(contacts::Column::Id);
-    let tagged = super::tags::filter_pids(&ctx.db, "contact", &tag).await?;
-    if let Some(pids) = &tagged {
-        query = query.filter(contacts::Column::Pid.is_in(pids.clone()));
-    }
-    let rows = page.apply(query).all(&ctx.db).await?;
+    let (limit, offset) = page.bounds();
+    let pool = db::pool(&ctx);
+    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(&ctx.db, "contact", &tag)
+        .await?
+        .map(|pids| pids.into_iter().collect());
+    let rows = rows::contacts_page(pool, tagged.as_deref(), limit, offset).await?;
     let (rows, more) = page.split(rows);
     // Narrowing by tag must not show which masked records carry it, so those are left out.
     let readable = readable_contacts(&rows, &caller, tagged.is_some());
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        pool,
         "contact",
         Uuid::nil(),
         "contact_list_read",
@@ -448,6 +497,9 @@ fn to_values<T: serde::Serialize>(rows: &[T]) -> Vec<serde_json::Value> {
 
 /// The most activities, deals and tickets `GET /api/contacts/{pid}` returns each.
 const DETAIL_ROWS: u64 = 200;
+
+/// [`DETAIL_ROWS`] and the one row more that says a list was cut, as `sqlx` binds a limit.
+const DETAIL_PROBE: i64 = 201;
 
 /// Drop the one row read past [`DETAIL_ROWS`]; true when there was one.
 fn cut<T>(rows: &mut Vec<T>) -> bool {
@@ -559,7 +611,8 @@ async fn get_contact(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let contact = find_contact(pool, pid).await?;
     let obligations = auth::authorize_record(
         &caller,
         authentication_verifier::Action::Read,
@@ -568,25 +621,10 @@ async fn get_contact(
     .map_err(record_rejection)?;
     // Each list is cut at DETAIL_ROWS, newest first, and `truncated` says which
     // were cut: one row more is read to know.
-    let mut activity_rows = activities::Entity::find_live()
-        .filter(activities::Column::SubjectKind.eq("contact"))
-        .filter(activities::Column::SubjectPid.eq(contact.pid))
-        .order_by_desc(activities::Column::OccurredAt)
-        .limit(DETAIL_ROWS + 1)
-        .all(&ctx.db)
-        .await?;
-    let mut deal_rows = deals::Entity::find_live()
-        .filter(deals::Column::PrimaryContactPid.eq(contact.pid))
-        .order_by_desc(deals::Column::Id)
-        .limit(DETAIL_ROWS + 1)
-        .all(&ctx.db)
-        .await?;
-    let mut ticket_rows = tickets::Entity::find_live()
-        .filter(tickets::Column::ContactPid.eq(contact.pid))
-        .order_by_desc(tickets::Column::Id)
-        .limit(DETAIL_ROWS + 1)
-        .all(&ctx.db)
-        .await?;
+    let mut activity_rows =
+        rows::recent_activities_of(pool, "contact", contact.pid, DETAIL_PROBE).await?;
+    let mut deal_rows = rows::recent_deals_of_contact(pool, contact.pid, DETAIL_PROBE).await?;
+    let mut ticket_rows = rows::recent_tickets_of_contact(pool, contact.pid, DETAIL_PROBE).await?;
     let truncated = Truncated {
         activities: cut(&mut activity_rows),
         deals: cut(&mut deal_rows),
@@ -597,8 +635,8 @@ async fn get_contact(
     if masked {
         contact_json = auth::mask_text_json(contact_json, &["preferred_channel"]);
     }
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        pool,
         "contact",
         contact.pid,
         "contact_read",
@@ -685,20 +723,28 @@ pub(crate) fn match_contact(
 
 /// Display names of the accounts the given contacts belong to.
 pub(crate) async fn account_names<'a>(
-    db: &DatabaseConnection,
+    pool: &PgPool,
     contacts: impl Iterator<Item = &'a contacts::Model>,
 ) -> Result<HashMap<Uuid, String>> {
-    let pids: HashSet<Uuid> = contacts.filter_map(|c| c.account_pid).collect();
+    let pids: Vec<Uuid> = contacts
+        .filter_map(|c| c.account_pid)
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
     if pids.is_empty() {
         return Ok(HashMap::new());
     }
-    Ok(accounts::Entity::find()
-        .filter(accounts::Column::Pid.is_in(pids))
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|a| (a.pid, a.display_name))
-        .collect())
+    // A contact still names an account that was deleted, and the matcher compares by that name,
+    // so the name is read whatever the account's `deleted_at`, as before.
+    Ok(sqlx::query!(
+        "SELECT pid, display_name, deleted_at FROM accounts WHERE pid = ANY($1)",
+        &pids,
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|a| (a.pid, a.display_name))
+    .collect())
 }
 
 /// Second look at the best few candidates, with email addresses fetched from
@@ -763,7 +809,8 @@ async fn contact_duplicates(
     PidPath(pid): PidPath,
     Query(params): Query<DuplicateParams>,
 ) -> Result<Response> {
-    let target = records::find_contact(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let target = find_contact(pool, pid).await?;
     auth::authorize_record(
         &caller,
         authentication_verifier::Action::Read,
@@ -772,12 +819,12 @@ async fn contact_duplicates(
     .map_err(record_rejection)?;
     let limit = params.limit.unwrap_or(20).clamp(1, 100);
 
-    let mut rows = contacts::Entity::find_live()
-        .filter(contacts::Column::Pid.ne(target.pid))
-        .order_by_asc(contacts::Column::Id)
-        .limit(u64::try_from(DUPLICATE_POOL + 1).unwrap_or(u64::MAX))
-        .all(&ctx.db)
-        .await?;
+    let mut rows = rows::other_contacts(
+        pool,
+        target.pid,
+        i64::try_from(DUPLICATE_POOL + 1).unwrap_or(i64::MAX),
+    )
+    .await?;
     let truncated = rows.len() > DUPLICATE_POOL;
     rows.truncate(DUPLICATE_POOL);
     rows.retain(|row| {
@@ -789,7 +836,7 @@ async fn contact_duplicates(
         .is_ok()
     });
 
-    let account_names = account_names(&ctx.db, rows.iter().chain(std::iter::once(&target))).await?;
+    let account_names = account_names(pool, rows.iter().chain(std::iter::once(&target))).await?;
 
     let query = match_contact(&target, &account_names);
     let candidates: Vec<MatchContact> = rows
@@ -830,8 +877,8 @@ async fn contact_duplicates(
             }
         })
         .collect();
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        pool,
         "contact",
         target.pid,
         "contact_duplicates_read",
@@ -860,13 +907,6 @@ async fn repoint_contact(
     PidPath(pid): PidPath,
     Json(payload): Json<RepointPayload>,
 ) -> Result<Response> {
-    let contact = records::find_contact(&ctx.db, pid).await?;
-    auth::authorize_record(
-        &caller,
-        authentication_verifier::Action::Write,
-        &auth::contact_resource_attrs(&contact),
-    )
-    .map_err(record_rejection)?;
     let mut problems = Problems::new();
     problems.require_ref(
         "person_ref",
@@ -874,14 +914,32 @@ async fn repoint_contact(
         &payload.person_ref,
     );
     problems.require_text("reason", &payload.reason);
+    let mut txn = db::pool(&ctx).begin().await?;
+    let contact = rows::contact_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    auth::authorize_record(
+        &caller,
+        authentication_verifier::Action::Write,
+        &auth::contact_resource_attrs(&contact),
+    )
+    .map_err(record_rejection)?;
     problems.finish()?;
-    let txn = ctx.db.begin().await?;
     let from = contact.person_ref.clone();
-    let mut active: contacts::ActiveModel = contact.into();
-    active.person_ref = ActiveValue::set(payload.person_ref.clone());
-    let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
+    let row = sqlx::query_as!(
+        contacts::Model,
+        "UPDATE contacts SET person_ref = $2 WHERE id = $1 RETURNING created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+            status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+            \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+            given_name, consent_jurisdiction",
+        contact.id,
+        payload.person_ref,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
+        &mut txn,
         "contact",
         row.pid,
         "repointed",
@@ -914,22 +972,32 @@ async fn create_account(
     problems.user_opt("owner_ref", payload.owner_ref.as_deref());
     problems.cap_opt("industry", payload.industry.as_deref());
     problems.finish()?;
-    let txn = ctx.db.begin().await?;
-    let row = accounts::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        organization_ref: ActiveValue::set(payload.organization_ref.clone()),
-        owner_ref: ActiveValue::set(payload.owner_ref.clone()),
-        display_name: ActiveValue::set(payload.display_name.clone()),
-        tier: ActiveValue::set(payload.tier.clone()),
-        industry: ActiveValue::set(payload.industry.clone()),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = sqlx::query_as!(
+        accounts::Model,
+        "INSERT INTO accounts (pid, organization_ref, owner_ref, display_name, tier, industry) \
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING created_at, updated_at, id, pid, organization_ref, owner_ref, display_name, tier, \
+            industry, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stakeholder_role",
+        Uuid::new_v4(),
+        payload.organization_ref,
+        payload.owner_ref,
+        payload.display_name,
+        payload.tier,
+        payload.industry,
+    )
+    .fetch_one(&mut *txn)
     .await?;
-    Audit::record(&txn, "account", row.pid, "created", caller.actor(), None).await?;
-    streaming::emit_on(
-        &txn,
+    Audit::record_on(
+        &mut txn,
+        "account",
+        row.pid,
+        "created",
+        caller.actor(),
+        None,
+    )
+    .await?;
+    streaming::emit_in(
+        &mut txn,
         "account",
         "created",
         &row.pid.to_string(),
@@ -953,7 +1021,6 @@ async fn update_account(
     PidPath(pid): PidPath,
     Json(mut change): Json<AccountChange>,
 ) -> Result<Response> {
-    let account = records::find_account(&ctx.db, pid).await?;
     let mut problems = Problems::new();
     if let Some(name) = &change.display_name {
         problems.require_text("display_name", name);
@@ -964,32 +1031,48 @@ async fn update_account(
     change.owner_ref.normalise_user();
     problems.user_opt("owner_ref", change.owner_ref.set().map(String::as_str));
     problems.cap_opt("industry", change.industry.set().map(String::as_str));
+    let mut txn = db::pool(&ctx).begin().await?;
+    let account = rows::account_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
     problems.finish()?;
+    // The row is locked, so each column is written from it or from the change.
     let mut changed = Vec::new();
-    let mut active: accounts::ActiveModel = account.into();
+    let mut next = account;
     if let Some(name) = change.display_name {
-        active.display_name = ActiveValue::set(name);
+        next.display_name = name;
         changed.push("display_name");
     }
     if let Some(tier) = change.tier {
-        active.tier = ActiveValue::set(tier);
+        next.tier = tier;
         changed.push("tier");
     }
     if change.owner_ref.is_sent() {
-        active.owner_ref = ActiveValue::set(change.owner_ref.into_value());
+        next.owner_ref = change.owner_ref.into_value();
         changed.push("owner_ref");
     }
     if change.industry.is_sent() {
-        active.industry = ActiveValue::set(change.industry.into_value());
+        next.industry = change.industry.into_value();
         changed.push("industry");
     }
     if changed.is_empty() {
         return Err(unprocessable("nothing to change"));
     }
-    let txn = ctx.db.begin().await?;
-    let row = active.update(&txn).await?;
-    Audit::record(
-        &txn,
+    let row = sqlx::query_as!(
+        accounts::Model,
+        "UPDATE accounts SET display_name = $2, tier = $3, owner_ref = $4, industry = $5 \
+            WHERE id = $1 RETURNING created_at, updated_at, id, pid, organization_ref, owner_ref, display_name, tier, \
+            industry, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stakeholder_role",
+        next.id,
+        next.display_name,
+        next.tier,
+        next.owner_ref,
+        next.industry,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
+        &mut txn,
         "account",
         row.pid,
         "updated",
@@ -997,8 +1080,8 @@ async fn update_account(
         Some(serde_json::json!({ "fields": changed })),
     )
     .await?;
-    streaming::emit_on(
-        &txn,
+    streaming::emit_in(
+        &mut txn,
         "account",
         "updated",
         &row.pid.to_string(),
@@ -1020,14 +1103,15 @@ async fn list_accounts(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 500)?;
-    let mut query = accounts::Entity::find_live().order_by_asc(accounts::Column::Id);
-    if let Some(pids) = super::tags::filter_pids(&ctx.db, "account", &tag).await? {
-        query = query.filter(accounts::Column::Pid.is_in(pids));
-    }
-    let rows = page.apply(query).all(&ctx.db).await?;
+    let (limit, offset) = page.bounds();
+    let pool = db::pool(&ctx);
+    let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(&ctx.db, "account", &tag)
+        .await?
+        .map(|pids| pids.into_iter().collect());
+    let rows = rows::accounts_page(pool, tagged.as_deref(), limit, offset).await?;
     let (rows, more) = page.split(rows);
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        pool,
         "account",
         Uuid::nil(),
         "account_list_read",
@@ -1045,17 +1129,10 @@ async fn get_account(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let account = records::find_account(&ctx.db, pid).await?;
-    let contact_rows = contacts::Entity::find()
-        .filter(contacts::Column::AccountPid.eq(account.pid))
-        .filter(contacts::Column::DeletedAt.is_null())
-        .all(&ctx.db)
-        .await?;
-    let deal_rows = deals::Entity::find()
-        .filter(deals::Column::AccountPid.eq(account.pid))
-        .filter(deals::Column::DeletedAt.is_null())
-        .all(&ctx.db)
-        .await?;
+    let pool = db::pool(&ctx);
+    let account = find_account(pool, pid).await?;
+    let contact_rows = rows::contacts_of_account(pool, account.pid).await?;
+    let deal_rows = rows::deals_of_account(pool, account.pid).await?;
     // The bundled contacts and deals follow the same record-level decisions
     // as their own endpoints (CRM-T32): a denied row is omitted, a masked
     // one loses its channel detail or amount.
@@ -1077,8 +1154,8 @@ async fn get_account(
             })
         })
         .collect();
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        pool,
         "account",
         account.pid,
         "account_read",
@@ -1123,59 +1200,63 @@ async fn create_activity(
         problems.push("only a task has an assignee or a reminder");
     }
     problems.finish()?;
-    let occurred_at = payload
+    let occurred_at: DateTimeWithTimeZone = payload
         .occurred_at
         .unwrap_or_else(|| crate::clock::now().into());
-    let txn = ctx.db.begin().await?;
-    let row = activities::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        subject_kind: ActiveValue::set(payload.subject_kind.clone()),
-        sentiment: ActiveValue::set(payload.sentiment.clone()),
-        subject_pid: ActiveValue::set(payload.subject_pid),
-        kind: ActiveValue::set(payload.kind.clone()),
-        occurred_at: ActiveValue::set(occurred_at),
-        actor_ref: ActiveValue::set(payload.actor_ref.clone()),
-        summary: ActiveValue::set(payload.summary.clone().into()),
-        due_on: ActiveValue::set(payload.due_on),
-        assignee_ref: ActiveValue::set(payload.assignee_ref.clone()),
-        remind_at: ActiveValue::set(payload.remind_at),
-        done: ActiveValue::set(false),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&txn)
+    let pid = Uuid::new_v4();
+    let mut txn = db::pool(&ctx).begin().await?;
+    // `summary` is sealed: binding `EncryptedText` seals it (CRM-T41).
+    sqlx::query!(
+        "INSERT INTO activities (pid, subject_kind, sentiment, subject_pid, kind, occurred_at, \
+         actor_ref, summary, due_on, assignee_ref, remind_at, done) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false)",
+        pid,
+        payload.subject_kind,
+        payload.sentiment,
+        payload.subject_pid,
+        payload.kind,
+        occurred_at,
+        payload.actor_ref,
+        EncryptedText(payload.summary.clone()) as _,
+        payload.due_on,
+        payload.assignee_ref,
+        payload.remind_at,
+    )
+    .execute(&mut *txn)
     .await?;
-    // First-response stamping (CRM-R10): the assignee's first
-    // outbound call/email on an open/pending ticket.
+    // First-response stamping (CRM-R10): the assignee's first outbound call/email on a ticket
+    // not closed. The ticket is stamped once: the statement sets it only while it is unset.
     if payload.subject_kind == "ticket"
         && (payload.kind == "call" || payload.kind == "email")
-        && let Ok(ticket) = records::find_ticket(&txn, payload.subject_pid).await
+        && let Some(actor) = payload.actor_ref.as_deref()
     {
-        {
-            let is_assignee =
-                ticket.assignee_ref.is_some() && ticket.assignee_ref == payload.actor_ref;
-            if is_assignee && ticket.first_responded_at.is_none() && ticket.status != "closed" {
-                let ticket_pid = ticket.pid;
-                let mut active: tickets::ActiveModel = ticket.into();
-                active.first_responded_at = ActiveValue::set(Some(occurred_at));
-                active.update(&txn).await?;
-                streaming::emit_on(
-                    &txn,
-                    "ticket",
-                    "ticket_first_response",
-                    &ticket_pid.to_string(),
-                    "",
-                    caller.actor(),
-                    None,
-                )
-                .await?;
-            }
+        let stamped = sqlx::query_scalar!(
+            "UPDATE tickets SET first_responded_at = $3 WHERE pid = $1 AND deleted_at IS NULL \
+             AND assignee_ref = $2 AND first_responded_at IS NULL AND status <> 'closed' \
+             RETURNING pid",
+            payload.subject_pid,
+            actor,
+            occurred_at,
+        )
+        .fetch_optional(&mut *txn)
+        .await?;
+        if let Some(ticket_pid) = stamped {
+            streaming::emit_in(
+                &mut txn,
+                "ticket",
+                "ticket_first_response",
+                &ticket_pid.to_string(),
+                "",
+                caller.actor(),
+                None,
+            )
+            .await?;
         }
     }
-    Audit::record(&txn, "activity", row.pid, "created", caller.actor(), None).await?;
+    Audit::record_on(&mut txn, "activity", pid, "created", caller.actor(), None).await?;
     txn.commit().await?;
     format::json(PidRef {
-        pid: row.pid.to_string(),
+        pid: pid.to_string(),
     })
 }
 
@@ -1197,24 +1278,19 @@ async fn list_activities(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 200)?;
-    let mut query = activities::Entity::find_live();
-    if let Some(kind) = &params.subject_kind {
-        query = query.filter(activities::Column::SubjectKind.eq(kind));
-    }
-    if let Some(pid) = params.subject_pid {
-        query = query.filter(activities::Column::SubjectPid.eq(pid));
-    }
-    let rows = page
-        .apply(
-            query
-                .order_by_desc(activities::Column::OccurredAt)
-                .order_by_desc(activities::Column::Id),
-        )
-        .all(&ctx.db)
-        .await?;
+    let (limit, offset) = page.bounds();
+    let pool = db::pool(&ctx);
+    let rows = rows::activities_page(
+        pool,
+        params.subject_kind.as_deref(),
+        params.subject_pid,
+        limit,
+        offset,
+    )
+    .await?;
     let (rows, more) = page.split(rows);
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        pool,
         "activity",
         Uuid::nil(),
         "activity_list_read",
@@ -1232,20 +1308,31 @@ async fn activity_done(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let row = activities::Entity::find()
-        .filter(activities::Column::Pid.eq(pid))
-        .filter(activities::Column::DeletedAt.is_null())
-        .one(&ctx.db)
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = rows::activity_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
     if row.kind != "task" {
         return Err(unprocessable("only task activities can be marked done"));
     }
-    let txn = ctx.db.begin().await?;
-    let mut active: activities::ActiveModel = row.into();
-    active.done = ActiveValue::set(true);
-    let row = active.update(&txn).await?;
-    Audit::record(&txn, "activity", row.pid, "updated", caller.actor(), None).await?;
+    let row = sqlx::query_as!(
+        activities::Model,
+        "UPDATE activities SET done = true WHERE id = $1 RETURNING created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
+            actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
+            sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\"",
+        row.id,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
+        &mut txn,
+        "activity",
+        row.pid,
+        "updated",
+        caller.actor(),
+        None,
+    )
+    .await?;
     txn.commit().await?;
     format::json(row)
 }

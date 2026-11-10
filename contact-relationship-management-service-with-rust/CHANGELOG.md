@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — relationships and engagement on sqlx (CRM-T212, CRM-D24)
+
+- `controllers::relationships` and `engagement` on `query!`; edits re-read the row `FOR UPDATE`.
+- Engagement writes and their audit rows share one transaction.
+- `relationships.rs` seals a contact's channel and an activity's summary; the census lists it.
+
 ### Changed — marketing on sqlx (CRM-T211, CRM-D24)
 
 - `controllers::marketing::{consent, segment, campaign, nurture}`, `models::deliveries` and

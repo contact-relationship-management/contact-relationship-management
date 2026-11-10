@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO working_group_members (group_pid, contact_pid) VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c5216bea0fb2fb7dc3b9ff9bdc29affed1c4d37569e2998eaa6e00992cbb1850"
+}

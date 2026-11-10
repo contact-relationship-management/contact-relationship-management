@@ -1,0 +1,137 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE partnerships SET stage = $2 WHERE id = $1 RETURNING created_at, updated_at, id, pid, account_pid, kind, stage, summary, started_on, deleted_at AS \"deleted_at: DateTimeWithTimeZone\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "account_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "account_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "stage",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "stage"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "summary",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "summary"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "started_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "started_on"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "partnerships",
+            "name": "deleted_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "b772b3093fcc427227c4199a20ca51c97a1eb976339ce30750459c7b04f8aee4"
+}

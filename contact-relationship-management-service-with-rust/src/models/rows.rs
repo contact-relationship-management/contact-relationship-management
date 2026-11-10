@@ -15,7 +15,7 @@ use uuid::Uuid;
 use crate::models::_entities::{
     accounts, activities, articles, audit_logs, campaigns, contacts, deals, forecast_snapshots,
     leads, memberships, nurture_sequences, nurture_steps, partnerships, pipeline_stages, segments,
-    sla_policies, tickets,
+    sla_policies, tickets, working_groups,
 };
 use crate::models::DateTimeWithTimeZone;
 
@@ -1056,6 +1056,397 @@ pub async fn steps_of<'e>(
         deleted_at AS \"deleted_at: DateTimeWithTimeZone\", subject, body, template_pid FROM \
         nurture_steps WHERE deleted_at IS NULL AND sequence_pid = $1 ORDER BY position, id",
         sequence,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live contact `pid`, locked for this transaction.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn contact_for_update<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<contacts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        contacts::Model,
+        "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+        status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+        \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+        given_name, consent_jurisdiction FROM contacts WHERE deleted_at IS NULL AND pid = $1 FOR \
+        UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// One page of live contacts, of `pids` only when given, oldest first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn contacts_page<'e>(
+    db: impl PgExecutor<'e>,
+    pids: Option<&[Uuid]>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<contacts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        contacts::Model,
+        "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+        status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+        \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+        given_name, consent_jurisdiction FROM contacts WHERE deleted_at IS NULL AND ($1::uuid[] IS \
+        NULL OR pid = ANY($1)) ORDER BY id LIMIT $2 OFFSET $3",
+        pids,
+        limit,
+        offset,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// Live contacts other than `pid`, oldest first, at most `limit`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn other_contacts<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+    limit: i64,
+) -> Result<Vec<contacts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        contacts::Model,
+        "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+        status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+        \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+        given_name, consent_jurisdiction FROM contacts WHERE deleted_at IS NULL AND pid <> $1 ORDER \
+        BY id LIMIT $2",
+        pid,
+        limit,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live contacts of one account.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn contacts_of_account<'e>(
+    db: impl PgExecutor<'e>,
+    account: Uuid,
+) -> Result<Vec<contacts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        contacts::Model,
+        "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+        status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+        \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+        given_name, consent_jurisdiction FROM contacts WHERE deleted_at IS NULL AND account_pid = $1 \
+        ORDER BY id",
+        account,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live account `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn account<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<accounts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        accounts::Model,
+        "SELECT created_at, updated_at, id, pid, organization_ref, owner_ref, display_name, tier, \
+        industry, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stakeholder_role FROM accounts \
+        WHERE deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live account `pid`, locked for this transaction.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn account_for_update<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<accounts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        accounts::Model,
+        "SELECT created_at, updated_at, id, pid, organization_ref, owner_ref, display_name, tier, \
+        industry, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stakeholder_role FROM accounts \
+        WHERE deleted_at IS NULL AND pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// One page of live accounts, of `pids` only when given, oldest first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn accounts_page<'e>(
+    db: impl PgExecutor<'e>,
+    pids: Option<&[Uuid]>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<accounts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        accounts::Model,
+        "SELECT created_at, updated_at, id, pid, organization_ref, owner_ref, display_name, tier, \
+        industry, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stakeholder_role FROM accounts \
+        WHERE deleted_at IS NULL AND ($1::uuid[] IS NULL OR pid = ANY($1)) ORDER BY id LIMIT $2 \
+        OFFSET $3",
+        pids,
+        limit,
+        offset,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live deals of one account.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn deals_of_account<'e>(
+    db: impl PgExecutor<'e>,
+    account: Uuid,
+) -> Result<Vec<deals::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        deals::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+        pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+        source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at FROM deals WHERE deleted_at \
+        IS NULL AND account_pid = $1 ORDER BY id",
+        account,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// A subject's live activities, newest first, at most `limit`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn recent_activities_of<'e>(
+    db: impl PgExecutor<'e>,
+    kind: &str,
+    subject: Uuid,
+    limit: i64,
+) -> Result<Vec<activities::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        activities::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
+        actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
+        sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities \
+        WHERE deleted_at IS NULL AND subject_kind = $1 AND subject_pid = $2 ORDER BY occurred_at \
+        DESC, id DESC LIMIT $3",
+        kind,
+        subject,
+        limit,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// A contact's live deals, newest first, at most `limit`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn recent_deals_of_contact<'e>(
+    db: impl PgExecutor<'e>,
+    contact: Uuid,
+    limit: i64,
+) -> Result<Vec<deals::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        deals::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
+        pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
+        source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at FROM deals WHERE deleted_at \
+        IS NULL AND primary_contact_pid = $1 ORDER BY id DESC LIMIT $2",
+        contact,
+        limit,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// A contact's live tickets, newest first, at most `limit`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn recent_tickets_of_contact<'e>(
+    db: impl PgExecutor<'e>,
+    contact: Uuid,
+    limit: i64,
+) -> Result<Vec<tickets::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        tickets::Model,
+        "SELECT created_at, updated_at, id, pid, contact_pid, account_pid, assignee_ref, title, \
+        priority, channel, status, opened_at, first_response_due_at AS \"first_response_due_at: \
+        DateTimeWithTimeZone\", resolution_due_at AS \"resolution_due_at: DateTimeWithTimeZone\", \
+        first_responded_at AS \"first_responded_at: DateTimeWithTimeZone\", resolved_at AS \
+        \"resolved_at: DateTimeWithTimeZone\", first_response_breached, resolution_breached, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\", board_position, paused_at AS \"paused_at: \
+        DateTimeWithTimeZone\", first_response_paused_seconds, resolution_paused_seconds, \
+        wait_limit_exceeded_at AS \"wait_limit_exceeded_at: DateTimeWithTimeZone\" FROM tickets WHERE \
+        deleted_at IS NULL AND contact_pid = $1 ORDER BY id DESC LIMIT $2",
+        contact,
+        limit,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// One page of live activities, of one subject kind and one subject when given, newest first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn activities_page<'e>(
+    db: impl PgExecutor<'e>,
+    kind: Option<&str>,
+    subject: Option<Uuid>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<activities::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        activities::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
+        actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
+        sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities \
+        WHERE deleted_at IS NULL AND ($1::text IS NULL OR subject_kind = $1) AND ($2::uuid IS NULL \
+        OR subject_pid = $2) ORDER BY occurred_at DESC, id DESC LIMIT $3 OFFSET $4",
+        kind,
+        subject,
+        limit,
+        offset,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live partnerships of one account, newest first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn partnerships_of_account<'e>(
+    db: impl PgExecutor<'e>,
+    account: Uuid,
+) -> Result<Vec<partnerships::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        partnerships::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, kind, stage, summary, started_on, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\" FROM partnerships WHERE deleted_at IS NULL \
+        AND account_pid = $1 ORDER BY id DESC",
+        account,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live partnership `pid`, locked for this transaction.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn partnership_for_update<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<partnerships::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        partnerships::Model,
+        "SELECT created_at, updated_at, id, pid, account_pid, kind, stage, summary, started_on, \
+        deleted_at AS \"deleted_at: DateTimeWithTimeZone\" FROM partnerships WHERE deleted_at IS NULL \
+        AND pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// Every live working group.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn working_groups<'e>(
+    db: impl PgExecutor<'e>,
+) -> Result<Vec<working_groups::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        working_groups::Model,
+        "SELECT created_at, updated_at, id, pid, name, purpose, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\" FROM working_groups WHERE deleted_at IS NULL ORDER BY id",
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The live working group `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn working_group<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<working_groups::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        working_groups::Model,
+        "SELECT created_at, updated_at, id, pid, name, purpose, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\" FROM working_groups WHERE deleted_at IS NULL AND pid = $1",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live activities of some contacts, newest first, at most `limit`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn recent_activities_of_contacts<'e>(
+    db: impl PgExecutor<'e>,
+    contacts: &[Uuid],
+    limit: i64,
+) -> Result<Vec<activities::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        activities::Model,
+        "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
+        actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
+        sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities \
+        WHERE deleted_at IS NULL AND subject_kind = 'contact' AND subject_pid = ANY($1) ORDER BY \
+        occurred_at DESC, id DESC LIMIT $2",
+        contacts as &[Uuid],
+        limit,
     )
     .fetch_all(db)
     .await

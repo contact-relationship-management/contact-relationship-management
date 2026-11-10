@@ -210,6 +210,41 @@ async fn an_imported_contact_s_channel_is_sealed_at_rest() {
     .await;
 }
 
+/// A contact's channel changed by `PUT /api/contacts/{pid}` (on `sqlx` since CRM-T212) is sealed at
+/// rest, and the answer carries the plaintext.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn an_edited_channel_is_sealed_at_rest() {
+    request::<App, _, _>(|request, ctx| async move {
+        crypto::install(Some(keyring(&[("k1", 1)])));
+        let pid = seed_contact!(&request, "Edited Channel").await;
+        let edited = request
+            .put(&format!("/api/contacts/{pid}"))
+            .json(&json!({ "preferred_channel": "phone" }))
+            .await;
+        edited.assert_status_ok();
+        assert_eq!(edited.json::<Value>()["preferred_channel"], "phone");
+        let at_rest = stored(
+            &ctx.db,
+            &format!("SELECT preferred_channel AS v FROM contacts WHERE pid = '{pid}'"),
+        )
+        .await;
+        assert!(at_rest[0].starts_with("enc:v1:k1:"), "{}", at_rest[0]);
+        assert!(!at_rest[0].contains("phone"));
+        crypto::install(None);
+        ctx.db
+            .execute_unprepared("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'")
+            .await
+            .unwrap();
+        ctx.db
+            .execute_unprepared("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'")
+            .await
+            .unwrap();
+    })
+    .await;
+}
+
 /// `sqlx` seals and opens as `SeaORM` does: each reads what the other wrote, and a value that cannot
 /// be opened is an error, never ciphertext shown as text (CRM-D24).
 #[tokio::test]

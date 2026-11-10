@@ -5,21 +5,25 @@
 //! [`crate::rules::engagement`]; the derived views live in
 //! [`super::insights`].
 
+//!
+//! On `sqlx` since CRM-T212 (CRM-D24): each change and its audit row commit in one transaction.
+
 use crate::controllers::PidPath;
+use crate::db;
 use crate::json::Json;
-use crate::models::live::FindLive;
 use axa::extract::Path;
 use axa::prelude::*;
-use sea_orm::{ActiveValue, QueryOrder, QuerySelect};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::unprocessable;
 use crate::models::_entities::{
-    activities, contacts, memberships, partnerships, working_group_members, working_groups,
+    accounts, activities, contacts, memberships, partnerships, working_groups,
 };
 use crate::models::audit_logs::Model as Audit;
 use crate::models::records;
+use crate::models::rows;
 use crate::rules::engagement as rules;
 use crate::validation::Problems;
 
@@ -61,17 +65,27 @@ async fn declare_contact_stakeholder(
         }
     }
     problems.finish()?;
-    let contact = records::find_contact(&ctx.db, pid).await?;
-    let contact_pid = contact.pid;
-    let mut active: contacts::ActiveModel = contact.into();
-    active.stakeholder_role = ActiveValue::set(payload.role.clone());
-    active.influence = ActiveValue::set(payload.influence);
-    active.interest = ActiveValue::set(payload.interest);
-    let row = active.update(&ctx.db).await?;
-    Audit::record(
-        &ctx.db,
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = sqlx::query_as!(
+        contacts::Model,
+        "UPDATE contacts SET stakeholder_role = $2, influence = $3, interest = $4 \
+            WHERE pid = $1 AND deleted_at IS NULL RETURNING created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+            status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+            \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+            given_name, consent_jurisdiction",
+        pid,
+        payload.role,
+        payload.influence,
+        payload.interest,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    Audit::record_on(
+        &mut txn,
         "contact",
-        contact_pid,
+        row.pid,
         "stakeholder_declared",
         caller.actor(),
         Some(serde_json::json!({
@@ -79,6 +93,7 @@ async fn declare_contact_stakeholder(
         })),
     )
     .await?;
+    txn.commit().await?;
     format::json(row)
 }
 
@@ -102,20 +117,28 @@ async fn declare_account_stakeholder(
     let mut problems = Problems::new();
     problems.token_opt("role", rules::STAKEHOLDER_ROLES, payload.role.as_deref());
     problems.finish()?;
-    let account = records::find_account(&ctx.db, pid).await?;
-    let account_pid = account.pid;
-    let mut active: crate::models::_entities::accounts::ActiveModel = account.into();
-    active.stakeholder_role = ActiveValue::set(payload.role.clone());
-    let row = active.update(&ctx.db).await?;
-    Audit::record(
-        &ctx.db,
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = sqlx::query_as!(
+        accounts::Model,
+        "UPDATE accounts SET stakeholder_role = $2 WHERE pid = $1 AND deleted_at IS NULL \
+            RETURNING created_at, updated_at, id, pid, organization_ref, owner_ref, display_name, tier, \
+            industry, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stakeholder_role",
+        pid,
+        payload.role,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    Audit::record_on(
+        &mut txn,
         "account",
-        account_pid,
+        row.pid,
         "stakeholder_declared",
         caller.actor(),
         Some(serde_json::json!({ "role": payload.role })),
     )
     .await?;
+    txn.commit().await?;
     format::json(row)
 }
 
@@ -143,21 +166,24 @@ async fn create_partnership(
     problems.require_text("summary", &payload.summary);
     problems.cap_text("summary", &payload.summary);
     problems.finish()?;
-    let account = records::find_account(&ctx.db, pid).await?;
-    let row = partnerships::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        account_pid: ActiveValue::set(account.pid),
-        kind: ActiveValue::set(payload.kind.clone()),
-        stage: ActiveValue::set("scouting".to_string()),
-        summary: ActiveValue::set(payload.summary.clone()),
-        started_on: ActiveValue::set(payload.started_on),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&ctx.db)
+    let pool = db::pool(&ctx);
+    let account = find_account(pool, pid).await?;
+    let mut txn = pool.begin().await?;
+    let row = sqlx::query_as!(
+        partnerships::Model,
+        "INSERT INTO partnerships (pid, account_pid, kind, stage, summary, started_on) \
+            VALUES ($1, $2, $3, 'scouting', $4, $5) RETURNING created_at, updated_at, id, pid, account_pid, kind, stage, summary, started_on, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\"",
+        Uuid::new_v4(),
+        account.pid,
+        payload.kind,
+        payload.summary,
+        payload.started_on,
+    )
+    .fetch_one(&mut *txn)
     .await?;
-    Audit::record(
-        &ctx.db,
+    Audit::record_on(
+        &mut txn,
         "partnership",
         row.pid,
         "created",
@@ -165,6 +191,7 @@ async fn create_partnership(
         None,
     )
     .await?;
+    txn.commit().await?;
     format::json(row)
 }
 
@@ -175,14 +202,9 @@ async fn list_partnerships(
     State(ctx): State<AppContext>,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let account = records::find_account(&ctx.db, pid).await?;
-    let rows = partnerships::Entity::find()
-        .filter(partnerships::Column::AccountPid.eq(account.pid))
-        .filter(partnerships::Column::DeletedAt.is_null())
-        .order_by_desc(partnerships::Column::Id)
-        .all(&ctx.db)
-        .await?;
-    format::json(rows)
+    let pool = db::pool(&ctx);
+    let account = find_account(pool, pid).await?;
+    format::json(rows::partnerships_of_account(pool, account.pid).await?)
 }
 
 /// `POST /api/partnerships/{pid}/stage` — the lifecycle move (forward
@@ -194,28 +216,31 @@ async fn partnership_stage(
     PidPath(pid): PidPath,
     Json(payload): Json<super::StatusPayload>,
 ) -> Result<Response> {
-    let row = partnerships::Entity::find()
-        .filter(partnerships::Column::Pid.eq(pid))
-        .filter(partnerships::Column::DeletedAt.is_null())
-        .one(&ctx.db)
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = rows::partnership_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
     rules::partnership_transition(&row.stage, &payload.to)
         .map_err(|reason| unprocessable(&reason.to_string()))?;
-    let from = row.stage.clone();
-    let row_pid = row.pid;
-    let mut active: partnerships::ActiveModel = row.into();
-    active.stage = ActiveValue::set(payload.to.clone());
-    let updated = active.update(&ctx.db).await?;
-    Audit::record(
-        &ctx.db,
+    let updated = sqlx::query_as!(
+        partnerships::Model,
+        "UPDATE partnerships SET stage = $2 WHERE id = $1 RETURNING created_at, updated_at, id, pid, account_pid, kind, stage, summary, started_on, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\"",
+        row.id,
+        payload.to,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    Audit::record_on(
+        &mut txn,
         "partnership",
-        row_pid,
+        row.pid,
         "partnership_stage_changed",
         caller.actor(),
-        Some(serde_json::json!({ "from": from, "to": payload.to })),
+        Some(serde_json::json!({ "from": row.stage, "to": payload.to })),
     )
     .await?;
+    txn.commit().await?;
     format::json(updated)
 }
 
@@ -246,36 +271,51 @@ async fn upsert_membership(
     let mut problems = Problems::new();
     problems.require_token("status", rules::MEMBERSHIP_STATUSES, &status);
     problems.finish()?;
-    let account = records::find_account(&ctx.db, pid).await?;
-    let existing = memberships::Entity::find()
-        .filter(memberships::Column::AccountPid.eq(account.pid))
-        .one(&ctx.db)
-        .await?;
+    let pool = db::pool(&ctx);
+    let account = find_account(pool, pid).await?;
+    let mut txn = pool.begin().await?;
+    // One record per account: a deleted one is taken back into use, as before, so it is read
+    // whatever its `deleted_at`.
+    let existing = sqlx::query!(
+        "SELECT id, deleted_at FROM memberships WHERE account_pid = $1 ORDER BY id LIMIT 1 \
+         FOR UPDATE",
+        account.pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?;
     let row = match existing {
-        Some(row) => {
-            let mut active: memberships::ActiveModel = row.into();
-            active.joined_on = ActiveValue::set(payload.joined_on);
-            active.status = ActiveValue::set(status.clone());
-            active.renewal_on = ActiveValue::set(payload.renewal_on);
-            active.deleted_at = ActiveValue::set(None);
-            active.update(&ctx.db).await?
+        Some(found) => {
+            sqlx::query_as!(
+                memberships::Model,
+                "UPDATE memberships SET joined_on = $2, status = $3, renewal_on = $4, \
+                    deleted_at = NULL WHERE id = $1 RETURNING created_at, updated_at, id, pid, account_pid, joined_on, status, renewal_on, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\"",
+                found.id,
+                payload.joined_on,
+                status,
+                payload.renewal_on,
+            )
+            .fetch_one(&mut *txn)
+            .await?
         }
         None => {
-            memberships::ActiveModel {
-                pid: ActiveValue::set(Uuid::new_v4()),
-                account_pid: ActiveValue::set(account.pid),
-                joined_on: ActiveValue::set(payload.joined_on),
-                status: ActiveValue::set(status.clone()),
-                renewal_on: ActiveValue::set(payload.renewal_on),
-                deleted_at: ActiveValue::set(None),
-                ..Default::default()
-            }
-            .insert(&ctx.db)
+            sqlx::query_as!(
+                memberships::Model,
+                "INSERT INTO memberships (pid, account_pid, joined_on, status, renewal_on) \
+                    VALUES ($1, $2, $3, $4, $5) RETURNING created_at, updated_at, id, pid, account_pid, joined_on, status, renewal_on, \
+            deleted_at AS \"deleted_at: DateTimeWithTimeZone\"",
+                Uuid::new_v4(),
+                account.pid,
+                payload.joined_on,
+                status,
+                payload.renewal_on,
+            )
+            .fetch_one(&mut *txn)
             .await?
         }
     };
-    Audit::record(
-        &ctx.db,
+    Audit::record_on(
+        &mut txn,
         "membership",
         row.pid,
         "membership_declared",
@@ -283,6 +323,7 @@ async fn upsert_membership(
         Some(serde_json::json!({ "status": status, "renewal_on": payload.renewal_on })),
     )
     .await?;
+    txn.commit().await?;
     format::json(row)
 }
 
@@ -307,17 +348,19 @@ async fn create_group(
     problems.cap_text("name", &payload.name);
     problems.cap_opt("purpose", payload.purpose.as_deref());
     problems.finish()?;
-    let row = working_groups::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        name: ActiveValue::set(payload.name.clone()),
-        purpose: ActiveValue::set(payload.purpose.clone()),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(&ctx.db)
+    let mut txn = db::pool(&ctx).begin().await?;
+    let row = sqlx::query_as!(
+        working_groups::Model,
+        "INSERT INTO working_groups (pid, name, purpose) VALUES ($1, $2, $3) RETURNING created_at, updated_at, id, pid, name, purpose, deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\"",
+        Uuid::new_v4(),
+        payload.name,
+        payload.purpose,
+    )
+    .fetch_one(&mut *txn)
     .await?;
-    Audit::record(
-        &ctx.db,
+    Audit::record_on(
+        &mut txn,
         "working_group",
         row.pid,
         "created",
@@ -325,21 +368,23 @@ async fn create_group(
         None,
     )
     .await?;
+    txn.commit().await?;
     format::json(row)
 }
 
 /// `GET /api/groups` — all live working groups with member counts.
 #[debug_handler]
 async fn list_groups(State(ctx): State<AppContext>) -> Result<Response> {
-    let groups = working_groups::Entity::find_live()
-        .order_by_asc(working_groups::Column::Id)
-        .all(&ctx.db)
-        .await?;
-    let members = working_group_members::Entity::find().all(&ctx.db).await?;
-    let mut counts: std::collections::BTreeMap<Uuid, usize> = std::collections::BTreeMap::new();
-    for member in &members {
-        *counts.entry(member.group_pid).or_default() += 1;
-    }
+    let pool = db::pool(&ctx);
+    let groups = rows::working_groups(pool).await?;
+    let counts: std::collections::BTreeMap<Uuid, i64> = sqlx::query!(
+        "SELECT group_pid, COUNT(*) AS \"n!\" FROM working_group_members GROUP BY group_pid"
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| (row.group_pid, row.n))
+    .collect();
     let view: Vec<serde_json::Value> = groups
         .iter()
         .map(|group| {
@@ -370,25 +415,32 @@ async fn add_member(
     Path(pid): Path<String>,
     Json(payload): Json<MemberPayload>,
 ) -> Result<Response> {
-    let group = find_group(&ctx, &pid).await?;
-    let contact = records::find_contact(&ctx.db, payload.contact_pid).await?;
-    let already = working_group_members::Entity::find()
-        .filter(working_group_members::Column::GroupPid.eq(group.pid))
-        .filter(working_group_members::Column::ContactPid.eq(contact.pid))
-        .one(&ctx.db)
-        .await?;
-    if already.is_some() {
+    let pool = db::pool(&ctx);
+    let group = find_group(pool, &pid).await?;
+    let contact = rows::contact(pool, payload.contact_pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    let mut txn = pool.begin().await?;
+    let already = sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM working_group_members WHERE group_pid = $1 \
+         AND contact_pid = $2) AS \"found!\"",
+        group.pid,
+        contact.pid,
+    )
+    .fetch_one(&mut *txn)
+    .await?;
+    if already {
         return Err(unprocessable("contact is already a member of this group"));
     }
-    working_group_members::ActiveModel {
-        group_pid: ActiveValue::set(group.pid),
-        contact_pid: ActiveValue::set(contact.pid),
-        ..Default::default()
-    }
-    .insert(&ctx.db)
+    sqlx::query!(
+        "INSERT INTO working_group_members (group_pid, contact_pid) VALUES ($1, $2)",
+        group.pid,
+        contact.pid,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &ctx.db,
+    Audit::record_on(
+        &mut txn,
         "working_group",
         group.pid,
         "member_added",
@@ -396,6 +448,7 @@ async fn add_member(
         Some(serde_json::json!({ "contact_pid": contact.pid })),
     )
     .await?;
+    txn.commit().await?;
     format::json(serde_json::json!({ "group_pid": group.pid, "contact_pid": contact.pid }))
 }
 
@@ -425,17 +478,15 @@ pub(crate) struct Group {
 /// members' recorded activities (cap 50; derivation disclosed).
 #[debug_handler]
 async fn get_group(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Result<Response> {
-    let group = find_group(&ctx, &pid).await?;
-    let member_rows = working_group_members::Entity::find()
-        .filter(working_group_members::Column::GroupPid.eq(group.pid))
-        .all(&ctx.db)
-        .await?;
-    let member_pids: Vec<Uuid> = member_rows.iter().map(|m| m.contact_pid).collect();
-    let contact_rows = contacts::Entity::find()
-        .filter(contacts::Column::Pid.is_in(member_pids.clone()))
-        .filter(contacts::Column::DeletedAt.is_null())
-        .all(&ctx.db)
-        .await?;
+    let pool = db::pool(&ctx);
+    let group = find_group(pool, &pid).await?;
+    let member_pids = sqlx::query_scalar!(
+        "SELECT contact_pid FROM working_group_members WHERE group_pid = $1 ORDER BY id",
+        group.pid,
+    )
+    .fetch_all(pool)
+    .await?;
+    let contact_rows = rows::contacts_page(pool, Some(&member_pids), i64::MAX, 0).await?;
     let roster: Vec<RosterMember> = contact_rows
         .iter()
         .map(|contact| RosterMember {
@@ -448,14 +499,7 @@ async fn get_group(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Re
     let feed = if member_pids.is_empty() {
         Vec::new()
     } else {
-        activities::Entity::find()
-            .filter(activities::Column::SubjectKind.eq("contact"))
-            .filter(activities::Column::SubjectPid.is_in(member_pids))
-            .filter(activities::Column::DeletedAt.is_null())
-            .order_by_desc(activities::Column::OccurredAt)
-            .limit(50)
-            .all(&ctx.db)
-            .await?
+        rows::recent_activities_of_contacts(pool, &member_pids, 50).await?
     };
     format::json(Group {
         group,
@@ -466,13 +510,15 @@ async fn get_group(State(ctx): State<AppContext>, Path(pid): Path<String>) -> Re
 }
 
 /// Find one live working group by pid, or 404.
-async fn find_group(ctx: &AppContext, pid: &str) -> Result<working_groups::Model> {
-    working_groups::Entity::find()
-        .filter(working_groups::Column::Pid.eq(records::parse_pid(pid)?))
-        .filter(working_groups::Column::DeletedAt.is_null())
-        .one(&ctx.db)
+async fn find_group(pool: &PgPool, pid: &str) -> Result<working_groups::Model> {
+    rows::working_group(pool, records::parse_pid(pid)?)
         .await?
         .ok_or(Error::NotFound)
+}
+
+/// The live account `pid`, or `404`.
+async fn find_account(pool: &PgPool, pid: Uuid) -> Result<accounts::Model> {
+    rows::account(pool, pid).await?.ok_or(Error::NotFound)
 }
 
 /// The engagement routes.

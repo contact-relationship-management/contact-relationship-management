@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE tickets SET first_responded_at = $3 WHERE pid = $1 AND deleted_at IS NULL AND assignee_ref = $2 AND first_responded_at IS NULL AND status <> 'closed' RETURNING pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dc5080b6293a8c2daf9e966508022f881daea16f2f45764f89c3cae1e7760c21"
+}

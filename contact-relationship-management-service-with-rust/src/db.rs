@@ -109,6 +109,11 @@ mod tests {
             "an activity's edit binds `EncryptedText`, which seals the summary",
         ),
         (
+            "src/controllers/engagement.rs",
+            "a stakeholder declaration's `UPDATE contacts` returns the row, sealed channel \
+             included, and writes no sealed column",
+        ),
+        (
             "src/controllers/forms.rs",
             "a form's new contact binds `EncryptedText`, which seals the channel",
         ),
@@ -127,6 +132,10 @@ mod tests {
         (
             "src/controllers/record_imports.rs",
             "an imported contact binds `EncryptedText`, which seals the channel",
+        ),
+        (
+            "src/controllers/relationships.rs",
+            "a contact's channel and an activity's summary bind `EncryptedText`, which seals them",
         ),
     ];
 

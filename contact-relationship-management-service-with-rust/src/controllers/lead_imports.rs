@@ -139,7 +139,7 @@ async fn load_pool(
         )
         .is_ok()
     });
-    let accounts = account_names(&ctx.db, contact_rows.iter()).await?;
+    let accounts = account_names(database, contact_rows.iter()).await?;
     let mut pool: Vec<Known> = contact_rows
         .iter()
         .map(|c| Known {

@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — contacts, accounts, activities and engagement on sqlx (CRM-T212, 2026-11-10)
+
+- Contacts, accounts, activities, stakeholders, partnerships, memberships and working groups read
+  and write through `sqlx`. An engagement change and its audit row now commit together.
+
 ### Changed — consent, segments, campaigns and nurture on sqlx (CRM-T211, 2026-11-10)
 
 - The marketing handlers, deliveries and link tokens run on `sqlx`. A segment's preview sample is

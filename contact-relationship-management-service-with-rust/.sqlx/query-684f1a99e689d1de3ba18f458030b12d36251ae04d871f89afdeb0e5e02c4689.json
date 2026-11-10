@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT contact_pid FROM working_group_members WHERE group_pid = $1 ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contact_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "working_group_members",
+            "name": "contact_pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "684f1a99e689d1de3ba18f458030b12d36251ae04d871f89afdeb0e5e02c4689"
+}

@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO activities (pid, subject_kind, sentiment, subject_pid, kind, occurred_at, actor_ref, summary, due_on, assignee_ref, remind_at, done) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Uuid",
+        "Varchar",
+        "Timestamptz",
+        "Varchar",
+        "Varchar",
+        "Date",
+        "Varchar",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e77ad9b3105cb5f0c9b0f4aa1eadf323ba93dfda73d64098f8171172e0252559"
+}

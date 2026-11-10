@@ -1,0 +1,127 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE memberships SET joined_on = $2, status = $3, renewal_on = $4, deleted_at = NULL WHERE id = $1 RETURNING created_at, updated_at, id, pid, account_pid, joined_on, status, renewal_on, deleted_at AS \"deleted_at: DateTimeWithTimeZone\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "account_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "account_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "joined_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "joined_on"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "renewal_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "renewal_on"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "memberships",
+            "name": "deleted_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Date",
+        "Varchar",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "4a944180ffb0205147c17f2d85a3d412c278c3b49976ccba6fba83a341469785"
+}

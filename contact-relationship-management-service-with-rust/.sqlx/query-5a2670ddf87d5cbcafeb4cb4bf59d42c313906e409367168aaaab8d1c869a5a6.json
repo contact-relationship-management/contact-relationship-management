@@ -1,0 +1,102 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO working_groups (pid, name, purpose) VALUES ($1, $2, $3) RETURNING created_at, updated_at, id, pid, name, purpose, deleted_at AS \"deleted_at: DateTimeWithTimeZone\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "working_groups",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "working_groups",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "working_groups",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "working_groups",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "working_groups",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "purpose",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "working_groups",
+            "name": "purpose"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "deleted_at: DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "working_groups",
+            "name": "deleted_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "5a2670ddf87d5cbcafeb4cb4bf59d42c313906e409367168aaaab8d1c869a5a6"
+}
