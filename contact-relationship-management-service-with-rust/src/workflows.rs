@@ -11,8 +11,8 @@ use std::pin::Pin;
 
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait, DatabaseBackend,
-    DatabaseConnection, DatabaseTransaction, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
-    Statement, TransactionTrait, Value,
+    DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Statement,
+    TransactionTrait, Value,
 };
 use serde::Serialize;
 use uuid::Uuid;
@@ -245,8 +245,8 @@ async fn load_target<C: ConnectionTrait>(db: &C, event: &Event) -> Result<Option
 /// # Errors
 ///
 /// A database error, including a failed write of the run log.
-pub fn fire<'a>(
-    txn: &'a DatabaseTransaction,
+pub fn fire<'a, C: ConnectionTrait>(
+    txn: &'a C,
     event: &'a Event,
     depth: i32,
     actor: Option<&'a str>,
@@ -285,7 +285,7 @@ struct Logged<'a> {
 }
 
 /// Write the run log row and its audit row.
-async fn log_run(txn: &DatabaseTransaction, log: &Logged<'_>, actor: Option<&str>) -> Result<()> {
+async fn log_run<C: ConnectionTrait>(txn: &C, log: &Logged<'_>, actor: Option<&str>) -> Result<()> {
     txn.execute_raw(stmt(
         "INSERT INTO workflow_runs (pid, workflow_pid, workflow_name, trigger, subject_kind, \
          subject_pid, depth, outcome, reason, steps) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
@@ -329,8 +329,8 @@ async fn log_run(txn: &DatabaseTransaction, log: &Logged<'_>, actor: Option<&str
 /// # Errors
 ///
 /// A database error outside the actions, or a failed write of the run log.
-pub async fn run_one(
-    txn: &DatabaseTransaction,
+pub async fn run_one<C: ConnectionTrait>(
+    txn: &C,
     workflow: &Workflow,
     event: &Event,
     depth: i32,
@@ -370,7 +370,12 @@ pub async fn run_one(
         workflow.conditions.describe()
     );
     let by = format!("workflow:{}", workflow.pid);
-    let savepoint = txn.begin().await?;
+    // A savepoint written as SQL, so the engine runs on any connection in a transaction (a
+    // `SeaORM` one or a `sqlx` one through `db::Bridge`), not only on `TransactionTrait`
+    // (CRM-D24). Named for the run, as a workflow's action can fire another inside this one.
+    let savepoint = format!("workflow_{}", run.simple());
+    txn.execute_unprepared(&format!("SAVEPOINT {savepoint}"))
+        .await?;
     let mut steps = Vec::new();
     let mut failed = false;
     for (index, action) in workflow.actions.iter().enumerate() {
@@ -381,7 +386,7 @@ pub async fn run_one(
             depth,
             by: &by,
         };
-        match act(&savepoint, &ctx, &target, action).await {
+        match act(txn, &ctx, &target, action).await {
             Ok((result, detail)) => steps.push(step(action, result, detail)),
             Err(error) => {
                 tracing::warn!(%error, workflow = %workflow.pid, "workflow action failed");
@@ -392,14 +397,18 @@ pub async fn run_one(
         }
     }
     if failed {
-        savepoint.rollback().await?;
+        txn.execute_unprepared(&format!("ROLLBACK TO SAVEPOINT {savepoint}"))
+            .await?;
+        txn.execute_unprepared(&format!("RELEASE SAVEPOINT {savepoint}"))
+            .await?;
         for s in &mut steps {
             if s.result == "done" {
                 s.result = "rolled_back".to_string();
             }
         }
     } else {
-        savepoint.commit().await?;
+        txn.execute_unprepared(&format!("RELEASE SAVEPOINT {savepoint}"))
+            .await?;
     }
     let outcome = if failed { "failed" } else { "done" };
     let log = Logged {
@@ -424,8 +433,8 @@ struct ActionContext<'a> {
 }
 
 /// Do one action; returns its result word and a reason.
-async fn act(
-    txn: &DatabaseTransaction,
+async fn act<C: ConnectionTrait>(
+    txn: &C,
     ctx: &ActionContext<'_>,
     target: &Target,
     action: &Action,
@@ -552,8 +561,8 @@ async fn open_load<C: ConnectionTrait>(db: &C, worker: &str) -> Result<i64> {
 }
 
 /// Give the lead an owner from the pool; a lead that already has one is left alone.
-async fn assign_owner(
-    txn: &DatabaseTransaction,
+async fn assign_owner<C: ConnectionTrait>(
+    txn: &C,
     ctx: &ActionContext<'_>,
     lead: &leads::Model,
     pool: &[String],
@@ -625,8 +634,8 @@ fn current(contact: &contacts::Model, field: &str) -> Option<String> {
     }
 }
 
-async fn set_field(
-    txn: &DatabaseTransaction,
+async fn set_field<C: ConnectionTrait>(
+    txn: &C,
     ctx: &ActionContext<'_>,
     contact: &contacts::Model,
     field: &str,
@@ -704,8 +713,8 @@ async fn enrolment_blocker<C: ConnectionTrait>(
     Ok(Ok(sequence))
 }
 
-async fn enrol(
-    txn: &DatabaseTransaction,
+async fn enrol<C: ConnectionTrait>(
+    txn: &C,
     ctx: &ActionContext<'_>,
     contact: &contacts::Model,
     sequence_pid: Uuid,

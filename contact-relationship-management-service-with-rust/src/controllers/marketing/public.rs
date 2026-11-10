@@ -1,12 +1,15 @@
 //! The public routes outside `/api`: unsubscribe pages and the email webhooks.
 
 use super::{
-    AppContext, Audit, ColumnTrait, EntityTrait, IntoResponse, Path, QueryFilter, Response, Result,
-    State, TransactionTrait, Uuid, apply_consent, apply_consent_in, contacts, debug_handler,
-    deliveries, format, records, tokens,
+    AppContext, Audit, IntoResponse, Path, Response, Result, State, Uuid, apply_consent_in,
+    debug_handler, deliveries, format, tokens,
 };
 
 use axa::extract::Query;
+use sqlx::{PgConnection, PgPool};
+
+use crate::db::{self, Bridge};
+use crate::models::rows;
 
 use crate::rules::public_text::{self, Text};
 
@@ -172,19 +175,19 @@ pub(super) async fn unsubscribe_post(
         );
     };
     let outcome: Result<()> = async {
-        let contact = contacts::Entity::find()
-            .filter(contacts::Column::Pid.eq(contact_pid))
-            .filter(contacts::Column::DeletedAt.is_null())
-            .one(&ctx.db)
-            .await?;
+        let mut txn = db::pool(&ctx).begin().await?;
         // The link withdraws the purpose of the message it came from, and no other. A
         // contact already erased or already withdrawn needs nothing more; either way the
-        // person gets the same confirmation.
-        if let Some(contact) = contact {
-            let purpose = crate::consents::purpose_of_message(&ctx.db, message_pid).await?;
-            if crate::consents::state_of(&ctx.db, &contact, &purpose).await? != "withdrawn" {
-                apply_consent(
-                    &ctx.db,
+        // person gets the same confirmation. The consent helpers are still on `SeaORM`, and
+        // `Bridge` runs them in this transaction.
+        if let Some(contact) = rows::contact(&mut *txn, contact_pid).await? {
+            let purpose =
+                crate::consents::purpose_of_message(&Bridge::new(&mut txn), message_pid).await?;
+            let state =
+                crate::consents::state_of(&Bridge::new(&mut txn), &contact, &purpose).await?;
+            if state != "withdrawn" {
+                apply_consent_in(
+                    &Bridge::new(&mut txn),
                     contact,
                     &purpose,
                     "withdrawn",
@@ -194,6 +197,7 @@ pub(super) async fn unsubscribe_post(
                 .await?;
             }
         }
+        txn.commit().await?;
         Ok(())
     }
     .await;
@@ -261,8 +265,8 @@ pub(super) async fn email_webhook(
     if !EVENTS.contains(&event.event.as_str()) {
         return Ok(StatusCode::BAD_REQUEST.into_response());
     }
-    let txn = ctx.db.begin().await?;
-    let result = apply_event(&txn, &event.message_id, &event.event).await?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let result = apply_event(&mut txn, &event.message_id, &event.event).await?;
     txn.commit().await?;
     format::json(serde_json::json!({ "result": result }))
 }
@@ -270,39 +274,38 @@ pub(super) async fn email_webhook(
 /// Whether an open or click on this message may be recorded: the contact's consent for the
 /// campaign's purpose is still `granted`, and their mailbox is not suppressed. A message that is not
 /// ours is let through so the caller reports it as unknown.
-async fn engagement_allowed(txn: &sea_orm::DatabaseTransaction, message_id: &str) -> Result<bool> {
-    use sea_orm::ConnectionTrait;
-    let Some((contact_pid, campaign_pid)) = deliveries::find_message(txn, message_id).await? else {
+async fn engagement_allowed(txn: &mut PgConnection, message_id: &str) -> Result<bool> {
+    let Some((contact_pid, campaign_pid)) =
+        deliveries::find_message(&Bridge::new(txn), message_id).await?
+    else {
         return Ok(true);
     };
-    let Some(contact) = contacts::Entity::find()
-        .filter(contacts::Column::Pid.eq(contact_pid))
-        .filter(contacts::Column::DeletedAt.is_null())
-        .one(txn)
-        .await?
-    else {
+    let Some(contact) = rows::contact(&mut *txn, contact_pid).await? else {
         return Ok(false);
     };
-    let purpose = txn
-        .query_one_raw(sea_orm::Statement::from_sql_and_values(
-            sea_orm::DatabaseBackend::Postgres,
-            "SELECT purpose FROM campaigns WHERE pid = $1",
-            [campaign_pid.into()],
-        ))
-        .await?
-        .map_or_else(
-            || Ok(crate::rules::tokens::DEFAULT_PURPOSE.to_string()),
-            |row| row.try_get::<String>("", "purpose"),
-        )?;
+    // The purpose the mail was sent for, whether or not the campaign has since been deleted: its
+    // mail went out all the same. A campaign that is gone gives the default purpose, as before.
+    let purpose = sqlx::query!(
+        "SELECT purpose, deleted_at FROM campaigns WHERE pid = $1",
+        campaign_pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .map_or_else(
+        || crate::rules::tokens::DEFAULT_PURPOSE.to_string(),
+        |row| row.purpose,
+    );
     Ok(
-        crate::consents::state_of(txn, &contact, &purpose).await? == "granted"
-            && deliveries::suppression(txn, contact_pid).await?.is_none(),
+        crate::consents::state_of(&Bridge::new(txn), &contact, &purpose).await? == "granted"
+            && deliveries::suppression(&Bridge::new(txn), contact_pid)
+                .await?
+                .is_none(),
     )
 }
 
 /// Apply one provider outcome inside `txn`; returns what happened.
 pub(super) async fn apply_event(
-    txn: &sea_orm::DatabaseTransaction,
+    txn: &mut PgConnection,
     message_id: &str,
     event_name: &str,
 ) -> Result<&'static str> {
@@ -311,7 +314,8 @@ pub(super) async fn apply_event(
     if matches!(event_name, "opened" | "clicked") && !engagement_allowed(txn, message_id).await? {
         return Ok("ignored");
     }
-    let effect = deliveries::record_event(txn, message_id, event_name).await?;
+    // The delivery helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
+    let effect = deliveries::record_event(&Bridge::new(txn), message_id, event_name).await?;
     Ok(match effect {
         deliveries::EventEffect::UnknownMessage => "unknown_message",
         deliveries::EventEffect::Duplicate => "duplicate",
@@ -320,13 +324,16 @@ pub(super) async fn apply_event(
             campaign_pid,
         } => {
             match event_name {
-                "delivered" => deliveries::count_delivered(txn, campaign_pid).await?,
+                "delivered" => {
+                    deliveries::count_delivered(&Bridge::new(txn), campaign_pid).await?;
+                }
                 "opened" | "clicked" => {
-                    deliveries::count_engagement(txn, campaign_pid, event_name).await?;
+                    deliveries::count_engagement(&Bridge::new(txn), campaign_pid, event_name)
+                        .await?;
                 }
                 "bounce_hard" | "complaint" => {
-                    deliveries::suppress(txn, contact_pid, event_name).await?;
-                    Audit::record(
+                    deliveries::suppress(&Bridge::new(txn), contact_pid, event_name).await?;
+                    Audit::record_on(
                         txn,
                         "contact",
                         contact_pid,
@@ -339,17 +346,14 @@ pub(super) async fn apply_event(
                 _ => {}
             }
             if event_name == "complaint" {
-                let contact = contacts::Entity::find()
-                    .filter(contacts::Column::Pid.eq(contact_pid))
-                    .filter(contacts::Column::DeletedAt.is_null())
-                    .one(txn)
-                    .await?;
                 // A spam complaint is a no to everything.
-                if let Some(contact) = contact {
+                if let Some(contact) = rows::contact(&mut *txn, contact_pid).await? {
                     for purpose in tokens::PURPOSES {
-                        if crate::consents::state_of(txn, &contact, purpose).await? != "withdrawn" {
+                        let state =
+                            crate::consents::state_of(&Bridge::new(txn), &contact, purpose).await?;
+                        if state != "withdrawn" {
                             apply_consent_in(
-                                txn,
+                                &Bridge::new(txn),
                                 contact.clone(),
                                 purpose,
                                 "withdrawn",
@@ -433,10 +437,10 @@ pub(super) async fn provider_webhook(
         }
         Some(Inbound::Outcomes(outcomes)) => outcomes,
     };
-    let txn = ctx.db.begin().await?;
+    let mut txn = db::pool(&ctx).begin().await?;
     let mut recorded = 0_u32;
     for outcome in &outcomes {
-        if apply_event(&txn, &outcome.message_id, outcome.event).await? == "recorded" {
+        if apply_event(&mut txn, &outcome.message_id, outcome.event).await? == "recorded" {
             recorded += 1;
         }
     }
@@ -456,13 +460,12 @@ fn invalid_link(text: &Text, path: &str) -> Response {
 }
 
 /// The purpose a confirmation token names, with the contact, **without spending it** (CRM-R79).
-async fn confirm_target(
-    db: &sea_orm::DatabaseConnection,
-    token: &str,
-) -> Option<(Uuid, &'static str)> {
-    let target = crate::link_tokens::peek(db, crate::link_tokens::CONFIRM, token)
-        .await
-        .ok()??;
+async fn confirm_target(pool: &PgPool, token: &str) -> Option<(Uuid, &'static str)> {
+    let mut conn = pool.acquire().await.ok()?;
+    let target =
+        crate::link_tokens::peek(&Bridge::new(&mut conn), crate::link_tokens::CONFIRM, token)
+            .await
+            .ok()??;
     Some((
         target.contact,
         tokens::PURPOSES.get(usize::from(target.detail))?,
@@ -480,7 +483,7 @@ pub(super) async fn confirm_page_get(
 ) -> Response {
     let text = page_text(&chosen, &headers);
     let path = format!("/confirm/{token}");
-    let Some((_, purpose)) = confirm_target(&ctx.db, &token).await else {
+    let Some((_, purpose)) = confirm_target(db::pool(&ctx), &token).await else {
         return invalid_link(text, &path);
     };
     public_page(
@@ -517,9 +520,13 @@ pub(super) async fn confirm_post(
     // usable and a second request, even a simultaneous one, finds it spent (CRM-R79).
     let mut purpose = "";
     let outcome: Result<Option<bool>> = async {
-        let txn = ctx.db.begin().await?;
-        let Some(spent) =
-            crate::link_tokens::consume(&txn, crate::link_tokens::CONFIRM, &token).await?
+        let mut txn = db::pool(&ctx).begin().await?;
+        let Some(spent) = crate::link_tokens::consume(
+            &Bridge::new(&mut txn),
+            crate::link_tokens::CONFIRM,
+            &token,
+        )
+        .await?
         else {
             return Ok(None);
         };
@@ -528,16 +535,24 @@ pub(super) async fn confirm_post(
         };
         purpose = named;
         let contact_pid = spent.contact;
-        let Ok(contact) = records::find_contact(&txn, contact_pid).await else {
+        let Some(contact) = rows::contact(&mut *txn, contact_pid).await? else {
             return Ok(None);
         };
-        let state = crate::consents::state_of(&txn, &contact, purpose).await?;
+        let state = crate::consents::state_of(&Bridge::new(&mut txn), &contact, purpose).await?;
         let result = match state.as_str() {
             "granted" => Some(true),
             "pending" => {
-                apply_consent_in(&txn, contact, purpose, "granted", "double_opt_in", None).await?;
+                apply_consent_in(
+                    &Bridge::new(&mut txn),
+                    contact,
+                    purpose,
+                    "granted",
+                    "double_opt_in",
+                    None,
+                )
+                .await?;
                 // A web form may have asked for a nurture sequence to start on confirmation (CRM-R31).
-                crate::controllers::forms::on_confirmed(&txn, contact_pid, purpose).await?;
+                crate::controllers::forms::on_confirmed(&mut txn, contact_pid, purpose).await?;
                 Some(true)
             }
             _ => None,
@@ -572,24 +587,32 @@ pub(super) async fn confirm_post(
 }
 
 /// The contact a preference link names, **without spending it** (CRM-R79).
-async fn preferences_contact(db: &sea_orm::DatabaseConnection, token: &str) -> Option<Uuid> {
-    crate::link_tokens::peek(db, crate::link_tokens::PREFERENCES, token)
-        .await
-        .ok()?
-        .map(|target| target.contact)
+async fn preferences_contact(pool: &PgPool, token: &str) -> Option<Uuid> {
+    let mut conn = pool.acquire().await.ok()?;
+    crate::link_tokens::peek(
+        &Bridge::new(&mut conn),
+        crate::link_tokens::PREFERENCES,
+        token,
+    )
+    .await
+    .ok()?
+    .map(|target| target.contact)
 }
 
 /// The preference page: each purpose with the choice that is not the current one.
 async fn preferences_html(
-    db: &sea_orm::DatabaseConnection,
+    pool: &PgPool,
     text: &Text,
     contact_pid: Uuid,
     token: &str,
 ) -> Result<Response> {
     use std::fmt::Write as _;
-    let contact = records::find_contact(db, contact_pid).await?;
+    let mut conn = pool.acquire().await?;
+    let contact = rows::contact(&mut *conn, contact_pid)
+        .await?
+        .ok_or(axa::Error::NotFound)?;
     let mut rows = String::new();
-    for entry in crate::consents::all(db, &contact).await? {
+    for entry in crate::consents::all(&Bridge::new(&mut conn), &contact).await? {
         let (action, label) = if entry.state == "granted" {
             ("withdrawn", text.stop)
         } else {
@@ -631,10 +654,11 @@ pub(super) async fn preferences_page_get(
 ) -> Response {
     let text = page_text(&chosen, &headers);
     let path = format!("/preferences/{token}");
-    let Some(contact) = preferences_contact(&ctx.db, &token).await else {
+    let pool = db::pool(&ctx);
+    let Some(contact) = preferences_contact(pool, &token).await else {
         return invalid_link(text, &path);
     };
-    preferences_html(&ctx.db, text, contact, &token)
+    preferences_html(pool, text, contact, &token)
         .await
         .unwrap_or_else(|_| invalid_link(text, &path))
 }
@@ -677,16 +701,25 @@ pub(super) async fn preferences_post(
     // page that answers carries a fresh one, for the next choice, that expires when the first
     // would have (CRM-R79).
     let outcome: Result<Response> = async {
-        let txn = ctx.db.begin().await?;
-        let Some(spent) =
-            crate::link_tokens::consume(&txn, crate::link_tokens::PREFERENCES, &token).await?
+        let pool = db::pool(&ctx);
+        let mut txn = pool.begin().await?;
+        let Some(spent) = crate::link_tokens::consume(
+            &Bridge::new(&mut txn),
+            crate::link_tokens::PREFERENCES,
+            &token,
+        )
+        .await?
         else {
             return Ok(invalid_link(text, &path));
         };
-        let contact = records::find_contact(&txn, spent.contact).await?;
-        if crate::consents::state_of(&txn, &contact, purpose).await? != choice.action {
+        let contact = rows::contact(&mut *txn, spent.contact)
+            .await?
+            .ok_or(axa::Error::NotFound)?;
+        if crate::consents::state_of(&Bridge::new(&mut txn), &contact, purpose).await?
+            != choice.action
+        {
             apply_consent_in(
-                &txn,
+                &Bridge::new(&mut txn),
                 contact,
                 purpose,
                 &choice.action,
@@ -696,7 +729,7 @@ pub(super) async fn preferences_post(
             .await?;
         }
         let next = crate::link_tokens::issue(
-            &txn,
+            &Bridge::new(&mut txn),
             crate::link_tokens::PREFERENCES,
             spent.contact,
             0,
@@ -704,7 +737,7 @@ pub(super) async fn preferences_post(
         )
         .await?;
         txn.commit().await?;
-        preferences_html(&ctx.db, text, spent.contact, &next).await
+        preferences_html(pool, text, spent.contact, &next).await
     }
     .await;
     outcome.unwrap_or_else(|error| {

@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — web forms and public consent pages on sqlx (CRM-T209, 2026-11-10)
+
+- Web forms, the unsubscribe, confirmation and preference pages and the mail webhooks run on
+  `sqlx`. Nothing a visitor or a mail provider sees changes.
+
 ### Changed — support, the board and external links on sqlx (CRM-T208, 2026-11-10)
 
 - Tickets, SLA policies, articles, board edits and external links read and write through `sqlx`.

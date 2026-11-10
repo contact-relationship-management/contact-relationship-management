@@ -173,8 +173,8 @@ pub(super) async fn enroll(
 
 /// Start `contact` on `sequence`, due after its first step's delay, inside the caller's
 /// transaction. The caller has checked consent. `None` when the sequence has no steps.
-pub(crate) async fn enrol_in(
-    txn: &sea_orm::DatabaseTransaction,
+pub(crate) async fn enrol_in<C: sea_orm::ConnectionTrait>(
+    txn: &C,
     sequence: &nurture_sequences::Model,
     contact: Uuid,
     actor: Option<&str>,

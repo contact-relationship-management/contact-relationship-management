@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE form_submissions SET confirmed_at = now() WHERE contact_pid = $1 AND purpose = $2 AND confirmed_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3140028fa641b0813be668ba742701b9f1eb1851565b65d275b715ec79342a37"
+}

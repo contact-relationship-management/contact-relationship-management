@@ -11,6 +11,8 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
 
+use super::a_user;
+
 const SECRET: &str = "0123456789abcdef0123456789abcdef";
 const BASE: &str = "https://crm.example.org";
 const ORIGIN: &str = "https://www.example.org";
@@ -765,6 +767,68 @@ async fn the_form_s_refusals_are_in_the_language_of_the_request() {
             english().form_email_invalid,
             "{body}"
         );
+    })
+    .await;
+}
+
+/// A workflow on `lead_created` runs inside the form's `sqlx` transaction, through `db::Bridge`,
+/// with its savepoint written as SQL (CRM-T209): a failing action undoes the run's own writes and
+/// spares the lead, and the run log says so.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_workflow_the_form_s_lead_fires_rolls_back_alone() {
+    behind_a_proxy();
+    request::<App, _, _>(|request, ctx| async move {
+        let made = request
+            .post("/api/workflows")
+            .json(&json!({ "name": "Web leads", "trigger": "lead_created",
+                           "actions": [
+                               { "type": "create_task", "summary": "Call the web lead" },
+                               { "type": "notify", "recipient_ref": a_user() },
+                           ] }))
+            .await;
+        made.assert_status_ok();
+        let workflow = made.json::<Value>()["pid"].as_str().unwrap().to_string();
+        let (_recorder, _restore) = arrange(vec![form("rollback", "newsletter", None)]);
+        let leads = count(&ctx.db, "SELECT count(*) AS n FROM leads").await;
+        // Break the second action by taking its table away for the length of one request.
+        ctx.db
+            .execute_unprepared("ALTER TABLE notifications RENAME TO notifications_away")
+            .await
+            .unwrap();
+        let answer = submit!(
+            request,
+            "rollback",
+            "203.0.113.77",
+            json!({ "name": "Rolle Back", "email": "rolle@back.test" })
+        );
+        ctx.db
+            .execute_unprepared("ALTER TABLE notifications_away RENAME TO notifications")
+            .await
+            .unwrap();
+        assert_eq!(answer.status_code(), StatusCode::ACCEPTED);
+        assert_eq!(
+            count(&ctx.db, "SELECT count(*) AS n FROM leads").await,
+            leads + 1
+        );
+        assert_eq!(
+            count(
+                &ctx.db,
+                "SELECT count(*) AS n FROM activities WHERE kind = 'task' \
+                 AND summary = 'Call the web lead'"
+            )
+            .await,
+            0
+        );
+        let log: Vec<Value> = request
+            .get(&format!("/api/workflows/{workflow}/runs"))
+            .await
+            .json();
+        assert_eq!(log.len(), 1);
+        assert_eq!(log[0]["outcome"], "failed");
+        assert_eq!(log[0]["steps"][0]["result"], "rolled_back");
+        assert_eq!(log[0]["steps"][1]["result"], "failed");
     })
     .await;
 }

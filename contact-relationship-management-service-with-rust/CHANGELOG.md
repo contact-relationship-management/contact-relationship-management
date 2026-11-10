@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — web forms and public consent pages on sqlx (CRM-T209, CRM-D24)
+
+- `controllers::forms` and `marketing::public` in `sqlx` transactions; the shared consent,
+  token, delivery, lead and nurture helpers run in them through `db::Bridge`.
+- `workflows::fire` and `run_one` take any `ConnectionTrait`; the run's savepoint is SQL.
+- `capture_lead`, `apply_consent_in` and `enrol_in` take any `ConnectionTrait`.
+- `forms.rs` seals a new contact's channel through `EncryptedText`; the census lists it.
+
 ### Changed — support, board and external links on sqlx (CRM-T208, CRM-D24)
 
 - `controllers::support`, `board` and `external_links` on `query!`/`query_as!`; `calendars::load`

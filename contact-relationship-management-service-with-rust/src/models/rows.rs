@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::models::_entities::{
     accounts, activities, articles, audit_logs, contacts, deals, forecast_snapshots, leads,
-    memberships, partnerships, pipeline_stages, sla_policies, tickets,
+    memberships, nurture_sequences, partnerships, pipeline_stages, sla_policies, tickets,
 };
 use crate::models::DateTimeWithTimeZone;
 
@@ -815,6 +815,49 @@ pub async fn activity_for_update<'e>(
         actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
         sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities \
         WHERE deleted_at IS NULL AND pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live contact for `person_ref`, the oldest when there are several.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn contact_by_person_ref<'e>(
+    db: impl PgExecutor<'e>,
+    person_ref: &str,
+) -> Result<Option<contacts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        contacts::Model,
+        "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+        status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+        \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+        given_name, consent_jurisdiction FROM contacts WHERE deleted_at IS NULL AND person_ref = $1 \
+        ORDER BY id LIMIT 1",
+        person_ref,
+    )
+    .fetch_optional(db)
+    .await
+}
+
+/// The live nurture sequence `pid`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn sequence<'e>(
+    db: impl PgExecutor<'e>,
+    pid: Uuid,
+) -> Result<Option<nurture_sequences::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        nurture_sequences::Model,
+        "SELECT created_at, updated_at, id, pid, name, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", purpose, consent_jurisdiction FROM nurture_sequences WHERE deleted_at \
+        IS NULL AND pid = $1",
         pid,
     )
     .fetch_optional(db)

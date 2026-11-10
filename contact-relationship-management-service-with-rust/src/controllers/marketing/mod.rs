@@ -36,8 +36,8 @@ pub(crate) mod segment;
 
 pub use campaign::*;
 use consent::{
-    apply_consent, apply_consent_in, consent_history, consent_purposes, contact_facts,
-    preferences_link, record_consent, request_consent,
+    apply_consent_in, consent_history, consent_purposes, contact_facts, preferences_link,
+    record_consent, request_consent,
 };
 use nurture::{advance_nurture, create_sequence, enroll, list_sequences};
 use public::{

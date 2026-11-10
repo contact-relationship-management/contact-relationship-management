@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT sequence_pid AS \"sequence_pid!\" FROM form_submissions WHERE contact_pid = $1 AND purpose = $2 AND confirmed_at IS NULL AND sequence_pid IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sequence_pid!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "form_submissions",
+            "name": "sequence_pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "58ff6f886b5ff2c4ce905f47502fe7ab5ac57d0c01dcce0969d2c435a8214632"
+}

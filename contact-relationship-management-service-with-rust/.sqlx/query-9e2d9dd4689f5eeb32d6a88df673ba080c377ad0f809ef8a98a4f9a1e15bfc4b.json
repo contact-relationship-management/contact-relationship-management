@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE form_submissions SET confirmation_sent_at = NULL WHERE pid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9e2d9dd4689f5eeb32d6a88df673ba080c377ad0f809ef8a98a4f9a1e15bfc4b"
+}

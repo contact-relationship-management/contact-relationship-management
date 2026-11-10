@@ -109,6 +109,10 @@ mod tests {
             "an activity's edit binds `EncryptedText`, which seals the summary",
         ),
         (
+            "src/controllers/forms.rs",
+            "a form's new contact binds `EncryptedText`, which seals the channel",
+        ),
+        (
             "src/controllers/privacy.rs",
             "erasure writes a plaintext tombstone on purpose",
         ),

@@ -15,20 +15,18 @@ use axa::extract::Path;
 use axa::prelude::*;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::IntoResponse;
-use sea_orm::{
-    ColumnTrait, ConnectionTrait, DatabaseBackend, DatabaseTransaction, QueryFilter, Statement,
-    TransactionTrait, Value,
-};
 use serde::Deserialize;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use super::marketing::consent::apply_consent_in;
 use super::sales::{NewLead, capture_lead};
+use crate::db::{self, Bridge};
 use crate::mail;
-use crate::models::_entities::{contacts, leads};
+use crate::models::_entities::contacts;
 use crate::models::audit_logs::Model as Audit;
-use crate::models::live::FindLive;
-use crate::models::records;
+use crate::models::encrypted::EncryptedText;
+use crate::models::rows;
 use crate::rate_limit::Settable;
 use crate::rules::forms as rules;
 use crate::rules::public_text::{self, Text};
@@ -287,13 +285,15 @@ async fn accept(
             unavailable(text)
         })?;
     let actor = format!("web_form:{}", form.slug);
-    let txn = ctx.db.begin().await?;
-    let contact = find_or_create_contact(&txn, &person_ref, name, &actor).await?;
-    let lead_pid = find_or_create_lead(&txn, &contact, name, email, &actor).await?;
-    let state = crate::consents::state_of(&txn, &contact, &form.purpose).await?;
+    let pool = db::pool(ctx);
+    let mut txn = pool.begin().await?;
+    let contact = find_or_create_contact(&mut txn, &person_ref, name, &actor).await?;
+    let lead_pid = find_or_create_lead(&mut txn, &contact, name, email, &actor).await?;
+    // The consent helpers are still on `SeaORM`; `Bridge` runs them in this transaction.
+    let state = crate::consents::state_of(&Bridge::new(&mut txn), &contact, &form.purpose).await?;
     if state != "pending" && state != "granted" {
         apply_consent_in(
-            &txn,
+            &Bridge::new(&mut txn),
             contact.clone(),
             &form.purpose,
             "pending",
@@ -302,8 +302,8 @@ async fn accept(
         )
         .await?;
     }
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "lead",
         lead_pid,
         "web_form_submitted",
@@ -311,44 +311,44 @@ async fn accept(
         Some(serde_json::json!({ "form": form.slug, "purpose": form.purpose })),
     )
     .await?;
-    let ask =
-        state != "granted" && !confirmation_sent_lately(&txn, contact.pid, &form.purpose).await?;
-    let submission = record_submission(&txn, form, contact.pid, lead_pid, ask).await?;
+    let ask = state != "granted"
+        && !confirmation_sent_lately(&mut txn, contact.pid, &form.purpose).await?;
+    let submission = record_submission(&mut txn, form, contact.pid, lead_pid, ask).await?;
     txn.commit().await?;
-    if ask && !send_confirmation(&ctx.db, form, &contact, (name, email), text).await {
-        clear_sent_mark(&ctx.db, submission).await;
+    if ask && !send_confirmation(pool, form, &contact, (name, email), text).await {
+        clear_sent_mark(pool, submission).await;
     }
     Ok(())
 }
 
 async fn find_or_create_contact(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     person_ref: &str,
     name: &str,
     actor: &str,
 ) -> Result<contacts::Model> {
-    if let Some(found) = contacts::Entity::find_live()
-        .filter(contacts::Column::PersonRef.eq(person_ref))
-        .one(txn)
-        .await?
-    {
+    if let Some(found) = rows::contact_by_person_ref(&mut *txn, person_ref).await? {
         return Ok(found);
     }
-    let row = contacts::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        person_ref: ActiveValue::set(person_ref.to_string()),
-        display_name: ActiveValue::set(name.to_string()),
-        status: ActiveValue::set("active".to_string()),
-        preferred_channel: ActiveValue::set("email".to_string().into()),
-        marketing_consent: ActiveValue::set("never".to_string()),
-        consent_changed_at: ActiveValue::set(None),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(txn)
+    // `preferred_channel` is sealed: binding `EncryptedText` seals it (CRM-T41).
+    let row = sqlx::query_as!(
+        contacts::Model,
+        "INSERT INTO contacts (pid, person_ref, display_name, status, preferred_channel, \
+            marketing_consent) VALUES ($1, $2, $3, 'active', $4, 'never') \
+            RETURNING created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+            status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+            \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+            DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+            given_name, consent_jurisdiction",
+        Uuid::new_v4(),
+        person_ref,
+        name,
+        EncryptedText::from("email") as _,
+    )
+    .fetch_one(&mut *txn)
     .await?;
-    Audit::record(txn, "contact", row.pid, "created", Some(actor), None).await?;
-    crate::streaming::emit_on(
+    Audit::record_on(txn, "contact", row.pid, "created", Some(actor), None).await?;
+    crate::streaming::emit_in(
         txn,
         "contact",
         "created",
@@ -363,24 +363,26 @@ async fn find_or_create_contact(
 
 /// The contact's open web lead, or a new one (not a second while one is open).
 async fn find_or_create_lead(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     contact: &contacts::Model,
     name: &str,
     email: &str,
     actor: &str,
 ) -> Result<Uuid> {
-    let open = leads::Entity::find_live()
-        .filter(leads::Column::ContactPid.eq(contact.pid))
-        .filter(leads::Column::Source.eq("web"))
-        .filter(leads::Column::Status.is_in(["new", "contacted", "qualified"]))
-        .one(txn)
-        .await?;
+    let open = sqlx::query_scalar!(
+        "SELECT pid FROM leads WHERE deleted_at IS NULL AND contact_pid = $1 AND source = 'web' \
+         AND status IN ('new', 'contacted', 'qualified') ORDER BY id LIMIT 1",
+        contact.pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?;
     if let Some(lead) = open {
-        return Ok(lead.pid);
+        return Ok(lead);
     }
-    // The lead holds the address's domain, which scoring uses, and no address.
+    // The lead holds the address's domain, which scoring uses, and no address. `capture_lead`
+    // is still on `SeaORM`, and fires workflows; `Bridge` runs it in this transaction.
     let (lead, _) = capture_lead(
-        txn,
+        &Bridge::new(txn),
         &NewLead {
             source: "web",
             campaign_pid: None,
@@ -395,60 +397,55 @@ async fn find_or_create_lead(
     Ok(lead.pid)
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
 /// Whether a confirmation for this contact and purpose went out in the last hour.
 async fn confirmation_sent_lately(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     contact: Uuid,
     purpose: &str,
 ) -> Result<bool> {
-    Ok(txn
-        .query_one_raw(stmt(
-            "SELECT 1 AS one FROM form_submissions WHERE contact_pid = $1 AND purpose = $2 \
-             AND confirmation_sent_at > now() - interval '1 hour' LIMIT 1",
-            [contact.into(), purpose.into()],
-        ))
-        .await?
-        .is_some())
+    Ok(sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM form_submissions WHERE contact_pid = $1 AND purpose = $2 \
+         AND confirmation_sent_at > now() - interval '1 hour') AS \"sent!\"",
+        contact,
+        purpose,
+    )
+    .fetch_one(txn)
+    .await?)
 }
 
 async fn record_submission(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     form: &WebForm,
     contact: Uuid,
     lead: Uuid,
     sending: bool,
 ) -> Result<Uuid> {
     let pid = Uuid::new_v4();
-    txn.execute_raw(stmt(
+    sqlx::query!(
         "INSERT INTO form_submissions \
          (pid, form, contact_pid, lead_pid, purpose, sequence_pid, confirmation_sent_at) \
          VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() END)",
-        [
-            pid.into(),
-            form.slug.clone().into(),
-            contact.into(),
-            lead.into(),
-            form.purpose.clone().into(),
-            form.sequence.into(),
-            sending.into(),
-        ],
-    ))
+        pid,
+        form.slug,
+        contact,
+        lead,
+        form.purpose,
+        form.sequence,
+        sending,
+    )
+    .execute(txn)
     .await?;
     Ok(pid)
 }
 
 /// A send that failed does not count against the hourly limit.
-async fn clear_sent_mark(db: &sea_orm::DatabaseConnection, submission: Uuid) {
-    if let Err(error) = db
-        .execute_raw(stmt(
-            "UPDATE form_submissions SET confirmation_sent_at = NULL WHERE pid = $1",
-            [submission.into()],
-        ))
-        .await
+async fn clear_sent_mark(pool: &PgPool, submission: Uuid) {
+    if let Err(error) = sqlx::query!(
+        "UPDATE form_submissions SET confirmation_sent_at = NULL WHERE pid = $1",
+        submission,
+    )
+    .execute(pool)
+    .await
     {
         tracing::warn!(%error, "could not clear the confirmation mark");
     }
@@ -459,7 +456,7 @@ async fn clear_sent_mark(db: &sea_orm::DatabaseConnection, submission: Uuid) {
 /// and carries no unsubscribe link. Returns whether it went out; a failure is logged and not
 /// shown.
 async fn send_confirmation(
-    db: &sea_orm::DatabaseConnection,
+    pool: &PgPool,
     form: &WebForm,
     contact: &contacts::Model,
     (name, email): (&str, &str),
@@ -477,8 +474,15 @@ async fn send_confirmation(
         return false;
     };
     let expires = crate::clock::now() + chrono::Duration::days(CONFIRM_DAYS);
+    let mut conn = match pool.acquire().await {
+        Ok(conn) => conn,
+        Err(error) => {
+            tracing::warn!(form = %form.slug, %error, "web form: could not make a confirmation link");
+            return false;
+        }
+    };
     let token = match crate::link_tokens::issue(
-        db,
+        &Bridge::new(&mut conn),
         crate::link_tokens::CONFIRM,
         contact.pid,
         index,
@@ -517,41 +521,51 @@ async fn send_confirmation(
 /// and mark those submissions confirmed. Called inside the confirmation's transaction, after
 /// the grant, so the consent gate the sequence sends under is already open.
 pub(crate) async fn on_confirmed(
-    txn: &DatabaseTransaction,
+    txn: &mut PgConnection,
     contact: Uuid,
     purpose: &str,
 ) -> Result<()> {
-    let rows = txn
-        .query_all_raw(stmt(
-            "SELECT DISTINCT sequence_pid FROM form_submissions WHERE contact_pid = $1 \
-             AND purpose = $2 AND confirmed_at IS NULL AND sequence_pid IS NOT NULL",
-            [contact.into(), purpose.into()],
-        ))
-        .await?;
-    for row in rows {
-        let sequence_pid: Uuid = row.try_get("", "sequence_pid")?;
-        let Ok(sequence) = records::find_sequence(txn, sequence_pid).await else {
+    let sequences = sqlx::query_scalar!(
+        "SELECT DISTINCT sequence_pid AS \"sequence_pid!\" FROM form_submissions \
+         WHERE contact_pid = $1 AND purpose = $2 AND confirmed_at IS NULL \
+         AND sequence_pid IS NOT NULL",
+        contact,
+        purpose,
+    )
+    .fetch_all(&mut *txn)
+    .await?;
+    for sequence_pid in sequences {
+        let Some(sequence) = rows::sequence(&mut *txn, sequence_pid).await? else {
             continue;
         };
         if sequence.purpose != purpose {
             continue;
         }
-        let already = txn
-            .query_one_raw(stmt(
-                "SELECT 1 AS one FROM nurture_enrollments WHERE contact_pid = $1 \
-                 AND sequence_pid = $2 AND status = 'active' AND deleted_at IS NULL",
-                [contact.into(), sequence_pid.into()],
-            ))
+        let already = sqlx::query_scalar!(
+            "SELECT EXISTS (SELECT 1 FROM nurture_enrollments WHERE contact_pid = $1 \
+             AND sequence_pid = $2 AND status = 'active' AND deleted_at IS NULL) AS \"found!\"",
+            contact,
+            sequence_pid,
+        )
+        .fetch_one(&mut *txn)
+        .await?;
+        if !already {
+            super::marketing::nurture::enrol_in(
+                &Bridge::new(&mut *txn),
+                &sequence,
+                contact,
+                Some("web_form"),
+            )
             .await?;
-        if already.is_none() {
-            super::marketing::nurture::enrol_in(txn, &sequence, contact, Some("web_form")).await?;
         }
     }
-    txn.execute_raw(stmt(
+    sqlx::query!(
         "UPDATE form_submissions SET confirmed_at = now() WHERE contact_pid = $1 \
          AND purpose = $2 AND confirmed_at IS NULL",
-        [contact.into(), purpose.into()],
-    ))
+        contact,
+        purpose,
+    )
+    .execute(&mut *txn)
     .await?;
     Ok(())
 }

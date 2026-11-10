@@ -157,8 +157,8 @@ pub(crate) struct NewLead<'a> {
 
 /// Insert a lead, score it, and write the `lead_captured` audit row and event, all in the
 /// caller's transaction. Shared by `POST /api/leads` and the web form (CRM-R31).
-pub(crate) async fn capture_lead(
-    txn: &sea_orm::DatabaseTransaction,
+pub(crate) async fn capture_lead<C: sea_orm::ConnectionTrait>(
+    txn: &C,
     new: &NewLead<'_>,
     actor: Option<&str>,
 ) -> Result<(leads::Model, scoring::ScoreBreakdown)> {
