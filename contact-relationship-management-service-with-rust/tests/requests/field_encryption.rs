@@ -10,9 +10,9 @@ use contact_relationship_management::crypto::{self, Keyring};
 use contact_relationship_management::db;
 use contact_relationship_management::models::encrypted::EncryptedText;
 use contact_relationship_management::tasks::rotate_field_keys::rotate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::seed_contact;
 
@@ -25,16 +25,14 @@ fn keyring(ids: &[(&str, u8)]) -> Keyring {
     Keyring::from_spec(&spec).unwrap()
 }
 
-async fn stored(db: &sea_orm::DatabaseConnection, sql: &str) -> Vec<String> {
-    db.query_all_raw(Statement::from_string(
-        DatabaseBackend::Postgres,
-        sql.to_string(),
-    ))
-    .await
-    .unwrap()
-    .iter()
-    .map(|row| row.try_get::<String>("", "v").unwrap())
-    .collect()
+async fn stored(db: &sqlx::PgPool, sql: &str) -> Vec<String> {
+    sqlx::query(sqlx::AssertSqlSafe(sql.to_string()))
+        .fetch_all(db)
+        .await
+        .unwrap()
+        .iter()
+        .map(|row| row.try_get::<String, _>("v").unwrap())
+        .collect()
 }
 
 #[tokio::test]
@@ -54,7 +52,7 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
 
         // At rest: ciphertext, never the plaintext.
         let summaries = stored(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             &format!("SELECT summary AS v FROM activities WHERE subject_pid = '{pid}'"),
         )
         .await;
@@ -62,7 +60,7 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
         assert!(summaries[0].starts_with("enc:v1:k1:"), "{}", summaries[0]);
         assert!(!summaries[0].contains("afternoon"));
         let channels = stored(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             &format!("SELECT preferred_channel AS v FROM contacts WHERE pid = '{pid}'"),
         )
         .await;
@@ -79,10 +77,9 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
         assert_eq!(export["activities"][0]["summary"], "Prefers afternoon calls");
 
         // Legacy plaintext (a raw write) still reads, and is reported for sealing.
-        ctx.db
-            .execute_unprepared(&format!(
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
                 "UPDATE activities SET summary = 'legacy plaintext' WHERE subject_pid = '{pid}'"
-            ))
+            ))).execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         let legacy: Value = request.get(&format!("/api/contacts/{pid}")).await.json();
@@ -94,7 +91,7 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
         let report = rotate(db::pool(&ctx)).await.unwrap();
         assert!(report.iter().any(|(_, n)| *n > 0), "{report:?}");
         let after = stored(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             &format!("SELECT summary AS v FROM activities WHERE subject_pid = '{pid}'"),
         )
         .await;
@@ -113,12 +110,10 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
         crypto::install(Some(keyring(&[("k2", 2)])));
         rotate(db::pool(&ctx)).await.ok();
         crypto::install(None);
-        ctx.db
-            .execute_unprepared("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'")
+        sqlx::raw_sql("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'").execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
-        ctx.db
-            .execute_unprepared("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'")
+        sqlx::raw_sql("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'").execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
     })
@@ -148,19 +143,17 @@ async fn an_edited_summary_is_sealed_at_rest() {
         edited.assert_status_ok();
         assert_eq!(edited.json::<Value>()["summary"], "Second thoughts");
         let at_rest = stored(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             &format!("SELECT summary AS v FROM activities WHERE pid = '{activity}'"),
         )
         .await;
         assert!(at_rest[0].starts_with("enc:v1:k1:"), "{}", at_rest[0]);
         assert!(!at_rest[0].contains("thoughts"));
         crypto::install(None);
-        ctx.db
-            .execute_unprepared("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'")
+        sqlx::raw_sql("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'").execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
-        ctx.db
-            .execute_unprepared("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'")
+        sqlx::raw_sql("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'").execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
     })
@@ -185,25 +178,23 @@ async fn an_imported_contact_s_channel_is_sealed_at_rest() {
             .json();
         assert_eq!(done["created_count"], 1, "{done}");
         let at_rest = stored(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT preferred_channel AS v FROM contacts WHERE display_name = 'Seal Edimport'",
         )
         .await;
         assert!(at_rest[0].starts_with("enc:v1:k1:"), "{}", at_rest[0]);
         let pid = stored(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT pid::text AS v FROM contacts WHERE display_name = 'Seal Edimport'",
         )
         .await;
         let detail: Value = request.get(&format!("/api/contacts/{}", pid[0])).await.json();
         assert_eq!(detail["contact"]["preferred_channel"], "email");
         crypto::install(None);
-        ctx.db
-            .execute_unprepared("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'")
+        sqlx::raw_sql("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'").execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
-        ctx.db
-            .execute_unprepared("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'")
+        sqlx::raw_sql("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'").execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
     })
@@ -226,19 +217,17 @@ async fn an_edited_channel_is_sealed_at_rest() {
         edited.assert_status_ok();
         assert_eq!(edited.json::<Value>()["preferred_channel"], "phone");
         let at_rest = stored(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             &format!("SELECT preferred_channel AS v FROM contacts WHERE pid = '{pid}'"),
         )
         .await;
         assert!(at_rest[0].starts_with("enc:v1:k1:"), "{}", at_rest[0]);
         assert!(!at_rest[0].contains("phone"));
         crypto::install(None);
-        ctx.db
-            .execute_unprepared("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'")
+        sqlx::raw_sql("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'").execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
-        ctx.db
-            .execute_unprepared("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'")
+        sqlx::raw_sql("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'").execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
     })
@@ -314,12 +303,12 @@ async fn sqlx_seals_and_opens_the_same_columns() {
         assert!(refused.is_err(), "{refused:?}");
 
         // With no keys, legacy plaintext is written and read as it stands.
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE activities SET summary = 'legacy' WHERE subject_pid = '{pid}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE activities SET summary = 'legacy' WHERE subject_pid = '{pid}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         let legacy: EncryptedText = sqlx::query_scalar(summary)
             .bind(subject)
             .fetch_one(pool)

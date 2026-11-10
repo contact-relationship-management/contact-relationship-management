@@ -4,7 +4,6 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -220,8 +219,8 @@ async fn insight_cache_hits_then_write_invalidates() {
         assert_eq!(count(&first), 2, "{first}");
 
         // Behind the API's back (no generation bump) the cached body stays.
-        ctx.db
-            .execute_unprepared("UPDATE deals SET deleted_at = now()")
+        sqlx::raw_sql("UPDATE deals SET deleted_at = now()")
+            .execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         let second: Value = request.get("/api/insights/stale-deals?days=0").await.json();

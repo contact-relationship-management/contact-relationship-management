@@ -1,6 +1,7 @@
 //! File attachments (CRM-R42): the allow-list, the scan hook, downloads that are always
 //! attachments, the integrity check, subject access and erasure.
 
+use sqlx::Row as _;
 use std::path::{Path, PathBuf};
 
 use axa_test::prelude::*;
@@ -196,7 +197,6 @@ async fn the_scan_hook_refuses_the_infected_and_the_unscannable() {
         s.attachment_scan_command = Some(command);
     });
     request::<App, _, _>(|request, ctx| async move {
-        use sea_orm::ConnectionTrait;
         let contact = seed_contact!(&request, "Scanned").await;
         let before = dir.files();
         upload!(&request, contact, "clean.txt", b"just words".to_vec()).assert_status_ok();
@@ -206,31 +206,27 @@ async fn the_scan_hook_refuses_the_infected_and_the_unscannable() {
         let broken = upload!(&request, contact, "odd.txt", b"BREAK the scanner".to_vec());
         broken.assert_status(axum::http::StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(dir.files(), before + 1, "neither refused file was kept");
-        let held = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                "SELECT count(*) AS n FROM attachments".to_string(),
-            ))
-            .await
-            .unwrap()
-            .unwrap()
-            .try_get::<i64>("", "n")
-            .unwrap();
+        let held = sqlx::query(sqlx::AssertSqlSafe(
+            "SELECT count(*) AS n FROM attachments".to_string(),
+        ))
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<i64, _>("n")
+        .unwrap();
         assert_eq!(held, 1);
-        let audited = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                "SELECT count(*) AS n FROM audit_logs WHERE entity = 'attachment' \
+        let audited = sqlx::query(sqlx::AssertSqlSafe(
+            "SELECT count(*) AS n FROM audit_logs WHERE entity = 'attachment' \
                  AND action = 'refused_infected'"
-                    .to_string(),
-            ))
-            .await
-            .unwrap()
-            .unwrap()
-            .try_get::<i64>("", "n")
-            .unwrap();
+                .to_string(),
+        ))
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<i64, _>("n")
+        .unwrap();
         assert_eq!(audited, 1);
     })
     .await;

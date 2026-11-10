@@ -2,9 +2,9 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::a_person;
 
@@ -29,21 +29,27 @@ async fn search_ignores_accents_forgives_typos_and_covers_every_kind() {
     request::<App, _, _>(|request, ctx| async move {
         let contact: Value = request
             .post("/api/contacts")
-            .json(&json!({ "person_ref": a_person(), "display_name": "Zoë Ångström-Quillfeather",
-                           "job_title": "Head of Procurement" }))
+            .json(
+                &json!({ "person_ref": a_person(), "display_name": "Zoë Ångström-Quillfeather",
+                           "job_title": "Head of Procurement" }),
+            )
             .await
             .json();
         let contact_pid = contact["pid"].as_str().unwrap().to_string();
         request
             .post("/api/accounts")
-            .json(&json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
-                           "display_name": "Quillfeather Brewing", "industry": "Beverages" }))
+            .json(
+                &json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Quillfeather Brewing", "industry": "Beverages" }),
+            )
             .await
             .assert_status_ok();
         request
             .post("/api/leads")
-            .json(&json!({ "display_name": "Quillfeather enquiry", "source": "web",
-                           "email": "x@quillmail.test" }))
+            .json(
+                &json!({ "display_name": "Quillfeather enquiry", "source": "web",
+                           "email": "x@quillmail.test" }),
+            )
             .await
             .assert_status_ok();
         request
@@ -53,13 +59,22 @@ async fn search_ignores_accents_forgives_typos_and_covers_every_kind() {
             .assert_status_ok();
         request
             .post("/api/articles")
-            .json(&json!({ "title": "Resetting a portal", "body": "Quillfeather customers reset here",
-                           "keywords": "portal" }))
+            .json(
+                &json!({ "title": "Resetting a portal", "body": "Quillfeather customers reset here",
+                           "keywords": "portal" }),
+            )
             .await
             .assert_status_ok();
 
         // Accents folded both ways; case ignored; a prefix is enough.
-        for q in ["zoe", "ZOË", "angstrom", "ångström", "zoe%20angs", "procure"] {
+        for q in [
+            "zoe",
+            "ZOË",
+            "angstrom",
+            "ångström",
+            "zoe%20angs",
+            "procure",
+        ] {
             let hits = find!(request, q);
             assert!(
                 hits.iter().any(|h| h["pid"] == contact_pid.as_str()),
@@ -88,15 +103,19 @@ async fn search_ignores_accents_forgives_typos_and_covers_every_kind() {
             .unwrap();
         assert_eq!(account["detail"], "Beverages");
         // The lead's address domain is searchable; the address itself is not stored.
-        assert!(find!(request, "quillmail").iter().any(|h| h["kind"] == "lead"));
+        assert!(
+            find!(request, "quillmail")
+                .iter()
+                .any(|h| h["kind"] == "lead")
+        );
 
         // A removed record is not found.
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contacts SET deleted_at = now() WHERE pid = '{contact_pid}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contacts SET deleted_at = now() WHERE pid = '{contact_pid}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         assert!(
             !find!(request, "zoe")
                 .iter()
@@ -106,32 +125,31 @@ async fn search_ignores_accents_forgives_typos_and_covers_every_kind() {
         // Bad queries are 422; the audit holds a count and never the text.
         for q in ["", "a", "%26%7C%21", &"x".repeat(101)] {
             assert_eq!(
-                request.get(&format!("/api/search?q={q}")).await.status_code(),
+                request
+                    .get(&format!("/api/search?q={q}"))
+                    .await
+                    .status_code(),
                 422,
                 "{q}"
             );
         }
-        let audit = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT count(*) AS n FROM audit_logs WHERE entity = 'search' \
+        let audit = sqlx::query(
+            "SELECT count(*) AS n FROM audit_logs WHERE entity = 'search' \
                  AND snapshot::text ILIKE '%quillfeather%'",
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(audit.try_get::<i64>("", "n").unwrap(), 0);
-        let rows = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT count(*) AS n FROM audit_logs WHERE entity = 'search' AND action = 'search'",
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        assert!(rows.try_get::<i64>("", "n").unwrap() >= 1);
+        )
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(audit.try_get::<i64, _>("n").unwrap(), 0);
+        let rows = sqlx::query(
+            "SELECT count(*) AS n FROM audit_logs WHERE entity = 'search' AND action = 'search'",
+        )
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(rows.try_get::<i64, _>("n").unwrap() >= 1);
     })
     .await;
 }

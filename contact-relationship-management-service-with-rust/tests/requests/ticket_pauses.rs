@@ -4,33 +4,30 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
-async fn sql(db: &sea_orm::DatabaseConnection, text: &str, pid: &str) {
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
-        text,
-        [pid.into()],
-    ))
-    .await
-    .unwrap();
+async fn sql(db: &sqlx::PgPool, text: &str, pid: &str) {
+    sqlx::query(sqlx::AssertSqlSafe(text))
+        .bind(pid)
+        .execute(db)
+        .await
+        .unwrap();
 }
 
 /// Put `pid`'s pause `minutes` back on the clock the service measures it with, `clock::now()`.
 /// Before CRM-T221 that was the host's clock, and backdating with the database's `now()`
 /// measured the gap between the two clocks too: a container nine minutes behind its host turned
 /// 30 minutes into 39 (CRM-T220).
-async fn paused_for(db: &sea_orm::DatabaseConnection, pid: &str, minutes: i64) {
+async fn paused_for(db: &sqlx::PgPool, pid: &str, minutes: i64) {
     let at = contact_relationship_management::clock::now() - chrono::Duration::minutes(minutes);
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
-        "UPDATE tickets SET paused_at = $2 WHERE pid = $1::uuid",
-        [pid.into(), at.into()],
-    ))
-    .await
-    .unwrap();
+    sqlx::query("UPDATE tickets SET paused_at = $2 WHERE pid = $1::uuid")
+        .bind(pid)
+        .bind(at)
+        .execute(db)
+        .await
+        .unwrap();
 }
 
 fn seconds_between(a: &Value, b: &Value) -> i64 {
@@ -92,7 +89,7 @@ async fn a_ticket_waiting_for_the_customer_stops_its_clock_and_gets_the_time_bac
         let paused = status(waiting.clone(), "pending").await;
         assert!(paused["paused_at"].is_string(), "{paused}");
         sql(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "UPDATE tickets SET resolution_due_at = now() - interval '1 hour', \
              paused_at = now() - interval '2 hours' WHERE pid = $1::uuid",
             &waiting,
@@ -105,7 +102,7 @@ async fn a_ticket_waiting_for_the_customer_stops_its_clock_and_gets_the_time_bac
         // A ticket in the same position that is not paused is breached.
         let running = open("Running").await;
         sql(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "UPDATE tickets SET resolution_due_at = now() - interval '1 hour' \
              WHERE pid = $1::uuid",
             &running,
@@ -120,7 +117,7 @@ async fn a_ticket_waiting_for_the_customer_stops_its_clock_and_gets_the_time_bac
         let ticket = open("Resumed").await;
         let opened = get(ticket.clone()).await;
         status(ticket.clone(), "pending").await;
-        paused_for(&ctx.db, &ticket, 30).await;
+        paused_for(contact_relationship_management::db::pool(&ctx), &ticket, 30).await;
         let resumed = status(ticket.clone(), "open").await;
         assert!(resumed["paused_at"].is_null(), "{resumed}");
         let moved = seconds_between(&opened["resolution_due_at"], &resumed["resolution_due_at"]);
@@ -161,7 +158,7 @@ async fn a_ticket_waiting_for_the_customer_stops_its_clock_and_gets_the_time_bac
         // A pause that starts after the deadline has passed is not given back.
         let late = open("Late").await;
         sql(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "UPDATE tickets SET resolution_due_at = now() - interval '10 minutes' \
              WHERE pid = $1::uuid",
             &late,
@@ -170,7 +167,7 @@ async fn a_ticket_waiting_for_the_customer_stops_its_clock_and_gets_the_time_bac
         let late_before = get(late.clone()).await;
         status(late.clone(), "pending").await;
         sql(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "UPDATE tickets SET paused_at = now() - interval '5 minutes' WHERE pid = $1::uuid",
             &late,
         )
@@ -221,7 +218,7 @@ async fn a_customer_reply_resumes_a_waiting_ticket_and_leaves_the_others_alone()
             .json(&json!({ "to": "pending" }))
             .await
             .assert_status_ok();
-        paused_for(&ctx.db, &ticket, 30).await;
+        paused_for(contact_relationship_management::db::pool(&ctx), &ticket, 30).await;
         let answered: Value = request.post(&reply).await.json();
         assert_eq!(answered["status"], "open", "{answered}");
         assert!(answered["paused_at"].is_null(), "{answered}");
@@ -232,19 +229,17 @@ async fn a_customer_reply_resumes_a_waiting_ticket_and_leaves_the_others_alone()
         );
 
         // The audit says the customer's reply did it.
-        let via: i64 = ctx
-            .db
-            .query_one_raw(Statement::from_sql_and_values(
-                DatabaseBackend::Postgres,
-                "SELECT count(*) AS n FROM audit_logs WHERE entity = 'ticket' \
+        let via: i64 = sqlx::query(
+            "SELECT count(*) AS n FROM audit_logs WHERE entity = 'ticket' \
                  AND snapshot->>'via' = 'customer_reply' AND entity_pid = $1::uuid",
-                [ticket.clone().into()],
-            ))
-            .await
-            .unwrap()
-            .unwrap()
-            .try_get("", "n")
-            .unwrap();
+        )
+        .bind(ticket.clone())
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("n")
+        .unwrap();
         assert_eq!(via, 1);
 
         // A resolved ticket is not reopened by a reply.
@@ -306,7 +301,7 @@ async fn a_ticket_left_waiting_past_its_policy_limit_is_flagged_once_and_cleared
         );
         for (pid, minutes) in [(&limited, 90), (&unlimited, 90), (&recent, 30)] {
             sql(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 &format!(
                     "UPDATE tickets SET paused_at = now() - interval '{minutes} minutes' \
                      WHERE pid = $1::uuid"
@@ -408,7 +403,7 @@ async fn a_policy_can_resolve_or_escalate_a_ticket_left_waiting_past_its_limit()
                     .await
                     .assert_status_ok();
                 sql(
-                    &ctx.db,
+                    contact_relationship_management::db::pool(ctx),
                     "UPDATE tickets SET paused_at = now() - interval '90 minutes' \
                      WHERE pid = $1::uuid",
                     &pid,
@@ -496,7 +491,7 @@ async fn a_policy_closes_a_ticket_left_resolved_for_its_days_and_no_other() {
                     .await
                     .assert_status_ok();
                 sql(
-                    &ctx.db,
+                    contact_relationship_management::db::pool(ctx),
                     &format!(
                         "UPDATE tickets SET resolved_at = now() - interval '{ago} days' \
                          WHERE pid = $1::uuid"

@@ -4,34 +4,33 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::{a_user, seed_contact};
 
-async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
+async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "n")
+        .try_get("n")
         .unwrap()
 }
 
 /// The database's clock. The sweep compares `remind_at` with `now()` in SQL, so a reminder this
 /// test means to be just due is set from that clock, not the test's: the two can disagree, as
 /// a container's clock drifting behind its host did by nine minutes (CRM-T220).
-async fn database_now(db: &sea_orm::DatabaseConnection) -> chrono::DateTime<chrono::Utc> {
-    db.query_one_raw(Statement::from_string(
-        DatabaseBackend::Postgres,
-        "SELECT now() AS now",
-    ))
-    .await
-    .unwrap()
-    .unwrap()
-    .try_get("", "now")
-    .unwrap()
+async fn database_now(db: &sqlx::PgPool) -> chrono::DateTime<chrono::Utc> {
+    sqlx::query("SELECT now() AS now")
+        .fetch_optional(db)
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("now")
+        .unwrap()
 }
 
 fn an_hour_ago() -> String {
@@ -135,7 +134,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
         // A new reminder time on the same task fires once more; the same time does not.
         request
             .put(&format!("/api/activities/{due}"))
-            .json(&json!({ "remind_at": (database_now(&ctx.db).await - chrono::Duration::minutes(5)).to_rfc3339() }))
+            .json(&json!({ "remind_at": (database_now(contact_relationship_management::db::pool(&ctx)).await - chrono::Duration::minutes(5)).to_rfc3339() }))
             .await
             .assert_status_ok();
         assert_eq!(sweep!(request), json!({ "created": 1, "suppressed": 0 }));
@@ -151,7 +150,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
         // The sweep is audited with counts only; marking read is audited.
         assert!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE action = 'notifications_swept'"
             )
             .await
@@ -159,7 +158,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
         );
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 &format!("SELECT count(*) AS n FROM audit_logs WHERE entity = 'notification' AND entity_pid = '{pid}' AND action = 'read'")
             )
             .await,
@@ -184,12 +183,12 @@ async fn a_gone_record_is_suppressed_an_sla_breach_notifies_the_assignee_and_era
         let kept = seed_contact!(&request, "Kept").await;
         task!(request, gone, me, an_hour_ago());
         task!(request, kept, me, an_hour_ago());
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contacts SET deleted_at = now() WHERE pid = '{gone}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contacts SET deleted_at = now() WHERE pid = '{gone}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         assert_eq!(sweep!(request), json!({ "created": 1, "suppressed": 1 }));
         let mine = inbox!(request, me, "");
         assert_eq!(mine.len(), 1);
@@ -207,22 +206,22 @@ async fn a_gone_record_is_suppressed_an_sla_breach_notifies_the_assignee_and_era
             .json(&json!({ "title": "Nobody's" }))
             .await
             .json();
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE tickets SET first_response_breached = TRUE \
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE tickets SET first_response_breached = TRUE \
                  WHERE pid IN ('{ticket_pid}', '{}')",
-                unassigned["pid"].as_str().unwrap()
-            ))
-            .await
-            .unwrap();
+            unassigned["pid"].as_str().unwrap()
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         assert_eq!(sweep!(request), json!({ "created": 1, "suppressed": 0 }));
         assert_eq!(sweep!(request), json!({ "created": 0, "suppressed": 0 }));
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE tickets SET resolution_breached = TRUE WHERE pid = '{ticket_pid}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE tickets SET resolution_breached = TRUE WHERE pid = '{ticket_pid}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         assert_eq!(sweep!(request), json!({ "created": 1, "suppressed": 0 }));
         let kinds: Vec<String> = inbox!(request, me, "")
             .iter()
@@ -260,7 +259,7 @@ async fn a_gone_record_is_suppressed_an_sla_breach_notifies_the_assignee_and_era
             .assert_status_ok();
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 &format!("SELECT count(*) AS n FROM notifications WHERE subject_pid = '{kept}'")
             )
             .await,

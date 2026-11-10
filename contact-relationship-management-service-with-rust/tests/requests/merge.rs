@@ -3,7 +3,6 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -277,25 +276,38 @@ async fn a_failure_part_way_leaves_both_contacts_unchanged() {
             .assert_status_ok();
         // A ledger row for the merged contact already exists, so the ledger
         // insert at the end of the merge fails, after every row has moved.
-        ctx.db
-            .execute_unprepared(&format!(
-                "INSERT INTO contact_merges (pid, survivor_pid, merged_pid, merged_person_ref, moved) \
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "INSERT INTO contact_merges (pid, survivor_pid, merged_pid, merged_person_ref, moved) \
                  VALUES (gen_random_uuid(), gen_random_uuid(), '{merged}', 'person:x', '{{}}')"
-            ))
-            .await
-            .unwrap();
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         // A violated unique key is a `409` from axa 0.6, where it was a `500` (CRM-T218).
         let (status, _) = merge(&request, &merged, &survivor, false).await;
         assert_eq!(status, 409);
 
-        request.get(&format!("/api/contacts/{merged}")).await.assert_status_ok();
-        let kept: Value = request.get(&format!("/api/contacts/{survivor}")).await.json();
-        assert!(kept["contact"]["job_title"].is_null(), "the survivor was not filled");
+        request
+            .get(&format!("/api/contacts/{merged}"))
+            .await
+            .assert_status_ok();
+        let kept: Value = request
+            .get(&format!("/api/contacts/{survivor}"))
+            .await
+            .json();
+        assert!(
+            kept["contact"]["job_title"].is_null(),
+            "the survivor was not filled"
+        );
         let export: Value = request
             .get(&format!("/api/contacts/{merged}/subject-access"))
             .await
             .json();
-        assert_eq!(export["activities"].as_array().unwrap().len(), 1, "the activity did not move");
+        assert_eq!(
+            export["activities"].as_array().unwrap().len(),
+            1,
+            "the activity did not move"
+        );
     })
     .await;
 }

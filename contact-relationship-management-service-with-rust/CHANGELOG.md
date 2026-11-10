@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the database tests' SQL on sqlx (CRM-T230, CRM-D24)
+
+- 39 request-test files send their set-up and check SQL through `sqlx` on `db::pool` in place of
+  `SeaORM`'s `ConnectionTrait`. No assertion changes.
+
 ### Changed — sqlx migrator and one baseline (CRM-T229, CRM-D24)
 
 - `migrations/20261110000000_baseline.sql` and `src/schema.rs` (`migrate`, `reset`, `status`)

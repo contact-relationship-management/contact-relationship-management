@@ -4,6 +4,7 @@ use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 #[tokio::test]
 #[serial]
@@ -127,28 +128,22 @@ async fn a_view_is_saved_listed_replaced_and_deleted() {
             .delete(&format!("/api/views/{pid}"))
             .await
             .assert_status(axum::http::StatusCode::NOT_FOUND);
-        use sea_orm::ConnectionTrait;
-        let row = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                "SELECT count(*) AS n FROM audit_logs WHERE entity = 'view' \
+        let row = sqlx::query(
+            "SELECT count(*) AS n FROM audit_logs WHERE entity = 'view' \
                  AND snapshot::text ILIKE '%urgent%'",
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(row.try_get::<i64>("", "n").unwrap(), 0);
-        let row = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                "SELECT count(DISTINCT action) AS n FROM audit_logs WHERE entity = 'view'",
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(row.try_get::<i64>("", "n").unwrap(), 3);
+        )
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(row.try_get::<i64, _>("n").unwrap(), 0);
+        let row =
+            sqlx::query("SELECT count(DISTINCT action) AS n FROM audit_logs WHERE entity = 'view'")
+                .fetch_optional(contact_relationship_management::db::pool(&ctx))
+                .await
+                .unwrap()
+                .unwrap();
+        assert_eq!(row.try_get::<i64, _>("n").unwrap(), 3);
     })
     .await;
 }

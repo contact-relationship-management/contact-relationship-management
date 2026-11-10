@@ -6,6 +6,7 @@ use axum::http::StatusCode;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::{a_person, seed_contact};
 
@@ -128,7 +129,6 @@ async fn only_a_task_can_be_marked_done() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_contact_is_edited_by_the_members_sent_and_nothing_else() {
     request::<App, _, _>(|request, ctx| async move {
-        use sea_orm::ConnectionTrait;
         let created: Value = request
             .post("/api/contacts")
             .json(
@@ -174,19 +174,15 @@ async fn a_contact_is_edited_by_the_members_sent_and_nothing_else() {
             .assert_status(StatusCode::NOT_FOUND);
 
         // The audit row names the field, not the value.
-        let row = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                format!(
-                    "SELECT snapshot::text AS d FROM audit_logs WHERE entity_pid = '{pid}' \
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "SELECT snapshot::text AS d FROM audit_logs WHERE entity_pid = '{pid}' \
                      AND action = 'updated'"
-                ),
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        let details = row.try_get::<String>("", "d").unwrap();
+        )))
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap();
+        let details = row.try_get::<String, _>("d").unwrap();
         assert!(details.contains("family_name"), "{details}");
         assert!(!details.contains("Lovelace"), "{details}");
     })

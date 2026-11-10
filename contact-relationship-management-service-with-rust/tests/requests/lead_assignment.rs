@@ -3,18 +3,19 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::a_user;
 
-async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
+async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "n")
+        .try_get("n")
         .unwrap()
 }
 
@@ -87,7 +88,7 @@ async fn leads_are_given_out_in_turn_and_the_worker_is_told() {
         assert_eq!(inbox[0]["subject_kind"], "lead");
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 &format!(
                     "SELECT count(*) AS n FROM audit_logs WHERE entity = 'lead' \
                           AND action = 'assigned' AND actor = 'workflow:{wf}'"

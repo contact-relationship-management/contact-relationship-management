@@ -2,6 +2,7 @@
 //! HTTP against an in-process stand-in for WPM's `POST /api/bridges/overlap`, which answers only an
 //! HR caller, as WPM does. No WPM runs here.
 
+use sqlx::Row as _;
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
@@ -15,7 +16,6 @@ use contact_relationship_management::app::App;
 use contact_relationship_management::clients::Mode;
 use contact_relationship_management::rules::wpm_events::sign;
 use contact_relationship_management::settings::{self, Settings};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -96,12 +96,13 @@ async fn fake_wpm() -> (String, Shared) {
     (url, shared)
 }
 
-async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
+async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "n")
+        .try_get("n")
         .unwrap()
 }
 
@@ -143,26 +144,20 @@ async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_noth
         let (linus, linus_ref) = people["Linus Pauling"].clone();
         let (mary, mary_ref) = people["Mary Somerville"].clone();
         // 520 more contacts, so the check takes two calls; one of them is a worker too.
-        ctx.db
-            .execute_unprepared(&format!(
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
                 "INSERT INTO contacts (pid, person_ref, display_name, status, preferred_channel, \
                    marketing_consent) \
                  SELECT gen_random_uuid(), 'person:' || gen_random_uuid(), 'Bulk ' || n, status, \
                    preferred_channel, marketing_consent \
                  FROM contacts, generate_series(1, 520) AS n WHERE pid = '{ada}'"
-            ))
+            ))).execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
-        let bulk_worker: String = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT person_ref FROM contacts WHERE display_name = 'Bulk 7'",
-            ))
+        let bulk_worker: String = sqlx::query("SELECT person_ref FROM contacts WHERE display_name = 'Bulk 7'").fetch_optional(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap()
             .unwrap()
-            .try_get("", "person_ref")
+            .try_get("person_ref")
             .unwrap();
         // An erased contact is not asked about.
         let gone = seed_contact!(&request, "Erased Person").await;
@@ -223,7 +218,7 @@ async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_noth
         let wrong = request.post("/api/bridges/wpm/employment-check").await;
         assert_eq!(wrong.status_code(), 502);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM contact_employments").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM contact_employments").await,
             1,
             "only Mary's, from her hire event"
         );
@@ -292,7 +287,7 @@ async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_noth
         assert_eq!(before - after, 2, "Ada and the bulk worker are paused now");
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE action = 'employment_recorded' \
                  AND snapshot->>'via' = 'wpm' AND snapshot->>'source' = 'employment_check' \
                  AND snapshot->>'organization_ref' = 'organization:0c4f1e2a-0000-4000-8000-0000000000aa'"
@@ -302,7 +297,7 @@ async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_noth
         );
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE action = 'employment_checked' \
                  AND (snapshot->>'asked')::int = 524 AND (snapshot->>'recorded')::int = 2 \
                  AND snapshot::text NOT LIKE '%person:%'"
@@ -312,7 +307,7 @@ async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_noth
         );
         // The check writes no order: that is for events (CRM-R93).
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM employment_last_events").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM employment_last_events").await,
             2,
             "Mary's and Linus's, from their events"
         );
@@ -326,7 +321,7 @@ async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_noth
         assert_eq!(none["workers"], 0);
         assert_eq!(none["recorded"], 0);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM contact_employments").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM contact_employments").await,
             3
         );
         // Asked again with the same workers, nothing new.

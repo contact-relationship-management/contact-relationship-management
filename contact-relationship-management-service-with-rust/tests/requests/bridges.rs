@@ -1,6 +1,7 @@
 //! The bridges to PPM and WPM (CRM-R72, CRM-R73): stub-first, then over HTTP against an in-process
 //! stand-in for each service, since neither is available to run here.
 
+use sqlx::Row as _;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -197,18 +198,15 @@ async fn a_won_deal_opens_one_delivery_idea_in_ppm_and_only_over_http() {
         let (won, open) = (deal(true).await, deal(false).await);
         let url = |pid: &str| format!("/api/bridges/ppm/deals/{pid}");
         let recorded = || {
-            let db = &ctx.db;
+            let db = contact_relationship_management::db::pool(&ctx);
             async move {
-                use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
-                db.query_one_raw(Statement::from_string(
-                    DatabaseBackend::Postgres,
-                    "SELECT count(*) AS n FROM deal_deliveries",
-                ))
-                .await
-                .unwrap()
-                .unwrap()
-                .try_get::<i64>("", "n")
-                .unwrap()
+                sqlx::query("SELECT count(*) AS n FROM deal_deliveries")
+                    .fetch_optional(db)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .try_get::<i64, _>("n")
+                    .unwrap()
             }
         };
 

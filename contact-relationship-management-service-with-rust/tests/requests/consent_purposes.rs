@@ -6,9 +6,9 @@ use axum::http::StatusCode;
 use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};
 use contact_relationship_management::unsubscribe::{self, Unsubscriber};
-use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::seed_contact;
 
@@ -275,20 +275,17 @@ async fn a_double_opt_in_is_pending_until_the_person_confirms_and_never_override
             .assert_status(StatusCode::NOT_FOUND);
         let token = path.trim_start_matches("/confirm/");
         let held = |column: &'static str, value: String| {
-            let db = &ctx.db;
+            let db = contact_relationship_management::db::pool(&ctx);
             async move {
-                use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
-                db.query_one_raw(Statement::from_string(
-                    DatabaseBackend::Postgres,
-                    format!(
-                        "SELECT count(*) AS n FROM link_tokens WHERE {column} = '{value}' \
+                sqlx::query(sqlx::AssertSqlSafe(format!(
+                    "SELECT count(*) AS n FROM link_tokens WHERE {column} = '{value}' \
                          AND used_at IS NOT NULL"
-                    ),
-                ))
+                )))
+                .fetch_optional(db)
                 .await
                 .unwrap()
                 .unwrap()
-                .try_get::<i64>("", "n")
+                .try_get::<i64, _>("n")
                 .unwrap()
             }
         };
@@ -619,22 +616,23 @@ async fn erasure_withdraws_every_purpose_and_the_export_lists_them() {
         let body = erased.json::<Value>();
         assert_eq!(body["erased"], pid.as_str());
         // The contact is gone from the API now, so read the table.
-        let rows = ctx
-            .db
-            .query_all_raw(sea_orm::Statement::from_sql_and_values(
-                sea_orm::DatabaseBackend::Postgres,
-                "SELECT purpose, state FROM contact_consents WHERE contact_pid = $1 ORDER BY purpose",
-                [pid.parse::<uuid::Uuid>().unwrap().into()],
-            ))
-            .await
-            .unwrap();
+        let rows = sqlx::query(
+            "SELECT purpose, state FROM contact_consents WHERE contact_pid = $1 ORDER BY purpose",
+        )
+        .bind(pid.parse::<uuid::Uuid>().unwrap())
+        .fetch_all(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         let held: Vec<(String, String)> = rows
             .iter()
-            .map(|r| (r.try_get("", "purpose").unwrap(), r.try_get("", "state").unwrap()))
+            .map(|r| (r.try_get("purpose").unwrap(), r.try_get("state").unwrap()))
             .collect();
         assert_eq!(
             held,
-            [("events".to_string(), "withdrawn".to_string()), ("newsletter".to_string(), "withdrawn".to_string())]
+            [
+                ("events".to_string(), "withdrawn".to_string()),
+                ("newsletter".to_string(), "withdrawn".to_string())
+            ]
         );
     })
     .await;
@@ -645,24 +643,25 @@ async fn erasure_withdraws_every_purpose_and_the_export_lists_them() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_link_token_works_once_even_when_used_twice_at_once_expires_and_goes_with_the_contact() {
     request::<App, _, _>(|request, ctx| async move {
-        use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
         let (_recorder, _restore) = recording();
         let sql = |text: String| {
-            let db = &ctx.db;
+            let db = contact_relationship_management::db::pool(&ctx);
             async move {
-                db.execute_raw(Statement::from_string(DatabaseBackend::Postgres, text))
+                sqlx::query(sqlx::AssertSqlSafe(text))
+                    .execute(db)
                     .await
                     .unwrap();
             }
         };
         let count = |text: String| {
-            let db = &ctx.db;
+            let db = contact_relationship_management::db::pool(&ctx);
             async move {
-                db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, text))
+                sqlx::query(sqlx::AssertSqlSafe(text))
+                    .fetch_optional(db)
                     .await
                     .unwrap()
                     .unwrap()
-                    .try_get::<i64>("", "n")
+                    .try_get::<i64, _>("n")
                     .unwrap()
             }
         };

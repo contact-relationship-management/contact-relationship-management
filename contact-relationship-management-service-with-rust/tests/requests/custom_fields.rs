@@ -8,22 +8,20 @@ use contact_relationship_management::app::App;
 use contact_relationship_management::crypto::{self, Keyring};
 use contact_relationship_management::db;
 use contact_relationship_management::tasks::rotate_field_keys::rotate;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::seed_contact;
 
-async fn texts(db: &sea_orm::DatabaseConnection, sql: &str) -> Vec<String> {
-    db.query_all_raw(Statement::from_string(
-        DatabaseBackend::Postgres,
-        sql.to_string(),
-    ))
-    .await
-    .unwrap()
-    .iter()
-    .map(|row| row.try_get::<String>("", "v").unwrap())
-    .collect()
+async fn texts(db: &sqlx::PgPool, sql: &str) -> Vec<String> {
+    sqlx::query(sqlx::AssertSqlSafe(sql.to_string()))
+        .fetch_all(db)
+        .await
+        .unwrap()
+        .iter()
+        .map(|row| row.try_get::<String, _>("v").unwrap())
+        .collect()
 }
 
 macro_rules! define {
@@ -164,7 +162,7 @@ async fn every_kind_of_record_can_carry_fields_and_deleting_a_field_deletes_its_
             .await
             .assert_status_ok();
         let left = texts(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT count(*)::text AS v FROM custom_field_values",
         )
         .await;
@@ -247,14 +245,14 @@ async fn sensitivity_decides_sealing_subject_access_erasure_and_rotation() {
 
         // Only the sensitive one is sealed in the database; the API gives all three back.
         let raw = texts(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT v.value AS v FROM custom_field_values v JOIN custom_field_defs d \
              ON d.pid = v.field_pid WHERE d.key = 'diagnosis'",
         )
         .await;
         assert!(raw[0].starts_with("enc:v1:k1:"), "{}", raw[0]);
         let plain = texts(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT v.value AS v FROM custom_field_values v JOIN custom_field_defs d \
              ON d.pid = v.field_pid WHERE d.key = 'hobby'",
         )
@@ -285,14 +283,14 @@ async fn sensitivity_decides_sealing_subject_access_erasure_and_rotation() {
             "{report:?}"
         );
         let resealed = texts(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT v.value AS v FROM custom_field_values v JOIN custom_field_defs d \
              ON d.pid = v.field_pid WHERE d.key = 'diagnosis'",
         )
         .await;
         assert!(resealed[0].starts_with("enc:v1:k2:"), "{}", resealed[0]);
         let plain = texts(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT v.value AS v FROM custom_field_values v JOIN custom_field_defs d \
              ON d.pid = v.field_pid WHERE d.key = 'hobby'",
         )
@@ -328,7 +326,7 @@ async fn sensitivity_decides_sealing_subject_access_erasure_and_rotation() {
             .await
             .assert_status_ok();
         let left = texts(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT d.key AS v FROM custom_field_values v JOIN custom_field_defs d \
              ON d.pid = v.field_pid",
         )
@@ -374,7 +372,7 @@ async fn a_write_that_fails_after_its_audit_row_keeps_neither() {
         assert!(failed.status_code().is_server_error(), "{}", failed.text());
 
         let kept = texts(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT v.value AS v FROM custom_field_values v JOIN custom_field_defs d \
              ON d.pid = v.field_pid WHERE d.key = 'hobby'",
         )

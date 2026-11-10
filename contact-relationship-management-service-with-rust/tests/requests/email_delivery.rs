@@ -619,7 +619,6 @@ async fn brevo_and_mailjet_callbacks_are_authenticated_and_applied() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn cloud_and_relay_callbacks_are_authenticated_and_matched() {
     use hmac::{Hmac, KeyInit, Mac};
-    use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
     const SIGNING: &str = "mailgun-signing-key";
     settings::update(|s| {
         s.webhook_secret = Some(WEBHOOK_SECRET.to_string());
@@ -698,12 +697,7 @@ async fn cloud_and_relay_callbacks_are_authenticated_and_matched() {
             "data": { "validationCode": "code-1" } }]);
         let echoed: Value = request.post("/webhooks/email/azure").json(&handshake).await.json();
         assert_eq!(echoed["validationResponse"], "code-1");
-        ctx.db
-            .execute_raw(Statement::from_sql_and_values(
-                DatabaseBackend::Postgres,
-                "UPDATE email_deliveries SET provider_id = 'op-grace' WHERE message_id = $1",
-                [id_of("grace@example.test").into()],
-            ))
+        sqlx::query("UPDATE email_deliveries SET provider_id = 'op-grace' WHERE message_id = $1").bind(id_of("grace@example.test")).execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         let report = json!([{ "eventType": "Microsoft.Communication.EmailDeliveryReportReceived",

@@ -4,7 +4,6 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
 use std::collections::HashSet;
@@ -150,16 +149,16 @@ async fn article_search_is_not_cut_by_the_page() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn activity_dashboard_counts_past_the_old_cap() {
     request::<App, _, _>(|request, ctx| async move {
-        ctx.db
-            .execute_unprepared(
-                "INSERT INTO activities (created_at, updated_at, pid, subject_kind, subject_pid, \
+        sqlx::raw_sql(sqlx::AssertSqlSafe(
+            "INSERT INTO activities (created_at, updated_at, pid, subject_kind, subject_pid, \
                  kind, occurred_at, summary, done) \
                  SELECT now(), now(), gen_random_uuid(), 'contact', gen_random_uuid(), \
                  CASE WHEN g % 2 = 0 THEN 'call' ELSE 'note' END, now(), 'bulk', false \
                  FROM generate_series(1, 5003) AS g",
-            )
-            .await
-            .unwrap();
+        ))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         let dashboard: Value = request.get("/api/dashboards/activity?days=1").await.json();
         assert_eq!(dashboard["total"], 5003, "{dashboard}");
         assert_eq!(dashboard["by_kind"]["call"], 2501);

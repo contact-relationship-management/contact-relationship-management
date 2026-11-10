@@ -3,9 +3,9 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 #[tokio::test]
 #[serial]
@@ -48,11 +48,10 @@ async fn the_organization_s_zone_and_fiscal_year_shape_today_and_the_reports() {
                 .json(&json!({ "display_name": name, "source": "web" }))
                 .await
                 .json();
-            ctx.db
-                .execute_unprepared(&format!(
+            sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
                     "UPDATE leads SET created_at = '2026-03-31T23:30:00Z' WHERE pid = '{}'",
                     lead["pid"].as_str().unwrap()
-                ))
+                ))).execute(contact_relationship_management::db::pool(&ctx))
                 .await
                 .unwrap();
         }
@@ -136,16 +135,14 @@ async fn the_organization_s_zone_and_fiscal_year_shape_today_and_the_reports() {
 }
 
 /// One value from a query.
-async fn one_date(db: &sea_orm::DatabaseConnection, sql: &str) -> chrono::NaiveDate {
-    db.query_one_raw(sea_orm::Statement::from_string(
-        sea_orm::DatabaseBackend::Postgres,
-        sql,
-    ))
-    .await
-    .unwrap()
-    .unwrap()
-    .try_get("", "d")
-    .unwrap()
+async fn one_date(db: &sqlx::PgPool, sql: &str) -> chrono::NaiveDate {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("d")
+        .unwrap()
 }
 
 #[tokio::test]
@@ -194,7 +191,7 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
             .await
             .assert_status_ok();
         let counted = one_date(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             &format!("SELECT day AS d FROM kb_daily WHERE article_pid = '{article}'"),
         )
         .await;
@@ -207,12 +204,11 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
             .json(&json!({ "title": "Early ticket", "priority": "low" }))
             .await
             .json();
-        ctx.db
-            .execute_unprepared(&format!(
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
                 "UPDATE tickets SET opened_at = ('{kiritimati} 00:00:01'::timestamp \
                  AT TIME ZONE 'Pacific/Kiritimati') WHERE pid = '{}'",
                 ticket["pid"].as_str().unwrap()
-            ))
+            ))).execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         let report: Value = request
@@ -255,7 +251,7 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
             .json();
         let contact = contact["pid"].as_str().unwrap().to_string();
         let due = one_date(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             &format!(
                 "SELECT due_on AS d FROM activities WHERE kind = 'task' AND subject_pid = '{contact}'"
             ),
@@ -355,12 +351,12 @@ async fn a_deal_closes_on_the_organization_s_day() {
             .json(&json!({ "stage_pid": stages[2] }))
             .await
             .assert_status_ok();
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE deals SET closed_at = '2026-06-30T10:30:00Z' WHERE pid = '{deal}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE deals SET closed_at = '2026-06-30T10:30:00Z' WHERE pid = '{deal}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         // 0.80 until 30 June, 0.50 from 1 July: UTC's day would give 8,000.
         for (rate, on) in [("0.80", "2026-01-01"), ("0.50", "2026-07-01")] {
             request

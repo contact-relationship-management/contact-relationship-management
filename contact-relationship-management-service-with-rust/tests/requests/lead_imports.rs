@@ -3,18 +3,19 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::a_person;
 
-async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
+async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "n")
+        .try_get("n")
         .unwrap()
 }
 
@@ -46,7 +47,11 @@ async fn a_preview_maps_columns_reports_each_row_and_gives_duplicate_advice_only
             .json(&json!({ "display_name": "Alan Turing", "source": "web" }))
             .await
             .assert_status_ok();
-        let leads_before = count(&ctx.db, "SELECT count(*) AS n FROM leads").await;
+        let leads_before = count(
+            contact_relationship_management::db::pool(&ctx),
+            "SELECT count(*) AS n FROM leads",
+        )
+        .await;
 
         // Step one: columns and a suggestion, no report.
         let first: Value = request
@@ -90,7 +95,11 @@ async fn a_preview_maps_columns_reports_each_row_and_gives_duplicate_advice_only
         );
         // Nothing was saved.
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM leads").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM leads"
+            )
+            .await,
             leads_before
         );
 
@@ -142,38 +151,33 @@ async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
         assert_eq!(done["created_count"], 3);
         let import = done["pid"].as_str().unwrap().to_string();
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM leads WHERE source = 'import' AND deleted_at IS NULL").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM leads WHERE source = 'import' AND deleted_at IS NULL").await,
             3
         );
         // Domains only: no address, no contact, no consent of any kind.
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM leads WHERE source = 'import' AND email IS NOT NULL").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM leads WHERE source = 'import' AND email IS NOT NULL").await,
             0
         );
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM leads WHERE source = 'import' AND email_domain = 'engine.test'").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM leads WHERE source = 'import' AND email_domain = 'engine.test'").await,
             2
         );
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM leads WHERE source = 'import' AND contact_pid IS NOT NULL").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM leads WHERE source = 'import' AND contact_pid IS NOT NULL").await,
             0
         );
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM consent_events WHERE source ILIKE '%import%'").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM consent_events WHERE source ILIKE '%import%'").await,
             0
         );
 
         // The audit rows: committed (with the source and date, no names), one per lead.
-        let committed = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                format!("SELECT snapshot::text AS s FROM audit_logs WHERE entity_pid = '{import}' AND action = 'lead_import_committed'"),
-            ))
+        let committed = sqlx::query(sqlx::AssertSqlSafe(format!("SELECT snapshot::text AS s FROM audit_logs WHERE entity_pid = '{import}' AND action = 'lead_import_committed'"))).fetch_optional(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap()
             .expect("an audit row");
-        let snapshot: String = committed.try_get("", "s").unwrap();
+        let snapshot: String = committed.try_get("s").unwrap();
         assert!(snapshot.contains("Trade show 2026") && snapshot.contains(&today));
         assert!(!snapshot.contains("Lovelace") && !snapshot.contains("engine.test"));
         let chain: Value = request.get("/api/audits/verify").await.json();
@@ -186,16 +190,11 @@ async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
         assert_eq!(one["source_note"], "Trade show 2026");
 
         // One lead has been worked; undo removes the others and keeps that one.
-        let kept: String = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT pid::text AS p FROM leads WHERE source = 'import' ORDER BY id LIMIT 1",
-            ))
+        let kept: String = sqlx::query("SELECT pid::text AS p FROM leads WHERE source = 'import' ORDER BY id LIMIT 1").fetch_optional(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap()
             .unwrap()
-            .try_get("", "p")
+            .try_get("p")
             .unwrap();
         request
             .post("/api/activities")
@@ -208,7 +207,7 @@ async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
             .json();
         assert_eq!(undone, json!({ "removed": 2, "kept": 1 }));
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM leads WHERE source = 'import' AND deleted_at IS NULL").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM leads WHERE source = 'import' AND deleted_at IS NULL").await,
             1
         );
         let again = request.post(&format!("/api/lead-imports/{import}/undo")).await;
@@ -217,7 +216,7 @@ async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
         assert_eq!(one["status"], "undone");
         assert_eq!(one["undone_count"], 2);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM audit_logs WHERE action = 'import_undone'").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM audit_logs WHERE action = 'import_undone'").await,
             2
         );
         request
@@ -277,7 +276,14 @@ async fn likely_duplicates_can_be_left_out_and_a_long_file_goes_in_batches() {
                 .status_code(),
             422
         );
-        assert!(count(&ctx.db, "SELECT count(*) AS n FROM lead_imports").await >= 2);
+        assert!(
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM lead_imports"
+            )
+            .await
+                >= 2
+        );
     })
     .await;
 }

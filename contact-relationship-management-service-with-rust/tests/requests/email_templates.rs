@@ -7,6 +7,7 @@ use contact_relationship_management::mail::{self, Recorder, Sender};
 use contact_relationship_management::unsubscribe::{self, Unsubscriber};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::seed_contact;
 
@@ -274,7 +275,6 @@ async fn a_campaign_and_a_nurture_step_are_made_from_a_template() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
     request::<App, _, _>(|request, ctx| async move {
-        use sea_orm::ConnectionTrait;
         let (recorder, _restore) = recording();
         let mut pids = Vec::new();
         // Wang Fang writes the family name first and has no parts on file (CRM-T169).
@@ -348,24 +348,20 @@ async fn a_family_name_fills_its_token_is_never_guessed_and_is_erased() {
             .post(&format!("/api/contacts/{}/erase", pids[0]))
             .await
             .assert_status_ok();
-        let row = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                format!(
-                    "SELECT given_name, family_name FROM contacts WHERE pid = '{}'",
-                    pids[0]
-                ),
-            ))
-            .await
-            .unwrap()
-            .unwrap();
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "SELECT given_name, family_name FROM contacts WHERE pid = '{}'",
+            pids[0]
+        )))
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap();
         assert_eq!(
-            row.try_get::<Option<String>>("", "given_name").unwrap(),
+            row.try_get::<Option<String>, _>("given_name").unwrap(),
             None
         );
         assert_eq!(
-            row.try_get::<Option<String>>("", "family_name").unwrap(),
+            row.try_get::<Option<String>, _>("family_name").unwrap(),
             None
         );
     })

@@ -3,9 +3,9 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::seed_pipeline;
 
@@ -21,17 +21,15 @@ macro_rules! set_rate {
     }};
 }
 
-async fn audited(db: &sea_orm::DatabaseConnection, action: &str) -> i64 {
-    db.query_one_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
-        "SELECT count(*) AS n FROM audit_logs WHERE entity = 'fx_rate' AND action = $1",
-        [action.into()],
-    ))
-    .await
-    .unwrap()
-    .unwrap()
-    .try_get("", "n")
-    .unwrap()
+async fn audited(db: &sqlx::PgPool, action: &str) -> i64 {
+    sqlx::query("SELECT count(*) AS n FROM audit_logs WHERE entity = 'fx_rate' AND action = $1")
+        .bind(action)
+        .fetch_optional(db)
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("n")
+        .unwrap()
 }
 
 #[tokio::test]
@@ -62,8 +60,14 @@ async fn rates_are_set_replaced_listed_deleted_and_audited() {
             .assert_status(axum::http::StatusCode::NOT_FOUND);
         let left: Vec<Value> = request.get("/api/fx-rates").await.json();
         assert_eq!(left.len(), 1);
-        assert_eq!(audited(&ctx.db, "set").await, 3);
-        assert_eq!(audited(&ctx.db, "deleted").await, 1);
+        assert_eq!(
+            audited(contact_relationship_management::db::pool(&ctx), "set").await,
+            3
+        );
+        assert_eq!(
+            audited(contact_relationship_management::db::pool(&ctx), "deleted").await,
+            1
+        );
     })
     .await;
 }
@@ -511,14 +515,14 @@ async fn an_accounts_clv_can_take_its_retention_from_the_year_before() {
                 .json(&json!({ "stage_pid": stages[2] }))
                 .await
                 .assert_status_ok();
-            ctx.db
-                .execute_raw(Statement::from_sql_and_values(
-                    DatabaseBackend::Postgres,
-                    "UPDATE deals SET closed_at = now() - make_interval(days => $1) WHERE name = $2",
-                    [days_ago.into(), name.into()],
-                ))
-                .await
-                .unwrap();
+            sqlx::query(
+                "UPDATE deals SET closed_at = now() - make_interval(days => $1) WHERE name = $2",
+            )
+            .bind(days_ago)
+            .bind(name)
+            .execute(contact_relationship_management::db::pool(&ctx))
+            .await
+            .unwrap();
         }
         let url = format!("/api/accounts/{account}/clv");
         // 75% retention, 2 years, no discount: 4500 + 3375 on a 6000 year.
@@ -529,7 +533,10 @@ async fn an_accounts_clv_can_take_its_retention_from_the_year_before() {
         let projection = &done["projection"];
         assert!(projection["retention_bps"].is_null(), "{done}");
         assert_eq!(projection["retention_history_bps"]["GBP"], 7_500, "{done}");
-        assert!(projection["retention_history_bps"]["USD"].is_null(), "{done}");
+        assert!(
+            projection["retention_history_bps"]["USD"].is_null(),
+            "{done}"
+        );
         assert_eq!(projection["annual_base_minor"]["GBP"], 6_000, "{done}");
         assert_eq!(projection["projected_minor"]["GBP"], 7_875, "{done}");
         assert_eq!(projection["total_minor"]["GBP"], 21_875, "{done}");
@@ -666,16 +673,13 @@ async fn an_accounts_clv_can_convert_each_deal_at_the_rate_of_the_day_it_closed(
                 .await
                 .assert_status_ok();
             if let Some(day) = closed {
-                ctx.db
-                    .execute_raw(Statement::from_sql_and_values(
-                        DatabaseBackend::Postgres,
-                        format!(
-                            "UPDATE deals SET closed_at = '{day}T09:00:00Z' WHERE pid = $1::uuid"
-                        ),
-                        [pid.into()],
-                    ))
-                    .await
-                    .unwrap();
+                sqlx::query(sqlx::AssertSqlSafe(format!(
+                    "UPDATE deals SET closed_at = '{day}T09:00:00Z' WHERE pid = $1::uuid"
+                )))
+                .bind(pid)
+                .execute(contact_relationship_management::db::pool(&ctx))
+                .await
+                .unwrap();
             }
         }
         let _ = set_rate!(&request, "USD", "GBP", "0.80", "2026-01-01");
@@ -765,16 +769,13 @@ async fn a_report_can_convert_each_deal_at_the_rate_of_the_day_it_closed() {
                 .await
                 .assert_status_ok();
             if let Some(day) = closed {
-                ctx.db
-                    .execute_raw(Statement::from_sql_and_values(
-                        DatabaseBackend::Postgres,
-                        format!(
-                            "UPDATE deals SET closed_at = '{day}T09:00:00Z' WHERE pid = $1::uuid"
-                        ),
-                        [pid.into()],
-                    ))
-                    .await
-                    .unwrap();
+                sqlx::query(sqlx::AssertSqlSafe(format!(
+                    "UPDATE deals SET closed_at = '{day}T09:00:00Z' WHERE pid = $1::uuid"
+                )))
+                .bind(pid)
+                .execute(contact_relationship_management::db::pool(&ctx))
+                .await
+                .unwrap();
             }
         }
         let _ = set_rate!(&request, "USD", "GBP", "0.80", "2026-01-01");

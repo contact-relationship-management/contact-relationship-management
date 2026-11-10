@@ -6,6 +6,7 @@ use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::{a_person, seed_pipeline};
 
@@ -165,7 +166,6 @@ async fn contracts_404_and_pipeline_membership() {
 // CRM-R4, CRM-D20: an open deal is stalled after the organization's N days with no stage move
 // and no activity on it; a move or an activity that has happened clears it; a closed deal never is.
 async fn a_deal_with_no_move_or_activity_for_n_days_is_stalled() {
-    use sea_orm::ConnectionTrait;
     request::<App, _, _>(|request, ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
         let mut pids = Vec::new();
@@ -197,10 +197,9 @@ async fn a_deal_with_no_move_or_activity_for_n_days_is_stalled() {
         }
         // Twenty days without a move, for all five.
         for pid in &pids {
-            ctx.db
-                .execute_unprepared(&format!(
+            sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
                     "UPDATE deals SET stage_moved_at = now() - interval '20 days' WHERE pid = '{pid}'"
-                ))
+                ))).execute(contact_relationship_management::db::pool(&ctx))
                 .await
                 .unwrap();
         }
@@ -277,17 +276,12 @@ async fn a_deal_with_no_move_or_activity_for_n_days_is_stalled() {
         let all: Value = request.get(&format!("/api/deals?pipeline={pipeline}")).await.json();
         assert_eq!(listed(&all, &pids[1])["stalled"], true, "{all}");
         // The change is audited with the value.
-        let audited = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                "SELECT count(*) AS n FROM audit_logs WHERE entity = 'organization_settings' \
-                 AND (snapshot ->> 'stalled_after_days') = '5'",
-            ))
+        let audited = sqlx::query("SELECT count(*) AS n FROM audit_logs WHERE entity = 'organization_settings' \
+                 AND (snapshot ->> 'stalled_after_days') = '5'").fetch_optional(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap()
             .unwrap()
-            .try_get::<i64>("", "n")
+            .try_get::<i64, _>("n")
             .unwrap();
         assert_eq!(audited, 1);
         // Put the starting value back for the other tests.

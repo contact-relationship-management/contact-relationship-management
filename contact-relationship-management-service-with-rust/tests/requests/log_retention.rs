@@ -4,29 +4,27 @@
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::settings;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::Value;
 use serial_test::serial;
+use sqlx::Row as _;
 use uuid::Uuid;
 
-async fn exec(db: &sea_orm::DatabaseConnection, sql: String) {
-    db.execute_raw(Statement::from_string(
-        DatabaseBackend::Postgres,
-        sql.clone(),
-    ))
-    .await
-    .unwrap_or_else(|e| panic!("{e}: {sql}"));
+async fn exec(db: &sqlx::PgPool, sql: String) {
+    sqlx::query(sqlx::AssertSqlSafe(sql.clone()))
+        .execute(db)
+        .await
+        .unwrap_or_else(|e| panic!("{e}: {sql}"));
 }
 
-async fn count(db: &sea_orm::DatabaseConnection, table: &str, filter: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(
-        DatabaseBackend::Postgres,
-        format!("SELECT count(*) AS n FROM {table} WHERE {filter}"),
-    ))
+async fn count(db: &sqlx::PgPool, table: &str, filter: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(format!(
+        "SELECT count(*) AS n FROM {table} WHERE {filter}"
+    )))
+    .fetch_optional(db)
     .await
     .unwrap()
     .unwrap()
-    .try_get("", "n")
+    .try_get("n")
     .unwrap()
 }
 
@@ -39,7 +37,7 @@ fn past(report: &Value, table: &str) -> i64 {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn finished_delivery_and_event_rows_go_by_age_and_nothing_still_owed_does() {
     request::<App, _, _>(|request, ctx| async move {
-        let db = &ctx.db;
+        let db = contact_relationship_management::db::pool(&ctx);
         let (done, live, unknown) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
         let tag = Uuid::new_v4().simple().to_string();
         for (pid, status) in [(done, "completed"), (live, "running")] {
@@ -116,15 +114,11 @@ async fn finished_delivery_and_event_rows_go_by_age_and_nothing_still_owed_does(
             ),
         )
         .await;
-        let sub: i32 = db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                format!("SELECT id FROM webhook_subscriptions WHERE url = 'https://example.test/{tag}'"),
-            ))
+        let sub: i32 = sqlx::query(sqlx::AssertSqlSafe(format!("SELECT id FROM webhook_subscriptions WHERE url = 'https://example.test/{tag}'"))).fetch_optional(db)
             .await
             .unwrap()
             .unwrap()
-            .try_get("", "id")
+            .try_get("id")
             .unwrap();
         for (status, days) in [("delivered", 40), ("pending", 40), ("failed", 40), ("delivered", 3)] {
             exec(

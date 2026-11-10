@@ -6,9 +6,9 @@ use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::rules::wpm_events::{TOLERANCE_SECS, sign};
 use contact_relationship_management::settings::{self, Settings};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::{a_person, seed_contact};
 
@@ -83,12 +83,13 @@ macro_rules! deliver {
     };
 }
 
-async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
+async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "n")
+        .try_get("n")
         .unwrap()
 }
 
@@ -148,11 +149,19 @@ async fn a_bad_missing_or_stale_signature_is_refused_and_changes_nothing() {
         assert_eq!(changed.status_code(), 401);
 
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM wpm_events").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM wpm_events"
+            )
+            .await,
             0
         );
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM contact_employments").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM contact_employments"
+            )
+            .await,
             0
         );
 
@@ -170,7 +179,11 @@ async fn a_bad_missing_or_stale_signature_is_refused_and_changes_nothing() {
         bad["data"]["person_ref"] = json!(ORG);
         assert_eq!(deliver!(&request, bad.to_string()).status_code(), 422);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM wpm_events").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM wpm_events"
+            )
+            .await,
             0
         );
     })
@@ -262,12 +275,16 @@ async fn a_hire_pauses_marketing_once_and_a_leave_restores_it_under_the_old_cons
         .json();
         assert_eq!(second["result"], "already_paused");
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM contact_employments").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM contact_employments"
+            )
+            .await,
             1
         );
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE action = 'employment_recorded' \
                  AND snapshot->>'via' = 'wpm' AND snapshot->>'event_id' = 'e-hire'"
             )
@@ -279,7 +296,11 @@ async fn a_hire_pauses_marketing_once_and_a_leave_restores_it_under_the_old_cons
             deliver!(&request, event("e-x", "worker_hired", &a_person(), true)).json();
         assert_eq!(stranger["result"], "no_contact");
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM contact_employments").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM contact_employments"
+            )
+            .await,
             1
         );
 
@@ -344,7 +365,7 @@ async fn a_hire_pauses_marketing_once_and_a_leave_restores_it_under_the_old_cons
         assert_eq!(retired["result"], "not_paused");
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE action = 'employment_ended' \
                  AND snapshot->>'via' = 'wpm'"
             )
@@ -375,14 +396,18 @@ async fn a_hire_pauses_marketing_once_and_a_leave_restores_it_under_the_old_cons
         // Every event id was kept once, with what it did.
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM wpm_events WHERE outcome = 'duplicate'"
             )
             .await,
             0
         );
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM wpm_events").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM wpm_events"
+            )
+            .await,
             10
         );
     })
@@ -419,7 +444,7 @@ async fn erasing_a_contact_deletes_what_wpm_said_of_them() {
             .assert_status_ok();
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE action = 'erased' \
                  AND (snapshot->>'employments_deleted')::int = 1"
             )
@@ -427,17 +452,25 @@ async fn erasing_a_contact_deletes_what_wpm_said_of_them() {
             1
         );
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM contact_employments").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM contact_employments"
+            )
+            .await,
             0
         );
         // The order of their events goes too (CRM-R93).
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM employment_last_events").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM employment_last_events"
+            )
+            .await,
             0
         );
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE action = 'erased' \
                  AND (snapshot->>'employment_last_events_deleted')::int = 1"
             )
@@ -507,7 +540,7 @@ async fn a_hire_older_than_the_leave_after_it_changes_nothing() {
         assert_eq!(employments().await, json!([]), "the leave stands");
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM wpm_events WHERE event_id = 'e-hire-late' \
                  AND outcome = 'stale'"
             )
@@ -516,7 +549,7 @@ async fn a_hire_older_than_the_leave_after_it_changes_nothing() {
         );
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE action = 'employment_recorded'"
             )
             .await,
@@ -566,7 +599,7 @@ async fn a_hire_older_than_the_leave_after_it_changes_nothing() {
         assert_eq!(final_leave["result"], "resumed");
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM employment_last_events WHERE kind = 'left' \
                  AND event_id = 'e-leave-2'"
             )
@@ -574,7 +607,11 @@ async fn a_hire_older_than_the_leave_after_it_changes_nothing() {
             1
         );
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM employment_last_events").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM employment_last_events"
+            )
+            .await,
             1
         );
 
@@ -616,7 +653,11 @@ async fn a_hire_older_than_the_leave_after_it_changes_nothing() {
             deliver!(&request, event("s-hire", "worker_hired", &a_person(), true)).json();
         assert_eq!(stranger["result"], "no_contact");
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM employment_last_events").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM employment_last_events"
+            )
+            .await,
             2,
             "Ada's and Grace's, nobody else's"
         );

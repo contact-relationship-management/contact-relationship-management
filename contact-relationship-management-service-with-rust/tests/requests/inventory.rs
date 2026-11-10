@@ -2,13 +2,13 @@
 //! describes every table the service has, and says `swept` of exactly the tables the retention
 //! sweep deletes from. A new table cannot be added without being described there.
 
+use sqlx::Row as _;
 use std::collections::{BTreeMap, BTreeSet};
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::models::deliveries::MAX_ATTEMPTS;
 use contact_relationship_management::rules::privacy::{SOFT_DELETED_TABLES, log_rules};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serial_test::serial;
 
 const CLASSES: [&str; 6] = ["swept", "aged", "evidence", "ttl", "manual", "gap"];
@@ -40,18 +40,16 @@ fn inventory() -> BTreeMap<String, String> {
 async fn every_table_is_in_the_inventory_and_the_swept_ones_are_those_the_sweep_deletes_from() {
     request::<App, _, _>(|_request, ctx| async move {
         let listed = inventory();
-        let tables: BTreeSet<String> = ctx
-            .db
-            .query_all_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT table_name FROM information_schema.tables \
+        let tables: BTreeSet<String> = sqlx::query(
+            "SELECT table_name FROM information_schema.tables \
                  WHERE table_schema = 'public' AND table_type = 'BASE TABLE'",
-            ))
-            .await
-            .unwrap()
-            .iter()
-            .map(|row| row.try_get::<String>("", "table_name").unwrap())
-            .collect();
+        )
+        .fetch_all(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .iter()
+        .map(|row| row.try_get::<String, _>("table_name").unwrap())
+        .collect();
 
         let missing: Vec<_> = tables.iter().filter(|t| !listed.contains_key(*t)).collect();
         assert!(
@@ -99,13 +97,12 @@ async fn every_table_is_in_the_inventory_and_the_swept_ones_are_those_the_sweep_
 
         // Every table the sweep reaches has the column it deletes by.
         for table in SOFT_DELETED_TABLES {
-            ctx.db
-                .query_one_raw(Statement::from_string(
-                    DatabaseBackend::Postgres,
-                    format!("SELECT count(deleted_at) FROM {table}"),
-                ))
-                .await
-                .unwrap_or_else(|e| panic!("{table} has no deleted_at: {e}"));
+            sqlx::query(sqlx::AssertSqlSafe(format!(
+                "SELECT count(deleted_at) FROM {table}"
+            )))
+            .fetch_optional(contact_relationship_management::db::pool(&ctx))
+            .await
+            .unwrap_or_else(|e| panic!("{table} has no deleted_at: {e}"));
         }
     })
     .await;

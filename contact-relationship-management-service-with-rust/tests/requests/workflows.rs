@@ -3,18 +3,19 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::{a_person, a_user, seed_contact, seed_pipeline};
 
-async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
+async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "n")
+        .try_get("n")
         .unwrap()
 }
 
@@ -70,7 +71,7 @@ async fn a_task_is_made_when_conditions_are_met_and_the_run_says_why() {
         // Only the contact who meets the condition got a task, and one run is logged.
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 &format!(
                     "SELECT count(*) AS n FROM activities WHERE kind = 'task' AND subject_pid = '{emailer}'"
                 )
@@ -80,7 +81,7 @@ async fn a_task_is_made_when_conditions_are_met_and_the_run_says_why() {
         );
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM activities WHERE kind = 'task'"
             )
             .await,
@@ -96,7 +97,7 @@ async fn a_task_is_made_when_conditions_are_met_and_the_run_says_why() {
         // The run is audited.
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE entity = 'workflow_run' AND action = 'fired'"
             )
             .await,
@@ -156,7 +157,7 @@ async fn notify_set_field_and_webhook_actions_each_do_their_one_thing() {
         // The field change was made by the workflow, and says so in the audit trail.
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 &format!(
                     "SELECT count(*) AS n FROM audit_logs WHERE entity_pid = '{pid}' \
                      AND action = 'updated' AND actor = 'workflow:{wf}'"
@@ -198,7 +199,7 @@ async fn enrolment_rechecks_consent_inside_the_action() {
         }
         // The contact who never consented was not enrolled, and the run says why.
         let enrolments = |pid: String| {
-            let db = ctx.db.clone();
+            let db = contact_relationship_management::db::pool(&ctx).clone();
             async move {
                 count(
                     &db,
@@ -329,7 +330,7 @@ async fn a_dry_run_changes_and_logs_nothing() {
                         { "type": "create_task", "summary": "Follow up" },
                     ] })
         );
-        let before = count(&ctx.db, "SELECT count(*) AS n FROM activities").await;
+        let before = count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM activities").await;
         let result: Value = request
             .post(&format!("/api/workflows/{wf}/dry-run"))
             .await
@@ -346,15 +347,15 @@ async fn a_dry_run_changes_and_logs_nothing() {
         assert_eq!(of(&consenting)[0]["result"], "would_do");
         assert_eq!(of(&nobody)[0]["result"], "would_skip");
         assert!(of(&nobody)[0]["detail"].as_str().unwrap().contains("consent"));
-        assert_eq!(count(&ctx.db, "SELECT count(*) AS n FROM activities").await, before);
+        assert_eq!(count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM activities").await, before);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM nurture_enrollments").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM nurture_enrollments").await,
             0
         );
         assert!(runs!(&request, wf).is_empty());
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 &format!("SELECT count(*) AS n FROM audit_logs WHERE entity_pid = '{wf}' AND action = 'dry_run'")
             )
             .await,
@@ -382,8 +383,8 @@ async fn a_schedule_runs_once_per_contact_per_interval() {
         assert_eq!(again["runs"], 0, "inside the interval");
         assert_eq!(runs!(&request, wf).len(), 2);
         // Once the interval has passed they run again.
-        ctx.db
-            .execute_unprepared("UPDATE workflow_runs SET created_at = now() - interval '2 hours'")
+        sqlx::raw_sql("UPDATE workflow_runs SET created_at = now() - interval '2 hours'")
+            .execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         let later: Value = request.post("/api/workflows/run-due").await.json();
@@ -474,16 +475,16 @@ async fn a_failing_action_undoes_the_run_and_spares_the_write_that_triggered_it(
             )
         );
         // Break the second action by taking its table away for the length of one request.
-        ctx.db
-            .execute_unprepared("ALTER TABLE notifications RENAME TO notifications_away")
+        sqlx::raw_sql("ALTER TABLE notifications RENAME TO notifications_away")
+            .execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         let made = request
             .post("/api/contacts")
             .json(&json!({ "person_ref": a_person(), "display_name": "Fa Il" }))
             .await;
-        ctx.db
-            .execute_unprepared("ALTER TABLE notifications_away RENAME TO notifications")
+        sqlx::raw_sql("ALTER TABLE notifications_away RENAME TO notifications")
+            .execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         made.assert_status_ok();
@@ -495,7 +496,7 @@ async fn a_failing_action_undoes_the_run_and_spares_the_write_that_triggered_it(
             .assert_status_ok();
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM activities WHERE kind = 'task'"
             )
             .await,

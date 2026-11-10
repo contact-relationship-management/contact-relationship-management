@@ -3,18 +3,19 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::seed_contact;
 
-async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
+async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "n")
+        .try_get("n")
         .unwrap()
 }
 
@@ -70,7 +71,11 @@ async fn tags_are_made_renamed_and_deleted_and_names_are_tidy() {
             "a record keeps a renamed tag"
         );
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM taggings").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM taggings"
+            )
+            .await,
             1
         );
         request
@@ -78,7 +83,11 @@ async fn tags_are_made_renamed_and_deleted_and_names_are_tidy() {
             .await
             .assert_status_ok();
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM taggings").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM taggings"
+            )
+            .await,
             0
         );
         assert!(
@@ -259,11 +268,22 @@ async fn subject_access_lists_the_tags_and_erasure_removes_them() {
             .await
             .assert_status_ok();
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM taggings").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM taggings"
+            )
+            .await,
             0
         );
         // The tags themselves stay: they are labels, not the person.
-        assert_eq!(count(&ctx.db, "SELECT count(*) AS n FROM tags").await, 2);
+        assert_eq!(
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM tags"
+            )
+            .await,
+            2
+        );
     })
     .await;
 }

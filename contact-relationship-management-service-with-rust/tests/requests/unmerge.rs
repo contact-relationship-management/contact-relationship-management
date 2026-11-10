@@ -3,9 +3,9 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::a_person;
 use super::openapi_schemas::schema_check::{check, to_json_schema};
@@ -241,20 +241,20 @@ async fn what_cannot_be_undone_is_refused() {
 
         // A merge made before the undo record existed.
         assert_eq!(merge(&request, &b, &a).await, 200);
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contact_merges SET before = NULL WHERE merged_pid = '{b}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contact_merges SET before = NULL WHERE merged_pid = '{b}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         assert_eq!(unmerge(&request, &b, false).await.0, 422);
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contact_merges SET before = '{{\"version\":1,\"filled\":[]}}' \
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contact_merges SET before = '{{\"version\":1,\"filled\":[]}}' \
                  WHERE merged_pid = '{b}'"
-            ))
-            .await
-            .unwrap();
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
 
         // The survivor was itself merged away: unmerge that first.
         let c = contact(&request, "Cy", None).await;
@@ -278,32 +278,28 @@ async fn erasing_the_survivor_scrubs_the_merged_duplicate_and_the_ledger() {
             .post(&format!("/api/contacts/{survivor}/erase"))
             .await
             .assert_status_ok();
-        let row = ctx
-            .db
-            .query_one_raw(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                format!(
-                    "SELECT c.display_name, c.job_title, c.person_ref, m.merged_person_ref \
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "SELECT c.display_name, c.job_title, c.person_ref, m.merged_person_ref \
                      FROM contacts c JOIN contact_merges m ON m.merged_pid = c.pid \
                      WHERE c.pid = '{merged}'"
-                ),
-            ))
-            .await
-            .unwrap()
-            .unwrap();
+        )))
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap();
         let tombstone = "person:00000000-0000-0000-0000-000000000000";
         assert_ne!(
-            row.try_get::<String>("", "display_name").unwrap(),
+            row.try_get::<String, _>("display_name").unwrap(),
             "S. Survivor"
         );
         assert!(
-            row.try_get::<Option<String>>("", "job_title")
+            row.try_get::<Option<String>, _>("job_title")
                 .unwrap()
                 .is_none()
         );
-        assert_eq!(row.try_get::<String>("", "person_ref").unwrap(), tombstone);
+        assert_eq!(row.try_get::<String, _>("person_ref").unwrap(), tombstone);
         assert_eq!(
-            row.try_get::<String>("", "merged_person_ref").unwrap(),
+            row.try_get::<String, _>("merged_person_ref").unwrap(),
             tombstone
         );
         // And it can no longer be unmerged.

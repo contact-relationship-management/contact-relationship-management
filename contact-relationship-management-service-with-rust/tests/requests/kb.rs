@@ -195,7 +195,6 @@ async fn a_client_over_its_limit_is_told_to_wait() {
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_deleted_article_is_not_found() {
-    use sea_orm::ConnectionTrait;
     let _scope = scoped(|s| {
         s.public_kb = true;
         s.public_kb_client_limit = 0;
@@ -206,12 +205,12 @@ async fn a_deleted_article_is_not_found() {
             .get(&format!("/kb/articles/{pid}"))
             .await
             .assert_status_ok();
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE articles SET deleted_at = now() WHERE pid = '{pid}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE articles SET deleted_at = now() WHERE pid = '{pid}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         let listed: Value = request.get("/kb/articles").await.json();
         assert!(
             listed

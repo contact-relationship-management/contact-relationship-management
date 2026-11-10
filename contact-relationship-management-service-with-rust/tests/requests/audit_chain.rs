@@ -4,7 +4,6 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::ConnectionTrait;
 use serde_json::Value;
 use serial_test::serial;
 
@@ -24,29 +23,30 @@ async fn audit_chain_detects_tampering() {
         assert!(verdict["head"].is_string());
 
         // The append-only trigger refuses edits and deletes.
-        let edit = ctx
-            .db
-            .execute_unprepared("UPDATE audit_logs SET action = 'tampered'")
+        let edit = sqlx::raw_sql("UPDATE audit_logs SET action = 'tampered'")
+            .execute(contact_relationship_management::db::pool(&ctx))
             .await;
         assert!(edit.is_err(), "audit edit must be refused");
-        let delete = ctx.db.execute_unprepared("DELETE FROM audit_logs").await;
+        let delete = sqlx::raw_sql("DELETE FROM audit_logs")
+            .execute(contact_relationship_management::db::pool(&ctx))
+            .await;
         assert!(delete.is_err(), "audit delete must be refused");
 
         // Behind the trigger's back (an owner who disables it), the chain
         // still reveals the change.
-        ctx.db
-            .execute_unprepared("ALTER TABLE audit_logs DISABLE TRIGGER audit_logs_append_only")
+        sqlx::raw_sql("ALTER TABLE audit_logs DISABLE TRIGGER audit_logs_append_only")
+            .execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
-        ctx.db
-            .execute_unprepared(
-                "UPDATE audit_logs SET action = 'tampered' \
+        sqlx::raw_sql(sqlx::AssertSqlSafe(
+            "UPDATE audit_logs SET action = 'tampered' \
                  WHERE id = (SELECT min(id) FROM audit_logs)",
-            )
-            .await
-            .unwrap();
-        ctx.db
-            .execute_unprepared("ALTER TABLE audit_logs ENABLE TRIGGER audit_logs_append_only")
+        ))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
+        sqlx::raw_sql("ALTER TABLE audit_logs ENABLE TRIGGER audit_logs_append_only")
+            .execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         let broken: Value = request.get("/api/audits/verify").await.json();

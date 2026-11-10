@@ -3,26 +3,16 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::{seed_contact, seed_pipeline};
 
 /// A sent e-mail from `campaign` to `contact`, `days_ago` days before now.
-async fn sent(
-    db: &sea_orm::DatabaseConnection,
-    campaign: &str,
-    contact: &str,
-    state: &str,
-    days_ago: i64,
-) {
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
-        "INSERT INTO email_deliveries (pid, campaign_pid, contact_pid, state, sent_at) \
-         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, $3, now() - make_interval(days => $4::int))",
-        [campaign.into(), contact.into(), state.into(), (days_ago as i32).into()],
-    ))
+async fn sent(db: &sqlx::PgPool, campaign: &str, contact: &str, state: &str, days_ago: i64) {
+    sqlx::query("INSERT INTO email_deliveries (pid, campaign_pid, contact_pid, state, sent_at) \
+         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, $3, now() - make_interval(days => $4::int))").bind(campaign).bind(contact).bind(state).bind(days_ago as i32).execute(db)
     .await
     .unwrap();
 }
@@ -94,11 +84,46 @@ async fn won_revenue_is_shared_among_the_campaigns_that_touched_the_buyer() {
         let buyer = seed_contact!(&request, "Attribution Buyer").await;
         // Alpha's e-mail and Beta's reach the buyer in the window; Gamma's long before it. A
         // failed send (Delta) and one that has not happened yet (Epsilon) are not touches.
-        sent(&ctx.db, &alpha, &buyer, "sent", 30).await;
-        sent(&ctx.db, &beta, &buyer, "sent", 10).await;
-        sent(&ctx.db, &gamma, &buyer, "sent", 200).await;
-        sent(&ctx.db, &delta, &buyer, "failed", 2).await;
-        sent(&ctx.db, &epsilon, &buyer, "sent", -1).await;
+        sent(
+            contact_relationship_management::db::pool(&ctx),
+            &alpha,
+            &buyer,
+            "sent",
+            30,
+        )
+        .await;
+        sent(
+            contact_relationship_management::db::pool(&ctx),
+            &beta,
+            &buyer,
+            "sent",
+            10,
+        )
+        .await;
+        sent(
+            contact_relationship_management::db::pool(&ctx),
+            &gamma,
+            &buyer,
+            "sent",
+            200,
+        )
+        .await;
+        sent(
+            contact_relationship_management::db::pool(&ctx),
+            &delta,
+            &buyer,
+            "failed",
+            2,
+        )
+        .await;
+        sent(
+            contact_relationship_management::db::pool(&ctx),
+            &epsilon,
+            &buyer,
+            "sent",
+            -1,
+        )
+        .await;
 
         let (pipeline, stages) = seed_pipeline!(&request).await;
         won_deal!(
@@ -209,17 +234,14 @@ async fn won_revenue_is_shared_among_the_campaigns_that_touched_the_buyer() {
         assert_eq!(all["deals"], 3);
 
         // Asking is audited with the model and window, not the money.
-        let logged: i64 = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT count(*) AS n FROM audit_logs WHERE action = 'attribution_run'",
-            ))
-            .await
-            .unwrap()
-            .unwrap()
-            .try_get("", "n")
-            .unwrap();
+        let logged: i64 =
+            sqlx::query("SELECT count(*) AS n FROM audit_logs WHERE action = 'attribution_run'")
+                .fetch_optional(contact_relationship_management::db::pool(&ctx))
+                .await
+                .unwrap()
+                .unwrap()
+                .try_get("n")
+                .unwrap();
         assert!(logged >= 6);
     })
     .await;
@@ -242,9 +264,30 @@ async fn time_decay_favours_the_recent_touch_and_position_splits_the_ends_evenly
         let middle = campaign!(&request, segment, "Middle");
         let late = campaign!(&request, segment, "Late");
         let buyer = seed_contact!(&request, "Decay Buyer").await;
-        sent(&ctx.db, &early, &buyer, "sent", 40).await;
-        sent(&ctx.db, &middle, &buyer, "sent", 20).await;
-        sent(&ctx.db, &late, &buyer, "sent", 1).await;
+        sent(
+            contact_relationship_management::db::pool(&ctx),
+            &early,
+            &buyer,
+            "sent",
+            40,
+        )
+        .await;
+        sent(
+            contact_relationship_management::db::pool(&ctx),
+            &middle,
+            &buyer,
+            "sent",
+            20,
+        )
+        .await;
+        sent(
+            contact_relationship_management::db::pool(&ctx),
+            &late,
+            &buyer,
+            "sent",
+            1,
+        )
+        .await;
         let (pipeline, stages) = seed_pipeline!(&request).await;
         won_deal!(
             &request,
@@ -443,16 +486,13 @@ async fn attribution_can_convert_each_deals_share_at_the_rate_of_the_day_it_clos
                 body["source_campaign_pid"] = json!(campaign);
             }
             let pid = won_deal!(&request, pipeline, stages, body);
-            ctx.db
-                .execute_raw(Statement::from_sql_and_values(
-                    DatabaseBackend::Postgres,
-                    format!(
-                        "UPDATE deals SET closed_at = '{closed}T09:00:00Z' WHERE pid = $1::uuid"
-                    ),
-                    [pid.as_str().into()],
-                ))
-                .await
-                .unwrap();
+            sqlx::query(sqlx::AssertSqlSafe(format!(
+                "UPDATE deals SET closed_at = '{closed}T09:00:00Z' WHERE pid = $1::uuid"
+            )))
+            .bind(pid.as_str())
+            .execute(contact_relationship_management::db::pool(&ctx))
+            .await
+            .unwrap();
         }
         for (rate, on) in [("0.80", "2026-01-01"), ("0.50", "2026-06-01")] {
             request
@@ -518,7 +558,7 @@ async fn attribution_can_convert_each_deals_share_at_the_rate_of_the_day_it_clos
 
 /// A sent e-mail that the provider reported opened `after_seconds` after it was sent.
 async fn sent_and_opened(
-    db: &sea_orm::DatabaseConnection,
+    db: &sqlx::PgPool,
     campaign: &str,
     contact: &str,
     days_ago: i32,
@@ -530,7 +570,7 @@ async fn sent_and_opened(
 /// A sent e-mail that the provider reported `event` (`opened` or `clicked`) `after_seconds` after
 /// it was sent.
 async fn sent_and_reported(
-    db: &sea_orm::DatabaseConnection,
+    db: &sqlx::PgPool,
     campaign: &str,
     contact: &str,
     days_ago: i32,
@@ -538,27 +578,27 @@ async fn sent_and_reported(
     after_seconds: i32,
 ) {
     let message = format!("<{campaign}@test>");
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
+    sqlx::query(
         "INSERT INTO email_deliveries (pid, campaign_pid, contact_pid, state, sent_at, message_id) \
          VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 'sent', \
                  now() - make_interval(days => $3::int), $4)",
-        [
-            campaign.into(),
-            contact.into(),
-            days_ago.into(),
-            message.clone().into(),
-        ],
-    ))
+    )
+    .bind(campaign)
+    .bind(contact)
+    .bind(days_ago)
+    .bind(message.clone())
+    .execute(db)
     .await
     .unwrap();
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
+    sqlx::query(
         "INSERT INTO email_events (message_id, event, received_at) \
          SELECT message_id, $3, sent_at + make_interval(secs => $2::int) \
            FROM email_deliveries WHERE message_id = $1",
-        [message.into(), after_seconds.into(), event.into()],
-    ))
+    )
+    .bind(message)
+    .bind(after_seconds)
+    .bind(event)
+    .execute(db)
     .await
     .unwrap();
 }
@@ -581,8 +621,24 @@ async fn a_click_too_soon_after_sending_is_left_out_and_opens_are_not_touched() 
         let buyer = seed_contact!(&request, "Click Buyer").await;
         // Alpha's link was "clicked" ten seconds after sending (a scanner following it); Beta's
         // an hour after.
-        sent_and_reported(&ctx.db, &alpha, &buyer, 20, "clicked", 10).await;
-        sent_and_reported(&ctx.db, &beta, &buyer, 10, "clicked", 3_600).await;
+        sent_and_reported(
+            contact_relationship_management::db::pool(&ctx),
+            &alpha,
+            &buyer,
+            20,
+            "clicked",
+            10,
+        )
+        .await;
+        sent_and_reported(
+            contact_relationship_management::db::pool(&ctx),
+            &beta,
+            &buyer,
+            10,
+            "clicked",
+            3_600,
+        )
+        .await;
         let (pipeline, stages) = seed_pipeline!(&request).await;
         won_deal!(
             &request,
@@ -612,7 +668,15 @@ async fn a_click_too_soon_after_sending_is_left_out_and_opens_are_not_touched() 
             .json();
         assert!(earned(&mixed, "Alpha", "GBP") > 0, "{mixed}");
         let gamma = campaign!(&request, segment, "Gamma");
-        sent_and_reported(&ctx.db, &gamma, &buyer, 5, "opened", 10).await;
+        sent_and_reported(
+            contact_relationship_management::db::pool(&ctx),
+            &gamma,
+            &buyer,
+            5,
+            "opened",
+            10,
+        )
+        .await;
         let opens: Value = request
             .get("/api/attribution?touches=opened,clicked&min_click_seconds=60")
             .await
@@ -658,8 +722,22 @@ async fn an_open_too_soon_after_sending_is_left_out_and_the_decay_half_life_can_
         let buyer = seed_contact!(&request, "Settings Buyer").await;
         // Alpha's e-mail was "opened" half a minute after it was sent (a mail program loading it
         // ahead of the reader); Beta's two hours after.
-        sent_and_opened(&ctx.db, &alpha, &buyer, 20, 30).await;
-        sent_and_opened(&ctx.db, &beta, &buyer, 10, 7_200).await;
+        sent_and_opened(
+            contact_relationship_management::db::pool(&ctx),
+            &alpha,
+            &buyer,
+            20,
+            30,
+        )
+        .await;
+        sent_and_opened(
+            contact_relationship_management::db::pool(&ctx),
+            &beta,
+            &buyer,
+            10,
+            7_200,
+        )
+        .await;
         let (pipeline, stages) = seed_pipeline!(&request).await;
         won_deal!(
             &request,
@@ -766,12 +844,12 @@ async fn a_deleted_campaign_keeps_its_credit_and_loses_its_name() {
         };
         let before: Value = request.get("/api/attribution").await.json();
         assert_eq!(named(&before), Some(json!("Retired")), "{before}");
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE campaigns SET deleted_at = now() WHERE pid = '{retired}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE campaigns SET deleted_at = now() WHERE pid = '{retired}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         let after: Value = request.get("/api/attribution").await.json();
         assert_eq!(named(&after), Some(json!("(deleted campaign)")), "{after}");
         assert_eq!(

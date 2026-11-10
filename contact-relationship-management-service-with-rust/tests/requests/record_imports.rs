@@ -4,19 +4,20 @@
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::clients::Mode;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::seed_contact;
 use crate::scoped_auth::scoped;
 
-async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
+async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "n")
+        .try_get("n")
         .unwrap()
 }
 
@@ -63,7 +64,7 @@ async fn contacts_are_previewed_then_imported_with_no_consent_and_undone() {
         assert!(report[3]["reason"].as_str().unwrap().contains("email"));
         let advice = report[0]["likely_duplicates"].as_array().unwrap();
         assert!(advice.iter().any(|d| d["pid"] == json!(known)), "{advice:?}");
-        assert_eq!(count(&ctx.db, "SELECT count(*) AS n FROM contacts").await, 1, "a preview saves nothing");
+        assert_eq!(count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM contacts").await, 1, "a preview saves nothing");
 
         // A missing required column, a bad date, a missing note.
         for body in [
@@ -91,36 +92,31 @@ async fn contacts_are_previewed_then_imported_with_no_consent_and_undone() {
         assert_eq!(done["skipped_count"], 1, "the repeated address");
         assert_eq!(done["status"], "completed");
         let consents = count(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT count(*) AS n FROM contacts WHERE display_name LIKE 'Imp Ort%' \
              AND marketing_consent <> 'never' AND id > (SELECT min(id) FROM contacts)",
         )
         .await;
         assert_eq!(consents, 0, "an imported contact has no consent");
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM activities WHERE kind = 'task'").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM activities WHERE kind = 'task'").await,
             0,
             "an import starts no workflow"
         );
         let job = count(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "SELECT count(*) AS n FROM contacts WHERE job_title = 'Buyer'",
         )
         .await;
         assert_eq!(job, 1);
 
         // Undo: one of the two has been worked since, so it stays.
-        let ids = ctx
-            .db
-            .query_all_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT pid::text AS p FROM contacts WHERE display_name IN ('Imp Ortone', 'Imp Ortwo') \
+        let ids = sqlx::query(sqlx::AssertSqlSafe("SELECT pid::text AS p FROM contacts WHERE display_name IN ('Imp Ortone', 'Imp Ortwo') \
                  AND id > (SELECT min(id) FROM contacts) ORDER BY id"
-                    .to_string(),
-            ))
+                    .to_string())).fetch_all(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
-        let first: String = ids[0].try_get("", "p").unwrap();
+        let first: String = ids[0].try_get("p").unwrap();
         request
             .post("/api/activities")
             .json(&json!({ "subject_kind": "contact", "subject_pid": first,
@@ -219,23 +215,18 @@ async fn accounts_are_imported_with_tiers_and_duplicates_by_name_and_undone() {
         assert_eq!(done["skipped_count"], 2);
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 &format!("SELECT count(*) AS n FROM accounts WHERE organization_ref = '{urn}' AND industry = 'Metal'")
             )
             .await,
             1
         );
         // Undo keeps an account a contact has been attached to.
-        let pid = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                format!("SELECT pid::text AS p FROM accounts WHERE organization_ref = '{urn}'"),
-            ))
+        let pid = sqlx::query(sqlx::AssertSqlSafe(format!("SELECT pid::text AS p FROM accounts WHERE organization_ref = '{urn}'"))).fetch_optional(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap()
             .unwrap()
-            .try_get::<String>("", "p")
+            .try_get::<String, _>("p")
             .unwrap();
         let contact: Value = request
             .post("/api/contacts")

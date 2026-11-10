@@ -7,9 +7,9 @@ use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};
 use contact_relationship_management::settings::{self, Settings, WebForm};
 use contact_relationship_management::unsubscribe::{self, Unsubscriber};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
+use sqlx::Row as _;
 
 use super::a_user;
 
@@ -73,12 +73,13 @@ macro_rules! submit {
     };
 }
 
-async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
-    db.query_one_raw(Statement::from_string(DatabaseBackend::Postgres, sql))
+async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_optional(db)
         .await
         .unwrap()
         .unwrap()
-        .try_get("", "n")
+        .try_get("n")
         .unwrap()
 }
 
@@ -100,7 +101,7 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
         let sequence_pid: uuid::Uuid = sequence["pid"].as_str().unwrap().parse().unwrap();
         let (recorder, _restore) =
             arrange(vec![form("news-signup", "newsletter", Some(sequence_pid))]);
-        let before = count(&ctx.db, "SELECT count(*) AS n FROM leads").await;
+        let before = count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM leads").await;
 
         let answer = submit!(
             request,
@@ -120,12 +121,12 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
 
         // A web lead, scored, linked to a contact, with no address stored anywhere in the CRM.
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM leads").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM leads").await,
             before + 1
         );
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM leads WHERE source = 'web' AND email IS NULL \
                  AND email_domain = 'analytical.test' AND contact_pid IS NOT NULL \
                  AND display_name = 'Ada Lovelace'"
@@ -133,16 +134,11 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
             .await,
             1
         );
-        let contact_pid: String = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT contact_pid::text AS p FROM leads WHERE source = 'web' LIMIT 1",
-            ))
+        let contact_pid: String = sqlx::query("SELECT contact_pid::text AS p FROM leads WHERE source = 'web' LIMIT 1").fetch_optional(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap()
             .unwrap()
-            .try_get("", "p")
+            .try_get("p")
             .unwrap();
         let states: Value = request
             .get(&format!("/api/contacts/{contact_pid}/consents"))
@@ -169,20 +165,20 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
         assert_eq!(advanced["sent"], 0);
         assert_eq!(recorder.sent().len(), 1);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM nurture_enrollments").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM nurture_enrollments").await,
             0
         );
 
         // Opening the link changes nothing; pressing the button grants and enrols.
         request.get(&confirm).await.assert_status_ok();
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM nurture_enrollments").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM nurture_enrollments").await,
             0
         );
         request.post(&confirm).await.assert_status_ok();
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM nurture_enrollments WHERE status = 'active'"
             )
             .await,
@@ -190,7 +186,7 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
         );
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM form_submissions WHERE confirmed_at IS NOT NULL"
             )
             .await,
@@ -212,7 +208,7 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
         assert_eq!(again.status_code(), StatusCode::ACCEPTED);
         assert_eq!(again.json::<Value>(), first_answer);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM leads").await,
+            count(contact_relationship_management::db::pool(&ctx), "SELECT count(*) AS n FROM leads").await,
             before + 1
         );
         assert_eq!(recorder.sent().len(), 2);
@@ -229,24 +225,19 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
         );
 
         // The audit row names the form and purpose and holds neither name nor address.
-        let audit = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT actor, snapshot::text AS d FROM audit_logs \
-                 WHERE action = 'web_form_submitted' ORDER BY id LIMIT 1",
-            ))
+        let audit = sqlx::query("SELECT actor, snapshot::text AS d FROM audit_logs \
+                 WHERE action = 'web_form_submitted' ORDER BY id LIMIT 1").fetch_optional(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap()
             .expect("an audit row");
-        let detail: String = audit.try_get("", "d").unwrap();
+        let detail: String = audit.try_get("d").unwrap();
         assert!(detail.contains("news-signup") && detail.contains("newsletter"));
         assert!(!detail.contains("Ada") && !detail.contains("analytical"));
-        let actor: String = audit.try_get("", "actor").unwrap();
+        let actor: String = audit.try_get("actor").unwrap();
         assert_eq!(actor, "web_form:news-signup");
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM audit_logs WHERE snapshot::text ILIKE '%analytical.test%'"
             )
             .await,
@@ -263,7 +254,11 @@ async fn the_origin_the_form_the_honeypot_and_the_input_are_checked() {
     behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![form("contact-us", "marketing", None)]);
-        let contacts_before = count(&ctx.db, "SELECT count(*) AS n FROM contacts").await;
+        let contacts_before = count(
+            contact_relationship_management::db::pool(&ctx),
+            "SELECT count(*) AS n FROM contacts",
+        )
+        .await;
         let body = json!({ "name": "Grace", "email": "grace@navy.test" });
 
         // No such form.
@@ -333,7 +328,11 @@ async fn the_origin_the_form_the_honeypot_and_the_input_are_checked() {
         assert_eq!(real.status_code(), StatusCode::ACCEPTED);
         assert_eq!(trap.json::<Value>(), real.json::<Value>());
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM contacts").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM contacts"
+            )
+            .await,
             contacts_before + 1,
             "only the real submission made a contact"
         );
@@ -455,7 +454,7 @@ async fn a_client_and_a_form_are_limited_and_a_stranger_is_not_mailed_twice() {
         assert_eq!(to_victim, 1);
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM leads WHERE source = 'web' AND display_name = 'Victim'"
             )
             .await,
@@ -476,7 +475,11 @@ async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_s
         settings::update(|s| {
             s.upstream_mode = contact_relationship_management::clients::Mode::Http
         });
-        let contacts_before = count(&ctx.db, "SELECT count(*) AS n FROM contacts").await;
+        let contacts_before = count(
+            contact_relationship_management::db::pool(&ctx),
+            "SELECT count(*) AS n FROM contacts",
+        )
+        .await;
         let answer = submit!(
             request,
             "signup",
@@ -485,7 +488,11 @@ async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_s
         );
         assert_eq!(answer.status_code(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM contacts").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM contacts"
+            )
+            .await,
             contacts_before
         );
         assert!(recorder.sent().is_empty());
@@ -504,17 +511,15 @@ async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_s
             .status_code(),
             StatusCode::ACCEPTED
         );
-        let contact_pid: String = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT contact_pid::text AS p FROM form_submissions ORDER BY id DESC LIMIT 1",
-            ))
-            .await
-            .unwrap()
-            .unwrap()
-            .try_get("", "p")
-            .unwrap();
+        let contact_pid: String = sqlx::query(
+            "SELECT contact_pid::text AS p FROM form_submissions ORDER BY id DESC LIMIT 1",
+        )
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("p")
+        .unwrap();
         request
             .post(&format!("/api/contacts/{contact_pid}/consent"))
             .json(&json!({ "action": "withdrawn", "source": "test" }))
@@ -526,7 +531,7 @@ async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_s
             .assert_status_ok();
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 &format!(
                     "SELECT count(*) AS n FROM form_submissions WHERE contact_pid = '{contact_pid}'"
                 )
@@ -618,19 +623,17 @@ async fn the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_
         assert!(path_of(&sent[2].text).ends_with("?lang=en"));
 
         // No language is kept: no column of the contact or of the submission holds one.
-        let columns = ctx
-            .db
-            .query_one_raw(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "SELECT count(*) AS n FROM information_schema.columns \
+        let columns = sqlx::query(
+            "SELECT count(*) AS n FROM information_schema.columns \
                  WHERE table_name IN ('contacts', 'form_submissions', 'link_tokens') \
                  AND column_name ILIKE '%lang%'",
-            ))
-            .await
-            .unwrap()
-            .unwrap()
-            .try_get::<i64>("", "n")
-            .unwrap();
+        )
+        .fetch_optional(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<i64, _>("n")
+        .unwrap();
         assert_eq!(columns, 0);
     })
     .await;
@@ -728,7 +731,11 @@ async fn the_form_s_refusals_are_in_the_language_of_the_request() {
             s.upstream_mode = contact_relationship_management::clients::Mode::Http
         });
         let sent_before = recorder.sent().len();
-        let contacts_before = count(&ctx.db, "SELECT count(*) AS n FROM contacts").await;
+        let contacts_before = count(
+            contact_relationship_management::db::pool(&ctx),
+            "SELECT count(*) AS n FROM contacts",
+        )
+        .await;
         let answer = request
             .post("/forms/lang-refusals")
             .add_header("origin", ORIGIN)
@@ -744,7 +751,11 @@ async fn the_form_s_refusals_are_in_the_language_of_the_request() {
         assert_eq!(body["detail"], zh.form_unavailable, "{body}");
         assert_eq!(recorder.sent().len(), sent_before);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM contacts").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM contacts"
+            )
+            .await,
             contacts_before
         );
 
@@ -791,10 +802,14 @@ async fn a_workflow_the_form_s_lead_fires_rolls_back_alone() {
         made.assert_status_ok();
         let workflow = made.json::<Value>()["pid"].as_str().unwrap().to_string();
         let (_recorder, _restore) = arrange(vec![form("rollback", "newsletter", None)]);
-        let leads = count(&ctx.db, "SELECT count(*) AS n FROM leads").await;
+        let leads = count(
+            contact_relationship_management::db::pool(&ctx),
+            "SELECT count(*) AS n FROM leads",
+        )
+        .await;
         // Break the second action by taking its table away for the length of one request.
-        ctx.db
-            .execute_unprepared("ALTER TABLE notifications RENAME TO notifications_away")
+        sqlx::raw_sql("ALTER TABLE notifications RENAME TO notifications_away")
+            .execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         let answer = submit!(
@@ -803,18 +818,22 @@ async fn a_workflow_the_form_s_lead_fires_rolls_back_alone() {
             "203.0.113.77",
             json!({ "name": "Rolle Back", "email": "rolle@back.test" })
         );
-        ctx.db
-            .execute_unprepared("ALTER TABLE notifications_away RENAME TO notifications")
+        sqlx::raw_sql("ALTER TABLE notifications_away RENAME TO notifications")
+            .execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
         assert_eq!(answer.status_code(), StatusCode::ACCEPTED);
         assert_eq!(
-            count(&ctx.db, "SELECT count(*) AS n FROM leads").await,
+            count(
+                contact_relationship_management::db::pool(&ctx),
+                "SELECT count(*) AS n FROM leads"
+            )
+            .await,
             leads + 1
         );
         assert_eq!(
             count(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "SELECT count(*) AS n FROM activities WHERE kind = 'task' \
                  AND summary = 'Call the web lead'"
             )

@@ -4,7 +4,6 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -271,16 +270,13 @@ async fn a_funnel_can_convert_each_deal_at_the_rate_of_the_day_it_closed() {
                 .await
                 .assert_status_ok();
             if let Some(day) = closed {
-                ctx.db
-                    .execute_raw(Statement::from_sql_and_values(
-                        DatabaseBackend::Postgres,
-                        format!(
-                            "UPDATE deals SET closed_at = '{day}T09:00:00Z' WHERE pid = $1::uuid"
-                        ),
-                        [deal_pid.into()],
-                    ))
-                    .await
-                    .unwrap();
+                sqlx::query(sqlx::AssertSqlSafe(format!(
+                    "UPDATE deals SET closed_at = '{day}T09:00:00Z' WHERE pid = $1::uuid"
+                )))
+                .bind(deal_pid)
+                .execute(contact_relationship_management::db::pool(&ctx))
+                .await
+                .unwrap();
             }
         }
         for (rate, on) in [("0.80", "2026-01-01"), ("0.50", "2026-06-01")] {

@@ -3,7 +3,6 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
-use sea_orm::ConnectionTrait;
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -134,12 +133,12 @@ async fn a_ticket_under_a_calendar_has_working_time_deadlines() {
         let pid = ticket["pid"].as_str().unwrap().to_string();
         // Pretend it was opened on a Friday at 16:00 UTC (10 July 2026), then raise its priority:
         // the deadlines are derived again from that moment, on the calendar of `high`.
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE tickets SET opened_at = '2026-07-10T16:00:00Z' WHERE pid = '{pid}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE tickets SET opened_at = '2026-07-10T16:00:00Z' WHERE pid = '{pid}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         request
             .put(&format!("/api/tickets/{pid}/priority"))
             .json(&json!({ "priority": "high", "reason": "escalated" }))

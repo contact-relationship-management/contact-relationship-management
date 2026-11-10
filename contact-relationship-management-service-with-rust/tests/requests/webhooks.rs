@@ -12,7 +12,6 @@ use contact_relationship_management::app::App;
 use contact_relationship_management::db;
 use contact_relationship_management::rules::webhooks as rules;
 use contact_relationship_management::webhooks::{HttpSender, Outcome, Sender, run};
-use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
 use serde_json::{Value, json};
 use serial_test::serial;
 use uuid::Uuid;
@@ -72,27 +71,10 @@ impl Sender for Recorder {
 }
 
 /// Write an outbox row, as the `outbox` transport does with a mutation.
-async fn emit(
-    db: &DatabaseConnection,
-    entity: &str,
-    kind: &str,
-    pid: Uuid,
-    at: DateTime<Utc>,
-) -> Uuid {
+async fn emit(db: &sqlx::PgPool, entity: &str, kind: &str, pid: Uuid, at: DateTime<Utc>) -> Uuid {
     let event_id = Uuid::new_v4();
-    db.execute_raw(Statement::from_sql_and_values(
-        DatabaseBackend::Postgres,
-        "INSERT INTO event_outbox (event_id, entity, entity_pid, kind, occurred_at, schema_version, payload) \
-         VALUES ($1, $2, $3, $4, $5, 1, $6)",
-        [
-            event_id.into(),
-            entity.into(),
-            pid.into(),
-            kind.into(),
-            at.into(),
-            json!({ "name": "Private Person Name", "data": { "email": "private@example.test" } }).into(),
-        ],
-    ))
+    sqlx::query("INSERT INTO event_outbox (event_id, entity, entity_pid, kind, occurred_at, schema_version, payload) \
+         VALUES ($1, $2, $3, $4, $5, 1, $6)").bind(event_id).bind(entity).bind(pid).bind(kind).bind(at).bind(json!({ "name": "Private Person Name", "data": { "email": "private@example.test" } })).execute(db)
     .await
     .unwrap();
     event_id
@@ -185,7 +167,7 @@ async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
         );
         let contact = Uuid::new_v4();
         let event = emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "contact",
             "created",
             contact,
@@ -193,7 +175,7 @@ async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
         )
         .await;
         emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "deal",
             "opened",
             Uuid::new_v4(),
@@ -251,7 +233,7 @@ async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
 async fn a_subscription_does_not_hear_what_happened_before_it_existed() {
     request::<App, _, _>(|request, ctx| async move {
         emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "contact",
             "created",
             Uuid::new_v4(),
@@ -285,7 +267,7 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
         let made = subscribe!(request, ["*"]).await;
         let pid = made["pid"].as_str().unwrap();
         emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "lead",
             "lead_captured",
             Uuid::new_v4(),
@@ -326,7 +308,7 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
         // A receiver that recovers gets the next one.
         recorder.respond_with(200);
         emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "lead",
             "lead_captured",
             Uuid::new_v4(),
@@ -354,7 +336,7 @@ async fn a_410_disables_the_subscription_cancels_what_is_queued_and_is_audited()
         let pid = made["pid"].as_str().unwrap();
         for _ in 0..3 {
             emit(
-                &ctx.db,
+                contact_relationship_management::db::pool(&ctx),
                 "contact",
                 "created",
                 Uuid::new_v4(),
@@ -425,7 +407,7 @@ async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
 
         let recorder = Recorder::answering(200);
         let event = emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "contact",
             "created",
             Uuid::new_v4(),
@@ -456,7 +438,7 @@ async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
 
         // Two days on, only the new secret signs.
         let event = emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "contact",
             "created",
             Uuid::new_v4(),
@@ -502,7 +484,7 @@ async fn erasing_a_contact_cancels_its_queued_deliveries() {
         let contact = seed_contact!(&request, "Erase Hook").await;
         let other = Uuid::new_v4();
         emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "contact",
             "created",
             contact.parse().unwrap(),
@@ -510,7 +492,7 @@ async fn erasing_a_contact_cancels_its_queued_deliveries() {
         )
         .await;
         emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "contact",
             "created",
             other,
@@ -555,7 +537,7 @@ async fn a_removed_subscription_sends_nothing_more_and_keeps_its_log() {
         let made = subscribe!(request, ["*"]).await;
         let pid = made["pid"].as_str().unwrap();
         emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "contact",
             "created",
             Uuid::new_v4(),
@@ -577,7 +559,7 @@ async fn a_removed_subscription_sends_nothing_more_and_keeps_its_log() {
             .json();
         assert_eq!(removed["deliveries_cancelled"], 1);
         emit(
-            &ctx.db,
+            contact_relationship_management::db::pool(&ctx),
             "contact",
             "created",
             Uuid::new_v4(),

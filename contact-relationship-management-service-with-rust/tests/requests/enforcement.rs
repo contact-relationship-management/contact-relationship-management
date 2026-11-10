@@ -752,7 +752,6 @@ async fn mcp_tool_calls_are_decided_as_the_caller() {
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_read() {
-    use sea_orm::ConnectionTrait;
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
         s.require_auth = true;
@@ -794,13 +793,13 @@ async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_rea
                 .assert_status_ok();
             contacts.push(pid);
         }
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
-                contacts[1]
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
+            contacts[1]
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
 
         // Sweeping is an admin action; the assignee, with no attributes, may not read the
         // inactive contact, so only the readable one is notified.
@@ -847,13 +846,13 @@ async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_rea
 
         // The policy is asked again at read time: once the record becomes unreadable the
         // notification is gone from the list and the count.
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
-                contacts[0]
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
+            contacts[0]
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         let after: Vec<Value> = request
             .get("/api/notifications")
             .add_header("authorization", bearer(&assignee))
@@ -867,13 +866,13 @@ async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_rea
             .json();
         assert_eq!(unread["unread"], 0);
         // Reading marks it read for the one who owns it, and is allowed to a reader-tier caller.
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contacts SET status = 'active' WHERE pid = '{}'",
-                contacts[0]
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contacts SET status = 'active' WHERE pid = '{}'",
+            contacts[0]
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         request
             .put(&format!("/api/notifications/{pid}/read"))
             .add_header("authorization", bearer(&assignee))
@@ -889,7 +888,6 @@ async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_rea
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn search_leaves_out_what_the_caller_may_not_read() {
-    use sea_orm::ConnectionTrait;
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
         s.require_auth = true;
@@ -915,13 +913,13 @@ async fn search_leaves_out_what_the_caller_may_not_read() {
                 .json();
             pids.push(created["pid"].as_str().unwrap().to_string());
         }
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
-                pids[1]
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
+            pids[1]
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         assert_eq!(
             request.get("/api/search?q=wexford").await.status_code(),
             401
@@ -964,7 +962,6 @@ async fn search_leaves_out_what_the_caller_may_not_read() {
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn lead_import_needs_write_and_advice_hides_unreadable_contacts() {
-    use sea_orm::ConnectionTrait;
     let (keys, kid) = keys_and_kid();
     let _scope = scoped(|s| {
         s.require_auth = true;
@@ -986,13 +983,13 @@ async fn lead_import_needs_write_and_advice_hides_unreadable_contacts() {
             )
             .await
             .json();
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
-                created["pid"].as_str().unwrap()
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contacts SET status = 'inactive' WHERE pid = '{}'",
+            created["pid"].as_str().unwrap()
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
         let body =
             json!({ "csv": "Name\nQuentin Vanderbilt\n", "mapping": { "display_name": "Name" } });
         assert_eq!(

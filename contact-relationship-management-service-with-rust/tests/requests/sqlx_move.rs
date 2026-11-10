@@ -9,7 +9,7 @@ use contact_relationship_management::models::_entities::{activities, contacts};
 use contact_relationship_management::models::audit_logs::{self, Model as Audit, verify_chain};
 use contact_relationship_management::models::live::FindLive;
 use contact_relationship_management::models::rows;
-use sea_orm::{ConnectionTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{EntityTrait, QueryFilter, QueryOrder};
 use serde_json::{Value, json};
 use serial_test::serial;
 use uuid::Uuid;
@@ -171,12 +171,12 @@ async fn the_sqlx_finders_read_what_find_live_reads() {
                 .await
                 .assert_status_ok();
         }
-        ctx.db
-            .execute_unprepared(&format!(
-                "UPDATE contacts SET deleted_at = now() WHERE pid = '{gone}'"
-            ))
-            .await
-            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE contacts SET deleted_at = now() WHERE pid = '{gone}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
 
         let through_sqlx = rows::contacts(db::pool(&ctx)).await.unwrap();
         let through_seaorm = contacts::Entity::find_live()
