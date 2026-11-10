@@ -1,24 +1,18 @@
-//! `SeaORM` Entity — `working_group_members`. The group ↔ contact
+//! The row of `working_group_members`. The group ↔ contact
 //! roster join.
 
-// SeaORM-generated entity shape: documented by the migration.
+// A row type: documented by the migration.
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "working_group_members")]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
     pub group_pid: Uuid,
     pub contact_pid: Uuid,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
-
-impl ActiveModelBehavior for ActiveModel {}

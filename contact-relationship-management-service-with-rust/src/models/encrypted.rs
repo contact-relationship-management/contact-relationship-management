@@ -14,8 +14,6 @@
 
 use std::ops::Deref;
 
-use sea_orm::sea_query::{ArrayType, ColumnType, Nullable, Value, ValueType, ValueTypeErr};
-use sea_orm::{ActiveValue, DbErr, IntoActiveValue, QueryResult, TryGetError, TryGetable};
 use serde::{Deserialize, Serialize};
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
@@ -68,50 +66,6 @@ impl From<&str> for EncryptedText {
     }
 }
 
-impl From<EncryptedText> for Value {
-    fn from(value: EncryptedText) -> Self {
-        Self::String(Some(crypto::seal(&value.0)))
-    }
-}
-
-impl ValueType for EncryptedText {
-    fn try_from(v: Value) -> Result<Self, ValueTypeErr> {
-        match v {
-            Value::String(Some(stored)) => {
-                crypto::open(&stored).map(Self).map_err(|_| ValueTypeErr)
-            }
-            _ => Err(ValueTypeErr),
-        }
-    }
-
-    fn type_name() -> String {
-        "EncryptedText".to_string()
-    }
-
-    fn array_type() -> ArrayType {
-        ArrayType::String
-    }
-
-    fn column_type() -> ColumnType {
-        ColumnType::Text
-    }
-}
-
-impl Nullable for EncryptedText {
-    fn null() -> Value {
-        Value::String(None)
-    }
-}
-
-impl TryGetable for EncryptedText {
-    fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        let stored = <String as TryGetable>::try_get_by(res, index)?;
-        crypto::open(&stored)
-            .map(Self)
-            .map_err(|error| TryGetError::DbErr(DbErr::Type(error.to_string())))
-    }
-}
-
 impl Type<Postgres> for EncryptedText {
     fn type_info() -> PgTypeInfo {
         <String as Type<Postgres>>::type_info()
@@ -132,11 +86,5 @@ impl Decode<'_, Postgres> for EncryptedText {
     fn decode(value: PgValueRef<'_>) -> Result<Self, BoxDynError> {
         let stored = <String as Decode<'_, Postgres>>::decode(value)?;
         Ok(Self(crypto::open(&stored)?))
-    }
-}
-
-impl IntoActiveValue<Self> for EncryptedText {
-    fn into_active_value(self) -> ActiveValue<Self> {
-        ActiveValue::Set(self)
     }
 }

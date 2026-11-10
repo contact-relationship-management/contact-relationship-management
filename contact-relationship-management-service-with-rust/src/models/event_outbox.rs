@@ -14,10 +14,8 @@ use sqlx::{PgConnection, PgPool};
 use crate::models::DateTimeWithTimeZone;
 use uuid::Uuid;
 
-pub use super::_entities::event_outbox::{self, ActiveModel, Entity, Model};
+pub use super::_entities::event_outbox::{self, Model};
 use crate::streaming::{Envelope, EventView};
-
-impl ActiveModelBehavior for super::_entities::event_outbox::ActiveModel {}
 
 /// The column values for one outbox row, derived from a canonical
 /// [`Envelope`] plus the enqueue timestamp. A plain struct (separate

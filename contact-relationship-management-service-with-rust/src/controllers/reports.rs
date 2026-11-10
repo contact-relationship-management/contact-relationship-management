@@ -8,7 +8,7 @@
 //! The routes run on `sqlx` (CRM-D24, CRM-T205). A report's statement is built by
 //! [`rules::plan_in`] from a closed list of parts and binds every value, so the macros cannot check
 //! it and the soft-delete census in `db.rs` cannot see it; `rules::reports` keeps each kind of
-//! record to its live rows (`deleted_at IS NULL`). The conversions and the organization's calendar still go through `SeaORM` helpers.
+//! record to its live rows (`deleted_at IS NULL`).
 
 use serde::{Deserialize, Serialize};
 use sqlx::{AssertSqlSafe, PgConnection, Row as _};

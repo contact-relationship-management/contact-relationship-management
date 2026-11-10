@@ -1,15 +1,13 @@
-//! The move from `SeaORM` to `sqlx` (CRM-D24): while the two share a database, what one writes the
-//! other must read, and one audit chain takes both. These go with the code they prove: when
-//! `SeaORM` goes, so do they. (The tests of `db::Bridge` went with it in CRM-T216.)
+//! What the move from `SeaORM` to `sqlx` (CRM-D24) had to keep: the audit chain holds across
+//! transactions and racing writers, a row reads back as written with its times in `Z`, and the
+//! finders leave out deleted rows and open sealed columns. They compared the two libraries until
+//! `SeaORM`'s side went (`db::Bridge` in CRM-T216, the entities and `find_live` in CRM-T231).
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
 use contact_relationship_management::db;
-use contact_relationship_management::models::_entities::{activities, contacts};
 use contact_relationship_management::models::audit_logs::{self, Model as Audit, verify_chain};
-use contact_relationship_management::models::live::FindLive;
 use contact_relationship_management::models::rows;
-use sea_orm::{EntityTrait, QueryFilter, QueryOrder};
 use serde_json::{Value, json};
 use serial_test::serial;
 use uuid::Uuid;
@@ -107,31 +105,23 @@ async fn both_libraries_can_write_the_chain_at_once() {
     .await;
 }
 
-/// The row a `sqlx` handler returns serializes as the same text as `SeaORM`'s read of it, so a
-/// client sees no timestamp change as a handler moves, though the macros read a `timestamptz` as
-/// `DateTime<Utc>` and the entities as `DateTime<FixedOffset>`. Both write `Z` at offset zero.
+/// A row reads back as it was written and serializes its times with `Z` at offset zero, as it did
+/// when `SeaORM` read the entities (CRM-T231 compares with a `sqlx` read, `SeaORM` having gone).
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
-async fn a_row_reads_the_same_through_both_libraries() {
+async fn a_row_reads_back_as_written_with_its_times_in_z() {
     request::<App, _, _>(|request, ctx| async move {
         let mut txn = db::pool(&ctx).begin().await.unwrap();
-        let written = Audit::record_on(
-            &mut txn,
-            "test",
-            Uuid::new_v4(),
-            "sqlx",
-            None,
-            Some(snapshot()),
-        )
-        .await
-        .unwrap();
+        let pid = Uuid::new_v4();
+        let written = Audit::record_on(&mut txn, "test", pid, "sqlx", None, Some(snapshot()))
+            .await
+            .unwrap();
         txn.commit().await.unwrap();
-        let read = audit_logs::Entity::find_by_id(written.id)
-            .one(&ctx.db)
+        let read = audit_logs::Model::for_entity(db::pool(&ctx), pid)
             .await
             .unwrap()
-            .unwrap();
+            .remove(0);
         assert_eq!(written, read);
         let text = serde_json::to_value(&written).unwrap();
         assert_eq!(text, serde_json::to_value(&read).unwrap());
@@ -146,15 +136,15 @@ async fn a_row_reads_the_same_through_both_libraries() {
     .await;
 }
 
-/// CRM-T207: a `sqlx` finder reads what `find_live` reads, row for row: the sealed columns opened,
-/// a soft-deleted row left out, and the same filter.
+/// CRM-T207: a `sqlx` finder leaves a soft-deleted row out, opens the sealed columns, and filters
+/// as `find_live` did. CRM-T207 compared it with `find_live` row for row; CRM-T231 removed
+/// `find_live` with the entities, so the properties are asserted directly.
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
-async fn the_sqlx_finders_read_what_find_live_reads() {
+async fn the_sqlx_finders_leave_out_deleted_rows_and_open_sealed_columns() {
     use base64::Engine;
     use contact_relationship_management::crypto::{self, Keyring};
-    use sea_orm::ColumnTrait;
     request::<App, _, _>(|request, ctx| async move {
         let key = base64::engine::general_purpose::STANDARD.encode([7u8; 32]);
         crypto::install(Some(Keyring::from_spec(&format!("k1:{key}")).unwrap()));
@@ -179,12 +169,11 @@ async fn the_sqlx_finders_read_what_find_live_reads() {
         .unwrap();
 
         let through_sqlx = rows::contacts(db::pool(&ctx)).await.unwrap();
-        let through_seaorm = contacts::Entity::find_live()
-            .order_by_asc(contacts::Column::Id)
-            .all(&ctx.db)
-            .await
-            .unwrap();
-        assert_eq!(through_sqlx, through_seaorm);
+        assert!(through_sqlx.iter().all(|c| c.deleted_at.is_none()));
+        assert!(
+            through_sqlx.windows(2).all(|w| w[0].id < w[1].id),
+            "in id order"
+        );
         let pids: Vec<String> = through_sqlx.iter().map(|c| c.pid.to_string()).collect();
         assert!(pids.contains(&kept) && !pids.contains(&gone), "{pids:?}");
         let stored: String =
@@ -205,15 +194,14 @@ async fn the_sqlx_finders_read_what_find_live_reads() {
         let open = rows::open_dated_activities(db::pool(&ctx), Some("task"))
             .await
             .unwrap();
-        let open_seaorm = activities::Entity::find_live()
-            .filter(activities::Column::Done.eq(false))
-            .filter(activities::Column::DueOn.is_not_null())
-            .filter(activities::Column::Kind.eq("task"))
-            .order_by_asc(activities::Column::Id)
-            .all(&ctx.db)
-            .await
-            .unwrap();
-        assert_eq!(open, open_seaorm);
+        assert!(
+            open.iter().all(|a| a.deleted_at.is_none()
+                && !a.done
+                && a.due_on.is_some()
+                && a.kind == "task"),
+            "{open:?}"
+        );
+        assert!(open.windows(2).all(|w| w[0].id < w[1].id), "in id order");
         let mine: Vec<String> = open
             .iter()
             .filter(|a| a.subject_pid.to_string() == kept)

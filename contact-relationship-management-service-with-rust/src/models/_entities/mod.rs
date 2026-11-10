@@ -1,4 +1,4 @@
-//! `SeaORM` entity definitions, one module per table.
+//! The row types, one module per table: what a `sqlx::query_as!` reads (CRM-D24, CRM-T231).
 
 pub mod accounts;
 pub mod activities;
@@ -21,7 +21,6 @@ pub mod nurture_steps;
 pub mod partnerships;
 pub mod pipeline_stages;
 pub mod pipelines;
-pub mod prelude;
 pub mod segments;
 pub mod sla_policies;
 pub mod tickets;

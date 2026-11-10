@@ -1,21 +1,17 @@
-//! `SeaORM` Entity -- `pipeline_stages`. One ordered stage with its win probability and terminal flags (CRM-R4).
+//! The row of `pipeline_stages`. One ordered stage with its win probability and terminal flags (CRM-R4).
 
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "StageRecord")]
-#[sea_orm(table_name = "pipeline_stages")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
     pub pid: Uuid,
     pub pipeline_pid: Uuid,
     pub name: String,
@@ -25,6 +21,3 @@ pub struct Model {
     pub is_lost: bool,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}

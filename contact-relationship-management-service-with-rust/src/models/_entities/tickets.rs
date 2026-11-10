@@ -1,21 +1,17 @@
-//! `SeaORM` Entity -- `tickets`. One support ticket with derived SLA deadlines + breach facts (CRM-R10/R11). NOT a `case`-registry identity.
+//! The row of `tickets`. One support ticket with derived SLA deadlines + breach facts (CRM-R10/R11). NOT a `case`-registry identity.
 
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "Ticket")]
-#[sea_orm(table_name = "tickets")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
     pub pid: Uuid,
     pub contact_pid: Option<Uuid>,
     pub account_pid: Option<Uuid>,
@@ -42,6 +38,3 @@ pub struct Model {
     pub resolution_paused_seconds: i64,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}

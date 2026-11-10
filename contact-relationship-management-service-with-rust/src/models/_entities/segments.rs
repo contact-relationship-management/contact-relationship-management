@@ -1,27 +1,21 @@
-//! `SeaORM` Entity -- `segments`. One declarative audience filter (CRM-R7); consent is `ANDed` structurally.
+//! The row of `segments`. One declarative audience filter (CRM-R7); consent is `ANDed` structurally.
 
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as Json;
+use uuid::Uuid;
 
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "Segment")]
-#[sea_orm(table_name = "segments")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
     pub pid: Uuid,
     pub name: String,
     #[schemars(with = "serde_json::Map<String, serde_json::Value>")]
     pub filter: Json,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}

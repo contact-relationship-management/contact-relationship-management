@@ -1,21 +1,17 @@
-//! `SeaORM` Entity -- `accounts`. One relationship wrapper over an `organization:` record (CRM-R1).
+//! The row of `accounts`. One relationship wrapper over an `organization:` record (CRM-R1).
 
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "Account")]
-#[sea_orm(table_name = "accounts")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
     pub pid: Uuid,
     pub organization_ref: String,
     pub owner_ref: Option<String>,
@@ -25,6 +21,3 @@ pub struct Model {
     pub stakeholder_role: Option<String>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}

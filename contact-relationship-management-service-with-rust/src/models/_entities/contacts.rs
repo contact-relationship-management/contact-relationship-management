@@ -1,21 +1,17 @@
-//! `SeaORM` Entity -- `contacts`. One relationship wrapper over a `person:` record (CRM-R1); `marketing_consent` is send-path law (CRM-D6).
+//! The row of `contacts`. One relationship wrapper over a `person:` record (CRM-R1); `marketing_consent` is send-path law (CRM-D6).
 
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "Contact")]
-#[sea_orm(table_name = "contacts")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
     pub pid: Uuid,
     pub person_ref: String,
     pub account_pid: Option<Uuid>,
@@ -38,6 +34,3 @@ pub struct Model {
     /// column or a web form, never inferred.
     pub consent_jurisdiction: Option<String>,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}

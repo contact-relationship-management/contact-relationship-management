@@ -55,9 +55,9 @@ OTLP, Podman.
   analytics, quotas, attribution, workflows, and since CRM-T158–T162
   `wpm_events`, `employment_check`, `teams_import` and `user_ref`);
   `src/controllers/` has one module per area, `bridges.rs` holding the
-  PPM and WPM bridges; `src/models/` has SeaORM entities for 26 tables
+  PPM and WPM bridges; `src/models/` has plain row structs for 26 tables
   in `_entities/` and helper modules (`employments`, `audit_logs`,
-  `event_outbox`, `deliveries`, `records`, `live`, `encrypted`); the
+  `event_outbox`, `deliveries`, `records`, `rows`, `encrypted`); the
   other tables are reached by explicit SQL. `migrations/` holds the
   `sqlx` baseline (CRM-T229): the schema the 59 `SeaORM` migrations in
   crate-root `migration/` built, the latest

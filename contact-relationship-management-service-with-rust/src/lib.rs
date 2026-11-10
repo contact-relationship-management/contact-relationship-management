@@ -19,7 +19,7 @@
 //! - [`rules`] — the **pure core**: lifecycle machines, lead scoring
 //!   with breakdown, KPI arithmetic, SLA derivation, segment
 //!   evaluation with the structural consent gate.
-//! - [`models`] — `SeaORM` entities + CRUD helpers.
+//! - [`models`] — the row types and their `sqlx` finders.
 //! - [`clients`] — upstream service lookups (stub-first).
 //! - [`auth`] — offline PASETO verification + ABAC + masking.
 //! - [`streaming`] — event envelope + in-memory / outbox transports.

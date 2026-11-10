@@ -4,8 +4,8 @@
 //! when it is read, with the caller's own token, and left out if the caller may not read the
 //! record it is about.
 //!
-//! Runs on `sqlx` (CRM-D24, CRM-T206), but for the policy check, which reads the record through
-//! [`inbox::subject_attrs`] on `SeaORM`'s side of the shared pool.
+//! Runs on `sqlx` (CRM-D24, CRM-T206); the policy check reads the record through
+//! [`inbox::subject_attrs`] since CRM-T216.
 
 use axa::extract::Query;
 use axa::prelude::*;

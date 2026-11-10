@@ -1,21 +1,17 @@
-//! `SeaORM` Entity -- `nurture_enrollments`. One contact through a sequence (CRM-R9); the scheduler is idempotent per (enrolment, step).
+//! The row of `nurture_enrollments`. One contact through a sequence (CRM-R9); the scheduler is idempotent per (enrolment, step).
 
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "NurtureEnrollment")]
-#[sea_orm(table_name = "nurture_enrollments")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
     pub pid: Uuid,
     pub sequence_pid: Uuid,
     pub contact_pid: Uuid,
@@ -24,6 +20,3 @@ pub struct Model {
     pub status: String,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}

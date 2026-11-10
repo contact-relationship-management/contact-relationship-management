@@ -11,9 +11,7 @@ use sqlx::{PgConnection, PgPool};
 use crate::rules::audit_chain;
 use uuid::Uuid;
 
-pub use super::_entities::audit_logs::{self, ActiveModel, Entity, Model};
-
-impl ActiveModelBehavior for super::_entities::audit_logs::ActiveModel {}
+pub use super::_entities::audit_logs::{self, Model};
 
 impl Model {
     /// Record one audit entry in the caller's transaction. `actor` is the caller's `sub` when a

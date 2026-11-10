@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the entities as plain structs (CRM-T231, CRM-D24)
+
+- `models/_entities/` holds plain row structs; `DeriveEntityModel`, the relations, the
+  `ActiveModelBehavior` impls and the `Entity` prelude are removed.
+- Removed: `models::live` (`find_live`) and `EncryptedText`'s `SeaORM` impls.
+
 ### Changed — the database tests' SQL on sqlx (CRM-T230, CRM-D24)
 
 - 39 request-test files send their set-up and check SQL through `sqlx` on `db::pool` in place of

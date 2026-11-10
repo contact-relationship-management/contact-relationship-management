@@ -1,8 +1,8 @@
 //! Request and response schemas for the `OpenAPI` document (CRM-T49, CRM-T83).
 //!
 //! Every schema but one is generated from the Rust type that is sent or
-//! received: the `*Payload` structs for requests, the `SeaORM` models for
-//! records, and the typed response structs in the controllers for everything
+//! received: the `*Payload` structs for requests, the row types (`models::_entities`)
+//! for records, and the typed response structs in the controllers for everything
 //! else (see [`generated`]). A field is required when the type has no default
 //! and is not an `Option`; a member that masking can blank (an amount, a total,
 //! a campaign cost) is an `Option` and is `null` when masked, never absent and

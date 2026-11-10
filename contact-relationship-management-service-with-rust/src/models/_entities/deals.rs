@@ -1,21 +1,18 @@
-//! `SeaORM` Entity -- `deals`. One revenue opportunity moving through stages; terminal stages close it (CRM-R4).
+//! The row of `deals`. One revenue opportunity moving through stages; terminal stages close it (CRM-R4).
 
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
+use chrono::NaiveDate as Date;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "Deal")]
-#[sea_orm(table_name = "deals")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
     pub pid: Uuid,
     pub account_pid: Option<Uuid>,
     pub primary_contact_pid: Option<Uuid>,
@@ -37,6 +34,3 @@ pub struct Model {
     /// The last stage move or reopen; the deal's creation until the first (CRM-D20).
     pub stage_moved_at: DateTimeWithTimeZone,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}

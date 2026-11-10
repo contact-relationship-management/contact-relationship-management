@@ -1,29 +1,28 @@
-//! `SeaORM` Entity — `event_outbox`. The transactional-outbox hand-off
+//! The row of `event_outbox`. The transactional-outbox hand-off
 //! buffer for the durable event bus (Phase 2; one row per published
 //! event, written in the entity mutation's transaction and drained by a
 //! relay worker).
 
-// SeaORM-generated entity: the field-level shape is documented by the
+// A row type: the field-level shape is documented by the
 // migration and the `event_outbox` table.
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as Json;
+use uuid::Uuid;
 
 /// One persisted outbox row: a canonical envelope awaiting relay to the
 /// durable bus.
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "event_outbox")]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Model {
     /// Row creation timestamp.
     pub created_at: DateTimeWithTimeZone,
     /// Row last-update timestamp (set when marked published).
     pub updated_at: DateTimeWithTimeZone,
     /// Auto-increment pk; also the global relay order.
-    #[sea_orm(primary_key)]
     pub id: i32,
     /// Envelope id — the consumer dedup key.
-    #[sea_orm(unique)]
     pub event_id: Uuid,
     /// The entity name (e.g. `stay`).
     pub entity: String,
@@ -42,7 +41,3 @@ pub struct Model {
     /// `None` until the relay ships the row to the bus.
     pub published_at: Option<DateTimeWithTimeZone>,
 }
-
-/// `SeaORM` relations for [`Entity`] (none defined).
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}

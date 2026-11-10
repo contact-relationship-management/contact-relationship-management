@@ -1,21 +1,19 @@
-//! `SeaORM` Entity -- `forecast_snapshots`. One frozen forecast roll-up (CRM-R5) -- an output, never an input.
+//! The row of `forecast_snapshots`. One frozen forecast roll-up (CRM-R5) -- an output, never an input.
 
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
+use chrono::NaiveDate as Date;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as Json;
+use uuid::Uuid;
 
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "Snapshot")]
-#[sea_orm(table_name = "forecast_snapshots")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
     pub pid: Uuid,
     pub taken_on: Date,
     /// Per-currency totals in minor units; `null` when masked.
@@ -23,6 +21,3 @@ pub struct Model {
     pub totals: Json,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}

@@ -1,21 +1,18 @@
-//! `SeaORM` Entity -- `activities`. One interaction, attached to any relationship object (CRM-R2).
+//! The row of `activities`. One interaction, attached to any relationship object (CRM-R2).
 
 #![allow(missing_docs)]
 
-use sea_orm::entity::prelude::*;
+use crate::models::DateTimeWithTimeZone;
+use chrono::NaiveDate as Date;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "Activity")]
-#[sea_orm(table_name = "activities")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
     pub pid: Uuid,
     pub subject_kind: String,
     pub subject_pid: Uuid,
@@ -30,6 +27,3 @@ pub struct Model {
     pub sentiment: Option<String>,
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
