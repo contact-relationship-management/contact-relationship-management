@@ -12,7 +12,7 @@ use super::{a_person, seed_contact};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 // Consent gates the segment; the simulated campaign touches only the
 // consented; withdrawal exits the nurture enrolment and the next
 // advance sends nothing.
@@ -139,7 +139,7 @@ async fn consent_gates_campaign_and_nurture() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_funnel_can_count_revenue_won_in_other_currencies_at_the_rate_in_force() {
     request::<App, _, _>(|request, _ctx| async move {
         let segment: Value = request
@@ -230,7 +230,7 @@ async fn a_funnel_can_count_revenue_won_in_other_currencies_at_the_rate_in_force
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_funnel_can_convert_each_deal_at_the_rate_of_the_day_it_closed() {
     request::<App, _, _>(|request, ctx| async move {
         let segment: Value = request

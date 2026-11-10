@@ -75,7 +75,7 @@ macro_rules! won_deal {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn won_revenue_is_shared_among_the_campaigns_that_touched_the_buyer() {
     request::<App, _, _>(|request, ctx| async move {
         let segment = request
@@ -227,7 +227,7 @@ async fn won_revenue_is_shared_among_the_campaigns_that_touched_the_buyer() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn time_decay_favours_the_recent_touch_and_position_splits_the_ends_evenly() {
     request::<App, _, _>(|request, ctx| async move {
         let segment = request
@@ -309,7 +309,7 @@ async fn time_decay_favours_the_recent_touch_and_position_splits_the_ends_evenly
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_attribution_that_cannot_be_asked_is_refused_naming_the_member() {
     request::<App, _, _>(|request, _ctx| async move {
         for (query, pointer) in [
@@ -333,7 +333,7 @@ async fn an_attribution_that_cannot_be_asked_is_refused_naming_the_member() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn attribution_shows_its_credit_in_one_currency_naming_the_rates_and_what_it_left_out() {
     request::<App, _, _>(|request, _ctx| async move {
         let segment = request
@@ -415,7 +415,7 @@ async fn attribution_shows_its_credit_in_one_currency_naming_the_rates_and_what_
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn attribution_can_convert_each_deals_share_at_the_rate_of_the_day_it_closed() {
     request::<App, _, _>(|request, ctx| async move {
         let segment = request
@@ -565,7 +565,7 @@ async fn sent_and_reported(
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_click_too_soon_after_sending_is_left_out_and_opens_are_not_touched() {
     request::<App, _, _>(|request, ctx| async move {
         let segment = request
@@ -642,7 +642,7 @@ async fn a_click_too_soon_after_sending_is_left_out_and_opens_are_not_touched() 
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_open_too_soon_after_sending_is_left_out_and_the_decay_half_life_can_be_chosen() {
     request::<App, _, _>(|request, ctx| async move {
         let segment = request
@@ -736,7 +736,7 @@ async fn an_open_too_soon_after_sending_is_left_out_and_the_decay_half_life_can_
 /// answer's schema says.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_deleted_campaign_keeps_its_credit_and_loses_its_name() {
     request::<App, _, _>(|request, ctx| async move {
         let segment = request

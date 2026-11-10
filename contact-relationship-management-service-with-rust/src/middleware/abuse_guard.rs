@@ -24,7 +24,7 @@ pub(crate) async fn abuse_guard_mw(
 ) -> Response {
     // Orchestrator probes must never be throttled or locked out: a refused
     // probe would restart a healthy pod.
-    if matches!(req.uri().path(), "/_health" | "/_ping" | "/_readiness") {
+    if crate::auth::HEALTH_PATHS.contains(&req.uri().path()) {
         return next.run(req).await;
     }
     if guard.requests.is_none() && guard.failures.is_none() {
@@ -151,7 +151,7 @@ mod tests {
         Router::new()
             .route("/api/x", get(|| async { "ok" }))
             .route("/api/denied", get(|| async { StatusCode::UNAUTHORIZED }))
-            .route("/_health", get(|| async { "ok" }))
+            .route("/_health/live", get(|| async { "ok" }))
             .layer(axum::middleware::from_fn_with_state(
                 (Arc::new(guard), None),
                 abuse_guard_mw,
@@ -188,7 +188,7 @@ mod tests {
     async fn health_probes_are_never_throttled() {
         let app = app(Guard::new(1, 0, 60));
         for _ in 0..5 {
-            assert_eq!(status(&app, "/_health").await.status(), StatusCode::OK);
+            assert_eq!(status(&app, "/_health/live").await.status(), StatusCode::OK);
         }
     }
 

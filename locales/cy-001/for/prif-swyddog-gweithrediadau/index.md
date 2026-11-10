@@ -9,7 +9,7 @@ Un broses Rust fesul replica yw'r gwasanaeth, ynghyd â PostgreSQL 18 a Redis; p
 ## Ffeithiau gweithredol i gynllunio o'u cwmpas
 
 - **Yn methu'n ddiogel wrth gychwyn.** Mewn cynhyrchiad mae'r gwasanaeth yn gwrthod cychwyn os yw dilysu wedi'i ddiffodd, os nad yw'r gadwyn archwilio yn ddefnyddiadwy, neu os yw allweddi gofynnol a `CRM_REDIS_URL` ar goll. Mae lleoliad sydd wedi'i gamgyflunio yn stopio yn hytrach na rhedeg ar agor.
-- **Iechyd a metrigau.** Ni chyfyngir cyfradd `/_health`, `/_ping`, `/_readiness` byth, felly ni all cloi allan ailgychwyn pod iach. Mae metrigau yn `/metrics.prom`.
+- **Iechyd a metrigau.** Ni chyfyngir cyfradd `/_health/live`, `/_health/ready`, `/_health/startup` byth, felly ni all cloi allan ailgychwyn pod iach. Mae metrigau yn `/metrics.prom`.
 - **Terfynau camddefnydd** ar waith mewn cynhyrchiad: 600 cais y funud fesul cleient a chloi allan ar ôl 10 mewngofnodiad aflwyddiannus mewn 5 munud. Cânt eu rhannu ar draws replicas drwy Redis; os bydd Redis yn methu, maent yn dychwelyd i gyfrif fesul replica.
 - **Mynediad brys** (torri'r gwydr): gall unrhyw ddefnyddiwr sydd wedi mewngofnodi gymryd dyrchafiad darllen â rheswm am hyd at 60 munud. Rhaid i rywun arall adolygu pob caniatâd. **Proses y mae'n rhaid i chi ei rhedeg:** gosodwch rybudd ar resi archwilio `break_glass_granted` ac adolygwch nifer y rhai heb eu hadolygu (tudalen weinyddol `/break-glass/review`).
 - **Gwallau** yn un ffurf (RFC 9457 `application/problem+json`, gyda `error` a `description` wedi'u cadw), felly gall dosrannu logiau a rheolau rhybuddio ddibynnu ar `status` a `type`.

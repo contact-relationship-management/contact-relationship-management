@@ -39,7 +39,7 @@ async fn stored(db: &sea_orm::DatabaseConnection, sql: &str) -> Vec<String> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
     request::<App, _, _>(|request, ctx| async move {
         crypto::install(Some(keyring(&[("k1", 1)])));
@@ -129,7 +129,7 @@ async fn fields_are_encrypted_at_rest_and_plaintext_in_the_api() {
 /// be opened is an error, never ciphertext shown as text (CRM-D24).
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn sqlx_seals_and_opens_the_same_columns() {
     request::<App, _, _>(|request, ctx| async move {
         crypto::install(Some(keyring(&[("k1", 1)])));

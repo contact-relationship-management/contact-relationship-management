@@ -12,7 +12,7 @@ use super::seed_contact;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn audit_chain_detects_tampering() {
     request::<App, _, _>(|request, ctx| async move {
         seed_contact!(&request, "Chain Subject One").await;
@@ -58,7 +58,7 @@ async fn audit_chain_detects_tampering() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn personal_data_reads_are_audited() {
     request::<App, _, _>(|request, _ctx| async move {
         let pid = seed_contact!(&request, "Read Audit Subject").await;
@@ -95,7 +95,7 @@ async fn personal_data_reads_are_audited() {
 /// Deal-list and insight reads are audited (CRM-T47 remainder).
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn deal_and_insight_reads_are_audited() {
     request::<App, _, _>(|request, _ctx| async move {
         assert_eq!(request.get("/api/deals").await.status_code(), 200);

@@ -66,7 +66,7 @@ macro_rules! upload {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_file_is_stored_listed_downloaded_and_deleted() {
     let dir = Dir::new();
     let path = dir.0.to_string_lossy().to_string();
@@ -167,7 +167,7 @@ fn walkdir_first(root: &Path) -> PathBuf {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn attachments_are_off_until_a_directory_is_configured() {
     let _scope = scoped(|s| s.attachment_dir = None);
     request::<App, _, _>(|request, _ctx| async move {
@@ -180,7 +180,7 @@ async fn attachments_are_off_until_a_directory_is_configured() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_scan_hook_refuses_the_infected_and_the_unscannable() {
     let dir = Dir::new();
     let path = dir.0.to_string_lossy().to_string();
@@ -238,7 +238,7 @@ async fn the_scan_hook_refuses_the_infected_and_the_unscannable() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn subject_access_lists_the_files_and_erasure_deletes_them() {
     let dir = Dir::new();
     let path = dir.0.to_string_lossy().to_string();

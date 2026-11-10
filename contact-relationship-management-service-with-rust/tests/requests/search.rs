@@ -24,7 +24,7 @@ fn titles(hits: &[Value]) -> Vec<String> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn search_ignores_accents_forgives_typos_and_covers_every_kind() {
     request::<App, _, _>(|request, ctx| async move {
         let contact: Value = request
@@ -138,7 +138,7 @@ async fn search_ignores_accents_forgives_typos_and_covers_every_kind() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn results_are_paged_best_first() {
     request::<App, _, _>(|request, _ctx| async move {
         for n in 0..5 {
@@ -186,7 +186,7 @@ fn encoded(q: &str) -> String {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn search_finds_part_of_a_name_in_a_script_without_spaces() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut pids = std::collections::BTreeMap::new();

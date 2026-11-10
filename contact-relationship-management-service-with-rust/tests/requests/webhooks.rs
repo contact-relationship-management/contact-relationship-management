@@ -125,7 +125,7 @@ macro_rules! log {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_subscription_is_registered_listed_without_its_secret_and_refused_when_unsafe() {
     request::<App, _, _>(|request, _ctx| async move {
         let made = subscribe!(request, ["contact.*", "deal.won"]).await;
@@ -175,7 +175,7 @@ async fn a_subscription_is_registered_listed_without_its_secret_and_refused_when
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
     request::<App, _, _>(|request, ctx| async move {
         let made = subscribe!(request, ["contact.*"]).await;
@@ -247,7 +247,7 @@ async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_subscription_does_not_hear_what_happened_before_it_existed() {
     request::<App, _, _>(|request, ctx| async move {
         emit(
@@ -279,7 +279,7 @@ async fn a_subscription_does_not_hear_what_happened_before_it_existed() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dead() {
     request::<App, _, _>(|request, ctx| async move {
         let made = subscribe!(request, ["*"]).await;
@@ -347,7 +347,7 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_410_disables_the_subscription_cancels_what_is_queued_and_is_audited() {
     request::<App, _, _>(|request, ctx| async move {
         let made = subscribe!(request, ["*"]).await;
@@ -405,7 +405,7 @@ async fn a_410_disables_the_subscription_cancels_what_is_queued_and_is_audited()
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
     request::<App, _, _>(|request, ctx| async move {
         let made = subscribe!(request, ["*"]).await;
@@ -494,7 +494,7 @@ async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn erasing_a_contact_cancels_its_queued_deliveries() {
     request::<App, _, _>(|request, ctx| async move {
         let made = subscribe!(request, ["*"]).await;
@@ -549,7 +549,7 @@ async fn erasing_a_contact_cancels_its_queued_deliveries() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_removed_subscription_sends_nothing_more_and_keeps_its_log() {
     request::<App, _, _>(|request, ctx| async move {
         let made = subscribe!(request, ["*"]).await;

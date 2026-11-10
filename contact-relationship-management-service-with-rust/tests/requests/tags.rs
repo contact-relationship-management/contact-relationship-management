@@ -31,7 +31,7 @@ macro_rules! set_tags {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn tags_are_made_renamed_and_deleted_and_names_are_tidy() {
     request::<App, _, _>(|request, ctx| async move {
         let made = request
@@ -98,7 +98,7 @@ async fn tags_are_made_renamed_and_deleted_and_names_are_tidy() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_records_tags_are_set_as_a_whole_and_lists_can_be_narrowed() {
     request::<App, _, _>(|request, _ctx| async move {
         let account: Value = request
@@ -195,7 +195,7 @@ async fn a_records_tags_are_set_as_a_whole_and_lists_can_be_narrowed() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_segment_can_select_by_tag_and_consent_still_gates_it() {
     request::<App, _, _>(|request, _ctx| async move {
         let tagged = seed_contact!(&request, "Segment Tagged").await;
@@ -244,7 +244,7 @@ async fn a_segment_can_select_by_tag_and_consent_still_gates_it() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn subject_access_lists_the_tags_and_erasure_removes_them() {
     request::<App, _, _>(|request, ctx| async move {
         let contact = seed_contact!(&request, "Erase My Tags").await;

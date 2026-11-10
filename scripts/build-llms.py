@@ -126,7 +126,7 @@ OPTIONAL = [
 
 COMMANDS = {
     "full check": "scripts/ci-check.sh",
-    "service tests (the --ignored ones need DATABASE_URL)": "cd contact-relationship-management-service-with-rust && cargo test --features keycloak && cargo test --features keycloak -- --ignored --test-threads=1",
+    "service tests (the --ignored ones need DB_URL)": "cd contact-relationship-management-service-with-rust && cargo test --features keycloak && cargo test --features keycloak -- --ignored --test-threads=1",
     "ui tests": "cd contact-relationship-management-ui-with-svelte && pnpm install && pnpm test && pnpm exec playwright test",
     "ui live tests (need a running service on :5160)": "pnpm test:live",
     "guided tour (no service needed)": "cd contact-relationship-management-ui-with-svelte && pnpm dev, then sign in as example@example.com",

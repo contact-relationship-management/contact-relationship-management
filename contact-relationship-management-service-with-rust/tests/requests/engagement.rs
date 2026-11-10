@@ -13,7 +13,7 @@ use super::{a_person, a_user, seed_pipeline};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 #[allow(clippy::too_many_lines)] // one seeded estate, the whole surface
 async fn engagement_round_trip() {
     request::<App, _, _>(|request, _ctx| async move {

@@ -59,14 +59,17 @@ case "${stage}" in
       'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
        CREATE EXTENSION IF NOT EXISTS citext;
        CREATE EXTENSION IF NOT EXISTS unaccent;' || true
+    # axa (0.11) reads the database from `DB_URL`; sqlx's query macros and `cargo sqlx` read
+    # `DATABASE_URL`. Both name the one database this stage created.
+    url="postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}"
     # The query cache a build reads must match the migrated schema and the queries (CRM-D24). A
     # compiler cache such as kache answers without running the macros, so nothing is compared and
     # the check passes: clear it, and treat sqlx's warning about unseen queries as that failure.
     (cd "${SVC}" \
-      && DATABASE_URL="postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}" \
+      && DB_URL="${url}" DATABASE_URL="${url}" \
          cargo run "${FEATURES[@]}" -- db migrate)
     prepared="$(cd "${SVC}" \
-      && DATABASE_URL="postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}" \
+      && DB_URL="${url}" DATABASE_URL="${url}" \
          RUSTC_WRAPPER='' CARGO_BUILD_RUSTC_WRAPPER='' \
          cargo sqlx prepare --check -- "${FEATURES[@]}" 2>&1)" || { echo "${prepared}"; exit 1; }
     if grep -q 'potentially unused queries' <<<"${prepared}"; then
@@ -75,7 +78,7 @@ case "${stage}" in
       exit 1
     fi
     (cd "${SVC}" \
-      && DATABASE_URL="postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}" \
+      && DB_URL="${url}" DATABASE_URL="${url}" \
          cargo test "${FEATURES[@]}" -- --ignored --test-threads=1)
     # The Redis tests skip silently when CRM_REDIS_URL is unset, so run them
     # on their own, against a real Redis. Not set for the run above: the rate

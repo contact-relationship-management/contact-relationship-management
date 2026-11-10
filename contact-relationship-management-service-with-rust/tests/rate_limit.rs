@@ -20,7 +20,7 @@ use sha2::{Digest, Sha256};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_limit_answers_429_with_the_budget_and_spares_probes() {
     // Safe here: the test binary is single-threaded at this point and nothing
     // else reads the variable before the app boots.
@@ -38,7 +38,7 @@ async fn the_limit_answers_429_with_the_budget_and_spares_probes() {
         assert_eq!(refused.headers()["cache-control"], "no-store");
 
         for _ in 0..5 {
-            request.get("/_health").await.assert_status_ok();
+            request.get("/_health/live").await.assert_status_ok();
         }
     })
     .await;
@@ -55,7 +55,7 @@ fn set(name: &str, value: &str) {
 /// not believed either way; with it, the service used to count each request under its own key.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_forged_address_or_token_does_not_buy_a_fresh_limit() {
     set("CRM_RATE_LIMIT_PER_MIN", "3");
     set("TRUSTED_PROXIES", "127.0.0.1");
@@ -154,7 +154,7 @@ fn sign_in_required() -> (String, SignInRequired) {
 /// one address do not share. Browsers arrive through the one BFF, so they must not.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_verified_subject_has_one_budget_of_its_own() {
     set("CRM_RATE_LIMIT_PER_MIN", "2");
     set("CRM_AUTH_FAIL_LIMIT", "0");
@@ -186,7 +186,7 @@ async fn a_verified_subject_has_one_budget_of_its_own() {
 /// sign in properly from the same address.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn made_up_tokens_lock_out_their_address_and_not_the_signed_in() {
     set("CRM_RATE_LIMIT_PER_MIN", "0");
     set("CRM_AUTH_FAIL_LIMIT", "2");
@@ -223,7 +223,7 @@ async fn made_up_tokens_lock_out_their_address_and_not_the_signed_in() {
 /// the `429` is axa's.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_address_lockout_refuses_the_address_after_the_count() {
     set("CRM_RATE_LIMIT_PER_MIN", "0");
     set("CRM_AUTH_FAIL_LIMIT", "0");
@@ -257,7 +257,7 @@ async fn the_address_lockout_refuses_the_address_after_the_count() {
             .await;
         locked.assert_status(StatusCode::TOO_MANY_REQUESTS);
         assert!(locked.headers().contains_key("retry-after"));
-        request.get("/_health").await.assert_status_ok();
+        request.get("/_health/live").await.assert_status_ok();
     })
     .await;
     set(rate_limit::ADDRESS_LOCKOUT_VAR, "0");
@@ -266,7 +266,7 @@ async fn the_address_lockout_refuses_the_address_after_the_count() {
 /// A count that is not a whole number stops the start rather than leaving the lockout off.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_mistyped_address_lockout_stops_the_start() {
     set(rate_limit::ADDRESS_LOCKOUT_VAR, "ten");
     let booted = axa_test::prelude::boot_test::<App>().await;
@@ -284,7 +284,7 @@ async fn a_mistyped_address_lockout_stops_the_start() {
 /// to go with the call or every agent would land in one bucket.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_tool_call_is_counted_against_the_client_that_made_it() {
     set("CRM_RATE_LIMIT_PER_MIN", "1");
     set("CRM_AUTH_FAIL_LIMIT", "0");

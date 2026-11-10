@@ -12,7 +12,7 @@ use super::{a_person, a_user, seed_contact, seed_pipeline};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 #[allow(clippy::too_many_lines)] // one seeded estate, seven views
 async fn insight_views_round_trip() {
     request::<App, _, _>(|request, _ctx| async move {
@@ -203,7 +203,7 @@ async fn insight_views_round_trip() {
 /// the API makes the next read fresh at once (generation bump).
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn insight_cache_hits_then_write_invalidates() {
     request::<App, _, _>(|request, ctx| async move {
         let (pipeline_pid, _stages) = seed_pipeline!(&request).await;
@@ -243,7 +243,7 @@ async fn insight_cache_hits_then_write_invalidates() {
 /// CRM-T207: a view of one record answers `404` for a record that is not there.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_view_of_a_missing_record_is_not_found() {
     request::<App, _, _>(|request, _ctx| async move {
         let missing = uuid::Uuid::new_v4();

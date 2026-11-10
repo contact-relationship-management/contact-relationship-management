@@ -73,7 +73,7 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
 ```bash
 cargo run -- db migrate && cargo run -- task seed && cargo run -- start   # :5150
 cargo test --features keycloak                     # DB-free unit tests
-DATABASE_URL=postgres://… cargo test --features keycloak -- --ignored --test-threads=1
+DB_URL=postgres://… cargo test --features keycloak -- --ignored --test-threads=1
 ```
 
 The request tests (`--ignored`) need PostgreSQL with the `uuid-ossp`,

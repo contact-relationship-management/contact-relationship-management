@@ -9,7 +9,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_organization_s_zone_and_fiscal_year_shape_today_and_the_reports() {
     request::<App, _, _>(|request, ctx| async move {
         // It starts as UTC and January, the values the service used before.
@@ -150,7 +150,7 @@ async fn one_date(db: &sea_orm::DatabaseConnection, sql: &str) -> chrono::NaiveD
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_other_todays_follow_the_organization_or_the_caller() {
     // CRM-T179: the knowledge-base window and its counts, the campaign rate day, a workflow
     // task's due day, and the follow-up list's "overdue".
@@ -305,7 +305,7 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_deal_closes_on_the_organization_s_day() {
     // CRM-T181: a deal closed at 10:30 UTC on 30 June is closed on 1 July in Kiritimati (UTC+14):
     // its close-day rate is 1 July's, and a range of close days finds it on 1 July, not 30 June.

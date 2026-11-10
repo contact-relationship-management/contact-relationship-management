@@ -32,7 +32,7 @@ fn help_describes_this_service() {
 fn production_refuses_a_database_address_that_could_go_in_the_clear() {
     let production = [
         ("APP_ENV", "production"),
-        ("DATABASE_URL", "postgres://crm:crm@db.example.com:5432/crm"),
+        ("DB_URL", "postgres://crm:crm@db.example.com:5432/crm"),
         ("CRM_REDIS_URL", "redis://redis.example.com:6379"),
     ];
     let refused = run(&["check"], &production);
@@ -56,11 +56,11 @@ fn commands_that_destroy_data_are_refused_before_connecting() {
         ["db", "truncate"].as_slice(),
     ] {
         for env in [
-            [("APP_ENV", "development"), ("DATABASE_URL", unreachable)].as_slice(),
+            [("APP_ENV", "development"), ("DB_URL", unreachable)].as_slice(),
             [
                 ("APP_ENV", "production"),
                 ("AXA_DESTROY_DATA", "true"),
-                ("DATABASE_URL", unreachable),
+                ("DB_URL", unreachable),
             ]
             .as_slice(),
         ] {
@@ -83,7 +83,7 @@ fn the_setting_lets_a_destructive_command_through_in_development() {
         &[
             ("APP_ENV", "development"),
             ("AXA_DESTROY_DATA", "true"),
-            ("DATABASE_URL", "postgres://crm:crm@127.0.0.1:1/crm"),
+            ("DB_URL", "postgres://crm:crm@127.0.0.1:1/crm"),
             ("DB_CONNECT_TIMEOUT", "100"),
         ],
     );

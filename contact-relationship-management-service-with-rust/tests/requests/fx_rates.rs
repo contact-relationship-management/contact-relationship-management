@@ -36,7 +36,7 @@ async fn audited(db: &sea_orm::DatabaseConnection, action: &str) -> i64 {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn rates_are_set_replaced_listed_deleted_and_audited() {
     request::<App, _, _>(|request, ctx| async move {
         let made = set_rate!(&request, "USD", "GBP", "0.8", "2026-01-01");
@@ -70,7 +70,7 @@ async fn rates_are_set_replaced_listed_deleted_and_audited() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_rate_that_cannot_be_recorded_is_refused_naming_the_member() {
     request::<App, _, _>(|request, _ctx| async move {
         let good = json!({ "from": "USD", "to": "GBP", "rate": "0.8",
@@ -117,7 +117,7 @@ async fn a_rate_that_cannot_be_recorded_is_refused_naming_the_member() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_report_shows_its_sums_in_one_currency_naming_the_rates_and_what_it_could_not_convert() {
     let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
@@ -244,7 +244,7 @@ async fn a_report_shows_its_sums_in_one_currency_naming_the_rates_and_what_it_co
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_saved_report_keeps_its_conversion() {
     let _plain = super::no_suppression();
     request::<App, _, _>(|request, _ctx| async move {
@@ -274,7 +274,7 @@ async fn a_saved_report_keeps_its_conversion() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_forecast_adds_a_total_in_one_currency_and_names_what_it_left_out() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, _stages) = seed_pipeline!(&request).await;
@@ -324,7 +324,7 @@ async fn the_forecast_adds_a_total_in_one_currency_and_names_what_it_left_out() 
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_accounts_clv_adds_a_total_in_one_currency_and_names_what_it_left_out() {
     request::<App, _, _>(|request, _ctx| async move {
         let account: Value = request
@@ -394,7 +394,7 @@ async fn an_accounts_clv_adds_a_total_in_one_currency_and_names_what_it_left_out
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_accounts_clv_shows_its_margin_and_a_discounted_look_ahead_per_currency() {
     request::<App, _, _>(|request, _ctx| async move {
         let account: Value = request
@@ -478,7 +478,7 @@ async fn an_accounts_clv_shows_its_margin_and_a_discounted_look_ahead_per_curren
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_accounts_clv_can_take_its_retention_from_the_year_before() {
     request::<App, _, _>(|request, ctx| async move {
         let account: Value = request
@@ -553,7 +553,7 @@ async fn an_accounts_clv_can_take_its_retention_from_the_year_before() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_accounts_clv_margin_and_look_ahead_are_converted_once_per_currency_at_the_same_rates() {
     request::<App, _, _>(|request, _ctx| async move {
         let account: Value = request
@@ -629,7 +629,7 @@ async fn an_accounts_clv_margin_and_look_ahead_are_converted_once_per_currency_a
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_accounts_clv_can_convert_each_deal_at_the_rate_of_the_day_it_closed() {
     request::<App, _, _>(|request, ctx| async move {
         let account: Value = request
@@ -738,7 +738,7 @@ async fn an_accounts_clv_can_convert_each_deal_at_the_rate_of_the_day_it_closed(
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_report_can_convert_each_deal_at_the_rate_of_the_day_it_closed() {
     let _plain = super::no_suppression();
     request::<App, _, _>(|request, ctx| async move {

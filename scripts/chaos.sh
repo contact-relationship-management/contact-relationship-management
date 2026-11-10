@@ -29,7 +29,7 @@ REPLICA_PORT=15441
 NET=crm-chaos-net
 PRIMARY="${PG}"                       # the container `sql` talks to; failover changes it
 DIRECT_URL="postgres://loco:loco@localhost:${PG_PORT}/chaos"
-DB_URL="postgres://loco:loco@localhost:${PROXY_PORT}/chaos"   # the service goes through the proxy
+PROXIED_URL="postgres://loco:loco@localhost:${PROXY_PORT}/chaos"   # the service goes through the proxy
 CTL="$(mktemp -d -t crm-chaos-ctl.XXXXXX)"
 PROXY_PID=""
 LOG="$(mktemp -t crm-chaos.XXXXXX)"
@@ -71,7 +71,7 @@ new_contact() { json /api/contacts "{\"person_ref\":\"$(person)\",\"display_name
 
 start_service() {
   # The outbox transport is the one that writes events in the mutation's own transaction.
-  CRM_EVENT_TRANSPORT=outbox DATABASE_URL="${DB_URL}" CRM_REDIS_URL="redis://localhost:${RD_PORT}" \
+  CRM_EVENT_TRANSPORT=outbox DB_URL="${PROXIED_URL}" CRM_REDIS_URL="redis://localhost:${RD_PORT}" \
     nohup bash -c "cd '${SVC_DIR}' && exec '${BIN}' start --all --port ${PORT}" >>"${LOG}" 2>&1 &
   SVC_PID=$!
 }
@@ -80,7 +80,7 @@ wait_for() { # seconds, then a command
   for _ in $(seq 1 "$((n * 2))"); do "$@" >/dev/null 2>&1 && return 0; sleep 0.5; done
   return 1
 }
-up()        { [[ "$(code GET /_ping)" == 200 ]]; }
+up()        { [[ "$(code GET /_health/live)" == 200 ]]; }
 serves()    { [[ "$(code GET /api/contacts)" == 200 ]]; }
 refused()   { local c; c="$(code "$@")"; [[ "${c}" -ge 500 || "${c}" == 000 ]]; }
 
@@ -117,7 +117,7 @@ echo "${PG_PORT}" >"${CTL}/target"; echo forward >"${CTL}/mode"
 python3 "$(dirname "$0")/chaos-proxy.py" "${PROXY_PORT}" "${CTL}" >>"${LOG}" 2>&1 &
 PROXY_PID=$!
 sleep 1
-( cd "${SVC_DIR}" && DATABASE_URL="${DIRECT_URL}" CRM_REDIS_URL="redis://localhost:${RD_PORT}" "${BIN}" db migrate ) >>"${LOG}" 2>&1 \
+( cd "${SVC_DIR}" && DB_URL="${DIRECT_URL}" CRM_REDIS_URL="redis://localhost:${RD_PORT}" "${BIN}" db migrate ) >>"${LOG}" 2>&1 \
   || { echo "migration failed"; tail -20 "${LOG}"; exit 2; }
 start_service
 wait_for 40 up || { echo "service did not start"; tail -20 "${LOG}"; exit 2; }

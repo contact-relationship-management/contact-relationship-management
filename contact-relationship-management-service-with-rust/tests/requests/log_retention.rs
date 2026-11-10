@@ -36,7 +36,7 @@ fn past(report: &Value, table: &str) -> i64 {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn finished_delivery_and_event_rows_go_by_age_and_nothing_still_owed_does() {
     request::<App, _, _>(|request, ctx| async move {
         let db = &ctx.db;

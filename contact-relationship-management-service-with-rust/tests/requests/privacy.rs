@@ -14,7 +14,7 @@ use super::seed_contact;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn subject_rights_round_trip() {
     request::<App, _, _>(|request, _ctx| async move {
         // ── Subject access: gathers the footprint, names exclusions, audited.

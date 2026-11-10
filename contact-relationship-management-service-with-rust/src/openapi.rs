@@ -276,9 +276,9 @@ mod tests {
     /// Routes that exist but are not part of the documented API surface:
     /// The health probes and the documentation endpoints themselves.
     const UNDOCUMENTED: [&str; 5] = [
-        "/_ping",
-        "/_health",
-        "/_readiness",
+        "/_health/live",
+        "/_health/ready",
+        "/_health/startup",
         "/api-docs/openapi.json",
         "/swagger-ui",
     ];

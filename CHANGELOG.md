@@ -9,6 +9,15 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa 0.11.0: new probes and `DB_URL` (CRM-T228, 2026-11-10)
+
+- **Breaking for deployments.** The database setting is `DB_URL`, not `DATABASE_URL`, and the
+  health probes are `/_health/live`, `/_health/ready` and `/_health/startup`; `/_ping`,
+  `/_health` and `/_readiness` are gone (`401` with sign-in on, `404` without). Change both before deploying.
+- API responses are no longer compressed (they are all `no-store`, which axa now never
+  compresses). A database that cannot serve answers `503`, not `500`. Responses carry cross-origin and
+  permissions policies.
+
 ### Changed — insights, dashboards, attribution and the knowledge base on sqlx (CRM-T207, 2026-11-10)
 
 - These read through `sqlx`. Attribution now names a deleted campaign `(deleted campaign)`, as its

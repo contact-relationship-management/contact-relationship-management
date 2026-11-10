@@ -20,7 +20,7 @@ fn pids(items: &Value) -> Vec<String> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 // A deal is edited in place; reordered within its stage with the order stored
 // (the list comes back in that order); a closed deal is refused.
 async fn deals_are_edited_and_reordered() {
@@ -104,7 +104,7 @@ async fn deals_are_edited_and_reordered() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 // Leads and tickets are edited in place and reordered within their status.
 async fn leads_and_tickets_are_edited_and_reordered() {
     request::<App, _, _>(|request, _ctx| async move {
@@ -172,7 +172,7 @@ async fn leads_and_tickets_are_edited_and_reordered() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 // A follow-up moves to another day (audited); an activity without a due day,
 // or a finished one, cannot be rescheduled; the follow-ups view follows.
 async fn a_follow_up_is_rescheduled() {

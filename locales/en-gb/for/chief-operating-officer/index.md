@@ -15,7 +15,7 @@ with base images pinned by digest. The operations runbook is
 - **Fails safe at start.** In production the service refuses to start if
   authentication is off, if the audit chain is unusable, or if required keys and
   `CRM_REDIS_URL` are missing. A misconfigured deploy stops rather than running open.
-- **Health and metrics.** `/_health`, `/_ping`, `/_readiness` are never
+- **Health and metrics.** `/_health/live`, `/_health/ready`, `/_health/startup` are never
   rate-limited, so a lockout cannot restart a healthy pod. Metrics at
   `/metrics.prom`.
 - **Abuse limits** are on in production: 600 requests a minute per client and a

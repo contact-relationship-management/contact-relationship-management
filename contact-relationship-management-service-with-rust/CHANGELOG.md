@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.11.0 (CRM-T228, CRM-D23)
+
+- axa 0.11.0 and `axa-test` 0.2.0. **Breaking:** the database URL is read from `DB_URL`; the
+  probes are `/_health/live`, `/_health/ready` and `/_health/startup`, and the old three are gone
+  (`401` with sign-in on, `404` without). All three probes are public and exempt from the abuse guard (`auth::HEALTH_PATHS`).
+- The MCP endpoint's inner router takes axum's `DefaultBodyLimit`, as `body_limit` now wraps one
+  route.
+- Nothing under `/api/` is compressed any more: axa skips `no-store` responses, and
+  `middleware::no_store` marks every one, errors included.
+- `scripts/ci-check.sh test-db` sets `DB_URL` and `DATABASE_URL`, which sqlx's macros read.
+- From axa: an unavailable database answers `503` with `Retry-After`; responses carry
+  `cross-origin-opener-policy`, `cross-origin-resource-policy` and `permissions-policy`.
+
 ### Changed — insights, dashboards, attribution and kb on sqlx (CRM-T207, CRM-D24)
 
 - `models::rows`: sixteen `query_as!` finders into the entities' `Model`s, soft-deleted rows left

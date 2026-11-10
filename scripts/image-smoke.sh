@@ -59,7 +59,7 @@ contact() { body "${ADMIN}" POST /api/contacts "{\"person_ref\":\"$(person)\",\"
 # config without it, so it stays while those images are smoke-tested.
 # DB_ALLOW_INSECURE: Postgres here is another container on a private test network, without TLS.
 common_env=(
-  -e "DATABASE_URL=postgres://loco:loco@${PG}:5432/crm" -e DB_ALLOW_INSECURE=true -e JWT_SECRET=smoke-test-secret-not-a-secret
+  -e "DB_URL=postgres://loco:loco@${PG}:5432/crm" -e DB_ALLOW_INSECURE=true -e JWT_SECRET=smoke-test-secret-not-a-secret
   -e "CRM_REDIS_URL=redis://${RD}:6379" -e CRM_REQUIRE_AUTH=1 -e "CRM_PASETO_KEYS=${KEYS_JSON}"
   -e CRM_ABAC_POLICY_FILE=/app/config/abac-policy.reference.json -e CRM_EVENT_TRANSPORT=outbox
   -e "CRM_FIELD_KEYS=k1:$(head -c 32 /dev/zero | tr '\0' 'a' | base64)" -e CRM_REQUIRE_FIELD_ENCRYPTION=1
@@ -71,7 +71,7 @@ run_image() { # NAME EXTRA-RUN-ARGS... -- IMAGE-ARGS...
   podman rm -f "${name}" >/dev/null 2>&1
   podman run -d --name "${name}" "${hardened[@]}" "${common_env[@]}" "${extra[@]}" "${IMAGE}" "$@" >/dev/null
 }
-serves() { [[ "$(status '' GET /_ping)" == 200 ]]; }
+serves() { [[ "$(status '' GET /_health/live)" == 200 ]]; }
 
 say "setup"
 podman rm -f "${SVC}" "${WRK}" "${PG}" "${RD}" "${MAIL}" >/dev/null 2>&1; podman network rm "${NET}" >/dev/null 2>&1
@@ -90,7 +90,7 @@ check "the image's own 'db migrate' applies every migration" bash -c "[[ \"\$(po
 
 say "phase 1: production mode, hardened, authentication on"
 run_image "${SVC}" -p "${PORT}:5150" --
-check "the service starts and answers /_ping" wait_for 60 serves
+check "the service starts and answers /_health/live" wait_for 60 serves
 check "it runs as a non-root user" bash -c "[[ \"\$(podman exec ${PG} true; podman inspect ${SVC} --format '{{.Config.User}}')\" == nonroot* ]]"
 check "no token: 401" test "$(status '' GET /api/contacts)" = 401
 check "a forged token: 401" test "$(status 'v4.public.AAAA.bbb' GET /api/contacts)" = 401

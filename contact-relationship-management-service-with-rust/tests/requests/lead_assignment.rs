@@ -51,7 +51,7 @@ fn assigning(name: &str, pool: &[&str], strategy: &str, conditions: Value) -> Va
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn leads_are_given_out_in_turn_and_the_worker_is_told() {
     request::<App, _, _>(|request, ctx| async move {
         let (a, b) = (a_user(), a_user());
@@ -102,7 +102,7 @@ async fn leads_are_given_out_in_turn_and_the_worker_is_told() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_least_loaded_worker_gets_the_next_lead() {
     request::<App, _, _>(|request, _ctx| async move {
         let (a, b) = (a_user(), a_user());
@@ -123,7 +123,7 @@ async fn the_least_loaded_worker_gets_the_next_lead() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn only_leads_that_meet_the_conditions_are_assigned_and_imports_are_not() {
     request::<App, _, _>(|request, _ctx| async move {
         let a = a_user();
@@ -163,7 +163,7 @@ async fn only_leads_that_meet_the_conditions_are_assigned_and_imports_are_not() 
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_lead_workflow_is_refused_where_it_cannot_apply_and_a_dry_run_shows_the_turn() {
     request::<App, _, _>(|request, _ctx| async move {
         let a = a_user();

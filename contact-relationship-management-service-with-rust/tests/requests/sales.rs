@@ -11,7 +11,7 @@ use super::{a_person, seed_pipeline};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 // Lead: scored on capture with breakdown; the state machine refuses a
 // skip to converted; conversion creates the contact + deal in-tx;
 // the deal moves through stages to Won; the forecast follows.
@@ -118,7 +118,7 @@ async fn sales_journey_end_to_end() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 // Unknown-pid reads are honest 404s (family lesson); a stage from a
 // different pipeline is refused.
 async fn contracts_404_and_pipeline_membership() {
@@ -161,7 +161,7 @@ async fn contracts_404_and_pipeline_membership() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 // CRM-R4, CRM-D20: an open deal is stalled after the organization's N days with no stage move
 // and no activity on it; a move or an activity that has happened clears it; a closed deal never is.
 async fn a_deal_with_no_move_or_activity_for_n_days_is_stalled() {

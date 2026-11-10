@@ -43,7 +43,7 @@ macro_rules! define {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn fields_are_declared_and_values_are_checked_against_their_kind() {
     request::<App, _, _>(|request, _ctx| async move {
         define!(&request, "contact", "notes", "text", "business");
@@ -126,7 +126,7 @@ async fn fields_are_declared_and_values_are_checked_against_their_kind() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn every_kind_of_record_can_carry_fields_and_deleting_a_field_deletes_its_values() {
     request::<App, _, _>(|request, ctx| async move {
         let account: Value = request
@@ -182,7 +182,7 @@ async fn every_kind_of_record_can_carry_fields_and_deleting_a_field_deletes_its_
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_choice_in_use_cannot_be_removed() {
     request::<App, _, _>(|request, _ctx| async move {
         let field = define!(
@@ -218,7 +218,7 @@ async fn a_choice_in_use_cannot_be_removed() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn sensitivity_decides_sealing_subject_access_erasure_and_rotation() {
     request::<App, _, _>(|request, ctx| async move {
         let keyring = |id: &str, byte: u8| {
@@ -343,7 +343,7 @@ async fn sensitivity_decides_sealing_subject_access_erasure_and_rotation() {
 /// written, here because a stored value it reads back cannot be opened, neither is kept.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_write_that_fails_after_its_audit_row_keeps_neither() {
     request::<App, _, _>(|request, ctx| async move {
         crypto::install(Some(

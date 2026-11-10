@@ -105,6 +105,7 @@ mod tests {
             hsts: true,
             hsts_max_age: 1,
             csp: Some("default-src 'none'".to_string()),
+            permissions_policy: Some("camera=()".to_string()),
         };
         let router = Router::new().route("/x", get(|| async { "ok" }));
         let request = Request::builder().uri("/x").body(Body::empty()).unwrap();

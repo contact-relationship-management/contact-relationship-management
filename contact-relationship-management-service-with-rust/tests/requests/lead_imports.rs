@@ -32,7 +32,7 @@ fn mapping() -> Value {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_preview_maps_columns_reports_each_row_and_gives_duplicate_advice_only() {
     request::<App, _, _>(|request, ctx| async move {
         // Someone already known: a contact and an earlier lead.
@@ -115,7 +115,7 @@ async fn a_preview_maps_columns_reports_each_row_and_gives_duplicate_advice_only
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
     request::<App, _, _>(|request, ctx| async move {
         let today = contact_relationship_management::clock::now().date_naive().to_string();
@@ -230,7 +230,7 @@ async fn a_commit_saves_valid_rows_without_consent_and_can_be_undone() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn likely_duplicates_can_be_left_out_and_a_long_file_goes_in_batches() {
     request::<App, _, _>(|request, ctx| async move {
         let today = contact_relationship_management::clock::now()

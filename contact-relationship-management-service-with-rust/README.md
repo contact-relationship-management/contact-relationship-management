@@ -29,14 +29,14 @@ beyond a demo.
 ```bash
 # PostgreSQL and Redis in Podman (disposable; the database is in memory).
 podman compose -f compose.test.yaml up -d
-export DATABASE_URL=postgres://loco:loco@localhost:5432/contact_relationship_management_development
+export DB_URL=postgres://loco:loco@localhost:5432/contact_relationship_management_development
 cargo run -- db create     # the container creates only contact_relationship_management_test
 cargo run -- db migrate && cargo run -- task seed && cargo run -- start
 curl localhost:5150/api/forecast | jq .
 ```
 
 The server listens on port 5150 (the default in `src/app.rs`). Without
-`DATABASE_URL`, development uses the database named above. `cargo test`
+`DB_URL`, development uses the database named above. `cargo test`
 runs the DB-free tests; `cargo test -- --ignored` runs the request tests
 against `contact_relationship_management_test` (`config/test.yaml`),
 which the compose file creates.
@@ -85,8 +85,8 @@ Every route is in the OpenAPI document at `/api-docs/openapi.json`
   [family bridges tutorial](../docs/tutorial-family-bridges.md).
 - **Operations and compliance:** workflows, notifications, outbound
   webhook subscriptions, audits, `/api/events/recent`, privacy (subject
-  access, erasure, retention sweep), break-glass, `/mcp`, `/metrics.prom`, `/_health`,
-  `/_ping`.
+  access, erasure, retention sweep), break-glass, `/mcp`, `/metrics.prom`, and the
+  probes `/_health/live`, `/_health/ready` and `/_health/startup`.
 
 A CRM user (owner, assignee, quota holder, team member) is named
 `person:<sign-in subject>` (CRM-D18). `worker:<id>` is still accepted on

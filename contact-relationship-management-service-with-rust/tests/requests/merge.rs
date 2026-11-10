@@ -45,7 +45,7 @@ async fn merge(
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_merge_moves_everything_and_is_recorded() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -172,7 +172,7 @@ async fn a_merge_moves_everything_and_is_recorded() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn consent_never_widens() {
     request::<App, _, _>(|request, _ctx| async move {
         // (survivor, merged, expected). `None` leaves a new contact at "never".
@@ -223,7 +223,7 @@ async fn consent_never_widens() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn refusals() {
     request::<App, _, _>(|request, _ctx| async move {
         let a = contact(&request, "Ana", None).await;
@@ -264,7 +264,7 @@ async fn refusals() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_failure_part_way_leaves_both_contacts_unchanged() {
     request::<App, _, _>(|request, ctx| async move {
         let survivor = contact(&request, "Ana Ruiz", None).await;

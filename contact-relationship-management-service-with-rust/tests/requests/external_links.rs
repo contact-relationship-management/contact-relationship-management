@@ -44,7 +44,7 @@ async fn links(request: &axa_test::TestServer, plural: &str, pid: &str) -> Vec<V
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn links_can_be_added_listed_and_removed_on_every_kind_of_record() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -134,7 +134,7 @@ async fn links_can_be_added_listed_and_removed_on_every_kind_of_record() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn unsafe_and_misplaced_addresses_are_refused() {
     request::<App, _, _>(|request, _ctx| async move {
         let pid = contact(&request, "Ana").await;
@@ -186,7 +186,7 @@ async fn unsafe_and_misplaced_addresses_are_refused() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn links_follow_a_merge_and_come_back_with_an_unmerge() {
     request::<App, _, _>(|request, _ctx| async move {
         let survivor = contact(&request, "Ana Ruiz").await;
@@ -238,7 +238,7 @@ async fn links_follow_a_merge_and_come_back_with_an_unmerge() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn subject_access_lists_links_and_erasure_deletes_them() {
     request::<App, _, _>(|request, ctx| async move {
         let pid = seed_contact!(&request, "Erin").await;

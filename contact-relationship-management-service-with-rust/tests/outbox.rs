@@ -12,7 +12,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_event_is_an_outbox_row() {
     settings::update(|s| s.event_transport = EventTransport::Outbox);
     request::<App, _, _>(|request, _ctx| async move {
@@ -37,7 +37,7 @@ async fn the_event_is_an_outbox_row() {
 /// writes (CRM-D24).
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_event_shares_a_sqlx_transaction() {
     settings::update(|s| s.event_transport = EventTransport::Outbox);
     request::<App, _, _>(|request, ctx| async move {

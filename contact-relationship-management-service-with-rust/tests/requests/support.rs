@@ -11,7 +11,7 @@ use super::{a_user, seed_contact};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 // Deadlines derive from the priority policy; the assignee's outbound
 // email stamps first response; the sweep flags a breached resolution
 // exactly once; resolve → close walks the machine.
@@ -121,7 +121,7 @@ async fn ticket_sla_journey() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 // Knowledge base: draft → published; published edits bump the
 // version; archived is read-only; search filters by keyword.
 async fn knowledge_base_versions() {
@@ -177,7 +177,7 @@ async fn knowledge_base_versions() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_ticket_is_offered_the_published_articles_that_share_its_words() {
     request::<App, _, _>(|request, _ctx| async move {
         let article =

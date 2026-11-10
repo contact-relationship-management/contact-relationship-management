@@ -440,9 +440,11 @@ impl App {
         // `merge` keeps the fallback of the router it is given, so this order matters:
         // the other way round, a request for an unknown path skips every layer above.
         // That inner router is called directly, so it is given the limit `axa` sets from outside.
-        let inner = api
-            .clone()
-            .layer(axa::middleware::body_limit(ctx.config.http.body_limit));
+        // axa 0.11's `body_limit` raises one route's limit; this is the extractors' limit it set
+        // in 0.10, on the whole inner router.
+        let inner = api.clone().layer(axum::extract::DefaultBodyLimit::max(
+            ctx.config.http.body_limit,
+        ));
         let router = crate::mcp::router(inner, ctx.db.clone()).merge(api);
         Ok(if ctx.environment.is_production_like() {
             middleware::secure_headers::install(router)
@@ -585,7 +587,7 @@ mod tests {
     #[test]
     fn production_does_not_migrate_by_itself() {
         let lookup = |name: &str| {
-            (name == "DATABASE_URL").then(|| "postgres://db/crm?sslmode=require".to_string())
+            (name == "DB_URL").then(|| "postgres://db/crm?sslmode=require".to_string())
         };
         let config =
             ServiceConfig::from_lookup(&Environment::Production, &super::defaults(), lookup)

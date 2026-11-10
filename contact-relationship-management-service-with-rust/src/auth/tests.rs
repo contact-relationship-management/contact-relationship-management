@@ -268,8 +268,9 @@ fn enforce_on_allows_public_paths() {
     let verifier = Verifier::from_paseto_keys_value(&keys, ISSUER, AUDIENCE).unwrap();
     let policy = policy();
     for path in [
-        "/_health",
-        "/_ping",
+        "/_health/live",
+        "/_health/ready",
+        "/_health/startup",
         "/api-docs/openapi.json",
         "/swagger-ui",
         "/swagger-ui/index.html",

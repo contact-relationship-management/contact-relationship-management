@@ -16,7 +16,7 @@ fn office(name: &str) -> Value {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn calendars_are_made_checked_and_not_deleted_while_used() {
     request::<App, _, _>(|request, _ctx| async move {
         let made = request
@@ -102,7 +102,7 @@ async fn calendars_are_made_checked_and_not_deleted_while_used() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_ticket_under_a_calendar_has_working_time_deadlines() {
     request::<App, _, _>(|request, ctx| async move {
         let calendar: Value = request

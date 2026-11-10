@@ -24,7 +24,7 @@ fn boot_with(limit: &str, compression: &str) {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_refusal_from_the_abuse_guard_carries_the_standard_headers() {
     boot_with("1", "false");
     request::<App, _, _>(|request, _ctx| async move {
@@ -49,7 +49,7 @@ async fn a_refusal_from_the_abuse_guard_carries_the_standard_headers() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_preflight_is_answered_even_when_the_client_is_over_its_limit() {
     boot_with("1", "false");
     request::<App, _, _>(|request, _ctx| async move {
@@ -88,12 +88,13 @@ async fn a_preflight_is_answered_even_when_the_client_is_over_its_limit() {
 
 /// A real error from a controller, long enough to compress. Outside compression `problem_mw` read
 /// gzip as if it were the error: the client lost the error's code and text, and got the rewritten
-/// document in the clear under `Content-Encoding: gzip`, which it cannot read. The test has no
-/// decoder, so it asks twice: the document in the clear when not asking for gzip, and bytes that
-/// are really gzip, under the problem media type, when asking.
+/// document in the clear under `Content-Encoding: gzip`, which it cannot read. Since axa 0.11
+/// compression skips a `no-store` response (against BREACH), and every error is `no-store`
+/// (CRM-T217), so a client asking for gzip gets the document in the clear, readable, under no
+/// `content-encoding` (CRM-T228). It asks twice, without gzip and with it.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_compressed_error_is_a_problem_document_compressed_once() {
     boot_with("0", "true");
     request::<App, _, _>(|request, _ctx| async move {
@@ -111,8 +112,9 @@ async fn a_compressed_error_is_a_problem_document_compressed_once() {
         let gzip = refused("gzip").await;
         gzip.assert_status(StatusCode::NOT_FOUND);
         assert_eq!(gzip.headers()["content-type"], PROBLEM_JSON);
-        assert_eq!(gzip.headers()["content-encoding"], "gzip");
-        assert_eq!(gzip.as_bytes()[..2], [0x1f, 0x8b], "not gzip");
+        assert_eq!(gzip.headers()["cache-control"], "no-store");
+        assert!(gzip.maybe_header("content-encoding").is_none());
+        assert_eq!(gzip.json::<serde_json::Value>(), document);
     })
     .await;
 }

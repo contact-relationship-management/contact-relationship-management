@@ -21,7 +21,7 @@ fn next_of(link: Option<&axum::http::HeaderValue>) -> Option<String> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn following_next_visits_every_row_once() {
     request::<App, _, _>(|request, _ctx| async move {
         for i in 0..5 {
@@ -61,7 +61,7 @@ async fn following_next_visits_every_row_once() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn bad_paging_input_is_refused() {
     request::<App, _, _>(|request, _ctx| async move {
         for url in [
@@ -85,7 +85,7 @@ async fn bad_paging_input_is_refused() {
 /// out, with any page size, and nowhere else.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_cursor_works_only_for_the_list_and_filters_it_came_from() {
     request::<App, _, _>(|request, _ctx| async move {
         for i in 0..3 {
@@ -114,7 +114,7 @@ async fn a_cursor_works_only_for_the_list_and_filters_it_came_from() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn article_search_is_not_cut_by_the_page() {
     request::<App, _, _>(|request, _ctx| async move {
         for title in ["Alpha one", "Alpha two", "Needle in the stack"] {
@@ -147,7 +147,7 @@ async fn article_search_is_not_cut_by_the_page() {
 /// The activity dashboard counts every activity, not a capped sample.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn activity_dashboard_counts_past_the_old_cap() {
     request::<App, _, _>(|request, ctx| async move {
         ctx.db

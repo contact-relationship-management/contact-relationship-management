@@ -8,7 +8,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_committed_write_emits_an_event_and_a_refused_one_does_not() {
     request::<App, _, _>(|request, _ctx| async move {
         let name = format!("Event Lead {}", uuid::Uuid::new_v4());

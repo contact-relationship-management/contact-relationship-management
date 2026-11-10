@@ -84,6 +84,7 @@ use std::sync::OnceLock;
 
 mod extract;
 mod policy;
+pub(crate) use policy::HEALTH_PATHS;
 mod records;
 mod verifier;
 

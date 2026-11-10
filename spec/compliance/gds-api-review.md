@@ -22,7 +22,7 @@ Scope: the REST API in `contact-relationship-management-service-with-rust`
 | Caching | Partly met | ETag and `If-None-Match` on dashboards and some insights | Not applied to ordinary list and detail reads |
 | Data formats | Met (by design) | Money in minor units with ISO 4217; JSON throughout | Date and time conventions are not stated in the OpenAPI document |
 | Security | Met as far as tested | See `control-mapping.md`; CORS closed, secure headers, audit chain | Independent testing is CRM-T42 |
-| Operability | Met | `/_health`, `/_ping`, `/_readiness`, `/metrics.prom` | none |
+| Operability | Met | `/_health/live`, `/_health/ready`, `/_health/startup`, `/metrics.prom` | none |
 
 ## Changes made with this review
 

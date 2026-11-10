@@ -29,5 +29,5 @@ ENV APP_ENV=production \
 USER nonroot:nonroot
 EXPOSE 5150
 # The binary refuses to start in production without authentication (CRM-T30).
-# Secrets (DATABASE_URL, token keys) come from the orchestrator, never the image.
+# Secrets (DB_URL, token keys) come from the orchestrator, never the image.
 ENTRYPOINT ["/app/crm-service", "start"]

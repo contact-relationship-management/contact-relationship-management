@@ -36,7 +36,7 @@ fn inventory() -> BTreeMap<String, String> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn every_table_is_in_the_inventory_and_the_swept_ones_are_those_the_sweep_deletes_from() {
     request::<App, _, _>(|_request, ctx| async move {
         let listed = inventory();

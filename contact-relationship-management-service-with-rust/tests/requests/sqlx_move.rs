@@ -37,7 +37,7 @@ async fn count(ctx: &AppContext, sql: &'static str, pid: Uuid) -> i64 {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_chain_written_by_both_libraries_verifies() {
     request::<App, _, _>(|_request, ctx| async move {
         let pid = Uuid::new_v4();
@@ -79,10 +79,10 @@ async fn a_chain_written_by_both_libraries_verifies() {
 /// connection. A writer that skips the lock forks the chain here, and only here.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn both_libraries_can_write_the_chain_at_once() {
     request::<App, _, _>(|_request, ctx| async move {
-        let url = std::env::var("DATABASE_URL").unwrap();
+        let url = std::env::var("DB_URL").unwrap();
         let racing = sqlx::postgres::PgPoolOptions::new()
             .max_connections(8)
             .connect(&url)
@@ -137,7 +137,7 @@ async fn both_libraries_can_write_the_chain_at_once() {
 /// `DateTime<Utc>` and the entities as `DateTime<FixedOffset>`. Both write `Z` at offset zero.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_row_reads_the_same_through_both_libraries() {
     request::<App, _, _>(|request, ctx| async move {
         let mut txn = db::pool(&ctx).begin().await.unwrap();
@@ -173,7 +173,7 @@ async fn a_row_reads_the_same_through_both_libraries() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_seaorm_helper_commits_and_rolls_back_with_the_sqlx_transaction() {
     request::<App, _, _>(|_request, ctx| async move {
         const AUDITED: &str = "SELECT count(*) FROM audit_logs WHERE entity_pid = $1";
@@ -219,7 +219,7 @@ fn note(subject: Uuid) -> activities::ActiveModel {
 /// partial update, row lock, typed binds and `NULL`s, raw statements, and the real helpers.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_bridge_carries_what_seaorm_code_does() {
     request::<App, _, _>(|_request, ctx| async move {
         let subject = Uuid::new_v4();
@@ -328,7 +328,7 @@ async fn the_bridge_carries_what_seaorm_code_does() {
 /// a soft-deleted row left out, and the same filter.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_sqlx_finders_read_what_find_live_reads() {
     use base64::Engine;
     use contact_relationship_management::crypto::{self, Keyring};

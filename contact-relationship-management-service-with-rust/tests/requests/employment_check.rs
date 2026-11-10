@@ -123,7 +123,7 @@ fn signed(id: &str, kind: &str, person_ref: &str, occurred_at: &str) -> (String,
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_nothing() {
     let _restore = Restore;
     settings::update(|s| s.wpm_webhook_secret = Some(SECRET.to_string()));

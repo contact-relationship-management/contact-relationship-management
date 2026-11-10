@@ -53,7 +53,7 @@ fn pids(body: &Value) -> Vec<&str> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn finds_likely_duplicates_best_first_with_reasons() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -150,7 +150,7 @@ async fn finds_likely_duplicates_best_first_with_reasons() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_shared_email_address_rescues_a_changed_surname() {
     request::<App, _, _>(|request, _ctx| async move {
         let (a, b, c) = (a_person(), a_person(), a_person());
@@ -205,7 +205,7 @@ async fn a_shared_email_address_rescues_a_changed_surname() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn unknown_contact_is_not_found_and_reads_are_audited() {
     request::<App, _, _>(|request, _ctx| async move {
         request

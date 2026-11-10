@@ -72,7 +72,7 @@ macro_rules! inbox {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_recipient_only() {
     request::<App, _, _>(|request, ctx| async move {
         let (me, other) = (a_user(), a_user());
@@ -176,7 +176,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_gone_record_is_suppressed_an_sla_breach_notifies_the_assignee_and_erasure_clears_them() {
     request::<App, _, _>(|request, ctx| async move {
         let me = a_user();

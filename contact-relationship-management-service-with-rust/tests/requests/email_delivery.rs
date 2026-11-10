@@ -85,7 +85,7 @@ macro_rules! scheduled_campaign {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_real_send_mails_each_consented_contact_once_and_records_it() {
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
@@ -160,7 +160,7 @@ async fn a_real_send_mails_each_consented_contact_once_and_records_it() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_failed_send_is_retried_and_nobody_is_mailed_twice() {
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
@@ -205,7 +205,7 @@ async fn a_failed_send_is_retried_and_nobody_is_mailed_twice() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn consent_withdrawn_between_runs_is_honoured() {
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
@@ -247,7 +247,7 @@ async fn consent_withdrawn_between_runs_is_honoured() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_contact_with_no_address_is_recorded_not_mailed() {
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
@@ -271,7 +271,7 @@ async fn a_contact_with_no_address_is_recorded_not_mailed() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_real_sender_needs_a_body_but_the_simulated_one_does_not() {
     request::<App, _, _>(|request, _ctx| async move {
         let ada = seed_contact!(&request, "Ada Lovelace").await;
@@ -301,7 +301,7 @@ async fn a_real_sender_needs_a_body_but_the_simulated_one_does_not() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn two_runs_claim_different_rows() {
     request::<App, _, _>(|request, ctx| async move {
         let campaign = Uuid::new_v4();
@@ -345,7 +345,7 @@ fn link_path(url: &str) -> String {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_unsubscribe_link_withdraws_consent_and_stops_the_next_send() {
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
@@ -448,7 +448,7 @@ macro_rules! provider_event {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn provider_events_count_deliveries_and_suppress_bounces_and_complaints() {
     settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));
     request::<App, _, _>(|request, _ctx| async move {
@@ -523,7 +523,7 @@ async fn provider_events_count_deliveries_and_suppress_bounces_and_complaints() 
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn brevo_and_mailjet_callbacks_are_authenticated_and_applied() {
     use base64::Engine as _;
     settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));
@@ -615,7 +615,7 @@ async fn brevo_and_mailjet_callbacks_are_authenticated_and_applied() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn cloud_and_relay_callbacks_are_authenticated_and_matched() {
     use hmac::{Hmac, KeyInit, Mac};
     use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
@@ -770,7 +770,7 @@ async fn cloud_and_relay_callbacks_are_authenticated_and_matched() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_suppression_can_be_read_and_lifted_and_the_contact_is_mailed_again() {
     settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));
     request::<App, _, _>(|request, _ctx| async move {
@@ -819,7 +819,7 @@ async fn a_suppression_can_be_read_and_lifted_and_the_contact_is_mailed_again() 
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn one_run_call_walks_a_long_audience_in_batches_and_a_stall_answers_202() {
     settings::update(|s| s.mail_batch = 1);
     request::<App, _, _>(|request, _ctx| async move {
@@ -857,7 +857,7 @@ async fn one_run_call_walks_a_long_audience_in_batches_and_a_stall_answers_202()
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn nurture_steps_are_really_mailed_once_and_a_failure_is_held_for_the_next_sweep() {
     request::<App, _, _>(|request, _ctx| async move {
         let (recorder, _restore) = recording();
@@ -976,7 +976,7 @@ async fn a_worker_only_process_sets_up_the_real_sender() {
         // put the process back to how a worker-only one starts.
         mail::set(Sender::Simulated);
         unsubscribe::install(None);
-        let uri = std::env::var("DATABASE_URL").unwrap_or_else(|_| ctx.config.database.uri.clone());
+        let uri = std::env::var("DB_URL").unwrap_or_else(|_| ctx.config.database.uri.clone());
         let mut queue = Queue::connect(&uri, QueueOptions::default()).await.unwrap();
         // The worker hook, not `after_routes`.
         App::connect_workers(&ctx, &mut queue).unwrap();
@@ -996,7 +996,7 @@ async fn a_worker_only_process_sets_up_the_real_sender() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn opens_and_clicks_a_provider_reports_become_attribution_touches_while_the_contact_consents()
 {
     settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));

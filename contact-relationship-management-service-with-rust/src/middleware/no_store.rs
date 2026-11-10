@@ -38,7 +38,7 @@ mod tests {
                     )
                 }),
             )
-            .route("/_health", get(|| async { "ok" }))
+            .route("/_health/live", get(|| async { "ok" }))
             .layer(axum::middleware::from_fn(no_store_mw));
         let response = app
             .oneshot(Request::get(path).body(Body::empty()).unwrap())
@@ -68,6 +68,6 @@ mod tests {
 
     #[tokio::test]
     async fn other_paths_are_untouched() {
-        assert_eq!(cache_control("/_health", None).await, None);
+        assert_eq!(cache_control("/_health/live", None).await, None);
     }
 }

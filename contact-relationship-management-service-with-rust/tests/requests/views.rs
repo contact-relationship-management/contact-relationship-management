@@ -7,7 +7,7 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_view_is_saved_listed_replaced_and_deleted() {
     request::<App, _, _>(|request, ctx| async move {
         let body = json!({

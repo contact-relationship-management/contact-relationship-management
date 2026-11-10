@@ -21,7 +21,7 @@ fn find<'a>(rows: &'a Value, pid: &str) -> Option<&'a Value> {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 #[allow(clippy::too_many_lines)] // one estate, five views
 async fn the_activity_views_report_the_touches_they_were_given() {
     request::<App, _, _>(|request, _ctx| async move {
@@ -202,7 +202,7 @@ async fn the_activity_views_report_the_touches_they_were_given() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_consent_views_count_the_events_they_were_given() {
     request::<App, _, _>(|request, _ctx| async move {
         let before: Value = request.get("/api/insights/dpo?days=30").await.json();
@@ -268,7 +268,7 @@ async fn the_consent_views_count_the_events_they_were_given() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_contact_page_cuts_its_lists_at_200_and_says_so() {
     request::<App, _, _>(|request, _ctx| async move {
         let made: Value = request

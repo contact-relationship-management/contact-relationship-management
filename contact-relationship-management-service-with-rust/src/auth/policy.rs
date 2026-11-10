@@ -91,13 +91,17 @@ pub fn parse_bool(value: &str) -> bool {
     crate::settings::parse_bool(value)
 }
 
-/// Paths that stay public even when enforcement is on: health/ping, the
+/// The three probes `axa` serves (0.11): liveness, readiness and startup. An orchestrator calls
+/// them with no token, and they must never be throttled or locked out.
+pub(crate) const HEALTH_PATHS: [&str; 3] =
+    [axa::health::LIVE, axa::health::READY, axa::health::STARTUP];
+
+/// Paths that stay public even when enforcement is on: the three health probes, the
 /// `OpenAPI` doc + Swagger UI, and the Prometheus metrics endpoint (so a
 /// scraper needs no bearer token). Everything else requires a valid bearer
 /// token.
 pub(super) fn is_public_path(path: &str) -> bool {
-    path == "/_health"
-        || path == "/_ping"
+    HEALTH_PATHS.contains(&path)
         || path.starts_with("/unsubscribe/")
         || path.starts_with("/confirm/")
         || path.starts_with("/preferences/")

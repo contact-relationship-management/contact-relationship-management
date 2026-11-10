@@ -94,7 +94,7 @@ async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn without_a_secret_the_route_is_not_there() {
     let _restore = Restore;
     settings::install(Settings::default());
@@ -107,7 +107,7 @@ async fn without_a_secret_the_route_is_not_there() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_bad_missing_or_stale_signature_is_refused_and_changes_nothing() {
     let _restore = Restore;
     settings::update(|s| s.wpm_webhook_secret = Some(SECRET.to_string()));
@@ -179,7 +179,7 @@ async fn a_bad_missing_or_stale_signature_is_refused_and_changes_nothing() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_hire_pauses_marketing_once_and_a_leave_restores_it_under_the_old_consent() {
     let _restore = Restore;
     settings::update(|s| s.wpm_webhook_secret = Some(SECRET.to_string()));
@@ -391,7 +391,7 @@ async fn a_hire_pauses_marketing_once_and_a_leave_restores_it_under_the_old_cons
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn erasing_a_contact_deletes_what_wpm_said_of_them() {
     let _restore = Restore;
     settings::update(|s| s.wpm_webhook_secret = Some(SECRET.to_string()));
@@ -450,7 +450,7 @@ async fn erasing_a_contact_deletes_what_wpm_said_of_them() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_hire_older_than_the_leave_after_it_changes_nothing() {
     let _restore = Restore;
     settings::update(|s| s.wpm_webhook_secret = Some(SECRET.to_string()));

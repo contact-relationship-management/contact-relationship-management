@@ -18,7 +18,7 @@ include = ["src/**/*", ".sqlx/**/*", ".cargo/config.toml", "sqlx.toml", "README.
 
 [workspace.dependencies]
 # The shared plumbing. `sea-orm` until the service moves to sqlx; `queue` is the Postgres job queue.
-axa = { version = "0.10.0", features = ["sea-orm", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
+axa = { version = "0.11.0", features = ["sea-orm", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
 
 [dependencies]
 axa = { workspace = true }
@@ -121,7 +121,7 @@ required-features = []
 # A local OIDC provider so tests/keycloak_guard.rs can push a Keycloak access
 # token through the real guard without a Keycloak container. Tests only.
 authentication-verifier = { version = "0.9.1", default-features = false, features = ["test-idp"] }
-axa-test = { version = "0.1.0" }
+axa-test = { version = "0.2.0" }
 # `TestServer` for the unit tests that serve a bare router (src/controllers).
 axum-test = { version = "21.1.0" }
 # Drive a single middleware with `oneshot` in its unit tests.

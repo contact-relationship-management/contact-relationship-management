@@ -51,7 +51,7 @@ fn when_created(name: &str, conditions: Value, actions: Value) -> Value {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_task_is_made_when_conditions_are_met_and_the_run_says_why() {
     request::<App, _, _>(|request, ctx| async move {
         let wf = workflow!(
@@ -114,7 +114,7 @@ async fn a_task_is_made_when_conditions_are_met_and_the_run_says_why() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn notify_set_field_and_webhook_actions_each_do_their_one_thing() {
     request::<App, _, _>(|request, ctx| async move {
         let who = a_user();
@@ -171,7 +171,7 @@ async fn notify_set_field_and_webhook_actions_each_do_their_one_thing() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn enrolment_rechecks_consent_inside_the_action() {
     request::<App, _, _>(|request, ctx| async move {
         let sequence: Value = request
@@ -252,7 +252,7 @@ async fn enrolment_rechecks_consent_inside_the_action() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_loop_of_workflows_is_cut_and_a_busy_one_is_held_back() {
     request::<App, _, _>(|request, _ctx| async move {
         // Two workflows that undo each other: A sets the title to A, B sets it to B.
@@ -310,7 +310,7 @@ async fn a_loop_of_workflows_is_cut_and_a_busy_one_is_held_back() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_dry_run_changes_and_logs_nothing() {
     request::<App, _, _>(|request, ctx| async move {
         let sequence: Value = request
@@ -366,7 +366,7 @@ async fn a_dry_run_changes_and_logs_nothing() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_schedule_runs_once_per_contact_per_interval() {
     request::<App, _, _>(|request, ctx| async move {
         contact!(&request, json!({ "display_name": "Sched One" }));
@@ -394,7 +394,7 @@ async fn a_schedule_runs_once_per_contact_per_interval() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_deal_stage_change_starts_a_workflow_for_the_primary_contact() {
     request::<App, _, _>(|request, _ctx| async move {
         let (pipeline, stages) = seed_pipeline!(&request).await;
@@ -428,7 +428,7 @@ async fn a_deal_stage_change_starts_a_workflow_for_the_primary_contact() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_workflow_outside_the_closed_set_is_refused() {
     request::<App, _, _>(|request, _ctx| async move {
         let bad = |body: Value| {
@@ -459,7 +459,7 @@ async fn a_workflow_outside_the_closed_set_is_refused() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_failing_action_undoes_the_run_and_spares_the_write_that_triggered_it() {
     request::<App, _, _>(|request, ctx| async move {
         let wf = workflow!(

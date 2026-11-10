@@ -15,7 +15,7 @@ use schema_check::{check, to_json_schema};
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn responses_match_the_documented_schemas() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -129,7 +129,7 @@ async fn responses_match_the_documented_schemas() {
 /// response schemas, with rows in every table so no section is empty.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 #[allow(clippy::too_many_lines)] // one seeded walk over every documented read
 async fn read_responses_match_the_documented_schemas() {
     request::<App, _, _>(|request, _ctx| async move {
@@ -350,7 +350,7 @@ async fn read_responses_match_the_documented_schemas() {
 /// `error` and `description` members.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn errors_are_problem_documents() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();

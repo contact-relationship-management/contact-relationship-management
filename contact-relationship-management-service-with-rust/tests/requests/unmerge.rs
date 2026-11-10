@@ -63,7 +63,7 @@ async fn note(request: &axa_test::TestServer, pid: &str, summary: &str) {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_unmerge_gives_back_what_the_merge_took() {
     request::<App, _, _>(|request, _ctx| async move {
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
@@ -181,7 +181,7 @@ async fn an_unmerge_gives_back_what_the_merge_took() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_unmerge_never_widens_consent() {
     request::<App, _, _>(|request, _ctx| async move {
         let survivor = contact(&request, "Ana", None).await;
@@ -223,7 +223,7 @@ async fn an_unmerge_never_widens_consent() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn what_cannot_be_undone_is_refused() {
     request::<App, _, _>(|request, ctx| async move {
         let a = contact(&request, "Ana", None).await;
@@ -268,7 +268,7 @@ async fn what_cannot_be_undone_is_refused() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn erasing_the_survivor_scrubs_the_merged_duplicate_and_the_ledger() {
     request::<App, _, _>(|request, ctx| async move {
         let survivor = seed_contact!(&request, "Sam Survivor").await;

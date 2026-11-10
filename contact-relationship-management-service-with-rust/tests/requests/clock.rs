@@ -27,7 +27,7 @@ async fn host_gap(db: &sea_orm::DatabaseConnection) -> chrono::TimeDelta {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_service_and_the_database_stamp_a_ticket_on_one_clock() {
     request::<App, _, _>(|request, ctx| async move {
         let gap = host_gap(&ctx.db).await;

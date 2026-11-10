@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.." || exit 1
 SVC="$(pwd)/contact-relationship-management-service-with-rust"
 BIN=$SVC/target/debug/contact-relationship-management
 PG=crm-mig-pg RD=crm-mig-redis PGP=15440 RDP=16380 PORT=5181
-export DATABASE_URL="postgres://loco:loco@localhost:$PGP/legacy" CRM_REDIS_URL="redis://localhost:$RDP"
+export DB_URL="postgres://loco:loco@localhost:$PGP/legacy" CRM_REDIS_URL="redis://localhost:$RDP"
 export AXA_DESTROY_DATA=true # this throwaway database is rolled back below
 API=http://localhost:$PORT
 sql() { podman exec "$PG" psql -U loco -d legacy -Atc "$1"; }
@@ -24,7 +24,7 @@ for _ in $(seq 40); do podman exec $PG pg_isready -U loco -d legacy >/dev/null 2
 echo "== 1. build a populated database"
 run db migrate | tail -1
 (cd "$SVC" && exec "$BIN" start --all --port $PORT >/tmp/mig-svc.log 2>&1) & SP=$!
-for _ in $(seq 60); do curl -sf $API/_ping >/dev/null && break; sleep 1; done
+for _ in $(seq 60); do curl -sf $API/_health/live >/dev/null && break; sleep 1; done
 post() { curl -s -X POST -H 'content-type: application/json' -d "$2" "$API$1"; }
 pidof() { sed -n 's/.*"pid":"\([^"]*\)".*/\1/p' | head -1; }
 PIPE=$(post /api/pipelines '{"name":"P","stages":[{"name":"Q","probability_percent":10},{"name":"Won","probability_percent":100,"is_won":true}]}' | pidof)
@@ -68,7 +68,7 @@ run db migrate | tail -1 | sed 's/^/  second run: /'
 
 echo "== 4. merge on the migrated database"
 (cd "$SVC" && exec "$BIN" start --all --port $PORT >/tmp/mig-svc.log 2>&1) & SP=$!
-for _ in $(seq 60); do curl -sf $API/_ping >/dev/null && break; sleep 1; done
+for _ in $(seq 60); do curl -sf $API/_health/live >/dev/null && break; sleep 1; done
 PIDS=(); while read -r l; do PIDS+=("$l"); done </tmp/mig-pids.txt
 merged=0; failed=0
 for k in $(seq 0 2 $((N - 2))); do

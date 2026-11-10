@@ -12,7 +12,7 @@ From a fresh clone, with no other repository:
 
 ```bash
 podman compose up --build        # or: docker compose up --build
-curl http://localhost:5150/_ping
+curl http://localhost:5150/_health/live
 ```
 
 This starts PostgreSQL, Redis and the API ([compose.yaml](compose.yaml)). **Demo only:** sign-in is off, email is simulated,

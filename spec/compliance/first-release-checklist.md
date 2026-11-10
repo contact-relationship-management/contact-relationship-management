@@ -74,7 +74,7 @@ cosign verify-blob sbom/service.cdx.json \
       **fails**. A verifier that cannot fail proves nothing.
 - [ ] Pull the image **by digest** and run it once:
       `podman run --rm ghcr.io/<owner>/<repo>/service@sha256:<digest>` should
-      exit with a clear error about `DATABASE_URL`, as non-root.
+      exit with a clear error about `DB_URL`, as non-root.
 
 If the verify commands in the runbook need a different flag, change the
 runbook, not just this page.

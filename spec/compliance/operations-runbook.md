@@ -52,14 +52,17 @@ Commands assume the container images from the repository's `Containerfile`s.
    restoring a backup. Elsewhere they need `AXA_DESTROY_DATA=true`.
     From the image: `podman run --rm --entrypoint /app/crm-service <env> <image> db migrate`
     (the image's entrypoint is `start`, so `db migrate` needs the override). The
-    production config refuses to load without `DATABASE_URL` and
-    `CRM_REDIS_URL`, and refuses a `DATABASE_URL` that could go in the clear: set
+    production config refuses to load without `DB_URL` and
+    `CRM_REDIS_URL`, and refuses a `DB_URL` that could go in the clear: set
     `sslmode` to `require`, `verify-ca` or `verify-full`, or `DB_ALLOW_INSECURE=true`
     on a network that encrypts its own traffic. A loopback address or a socket is
     exempt (images up to v0.1.5 also require `JWT_SECRET`, which
     nothing reads: the service has no JWT support). Checked 2026-10-19 with a locally built image on a fresh
     PostgreSQL 18 and Redis: all 17 migrations applied, the service started,
     `/_ping` answered 200 and `/api/contacts` answered 401 (authentication on).
+    Since axa 0.11 (CRM-T228) the database setting is `DB_URL`, and the probes are
+    `/_health/live`, `/_health/ready` and `/_health/startup`; images before it read
+    `DATABASE_URL` and answer on `/_ping`, `/_health` and `/_readiness`.
     A `start` without `--worker` runs no background jobs; run a second container
     with `--worker` for campaign sends (the image's entrypoint is already `start`, so the
     argument is `--worker`, not `start --worker`). **Releases up to v0.1.3 have a bug here (fixed in v0.1.4):**

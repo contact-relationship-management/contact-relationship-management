@@ -16,7 +16,7 @@ fn contact(name: &str, person: &str) -> Value {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_retry_replays_the_first_response() {
     request::<App, _, _>(|request, _ctx| async move {
         let person = a_person();
@@ -54,7 +54,7 @@ async fn a_retry_replays_the_first_response() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn without_a_key_nothing_changes() {
     request::<App, _, _>(|request, _ctx| async move {
         for _ in 0..2 {
@@ -78,7 +78,7 @@ async fn without_a_key_nothing_changes() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_reused_key_with_different_content_and_bad_keys_are_refused() {
     request::<App, _, _>(|request, _ctx| async move {
         let key = format!("reuse-{}", uuid::Uuid::new_v4());
@@ -109,7 +109,7 @@ async fn a_reused_key_with_different_content_and_bad_keys_are_refused() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_failed_first_attempt_is_forgotten_so_the_retry_runs() {
     request::<App, _, _>(|request, _ctx| async move {
         let key = format!("failed-{}", uuid::Uuid::new_v4());
@@ -133,7 +133,7 @@ async fn a_failed_first_attempt_is_forgotten_so_the_retry_runs() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn two_simultaneous_identical_requests_create_one_record() {
     request::<App, _, _>(|request, _ctx| async move {
         let person = a_person();
@@ -168,7 +168,7 @@ async fn two_simultaneous_identical_requests_create_one_record() {
 /// refused rather than served unprotected.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_failed_store_refuses_the_request_and_writes_nothing() {
     request::<App, _, _>(|request, ctx| async move {
         let pool = db::pool(&ctx);
@@ -205,7 +205,7 @@ async fn a_failed_store_refuses_the_request_and_writes_nothing() {
 /// `record` and `forget` keep their answers.
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_store_keeps_its_answers() {
     request::<App, _, _>(|_request, ctx| async move {
         let pool = db::pool(&ctx);

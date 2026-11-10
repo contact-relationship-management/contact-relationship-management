@@ -29,7 +29,7 @@ const CONTACTS: &str = "Name,Email,Job title\n\
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn contacts_are_previewed_then_imported_with_no_consent_and_undone() {
     request::<App, _, _>(|request, ctx| async move {
         // Someone the file looks like, and a workflow an import must not start.
@@ -151,7 +151,7 @@ async fn contacts_are_previewed_then_imported_with_no_consent_and_undone() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_person_service_that_cannot_answer_fails_the_row_not_the_import() {
     let _scope = scoped(|s| s.upstream_mode = Mode::Http);
     request::<App, _, _>(|request, _ctx| async move {
@@ -172,7 +172,7 @@ async fn a_person_service_that_cannot_answer_fails_the_row_not_the_import() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn accounts_are_imported_with_tiers_and_duplicates_by_name_and_undone() {
     request::<App, _, _>(|request, ctx| async move {
         request

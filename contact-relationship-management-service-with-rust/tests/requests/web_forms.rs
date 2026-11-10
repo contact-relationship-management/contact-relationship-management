@@ -82,7 +82,7 @@ async fn count(db: &sea_orm::DatabaseConnection, sql: &str) -> i64 {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_only_after_it() {
     behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
@@ -256,7 +256,7 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_origin_the_form_the_honeypot_and_the_input_are_checked() {
     behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
@@ -343,7 +343,7 @@ async fn the_origin_the_form_the_honeypot_and_the_input_are_checked() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_client_and_a_form_are_limited_and_a_stranger_is_not_mailed_twice() {
     behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
@@ -466,7 +466,7 @@ async fn a_client_and_a_form_are_limited_and_a_stranger_is_not_mailed_twice() {
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_submissions() {
     behind_a_proxy();
     request::<App, _, _>(|request, ctx| async move {
@@ -538,7 +538,7 @@ async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_s
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_it() {
     // CRM-T180: the form page's `language`, else the request's Accept-Language, else English;
     // the link opens the confirmation page in the same language; nothing about it is stored.
@@ -636,7 +636,7 @@ async fn the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_
 
 #[tokio::test]
 #[serial]
-#[ignore = "requires PostgreSQL (DATABASE_URL); run with `cargo test -- --ignored`"]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_form_s_refusals_are_in_the_language_of_the_request() {
     // CRM-T182: the 422, 403, 429 and 503 answers follow the language the 202 does (CRM-T180):
     // the form's `language`, else Accept-Language, else English. Their `error` code does not

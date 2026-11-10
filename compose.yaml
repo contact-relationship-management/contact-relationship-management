@@ -1,7 +1,7 @@
 # A demo of the service from a fresh clone, with no sibling repositories:
 #
 #   podman compose up --build        (or: docker compose up --build)
-#   curl http://localhost:5150/_ping
+#   curl http://localhost:5150/_health/live
 #
 # DEMO ONLY. The demo has no identity service, so sign-in enforcement is OFF
 # (`CRM_REQUIRE_AUTH=0`, stated here on purpose): anyone who can reach the port
@@ -51,7 +51,7 @@ services:
         condition: service_healthy
     environment:
       APP_ENV: development            # applies the migrations on start
-      DATABASE_URL: postgres://loco:loco@postgres:5432/contact_relationship_management_demo
+      DB_URL: postgres://loco:loco@postgres:5432/contact_relationship_management_demo
       CRM_REDIS_URL: redis://redis:6379
       JWT_SECRET: demo-only-not-a-secret
       CRM_REQUIRE_AUTH: "0"            # explicit, demo only: see the header of this file
