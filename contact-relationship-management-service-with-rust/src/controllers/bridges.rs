@@ -13,8 +13,8 @@
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::Serialize;
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::PidPath;
@@ -22,6 +22,7 @@ use super::teams::{TeamView, put_team};
 use super::views::owner_of;
 use crate::auth::MaybeAuthUser;
 use crate::clients::{self, Mode};
+use crate::db::{self, Bridge};
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::quota;
 
@@ -29,10 +30,6 @@ use crate::rules::quota;
 const MAX_MEMBERS: usize = 50;
 /// Longest idea title the service takes is generous; ours is held well inside it.
 const MAX_TITLE: usize = 200;
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
 
 fn unavailable(reason: &str) -> Error {
     tracing::warn!(%reason, "bridge: upstream failed");
@@ -77,25 +74,26 @@ async fn open_delivery(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let deal = ctx
-        .db
-        .query_one_raw(stmt(
-            "SELECT name, won, amount_minor, trim(currency) AS currency FROM deals \
-             WHERE pid = $1 AND deleted_at IS NULL",
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    if !deal.try_get::<bool>("", "won")? {
+    let pool = db::pool(&ctx);
+    let deal = sqlx::query!(
+        "SELECT name, won, amount_minor, trim(currency) AS \"currency!\" FROM deals \
+         WHERE pid = $1 AND deleted_at IS NULL",
+        pid,
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or(Error::NotFound)?;
+    if !deal.won {
         return Err(super::unprocessable("only a won deal opens a delivery"));
     }
-    let name: String = deal.try_get("", "name")?;
     let idea = IdeaView {
-        title: format!("Deliver: {name}").chars().take(MAX_TITLE).collect(),
+        title: format!("Deliver: {}", deal.name)
+            .chars()
+            .take(MAX_TITLE)
+            .collect(),
         pitch: format!(
             "Won deal {pid} in the CRM: {} minor units of {}.",
-            deal.try_get::<i64>("", "amount_minor")?,
-            deal.try_get::<String>("", "currency")?
+            deal.amount_minor, deal.currency
         ),
         tags: vec!["crm".to_string(), "won-deal".to_string()],
     };
@@ -111,15 +109,13 @@ async fn open_delivery(
             tags: idea.tags.clone(),
         },
     };
-    if let Some(row) = ctx
-        .db
-        .query_one_raw(stmt(
-            "SELECT ppm_idea_pid FROM deal_deliveries WHERE deal_pid = $1",
-            [pid.into()],
-        ))
-        .await?
+    if let Some(id) = sqlx::query_scalar!(
+        "SELECT ppm_idea_pid FROM deal_deliveries WHERE deal_pid = $1",
+        pid,
+    )
+    .fetch_optional(pool)
+    .await?
     {
-        let id: Uuid = row.try_get("", "ppm_idea_pid")?;
         return format::json(view("http", false, Some(id.to_string()), true));
     }
     if clients::mode() != Mode::Http {
@@ -131,15 +127,18 @@ async fn open_delivery(
         .await
         .map_err(|reason| unavailable(&reason))?;
     let idea_pid = Uuid::parse_str(&opened).map_err(|e| Error::string(&e.to_string()))?;
-    let txn = ctx.db.begin().await?;
-    txn.execute_raw(stmt(
+    let mut txn = pool.begin().await?;
+    sqlx::query!(
         "INSERT INTO deal_deliveries (deal_pid, ppm_idea_pid, opened_by) VALUES ($1, $2, $3) \
          ON CONFLICT (deal_pid) DO NOTHING",
-        [pid.into(), idea_pid.into(), who.into()],
-    ))
+        pid,
+        idea_pid,
+        who,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "deal_delivery",
         pid,
         "opened",
@@ -202,7 +201,7 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
     );
     let mut skipped = Vec::new();
     let who = owner_of(&caller)?;
-    let txn = ctx.db.begin().await?;
+    let mut txn = db::pool(&ctx).begin().await?;
     let mut teams = Vec::new();
     // Departments that differ only in case are one team, as team names are.
     let mut seen = BTreeMap::new();
@@ -231,7 +230,18 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
             });
             continue;
         }
-        teams.push(put_team(&txn, &who, caller.actor(), &name, &members, Some("wpm")).await?);
+        // `put_team` takes a `ConnectionTrait`; `Bridge` runs it in this transaction.
+        teams.push(
+            put_team(
+                &Bridge::new(&mut txn),
+                &who,
+                caller.actor(),
+                &name,
+                &members,
+                Some("wpm"),
+            )
+            .await?,
+        );
     }
     txn.commit().await?;
     format::json(ImportView {
@@ -317,10 +327,11 @@ async fn wpm_event(
         return Ok(StatusCode::BAD_REQUEST.into_response());
     };
     let decision = wpm_events::decide(&event).map_err(|why| super::unprocessable(&why))?;
-    let txn = ctx.db.begin().await?;
+    let mut txn = db::pool(&ctx).begin().await?;
     // The id is claimed first, in the same transaction as the change: a retry that arrives while
-    // this one runs waits on the row, then finds it.
-    if !employments::claim_event(&txn, &event.id, &event.kind).await? {
+    // this one runs waits on the row, then finds it. The employment helpers are still on
+    // `SeaORM`; `Bridge` runs them in this transaction.
+    if !employments::claim_event(&Bridge::new(&mut txn), &event.id, &event.kind).await? {
         txn.commit().await?;
         return format::json(WpmEventView {
             result: "duplicate",
@@ -332,11 +343,11 @@ async fn wpm_event(
         Decision::Ignored(why) => ("ignored", Some(*why), 0),
         Decision::Hired(h) | Decision::Left(h) => {
             let hired = matches!(decision, Decision::Hired(_));
-            let (result, changed) = apply_handoff(&txn, hired, h, &event.id).await?;
+            let (result, changed) = apply_handoff(&mut txn, hired, h, &event.id).await?;
             (result, None, changed)
         }
     };
-    employments::settle_event(&txn, &event.id, result).await?;
+    employments::settle_event(&Bridge::new(&mut txn), &event.id, result).await?;
     txn.commit().await?;
     format::json(WpmEventView {
         result,
@@ -348,25 +359,26 @@ async fn wpm_event(
 /// Apply a hire (`hired`) or leave to the live contacts carrying its person (CRM-R92), unless an
 /// event at least as new has been applied for that person and organization (CRM-R93: `stale`).
 /// The result and how many contacts changed.
-async fn apply_handoff<C: ConnectionTrait>(
-    txn: &C,
+async fn apply_handoff(
+    txn: &mut PgConnection,
     hired: bool,
     h: &crate::rules::wpm_events::Handoff,
     event_id: &str,
 ) -> Result<(&'static str, usize)> {
     use crate::models::employments;
-    let pids = employments::contacts_of(txn, &h.person_ref).await?;
+    let pids = employments::contacts_of(&Bridge::new(txn), &h.person_ref).await?;
     if pids.is_empty() {
         // Nothing is kept about a person who is not a contact, not even the order.
         return Ok(("no_contact", 0));
     }
-    employments::lock_order(txn, &h.person_ref, &h.organization_ref).await?;
-    let last = employments::last_applied(txn, &h.person_ref, &h.organization_ref).await?;
+    employments::lock_order(&Bridge::new(txn), &h.person_ref, &h.organization_ref).await?;
+    let last =
+        employments::last_applied(&Bridge::new(txn), &h.person_ref, &h.organization_ref).await?;
     if crate::rules::wpm_events::is_stale(last, h.stamp()) {
         return Ok(("stale", 0));
     }
     employments::note_applied(
-        txn,
+        &Bridge::new(txn),
         &h.person_ref,
         &h.organization_ref,
         if hired { "hired" } else { "left" },
@@ -378,7 +390,7 @@ async fn apply_handoff<C: ConnectionTrait>(
     for pid in &pids {
         let done = if hired {
             employments::record(
-                txn,
+                &Bridge::new(txn),
                 *pid,
                 &h.person_ref,
                 &h.organization_ref,
@@ -387,11 +399,11 @@ async fn apply_handoff<C: ConnectionTrait>(
             )
             .await?
         } else {
-            employments::end(txn, *pid, &h.organization_ref).await?
+            employments::end(&Bridge::new(txn), *pid, &h.organization_ref).await?
         };
         if done {
             changed += 1;
-            Audit::record(
+            Audit::record_on(
                 txn,
                 "contact",
                 *pid,
@@ -457,9 +469,13 @@ async fn employment_check(
     caller: MaybeAuthUser,
 ) -> Result<Response> {
     use crate::models::employments;
-    use crate::rules::employment_check::{self as rules, Action, LastEvent};
+    use crate::rules::employment_check as rules;
     let organization_ref = crate::settings::current().wpm_organization_ref.clone();
-    let refs = employments::live_person_refs(&ctx.db).await?;
+    let pool = db::pool(&ctx);
+    let refs = {
+        let mut conn = pool.acquire().await?;
+        employments::live_person_refs(&Bridge::new(&mut conn)).await?
+    };
     let batches = rules::batches(refs, super::privacy::TOMBSTONE_PERSON);
     let asked = batches.iter().map(Vec::len).sum();
     let mut view = EmploymentCheckView {
@@ -495,48 +511,20 @@ async fn employment_check(
     // The day CRM records the employment from: CRM's own, in the organization's zone (CRM-T179).
     // WPM's answer carries no date (WPM-R208), so this is not a value of the bridge contract.
     let today = super::organization::organization_today(&ctx.db).await?;
-    let txn = ctx.db.begin().await?;
+    let mut txn = pool.begin().await?;
     for person_ref in &workers {
-        employments::lock_order(&txn, person_ref, &organization_ref).await?;
-        let last = match employments::last_kind(&txn, person_ref, &organization_ref)
-            .await?
-            .as_deref()
-        {
-            Some("hired") => LastEvent::Hired,
-            Some(_) => LastEvent::Left,
-            None => LastEvent::None,
-        };
-        if rules::decide(true, last) != Action::Record {
-            view.left_by_event += 1;
-            continue;
-        }
-        for pid in employments::contacts_of(&txn, person_ref).await? {
-            if employments::record(&txn, pid, person_ref, &organization_ref, today, &source).await?
-            {
-                view.recorded += 1;
-                Audit::record(
-                    &txn,
-                    "contact",
-                    pid,
-                    "employment_recorded",
-                    caller.actor(),
-                    Some(serde_json::json!({
-                        "via": "wpm",
-                        "source": "employment_check",
-                        "organization_ref": organization_ref,
-                        "since": today,
-                        "check_id": check_id,
-                    })),
-                )
-                .await?;
-            } else {
-                view.already_paused += 1;
-            }
-        }
+        record_worker(
+            &mut txn,
+            &caller,
+            person_ref,
+            (&organization_ref, today, &source, check_id),
+            &mut view,
+        )
+        .await?;
     }
     // The check itself, by count: no reference is in it.
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "bridge",
         check_id,
         "employment_checked",
@@ -553,6 +541,65 @@ async fn employment_check(
     .await?;
     txn.commit().await?;
     format::json(view)
+}
+
+/// Mark the live contacts carrying `person_ref` employees of the organization, as a hire event
+/// would, unless the last event applied for them was a leave (CRM-R94). Counts what it did on
+/// `view`.
+async fn record_worker(
+    txn: &mut PgConnection,
+    caller: &MaybeAuthUser,
+    person_ref: &str,
+    (organization_ref, today, source, check_id): (&str, chrono::NaiveDate, &str, Uuid),
+    view: &mut EmploymentCheckView,
+) -> Result<()> {
+    use crate::models::employments;
+    use crate::rules::employment_check::{self as rules, Action, LastEvent};
+    employments::lock_order(&Bridge::new(txn), person_ref, organization_ref).await?;
+    let last = match employments::last_kind(&Bridge::new(txn), person_ref, organization_ref)
+        .await?
+        .as_deref()
+    {
+        Some("hired") => LastEvent::Hired,
+        Some(_) => LastEvent::Left,
+        None => LastEvent::None,
+    };
+    if rules::decide(true, last) != Action::Record {
+        view.left_by_event += 1;
+        return Ok(());
+    }
+    for pid in employments::contacts_of(&Bridge::new(txn), person_ref).await? {
+        let recorded = employments::record(
+            &Bridge::new(txn),
+            pid,
+            person_ref,
+            organization_ref,
+            today,
+            source,
+        )
+        .await?;
+        if recorded {
+            view.recorded += 1;
+            Audit::record_on(
+                &mut *txn,
+                "contact",
+                pid,
+                "employment_recorded",
+                caller.actor(),
+                Some(serde_json::json!({
+                    "via": "wpm",
+                    "source": "employment_check",
+                    "organization_ref": organization_ref,
+                    "since": today,
+                    "check_id": check_id,
+                })),
+            )
+            .await?;
+        } else {
+            view.already_paused += 1;
+        }
+    }
+    Ok(())
 }
 
 /// The routes.

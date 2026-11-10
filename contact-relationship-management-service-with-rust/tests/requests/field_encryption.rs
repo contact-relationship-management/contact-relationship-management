@@ -167,6 +167,49 @@ async fn an_edited_summary_is_sealed_at_rest() {
     .await;
 }
 
+/// A contact made by a CSV import (`POST /api/contact-imports`, on `sqlx` since CRM-T210) has its
+/// channel sealed at rest, and reads back as plaintext.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn an_imported_contact_s_channel_is_sealed_at_rest() {
+    request::<App, _, _>(|request, ctx| async move {
+        crypto::install(Some(keyring(&[("k1", 1)])));
+        let done: Value = request
+            .post("/api/contact-imports")
+            .json(&json!({
+                "csv": "Name,Email\nSeal Edimport,seal.edimport@import.test\n",
+                "mapping": { "display_name": "Name", "email": "Email" },
+                "source_note": "Sealing", "obtained_on": "2026-10-01" }))
+            .await
+            .json();
+        assert_eq!(done["created_count"], 1, "{done}");
+        let at_rest = stored(
+            &ctx.db,
+            "SELECT preferred_channel AS v FROM contacts WHERE display_name = 'Seal Edimport'",
+        )
+        .await;
+        assert!(at_rest[0].starts_with("enc:v1:k1:"), "{}", at_rest[0]);
+        let pid = stored(
+            &ctx.db,
+            "SELECT pid::text AS v FROM contacts WHERE display_name = 'Seal Edimport'",
+        )
+        .await;
+        let detail: Value = request.get(&format!("/api/contacts/{}", pid[0])).await.json();
+        assert_eq!(detail["contact"]["preferred_channel"], "email");
+        crypto::install(None);
+        ctx.db
+            .execute_unprepared("UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'")
+            .await
+            .unwrap();
+        ctx.db
+            .execute_unprepared("UPDATE contacts SET preferred_channel = 'email' WHERE preferred_channel LIKE 'enc:v1:%'")
+            .await
+            .unwrap();
+    })
+    .await;
+}
+
 /// `sqlx` seals and opens as `SeaORM` does: each reads what the other wrote, and a value that cannot
 /// be opened is an error, never ciphertext shown as text (CRM-D24).
 #[tokio::test]

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — imports and bridges on sqlx (CRM-T210, CRM-D24)
+
+- `controllers::lead_imports`, `record_imports` and `bridges` in `sqlx` transactions; lead capture,
+  the employment helpers and `put_team` run in them through `db::Bridge`.
+- A record import's undo is one checked statement per table.
+- `record_imports.rs` seals an imported contact's channel; the census lists it.
+
 ### Changed — web forms and public consent pages on sqlx (CRM-T209, CRM-D24)
 
 - `controllers::forms` and `marketing::public` in `sqlx` transactions; the shared consent,

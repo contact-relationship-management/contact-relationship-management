@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE lead_imports SET status = 'undone', undone_at = now(), undone_count = $2 WHERE pid = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "143add44d8362f3efc82e2d677538fb8de117c8b5db8db9e8d6339d1b57dc48f"
+}

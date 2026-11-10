@@ -863,3 +863,46 @@ pub async fn sequence<'e>(
     .fetch_optional(db)
     .await
 }
+
+/// The first live contacts, oldest first, at most `limit`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn first_contacts<'e>(
+    db: impl PgExecutor<'e>,
+    limit: i64,
+) -> Result<Vec<contacts::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        contacts::Model,
+        "SELECT created_at, updated_at, id, pid, person_ref, account_pid, owner_ref, display_name, \
+        status, job_title, preferred_channel, marketing_consent, consent_changed_at AS \
+        \"consent_changed_at: DateTimeWithTimeZone\", deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", stakeholder_role, influence, interest, merged_into_pid, family_name, \
+        given_name, consent_jurisdiction FROM contacts WHERE deleted_at IS NULL ORDER BY id LIMIT $1",
+        limit,
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// The newest live leads, at most `limit`.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn newest_leads<'e>(
+    db: impl PgExecutor<'e>,
+    limit: i64,
+) -> Result<Vec<leads::Model>, sqlx::Error> {
+    sqlx::query_as!(
+        leads::Model,
+        "SELECT created_at, updated_at, id, pid, source, campaign_pid, contact_pid, display_name, \
+        email, email_domain, score, campaign_click, unsubscribed, status, deleted_at AS \"deleted_at: \
+        DateTimeWithTimeZone\", board_position, owner_ref FROM leads WHERE deleted_at IS NULL ORDER \
+        BY id DESC LIMIT $1",
+        limit,
+    )
+    .fetch_all(db)
+    .await
+}

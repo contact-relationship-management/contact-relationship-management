@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE contacts SET deleted_at = now() WHERE pid = ANY($1) AND deleted_at IS NULL AND NOT (marketing_consent <> 'never' OR merged_into_pid IS NOT NULL OR EXISTS (SELECT 1 FROM contacts m WHERE m.merged_into_pid = contacts.pid) OR EXISTS (SELECT 1 FROM activities a WHERE a.subject_kind = 'contact' AND a.subject_pid = contacts.pid AND a.deleted_at IS NULL) OR EXISTS (SELECT 1 FROM deals d WHERE d.primary_contact_pid = contacts.pid AND d.deleted_at IS NULL) OR EXISTS (SELECT 1 FROM tickets t WHERE t.contact_pid = contacts.pid AND t.deleted_at IS NULL) OR EXISTS (SELECT 1 FROM leads l WHERE l.contact_pid = contacts.pid AND l.deleted_at IS NULL) OR EXISTS (SELECT 1 FROM nurture_enrollments n WHERE n.contact_pid = contacts.pid) OR EXISTS (SELECT 1 FROM consent_events c WHERE c.contact_pid = contacts.pid) OR EXISTS (SELECT 1 FROM attachments x WHERE x.subject_pid = contacts.pid) OR EXISTS (SELECT 1 FROM custom_field_values v WHERE v.subject_pid = contacts.pid)) RETURNING pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contacts",
+            "name": "pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0a24d9d9623e567740d9e1af46fd97027f733cb19b34f980fa0fa757cc4cc0b8"
+}

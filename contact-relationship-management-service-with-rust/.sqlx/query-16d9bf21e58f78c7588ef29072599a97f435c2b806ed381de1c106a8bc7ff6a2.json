@@ -1,0 +1,161 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, created_by, source_note, obtained_on, status, created_at, row_count, invalid_count, skipped_count, lead_pids, undone_at, undone_count FROM lead_imports ORDER BY id DESC LIMIT $1 OFFSET $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "created_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "created_by"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "source_note",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "source_note"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "obtained_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "obtained_on"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "row_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "row_count"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "invalid_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "invalid_count"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "skipped_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "skipped_count"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "lead_pids",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "lead_pids"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "undone_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "undone_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "undone_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "lead_imports",
+            "name": "undone_count"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "16d9bf21e58f78c7588ef29072599a97f435c2b806ed381de1c106a8bc7ff6a2"
+}

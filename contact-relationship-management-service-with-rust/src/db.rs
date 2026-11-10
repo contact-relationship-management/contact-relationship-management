@@ -116,6 +116,10 @@ mod tests {
             "src/controllers/privacy.rs",
             "erasure writes a plaintext tombstone on purpose",
         ),
+        (
+            "src/controllers/record_imports.rs",
+            "an imported contact binds `EncryptedText`, which seals the channel",
+        ),
     ];
 
     fn lower_words(sql: &str) -> Vec<String> {

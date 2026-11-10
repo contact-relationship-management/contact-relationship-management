@@ -1,0 +1,185 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pid, kind, created_by, source_note, obtained_on, status, created_at, row_count, invalid_count, skipped_count, failed_count, created_pids, undone_at, undone_count FROM record_imports WHERE pid = $1 AND kind = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created_by",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "created_by"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "source_note",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "source_note"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "obtained_on",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "obtained_on"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "row_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "row_count"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "invalid_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "invalid_count"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "skipped_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "skipped_count"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "failed_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "failed_count"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_pids",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "created_pids"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "undone_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "undone_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "undone_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "undone_count"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "8cbed4e7933acb3fe58ab77aa5731a842c47ec8cb60d4be4ea5f8f1e91211010"
+}

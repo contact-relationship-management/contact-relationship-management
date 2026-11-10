@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deal_deliveries (deal_pid, ppm_idea_pid, opened_by) VALUES ($1, $2, $3) ON CONFLICT (deal_pid) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c4cff1e2033590ee0d00e670d569fa5a4cf36cde56f9c248c304d3f1079c6048"
+}

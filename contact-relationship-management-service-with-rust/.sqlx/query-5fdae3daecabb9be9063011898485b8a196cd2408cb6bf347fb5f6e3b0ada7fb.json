@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE leads SET deleted_at = now() WHERE pid = ANY($1) AND deleted_at IS NULL AND status = 'new' AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.subject_kind = 'lead' AND a.subject_pid = leads.pid AND a.deleted_at IS NULL) RETURNING pid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5fdae3daecabb9be9063011898485b8a196cd2408cb6bf347fb5f6e3b0ada7fb"
+}

@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — imports and family bridges on sqlx (CRM-T210, 2026-11-10)
+
+- Lead, contact and account imports and the PPM and WPM bridges run on `sqlx`. Nothing a caller
+  sees changes.
+
 ### Changed — web forms and public consent pages on sqlx (CRM-T209, 2026-11-10)
 
 - Web forms, the unsubscribe, confirmation and preference pages and the mail webhooks run on

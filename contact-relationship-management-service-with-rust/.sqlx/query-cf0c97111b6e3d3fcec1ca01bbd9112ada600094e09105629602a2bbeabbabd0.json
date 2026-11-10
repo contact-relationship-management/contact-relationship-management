@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ppm_idea_pid FROM deal_deliveries WHERE deal_pid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ppm_idea_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deal_deliveries",
+            "name": "ppm_idea_pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cf0c97111b6e3d3fcec1ca01bbd9112ada600094e09105629602a2bbeabbabd0"
+}

@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT created_pids, status FROM record_imports WHERE pid = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_pids",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "created_pids"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "record_imports",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "eed58e98b028b8697e26698be16922dfe9a7e8d1da32cc8f5c3a74112741838e"
+}

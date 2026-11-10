@@ -10,8 +10,8 @@ use std::collections::HashMap;
 
 use axa::prelude::*;
 use contact_relationship_management_matcher::Verdict;
-use sea_orm::{ActiveValue, ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use super::lead_imports::{Likeness, RowReport, advise};
@@ -19,10 +19,10 @@ use super::paging::Page;
 use super::{PidPath, unprocessable};
 use crate::auth::MaybeAuthUser;
 use crate::clients;
+use crate::db;
 use crate::json::Json;
-use crate::models::_entities::{accounts, contacts};
 use crate::models::audit_logs::Model as Audit;
-use crate::models::live::FindLive;
+use crate::models::encrypted::EncryptedText;
 use crate::rules::forms::domain_of;
 use crate::rules::imports::{self as csv_rules, Row};
 use crate::rules::record_imports::{
@@ -153,47 +153,58 @@ pub(crate) struct ImportRecord {
     undone_count: Option<i32>,
 }
 
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
-}
-
-const COLUMNS: &str = "pid, kind, created_by, source_note, obtained_on, status, created_at, \
-                       row_count, invalid_count, skipped_count, failed_count, created_pids, \
-                       undone_at, undone_count";
-
-fn record(row: &sea_orm::QueryResult) -> Result<ImportRecord> {
-    let pids: serde_json::Value = row.try_get("", "created_pids")?;
-    Ok(ImportRecord {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        kind: row.try_get("", "kind")?,
-        created_by: row.try_get("", "created_by")?,
-        source_note: row.try_get("", "source_note")?,
-        obtained_on: row.try_get("", "obtained_on")?,
-        status: row.try_get("", "status")?,
-        created_at: row.try_get("", "created_at")?,
-        row_count: row.try_get("", "row_count")?,
-        invalid_count: row.try_get("", "invalid_count")?,
-        skipped_count: row.try_get("", "skipped_count")?,
-        failed_count: row.try_get("", "failed_count")?,
-        created_count: pids.as_array().map_or(0, Vec::len),
-        undone_at: row.try_get("", "undone_at")?,
-        undone_count: row.try_get("", "undone_count")?,
-    })
-}
-
-async fn find_import(
-    db: &sea_orm::DatabaseConnection,
-    kind: Kind,
+/// One `record_imports` row as stored.
+struct Stored {
     pid: Uuid,
-) -> Result<ImportRecord> {
-    let row = db
-        .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM record_imports WHERE pid = $1 AND kind = $2"),
-            [pid.into(), kind.word().into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    record(&row)
+    kind: String,
+    created_by: Option<String>,
+    source_note: String,
+    obtained_on: chrono::NaiveDate,
+    status: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+    row_count: i32,
+    invalid_count: i32,
+    skipped_count: i32,
+    failed_count: i32,
+    created_pids: serde_json::Value,
+    undone_at: Option<chrono::DateTime<chrono::Utc>>,
+    undone_count: Option<i32>,
+}
+
+impl From<Stored> for ImportRecord {
+    fn from(row: Stored) -> Self {
+        Self {
+            pid: row.pid.to_string(),
+            kind: row.kind,
+            created_by: row.created_by,
+            source_note: row.source_note,
+            obtained_on: row.obtained_on,
+            status: row.status,
+            created_at: row.created_at,
+            row_count: row.row_count,
+            invalid_count: row.invalid_count,
+            skipped_count: row.skipped_count,
+            failed_count: row.failed_count,
+            created_count: row.created_pids.as_array().map_or(0, Vec::len),
+            undone_at: row.undone_at,
+            undone_count: row.undone_count,
+        }
+    }
+}
+
+async fn find_import(pool: &PgPool, kind: Kind, pid: Uuid) -> Result<ImportRecord> {
+    let row = sqlx::query_as!(
+        Stored,
+        "SELECT pid, kind, created_by, source_note, obtained_on, status, created_at, row_count, \
+         invalid_count, skipped_count, failed_count, created_pids, undone_at, undone_count \
+         FROM record_imports WHERE pid = $1 AND kind = $2",
+        pid,
+        kind.word(),
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or(Error::NotFound)?;
+    Ok(row.into())
 }
 
 fn read(csv: &str) -> Result<csv_rules::Table> {
@@ -253,10 +264,13 @@ async fn analyse_accounts(
 ) -> Result<(Vec<RowReport>, Vec<Option<AccountRow>>)> {
     let columns = rules::resolve_account(mapping, &table.headers).map_err(|m| unprocessable(&m))?;
     let mut known: HashMap<String, (Uuid, String)> = HashMap::new();
-    for account in accounts::Entity::find_live()
-        .limit(ACCOUNT_POOL)
-        .all(&ctx.db)
-        .await?
+    let pool_size = i64::try_from(ACCOUNT_POOL).unwrap_or(i64::MAX);
+    for account in sqlx::query!(
+        "SELECT pid, display_name FROM accounts WHERE deleted_at IS NULL ORDER BY id LIMIT $1",
+        pool_size,
+    )
+    .fetch_all(db::pool(ctx))
+    .await?
     {
         known.insert(
             rules::account_key(&account.display_name),
@@ -328,8 +342,8 @@ async fn audit_preview(
     rows: usize,
     counts: (usize, usize, usize),
 ) -> Result<()> {
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        db::pool(ctx),
         "record_import",
         Uuid::nil(),
         &format!("{}_import_previewed", kind.word()),
@@ -430,22 +444,20 @@ async fn open_import(
 ) -> Result<Uuid> {
     let import = Uuid::new_v4();
     let toi = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
-    ctx.db
-        .execute_raw(stmt(
-            "INSERT INTO record_imports (pid, kind, created_by, source_note, obtained_on, \
-             row_count, invalid_count, skipped_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-            [
-                import.into(),
-                kind.word().into(),
-                caller.actor().map(ToString::to_string).into(),
-                source_note.trim().to_string().into(),
-                obtained_on.into(),
-                toi(counts.0).into(),
-                toi(counts.1).into(),
-                toi(counts.2).into(),
-            ],
-        ))
-        .await?;
+    sqlx::query!(
+        "INSERT INTO record_imports (pid, kind, created_by, source_note, obtained_on, \
+         row_count, invalid_count, skipped_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+        import,
+        kind.word(),
+        caller.actor(),
+        source_note.trim(),
+        obtained_on,
+        toi(counts.0),
+        toi(counts.1),
+        toi(counts.2),
+    )
+    .execute(db::pool(ctx))
+    .await?;
     Ok(import)
 }
 
@@ -459,15 +471,18 @@ async fn close_import(
 ) -> Result<()> {
     let (rows, created, skipped_more, failed) = totals;
     let toi = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
-    let txn = ctx.db.begin().await?;
-    txn.execute_raw(stmt(
+    let mut txn = db::pool(ctx).begin().await?;
+    sqlx::query!(
         "UPDATE record_imports SET status = 'completed', failed_count = $2, \
          skipped_count = skipped_count + $3 WHERE pid = $1",
-        [import.into(), toi(failed).into(), toi(skipped_more).into()],
-    ))
+        import,
+        toi(failed),
+        toi(skipped_more),
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "record_import",
         import,
         &format!("{}_import_committed", kind.word()),
@@ -484,84 +499,66 @@ async fn close_import(
 
 /// Save one imported contact: no consent, no workflow; audited and announced like any new contact.
 async fn insert_contact(
-    txn: &sea_orm::DatabaseTransaction,
+    txn: &mut PgConnection,
     caller: &MaybeAuthUser,
     import: Uuid,
     row: &ContactRow,
     urn: String,
 ) -> Result<String> {
-    let saved = contacts::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        person_ref: ActiveValue::set(urn),
-        account_pid: ActiveValue::set(None),
-        owner_ref: ActiveValue::set(None),
-        display_name: ActiveValue::set(row.name.clone()),
-        status: ActiveValue::set("active".to_string()),
-        job_title: ActiveValue::set(row.job_title.clone()),
-        given_name: ActiveValue::set(row.given_name.clone()),
-        family_name: ActiveValue::set(row.family_name.clone()),
-        preferred_channel: ActiveValue::set("email".to_string().into()),
-        marketing_consent: ActiveValue::set("never".to_string()),
-        consent_changed_at: ActiveValue::set(None),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(txn)
-    .await?;
-    created_event(
-        txn,
-        caller,
-        "contact",
-        saved.pid,
-        &saved.display_name,
-        import,
+    // `preferred_channel` is sealed: binding `EncryptedText` seals it (CRM-T41).
+    let pid = Uuid::new_v4();
+    sqlx::query!(
+        "INSERT INTO contacts (pid, person_ref, display_name, status, job_title, given_name, \
+         family_name, preferred_channel, marketing_consent) \
+         VALUES ($1, $2, $3, 'active', $4, $5, $6, $7, 'never')",
+        pid,
+        urn,
+        row.name,
+        row.job_title,
+        row.given_name,
+        row.family_name,
+        EncryptedText::from("email") as _,
     )
+    .execute(&mut *txn)
     .await?;
-    Ok(saved.pid.to_string())
+    created_event(txn, caller, "contact", pid, &row.name, import).await?;
+    Ok(pid.to_string())
 }
 
 /// Save one imported account.
 async fn insert_account(
-    txn: &sea_orm::DatabaseTransaction,
+    txn: &mut PgConnection,
     caller: &MaybeAuthUser,
     import: Uuid,
     row: &AccountRow,
     urn: String,
 ) -> Result<String> {
-    let saved = accounts::ActiveModel {
-        pid: ActiveValue::set(Uuid::new_v4()),
-        organization_ref: ActiveValue::set(urn),
-        owner_ref: ActiveValue::set(None),
-        display_name: ActiveValue::set(row.name.clone()),
-        tier: ActiveValue::set(row.tier.clone()),
-        industry: ActiveValue::set(row.industry.clone()),
-        deleted_at: ActiveValue::set(None),
-        ..Default::default()
-    }
-    .insert(txn)
-    .await?;
-    created_event(
-        txn,
-        caller,
-        "account",
-        saved.pid,
-        &saved.display_name,
-        import,
+    let pid = Uuid::new_v4();
+    sqlx::query!(
+        "INSERT INTO accounts (pid, organization_ref, display_name, tier, industry) \
+         VALUES ($1, $2, $3, $4, $5)",
+        pid,
+        urn,
+        row.name,
+        row.tier,
+        row.industry,
     )
+    .execute(&mut *txn)
     .await?;
-    Ok(saved.pid.to_string())
+    created_event(txn, caller, "account", pid, &row.name, import).await?;
+    Ok(pid.to_string())
 }
 
 /// The audit row and the event for a record an import made.
 async fn created_event(
-    txn: &sea_orm::DatabaseTransaction,
+    txn: &mut PgConnection,
     caller: &MaybeAuthUser,
     entity: &str,
     pid: Uuid,
     name: &str,
     import: Uuid,
 ) -> Result<()> {
-    Audit::record(
+    Audit::record_on(
         txn,
         entity,
         pid,
@@ -570,7 +567,7 @@ async fn created_event(
         Some(serde_json::json!({ "import": import })),
     )
     .await?;
-    streaming::emit_on(
+    streaming::emit_in(
         txn,
         entity,
         "created",
@@ -638,24 +635,29 @@ async fn commit_contacts(
                 }
             }
         }
-        let txn = ctx.db.begin().await?;
+        let mut txn = db::pool(&ctx).begin().await?;
         let mut made = Vec::new();
         for (row, urn) in resolved {
-            let held = contacts::Entity::find_live()
-                .filter(contacts::Column::PersonRef.eq(urn.clone()))
-                .one(&txn)
-                .await?;
-            if held.is_some() {
+            let held = sqlx::query_scalar!(
+                "SELECT EXISTS (SELECT 1 FROM contacts WHERE deleted_at IS NULL AND person_ref = $1) \
+                 AS \"held!\"",
+                urn,
+            )
+            .fetch_one(&mut *txn)
+            .await?;
+            if held {
                 existing += 1;
                 continue;
             }
-            made.push(insert_contact(&txn, &caller, import, row, urn).await?);
+            made.push(insert_contact(&mut txn, &caller, import, row, urn).await?);
         }
         created += made.len();
-        txn.execute_raw(stmt(
+        sqlx::query!(
             "UPDATE record_imports SET created_pids = created_pids || $2::jsonb WHERE pid = $1",
-            [import.into(), serde_json::json!(made).into()],
-        ))
+            import,
+            serde_json::json!(made),
+        )
+        .execute(&mut *txn)
         .await?;
         txn.commit().await?;
     }
@@ -668,7 +670,7 @@ async fn commit_contacts(
         (&payload.source_note, payload.obtained_on),
     )
     .await?;
-    format::json(find_import(&ctx.db, Kind::Contact, import).await?)
+    format::json(find_import(db::pool(&ctx), Kind::Contact, import).await?)
 }
 
 /// `POST /api/account-imports`.
@@ -710,24 +712,29 @@ async fn commit_accounts(
                 }
             }
         }
-        let txn = ctx.db.begin().await?;
+        let mut txn = db::pool(&ctx).begin().await?;
         let mut made = Vec::new();
         for (row, urn) in resolved {
-            let held = accounts::Entity::find_live()
-                .filter(accounts::Column::OrganizationRef.eq(urn.clone()))
-                .one(&txn)
-                .await?;
-            if held.is_some() {
+            let held = sqlx::query_scalar!(
+                "SELECT EXISTS (SELECT 1 FROM accounts WHERE deleted_at IS NULL AND organization_ref = $1) \
+                 AS \"held!\"",
+                urn,
+            )
+            .fetch_one(&mut *txn)
+            .await?;
+            if held {
                 existing += 1;
                 continue;
             }
-            made.push(insert_account(&txn, &caller, import, row, urn).await?);
+            made.push(insert_account(&mut txn, &caller, import, row, urn).await?);
         }
         created += made.len();
-        txn.execute_raw(stmt(
+        sqlx::query!(
             "UPDATE record_imports SET created_pids = created_pids || $2::jsonb WHERE pid = $1",
-            [import.into(), serde_json::json!(made).into()],
-        ))
+            import,
+            serde_json::json!(made),
+        )
+        .execute(&mut *txn)
         .await?;
         txn.commit().await?;
     }
@@ -740,7 +747,7 @@ async fn commit_accounts(
         (&payload.source_note, payload.obtained_on),
     )
     .await?;
-    format::json(find_import(&ctx.db, Kind::Account, import).await?)
+    format::json(find_import(db::pool(&ctx), Kind::Account, import).await?)
 }
 
 /// `POST .../undo` response.
@@ -753,28 +760,59 @@ pub(crate) struct Undone {
     kept: usize,
 }
 
-/// A contact that has been used: it has history, a consent decision, or something that refers to it.
-const CONTACT_IN_USE: &str = "marketing_consent <> 'never' \
-    OR merged_into_pid IS NOT NULL \
-    OR EXISTS (SELECT 1 FROM contacts m WHERE m.merged_into_pid = contacts.pid) \
-    OR EXISTS (SELECT 1 FROM activities a WHERE a.subject_kind = 'contact' AND a.subject_pid = contacts.pid AND a.deleted_at IS NULL) \
-    OR EXISTS (SELECT 1 FROM deals d WHERE d.primary_contact_pid = contacts.pid AND d.deleted_at IS NULL) \
-    OR EXISTS (SELECT 1 FROM tickets t WHERE t.contact_pid = contacts.pid AND t.deleted_at IS NULL) \
-    OR EXISTS (SELECT 1 FROM leads l WHERE l.contact_pid = contacts.pid AND l.deleted_at IS NULL) \
-    OR EXISTS (SELECT 1 FROM nurture_enrollments n WHERE n.contact_pid = contacts.pid) \
-    OR EXISTS (SELECT 1 FROM consent_events c WHERE c.contact_pid = contacts.pid) \
-    OR EXISTS (SELECT 1 FROM attachments x WHERE x.subject_pid = contacts.pid) \
-    OR EXISTS (SELECT 1 FROM custom_field_values v WHERE v.subject_pid = contacts.pid)";
-
-/// An account that has been used.
-const ACCOUNT_IN_USE: &str = "EXISTS (SELECT 1 FROM contacts c WHERE c.account_pid = accounts.pid AND c.deleted_at IS NULL) \
-    OR EXISTS (SELECT 1 FROM deals d WHERE d.account_pid = accounts.pid AND d.deleted_at IS NULL) \
-    OR EXISTS (SELECT 1 FROM tickets t WHERE t.account_pid = accounts.pid AND t.deleted_at IS NULL) \
-    OR EXISTS (SELECT 1 FROM partnerships p WHERE p.account_pid = accounts.pid) \
-    OR EXISTS (SELECT 1 FROM memberships m WHERE m.account_pid = accounts.pid) \
-    OR EXISTS (SELECT 1 FROM activities a WHERE a.subject_kind = 'account' AND a.subject_pid = accounts.pid AND a.deleted_at IS NULL) \
-    OR EXISTS (SELECT 1 FROM attachments x WHERE x.subject_pid = accounts.pid) \
-    OR EXISTS (SELECT 1 FROM custom_field_values v WHERE v.subject_pid = accounts.pid)";
+/// Soft-delete the records of `all` that nobody has used since the import, returning their pids.
+/// A contact that has been used has history, a consent decision, or something that refers to it;
+/// an account, contacts, deals, tickets, partners, members, activities or fields.
+async fn remove_unused(conn: &mut PgConnection, kind: Kind, all: &[Uuid]) -> Result<Vec<Uuid>> {
+    // One checked statement per table, in place of a table name written into the SQL.
+    Ok(match kind {
+        Kind::Contact => {
+            sqlx::query_scalar!(
+                "UPDATE contacts SET deleted_at = now() WHERE pid = ANY($1) AND deleted_at IS NULL \
+                 AND NOT (marketing_consent <> 'never' \
+                 OR merged_into_pid IS NOT NULL \
+                 OR EXISTS (SELECT 1 FROM contacts m WHERE m.merged_into_pid = contacts.pid) \
+                 OR EXISTS (SELECT 1 FROM activities a WHERE a.subject_kind = 'contact' \
+                   AND a.subject_pid = contacts.pid AND a.deleted_at IS NULL) \
+                 OR EXISTS (SELECT 1 FROM deals d WHERE d.primary_contact_pid = contacts.pid \
+                   AND d.deleted_at IS NULL) \
+                 OR EXISTS (SELECT 1 FROM tickets t WHERE t.contact_pid = contacts.pid \
+                   AND t.deleted_at IS NULL) \
+                 OR EXISTS (SELECT 1 FROM leads l WHERE l.contact_pid = contacts.pid \
+                   AND l.deleted_at IS NULL) \
+                 OR EXISTS (SELECT 1 FROM nurture_enrollments n WHERE n.contact_pid = contacts.pid) \
+                 OR EXISTS (SELECT 1 FROM consent_events c WHERE c.contact_pid = contacts.pid) \
+                 OR EXISTS (SELECT 1 FROM attachments x WHERE x.subject_pid = contacts.pid) \
+                 OR EXISTS (SELECT 1 FROM custom_field_values v WHERE v.subject_pid = contacts.pid)) \
+                 RETURNING pid",
+                all,
+            )
+            .fetch_all(conn)
+            .await?
+        }
+        Kind::Account => {
+            sqlx::query_scalar!(
+                "UPDATE accounts SET deleted_at = now() WHERE pid = ANY($1) AND deleted_at IS NULL \
+                 AND NOT (EXISTS (SELECT 1 FROM contacts c WHERE c.account_pid = accounts.pid \
+                   AND c.deleted_at IS NULL) \
+                 OR EXISTS (SELECT 1 FROM deals d WHERE d.account_pid = accounts.pid \
+                   AND d.deleted_at IS NULL) \
+                 OR EXISTS (SELECT 1 FROM tickets t WHERE t.account_pid = accounts.pid \
+                   AND t.deleted_at IS NULL) \
+                 OR EXISTS (SELECT 1 FROM partnerships p WHERE p.account_pid = accounts.pid) \
+                 OR EXISTS (SELECT 1 FROM memberships m WHERE m.account_pid = accounts.pid) \
+                 OR EXISTS (SELECT 1 FROM activities a WHERE a.subject_kind = 'account' \
+                   AND a.subject_pid = accounts.pid AND a.deleted_at IS NULL) \
+                 OR EXISTS (SELECT 1 FROM attachments x WHERE x.subject_pid = accounts.pid) \
+                 OR EXISTS (SELECT 1 FROM custom_field_values v WHERE v.subject_pid = accounts.pid)) \
+                 RETURNING pid",
+                all,
+            )
+            .fetch_all(conn)
+            .await?
+        }
+    })
+}
 
 async fn undo_import(
     ctx: &AppContext,
@@ -782,23 +820,24 @@ async fn undo_import(
     kind: Kind,
     pid: Uuid,
 ) -> Result<Response> {
-    if find_import(&ctx.db, kind, pid).await?.status == "undone" {
+    let pool = db::pool(ctx);
+    if find_import(pool, kind, pid).await?.status == "undone" {
         return Err(unprocessable("this import has already been undone"));
     }
-    let txn = ctx.db.begin().await?;
+    let mut txn = pool.begin().await?;
     // Lock the record so a second undo waits for the first.
-    let locked = txn
-        .query_one_raw(stmt(
-            "SELECT created_pids, status FROM record_imports WHERE pid = $1 FOR UPDATE",
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    if locked.try_get::<String>("", "status")? == "undone" {
+    let locked = sqlx::query!(
+        "SELECT created_pids, status FROM record_imports WHERE pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    if locked.status == "undone" {
         return Err(unprocessable("this import has already been undone"));
     }
     let all: Vec<Uuid> = locked
-        .try_get::<serde_json::Value>("", "created_pids")?
+        .created_pids
         .as_array()
         .map(|a| {
             a.iter()
@@ -806,25 +845,12 @@ async fn undo_import(
                 .collect()
         })
         .unwrap_or_default();
-    let (table, in_use) = match kind {
-        Kind::Contact => ("contacts", CONTACT_IN_USE),
-        Kind::Account => ("accounts", ACCOUNT_IN_USE),
-    };
-    let removed = txn
-        .query_all_raw(stmt(
-            &format!(
-                "UPDATE {table} SET deleted_at = now() WHERE pid = ANY($1) AND deleted_at IS NULL \
-                 AND NOT ({in_use}) RETURNING pid"
-            ),
-            [all.clone().into()],
-        ))
-        .await?;
-    for row in &removed {
-        let record: Uuid = row.try_get("", "pid")?;
-        Audit::record(
-            &txn,
+    let removed = remove_unused(&mut txn, kind, &all).await?;
+    for record in &removed {
+        Audit::record_on(
+            &mut txn,
             kind.word(),
-            record,
+            *record,
             "import_undone",
             caller.actor(),
             None,
@@ -832,17 +858,16 @@ async fn undo_import(
         .await?;
     }
     let kept = all.len() - removed.len();
-    txn.execute_raw(stmt(
+    sqlx::query!(
         "UPDATE record_imports SET status = 'undone', undone_at = now(), undone_count = $2 \
          WHERE pid = $1",
-        [
-            pid.into(),
-            i32::try_from(removed.len()).unwrap_or(i32::MAX).into(),
-        ],
-    ))
+        pid,
+        i32::try_from(removed.len()).unwrap_or(i32::MAX),
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "record_import",
         pid,
         &format!("{}_import_undone", kind.word()),
@@ -860,17 +885,18 @@ async fn undo_import(
 async fn list_imports(ctx: &AppContext, kind: Kind, uri: &axum::http::Uri) -> Result<Response> {
     let page = Page::new(uri, 100)?;
     let (limit, offset) = page.bounds();
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!(
-                "SELECT {COLUMNS} FROM record_imports WHERE kind = $1 ORDER BY id DESC \
-                 LIMIT $2 OFFSET $3"
-            ),
-            [kind.word().into(), limit.into(), offset.into()],
-        ))
-        .await?;
-    let records = rows.iter().map(record).collect::<Result<Vec<_>>>()?;
+    let rows = sqlx::query_as!(
+        Stored,
+        "SELECT pid, kind, created_by, source_note, obtained_on, status, created_at, row_count, \
+         invalid_count, skipped_count, failed_count, created_pids, undone_at, undone_count \
+         FROM record_imports WHERE kind = $1 ORDER BY id DESC LIMIT $2 OFFSET $3",
+        kind.word(),
+        limit,
+        offset,
+    )
+    .fetch_all(db::pool(ctx))
+    .await?;
+    let records: Vec<ImportRecord> = rows.into_iter().map(Into::into).collect();
     let (records, more) = page.split(records);
     page.respond(records, more)
 }
@@ -884,7 +910,7 @@ macro_rules! kind_routes {
 
         #[debug_handler]
         async fn $one(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
-            format::json(find_import(&ctx.db, $kind, pid).await?)
+            format::json(find_import(db::pool(&ctx), $kind, pid).await?)
         }
 
         #[debug_handler]

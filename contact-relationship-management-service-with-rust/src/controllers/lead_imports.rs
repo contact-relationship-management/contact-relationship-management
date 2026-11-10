@@ -9,8 +9,8 @@ use std::collections::{HashMap, HashSet};
 
 use axa::prelude::*;
 use contact_relationship_management_matcher::{Contact as MatchContact, Verdict};
-use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait, Value};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::paging::Page;
@@ -18,10 +18,10 @@ use super::relationships::{DUPLICATE_POOL, account_names, match_contact, matcher
 use super::sales::{NewLead, capture_lead};
 use super::{PidPath, unprocessable};
 use crate::auth::{self, MaybeAuthUser};
+use crate::db::{self, Bridge};
 use crate::json::Json;
-use crate::models::_entities::{contacts, leads};
 use crate::models::audit_logs::Model as Audit;
-use crate::models::live::FindLive;
+use crate::models::rows;
 use crate::rules::imports::{self as rules, Mapping};
 use crate::validation::Problems;
 
@@ -128,11 +128,9 @@ async fn load_pool(
     caller: &MaybeAuthUser,
 ) -> Result<(Vec<Known>, HashMap<String, Vec<usize>>)> {
     // Everyone the rows are compared with: contacts the caller may read, then leads.
-    let mut contact_rows = contacts::Entity::find_live()
-        .order_by_asc(contacts::Column::Id)
-        .limit(u64::try_from(DUPLICATE_POOL).unwrap_or(u64::MAX))
-        .all(&ctx.db)
-        .await?;
+    let database = db::pool(ctx);
+    let mut contact_rows =
+        rows::first_contacts(database, i64::try_from(DUPLICATE_POOL).unwrap_or(i64::MAX)).await?;
     contact_rows.retain(|row| {
         auth::authorize_record(
             caller,
@@ -152,12 +150,7 @@ async fn load_pool(
             matched: match_contact(c, &accounts),
         })
         .collect();
-    for lead in leads::Entity::find_live()
-        .order_by_desc(leads::Column::Id)
-        .limit(LEAD_POOL)
-        .all(&ctx.db)
-        .await?
-    {
+    for lead in rows::newest_leads(database, i64::try_from(LEAD_POOL).unwrap_or(i64::MAX)).await? {
         pool.push(Known {
             kind: "lead",
             pid: Some(lead.pid),
@@ -299,8 +292,8 @@ async fn preview(
             r.iter().filter(|x| !x.likely_duplicates.is_empty()).count(),
         )
     });
-    Audit::record_read(
-        &ctx.db,
+    Audit::record_read_on(
+        db::pool(&ctx),
         "lead_import",
         Uuid::nil(),
         "lead_import_previewed",
@@ -319,10 +312,6 @@ async fn preview(
         invalid,
         likely_duplicates: likely,
     })
-}
-
-fn stmt(sql: &str, values: impl IntoIterator<Item = Value>) -> Statement {
-    Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values)
 }
 
 /// An import record.
@@ -347,36 +336,53 @@ pub(crate) struct ImportRecord {
     undone_count: Option<i32>,
 }
 
-const COLUMNS: &str = "pid, created_by, source_note, obtained_on, status, created_at, row_count, \
-                       invalid_count, skipped_count, lead_pids, undone_at, undone_count";
-
-fn record(row: &sea_orm::QueryResult) -> Result<ImportRecord> {
-    let pids: serde_json::Value = row.try_get("", "lead_pids")?;
-    Ok(ImportRecord {
-        pid: row.try_get::<Uuid>("", "pid")?.to_string(),
-        created_by: row.try_get("", "created_by")?,
-        source_note: row.try_get("", "source_note")?,
-        obtained_on: row.try_get("", "obtained_on")?,
-        status: row.try_get("", "status")?,
-        created_at: row.try_get("", "created_at")?,
-        row_count: row.try_get("", "row_count")?,
-        invalid_count: row.try_get("", "invalid_count")?,
-        skipped_count: row.try_get("", "skipped_count")?,
-        created_count: pids.as_array().map_or(0, Vec::len),
-        undone_at: row.try_get("", "undone_at")?,
-        undone_count: row.try_get("", "undone_count")?,
-    })
+/// One `lead_imports` row as stored.
+struct Stored {
+    pid: Uuid,
+    created_by: Option<String>,
+    source_note: String,
+    obtained_on: chrono::NaiveDate,
+    status: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+    row_count: i32,
+    invalid_count: i32,
+    skipped_count: i32,
+    lead_pids: serde_json::Value,
+    undone_at: Option<chrono::DateTime<chrono::Utc>>,
+    undone_count: Option<i32>,
 }
 
-async fn find_import(db: &sea_orm::DatabaseConnection, pid: Uuid) -> Result<ImportRecord> {
-    let row = db
-        .query_one_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM lead_imports WHERE pid = $1"),
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    record(&row)
+impl From<Stored> for ImportRecord {
+    fn from(row: Stored) -> Self {
+        Self {
+            pid: row.pid.to_string(),
+            created_by: row.created_by,
+            source_note: row.source_note,
+            obtained_on: row.obtained_on,
+            status: row.status,
+            created_at: row.created_at,
+            row_count: row.row_count,
+            invalid_count: row.invalid_count,
+            skipped_count: row.skipped_count,
+            created_count: row.lead_pids.as_array().map_or(0, Vec::len),
+            undone_at: row.undone_at,
+            undone_count: row.undone_count,
+        }
+    }
+}
+
+async fn find_import(pool: &PgPool, pid: Uuid) -> Result<ImportRecord> {
+    let row = sqlx::query_as!(
+        Stored,
+        "SELECT pid, created_by, source_note, obtained_on, status, created_at, row_count, \
+         invalid_count, skipped_count, lead_pids, undone_at, undone_count \
+         FROM lead_imports WHERE pid = $1",
+        pid,
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or(Error::NotFound)?;
+    Ok(row.into())
 }
 
 /// `POST /api/lead-imports` — save the valid rows as leads, in batches.
@@ -410,28 +416,27 @@ async fn commit(
     }
     let import = Uuid::new_v4();
     let toi = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
-    let txn = ctx.db.begin().await?;
-    txn.execute_raw(stmt(
+    let pool = db::pool(&ctx);
+    sqlx::query!(
         "INSERT INTO lead_imports (pid, created_by, source_note, obtained_on, row_count, \
          invalid_count, skipped_count) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        [
-            import.into(),
-            caller.actor().map(ToString::to_string).into(),
-            payload.source_note.trim().to_string().into(),
-            payload.obtained_on.into(),
-            toi(table.rows.len()).into(),
-            toi(invalid).into(),
-            toi(skipped).into(),
-        ],
-    ))
+        import,
+        caller.actor(),
+        payload.source_note.trim(),
+        payload.obtained_on,
+        toi(table.rows.len()),
+        toi(invalid),
+        toi(skipped),
+    )
+    .execute(pool)
     .await?;
-    txn.commit().await?;
     for batch in to_save.chunks(rules::BATCH) {
-        let txn = ctx.db.begin().await?;
+        let mut txn = pool.begin().await?;
         let mut made = Vec::with_capacity(batch.len());
         for row in batch {
+            // `capture_lead` is still on `SeaORM`; `Bridge` runs it in this transaction.
             let (lead, _) = capture_lead(
-                &txn,
+                &Bridge::new(&mut txn),
                 &NewLead {
                     source: "import",
                     campaign_pid: None,
@@ -445,21 +450,24 @@ async fn commit(
             .await?;
             made.push(lead.pid.to_string());
         }
-        txn.execute_raw(stmt(
+        sqlx::query!(
             "UPDATE lead_imports SET lead_pids = lead_pids || $2::jsonb WHERE pid = $1",
-            [import.into(), serde_json::json!(made).into()],
-        ))
+            import,
+            serde_json::json!(made),
+        )
+        .execute(&mut *txn)
         .await?;
         txn.commit().await?;
     }
-    let txn = ctx.db.begin().await?;
-    txn.execute_raw(stmt(
+    let mut txn = pool.begin().await?;
+    sqlx::query!(
         "UPDATE lead_imports SET status = 'completed' WHERE pid = $1",
-        [import.into()],
-    ))
+        import,
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "lead_import",
         import,
         "lead_import_committed",
@@ -472,7 +480,7 @@ async fn commit(
     )
     .await?;
     txn.commit().await?;
-    format::json(find_import(&ctx.db, import).await?)
+    format::json(find_import(pool, import).await?)
 }
 
 /// `POST /api/lead-imports/{pid}/undo` response.
@@ -493,24 +501,25 @@ async fn undo(
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
 ) -> Result<Response> {
-    let existing = find_import(&ctx.db, pid).await?;
+    let pool = db::pool(&ctx);
+    let existing = find_import(pool, pid).await?;
     if existing.status == "undone" {
         return Err(unprocessable("this import has already been undone"));
     }
-    let txn = ctx.db.begin().await?;
+    let mut txn = pool.begin().await?;
     // Lock the record so a second undo waits for the first.
-    let locked = txn
-        .query_one_raw(stmt(
-            "SELECT lead_pids, status FROM lead_imports WHERE pid = $1 FOR UPDATE",
-            [pid.into()],
-        ))
-        .await?
-        .ok_or(Error::NotFound)?;
-    if locked.try_get::<String>("", "status")? == "undone" {
+    let locked = sqlx::query!(
+        "SELECT lead_pids, status FROM lead_imports WHERE pid = $1 FOR UPDATE",
+        pid,
+    )
+    .fetch_optional(&mut *txn)
+    .await?
+    .ok_or(Error::NotFound)?;
+    if locked.status == "undone" {
         return Err(unprocessable("this import has already been undone"));
     }
     let all: Vec<Uuid> = locked
-        .try_get::<serde_json::Value>("", "lead_pids")?
+        .lead_pids
         .as_array()
         .map(|a| {
             a.iter()
@@ -518,32 +527,38 @@ async fn undo(
                 .collect()
         })
         .unwrap_or_default();
-    let removed = txn
-        .query_all_raw(stmt(
-            "UPDATE leads SET deleted_at = now() WHERE pid = ANY($1) AND deleted_at IS NULL \
-             AND status = 'new' AND NOT EXISTS (SELECT 1 FROM activities a \
-                 WHERE a.subject_kind = 'lead' AND a.subject_pid = leads.pid \
-                   AND a.deleted_at IS NULL) \
-             RETURNING pid",
-            [all.clone().into()],
-        ))
+    let removed = sqlx::query_scalar!(
+        "UPDATE leads SET deleted_at = now() WHERE pid = ANY($1) AND deleted_at IS NULL \
+         AND status = 'new' AND NOT EXISTS (SELECT 1 FROM activities a \
+             WHERE a.subject_kind = 'lead' AND a.subject_pid = leads.pid \
+               AND a.deleted_at IS NULL) \
+         RETURNING pid",
+        &all,
+    )
+    .fetch_all(&mut *txn)
+    .await?;
+    for lead in &removed {
+        Audit::record_on(
+            &mut txn,
+            "lead",
+            *lead,
+            "import_undone",
+            caller.actor(),
+            None,
+        )
         .await?;
-    for row in &removed {
-        let lead: Uuid = row.try_get("", "pid")?;
-        Audit::record(&txn, "lead", lead, "import_undone", caller.actor(), None).await?;
     }
     let kept = all.len() - removed.len();
-    txn.execute_raw(stmt(
+    sqlx::query!(
         "UPDATE lead_imports SET status = 'undone', undone_at = now(), undone_count = $2 \
          WHERE pid = $1",
-        [
-            pid.into(),
-            i32::try_from(removed.len()).unwrap_or(i32::MAX).into(),
-        ],
-    ))
+        pid,
+        i32::try_from(removed.len()).unwrap_or(i32::MAX),
+    )
+    .execute(&mut *txn)
     .await?;
-    Audit::record(
-        &txn,
+    Audit::record_on(
+        &mut txn,
         "lead_import",
         pid,
         "lead_import_undone",
@@ -563,14 +578,17 @@ async fn undo(
 async fn list(State(ctx): State<AppContext>, uri: axum::http::Uri) -> Result<Response> {
     let page = Page::new(&uri, 100)?;
     let (limit, offset) = page.bounds();
-    let rows = ctx
-        .db
-        .query_all_raw(stmt(
-            &format!("SELECT {COLUMNS} FROM lead_imports ORDER BY id DESC LIMIT $1 OFFSET $2"),
-            [limit.into(), offset.into()],
-        ))
-        .await?;
-    let records = rows.iter().map(record).collect::<Result<Vec<_>>>()?;
+    let rows = sqlx::query_as!(
+        Stored,
+        "SELECT pid, created_by, source_note, obtained_on, status, created_at, row_count, \
+         invalid_count, skipped_count, lead_pids, undone_at, undone_count \
+         FROM lead_imports ORDER BY id DESC LIMIT $1 OFFSET $2",
+        limit,
+        offset,
+    )
+    .fetch_all(db::pool(&ctx))
+    .await?;
+    let records: Vec<ImportRecord> = rows.into_iter().map(Into::into).collect();
     let (records, more) = page.split(records);
     page.respond(records, more)
 }
@@ -578,7 +596,7 @@ async fn list(State(ctx): State<AppContext>, uri: axum::http::Uri) -> Result<Res
 /// `GET /api/lead-imports/{pid}`.
 #[debug_handler]
 async fn get_one(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
-    format::json(find_import(&ctx.db, pid).await?)
+    format::json(find_import(db::pool(&ctx), pid).await?)
 }
 
 /// The lead import routes.
