@@ -53,3 +53,10 @@ adresse = "adresse"
 entreprise = "entreprise"
 # German formal address, named in the de-de review record (CRM-T175).
 sie = "sie"
+# Azure Kubernetes Service abbreviation (Azure cloud provider).
+aks = "aks"
+# AWS container services.
+ecs = "ecs"
+eks = "eks"
+# Google Cloud container service.
+gke = "gke"
