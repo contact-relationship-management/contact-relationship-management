@@ -1,6 +1,6 @@
 # Evaluate Checklist
 
-### Capabilities
+## Capabilities
 
 | Request | Yes/No/Maybe and details |
 |---------|----------------------|
