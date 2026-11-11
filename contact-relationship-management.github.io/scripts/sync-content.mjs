@@ -29,6 +29,7 @@ const DOCS = [
   "docs/tutorial-family-bridges.md",
   "spec/index.md",
   "spec/locale/index.md",
+  "locales/en-001/evaluate/index.md",
 ];
 
 // The comparison pages, /compare/<product>/.
