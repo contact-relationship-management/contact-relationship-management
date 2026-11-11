@@ -11,29 +11,29 @@ import {
 
 describe("crmApiBase", () => {
   it("defaults to the service's /api path when unset or blank", () => {
-    expect(DEFAULT_CRM_API_URL).toBe("http://localhost:5150/api");
+    expect(DEFAULT_CRM_API_URL).toBe("http://localhost:1241/api");
     expect(crmApiBase(undefined)).toBe(DEFAULT_CRM_API_URL);
     expect(crmApiBase("")).toBe(DEFAULT_CRM_API_URL);
     expect(crmApiBase("  ")).toBe(DEFAULT_CRM_API_URL);
   });
 
   it("keeps a set value, dropping trailing slashes only", () => {
-    expect(crmApiBase("http://crm:5150/api")).toBe("http://crm:5150/api");
-    expect(crmApiBase("http://crm:5150/api/")).toBe("http://crm:5150/api");
+    expect(crmApiBase("http://crm:1241/api")).toBe("http://crm:1241/api");
+    expect(crmApiBase("http://crm:1241/api/")).toBe("http://crm:1241/api");
     expect(crmApiBase("https://x.example/crm/api//")).toBe(
       "https://x.example/crm/api",
     );
   });
 
   it("adds no /api of its own", () => {
-    expect(crmApiBase("http://crm:5150")).toBe("http://crm:5150");
+    expect(crmApiBase("http://crm:1241")).toBe("http://crm:1241");
   });
 });
 
 describe("upstreamUrl", () => {
   it("maps /api/proxy/<path>?<query> to <base>/<path>?<query>", () => {
     expect(upstreamUrl(crmApiBase(undefined), "contacts/42", "?limit=5")).toBe(
-      "http://localhost:5150/api/contacts/42?limit=5",
+      "http://localhost:1241/api/contacts/42?limit=5",
     );
     expect(upstreamUrl(crmApiBase("http://crm/api/"), "forecast", "")).toBe(
       "http://crm/api/forecast",

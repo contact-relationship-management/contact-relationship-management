@@ -32,10 +32,10 @@ podman compose -f compose.test.yaml up -d
 export DB_URL=postgres://loco:loco@localhost:5432/contact_relationship_management_development
 cargo run -- db create     # the container creates only contact_relationship_management_test
 cargo run -- db migrate && cargo run -- task seed && cargo run -- start
-curl localhost:5150/api/forecast | jq .
+curl localhost:1241/api/forecast | jq .
 ```
 
-The server listens on port 5150 (the default in `src/app.rs`). Without
+The server listens on port 1241 (the default in `src/app.rs`). Without
 `DB_URL`, development uses the database named above. `cargo test`
 runs the DB-free tests; `cargo test -- --ignored` runs the request tests
 against `contact_relationship_management_test` (`config/test.yaml`),

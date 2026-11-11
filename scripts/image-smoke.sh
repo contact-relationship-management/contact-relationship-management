@@ -89,7 +89,7 @@ check "the image's own 'db migrate' applies every migration" bash -c "[[ \"\$(po
 [[ $? -ne 0 ]] && echo "${out}" | tail -5
 
 say "phase 1: production mode, hardened, authentication on"
-run_image "${SVC}" -p "${PORT}:5150" --
+run_image "${SVC}" -p "${PORT}:1241" --
 check "the service starts and answers /_health/live" wait_for 60 serves
 check "it runs as a non-root user" bash -c "[[ \"\$(podman exec ${PG} true; podman inspect ${SVC} --format '{{.Config.User}}')\" == nonroot* ]]"
 check "no token: 401" test "$(status '' GET /api/contacts)" = 401
@@ -120,7 +120,7 @@ mail_env=(-e APP_ENV=development -e CRM_MAIL_MODE=smtp -e "CRM_SMTP_HOST=${MAIL}
   -e CRM_MAIL_FROM=crm@example.test -e CRM_MAIL_DEV_DOMAIN=example.test
   -e CRM_UNSUBSCRIBE_SECRET=smoke-unsubscribe-secret-0123456789abcdef -e CRM_PUBLIC_URL=https://crm.example.test)
 # development binds to localhost; the container needs every interface
-run_image "${SVC}" -p "${PORT}:5150" "${mail_env[@]}" -- --binding 0.0.0.0
+run_image "${SVC}" -p "${PORT}:1241" "${mail_env[@]}" -- --binding 0.0.0.0
 check "the service starts in development mode with SMTP" wait_for 60 serves
 C1="$(contact 'Mail One')"; C2="$(contact 'Mail Two')"; contact 'Mail Three, never consented' >/dev/null  # created and never given consent
 for c in "${C1}" "${C2}"; do status "${ADMIN}" POST "/api/contacts/${c}/consent" '{"action":"granted","source":"image smoke"}' >/dev/null; done

@@ -4,12 +4,12 @@ import * as env from "$app/env/private";
 import { crmApiBase } from "./api-url.js";
 
 /** API base of the contact-relationship-management service the BFF proxies
- *  to, ending in `/api` (default `http://localhost:5150/api`). */
+ *  to, ending in `/api` (default `http://localhost:1241/api`). */
 export const CRM_API_URL: string = crmApiBase(env.CRM_API_URL);
 
 /** Authentication service base URL — for the session→PASETO exchange
  *  and the magic-link login flow (PF-T18). */
-export const AUTH_API_URL: string = env.AUTH_API_URL || "http://localhost:5150";
+export const AUTH_API_URL: string = env.AUTH_API_URL || "http://localhost:1241";
 
 /**
  * The guided tour (sign in as example@example.com, explore fictitious data).

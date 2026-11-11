@@ -79,7 +79,7 @@ export CRM_WPM_WEBHOOK_SECRET='dev-only-wpm-webhook-secret-0123456789'   # 38 ch
 cargo run -- start
 ```
 
-The service listens on `http://localhost:5150` (the default in `src/app.rs`).
+The service listens on `http://localhost:1241` (the default in `src/app.rs`).
 
 ## 2. Create a contact for a synthetic person
 
@@ -87,7 +87,7 @@ The events find contacts by `person_ref`, so create a contact with a known
 reference and grant marketing consent. The examples use `jq`.
 
 ```bash
-CRM=http://localhost:5150
+CRM=http://localhost:1241
 PERSON='person:3f0c2b1e-0000-4000-8000-000000000101'
 ORG='organization:3f0c2b1e-0000-4000-8000-0000000000aa'
 

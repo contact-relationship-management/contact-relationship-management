@@ -71,7 +71,7 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
 ## Running
 
 ```bash
-cargo run -- db migrate && cargo run -- task seed && cargo run -- start   # :5150
+cargo run -- db migrate && cargo run -- task seed && cargo run -- start   # :1241
 cargo test --features keycloak                     # DB-free unit tests
 DB_URL=postgres://… cargo test --features keycloak -- --ignored --test-threads=1
 ```

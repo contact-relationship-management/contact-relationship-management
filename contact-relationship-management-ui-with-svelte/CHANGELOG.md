@@ -61,7 +61,7 @@ The stand-in's `deal()` and `campaign()` take minor units (the `pounds` paramete
 
 ### Fixed — the default `CRM_API_URL` reaches the service (maintenance, 2026-10-30)
 
-The default and `.env.example` were `http://localhost:5150`, but the BFF proxy sends `/api/proxy/<path>` to `<CRM_API_URL>/<path>`, so a default local setup missed the service's `/api` routes. Both are now `http://localhost:5150/api`. `src/lib/server/api-url.ts` holds the default and the URL building (a blank value takes the default, trailing slashes are dropped), pinned by `tests/unit/api-url.test.ts`. No `/api` is appended to a value without it: a service behind another prefix sets the whole base, and guessing would hide a wrong setting. A deployment that set the old form keeps missing the routes until it adds `/api`. **Not verified:** the proxy was not run against a running service; the live Playwright suite already passes `<API>/api` and was not run.
+The default and `.env.example` were `http://localhost:1241`, but the BFF proxy sends `/api/proxy/<path>` to `<CRM_API_URL>/<path>`, so a default local setup missed the service's `/api` routes. Both are now `http://localhost:1241/api`. `src/lib/server/api-url.ts` holds the default and the URL building (a blank value takes the default, trailing slashes are dropped), pinned by `tests/unit/api-url.test.ts`. No `/api` is appended to a value without it: a service behind another prefix sets the whole base, and guessing would hide a wrong setting. A deployment that set the old form keeps missing the routes until it adds `/api`. **Not verified:** the proxy was not run against a running service; the live Playwright suite already passes `<API>/api` and was not run.
 
 ### Fixed — `/followups` passes the WCAG AA contrast check again (CRM-R77)
 

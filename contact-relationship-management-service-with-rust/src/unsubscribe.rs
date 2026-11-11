@@ -225,7 +225,7 @@ mod tests {
     fn weak_or_insecure_settings_are_refused() {
         assert!(Unsubscriber::new("short", "https://x.test", true).is_err());
         assert!(Unsubscriber::new(SECRET, "http://x.test", true).is_err());
-        assert!(Unsubscriber::new(SECRET, "http://localhost:5150", false).is_ok());
+        assert!(Unsubscriber::new(SECRET, "http://localhost:1241", false).is_ok());
         assert!(Unsubscriber::new(SECRET, "ftp://x.test", false).is_err());
     }
 

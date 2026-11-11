@@ -610,9 +610,9 @@ mod tests {
         };
         for base in [
             "https://ppm.example.com",
-            "http://localhost:5150",
+            "http://localhost:1241",
             "http://127.0.0.1:1",
-            "http://[::1]:5150",
+            "http://[::1]:1241",
         ] {
             assert_eq!(
                 sent(base, Some("t0ken")),
@@ -622,7 +622,7 @@ mod tests {
         }
         for base in [
             "http://ppm.example.com",
-            "http://10.0.0.5:5150",
+            "http://10.0.0.5:1241",
             "ftp://x",
             "not a url",
         ] {

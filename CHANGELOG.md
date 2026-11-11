@@ -367,7 +367,7 @@ The file and `scripts/ci-check.sh` pointed at a `scripts/test-db.sh` that was ne
 
 ### Fixed — the UI's default `CRM_API_URL` reaches the service (maintenance, 2026-10-30)
 
-The default and `.env.example` are now `http://localhost:5150/api`, the base the BFF proxy needs, so a default local setup reaches the service; a trailing slash is dropped and no `/api` is added to a value without it. A unit test pins the default and the upstream URL; INSTALL.md and the UI README say so. **Not verified:** the proxy against a running service.
+The default and `.env.example` are now `http://localhost:1241/api`, the base the BFF proxy needs, so a default local setup reaches the service; a trailing slash is dropped and no `/api` is added to a value without it. A unit test pins the default and the upstream URL; INSTALL.md and the UI README say so. **Not verified:** the proxy against a running service.
 
 ### Changed — llms.txt and llms.json list every current document (maintenance, 2026-10-30)
 
@@ -383,7 +383,7 @@ WPM's worker list takes `fields` since WPM-R216, so `POST /api/bridges/wpm/teams
 
 `docs/tutorial-family-bridges.md`: the four bridges, their environment variables, a signed WPM hire and leave sent with `openssl` and `curl`, the ordering of events, and the employment check. INSTALL.md has a "Family bridges" section (the two WPM settings were in the email table), the service README's route list is rebuilt from `app.rs` and the controllers and its quick start creates the database first, and the UI README's views, environment and test tables match `src/routes`, the config and the scripts; stale test counts were removed rather than recounted.
 
-**Not done or not verified:** the tutorial's `curl` calls were not run, and nothing was run against a running WPM or PPM (the `openssl` signature was checked against the RFC 4231 vector the unit tests use). Found and not fixed: the UI's `CRM_API_URL` default (`http://localhost:5150`, also in `.env.example`) lacks the `/api` the proxy needs, so the docs say to set it; `compose.test.yaml` mentions a `scripts/test-db.sh` that does not exist.
+**Not done or not verified:** the tutorial's `curl` calls were not run, and nothing was run against a running WPM or PPM (the `openssl` signature was checked against the RFC 4231 vector the unit tests use). Found and not fixed: the UI's `CRM_API_URL` default (`http://localhost:1241`, also in `.env.example`) lacks the `/api` the proxy needs, so the docs say to set it; `compose.test.yaml` mentions a `scripts/test-db.sh` that does not exist.
 
 ### Fixed — the agent guides match the code (maintenance, 2026-10-30)
 

@@ -23,7 +23,7 @@ use crate::{auth, controllers, middleware, rate_limit, redis_store, tasks};
 fn defaults() -> Defaults {
     Defaults {
         database: "contact_relationship_management",
-        port: 5150,
+        port: 1241,
         production_port: None,
         body_limit: 2 * MB,
         max_connections: 1,
@@ -598,7 +598,7 @@ mod tests {
     #[test]
     fn the_defaults_keep_the_service_port_and_body_limit() {
         let defaults = defaults();
-        assert_eq!((defaults.port, defaults.body_limit), (5150, 2_000_000));
+        assert_eq!((defaults.port, defaults.body_limit), (1241, 2_000_000));
     }
 
     #[test]

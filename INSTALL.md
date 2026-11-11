@@ -12,7 +12,7 @@ From a fresh clone, with no other repository:
 
 ```bash
 podman compose up --build        # or: docker compose up --build
-curl http://localhost:5150/_health/live
+curl http://localhost:1241/_health/live
 ```
 
 This starts PostgreSQL, Redis and the API ([compose.yaml](compose.yaml)). **Demo only:** sign-in is off, email is simulated,
@@ -114,7 +114,7 @@ CRM_SMTP_USERNAME=crm@crm.test CRM_SMTP_PASSWORD=crm-dev-password \
 CRM_MAIL_FROM='CRM <crm@crm.test>' CRM_SMTP_ACCEPT_INVALID_CERTS=1 \
 CRM_MAIL_DEV_DOMAIN=crm.test \
 CRM_UNSUBSCRIBE_SECRET=dev-only-unsubscribe-secret-0123456789 \
-CRM_PUBLIC_URL=http://localhost:5150 cargo run -- start
+CRM_PUBLIC_URL=http://localhost:1241 cargo run -- start
 ```
 
 Mail lands in the `crm@crm.test` mailbox; read it over JMAP at
@@ -166,7 +166,7 @@ pnpm dev
 
 To use a running service instead of the tour, the UI needs the service's
 `/api` base in `CRM_API_URL`. The proxy appends the path after `/api/proxy/`
-to this value, and the default, `http://localhost:5150/api`, is a service
+to this value, and the default, `http://localhost:1241/api`, is a service
 started as above, so only the authentication service needs setting:
 
 ```bash
