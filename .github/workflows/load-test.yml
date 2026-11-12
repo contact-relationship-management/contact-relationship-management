@@ -1,0 +1,367 @@
+name: Load Test
+
+# Load testing workflow for CRM application
+#
+# This workflow runs various load tests on different triggers:
+# - Smoke tests on every push to main
+# - Basic load tests on PR merges
+# - Full load tests on manual trigger
+# - Nightly comprehensive tests
+#
+# To run manually:
+#   1. Go to Actions tab
+#   2. Select "Load Test" workflow
+#   3. Click "Run workflow"
+#   4. Select test type and configure options
+#
+# Notes:
+# - Requires a running instance of the application
+# - Configure CRM_LOAD_TEST_URL in repository secrets
+# - Configure CRM_LOAD_TEST_AUTH_TOKEN if authentication is required
+# - Database tests require a running PostgreSQL instance
+
+on:
+  # Run smoke tests on push to main
+  push:
+    branches: [main, master]
+    paths:
+      - 'contact-relationship-management-service-with-rust/**'
+      - 'tests/load/**'
+      - '.github/workflows/load-test.yml'
+
+  # Run smoke tests on PR merge
+  pull_request:
+    types: [closed]
+    branches: [main, master]
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of load test to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - basic
+          - stress
+          - soak
+          - spike
+          - api-contract
+          - database
+          - bridges
+          - all
+      vus:
+        description: 'Number of virtual users'
+        required: false
+        default: '10'
+        type: string
+      duration:
+        description: 'Test duration (e.g., 1m, 5m, 10m)'
+        required: false
+        default: '1m'
+        type: string
+      environment:
+        description: 'Test environment'
+        required: false
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+  # Nightly comprehensive test
+  schedule:
+    - cron: '0 2 * * *'  # Run at 2 AM UTC
+
+  # Allow running from other workflows
+  workflow_call:
+    inputs:
+      test_type:
+        required: true
+        type: string
+      vus:
+        required: false
+        type: string
+        default: '10'
+      duration:
+        required: false
+        type: string
+        default: '1m'
+    secrets:
+      CRM_LOAD_TEST_URL:
+        required: false
+      CRM_LOAD_TEST_AUTH_TOKEN:
+        required: false
+
+jobs:
+  # Setup job to determine which tests to run
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      tests_to_run: ${{ steps.determine-tests.outputs.tests }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine tests to run
+        id: determine-tests
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Running smoke test (automatic on push/PR merge)"
+            echo "tests=['smoke']" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "Running nightly comprehensive test"
+            echo "tests=['smoke', 'basic', 'stress']" >> $GITHUB_OUTPUT
+          else
+            # Manual trigger or workflow_call
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              TEST_TYPE="${{ github.event.inputs.test_type }}"
+            else
+              TEST_TYPE="${{ inputs.test_type }}"
+            fi
+            case "$TEST_TYPE" in
+              all)
+                echo "Running all tests"
+                echo "tests=['smoke', 'basic', 'stress', 'soak', 'spike', 'api-contract', 'database', 'bridges']" >> $GITHUB_OUTPUT
+                ;;
+              *)
+                echo "Running specific test: $TEST_TYPE"
+                echo "tests=['$TEST_TYPE']" >> $GITHUB_OUTPUT
+                ;;
+            esac
+          fi
+
+  # Load testing job
+  load-test:
+    name: Load Test
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        test: ${{ fromJSON(needs.setup.outputs.tests_to_run) }}
+    
+    # Services for local testing (optional)
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: crm_test
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install k6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y k6
+          k6 version
+
+      - name: Configure environment
+        id: config
+        run: |
+          # Set test URL
+          TEST_URL="${{ secrets.CRM_LOAD_TEST_URL || 'http://localhost:8080' }}"
+          echo "TEST_URL=$TEST_URL" >> $GITHUB_ENV
+          
+          # Set auth token if provided
+          if [ -n "${{ secrets.CRM_LOAD_TEST_AUTH_TOKEN }}" ]; then
+            echo "CRM_AUTH_TOKEN=${{ secrets.CRM_LOAD_TEST_AUTH_TOKEN }}" >> $GITHUB_ENV
+          else
+            echo "CRM_AUTH_TOKEN=" >> $GITHUB_ENV
+          fi
+          
+          # Set test parameters from inputs or defaults
+          VUS="${{ github.event.inputs.vus || inputs.vus || '10' }}"
+          DURATION="${{ github.event.inputs.duration || inputs.duration || '1m' }}"
+          ENVIRONMENT="${{ github.event.inputs.environment || 'dev' }}"
+          
+          echo "VUS=$VUS" >> $GITHUB_ENV
+          echo "DURATION=$DURATION" >> $GITHUB_ENV
+          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
+          
+          # Configure based on environment
+          case "$ENVIRONMENT" in
+            dev)
+              echo "REQUIRE_AUTH=false" >> $GITHUB_ENV
+              ;;
+            staging|prod)
+              echo "REQUIRE_AUTH=true" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Configure test files
+        run: |
+          # Create config file for this run
+          cat > tests/load/config/ci-generated.js << EOF
+          export const generated = {
+            baseUrl: '${{ env.TEST_URL }}',
+            auth: {
+              token: '${{ env.CRM_AUTH_TOKEN }}',
+              requireAuth: ${{ env.REQUIRE_AUTH }} == 'true' ? true : false,
+            },
+            vus: {
+              smoke: 5,
+              basic: ${{ env.VUS }},
+              stress: ${{ fromJSON(env.VUS) * 4 }},
+              soak: ${{ fromJSON(env.VUS) }},
+              spike: ${{ fromJSON(env.VUS) }},
+              database: ${{ fromJSON(env.VUS) }},
+              bridges: 5,
+              max: ${{ fromJSON(env.VUS) * 10 }},
+            },
+            durations: {
+              smoke: '1m',
+              basic: '${{ env.DURATION }}',
+              stress: '${{ env.DURATION }}',
+              soak: '5m',
+              spike: '2m',
+              database: '${{ env.DURATION }}',
+              bridges: '${{ env.DURATION }}',
+            },
+          };
+          EOF
+
+      - name: Run Smoke Test
+        if: matrix.test == 'smoke'
+        run: |
+          echo "Running smoke test..."
+          cd tests/load
+          k6 run --vus 5 --duration 1m \
+            --env TEST_URL=${{ env.TEST_URL }} \
+            --env CRM_AUTH_TOKEN=${{ env.CRM_AUTH_TOKEN }} \
+            scripts/smoke.test.js
+
+      - name: Run Basic Load Test
+        if: matrix.test == 'basic'
+        run: |
+          echo "Running basic load test..."
+          cd tests/load
+          k6 run --vus ${{ env.VUS }} --duration ${{ env.DURATION }} \
+            --env TEST_URL=${{ env.TEST_URL }} \
+            --env CRM_AUTH_TOKEN=${{ env.CRM_AUTH_TOKEN }} \
+            scripts/basic-load.test.js
+
+      - name: Run Stress Test
+        if: matrix.test == 'stress'
+        run: |
+          echo "Running stress test..."
+          cd tests/load
+          k6 run --vus ${{ fromJSON(env.VUS) * 4 }} --duration ${{ env.DURATION }} \
+            --env TEST_URL=${{ env.TEST_URL }} \
+            --env CRM_AUTH_TOKEN=${{ env.CRM_AUTH_TOKEN }} \
+            scripts/stress.test.js
+
+      - name: Run Soak Test
+        if: matrix.test == 'soak'
+        run: |
+          echo "Running soak test (long-running)..."
+          cd tests/load
+          k6 run --vus ${{ env.VUS }} --duration 5m \
+            --env TEST_URL=${{ env.TEST_URL }} \
+            --env CRM_AUTH_TOKEN=${{ env.CRM_AUTH_TOKEN }} \
+            scripts/soak.test.js
+
+      - name: Run Spike Test
+        if: matrix.test == 'spike'
+        run: |
+          echo "Running spike test..."
+          cd tests/load
+          k6 run --vus ${{ env.VUS }} --duration 2m \
+            --env TEST_URL=${{ env.TEST_URL }} \
+            --env CRM_AUTH_TOKEN=${{ env.CRM_AUTH_TOKEN }} \
+            scripts/spike.test.js
+
+      - name: Run API Contract Test
+        if: matrix.test == 'api-contract'
+        run: |
+          echo "Running API contract test..."
+          cd tests/load
+          k6 run --vus 5 --duration 2m \
+            --env TEST_URL=${{ env.TEST_URL }} \
+            --env CRM_AUTH_TOKEN=${{ env.CRM_AUTH_TOKEN }} \
+            scripts/api-contract.test.js
+
+      - name: Run Database Test
+        if: matrix.test == 'database'
+        run: |
+          echo "Running database test..."
+          cd tests/load
+          k6 run --vus ${{ env.VUS }} --duration ${{ env.DURATION }} \
+            --env TEST_URL=${{ env.TEST_URL }} \
+            --env CRM_AUTH_TOKEN=${{ env.CRM_AUTH_TOKEN }} \
+            scripts/database.test.js
+
+      - name: Run Bridges Test
+        if: matrix.test == 'bridges'
+        run: |
+          echo "Running bridges test..."
+          cd tests/load
+          k6 run --vus 5 --duration ${{ env.DURATION }} \
+            --env TEST_URL=${{ env.TEST_URL }} \
+            --env CRM_AUTH_TOKEN=${{ env.CRM_AUTH_TOKEN }} \
+            scripts/bridges.test.js
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results-${{ matrix.test }}
+          path: |
+            tests/load/output/
+            tests/load/results/
+          if-no-files-found: ignore
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Load Test Summary - ${{ matrix.test }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Type**: ${{ matrix.test }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **VUs**: ${{ env.VUS }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Duration**: ${{ env.DURATION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ env.TEST_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ Check the test output for detailed metrics and results." >> $GITHUB_STEP_SUMMARY
+
+  # Cleanup job
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: load-test
+    if: always()
+    steps:
+      - name: Remove generated config
+        run: rm -f tests/load/config/ci-generated.js
+
+  # Notification job
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: load-test
+    if: failure()
+    steps:
+      - name: Send failure notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_COLOR: danger
+          SLACK_TITLE: "❌ Load Test Failed"
+          SLACK_MESSAGE: "Load test failed. Check the workflow run for details."
