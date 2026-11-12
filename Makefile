@@ -20,6 +20,14 @@ demo-service:
 demo-ui:
 	cd contact-relationship-management-ui-with-svelte && make demo
 
+.PHONY: test-service
+test-service:
+	cd contact-relationship-management-service-with-rust && make test
+
+.PHONY: test-ui
+test-ui:
+	cd contact-relationship-management-ui-with-svelte && make test
+
 .PHONY: test
 test: test-github-discussions test-demo
 	@echo "All tests passed!"

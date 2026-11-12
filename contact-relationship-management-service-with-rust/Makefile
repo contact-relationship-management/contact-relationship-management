@@ -9,3 +9,9 @@ demo:
 	cargo run -- task seed
 	@echo "Starting service..."
 	cargo run -- start
+
+.PHONY: test
+test:
+	@echo "Running service unit tests..."
+	cargo test --lib
+	@echo "Service tests complete."
