@@ -21,7 +21,7 @@ demo-ui:
 	cd contact-relationship-management-ui-with-svelte && make demo
 
 .PHONY: test
-test: test-github-discussions
+test: test-github-discussions test-demo
 	@echo "All tests passed!"
 
 .PHONY: test-github-discussions
@@ -33,7 +33,3 @@ test-github-discussions:
 test-demo:
 	@echo "Running end-to-end demo tests..."
 	./bin/test-demo
-
-.PHONY: test-all
-test-all: test-github-discussions test-demo
-	@echo "All tests passed!"
