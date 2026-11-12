@@ -223,13 +223,11 @@ impl Matcher {
             organization: c
                 .organization
                 .as_deref()
-                .map(normalize::organization)
-                .unwrap_or_default(),
+                .map_or_default(normalize::organization),
             job_title: c
                 .job_title
                 .as_deref()
-                .map(normalize::job_title)
-                .unwrap_or_default(),
+                .map_or_default(normalize::job_title),
         }
     }
 

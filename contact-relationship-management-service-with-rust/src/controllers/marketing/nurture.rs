@@ -113,7 +113,7 @@ pub(super) async fn create_sequence(
     .await?;
     for (position, step) in payload.steps.iter().enumerate() {
         let template_ref = if step.template_ref.trim().is_empty() {
-            step.template_pid.map(|p| p.to_string()).unwrap_or_default()
+            step.template_pid.map_or_default(|p| p.to_string())
         } else {
             step.template_ref.clone()
         };

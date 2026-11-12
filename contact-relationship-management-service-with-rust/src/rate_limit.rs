@@ -95,7 +95,7 @@ pub const ADDRESS_LOCKOUT_VAR: &str = "LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT";
 /// When the value is not a whole number, so a mistyped setting stops the start rather than
 /// leaving the lockout off unseen.
 pub fn address_lockout(value: Option<&str>, window_secs: u64) -> Result<Option<Limiter>, String> {
-    let value = value.map(str::trim).unwrap_or_default();
+    let value = value.map_or_default(str::trim);
     if value.is_empty() {
         return Ok(None);
     }

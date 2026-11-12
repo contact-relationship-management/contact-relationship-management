@@ -348,7 +348,7 @@ pub fn validate_entry(entry: &Parameter, raw: &serde_json::Value) -> Result<Valu
             }
             let mut out = BTreeMap::new();
             for (tag, text) in map {
-                let text = text.as_str().map(str::trim).unwrap_or_default();
+                let text = text.as_str().map_or_default(str::trim);
                 if !language_tag(tag) || !(1..=64).contains(&text.chars().count()) {
                     return Err(format!(
                         "{key} must map a language tag to a text of 1 to 64 characters"

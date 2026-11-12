@@ -6,10 +6,6 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
-#[cfg(target_env = "musl")]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 use contact_relationship_management::app::App;
 
 #[tokio::main]

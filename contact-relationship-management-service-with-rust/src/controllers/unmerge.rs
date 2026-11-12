@@ -63,12 +63,11 @@ fn ledger_ids(doc: &serde_json::Value, key: &str) -> Vec<Uuid> {
     doc.get("moved")
         .and_then(|m| m.get(key))
         .and_then(serde_json::Value::as_array)
-        .map(|ids| {
+        .map_or_default(|ids| {
             ids.iter()
                 .filter_map(|v| v.as_str().and_then(|s| Uuid::parse_str(s).ok()))
                 .collect()
         })
-        .unwrap_or_default()
 }
 
 /// Give back the rows that still point at the survivor. Returns `(restored,

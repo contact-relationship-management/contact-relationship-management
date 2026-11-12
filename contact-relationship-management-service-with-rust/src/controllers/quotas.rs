@@ -928,8 +928,7 @@ pub(super) async fn standings(
             .map_err(|e| Error::string(&e.to_string()))?;
         let bands = tiers
             .as_deref()
-            .map(|t| quota::bands(quota_minor, revenue, t))
-            .unwrap_or_default();
+            .map_or_default(|t| quota::bands(quota_minor, revenue, t));
         rows.push(Attainment {
             quota_pid: q.pid.to_string(),
             owner_ref: owner,

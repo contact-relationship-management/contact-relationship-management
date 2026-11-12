@@ -41,8 +41,8 @@ pub(crate) struct Name {
 pub(crate) fn name_of(given: Option<&str>, family: Option<&str>, display: Option<&str>) -> Name {
     let first_word = |s: &str| fold(s).split(' ').next().unwrap_or("").to_string();
     let mut name = Name {
-        given: given.map(first_word).unwrap_or_default(),
-        family: family.map(fold).unwrap_or_default(),
+        given: given.map_or_default(first_word),
+        family: family.map_or_default(fold),
     };
     if (name.given.is_empty() || name.family.is_empty())
         && let Some(display) = display

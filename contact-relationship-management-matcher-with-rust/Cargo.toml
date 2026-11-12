@@ -4,7 +4,7 @@
 name = "contact-relationship-management-matcher"
 version = "0.2.0"
 edition = "2024"
-rust-version = "1.97"
+rust-version = "1.98"
 publish = true
 authors = ["Joel Parker Henderson <joel@joelparkerhenderson.com>"]
 description = "Contact matcher for a CRM: the probability that two contact records are the same person, from names, nicknames, email, phone, organisation and job title, with a per-field explanation"

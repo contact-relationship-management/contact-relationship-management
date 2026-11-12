@@ -385,7 +385,7 @@ pub(crate) fn unsubscribe_pairs(message: &Message) -> Vec<(String, String)> {
     message
         .unsubscribe_url
         .as_ref()
-        .map(|url| {
+        .map_or_default(|url| {
             vec![
                 ("List-Unsubscribe".to_string(), format!("<{url}>")),
                 (
@@ -394,7 +394,6 @@ pub(crate) fn unsubscribe_pairs(message: &Message) -> Vec<(String, String)> {
                 ),
             ]
         })
-        .unwrap_or_default()
 }
 
 /// `Name <address>` when the name is plain ASCII, else just the address

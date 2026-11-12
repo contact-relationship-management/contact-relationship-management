@@ -520,12 +520,11 @@ async fn undo(
     let all: Vec<Uuid> = locked
         .lead_pids
         .as_array()
-        .map(|a| {
+        .map_or_default(|a| {
             a.iter()
                 .filter_map(|v| v.as_str().and_then(|s| s.parse().ok()))
                 .collect()
-        })
-        .unwrap_or_default();
+        });
     let removed = sqlx::query_scalar!(
         "UPDATE leads SET deleted_at = now() WHERE pid = ANY($1) AND deleted_at IS NULL \
          AND status = 'new' AND NOT EXISTS (SELECT 1 FROM activities a \

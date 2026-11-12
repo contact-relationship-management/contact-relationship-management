@@ -598,19 +598,17 @@ async fn run(
     let names = names_of(&ctx, &tallies.keys().copied().collect()).await?;
     let converted: BTreeMap<String, i64> = conversion
         .as_ref()
-        .map(|done| done.rows.iter().cloned().collect())
-        .unwrap_or_default();
+        .map_or_default(|done| done.rows.iter().cloned().collect());
     let in_target = |key: &str| {
         let target = query.convert_to.clone().unwrap_or_default();
         converted
             .get(key)
-            .map(|amount_minor| {
+            .map_or_default(|amount_minor| {
                 vec![Amount {
                     currency: target,
                     amount_minor: *amount_minor,
                 }]
             })
-            .unwrap_or_default()
     };
     let mut campaigns: Vec<CampaignCredit> = tallies
         .into_iter()
@@ -677,12 +675,10 @@ async fn run(
         rate_basis: query.rate_basis.clone(),
         rates: conversion
             .as_mut()
-            .map(|d| std::mem::take(&mut d.rates))
-            .unwrap_or_default(),
+            .map_or_default(|d| std::mem::take(&mut d.rates)),
         unconverted: conversion
             .as_mut()
-            .map(|d| std::mem::take(&mut d.unconverted))
-            .unwrap_or_default(),
+            .map_or_default(|d| std::mem::take(&mut d.unconverted)),
         note: "each won deal's amount is shared among the campaigns that touched its primary \
                contact (e-mails sent, campaign leads) in the window before it closed, and its \
                recorded source campaign; shares add up to the amount; per currency, never \
