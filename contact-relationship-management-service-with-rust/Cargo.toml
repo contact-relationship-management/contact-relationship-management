@@ -22,9 +22,9 @@ axa = { version = "0.11.0", features = ["sea-orm", "queue", "redis", "problem", 
 
 [dependencies]
 axa = { workspace = true }
-clap = { version = "4", features = ["derive"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["float_roundtrip", "arbitrary_precision"] }
+clap = { version = "4.6", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["float_roundtrip", "arbitrary_precision"] }
 tokio = { version = "1.54", default-features = false, features = [
   "rt-multi-thread",
   "net",
@@ -57,16 +57,16 @@ sqlx = { version = "0.9", default-features = false, features = [
 ] }
 # Only `db::Bridge` needs this, and it goes with SeaORM: it binds a SeaORM statement's values on a sqlx connection.
 sea-query-sqlx = { version = "0.9", default-features = false, features = ["sqlx-postgres"] }
-chrono = { version = "0.4" }
+chrono = { version = "0.4.45" }
 chrono-tz = { version = "0.10" }
 url = "2.5"
-thiserror = "2"
-csv = "1"
+thiserror = "2.0"
+csv = "1.4"
 # A combining mark stays in a search word (CRM-T170); already in the tree through the matcher.
 unicode-normalization = "0.1.26"
 uuid = { version = "1.29", features = ["v4", "serde"] }
 # Request schemas for the OpenAPI document come from the payload structs themselves (CRM-T83).
-schemars = { version = "1", features = ["uuid1", "chrono04"] }
+schemars = { version = "1.2", features = ["uuid1", "chrono04"] }
 
 # Tamper-evident audit hash chain (CRM-T31).
 sha2 = { version = "0.11" }
@@ -85,7 +85,7 @@ reqwest = { version = "0.13", default-features = false, features = [
 # Outbound SMTP for the real send path (CRM-T39). rustls with aws-lc-rs (the
 # provider the rest of the tree already uses) and bundled web PKI roots; no
 # OpenSSL.
-lettre = { version = "0.11", default-features = false, features = [
+lettre = { version = "0.11.23", default-features = false, features = [
   "builder",
   "smtp-transport",
   "tokio1",
@@ -122,9 +122,9 @@ required-features = []
 # A local OIDC provider so tests/keycloak_guard.rs can push a Keycloak access
 # token through the real guard without a Keycloak container. Tests only.
 authentication-verifier = { version = "0.9.2", default-features = false, features = ["test-idp"] }
-axa-test = { version = "0.2.0" }
+axa-test = { version = "0.3.0" }
 # `TestServer` for the unit tests that serve a bare router (src/controllers).
-axum-test = { version = "21.1.0" }
+axum-test = { version = "22.0.0-rc.1" }
 # Drive a single middleware with `oneshot` in its unit tests.
 tokio = { version = "1.54", default-features = false, features = [
   "rt-multi-thread",

@@ -512,6 +512,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "axa"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5ba67c46f2c7b6958d31c6cf85750d4ed1625016af62a4222632724cf0ce34d"
+dependencies = [
+ "async-trait",
+ "axa-environment",
+ "axa-problem",
+ "axum",
+ "clap",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tower-http 0.7.1",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "axa-cursor-pagination"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -594,12 +618,12 @@ dependencies = [
 
 [[package]]
 name = "axa-test"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31e4ddef189464f706dcec0a02daf9087f1bf6fbdcb27d070beeb347198fd89f"
+checksum = "e288ecf85c86303c6743741ebe0ddfdc5fec79497d66af5cf4e7c38d92a86017"
 dependencies = [
- "axa",
- "axum-test",
+ "axa 0.12.1",
+ "axum-test 21.1.0",
 ]
 
 [[package]]
@@ -713,6 +737,35 @@ name = "axum-test"
 version = "21.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7bf0893561659ea1365921a0aed8bbb620fae83dae00b53fe64d41fea4877640"
+dependencies = [
+ "anyhow",
+ "axum",
+ "bytes",
+ "bytesize",
+ "cookie",
+ "educe",
+ "expect-json",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "mime",
+ "pretty_assertions",
+ "reserve-port",
+ "rust-multipart-rfc7578_2",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "tokio",
+ "tower",
+ "url",
+]
+
+[[package]]
+name = "axum-test"
+version = "22.0.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f082d9991e2f09626426920b4955db04341140d4f9e4da77148971a3f88f2ce"
 dependencies = [
  "anyhow",
  "axum",
@@ -1114,10 +1167,10 @@ dependencies = [
  "aes-gcm",
  "async-trait",
  "authentication-verifier",
- "axa",
+ "axa 0.11.0",
  "axa-test",
  "axum",
- "axum-test",
+ "axum-test 22.0.0-rc.1",
  "base64 0.23.1",
  "chrono",
  "chrono-tz",
@@ -1166,7 +1219,7 @@ dependencies = [
 name = "contact-relationship-management-migration"
 version = "0.1.0"
 dependencies = [
- "axa",
+ "axa 0.11.0",
  "sea-orm-migration",
 ]
 
