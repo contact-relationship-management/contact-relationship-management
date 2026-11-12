@@ -1,0 +1,41 @@
+# Grafana datasource configuration for InfluxDB
+#
+# This configuration sets up InfluxDB as a datasource in Grafana
+# for k6 load testing metrics
+#
+# Note: The token is read from the environment variable INFLUXDB_TOKEN
+# Set it via: docker run -e INFLUXDB_TOKEN=your-token grafana/grafana
+
+apiVersion: 1
+
+datasources:
+  - name: k6-Metrics
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    editable: true
+    
+    # JSON data for InfluxDB 2.x
+    jsonData:
+      version: Flux
+      organization: load-test
+      defaultBucket: k6-metrics
+      tlsAuth: false
+      tlsAuthWithCACert: false
+    
+    # Secure JSON data (read from environment)
+    secureJsonData:
+      token: "${INFLUXDB_TOKEN:-admin-token-123}"
+    
+    # Additional configuration
+    user: ""
+    database: ""
+    basicAuth: false
+    basicAuthUser: ""
+    basicAuthPassword: ""
+    withCredentials: false
+    
+    # Time settings
+    timeInterval: ""
+    timeIntervalSeconds: 0

@@ -1,0 +1,134 @@
+# Alert rules for k6 load testing
+#
+# These rules trigger alerts based on metrics from k6 and the application
+# being tested. Adjust thresholds based on your requirements.
+
+groups:
+- name: k6-metrics.rules
+  rules:
+
+  # High error rate
+  - alert: HighErrorRate
+    expr: rate(k6_http_req_failed[5m]) > 0.1
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High error rate detected"
+      description: "Error rate is {{ $value }}% (threshold: 10%)"
+
+  # High response time
+  - alert: HighResponseTime
+    expr: histogram_quantile(0.95, sum(rate(k6_http_req_duration_bucket[5m])) by (le)) > 5000
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High P95 response time"
+      description: "P95 response time is {{ $value }}ms (threshold: 5000ms)"
+
+  # High request rate
+  - alert: HighRequestRate
+    expr: rate(k6_http_reqs_total[5m]) > 1000
+    for: 1m
+    labels:
+      severity: info
+    annotations:
+      summary: "High request rate"
+      description: "Request rate is {{ $value }} requests/second"
+
+  # Low request rate (test might be stuck)
+  - alert: LowRequestRate
+    expr: rate(k6_http_reqs_total[5m]) < 10
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Low request rate"
+      description: "Request rate is {{ $value }} requests/second (threshold: 10)"
+
+  # High VU count
+  - alert: HighVUCount
+    expr: k6_vus_max > 1000
+    for: 1m
+    labels:
+      severity: info
+    annotations:
+      summary: "High VU count"
+      description: "Max VUs is {{ $value }}"
+
+- name: system-metrics.rules
+  rules:
+
+  # High memory usage on k6 containers
+  - alert: HighK6MemoryUsage
+    expr: (sum(container_memory_working_set_bytes{container_name=~"k6-.*"}) by (container_name) / sum(container_spec_memory_limit_bytes{container_name=~"k6-.*"}) by (container_name)) * 100 > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on {{ $labels.container_name }}"
+      description: "Memory usage is {{ $value }}% (threshold: 80%)"
+
+  # High CPU usage on k6 containers
+  - alert: HighK6CPUUsage
+    expr: (sum(rate(container_cpu_usage_seconds_total{container_name=~"k6-.*"}[5m])) by (container_name) / sum(container_spec_cpu_shares{container_name=~"k6-.*"}) by (container_name) * 100) > 90
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage on {{ $labels.container_name }}"
+      description: "CPU usage is {{ $value }}% (threshold: 90%)"
+
+  # Application high memory usage
+  - alert: HighAppMemoryUsage
+    expr: (sum(container_memory_working_set_bytes{container_name=~"crm-.*|service-.*"}) by (container_name) / sum(container_spec_memory_limit_bytes{container_name=~"crm-.*|service-.*"}) by (container_name)) * 100 > 85
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on {{ $labels.container_name }}"
+      description: "Memory usage is {{ $value }}% (threshold: 85%)"
+
+  # Application high CPU usage
+  - alert: HighAppCPUUsage
+    expr: (sum(rate(container_cpu_usage_seconds_total{container_name=~"crm-.*|service-.*"}[5m])) by (container_name) / sum(container_spec_cpu_shares{container_name=~"crm-.*|service-.*"}) by (container_name) * 100) > 95
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High CPU usage on {{ $labels.container_name }}"
+      description: "CPU usage is {{ $value }}% (threshold: 95%)"
+
+- name: database-metrics.rules
+  rules:
+
+  # High database connection count
+  - alert: HighDBConnections
+    expr: pg_stat_activity_count > 500
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High database connection count"
+      description: "Database connections: {{ $value }} (threshold: 500)"
+
+  # High query execution time
+  - alert: HighQueryTime
+    expr: histogram_quantile(0.95, sum(rate(pg_query_duration_seconds_bucket[5m])) by (le)) > 1
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High query execution time"
+      description: "P95 query time: {{ $value }}s (threshold: 1s)"
+
+  # High lock wait time
+  - alert: HighLockWaitTime
+    expr: rate(pg_locks_wait_time_total[5m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Database lock contention detected"
+      description: "Lock wait time: {{ $value }}s"

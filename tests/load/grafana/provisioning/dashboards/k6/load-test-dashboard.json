@@ -1,0 +1,536 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "k6 Load Testing Dashboard",
+    "tags": ["k6", "load-testing", "performance"],
+    "timezone": "",
+    "refresh": "5s",
+    "schemaVersion": 37,
+    "version": 1,
+    "links": [],
+    "panels": [
+      {
+        "type": "stat",
+        "title": "Current VUs",
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 50 },
+                { "color": "red", "value": 100 }
+              ]
+            },
+            "color": { "mode": "thresholds" },
+            "custom": { "align": "auto", "displayMode": "auto" }
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_vus\") => filter(fn: (r) => r._field == \"value\") => last()",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "stat",
+        "title": "Max VUs",
+        "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 50 },
+                { "color": "red", "value": 100 }
+              ]
+            },
+            "color": { "mode": "thresholds" },
+            "custom": { "align": "auto", "displayMode": "auto" }
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_vus_max\") => filter(fn: (r) => r._field == \"value\") => last()",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "stat",
+        "title": "Requests / Sec",
+        "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 500 },
+                { "color": "red", "value": 1000 }
+              ]
+            },
+            "color": { "mode": "thresholds" },
+            "custom": { "align": "auto", "displayMode": "auto" },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_reqs\") => filter(fn: (r) => r._field == \"value\") => derivative(unit: 1s, nonNegative: true) => last()",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "stat",
+        "title": "Error Rate",
+        "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "percentage",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 5 }
+              ]
+            },
+            "color": { "mode": "thresholds" },
+            "custom": { "align": "auto", "displayMode": "auto" },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_req_failed\") => filter(fn: (r) => r._field == \"value\") => derivative(unit: 1s, nonNegative: true) => last()",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "title": "Response Times",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1000 },
+                { "color": "red", "value": 5000 }
+              ]
+            },
+            "color": { "mode": "palette-classic" },
+            "custom": { "align": "auto", "displayMode": "auto", "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "stacking": { "mode": "none", "group": "A" }, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": { "type": "linear" }, "showPoints": "never", "gradient": false },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["mean"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "line",
+          "justifyMode": "auto",
+          "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "last", "max"] }
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_req_duration\") => filter(fn: (r) => r._field == \"avg\") => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "A",
+            "legend": "Average"
+          },
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_req_duration\") => filter(fn: (r) => r._field == \"p90\") => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "B",
+            "legend": "P90"
+          },
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_req_duration\") => filter(fn: (r) => r._field == \"p95\") => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "C",
+            "legend": "P95"
+          },
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_req_duration\") => filter(fn: (r) => r._field == \"max\") => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "D",
+            "legend": "Max"
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "title": "Requests Per Second",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 500 },
+                { "color": "red", "value": 1000 }
+              ]
+            },
+            "color": { "mode": "palette-classic" },
+            "custom": { "align": "auto", "displayMode": "auto", "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "stacking": { "mode": "none", "group": "A" }, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": { "type": "linear" }, "showPoints": "never", "gradient": false },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["mean"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "line",
+          "justifyMode": "auto",
+          "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "last", "max"] }
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_reqs\") => filter(fn: (r) => r._field == \"value\") => derivative(unit: 1s, nonNegative: true) => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "A",
+            "legend": "Total Requests"
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "title": "Error Rate",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 10 },
+                { "color": "red", "value": 50 }
+              ]
+            },
+            "color": { "mode": "palette-classic" },
+            "custom": { "align": "auto", "displayMode": "auto", "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "stacking": { "mode": "none", "group": "A" }, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": { "type": "linear" }, "showPoints": "never", "gradient": false },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["mean"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "line",
+          "justifyMode": "auto",
+          "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "last", "max"] }
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_req_failed\") => filter(fn: (r) => r._field == \"value\") => derivative(unit: 1s, nonNegative: true) => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "A",
+            "legend": "Errors per second"
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "title": "Data Sent/Received",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1000000 },
+                { "color": "red", "value": 10000000 }
+              ]
+            },
+            "color": { "mode": "palette-classic" },
+            "custom": { "align": "auto", "displayMode": "auto", "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "stacking": { "mode": "none", "group": "A" }, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": { "type": "linear" }, "showPoints": "never", "gradient": false },
+            "unit": "bytes"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["mean"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "line",
+          "justifyMode": "auto",
+          "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "last", "max"] }
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_data_sent\") => filter(fn: (r) => r._field == \"value\") => derivative(unit: 1s, nonNegative: true) => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "A",
+            "legend": "Data Sent"
+          },
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_data_received\") => filter(fn: (r) => r._field == \"value\") => derivative(unit: 1s, nonNegative: true) => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "B",
+            "legend": "Data Received"
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "title": "VUs Over Time",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 50 },
+                { "color": "red", "value": 100 }
+              ]
+            },
+            "color": { "mode": "palette-classic" },
+            "custom": { "align": "auto", "displayMode": "auto", "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "stacking": { "mode": "none", "group": "A" }, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": { "type": "linear" }, "showPoints": "never", "gradient": false },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["mean"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "line",
+          "justifyMode": "auto",
+          "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "last", "max"] }
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_vus\") => filter(fn: (r) => r._field == \"value\") => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "A",
+            "legend": "Current VUs"
+          },
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_vus_max\") => filter(fn: (r) => r._field == \"value\") => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "B",
+            "legend": "Max VUs"
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "title": "Iterations",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": null },
+                { "color": "red", "value": null }
+              ]
+            },
+            "color": { "mode": "palette-classic" },
+            "custom": { "align": "auto", "displayMode": "auto", "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "stacking": { "mode": "none", "group": "A" }, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": { "type": "linear" }, "showPoints": "never", "gradient": false },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["mean"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "line",
+          "justifyMode": "auto",
+          "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "last", "max"] }
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_iterations\") => filter(fn: (r) => r._field == \"value\") => derivative(unit: 1s, nonNegative: true) => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "A",
+            "legend": "Iterations per second"
+          }
+        ]
+      },
+      {
+        "type": "heatmap",
+        "title": "Response Time Distribution",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1000 },
+                { "color": "red", "value": 5000 }
+              ]
+            },
+            "color": { "mode": "scheme", "scheme": "Spectral" },
+            "custom": { "align": "auto", "displayMode": "auto", "fillOpacity": 80, "lineWidth": 0, "spanNulls": false, "stacking": { "mode": "none", "group": "A" }, "axisPlacement": "auto", "axisLabel": "", "axisColorMode": "text", "scaleDistribution": { "type": "linear" }, "showPoints": "never", "gradient": false, "hideFrom": { "legend": false, "tooltip": false, "viz": false } }
+          },
+          "overrides": []
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "legend": { "displayMode": "table", "placement": "bottom", "calcs": [] },
+          "yAxis": { "unit": "ms" }
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_req_duration\") => filter(fn: (r) => r._field == \"avg") => keep(columns: [\"_time\", \"_value\"])",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "type": "table",
+        "title": "Test Summary",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": null },
+                { "color": "red", "value": null }
+              ]
+            },
+            "color": { "mode": "thresholds" },
+            "custom": { "align": "auto", "displayMode": "auto" }
+          },
+          "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "Value" },
+              "properties": [
+                { "id": "unit", "value": "short" }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "showHeader": true,
+          "footer": { "fields": "", "reducer": ["sum"], "enablePagination": true },
+          "sortBy": []
+        },
+        "targets": [
+          {
+            "datasource": "k6-Metrics",
+            "query": "from(bucket: \"k6-metrics\") => range(start: v.timeRangeStart, stop: v.timeRangeStop) => filter(fn: (r) => r._measurement == \"k6_http_reqs\" or r._measurement == \"k6_http_req_failed\" or r._measurement == \"k6_vus_max\" or r._measurement == \"k6_iterations\") => filter(fn: (r) => r._field == \"value\") => last() => keep(columns: [\"_measurement\", \"_value\"])",
+            "refId": "A",
+            "format": "table"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "_measurement": "Metric",
+                "_value": "Value"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "time": { "from": "now-5m", "to": "now" },
+    "timepicker": {},
+    "timeRange": { "from": "now-5m", "to": "now" },
+    "uid": "k6-load-test-dashboard",
+    "version": 1,
+    "title": "k6 Load Testing Dashboard",
+    "links": []
+  },
+  "overwrite": true
+}

@@ -1,0 +1,205 @@
+version: '3.8'
+
+# Distributed Load Testing with k6
+# 
+# This compose file sets up a distributed load testing environment with:
+# - k6 master node (coordinates the test)
+# - Multiple k6 worker nodes (execute the test)
+# - InfluxDB for metrics storage
+# - Grafana for visualization
+# - Optional: Prometheus for additional metrics
+#
+# Usage:
+#   # Start the load testing infrastructure
+#   docker compose -f docker-compose.load-test.yaml up -d
+#   
+#   # Run a test
+#   docker compose -f docker-compose.load-test.yaml exec k6-master \
+#     k6 run --out influxdb=http://influxdb:8086/k6 /tests/your-test.js
+#   
+#   # View results in Grafana: http://localhost:3000
+#   # User: admin, Password: admin
+#
+#   # Stop everything
+#   docker compose -f docker-compose.load-test.yaml down
+#
+# Scaling workers:
+#   docker compose -f docker-compose.load-test.yaml up -d --scale k6-worker=10
+
+services:
+  # k6 Master - coordinates distributed test execution
+  k6-master:
+    image: grafana/k6:latest
+    container_name: k6-master
+    command: >
+      sh -c "
+        echo 'Starting k6 master...' &&
+        echo 'Wait for workers to be ready...' &&
+        sleep 10 &&
+        echo 'k6 master ready' &&
+        tail -f /dev/null
+      "
+    volumes:
+      # Mount test files
+      - ./tests:/tests
+      - ./config:/config
+      - ./lib:/lib
+      - ./scripts:/scripts
+    networks:
+      - load-test-network
+    ports:
+      - "6565:6565"  # k6 metrics endpoint
+    environment:
+      - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+      - K6_METRICS_OUTPUTS=prometheus
+    depends_on:
+      - influxdb
+      - prometheus
+    restart: unless-stopped
+
+  # k6 Worker - executes test VUs
+  k6-worker:
+    image: grafana/k6:latest
+    container_name: k6-worker
+    command: >
+      sh -c "
+        echo 'Starting k6 worker...' &&
+        echo 'Worker ready' &&
+        tail -f /dev/null
+      "
+    volumes:
+      # Mount test files (read-only)
+      - ./tests:/tests:ro
+      - ./config:/config:ro
+      - ./lib:/lib:ro
+      - ./scripts:/scripts:ro
+    networks:
+      - load-test-network
+    environment:
+      - K6_MASTER_HOST=k6-master
+      - K6_MASTER_PORT=6565
+      # Worker specific settings
+      - K6_WORKER=true
+      - K6_WORKER_ID=${HOSTNAME}
+    depends_on:
+      - k6-master
+    deploy:
+      replicas: 4  # Default number of workers
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+
+  # InfluxDB - Time-series database for k6 metrics
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    ports:
+      - "8086:8086"  # InfluxDB HTTP API
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    networks:
+      - load-test-network
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=load-test
+      - DOCKER_INFLUXDB_INIT_BUCKET=k6-metrics
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=admin-token-123
+    restart: unless-stopped
+
+  # Grafana - Visualization dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"  # Grafana UI
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./tests/load/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - load-test-network
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    depends_on:
+      - influxdb
+      - prometheus
+    restart: unless-stopped
+
+  # Prometheus - Additional metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"  # Prometheus UI
+    volumes:
+      - prometheus-data:/prometheus
+      - ./tests/load/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./tests/load/prometheus/alert.rules:/etc/prometheus/alert.rules
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - load-test-network
+    depends_on:
+      - influxdb
+    restart: unless-stopped
+
+  # k6 run - Pre-configured test runner (optional)
+  # Use this to run specific test scripts without manually executing commands
+  k6-run:
+    image: grafana/k6:latest
+    container_name: k6-run
+    command: >
+      sh -c "
+        echo 'Waiting for infrastructure to be ready...' &&
+        sleep 30 &&
+        echo 'Running load test...' &&
+        k6 run --vus 10 --duration 30s \
+          --out influxdb=http://influxdb:8086/k6 \
+          /tests/smoke.test.js
+      "
+    volumes:
+      - ./tests:/tests:ro
+      - ./config:/config:ro
+      - ./lib:/lib:ro
+      - ./scripts:/scripts:ro
+    networks:
+      - load-test-network
+    environment:
+      - K6_INFLUXDB_ORG=load-test
+      - K6_INFLUXDB_BUCKET=k6-metrics
+      - K6_INFLUXDB_TOKEN=admin-token-123
+      - K6_INFLUXDB_URL=http://influxdb:8086
+    depends_on:
+      - k6-master
+      - influxdb
+      - grafana
+    profiles:
+      - run
+    restart: on-failure
+
+networks:
+  load-test-network:
+    driver: bridge
+    name: load-test-network
+
+volumes:
+  influxdb-data:
+  influxdb-config:
+  grafana-data:
+  prometheus-data:

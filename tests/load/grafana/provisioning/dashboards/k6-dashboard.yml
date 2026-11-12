@@ -1,0 +1,17 @@
+# Grafana dashboard provisioning for k6 load testing
+#
+# This configuration creates a default dashboard for k6 metrics
+# The actual dashboard JSON is stored separately
+
+apiVersion: 1
+
+providers:
+  - name: 'k6-load-test'
+    orgId: 1
+    folder: 'k6 Load Testing'
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/k6
+      foldersFromFilesStructure: true
