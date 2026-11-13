@@ -1,7 +1,7 @@
 //! `GET /api/search?q=` (CRM-R33): names and titles across the main records.
 //!
 //! The search runs on `sqlx` (CRM-D24, CRM-T205). Its statement is built from
-//! `migration::search_docs::SOURCES`, so the macros cannot check it: every branch names
+//! `crate::search_docs::SOURCES`, so the macros cannot check it: every branch names
 //! `deleted_at`, which the soft-delete census in `db.rs` cannot see here.
 
 use axa::extract::Query;

@@ -4,7 +4,8 @@
 //! file. A new database runs it. A database those migrations built already has that schema, so
 //! [`migrate`] records the baseline as applied without running it (`Migrator::skip`), then runs
 //! what comes after. A database with only part of that history is refused: the baseline would
-//! skip the migrations it lacks. Its `seaql_migrations` table is left where it is.
+//! skip the migrations it lacks. Its `seaql_migrations` table is left where it is. The `SeaORM`
+//! migrations themselves were removed with the `migration` crate (CRM-T232).
 
 use axa::prelude::*;
 use sqlx::PgPool;
@@ -190,14 +191,23 @@ mod tests {
         list.iter().map(ToString::to_string).collect()
     }
 
+    /// The `SeaORM` migrator that wrote `seaql_migrations` is gone (CRM-T232), so [`HISTORY`] is
+    /// fixed: in order, without repeats, and the range the baseline's first line names.
     #[test]
-    fn the_history_is_the_seaorm_migrator_s_list() {
-        use migration::MigratorTrait as _;
-        let seaorm: Vec<String> = migration::Migrator::migrations()
-            .iter()
-            .map(|m| m.name().to_string())
-            .collect();
-        assert_eq!(seaorm, names(&HISTORY));
+    fn the_history_is_the_range_the_baseline_names() {
+        let mut sorted = names(&HISTORY);
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted, names(&HISTORY));
+        let header = include_str!("../migrations/20261110000000_baseline.sql")
+            .lines()
+            .next()
+            .expect("a first line");
+        let (first, last) = (HISTORY[0], HISTORY[58]);
+        assert!(
+            header.contains(&first[..16]) && header.contains(&last[..16]),
+            "{header}"
+        );
     }
 
     #[test]

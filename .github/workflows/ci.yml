@@ -23,7 +23,6 @@ jobs:
         with:
           workspaces: |
             contact-relationship-management-service-with-rust
-            contact-relationship-management-service-with-rust/migration
             contact-relationship-management-matcher-with-rust
       - run: scripts/ci-check.sh ${{ matrix.stage }}
 

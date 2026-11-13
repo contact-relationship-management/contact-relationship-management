@@ -24,6 +24,7 @@ use super::sales::{NewLead, capture_lead};
 use crate::db;
 use crate::mail;
 use crate::models::_entities::contacts;
+use crate::models::DateTimeWithTimeZone;
 use crate::models::audit_logs::Model as Audit;
 use crate::models::encrypted::EncryptedText;
 use crate::models::rows;

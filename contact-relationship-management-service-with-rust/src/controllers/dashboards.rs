@@ -10,6 +10,7 @@ use axa::prelude::*;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::sales;
 use crate::auth::MaybeAuthUser;

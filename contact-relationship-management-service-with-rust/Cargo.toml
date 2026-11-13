@@ -17,8 +17,8 @@ categories = ["development-tools", "rust-patterns"]
 include = ["src/**/*", ".sqlx/**/*", ".cargo/config.toml", "sqlx.toml", "README.md"]
 
 [workspace.dependencies]
-# The shared plumbing. `sea-orm` until the service moves to sqlx; `queue` is the Postgres job queue.
-axa = { version = "0.11.0", features = ["sea-orm", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
+# The shared plumbing. `sqlx`: `AppContext::db` is the `PgPool` (CRM-D24); `queue` is the Postgres job queue.
+axa = { version = "0.11.0", features = ["sqlx", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
 
 [dependencies]
 axa = { workspace = true }
@@ -38,13 +38,8 @@ tower = { version = "0.5", features = ["util"] }
 axum = { version = "0.8" }
 tracing = { version = "0.1" }
 contact-relationship-management-matcher = "0.2.0"
-migration = { package = "contact-relationship-management-migration", version = "0.1.0", path = "migration" }
-sea-orm = { version = "2.0", features = [
-  "sqlx-postgres",
-  "runtime-tokio-rustls",
-  "macros",
-] }
-# Plain SQL, checked at build time against `.sqlx/` (CRM-D24). The same sqlx that SeaORM uses.
+# Plain SQL, checked at build time against `.sqlx/` (CRM-D24). TLS to the database is rustls with
+# the webpki roots, the backend axa's own sqlx uses; it was enabled through SeaORM until CRM-T232.
 sqlx = { version = "0.9", default-features = false, features = [
   "chrono",
   "json",
@@ -53,11 +48,10 @@ sqlx = { version = "0.9", default-features = false, features = [
   "postgres",
   "runtime-tokio",
   "sqlx-toml",
+  "tls-rustls-ring-webpki",
   "uuid",
 ] }
-# Only `db::Bridge` needs this, and it goes with SeaORM: it binds a SeaORM statement's values on a sqlx connection.
-sea-query-sqlx = { version = "0.9", default-features = false, features = ["sqlx-postgres"] }
-chrono = { version = "0.4.45" }
+chrono = { version = "0.4.45", features = ["serde"] }
 chrono-tz = { version = "0.10" }
 url = "2.5"
 thiserror = "2.0"

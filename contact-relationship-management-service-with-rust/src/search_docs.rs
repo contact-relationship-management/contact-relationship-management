@@ -1,8 +1,9 @@
-//! The text expression searched in each table (CRM-R33), shared by the migration that indexes it
-//! and the service query that uses it, so the indexes are the ones the query can use.
+//! The text expression searched in each table (CRM-R33), shared by the query that uses it and,
+//! through the test below, the baseline's indexes over it, so the indexes are the ones the query
+//! can use. Moved here from the retired `migration` crate (CRM-T232).
 
 /// `(kind, table, title column, detail expression, text expression)`. The text expression is
-/// folded (`unaccent`, lower case) and is exactly what the migration indexes.
+/// folded (`unaccent`, lower case) and is exactly what the baseline indexes.
 pub const SOURCES: &[(&str, &str, &str, &str, &str)] = &[
     (
         "contact",
@@ -60,7 +61,8 @@ pub const SOURCES: &[(&str, &str, &str, &str, &str)] = &[
 /// Katakana and its extensions, and the CJK ideographs (unified, extension A, compatibility, and
 /// the supplementary planes' extensions). A run of these is indexed as its single characters and
 /// overlapping pairs ([`NGRAMS_FUNCTION`]), so a part of a name such as `芳` in `王芳` is found.
-/// Changing this table needs a new migration that recreates the function and the indexes.
+/// Changing this table needs a new migration in `migrations/` that recreates the function and the
+/// indexes.
 pub const UNSPACED: &[(u32, u32)] = &[
     (0x0E00, 0x0E7F),
     (0x0E80, 0x0EFF),
@@ -104,31 +106,8 @@ pub fn unspaced_class() -> String {
     class
 }
 
-/// The SQL that creates `search_ngrams(text)`: the text, then each run of [`UNSPACED`]
-/// characters as its single characters and its overlapping pairs, space-separated, so the
-/// `simple` text-search parser makes a word of each. The same splitting is done to a query by the
-/// service's `rules::search::terms`. Immutable: it reads nothing but its argument.
-#[must_use]
-pub fn ngrams_function() -> String {
-    format!(
-        "CREATE OR REPLACE FUNCTION search_ngrams(t text) RETURNS text \
-         LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE STRICT AS $$ \
-         DECLARE extra text := ''; run text; n int; \
-         BEGIN \
-           FOR run IN SELECT (regexp_matches(t, E'{class}+', 'g'))[1] LOOP \
-             n := char_length(run); \
-             FOR i IN 1..n LOOP \
-               extra := extra || ' ' || substr(run, i, 1); \
-               IF i < n THEN extra := extra || ' ' || substr(run, i, 2); END IF; \
-             END LOOP; \
-           END LOOP; \
-           RETURN t || extra; \
-         END $$",
-        class = unspaced_class()
-    )
-}
-
-/// The name of [`ngrams_function`]'s function, as the query and the indexes call it.
+/// The name of the baseline's function that adds a run of [`UNSPACED`] characters as its single
+/// characters and overlapping pairs, as the query and the indexes call it.
 pub const NGRAMS_FUNCTION: &str = "search_ngrams";
 
 /// The full-text document of a text expression: [`NGRAMS_FUNCTION`] over it (CRM-T170).
@@ -137,57 +116,42 @@ pub fn fts_doc(doc: &str) -> String {
     format!("{NGRAMS_FUNCTION}({doc})")
 }
 
-/// The full-text indexes over [`fts_doc`], replacing the first ones (CRM-T170).
-#[must_use]
-pub fn ngram_index_statements() -> Vec<String> {
-    SOURCES
-        .iter()
-        .map(|(_, table, _, _, doc)| {
-            format!(
-                "CREATE INDEX IF NOT EXISTS {table}_search_fts ON {table} \
-                 USING gin (to_tsvector('simple', {}))",
-                fts_doc(doc)
-            )
-        })
-        .collect()
-}
-
-/// The statements that create the indexes the query used first (migration `000024`); the
-/// full-text ones are replaced by [`ngram_index_statements`] in migration `000055`.
-#[must_use]
-pub fn index_statements() -> Vec<String> {
-    SOURCES
-        .iter()
-        .flat_map(|(_, table, _, _, doc)| {
-            [
-                format!(
-                    "CREATE INDEX IF NOT EXISTS {table}_search_fts ON {table} \
-                     USING gin (to_tsvector('simple', {doc}))"
-                ),
-                format!(
-                    "CREATE INDEX IF NOT EXISTS {table}_search_trgm ON {table} \
-                     USING gin (({doc}) gin_trgm_ops)"
-                ),
-            ]
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    const BASELINE: &str = include_str!("../migrations/20261110000000_baseline.sql");
+
     #[test]
-    fn the_class_names_every_range_and_the_function_uses_it() {
+    fn the_class_names_every_range() {
         let class = unspaced_class();
         assert!(class.starts_with("[\\u0E00-\\u0E7F"), "{class}");
         assert!(class.contains("\\U00020000-\\U000323AF"), "{class}");
         assert_eq!(class.matches('-').count(), UNSPACED.len());
-        assert!(ngrams_function().contains(&class));
         assert!(is_unspaced('芳') && is_unspaced('ส') && is_unspaced('민') && is_unspaced('か'));
         assert!(!is_unspaced('a') && !is_unspaced('ü') && !is_unspaced('प') && !is_unspaced('ن'));
         // Ranges are ordered and do not overlap.
         assert!(UNSPACED.windows(2).all(|w| w[0].1 < w[1].0));
         assert_eq!(fts_doc("lower(name)"), "search_ngrams(lower(name))");
+    }
+
+    /// The baseline's function splits the same characters the query does, and every searched table
+    /// has both indexes. `pg_dump` rewrote the index expressions (casts, `public.`), so their text
+    /// is not compared; the search request tests run the query against them.
+    #[test]
+    fn the_baseline_has_the_function_and_every_index_the_query_uses() {
+        let function = format!("CREATE FUNCTION public.{NGRAMS_FUNCTION}(t text)");
+        assert!(BASELINE.contains(&function), "{function}");
+        assert!(BASELINE.contains(&format!("regexp_matches(t, E'{}+'", unspaced_class())));
+        for (_, table, ..) in SOURCES {
+            for suffix in ["search_fts", "search_trgm"] {
+                let index = format!("CREATE INDEX {table}_{suffix} ON public.{table} USING gin");
+                assert!(BASELINE.contains(&index), "{index}");
+            }
+            let fts = format!(
+                "public.{table} USING gin (to_tsvector('simple'::regconfig, public.{NGRAMS_FUNCTION}("
+            );
+            assert!(BASELINE.contains(&fts), "{fts}");
+        }
     }
 }

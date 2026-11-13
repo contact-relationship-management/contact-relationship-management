@@ -73,6 +73,7 @@ pub mod redis_store;
 pub mod rules;
 pub mod schema;
 pub mod search;
+pub mod search_docs;
 pub mod settings;
 pub mod streaming;
 pub mod tasks;

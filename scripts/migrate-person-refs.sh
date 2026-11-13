@@ -12,6 +12,10 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 SVC="$(pwd)/contact-relationship-management-service-with-rust"
+if [[ -d "$SVC/migrations" ]]; then
+  echo "migrate-person-refs.sh needs the SeaORM history's db down: run it on a checkout before CRM-T229" >&2
+  exit 2
+fi
 BIN=$SVC/target/debug/contact-relationship-management
 : "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=loco}" "${PG_PASSWORD:=loco}"
 : "${PG_ADMIN_USER:=$PG_USER}"

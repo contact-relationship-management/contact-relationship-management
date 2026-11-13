@@ -1,4 +1,5 @@
-# SeaORM turns on sqlx's `time` feature too, so say which date types the query macros use (CRM-D24).
+# Say which date types the query macros use (CRM-D24). SeaORM turned on sqlx's `time` feature too;
+# since CRM-T232 nothing does, and this keeps `chrono` if a dependency turns it on again.
 [macros.preferred-crates]
 date-time = "chrono"
 

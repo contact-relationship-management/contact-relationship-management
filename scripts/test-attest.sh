@@ -56,7 +56,7 @@ new_repo() {
   cp "${here}/attest.sh" "${repo}/scripts/"
   sed 's/^ALL_STAGES=.*/ALL_STAGES=(fmt)/' "${here}/ci-check.sh" >"${repo}/scripts/ci-check.sh"
   chmod +x "${repo}/scripts/ci-check.sh"
-  for dir in contact-relationship-management-service-with-rust/migration contact-relationship-management-matcher-with-rust; do
+  for dir in contact-relationship-management-service-with-rust contact-relationship-management-matcher-with-rust; do
     mkdir -p "${repo}/${dir}"
     touch "${repo}/${dir}/.keep"
   done

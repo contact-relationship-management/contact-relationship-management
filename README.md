@@ -13,7 +13,7 @@ support, and analytics.
 ## Contents
 
 - [contact-relationship-management-service-with-rust](contact-relationship-management-service-with-rust/) —
-  JSON API in Rust on Axum and axa (PostgreSQL through sqlx and SeaORM).
+  JSON API in Rust on Axum and axa (PostgreSQL through sqlx).
 - [contact-relationship-management-matcher-with-rust](contact-relationship-management-matcher-with-rust/) —
   library: the probability that two contact records are the same person.
 - [contact-relationship-management-ui-with-svelte](contact-relationship-management-ui-with-svelte/) —

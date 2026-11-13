@@ -11,6 +11,7 @@
 use axa::prelude::*;
 use serde::Serialize;
 use sqlx::PgExecutor;
+use uuid::Uuid;
 
 /// One employment, as the contact's page and the subject-access export show it.
 #[derive(Debug, Clone, Serialize, schemars::JsonSchema)]

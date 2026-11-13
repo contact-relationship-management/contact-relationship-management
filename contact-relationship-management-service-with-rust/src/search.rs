@@ -1,8 +1,8 @@
 //! The SQL behind search (CRM-R33). The text expressions live in the migration crate next to the
 //! indexes built on them.
 
-pub use migration::search_docs::SOURCES;
-use migration::search_docs::fts_doc;
+pub use crate::search_docs::SOURCES;
+use crate::search_docs::fts_doc;
 
 /// The `UNION ALL` query. `$1` is the tsquery, `$2` the folded phrase, `$3` the limit, `$4` the
 /// offset. Each branch can use its two indexes.

@@ -5,7 +5,7 @@
 
 ## البنية
 
-- **الخدمة:** Rust على axa (Axum وSeaORM 2.0)، وPostgreSQL 18، وRedis للتخزين المؤقت
+- **الخدمة:** Rust على axa (Axum وsqlx 0.9)، وPostgreSQL 18، وRedis للتخزين المؤقت
   والعدّادات المشتركة ونشر منح كسر الزجاج. `forbid(unsafe_code)` وclippy في وضع pedantic.
   مرجع السلوك هو المواصفة ([index](../../../../spec/index.md)، [architecture](../../../../spec/architecture.md)).
 - **الواجهة:** SvelteKit 3 / Svelte 5، ووسيط backend-for-frontend (proxy) حتى لا يصل أي رمز

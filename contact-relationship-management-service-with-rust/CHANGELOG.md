@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — SeaORM (CRM-T232, CRM-D24)
+
+- axa's feature is `sqlx` in place of `sea-orm`, so `AppContext::db` is the `PgPool`; `db::pool`
+  returns it.
+- Removed: the `sea-orm` and `sea-query-sqlx` dependencies, and the `migration` crate with the
+  59 `SeaORM` migrations the baseline stands for. `search_docs` moved into the service.
+- `sqlx` names its TLS backend (`tls-rustls-ring-webpki`, the one in use), which `SeaORM` used to
+  turn on.
+- A database the `SeaORM` migrations built is still recognised by its `seaql_migrations` table and
+  takes the baseline as applied.
+
 ### Fixed — the image listens on 1241
 
 - `Containerfile` set `PORT=5150` and `EXPOSE 5150`, left over from the move to 1241. The image

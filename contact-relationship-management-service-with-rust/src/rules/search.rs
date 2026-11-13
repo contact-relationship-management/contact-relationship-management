@@ -5,7 +5,7 @@
 //!
 //! **Every script (CRM-T170).** A word keeps its combining marks, so a Devanagari or Thai word is
 //! not cut at a vowel sign. Scripts written without spaces between words (Chinese, Japanese,
-//! Korean names, Thai, Lao, Khmer, Myanmar: `migration::search_docs::UNSPACED`) are searched by
+//! Korean names, Thai, Lao, Khmer, Myanmar: `crate::search_docs::UNSPACED`) are searched by
 //! character n-grams, the method of the CJK analysers of Lucene and Elasticsearch: the index holds
 //! each run's single characters and overlapping pairs (the `search_ngrams` SQL function), and a
 //! query's run becomes the same pairs, all required ([`terms`]). A segmenter (ICU word breaks, as
@@ -14,7 +14,7 @@
 //! dictionary segmenter splits a name it does not know unpredictably, where pairs find any part
 //! of two characters or more and a single ideograph.
 
-use migration::search_docs::is_unspaced;
+use crate::search_docs::is_unspaced;
 use unicode_normalization::char::is_combining_mark;
 
 /// Fewest characters in a query.

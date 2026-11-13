@@ -1,14 +1,13 @@
 //! Plain SQL (CRM-D24): each query is written out with `sqlx::query!` and checked against the
-//! schema at build time, so a reviewer reads exactly what runs. While `SeaORM` is being retired,
-//! both share one pool.
+//! schema at build time, so a reviewer reads exactly what runs.
 
 use axa::AppContext;
 use sqlx::PgPool;
 
-/// The connection pool, which is `SeaORM`'s own.
+/// The connection pool: axa's own, which its `sqlx` feature makes a `PgPool` (CRM-T232).
 #[must_use]
 pub fn pool(ctx: &AppContext) -> &PgPool {
-    ctx.db.get_postgres_connection_pool()
+    &ctx.db
 }
 
 #[cfg(test)]

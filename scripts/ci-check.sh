@@ -22,14 +22,12 @@ stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|p
 case "${stage}" in
   fmt)
     (cd "${SVC}" && cargo fmt --check)
-    (cd "${SVC}/migration" && cargo fmt --check)
     (cd "${MATCHER}" && cargo fmt --check)
     ;;
   clippy)
     (cd "${SVC}" && cargo clippy --all-targets "${FEATURES[@]}" -- -D warnings)
     # The Keycloak-only build (no PASETO) the manifest documents.
     (cd "${SVC}" && cargo clippy --all-targets --no-default-features --features keycloak -- -D warnings)
-    (cd "${SVC}/migration" && cargo clippy --all-targets -- -D warnings)
     (cd "${MATCHER}" && cargo clippy --all-targets -- -D warnings)
     ;;
   test)
@@ -43,7 +41,6 @@ case "${stage}" in
       && trap 'mv Cargo.lock.ci-keep Cargo.lock' EXIT \
       && cargo test "${FEATURES[@]}" --lib \
         --config "patch.crates-io.contact-relationship-management-matcher.path=\"../${MATCHER}\"")
-    (cd "${SVC}/migration" && cargo test)
     (cd "${MATCHER}" && cargo test)
     ;;
   test-db)
@@ -176,9 +173,6 @@ case "${stage}" in
     (cd "${MATCHER}" && cargo audit && cargo deny check advisories bans licenses sources)
     (cd "${SVC}" && cargo cyclonedx --format json --spec-version 1.5 --override-filename service.cdx \
       && mv service.cdx.json ../sbom/service.cdx.json)
-    # The migration crate is a path dependency, already covered by the
-    # service SBOM; remove the duplicate file cargo-cyclonedx leaves there.
-    rm -f "${SVC}/migration/service.cdx.json"
     (cd "${FE}" && pnpm install --frozen-lockfile && pnpm audit --prod \
       && pnpm sbom --sbom-format cyclonedx --prod > ../sbom/ui.cdx.json)
     ;;

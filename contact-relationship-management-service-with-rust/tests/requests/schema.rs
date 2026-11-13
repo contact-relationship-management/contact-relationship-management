@@ -1,9 +1,12 @@
-//! The baseline stands for the `SeaORM` history (CRM-D24, CRM-T229): it builds the same catalog,
-//! a database the history built takes it without running it, and a partial history is refused.
-//! Each test makes its own databases beside the test database and drops them after.
+//! The baseline stands for the `SeaORM` history (CRM-D24, CRM-T229): a database the history built
+//! takes it without running it, and a partial history is refused. Each test makes its own
+//! databases beside the test database and drops them after.
+//!
+//! The `SeaORM` migrations went with the `migration` crate (CRM-T232), and with them the test that
+//! the baseline builds the catalog they built (it passed at `29e9922`). A database they built is
+//! made here as they left it: the baseline's schema, and `seaql_migrations` listing the history.
 
-use contact_relationship_management::schema::{self, BASELINE};
-use migration::{Migrator, MigratorTrait as _};
+use contact_relationship_management::schema::{self, BASELINE, HISTORY};
 use serial_test::serial;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -91,11 +94,29 @@ impl Scratch {
         PgPool::connect(&self.url).await.unwrap()
     }
 
-    /// Run the `SeaORM` migrations, all of them or the first `steps`.
-    async fn history(&self, steps: Option<u32>) {
-        let db = sea_orm::Database::connect(&self.url).await.unwrap();
-        Migrator::up(&db, steps).await.unwrap();
-        db.close().await.unwrap();
+    /// Make the database the `SeaORM` migrations left, all of them or the first `steps`: the
+    /// baseline's schema (it is that schema, CRM-T229) and their `seaql_migrations` table.
+    async fn history(&self, steps: Option<usize>) {
+        let pool = self.pool().await;
+        sqlx::raw_sql(include_str!("../../migrations/20261110000000_baseline.sql"))
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::raw_sql(
+            "CREATE TABLE seaql_migrations (version varchar NOT NULL PRIMARY KEY, \
+             applied_at bigint NOT NULL)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        for version in &HISTORY[..steps.unwrap_or(HISTORY.len())] {
+            sqlx::query("INSERT INTO seaql_migrations (version, applied_at) VALUES ($1, 0)")
+                .bind(version)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        pool.close().await;
     }
 
     async fn drop_now(self) {
@@ -117,39 +138,6 @@ async fn recorded(pool: &PgPool) -> Vec<(i64, i64)> {
         .fetch_all(pool)
         .await
         .unwrap()
-}
-
-#[tokio::test]
-#[serial]
-#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
-async fn the_baseline_builds_the_catalog_the_history_built() {
-    let (history, baseline) = (Scratch::new().await, Scratch::new().await);
-    history.history(None).await;
-    let built = baseline.pool().await;
-    schema::migrate(&built).await.unwrap();
-    let old = history.pool().await;
-    let (from_history, from_baseline) = (catalog(&old).await, catalog(&built).await);
-    assert!(from_history.len() > 1_000, "{} lines", from_history.len());
-    let only_history: Vec<_> = from_history
-        .iter()
-        .filter(|l| !from_baseline.contains(l))
-        .collect();
-    let only_baseline: Vec<_> = from_baseline
-        .iter()
-        .filter(|l| !from_history.contains(l))
-        .collect();
-    assert!(
-        only_history.is_empty() && only_baseline.is_empty(),
-        "only in the history: {only_history:#?}\nonly in the baseline: {only_baseline:#?}"
-    );
-    let ran = recorded(&built).await;
-    assert_eq!(ran.len(), 1);
-    assert_eq!(ran[0].0, BASELINE);
-    assert!(ran[0].1 >= 0, "a new database runs the baseline");
-    old.close().await;
-    built.close().await;
-    history.drop_now().await;
-    baseline.drop_now().await;
 }
 
 #[tokio::test]

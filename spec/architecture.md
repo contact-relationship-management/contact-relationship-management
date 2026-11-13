@@ -7,7 +7,7 @@
  contact-relationship-management-ui-with-svelte  (SvelteKit BFF)
         │  Authorization: Bearer v4.public.…
         ▼
- contact-relationship-management-service-with-rust  (Axum + axa + SeaORM + PostgreSQL)
+ contact-relationship-management-service-with-rust  (Axum + axa + sqlx + PostgreSQL)
         │  EntityRef lookups (read-only, cached, stub-able); the family
         │  bridges (CRM-R72, CRM-R73, CRM-R94), stub-first
         ▼
@@ -30,7 +30,7 @@ src/
 │                         marketing (campaigns/segments/nurture/consent),
 │                         support (tickets/sla/articles),
 │                         dashboards, audits, docs, metrics
-├── models/               helpers + _entities/ (SeaORM)
+├── models/               helpers + _entities/ (plain row structs)
 ├── clients.rs            stub-first upstream display-name lookups and
 │                         the PPM and WPM bridge calls
 ├── rules/                pure core: lifecycle machines (lead, deal,
@@ -47,9 +47,9 @@ src/
 │   └── tests.rs          the unit tests
 ├── streaming.rs          envelope + memory/outbox transports
 ├── validation.rs         caps + URN shapes + money → 422
-└── openapi.rs            OpenAPI 3 doc
+├── openapi.rs            OpenAPI 3 doc
+└── search_docs.rs        the searched text per table, and the check that the baseline indexes it
 migrations/               sqlx: the baseline, then each change (CRM-T229)
-migration/                the SeaORM history the baseline stands for, and search_docs
 ```
 
 Key decisions (numbered in [design.md](design.md)): normalized
