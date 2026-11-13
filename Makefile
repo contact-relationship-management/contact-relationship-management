@@ -78,7 +78,7 @@ lint-markdown:
 # make publish-github-pages: Publish the website subproject to its own sibling repository.
 ##
 .PHONY: publish-github-pages
-github-pages:
+publish-github-pages:
 	bin/publish-github-pages
 
 ##
