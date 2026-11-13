@@ -1,1 +1,49 @@
-Show and tell: Show off something you've made
+Share what you have built with Contact Relationship Management
+
+This category is for things you have made with or around the project: integrations, scripts, dashboards, demos, tutorials, and experiments. Here is an example to show the format, then a template for your own.
+
+## Example: a long-running stability test
+
+**What it is.** A k6 test that runs a steady, mostly read workload against the service for hours, with a separate health probe. It is in [tests/long-running](https://github.com/contact-relationship-management/contact-relationship-management/tree/main/tests/long-running).
+
+**Why.** The load tests ran for minutes; nothing checked whether the service stays stable over hours. The test tags requests in the first and last tenth of a run, so a slowdown shows up as two latency figures side by side in the summary.
+
+**How to try it.**
+
+```bash
+podman compose up --build                 # from the repository root
+cd tests/long-running
+make stability K6=podman-k6 DURATION=10m  # k6 from a pinned container image
+```
+
+**What was surprising.** Writing it showed that the demo container listened on a different port from the one `compose.yaml` published, so the demo was unreachable. That is fixed now.
+
+**What I would like.** Has anyone run it for hours, or against a deployment with sign-in on? Please share the summary.
+
+## Your turn
+
+Start a new discussion in Show and tell and copy these headings:
+
+```markdown
+## What it is
+
+One sentence, and a link.
+
+## Why I made it
+
+The problem or curiosity behind it.
+
+## Show it
+
+A screenshot, a short code sample, or a demo link.
+
+## How to try it
+
+A few steps.
+
+## What I would like
+
+Feedback, contributors, or other people's examples.
+```
+
+Please use synthetic data in screenshots and demos, and credit the work you built on.

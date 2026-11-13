@@ -1,1 +1,21 @@
-Polls: Take a vote from the community
+Which gap on the path to production matters most to you?
+
+## Description
+
+Contact Relationship Management is not ready for production. The [path to production](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/locales/en-us/path-to-production/index.md) lists each area with an estimate of how far it has got. Four of the gaps below need work that the code alone cannot finish, so knowing which matters most to you helps decide what to work on next.
+
+The result is advisory: maintainers will read it with the comments when ordering the work, and it does not commit the project to any order or date. Anyone may vote.
+
+If you choose "Something else", or want to explain your choice, please say why in a comment. Votes show what matters; comments show why.
+
+## Poll question
+
+Which gap on the path to production matters most to you?
+
+## Options
+
+1. Email delivery through a real provider, with bounces, complaints, and a suppression list (CRM-T39)
+2. Independent security assurance, starting with a penetration test (CRM-T42)
+3. A manual accessibility audit with keyboard, screen readers, and zoom (CRM-T48)
+4. Review of the translations by native speakers
+5. Something else (explain in comments)

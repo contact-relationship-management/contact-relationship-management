@@ -1,1 +1,17 @@
-General: Chat about anything and everything here
+Say hello and tell us what you would use a CRM like this for
+
+Welcome. This category is for conversation that fits nowhere else: introductions, use cases, and opinions about Contact Relationship Management.
+
+To start: I maintain the project, and work on its specification, the Rust service, and the Svelte client.
+
+**One question:** what would you use a CRM like this for, or what brought you here? A sentence or two is plenty.
+
+## Where other topics belong
+
+- **Questions** about installing or using it: [Q&A](https://github.com/contact-relationship-management/contact-relationship-management/discussions/categories/q-a)
+- **Suggestions** for features or changes: [Ideas](https://github.com/contact-relationship-management/contact-relationship-management/discussions/categories/ideas)
+- **Bugs**: [Issues](https://github.com/contact-relationship-management/contact-relationship-management/issues)
+
+Please be kind and constructive, as [CONTRIBUTING.md](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/CONTRIBUTING.md) asks.
+
+Thank you for stopping by. I will reply to the first comments here.

@@ -1,1 +1,40 @@
-Ideas: Share ideas for new features
+How to suggest an idea for Contact Relationship Management
+
+This category is for proposing changes and features before anyone writes code. A good idea starts with the problem it solves, so that others can judge whether the proposal is the best fix.
+
+## How to suggest an idea
+
+Start a new discussion in Ideas, one idea per discussion, and copy these headings:
+
+```markdown
+## Problem
+
+What is hard or missing today, who it affects, and when.
+
+## Proposal
+
+What you suggest, in plain terms. Use a list if it has parts.
+
+## Alternatives
+
+Other ways to solve it, the workaround you use today, and what happens if nothing changes.
+
+## Costs and trade-offs
+
+What it would add in complexity, compatibility, maintenance, or risk.
+
+## Open questions
+
+What you want feedback on, such as "Would this solve your case?"
+```
+
+## Things to know first
+
+- The [specification](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/index.md) is the source of truth. A change in behavior is made as a specification edit, a code edit, and a test edit together.
+- The scope is set in [spec/scope.md](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/scope.md). For example, a contact stores a reference to a person in an identity service, not a copy of their name or address.
+- Consent comes first. Nothing is sent to a contact without recorded consent.
+- The open work is listed in [spec/tasks.md](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/tasks.md). Check it first; your idea may already be there.
+
+## What happens next
+
+A maintainer reads each idea and replies. An idea that fits the scope may become a task in the specification or an issue. A reply or upvote is not a commitment to build it.

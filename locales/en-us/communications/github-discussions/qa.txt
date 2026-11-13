@@ -1,1 +1,42 @@
-Q&A: Ask the community for help
+How to ask a question that gets a quick answer
+
+This category is for questions with answers. When a reply solves your problem, mark it as the answer so the next person with the same question can find it.
+
+## Before you ask
+
+- Read [INSTALL.md](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/INSTALL.md). It covers the one-command demo (`podman compose up --build`), the Rust service, the Svelte client, sending email, and the guided tour (sign in as `example@example.com`).
+- Search Q&A in case someone has asked already.
+- If the software does something wrong and you can reproduce it, open an [issue](https://github.com/contact-relationship-management/contact-relationship-management/issues) instead.
+- Security vulnerabilities go privately, as [SECURITY.md](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/SECURITY.md) describes, never in a public thread.
+
+## Checklist for your question
+
+Start a new discussion in Q&A, one question per discussion, with a title that names the problem, such as "How do I turn on sign-in for the service?" rather than "Help". Then copy these headings:
+
+```markdown
+## Goal
+
+What you are trying to do, in one sentence.
+
+## What I tried
+
+The steps or commands, in order.
+
+## Expected
+
+What you expected to happen.
+
+## Actual
+
+What happened instead, with the exact error text in a code block.
+
+## Environment
+
+Operating system, Podman or Docker version, Rust and Node versions, the commit or release you are on, and any settings you changed (such as `CRM_REQUIRE_AUTH` or `CRM_MAIL_MODE`).
+
+## Minimal example
+
+The smallest set of commands or code that still shows the problem.
+```
+
+Paste text, not screenshots of text, so others can copy it. Remove tokens, keys, passwords, and personal data from logs before you post. Use synthetic data only; the software is not ready for production.

@@ -1,1 +1,29 @@
-Announcements: Updates from maintainers
+Welcome to Contact Relationship Management Discussions
+
+Discussions are now open for Contact Relationship Management, an open-source CRM for sales, marketing, customer support, and analytics. It has a Rust JSON API, a Svelte client, and a public specification. This is the place to ask questions, suggest changes, and share what you build with it.
+
+## What this means for you
+
+- You can ask a question without opening an issue, and the best reply can be marked as the answer for the next person.
+- You can propose a change and discuss the problem before anyone writes code.
+- Maintainers will post releases and changes of direction here, in Announcements.
+
+## Before you start
+
+The software is **not ready for production**. It runs on synthetic data, and no real email is sent unless a real mail mode is configured. The [path to production](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/locales/en-us/path-to-production/index.md) explains what production means for this project and how far each part has got. Do not put real personal data in it.
+
+## Where to go for what
+
+- **Questions** about installing, running, or using it: [Q&A](https://github.com/contact-relationship-management/contact-relationship-management/discussions/categories/q-a)
+- **Suggestions** for features or changes: [Ideas](https://github.com/contact-relationship-management/contact-relationship-management/discussions/categories/ideas)
+- **Votes** on choices the project faces: [Polls](https://github.com/contact-relationship-management/contact-relationship-management/discussions/categories/polls)
+- **Something you built** with or around it: [Show and tell](https://github.com/contact-relationship-management/contact-relationship-management/discussions/categories/show-and-tell)
+- **Introductions and anything else**: [General](https://github.com/contact-relationship-management/contact-relationship-management/discussions/categories/general)
+- **Bugs**, with steps to reproduce: [Issues](https://github.com/contact-relationship-management/contact-relationship-management/issues)
+- **Security vulnerabilities**: report privately, as [SECURITY.md](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/SECURITY.md) describes, never in a public thread.
+
+Please be kind and constructive, as [CONTRIBUTING.md](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/CONTRIBUTING.md) asks.
+
+## Next step
+
+Try the demo with `podman compose up --build` (see [INSTALL.md](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/INSTALL.md)), then post your first question in Q&A. Replies and reactions on this post are welcome.
