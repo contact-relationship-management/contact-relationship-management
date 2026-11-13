@@ -482,7 +482,9 @@ The following structured approach will guide you through a successful production
 
 ### 14.1 Overall Assessment
 
-#### Grade: A- (Excellent, with room for improvement)
+#### Overall Grade: A-
+
+Excellent, with room for improvement
 
 The CRM system demonstrates:
 
