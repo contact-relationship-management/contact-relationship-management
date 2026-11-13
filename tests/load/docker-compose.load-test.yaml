@@ -29,7 +29,7 @@ version: '3.8'
 services:
   # k6 Master - coordinates distributed test execution
   k6-master:
-    image: grafana/k6:latest
+    image: docker.io/grafana/k6:1.4.2@sha256:3656673de3f30424e8ebcfa46acd9558d83b6a43612d0f668ffeac953950c6c7
     container_name: k6-master
     command: >
       sh -c "
@@ -60,7 +60,7 @@ services:
 
   # k6 Worker - executes test VUs
   k6-worker:
-    image: grafana/k6:latest
+    image: docker.io/grafana/k6:1.4.2@sha256:3656673de3f30424e8ebcfa46acd9558d83b6a43612d0f668ffeac953950c6c7
     container_name: k6-worker
     command: >
       sh -c "
@@ -97,7 +97,7 @@ services:
 
   # InfluxDB - Time-series database for k6 metrics
   influxdb:
-    image: influxdb:2.7
+    image: docker.io/library/influxdb:2.7.12@sha256:b8d940ca9376f85118260f5b6bd236b8a00b1749c3350c5578d4cde8e27f31f2
     container_name: influxdb
     ports:
       - "8086:8086"  # InfluxDB HTTP API
@@ -117,7 +117,7 @@ services:
 
   # Grafana - Visualization dashboard
   grafana:
-    image: grafana/grafana:latest
+    image: docker.io/grafana/grafana:12.2.1@sha256:35c41e0fd0295f5d0ee5db7e780cf33506abfaf47686196f825364889dee878b
     container_name: grafana
     ports:
       - "3000:3000"  # Grafana UI
@@ -140,7 +140,7 @@ services:
 
   # Prometheus - Additional metrics collection
   prometheus:
-    image: prom/prometheus:latest
+    image: docker.io/prom/prometheus:v3.7.3@sha256:49214755b6153f90a597adcbff0252cc61069f8ab69ce8411285cd4a560e8038
     container_name: prometheus
     ports:
       - "9090:9090"  # Prometheus UI
@@ -162,7 +162,7 @@ services:
   # k6 run - Pre-configured test runner (optional)
   # Use this to run specific test scripts without manually executing commands
   k6-run:
-    image: grafana/k6:latest
+    image: docker.io/grafana/k6:1.4.2@sha256:3656673de3f30424e8ebcfa46acd9558d83b6a43612d0f668ffeac953950c6c7
     container_name: k6-run
     command: >
       sh -c "
