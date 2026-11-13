@@ -836,14 +836,11 @@ async fn undo_import(
     if locked.status == "undone" {
         return Err(unprocessable("this import has already been undone"));
     }
-    let all: Vec<Uuid> = locked
-        .created_pids
-        .as_array()
-        .map_or_default(|a| {
-            a.iter()
-                .filter_map(|v| v.as_str().and_then(|s| s.parse().ok()))
-                .collect()
-        });
+    let all: Vec<Uuid> = locked.created_pids.as_array().map_or_default(|a| {
+        a.iter()
+            .filter_map(|v| v.as_str().and_then(|s| s.parse().ok()))
+            .collect()
+    });
     let removed = remove_unused(&mut txn, kind, &all).await?;
     for record in &removed {
         Audit::record_on(

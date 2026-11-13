@@ -244,13 +244,12 @@ impl Settings {
             cors_origin: text("CRM_CORS_ORIGIN"),
             redis_url: text("CRM_REDIS_URL"),
             mcp_writes: flag("CRM_MCP_WRITES"),
-            mcp_allowed_origins: text("CRM_MCP_ALLOWED_ORIGINS")
-                .map_or_default(|v| {
-                    v.split(',')
-                        .map(|o| o.trim().trim_end_matches('/').to_ascii_lowercase())
-                        .filter(|o| !o.is_empty())
-                        .collect()
-                }),
+            mcp_allowed_origins: text("CRM_MCP_ALLOWED_ORIGINS").map_or_default(|v| {
+                v.split(',')
+                    .map(|o| o.trim().trim_end_matches('/').to_ascii_lowercase())
+                    .filter(|o| !o.is_empty())
+                    .collect()
+            }),
             web_forms: text("CRM_WEB_FORMS")
                 .and_then(|v| serde_json::from_str::<Vec<WebForm>>(&v).ok())
                 .map_or_default(|forms| forms.into_iter().filter(WebForm::valid).collect()),

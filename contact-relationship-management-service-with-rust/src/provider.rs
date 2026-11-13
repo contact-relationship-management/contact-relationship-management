@@ -382,18 +382,15 @@ fn escape_html(text: &str) -> String {
 
 /// The `List-Unsubscribe` header pair, empty when the message has no link.
 pub(crate) fn unsubscribe_pairs(message: &Message) -> Vec<(String, String)> {
-    message
-        .unsubscribe_url
-        .as_ref()
-        .map_or_default(|url| {
-            vec![
-                ("List-Unsubscribe".to_string(), format!("<{url}>")),
-                (
-                    "List-Unsubscribe-Post".to_string(),
-                    "List-Unsubscribe=One-Click".to_string(),
-                ),
-            ]
-        })
+    message.unsubscribe_url.as_ref().map_or_default(|url| {
+        vec![
+            ("List-Unsubscribe".to_string(), format!("<{url}>")),
+            (
+                "List-Unsubscribe-Post".to_string(),
+                "List-Unsubscribe=One-Click".to_string(),
+            ),
+        ]
+    })
 }
 
 /// `Name <address>` when the name is plain ASCII, else just the address

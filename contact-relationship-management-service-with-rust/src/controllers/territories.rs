@@ -333,8 +333,7 @@ async fn territory_attainment(
             name: t.name.clone(),
             owner_ref: t.owner_ref.clone(),
             accounts: t.accounts.len(),
-            currencies: Uuid::parse_str(&t.pid)
-                .map_or_default(|pid| revenue(Some(pid))),
+            currencies: Uuid::parse_str(&t.pid).map_or_default(|pid| revenue(Some(pid))),
         })
         .collect::<Vec<_>>();
     Audit::record_read_on(

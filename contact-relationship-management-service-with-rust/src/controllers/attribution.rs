@@ -601,14 +601,12 @@ async fn run(
         .map_or_default(|done| done.rows.iter().cloned().collect());
     let in_target = |key: &str| {
         let target = query.convert_to.clone().unwrap_or_default();
-        converted
-            .get(key)
-            .map_or_default(|amount_minor| {
-                vec![Amount {
-                    currency: target,
-                    amount_minor: *amount_minor,
-                }]
-            })
+        converted.get(key).map_or_default(|amount_minor| {
+            vec![Amount {
+                currency: target,
+                amount_minor: *amount_minor,
+            }]
+        })
     };
     let mut campaigns: Vec<CampaignCredit> = tallies
         .into_iter()
