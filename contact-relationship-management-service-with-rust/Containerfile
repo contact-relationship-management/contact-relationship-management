@@ -25,9 +25,9 @@ COPY --from=build /src/config /app/config
 WORKDIR /app
 ENV APP_ENV=production \
     CRM_REQUIRE_AUTH=1 \
-    PORT=5150
+    PORT=1241
 USER nonroot:nonroot
-EXPOSE 5150
+EXPOSE 1241
 # The binary refuses to start in production without authentication (CRM-T30).
 # Secrets (DB_URL, token keys) come from the orchestrator, never the image.
 ENTRYPOINT ["/app/crm-service", "start"]

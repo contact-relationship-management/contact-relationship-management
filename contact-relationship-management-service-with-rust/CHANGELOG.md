@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the image listens on 1241
+
+- `Containerfile` set `PORT=5150` and `EXPOSE 5150`, left over from the move to 1241. The image
+  now listens on 1241, so `podman compose up` answers at `http://localhost:1241` again.
+
 ### Changed — the entities as plain structs (CRM-T231, CRM-D24)
 
 - `models/_entities/` holds plain row structs; `DeriveEntityModel`, the relations, the
