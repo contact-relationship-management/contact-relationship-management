@@ -153,8 +153,8 @@ check. None of the bridges has been run against a running WPM or PPM.
 
 ## Svelte front end
 
-**Guided tour:** start the UI and sign in as `example@example.com`. No email
-is sent and no service is needed; every screen shows fictitious data (set
+**Guided tour:** start the UI and press **Start the tour** on `/tour`, or sign
+in as `example@example.com`. No email is sent and no service is needed; every screen shows fictitious data (set
 `CRM_DEMO_TOUR=off` to remove this). Each sign-in gets its own copy of the
 data, held in memory (at most 200 at a time).
 

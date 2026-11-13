@@ -419,6 +419,7 @@ export default {
   "tour.toc": "Sur cette page",
   "tour.open": "Ouvrir cet écran",
   "tour.top": "Retour en haut",
+  "tour.begin": "Commencer la visite",
   "tour.start.title": "Avant de commencer",
   "tour.start.summary":
     "Un compte est nécessaire pour travailler avec des données réelles. La connexion prend moins d'une minute et n'exige aucun mot de passe.",

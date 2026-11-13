@@ -398,6 +398,7 @@ export default {
   "tour.toc": "On this page",
   "tour.open": "Open this screen",
   "tour.top": "Back to top",
+  "tour.begin": "Start the tour",
   "tour.start.title": "Before you begin",
   "tour.start.summary":
     "You need an account to work with real data. Signing in takes under a minute and needs no password.",

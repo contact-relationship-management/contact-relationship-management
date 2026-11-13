@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — start the tour in one click from the tour page (CRM-T233)
+
+With the tour on, `/tour` shows a "Start the tour" button (`tour.begin`), a form POST to `?/start` that gives the visitor a tour session, as signing in as `example@example.com` does, and opens the home page. A visitor already in the tour keeps their copy. Reading the page starts nothing, so a crawler creates no sessions (they are capped at 200, the oldest dropped). With the tour off, the page shows neither the button nor the demo address. One string in the eight locales (machine drafts but English; register counts updated). Tests: 3 Playwright tour tests. **Not done or verified:** translations unreviewed; not run in the UI image smoke test.
+
 ### Added — the stalled flag on the deal board and the deal page (CRM-T183, CRM-R4)
 
 `ListedDeal` (`stalled`, `last_touched_at`) from `listDeals`, checked against the generated `ListedDeal` schema; `schema.d.ts` regenerated. The board gives a stalled card Lily's card `flag` (`deal.stalled`); the deal page shows `deal.stalledSince` and keeps it after an edit (not a touch); the reports page's calendar form sets `stalled_after_days` (`org.stalledAfter`). Three strings in the eight locales (machine drafts but English; register counts updated). The tour's stand-in derives the flag as the service does (`listedDeals`), with `deal-4` and `deal-6` untouched for 40 days. Tests: 3 vitest, 2 Playwright tour tests. **Not done or verified:** translations unreviewed; the save button still reads "Save the calendar"; the stand-in does not log activities on deals, so its activity rule is untested in the browser; not run against a live service.

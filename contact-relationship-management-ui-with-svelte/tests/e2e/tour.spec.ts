@@ -60,6 +60,49 @@ test("a visitor can take the tour from the tour page", async ({ page }) => {
   await expect(page).toHaveURL(/\/signin$/);
 });
 
+// CRM-T233: one click from the tour page, and reading the page starts nothing.
+const SESSION = "__Host-mxi_session";
+
+test("the start button on the tour page opens the tour in one click", async ({
+  page,
+}) => {
+  await page.goto("/tour");
+  await page.getByTestId("tour-begin").click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByTestId("demo-banner")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "My Home Page" }),
+  ).toBeVisible();
+});
+
+test("reading the tour page starts no session", async ({ page, request }) => {
+  const res = await request.get("/tour");
+  expect(res.status()).toBe(200);
+  expect(res.headers()["set-cookie"] ?? "").not.toContain(SESSION);
+  await page.goto("/tour");
+  const cookies = await page.context().cookies();
+  expect(cookies.map((c) => c.name)).not.toContain(SESSION);
+});
+
+test("pressing start again keeps the visitor's tour session", async ({
+  page,
+}) => {
+  await page.goto("/tour");
+  await page.getByTestId("tour-begin").click();
+  await expect(page.getByTestId("demo-banner")).toBeVisible();
+  const first = (await page.context().cookies()).find(
+    (c) => c.name === SESSION,
+  );
+  expect(first?.value).toMatch(/^demo-tour-/);
+  await page.goto("/tour");
+  await page.getByTestId("tour-begin").click();
+  await expect(page.getByTestId("demo-banner")).toBeVisible();
+  const again = (await page.context().cookies()).find(
+    (c) => c.name === SESSION,
+  );
+  expect(again?.value).toBe(first?.value);
+});
+
 test("signing in as example@example.com shows fictitious data on every screen", async ({
   page,
 }) => {

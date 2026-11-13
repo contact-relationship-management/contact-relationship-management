@@ -443,6 +443,7 @@ export default {
   "tour.toc": "Ar y dudalen hon",
   "tour.open": "Agor y sgrin hon",
   "tour.top": "Yn ôl i'r brig",
+  "tour.begin": "Dechrau'r daith",
   "tour.start.title": "Cyn i chi ddechrau",
   "tour.start.summary":
     "Mae angen cyfrif arnoch i weithio gyda data go iawn. Mae mewngofnodi'n cymryd llai na munud ac nid oes angen cyfrinair.",

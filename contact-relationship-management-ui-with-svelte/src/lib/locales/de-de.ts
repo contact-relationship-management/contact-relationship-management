@@ -371,6 +371,7 @@ export default {
   "tour.toc": "Auf dieser Seite",
   "tour.open": "Diese Ansicht öffnen",
   "tour.top": "Nach oben",
+  "tour.begin": "Tour starten",
   "tour.start.title": "Bevor Sie beginnen",
   "tour.start.summary":
     "Für die Arbeit mit echten Daten benötigen Sie ein Konto. Die Anmeldung dauert weniger als eine Minute und kommt ohne Passwort aus.",

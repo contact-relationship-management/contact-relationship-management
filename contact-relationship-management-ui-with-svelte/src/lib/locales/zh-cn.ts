@@ -377,6 +377,7 @@ export default {
   "tour.toc": "本页内容",
   "tour.open": "打开此页面",
   "tour.top": "返回顶部",
+  "tour.begin": "开始导览",
   "tour.start.title": "开始之前",
   "tour.start.summary": "处理真实数据需要账号。登录不到一分钟，也不需要密码。",
   "tour.start.step.1": "点击右上角的“登录”，输入你的邮箱地址。",
