@@ -69,15 +69,15 @@ root workflow. To publish a change:
 1. Commit it, then from the monorepo root run:
 
    ```sh
-   make github-pages
+   make publish-github-pages
    ```
 
-   which runs `bin/make-github-pages`: it checks that the remote exists, that `src/content/` is current and that this
+   which runs `bin/publish-github-pages`: it checks that the remote exists, that `src/content/` is current and that this
    directory has no uncommitted change, then runs
    `git subtree push --prefix=contact-relationship-management.github.io github-pages main`.
 2. Watch the Deploy to GitHub Pages run in the exported repository.
 
-A green `make github-pages` means the code was pushed, not that the site was deployed; only that run says so. On
+A green `make publish-github-pages` means the code was pushed, not that the site was deployed; only that run says so. On
 2026-11-04 three attempts at one commit timed out in `actions/deploy-pages` with GitHub reporting no incident. The
 cause was not established, and the live site kept the previous deployment.
 

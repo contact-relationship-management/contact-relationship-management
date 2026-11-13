@@ -6,7 +6,7 @@ The public documentation site, `contact-relationship-management.github.io/` in t
 pattern written down in the workforce planning repository (`workforce-planning-management/spec/monorepo-github-pages/`)
 and built first in the project portfolio repository (its `spec/github-pages-site.md`, task GP-1): a SvelteKit and Lily
 Design System subproject named `<repo>.github.io/` inside the monorepo, exported with `git subtree` to a read-only
-sibling repository, published by `make github-pages`.
+sibling repository, published by `make publish-github-pages`.
 
 ## What it is
 
@@ -43,7 +43,7 @@ sibling repository, published by `make github-pages`.
 The exported repository has no parent directory, so the site cannot read `../README.md` when it builds. The site's
 `scripts/sync-content.mjs` copies the documents into `src/content/docs.json` and the brief index (locale, slug and
 `.locale-peer-id` of each brief) into `src/content/briefs.json`, both committed. `--check` fails when either differs
-from the repository; CI runs it, and `bin/make-github-pages` runs it before pushing. The document list is in that
+from the repository; CI runs it, and `bin/publish-github-pages` runs it before pushing. The document list is in that
 script and in `src/lib/site.ts`.
 
 ## Locales and direction
@@ -100,7 +100,7 @@ content check, `svelte-check`, the build and the suite; the CI job `site` runs t
 
 ## Publishing
 
-`make github-pages` runs `bin/make-github-pages`, which runs
+`make publish-github-pages` runs `bin/publish-github-pages`, which runs
 `git subtree push --prefix=contact-relationship-management.github.io github-pages main` after checking that the
 `github-pages` remote exists, the content copy is current and the directory has no uncommitted change. The exported
 repository deploys with its own `.github/workflows/deploy.yml` (GitHub Pages' actions; inert inside the monorepo).

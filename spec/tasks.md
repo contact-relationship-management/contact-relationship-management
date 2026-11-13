@@ -2051,7 +2051,7 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
       README, INSTALL, the family-bridges tutorial, the spec index, the locale status and the 121 role briefs (11
       locales); briefs matched across scripts by `.locale-peer-id`; the Arabic pages `dir="rtl"`; the site's own words in
       the page's language by the UI's approach (English, Arabic, Welsh, Hindi, Chinese; machine drafts). Content copied
-      by `scripts/sync-content.mjs` (`--check` in CI). `make github-pages` runs `bin/make-github-pages` (checks, then
+      by `scripts/sync-content.mjs` (`--check` in CI). `make publish-github-pages` runs `bin/publish-github-pages` (checks, then
       `git subtree push --prefix=contact-relationship-management.github.io github-pages main`); it was run once and
       refused, as it should, for want of the remote. `scripts/ci-check.sh site` and the CI job `site`: content check,
       svelte-check, build, 66 Playwright tests with axe (no violation of any impact, light and dark, right to left, the
@@ -2062,7 +2062,7 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
       axe on 11 of the 121 briefs.
 - [x] CRM-T178 **Publish the site.** Create
       `contact-relationship-management/contact-relationship-management.github.io`, set its Pages source to GitHub Actions,
-      add the `github-pages` remote and run `make github-pages`; then check the deployed pages, the native-script paths
+      add the `github-pages` remote and run `make publish-github-pages`; then check the deployed pages, the native-script paths
       among them. Steps: the root README, "GitHub Pages site". (S)
       **Done (2026-11-04):** the steps above, at the owner's request; <https://contact-relationship-management.github.io/>. Before the push: `scripts/ci-check.sh site`
       passed (66 tests) and `gitleaks` found nothing in the 9 exported commits. After it: the deploy workflow's first run
@@ -2102,7 +2102,7 @@ Why: the owner finds GitHub-hosted CI unreliable and costly. CRM is already furt
       - **Ran:** `run test-db` under colima on arm64: 230 tests passed in 558 seconds, image pulls and a clean build included, with no container left behind. The clock failure `compose.test.yaml` records on macOS did not appear in this one run. With no engine running it stops with exit 1 and a message.
       - **Not done / not verified:** Podman's path was not run, because its VM here does not answer; `CRM_CI_PLATFORM` was not run; `run all` was not run through the helper until CRM-T189. It has no test of its own in the `scripts` stage, because that stage has no container engine.
 - [x] CRM-T187 **A pre-push gate** (fmt, clippy, lib tests, scripts, lint and Prettier; the last two were 50 of the 133 failed jobs in CRM-T184), installed by a script, skippable by an explicit recorded variable. (S)
-      - **Built:** the `pre-push` stage (fmt, lint, scripts, pins, secrets, clippy, service and matcher unit tests, Prettier and ESLint); `scripts/pre-push-gate.sh`, which runs it on the commit being pushed in a checkout under `.git/ci-gate`, so uncommitted work neither blocks a push nor passes for it; `scripts/install-pre-push.sh`, which will not replace a hook it did not write. `CRM_SKIP_PRE_PUSH="why"` skips the gate and writes the commit and reason to `.git/ci-gate-skips.log`. `make github-pages` pushes a tree with no `ci-check.sh`, so it is not gated. `secrets` was not in the original list; it takes two seconds.
+      - **Built:** the `pre-push` stage (fmt, lint, scripts, pins, secrets, clippy, service and matcher unit tests, Prettier and ESLint); `scripts/pre-push-gate.sh`, which runs it on the commit being pushed in a checkout under `.git/ci-gate`, so uncommitted work neither blocks a push nor passes for it; `scripts/install-pre-push.sh`, which will not replace a hook it did not write. `CRM_SKIP_PRE_PUSH="why"` skips the gate and writes the commit and reason to `.git/ci-gate-skips.log`. `make publish-github-pages` pushes a tree with no `ci-check.sh`, so it is not gated. `secrets` was not in the original list; it takes two seconds.
       - **Ran:** `scripts/test-pre-push.sh`, 13 checks with real pushes to a throwaway bare repository, in the `scripts` stage. The real stage: 163 seconds from a clean checkout, 20 seconds warm (with `kache`), 479 unit tests passing.
       - **Not done / not verified:** a hook is local and optional, so it binds nobody who has not installed it, and it is not installed in the owner's clone until they run the script. Two pushes at once: the second is refused, and a killed gate leaves a lock to remove by hand. The gate checks the tip of each pushed ref, not each commit in between.
 - [ ] CRM-T188 (deferred 2026-11-05) **Parallel database suites** with a throwaway database per test binary. (M)
