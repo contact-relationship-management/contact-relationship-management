@@ -18,7 +18,11 @@ if ! git remote get-url github-pages >/dev/null 2>&1; then
 fi
 
 # The site carries its own copy of the documents it shows; refuse to publish a stale copy.
-node "$prefix/scripts/sync-content.mjs" --check
+if ! node "$prefix/scripts/sync-content.mjs" --check; then
+  echo "publish-github-pages: src/content/ is stale." >&2
+  echo "Run 'cd $prefix && pnpm run sync' to update it, then commit the changes." >&2
+  exit 1
+fi
 
 if [ -n "$(git status --porcelain -- "$prefix")" ]; then
   echo "publish-github-pages: $prefix/ has uncommitted changes; commit them first (subtree pushes commits only)." >&2
