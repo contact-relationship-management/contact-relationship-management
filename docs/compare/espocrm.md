@@ -1,6 +1,6 @@
 # Contact Relationship Management and EspoCRM
 
-EspoCRM is a free, open-source CRM written in PHP. Contact Relationship Management is open-source demonstration software, not a production CRM. The two are not direct alternatives.
+EspoCRM is a free, open-source CRM written in PHP. Contact Relationship Management is open-source software that is not ready for production ([path to production](../../locales/en-us/path-to-production/index.md)). The two are not direct alternatives.
 
 ## Summary
 

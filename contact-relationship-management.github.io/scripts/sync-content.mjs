@@ -8,6 +8,7 @@
 // Run from the monorepo only (it reads the parent directory). The list of documents is here and nowhere else:
 // src/lib/site.ts reads the brief index (briefs.json) and the server reads the text (docs.json).
 //
+// The path-to-production pages are every locales/<locale>/path-to-production/index.md.
 // The role briefs are every locales/<locale>/for/<slug>/index.md. Their slugs are in each locale's own script
 // (Arabic, Chinese, Hindi and Welsh slugs differ from the English ones), so a brief is matched across locales by its
 // `.locale-peer-id`, the same 32-character id in every locale for the same role (spec/locale/index.md).
@@ -66,20 +67,29 @@ function homes() {
     });
 }
 
+// The path-to-production pages: locales/<locale>/path-to-production/index.md, in the locales that have one.
+function productionPages() {
+  return readdirSync(join(ROOT, "locales"))
+    .sort()
+    .filter((locale) => existsSync(join(ROOT, "locales", locale, "path-to-production", "index.md")));
+}
+
 /** @param {unknown} value */
 const json = (value) => JSON.stringify(value, null, 2) + "\n";
 
 function render() {
   const list = briefs();
   const homeLocales = homes();
+  const production = productionPages();
   /** @type {Record<string, string>} */
   const files = {};
-  for (const p of [...DOCS, ...COMPARE, ...homeLocales.map((l) => `locales/${l}/index.md`), ...list.map((b) => b.path)]) files[p] = readFileSync(join(ROOT, p), "utf8");
+  for (const p of [...DOCS, ...COMPARE, ...homeLocales.map((l) => `locales/${l}/index.md`), ...production.map((l) => `locales/${l}/path-to-production/index.md`), ...list.map((b) => b.path)]) files[p] = readFileSync(join(ROOT, p), "utf8");
   return {
     docs: json({ generated: "by scripts/sync-content.mjs from the monorepo; do not edit by hand", files }),
     briefs: json({
       generated: "by scripts/sync-content.mjs from the monorepo; do not edit by hand",
       homes: homeLocales,
+      production,
       compare: COMPARE.map((p) => p.replace(/^docs\/compare\/|\.md$/g, "")),
       briefs: list.map(({ locale, slug, peer }) => ({ locale, slug, peer })),
     }),

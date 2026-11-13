@@ -13,8 +13,8 @@ editor, the ticket queue with live SLA countdowns, the knowledge
 base editor, and the KPI dashboards. The Svelte app owns no data;
 every page round-trips through the API.
 
-> ⚠️ Demo software, not a production CRM. See
-> [regulatory](../spec/regulatory.md).
+> ⚠️ Not ready for production. See the
+> [path to production](../locales/en-us/path-to-production/index.md).
 
 ## Ground rules
 

@@ -27,10 +27,16 @@ sibling repository, published by `make publish-github-pages`.
   (`/install/`), `README.md` (`/overview/`), `docs/tutorial-family-bridges.md` (`/family-bridges/`), `spec/index.md`
   (`/spec/`), the locale status `spec/locale/index.md` (`/locales/`), and every role brief
   `locales/<locale>/for/<slug>/index.md` at `/<locale>/for/<slug>/`, with a list per locale at `/<locale>/for/`
-  (11 locales, 11 roles each).
+  (11 locales, 11 roles each), and `locales/<locale>/path-to-production/index.md` at `/<locale>/path-to-production/`
+  where a locale has one (all 11 today; English the source, the others machine-written and unreviewed).
+- **Path to production.** What production means, then a readiness section: the first `##` section, under a heading in
+  the page's language, whose list items read `- **Name** (NN%): evidence`. The page shows each percentage as a
+  disabled Lily `Slider` (0 to 100), labelled in the page's language, with the number beside it. An item in another
+  shape fails the build. The percentages are estimates, dated on the page, and change
+  in the same commit as the work that moves them.
 - **Sitemaps.** `/sitemap.xml` for the whole site, and `/<locale>/sitemap.xml` for each locale. The locale rules name
   `/locales/<locale>/sitemap.xml`; on this site a locale's pages are at `/<locale>/`, so its sitemap is there.
-- **Comparison pages.** Each says first where the other product is stronger, states that this project is demo software,
+- **Comparison pages.** Each says first where the other product is stronger, states that this project is not ready for production,
   makes no claim about the other product beyond a linked public page, and gives the date those pages were checked.
 - **Links.** A relative link to a document the site shows goes to its page (with its `#fragment`; headings get
   GitHub's anchors); a relative link to any other repository path goes to that path on GitHub (`blob`, or `tree` for a

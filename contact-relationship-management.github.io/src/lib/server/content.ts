@@ -63,6 +63,11 @@ export function render(path: string, route: (r: string) => string, part?: "hero"
   const firstSection = text.search(/^## /m);
   if (part === "hero" && firstSection !== -1) text = text.slice(0, firstSection);
   if (part === "body" && firstSection !== -1) text = text.slice(firstSection);
+  return renderMarkdown(path, text, route);
+}
+
+/** Render Markdown `text` taken from the document at `path` (links resolve against `path`), as `render` does. */
+export function renderMarkdown(path: string, text: string, route: (r: string) => string): Rendered {
   // YAML front matter, if a document has any, is metadata, not page text.
   text = text.replace(/^---\n[\s\S]*?\n---\n/, "");
   const seen = new Map<string, number>();

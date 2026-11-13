@@ -5,7 +5,7 @@
 
 ## Legal posture in brief
 
-The repository is **demo software with synthetic data**. It does not claim
+The repository is **not ready for production** and holds synthetic data. It does not claim
 compliance with any regime. It implements technical features that support
 several, and lists what a deployer must add ([regulatory](../../../../spec/regulatory.md)).
 

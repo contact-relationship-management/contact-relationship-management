@@ -13,9 +13,9 @@ UI — the
 [Svelte sibling](../contact-relationship-management-ui-with-svelte/)
 provides the sales, marketing, and support client.
 
-> ⚠️ **Demo software.** Not a production CRM; no real email is sent
-> (delivery is simulated); synthetic data only. See
-> [spec/regulatory](../spec/regulatory.md).
+> ⚠️ **Not ready for production.** No real email is sent (delivery is
+> simulated); synthetic data only. See the
+> [path to production](../locales/en-us/path-to-production/index.md).
 
 **Status.** The delivery record is
 [../spec/tasks.md](../spec/tasks.md) (CRM-T1 to CRM-T162), which says

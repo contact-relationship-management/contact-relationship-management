@@ -206,4 +206,4 @@ GitHub Actions and Woodpecker run the same stages, so a local pass is the CI pas
 
 `typos`, `zizmor` and `rumdl` are installed with `cargo install typos-cli zizmor rumdl`.
 
-This is demo software; use synthetic data only.
+This software is not ready for production ([path to production](locales/en-us/path-to-production/index.md)); use synthetic data only.

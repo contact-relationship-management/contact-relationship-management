@@ -1,6 +1,6 @@
 # Contact Relationship Management and Pipedrive
 
-Pipedrive is a commercial CRM focused on the sales pipeline. Contact Relationship Management is open-source demonstration software, not a production CRM. The two are not direct alternatives.
+Pipedrive is a commercial CRM focused on the sales pipeline. Contact Relationship Management is open-source software that is not ready for production ([path to production](../../locales/en-us/path-to-production/index.md)). The two are not direct alternatives.
 
 ## Summary
 

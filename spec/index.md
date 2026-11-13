@@ -5,9 +5,10 @@ Contact Relationship Management (CRM) specification, shared by both
 editions. Each subproject's own `spec/` adds stack-specific detail and
 links back here.
 
-> ⚠️ **Demo software, not a production CRM.** This project models CRM
-> practice for demonstration and integration purposes; it holds no
-> real personal data and sends no real email. See
+> ⚠️ **Not ready for production.** This project models CRM practice for
+> demonstration and integration purposes; it holds no real personal data and
+> sends no real email. See the
+> [path to production](../locales/en-us/path-to-production/index.md) and
 > [regulatory.md](regulatory.md).
 
 ## What this project is

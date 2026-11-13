@@ -4,7 +4,7 @@
 
 ## Y sefyllfa gyfreithiol yn gryno
 
-Meddalwedd arddangos â data synthetig yw'r ystorfa. Nid yw'n honni cydymffurfio ag unrhyw drefn. Mae'n gweithredu nodweddion technegol sy'n cefnogi sawl un, ac yn rhestru'r hyn y mae'n rhaid i'r sawl sy'n ei lleoli ei ychwanegu ([regulatory](../../../../spec/regulatory.md)).
+Nid yw'r ystorfa'n barod ar gyfer cynhyrchu, ac mae'n cynnwys data synthetig. Nid yw'n honni cydymffurfio ag unrhyw drefn. Mae'n gweithredu nodweddion technegol sy'n cefnogi sawl un, ac yn rhestru'r hyn y mae'n rhaid i'r sawl sy'n ei lleoli ei ychwanegu ([regulatory](../../../../spec/regulatory.md)).
 
 ## Trefniadau perthnasol
 

@@ -1,7 +1,8 @@
 # Regulatory posture
 
-> ⚠️ **Demo software.** Not a production CRM; no real personal
-> data; no real email is sent (delivery is simulated).
+> ⚠️ **Not ready for production.** No real personal data; no real email is
+> sent (delivery is simulated). See the
+> [path to production](../locales/en-us/path-to-production/index.md).
 
 The law is recorded **by region** ([the register by region](#the-register-by-region), at the end): no
 jurisdiction is the default, and every region, the UK and the EU included, is *not yet read*. Nothing in

@@ -2,7 +2,7 @@
 
 Meddalwedd CRM ffynhonnell agored ar gyfer gwerthu, marchnata a chymorth i gwsmeriaid.
 
-Mae Rheoli Perthnasoedd Cyswllt yn olrhain perthnasoedd â chwsmeriaid a darpar gwsmeriaid ar draws gwerthu, marchnata a chymorth. Mae'n cadw un cofnod ar gyfer pob cyswllt ac mae angen caniatâd wedi'i gofnodi cyn anfon neges. Arddangosiad yw'r feddalwedd: mae'n rhedeg ar ddata synthetig ac nid yw wedi'i bwriadu ar gyfer defnydd cynhyrchu.
+Mae Rheoli Perthnasoedd Cyswllt yn olrhain perthnasoedd â chwsmeriaid a darpar gwsmeriaid ar draws gwerthu, marchnata a chymorth. Mae'n cadw un cofnod ar gyfer pob cyswllt ac mae angen caniatâd wedi'i gofnodi cyn anfon neges. Nid yw'r feddalwedd yn barod ar gyfer cynhyrchu: mae'n rhedeg ar ddata synthetig.
 
 ## Manteision
 
@@ -48,4 +48,4 @@ Mae'r [briffiau rôl](for/) yn darparu un dudalen ar gyfer pob uwch rôl: beth m
 
 ## Statws
 
-Meddalwedd arddangos yw hon, nid CRM cynhyrchu. Defnyddiwch ddata synthetig yn unig. Nid anfonir e-bost go iawn oni bai bod modd post go iawn wedi'i ffurfweddu. Nid oes dim ar y wefan hon yn gyngor cyfreithiol.
+Nid yw'r feddalwedd hon yn barod ar gyfer cynhyrchu ([y llwybr i gynhyrchu](path-to-production/index.md)). Defnyddiwch ddata synthetig yn unig. Nid anfonir e-bost go iawn oni bai bod modd post go iawn wedi'i ffurfweddu. Nid oes dim ar y wefan hon yn gyngor cyfreithiol.

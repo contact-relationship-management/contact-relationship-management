@@ -1,6 +1,6 @@
 # Contact Relationship Management and Microsoft Dynamics 365
 
-Microsoft Dynamics 365 is Microsoft's commercial business application suite, including Sales and Customer Service. Contact Relationship Management is open-source demonstration software, not a production CRM. The two are not direct alternatives.
+Microsoft Dynamics 365 is Microsoft's commercial business application suite, including Sales and Customer Service. Contact Relationship Management is open-source software that is not ready for production ([path to production](../../locales/en-us/path-to-production/index.md)). The two are not direct alternatives.
 
 ## Summary
 

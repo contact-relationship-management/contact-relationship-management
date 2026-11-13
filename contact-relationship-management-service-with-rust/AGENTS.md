@@ -27,8 +27,8 @@ never duplicated demographics. Imported teams name their members by
 `person:` too (CRM-R73). Dedup/merge of identities stays upstream. See the
 cross-cutting spec's [scope boundary](../spec/scope.md).
 
-> ⚠️ Demo software, not a production CRM; no real email is sent.
-> See [regulatory](../spec/regulatory.md).
+> ⚠️ Not ready for production; no real email is sent.
+> See the [path to production](../locales/en-us/path-to-production/index.md).
 
 ## Ground rules
 

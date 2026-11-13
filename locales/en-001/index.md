@@ -2,7 +2,7 @@
 
 Open-source CRM software for sales, marketing and customer support.
 
-Contact Relationship Management tracks customer and prospect relationships across sales, marketing and support. It holds one record for each contact and requires recorded consent before a message is sent. The software is a demonstration: it runs on synthetic data and is not intended for production use.
+Contact Relationship Management tracks customer and prospect relationships across sales, marketing and support. It holds one record for each contact and requires recorded consent before a message is sent. The software is not ready for production: it runs on synthetic data.
 
 ## Benefits
 
@@ -48,4 +48,4 @@ The [role briefs](for/) provide one page for each senior role: what the software
 
 ## Status
 
-This is demonstration software, not a production CRM. Use synthetic data only. No real email is sent unless a real mail mode is configured. Nothing on this site is legal advice.
+This software is not ready for production ([path to production](path-to-production/index.md)). Use synthetic data only. No real email is sent unless a real mail mode is configured. Nothing on this site is legal advice.

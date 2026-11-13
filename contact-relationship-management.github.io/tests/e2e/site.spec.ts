@@ -5,7 +5,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readdirSync } from "node:fs";
-import { BRIEFS, BRIEF_LOCALES, COMPARE_PAGES, DOC_PAGES, ENDONYMS, LOCALE_HOMES, peerIn, routesOf } from "../../src/lib/site.ts";
+import { BRIEFS, BRIEF_LOCALES, COMPARE_PAGES, DOC_PAGES, ENDONYMS, LOCALE_HOMES, PRODUCTION_LOCALES, peerIn, routesOf } from "../../src/lib/site.ts";
 import { TABLES } from "../../src/lib/i18n.ts";
 
 // The themes the site serves. The picker's own list is in a .svelte module, which Playwright cannot import; the test
@@ -21,7 +21,8 @@ const briefRoutes = BRIEFS.map(briefRoute);
 // One brief per locale, a different role each time.
 const sampleBriefs = BRIEF_LOCALES.map((l, i) => BRIEFS.filter((b) => b.locale === l)[i % 11]!);
 const homeRoutes = LOCALE_HOMES.map((l) => `/${l}/`);
-const audited = [...docRoutes, ...homeRoutes, "/search/", ...indexRoutes, ...sampleBriefs.map(briefRoute)];
+const productionRoutes = PRODUCTION_LOCALES.map((l) => `/${l}/path-to-production/`);
+const audited = [...docRoutes, ...homeRoutes, ...productionRoutes, "/search/", ...indexRoutes, ...sampleBriefs.map(briefRoute)];
 
 const ceo = (locale: string) => peerIn(locale, BRIEFS.find((b) => b.slug === "chief-executive-officer")!.peer)!;
 
@@ -47,7 +48,7 @@ async function axe(page: Page): Promise<string[]> {
 }
 
 test("every page is built and answers 200", async ({ request }) => {
-  const all = [...docRoutes, ...indexRoutes, ...briefRoutes];
+  const all = [...docRoutes, ...indexRoutes, ...briefRoutes, ...productionRoutes];
   expect(BRIEF_LOCALES.length).toBe(11);
   expect(BRIEFS.length).toBe(11 * 11);
   for (const route of all) {
@@ -227,6 +228,44 @@ for (const picker of ["link", "search", "theme", "locale", "time-zone", "text-si
       expect(await page.evaluate(() => document.documentElement.scrollWidth), "no sideways growth").toBe(width);
     });
 
+test("the path to production shows each readiness estimate as a disabled Lily slider with its percentage", async ({ page }) => {
+  expect(PRODUCTION_LOCALES).toContain("en-us");
+  await page.goto("/en-us/path-to-production/");
+  await expect(page.locator("h1")).toHaveText("Path to production");
+  const items = page.locator('[data-testid="readiness"] > li');
+  const count = await items.count();
+  expect(count).toBeGreaterThan(5);
+  for (let i = 0; i < count; i++) {
+    const item = items.nth(i);
+    const slider = item.getByRole("slider");
+    await expect(slider).toBeDisabled();
+    const name = (await item.locator("strong").first().textContent())?.trim() ?? "";
+    await expect(slider).toHaveAccessibleName(`${name}: estimated readiness`);
+    const value = Number(await slider.inputValue());
+    expect(value, name).toBeGreaterThanOrEqual(0);
+    expect(value, name).toBeLessThanOrEqual(100);
+    await expect(slider).toHaveAttribute("aria-valuetext", `${value}%`);
+    await expect(item.locator("output")).toHaveText(`${value}%`);
+  }
+  // Every locale's page has the same estimates, in the same order, labelled in its own language.
+  const percents = async () =>
+    page.locator('[data-testid="readiness"] input[type="range"]').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  const english = await percents();
+  expect(PRODUCTION_LOCALES.length).toBe(11);
+  for (const locale of PRODUCTION_LOCALES) {
+    await page.goto(`/${locale}/path-to-production/`);
+    expect(await percents(), locale).toEqual(english);
+    await expect(page.locator('[data-testid="readiness"] input[type="range"]:disabled'), locale).toHaveCount(english.length);
+  }
+  for (const locale of LOCALE_HOMES) {
+    await page.goto(`/${locale}/`);
+    await expect(page.locator('main a[href*="/path-to-production/"]'), `${locale} home links the page`).not.toHaveCount(0);
+  }
+  // The README's banner links here.
+  await page.goto("/overview/");
+  await expect(page.locator('main a[href$="/en-us/path-to-production/"]').first()).toBeVisible();
+});
+
 test("the comparison index links every product page, and each is fair and sourced", async ({ page }) => {
   await page.goto("/compare/");
   for (const product of COMPARE_PAGES)
@@ -235,7 +274,7 @@ test("the comparison index links every product page, and each is fair and source
     await page.goto(`/compare/${product}/`);
     await expect(page.locator("main h2").filter({ hasText: /is stronger$/ }), product).toHaveCount(1);
     await expect(page.locator("main h2").filter({ hasText: "Sources" }), product).toHaveCount(1);
-    await expect(page.locator("main").getByText("not a production CRM"), product).toBeVisible();
+    await expect(page.locator("main").getByText("not ready for production"), product).toBeVisible();
   }
 });
 

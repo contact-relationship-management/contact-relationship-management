@@ -1,6 +1,6 @@
 # Contact Relationship Management and Salesforce
 
-Salesforce is a commercial, cloud-based CRM platform. Contact Relationship Management is open-source demonstration software, not a production CRM. The two are not direct alternatives.
+Salesforce is a commercial, cloud-based CRM platform. Contact Relationship Management is open-source software that is not ready for production ([path to production](../../locales/en-us/path-to-production/index.md)). The two are not direct alternatives.
 
 ## Summary
 

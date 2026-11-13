@@ -13,7 +13,7 @@ route for it.**
 1. **Applicability is the first question.** DTAC is for digital health
    technologies. This is a general-purpose contact relationship management system
    (sales, marketing, support, analytics). It has no clinical purpose, and its
-   own documentation says it is demo software with synthetic data and no real
+   own documentation says it is not ready for production, with synthetic data and no real
    email sending ([regulatory.md](../../../../../spec/regulatory.md)). An NHS
    organization buying a CRM for non-clinical use (for example stakeholder,
    partner, supplier, or membership management) would normally assess it under

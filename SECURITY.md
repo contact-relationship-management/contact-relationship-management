@@ -1,6 +1,7 @@
 # Security Policy
 
-This is demo software: it holds synthetic data only, and sends no real email
+This software is not ready for production ([path to production](locales/en-us/path-to-production/index.md)):
+it holds synthetic data only, and sends no real email
 unless a real mail mode is configured (see [INSTALL.md](INSTALL.md#sending-email)).
 It is not intended for production exposure until the production gates in
 [spec/tasks.md](spec/tasks.md) (CRM-G1, authentication activation; CRM-G2,

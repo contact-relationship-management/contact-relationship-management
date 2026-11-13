@@ -46,6 +46,13 @@ export function hasHome(locale: string): boolean {
   return LOCALE_HOMES.includes(locale);
 }
 
+/** The locales with a path-to-production page at `/<locale>/path-to-production/`. */
+export const PRODUCTION_LOCALES: readonly string[] = index.production;
+
+export function hasProductionPage(locale: string): boolean {
+  return PRODUCTION_LOCALES.includes(locale);
+}
+
 /** The `*-001` home pages, for the "Translations:" sentence on a hero. */
 export const TRANSLATIONS: readonly string[] = LOCALE_HOMES.filter((l) => l.endsWith("-001"));
 
@@ -131,6 +138,8 @@ export function routeOfRepoPath(path: string): string | null {
   if (compared?.[1] && COMPARE_PAGES.includes(compared[1])) return `/compare/${compared[1]}/`;
   const home = /^locales\/([^/]+)(?:\/(?:index|README)\.md)?$/.exec(clean);
   if (home?.[1] && hasHome(home[1])) return `/${home[1]}/`;
+  const prod = /^locales\/([^/]+)\/path-to-production(?:\/(?:index|README)\.md)?$/.exec(clean);
+  if (prod?.[1] && hasProductionPage(prod[1])) return `/${prod[1]}/path-to-production/`;
   const m = /^locales\/([^/]+)\/for(?:\/([^/]+))?(?:\/(?:index|README)\.md)?$/.exec(clean);
   if (m && m[1] && isBriefLocale(m[1])) {
     if (!m[2]) return `/${m[1]}/for/`;
@@ -139,10 +148,11 @@ export function routeOfRepoPath(path: string): string | null {
   return null;
 }
 
-/** Every route of one locale: its home page if it has one, its list of briefs, and its briefs. */
+/** Every route of one locale: its home and path-to-production pages if it has them, its list of briefs, and its briefs. */
 export function routesOf(locale: string): string[] {
   return [
     ...(hasHome(locale) ? [`/${locale}/`] : []),
+    ...(hasProductionPage(locale) ? [`/${locale}/path-to-production/`] : []),
     `/${locale}/for/`,
     ...briefsOf(locale).map((b) => `/${locale}/for/${b.slug}/`),
   ];

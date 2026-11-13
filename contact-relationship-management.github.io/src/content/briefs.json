@@ -13,6 +13,19 @@
     "zh-001",
     "zh-cn"
   ],
+  "production": [
+    "ar-001",
+    "cy-001",
+    "cy-gb",
+    "en-001",
+    "en-gb",
+    "en-gb-oxendict",
+    "en-us",
+    "hi-001",
+    "hi-in",
+    "zh-001",
+    "zh-cn"
+  ],
   "compare": [
     "espocrm",
     "hubspot",

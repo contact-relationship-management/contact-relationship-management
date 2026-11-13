@@ -1,6 +1,6 @@
 # Contact Relationship Management and Twenty
 
-Twenty is an open-source CRM with a hosted option. Contact Relationship Management is open-source demonstration software, not a production CRM. The two are not direct alternatives.
+Twenty is an open-source CRM with a hosted option. Contact Relationship Management is open-source software that is not ready for production ([path to production](../../locales/en-us/path-to-production/index.md)). The two are not direct alternatives.
 
 ## Summary
 

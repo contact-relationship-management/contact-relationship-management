@@ -14,10 +14,10 @@ BASE = "https://github.com/contact-relationship-management/contact-relationship-
 
 TITLE = "Contact Relationship Management"
 SUMMARY = (
-    "A demo contact relationship management (CRM) system: sales automation, marketing "
+    "A contact relationship management (CRM) system: sales automation, marketing "
     "automation, customer support and analytics. A Rust JSON API (Axum, axa, SeaORM, "
     "PostgreSQL) and a Svelte 5 / SvelteKit 3 browser client built on the Lily Design "
-    "System, specified in spec/. Demo software: synthetic data only, no real email is "
+    "System, specified in spec/. Not ready for production: synthetic data only, no real email is "
     "sent by default, no accreditation or certification is claimed."
 )
 NOTES = [
@@ -39,7 +39,8 @@ SECTIONS = [
         ("Specification index", "spec/index.md", "Entry point to the specification."),
         ("Purpose", "spec/purpose.md", "The problem and what the CRM provides."),
         ("Scope", "spec/scope.md", "What is in and out."),
-        ("Regulatory position", "spec/regulatory.md", "Why this is demo software and what that means."),
+        ("Path to production", "locales/en-us/path-to-production/index.md", "What production means here, and a readiness estimate for each part."),
+        ("Regulatory position", "spec/regulatory.md", "Why this is not ready for production and what that means."),
         ("Worldwide by design", "spec/worldwide.md", "The worldwide equity requirement and decision (proposed), the audit of the spec and the code, and its tasks."),
         ("GitHub Pages site", "spec/github-pages-site.md", "The static documentation site built from these documents and the role briefs: pages, locales and direction, tests, and how it is published."),
     ]),
@@ -158,7 +159,7 @@ def data() -> dict:
         "name": TITLE,
         "summary": SUMMARY,
         "repository": "https://github.com/contact-relationship-management/contact-relationship-management",
-        "status": "demo software; synthetic data only",
+        "status": "not ready for production; synthetic data only",
         "stack": {
             "service": "Rust, Axum, axa, SeaORM, PostgreSQL",
             "client": "Svelte 5 runes, SvelteKit 3 (SPA mode), Lily Design System",

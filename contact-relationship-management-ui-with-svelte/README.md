@@ -7,8 +7,8 @@ lifecycle — lead queue, deal Kanban, forecasts, campaign funnels,
 nurture sequences, ticket queue with SLA countdowns, knowledge
 base, and KPI dashboards.
 
-> ⚠️ **Demo software.** Not a production CRM; synthetic data only.
-> See [spec/regulatory](../spec/regulatory.md).
+> ⚠️ **Not ready for production.** Synthetic data only. See the
+> [path to production](../locales/en-us/path-to-production/index.md).
 
 **Status: implemented.** The delivery record is
 [../spec/tasks.md](../spec/tasks.md) and [CHANGELOG.md](CHANGELOG.md).

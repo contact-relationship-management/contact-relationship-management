@@ -1,6 +1,6 @@
 # Contact Relationship Management
 
-> A demo contact relationship management (CRM) system: sales automation, marketing automation, customer support and analytics. A Rust JSON API (Axum, axa, SeaORM, PostgreSQL) and a Svelte 5 / SvelteKit 3 browser client built on the Lily Design System, specified in spec/. Demo software: synthetic data only, no real email is sent by default, no accreditation or certification is claimed.
+> A contact relationship management (CRM) system: sales automation, marketing automation, customer support and analytics. A Rust JSON API (Axum, axa, SeaORM, PostgreSQL) and a Svelte 5 / SvelteKit 3 browser client built on the Lily Design System, specified in spec/. Not ready for production: synthetic data only, no real email is sent by default, no accreditation or certification is claimed.
 
 - The specification in spec/ is the single source of truth; code and docs follow it.
 - Requirements are CRM-R<n> (spec/requirements.md); tasks are CRM-T<n> (spec/tasks.md). Every task traces to a requirement.
@@ -18,7 +18,8 @@
 - [Specification index](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/index.md): Entry point to the specification.
 - [Purpose](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/purpose.md): The problem and what the CRM provides.
 - [Scope](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/scope.md): What is in and out.
-- [Regulatory position](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/regulatory.md): Why this is demo software and what that means.
+- [Path to production](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/locales/en-us/path-to-production/index.md): What production means here, and a readiness estimate for each part.
+- [Regulatory position](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/regulatory.md): Why this is not ready for production and what that means.
 - [Worldwide by design](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/worldwide.md): The worldwide equity requirement and decision (proposed), the audit of the spec and the code, and its tasks.
 - [GitHub Pages site](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/github-pages-site.md): The static documentation site built from these documents and the role briefs: pages, locales and direction, tests, and how it is published.
 

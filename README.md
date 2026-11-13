@@ -4,8 +4,10 @@ A central hub for managing interactions with customers and prospects across
 the relationship lifecycle: sales automation, marketing automation, customer
 support, and analytics.
 
-> ⚠️ **Demo software.** Not a production CRM. No real email is sent unless
-> a real mail mode is configured, and the data is synthetic. See
+> ⚠️ **Not ready for production.** The data is synthetic, and no real email
+> is sent unless a real mail mode is configured. See the
+> [path to production](locales/en-us/path-to-production/index.md) for what
+> production means here and an estimate of how far each part has got, and
 > [spec/regulatory.md](spec/regulatory.md).
 
 ## Contents
