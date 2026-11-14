@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.12.1 (CRM-T235)
+
+- axa 0.12.1 and `axa-test` 0.3.0. axa's database feature is now `postgres-sqlx`, the new name
+  for `sqlx`, and `axa-sqlx` is `axa-postgres-sqlx` at the same version (0.1.3). Nothing a
+  caller sees changes.
+
 ### Removed — SeaORM (CRM-T232, CRM-D24)
 
 - axa's feature is `sqlx` in place of `sea-orm`, so `AppContext::db` is the `PgPool`; `db::pool`
