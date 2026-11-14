@@ -86,6 +86,10 @@ case "${stage}" in
          cargo test "${FEATURES[@]}" redis_store -- --ignored --test-threads=1)
     ;;
   front-end)
+    # CRM-T234: a dependency both front-end projects use is on one range in both
+    # (`.syncpackrc.json`; the root package.json holds only syncpack).
+    pnpm install --frozen-lockfile
+    pnpm exec syncpack lint
     cd "${FE}"
     pnpm install --frozen-lockfile
     pnpm run check

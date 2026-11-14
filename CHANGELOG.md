@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — one range per shared front-end dependency (CRM-T234, 2026-11-14)
+
+- A root `package.json` holds `syncpack`; the `front-end` CI stage runs `syncpack lint` over the
+  UI and site manifests. The site's `typescript` and `vite` pins became `^` ranges, as in the UI.
+
 ### Changed — the schema on sqlx's migrator (CRM-T229, 2026-11-10)
 
 - One baseline stands for the 59 earlier migrations. A database they built takes it as applied

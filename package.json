@@ -1,0 +1,12 @@
+{
+  "name": "contact-relationship-management",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Repository tools that read both front-end manifests: syncpack keeps their shared dependencies on one range.",
+  "scripts": {
+    "syncpack:lint": "syncpack lint"
+  },
+  "devDependencies": {
+    "syncpack": "^15.3.3"
+  }
+}
