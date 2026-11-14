@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the API proxy drops the browser's `Origin` (CRM-T237)
+
+The proxy at `/api/proxy/*` no longer passes an `Origin` to the service, and calls it with the platform's `fetch`, as SvelteKit's sets `Origin` to the UI on any request to another origin. That `Origin` names the UI, not the service, so the service's cross-site write guard (axa 0.13) refused every write without a `Sec-Fetch-Site` as a mismatch, including those the UI's own server makes. `Sec-Fetch-Site` is still passed, so a write another site sends through the proxy is still refused. Checked against the service on axa 0.13: through the proxy, a write with no browser headers, with the UI's `Origin` alone, and same-origin is `200`; a cross-site one is `403`. **Not done:** the auth service (`AUTH_API_URL`) is still called with SvelteKit's `fetch`; a move of that service to axa 0.13 would meet the same `Origin`.
+
 ### Added — start the tour in one click from the tour page (CRM-T233)
 
 With the tour on, `/tour` shows a "Start the tour" button (`tour.begin`), a form POST to `?/start` that gives the visitor a tour session, as signing in as `example@example.com` does, and opens the home page. A visitor already in the tour keeps their copy. Reading the page starts nothing, so a crawler creates no sessions (they are capped at 200, the oldest dropped). With the tour off, the page shows neither the button nor the demo address. One string in the eight locales (machine drafts but English; register counts updated). Tests: 3 Playwright tour tests. **Not done or verified:** translations unreviewed; not run in the UI image smoke test.

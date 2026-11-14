@@ -612,7 +612,10 @@ address, and that bots and strangers cannot fill the CRM or use it to spam someo
 - **The form is configured, not invented by the caller.** `CRM_WEB_FORMS` is a JSON
   list; each entry has a `slug`, the `origins` allowed to post it, an optional `purpose`
   (default `marketing`; any CRM-R29 purpose) and an optional `sequence` (a nurture
-  sequence pid). A slug that is not configured is `404`. The visitor cannot choose the
+  sequence pid). A slug that is not configured is `404`, or, posted from a page on another
+  site, `axa`'s `403` (`origin_mismatch` or `cross_site_write_refused`): axa 0.13 refuses a
+  cross-site write except on the paths the service lists, which are the configured forms and
+  `/mcp`, read when the service starts (CRM-T237). The visitor cannot choose the
   purpose or the sequence.
 - **`POST /forms/{slug}`** (outside `/api`, public by design, like the unsubscribe pages)
   takes `{ "name", "email" }`, a honeypot field `website` and an optional `language` (the

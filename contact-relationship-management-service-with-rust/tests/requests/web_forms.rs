@@ -44,6 +44,18 @@ fn arrange(forms: Vec<WebForm>) -> (Recorder, Restore) {
     (recorder, Restore)
 }
 
+/// Names the forms before the app boots: the service lists each form's path for `axa`'s
+/// cross-site write guard when it starts, as it reads `CRM_WEB_FORMS` then (CRM-T237). `arrange`
+/// gives the full entries, with the same slugs, once the test has what they need.
+fn forms_before_boot(slugs: &[&str]) -> Restore {
+    let forms = slugs
+        .iter()
+        .map(|slug| form(slug, "marketing", None))
+        .collect();
+    settings::update(|s| s.web_forms = forms);
+    Restore
+}
+
 fn form(slug: &str, purpose: &str, sequence: Option<uuid::Uuid>) -> WebForm {
     WebForm {
         slug: slug.to_string(),
@@ -88,6 +100,7 @@ async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_only_after_it() {
     behind_a_proxy();
+    let _boot = forms_before_boot(&["news-signup"]);
     request::<App, _, _>(|request, ctx| async move {
         let sequence: Value = request
             .post("/api/nurture-sequences")
@@ -252,6 +265,7 @@ async fn a_submission_makes_a_pending_lead_mails_one_confirmation_and_enrols_onl
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_origin_the_form_the_honeypot_and_the_input_are_checked() {
     behind_a_proxy();
+    let _boot = forms_before_boot(&["contact-us"]);
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![form("contact-us", "marketing", None)]);
         let contacts_before = count(
@@ -261,10 +275,20 @@ async fn the_origin_the_form_the_honeypot_and_the_input_are_checked() {
         .await;
         let body = json!({ "name": "Grace", "email": "grace@navy.test" });
 
-        // No such form.
+        // No such form: `404` to a caller that is no browser. From a page on another site,
+        // `axa`'s cross-site write guard answers first, as only configured forms are left to
+        // the form's own check (CRM-T237), so another site cannot learn which slugs exist.
+        let unknown = request
+            .post("/forms/nope")
+            .add_header("x-forwarded-for", "198.51.100.1")
+            .json(&body)
+            .await;
+        assert_eq!(unknown.status_code(), StatusCode::NOT_FOUND);
+        let unknown_from_a_page = submit!(request, "nope", "198.51.100.1", body);
+        assert_eq!(unknown_from_a_page.status_code(), StatusCode::FORBIDDEN);
         assert_eq!(
-            submit!(request, "nope", "198.51.100.1", body).status_code(),
-            StatusCode::NOT_FOUND
+            unknown_from_a_page.json::<Value>()["code"],
+            "origin_mismatch"
         );
         // Another website, and no origin at all.
         let foreign = request
@@ -347,6 +371,7 @@ async fn the_origin_the_form_the_honeypot_and_the_input_are_checked() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_client_and_a_form_are_limited_and_a_stranger_is_not_mailed_twice() {
     behind_a_proxy();
+    let _boot = forms_before_boot(&["limited", "busy"]);
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![
             form("limited", "marketing", None),
@@ -470,6 +495,7 @@ async fn a_client_and_a_form_are_limited_and_a_stranger_is_not_mailed_twice() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn an_unreachable_person_service_creates_nothing_and_erasure_removes_the_submissions() {
     behind_a_proxy();
+    let _boot = forms_before_boot(&["signup"]);
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![form("signup", "marketing", None)]);
         settings::update(|s| {
@@ -550,6 +576,7 @@ async fn the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_
     // CRM-T180: the form page's `language`, else the request's Accept-Language, else English;
     // the link opens the confirmation page in the same language; nothing about it is stored.
     behind_a_proxy();
+    let _boot = forms_before_boot(&["lang-signup"]);
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![form("lang-signup", "newsletter", None)]);
 
@@ -648,6 +675,7 @@ async fn the_form_s_refusals_are_in_the_language_of_the_request() {
     // change with the language.
     use contact_relationship_management::rules::public_text::{english, text_for};
     behind_a_proxy();
+    let _boot = forms_before_boot(&["lang-refusals"]);
     request::<App, _, _>(|request, ctx| async move {
         let (recorder, _restore) = arrange(vec![form("lang-refusals", "marketing", None)]);
         // The answer's Content-Language is `lang`; its body.
@@ -790,6 +818,7 @@ async fn the_form_s_refusals_are_in_the_language_of_the_request() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_workflow_the_form_s_lead_fires_rolls_back_alone() {
     behind_a_proxy();
+    let _boot = forms_before_boot(&["rollback"]);
     request::<App, _, _>(|request, ctx| async move {
         let made = request
             .post("/api/workflows")

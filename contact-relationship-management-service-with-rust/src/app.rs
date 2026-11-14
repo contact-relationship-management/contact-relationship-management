@@ -59,12 +59,30 @@ fn cors_origins(
     }
 }
 
+/// The paths `axa`'s cross-site write guard (axa 0.13) leaves to the service, because each
+/// checks the browser's origin itself against a list of its own: the MCP endpoint
+/// (`CRM_MCP_ALLOWED_ORIGINS`, CRM-R30) and each web form (its `origins` in `CRM_WEB_FORMS`,
+/// CRM-R31), which a page on another site posts by design. `axa` matches them exactly, so a form
+/// is listed by its slug; forms are read when the service starts, as these are (CRM-T237).
+fn cross_site_paths(settings: &crate::settings::Settings) -> Vec<String> {
+    std::iter::once("/mcp".to_string())
+        .chain(
+            settings
+                .web_forms
+                .iter()
+                .map(|form| format!("/forms/{}", form.slug)),
+        )
+        .collect()
+}
+
 /// The service's settings for `environment`.
 fn service_config(environment: &Environment) -> Result<ServiceConfig> {
     let mut config = ServiceConfig::from_env(environment, &defaults())?;
     let listed = std::env::var("CORS_ALLOWED_ORIGINS").ok();
-    let origin = crate::settings::current().cors_origin.clone();
+    let settings = crate::settings::current();
+    let origin = settings.cors_origin.clone();
     config.http.cors_origins = cors_origins(listed.as_deref(), origin, config.http.cors_origins);
+    config.http.cross_site_paths = cross_site_paths(&settings);
     Ok(config)
 }
 
@@ -569,6 +587,25 @@ mod tests {
         let cache = connect_cache(None, false).await.unwrap();
         cache.set("key", &1_u32).await.unwrap();
         assert_eq!(cache.get::<u32>("key").await.unwrap(), Some(1));
+    }
+
+    #[test]
+    fn the_cross_site_paths_are_mcp_and_each_form() {
+        let mut settings = crate::settings::Settings::default();
+        assert_eq!(cross_site_paths(&settings), ["/mcp"]);
+        settings.web_forms = ["news", "contact-us"]
+            .iter()
+            .map(|slug| crate::settings::WebForm {
+                slug: (*slug).to_string(),
+                origins: vec!["https://www.example.org".to_string()],
+                purpose: "marketing".to_string(),
+                sequence: None,
+            })
+            .collect();
+        assert_eq!(
+            cross_site_paths(&settings),
+            ["/mcp", "/forms/news", "/forms/contact-us"]
+        );
     }
 
     #[test]

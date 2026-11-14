@@ -74,6 +74,11 @@ const proxy: RequestHandler = async ({
   headers.delete("host");
   headers.delete("connection");
   headers.delete("content-length");
+  // The browser's `Origin` names this UI, not the service, so the service's cross-site write
+  // guard (axa 0.13) would refuse it as a mismatch whenever there is no `Sec-Fetch-Site`, as
+  // in a request the UI's own server makes. `Sec-Fetch-Site` is kept: a write another site
+  // sends through here is still refused (CRM-T237).
+  headers.delete("origin");
   headers.set("accepts-version", "1.0");
 
   // Session → short-lived PASETO, server-side only (PF-T18).
@@ -87,7 +92,9 @@ const proxy: RequestHandler = async ({
     init.body = await request.arrayBuffer();
   }
 
-  const upstream = await fetch(target, init);
+  // The platform's `fetch`, not SvelteKit's: SvelteKit's sets `Origin` to this UI on a request
+  // to another origin, which would undo the line above (CRM-T237).
+  const upstream = await globalThis.fetch(target, init);
 
   const responseHeaders = new Headers();
   for (const name of [

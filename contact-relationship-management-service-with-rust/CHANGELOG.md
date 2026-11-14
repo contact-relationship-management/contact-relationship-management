@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.13.0 (CRM-T237)
+
+- axa 0.13.0, `axa-test` 0.4.0, `axa-postgres-sqlx` 0.2.0 and `axa-redis-cache` 0.2.0.
+- **Behaviour from axa:** a write a browser sends from another site is `403`
+  (`cross_site_write_refused`, or `origin_mismatch` when an `Origin` is not the request's host
+  and there is no `Sec-Fetch-Site`), unless its origin is in `CORS_ALLOWED_ORIGINS`. The service
+  leaves `/mcp` and each configured web form (`/forms/{slug}`) to their own origin lists, read
+  when it starts. A post to a slug that is not a form, from another site, is now that `403`
+  rather than `404`.
+- Also from axa: a compressed request body is decoded before the handler; a rejected JSON
+  body's `422` names a JSON Pointer; connections carry `application_name`; `DB_URL` may come
+  from `DB_URL_FILE`, and setting both stops the boot.
+
 ### Changed — axa 0.12.1 (CRM-T235)
 
 - axa 0.12.1 and `axa-test` 0.3.0. axa's database feature is now `postgres-sqlx`, the new name

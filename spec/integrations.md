@@ -129,7 +129,8 @@ The forms are configuration, not data: `CRM_WEB_FORMS` is a JSON list of `{slug,
 `Settings` (an entry that is not valid is left out, a list that is not JSON gives no forms). Nothing the caller sends chooses the
 purpose or the sequence.
 
-What stands between the internet and the CRM, in order: the form must exist (`404`), the `Origin` must be on its list (`403`,
+What stands between the internet and the CRM, in order: the form must exist (`404`; from a page on another site, `axa`'s
+cross-site write guard answers a slug that is not a form with its own `403` first, CRM-T237), the `Origin` must be on its list (`403`,
 and a missing `Origin` is refused, so a script must set one: the origin check keeps other websites from using a visitor's
 browser, and the limits are what stop a script), the per-client and per-form limits (`429`), then the honeypot, then validation.
 The honeypot is checked before validation so a bot gets the same answer however malformed its other fields are.
