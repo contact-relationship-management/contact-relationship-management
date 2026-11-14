@@ -1,237 +1,74 @@
-# Makefile for Load Testing
+# Load tests (k6) against the CRM API: smoke, basic, stress, spike and soak.
 #
-# This Makefile provides targets for running various load tests.
+# Needs a running service at TEST_URL with a throwaway database: the tests write
+# synthetic rows and do not delete them. From the repository root,
+# `podman compose up --build` starts one at http://localhost:1241.
 #
-# Prerequisites:
-# - k6 installed (https://k6.io/docs/get-started/installation/)
-# - Application running at TEST_URL (default: http://localhost:1241)
-# - Optional: AUTH_TOKEN for authenticated tests
+#   make smoke                     # one user, each call once; run this first
+#   make basic                     # 10 users for 5 minutes
+#   make stress                    # steps of 1x, 2x and 4x VUS
+#   make spike                     # VUS, then 10x VUS for DURATION, then back
+#   make soak                      # 10 users for 2 hours
+#   make quick                     # smoke, then one minute of basic
+#   make basic VUS=20 DURATION=10m
+#   make smoke K6=podman-k6        # k6 from a container, no local install
 #
-# Usage:
-#   make smoke              # Run smoke test
-#   make basic              # Run basic load test
-#   make stress             # Run stress test
-#   make soak               # Run soak (long-running) test
-#   make spike              # Run spike test
-#   make api-contract      # Run API contract test
-#   make database           # Run database test
-#   make bridges            # Run bridges integration test
-#   make all                # Run all tests
-#   make clean              # Clean up test artifacts
-#
-# Configuration:
-#   TEST_URL=http://localhost:1241 make smoke
-#   AUTH_TOKEN=your-token make basic
-#   VUS=20 DURATION=5m make stress
+# VUS and DURATION are passed only when set; each script has its own defaults.
+# Results are written to results/: a JSON summary and k6's HTML report per test.
 
-# Configuration variables
 TEST_URL ?= http://localhost:1241
-AUTH_TOKEN ?= 
-REQUIRE_AUTH ?= false
-VUS ?= 10
-DURATION ?= 1m
-ENV ?= dev
+AUTH_TOKEN ?=
+VUS ?=
+DURATION ?=
 
-# k6 executable
+# k6 from the host. Set K6=podman-k6 to run the pinned image with Podman
+# instead; inside the container the host's loopback is host.containers.internal.
 K6 ?= k6
+K6_IMAGE ?= docker.io/grafana/k6:1.4.2@sha256:3656673de3f30424e8ebcfa46acd9558d83b6a43612d0f668ffeac953950c6c7
 
-# Directories
-SCRIPTS_DIR ?= scripts
-CONFIG_DIR ?= config
-LIB_DIR ?= lib
-OUTPUT_DIR ?= output
-RESULTS_DIR ?= results
+RESULTS_DIR := results
 
-# Ensure output directories exist
-$(shell mkdir -p $(OUTPUT_DIR) $(RESULTS_DIR))
+ifeq ($(K6),podman-k6)
+K6_RUN = podman run --rm -i -v "$(CURDIR):/work:Z" -w /work -e K6_WEB_DASHBOARD -e K6_WEB_DASHBOARD_EXPORT $(K6_IMAGE) run
+K6_URL = $(subst localhost,host.containers.internal,$(subst 127.0.0.1,host.containers.internal,$(TEST_URL)))
+else
+K6_RUN = $(K6) run
+K6_URL = $(TEST_URL)
+endif
 
-# Common k6 flags
-K6_FLAGS = --env TEST_URL=$(TEST_URL) \
-	--env CRM_AUTH_TOKEN=$(AUTH_TOKEN) \
-	--env REQUIRE_AUTH=$(REQUIRE_AUTH) \
-	--env ENV=$(ENV)
+K6_ENV = -e TEST_URL=$(K6_URL) -e CRM_AUTH_TOKEN=$(AUTH_TOKEN) \
+	$(if $(VUS),-e VUS=$(VUS)) $(if $(DURATION),-e DURATION=$(DURATION))
 
-# Target: Run smoke test
-.PHONY: smoke
+# $(call run,<script name>): the summary and the HTML report go to results/.
+define run
+	@mkdir -p $(RESULTS_DIR)
+	K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_EXPORT=$(RESULTS_DIR)/$(1).html \
+		$(K6_RUN) $(K6_ENV) --summary-export $(RESULTS_DIR)/$(1)-summary.json scripts/$(1).test.js
+endef
+
+.PHONY: smoke basic stress spike soak quick clean help
+
 smoke:
-	@echo "Running smoke test..."
-	@echo "  URL: $(TEST_URL)"
-	@echo "  Environment: $(ENV)"
-	@echo ""
-	$(K6) run $(K6_FLAGS) --vus 5 --duration 1m $(SCRIPTS_DIR)/smoke.test.js
+	$(call run,smoke)
 
-# Target: Run basic load test
-.PHONY: basic
 basic:
-	@echo "Running basic load test..."
-	@echo "  URL: $(TEST_URL)"
-	@echo "  VUs: $(VUS)"
-	@echo "  Duration: $(DURATION)"
-	@echo "  Environment: $(ENV)"
-	@echo ""
-	$(K6) run $(K6_FLAGS) --vus $(VUS) --duration $(DURATION) $(SCRIPTS_DIR)/basic-load.test.js
+	$(call run,basic-load)
 
-# Target: Run stress test
-.PHONY: stress
 stress:
-	@echo "Running stress test..."
-	@echo "  URL: $(TEST_URL)"
-	@echo "  VUs: $(shell echo $$(( $(VUS) * 4 )))"
-	@echo "  Duration: $(DURATION)"
-	@echo "  Environment: $(ENV)"
-	@echo ""
-	$(K6) run $(K6_FLAGS) --vus $(shell echo $$(( $(VUS) * 4 ))) --duration $(DURATION) $(SCRIPTS_DIR)/stress.test.js
+	$(call run,stress)
 
-# Target: Run soak test (long-running)
-.PHONY: soak
-soak:
-	@echo "Running soak test (long-running)..."
-	@echo "  URL: $(TEST_URL)"
-	@echo "  VUs: $(VUS)"
-	@echo "  Duration: 6h"
-	@echo "  Environment: $(ENV)"
-	@echo ""
-	@echo "WARNING: This test will run for 6 hours!"
-	@echo "Use Ctrl+C to stop early if needed."
-	@echo ""
-	$(K6) run $(K6_FLAGS) --vus $(VUS) --duration 6h $(SCRIPTS_DIR)/soak.test.js
-
-# Target: Run spike test
-.PHONY: spike
 spike:
-	@echo "Running spike test..."
-	@echo "  URL: $(TEST_URL)"
-	@echo "  VUs: $(VUS)"
-	@echo "  Duration: 2m"
-	@echo "  Environment: $(ENV)"
-	@echo ""
-	$(K6) run $(K6_FLAGS) --vus $(VUS) --duration 2m $(SCRIPTS_DIR)/spike.test.js
+	$(call run,spike)
 
-# Target: Run API contract test
-.PHONY: api-contract
-api-contract:
-	@echo "Running API contract test..."
-	@echo "  URL: $(TEST_URL)"
-	@echo "  VUs: 5"
-	@echo "  Duration: 2m"
-	@echo "  Environment: $(ENV)"
-	@echo ""
-	$(K6) run $(K6_FLAGS) --vus 5 --duration 2m $(SCRIPTS_DIR)/api-contract.test.js
+soak:
+	$(call run,soak)
 
-# Target: Run database test
-.PHONY: database
-database:
-	@echo "Running database test..."
-	@echo "  URL: $(TEST_URL)"
-	@echo "  VUs: $(VUS)"
-	@echo "  Duration: $(DURATION)"
-	@echo "  Environment: $(ENV)"
-	@echo ""
-	$(K6) run $(K6_FLAGS) --vus $(VUS) --duration $(DURATION) $(SCRIPTS_DIR)/database.test.js
+quick:
+	$(call run,smoke)
+	$(MAKE) basic DURATION=1m
 
-# Target: Run bridges integration test
-.PHONY: bridges
-bridges:
-	@echo "Running bridges integration test..."
-	@echo "  URL: $(TEST_URL)"
-	@echo "  VUs: 5"
-	@echo "  Duration: $(DURATION)"
-	@echo "  Environment: $(ENV)"
-	@echo ""
-	$(K6) run $(K6_FLAGS) --vus 5 --duration $(DURATION) $(SCRIPTS_DIR)/bridges.test.js
-
-# Target: Run all tests
-.PHONY: all
-all: smoke basic stress api-contract database bridges
-
-# Target: Run all quick tests (no long-running)
-.PHONY: quick
-quick: smoke basic stress spike api-contract database bridges
-
-# Target: Run with InfluxDB output
-.PHONY: with-influxdb
-with-influxdb:
-	@echo "Running tests with InfluxDB output..."
-	@echo "Configure INFLUXDB_URL, INFLUXDB_TOKEN, INFLUXDB_ORG, INFLUXDB_BUCKET"
-	$(K6) run $(K6_FLAGS) --out influxdb=http://localhost:8086/k6 $(SCRIPTS_DIR)/smoke.test.js
-
-# Target: Run with Prometheus output
-.PHONY: with-prometheus
-with-prometheus:
-	@echo "Running tests with Prometheus output..."
-	$(K6) run $(K6_FLAGS) --out experimental-prometheus-rw $(SCRIPTS_DIR)/smoke.test.js
-
-# Target: Run with JSON output
-.PHONY: with-json
-with-json:
-	@echo "Running tests with JSON output..."
-	$(K6) run $(K6_FLAGS) --out json=$(OUTPUT_DIR)/results.json $(SCRIPTS_DIR)/smoke.test.js
-
-# Target: Run with cloud output
-.PHONY: with-cloud
-with-cloud:
-	@echo "Running tests with k6 Cloud output..."
-	@echo "Set K6_CLOUD_TOKEN environment variable"
-	$(K6) cloud $(SCRIPTS_DIR)/smoke.test.js
-
-# Target: Clean up test artifacts
-.PHONY: clean
 clean:
-	@echo "Cleaning up test artifacts..."
-	rm -rf $(OUTPUT_DIR)/*.json
-	rm -rf $(OUTPUT_DIR)/*.log
-	rm -rf $(RESULTS_DIR)/*.json
-	rm -rf $(RESULTS_DIR)/*.html
-	rm -rf $(RESULTS_DIR)/*.png
+	rm -rf $(RESULTS_DIR)
 
-# Target: Show help
-.PHONY: help
 help:
-	@echo "Load Testing Makefile"
-	@echo ""
-	@echo "Available targets:"
-	@echo ""
-	@echo "  smoke              Run smoke test (1 minute)"
-	@echo "  basic              Run basic load test"
-	@echo "  stress             Run stress test (4x VUs)"
-	@echo "  soak               Run soak test (6 hours, long-running)"
-	@echo "  spike              Run spike test (sudden traffic surge)"
-	@echo "  api-contract      Run API contract compliance test"
-	@echo "  database           Run database performance test"
-	@echo "  bridges            Run bridges integration test"
-	@echo "  all                Run all tests"
-	@echo "  quick              Run all quick tests (no long-running)"
-	@echo ""
-	@echo "With outputs:"
-	@echo "  with-influxdb     Run with InfluxDB output"
-	@echo "  with-prometheus   Run with Prometheus output"
-	@echo "  with-json         Run with JSON output"
-	@echo "  with-cloud        Run with k6 Cloud output"
-	@echo ""
-	@echo "Configuration:"
-	@echo "  TEST_URL=http://localhost:1241 make smoke"
-	@echo "  AUTH_TOKEN=your-token make basic"
-	@echo "  VUS=20 DURATION=5m make stress"
-	@echo ""
-	@echo "Utility:"
-	@echo "  clean              Clean up test artifacts"
-	@echo "  help               Show this help message"
-	@echo ""
-
-# Target: Validate configuration
-.PHONY: validate
-validate:
-	@echo "Validating configuration..."
-	@if [ -z "$(TEST_URL)" ]; then \
-		echo "WARNING: TEST_URL is not set, using default: http://localhost:1241"; \
-	fi
-	@if [ -z "$(AUTH_TOKEN)" ] && [ "$(REQUIRE_AUTH)" = "true" ]; then \
-		echo "WARNING: REQUIRE_AUTH is true but AUTH_TOKEN is not set"; \
-	fi
-	@echo "Configuration looks good!"
-
-# Target: Install dependencies
-.PHONY: install
-install:
-	@echo "Installing k6..."
-	@echo "Follow instructions at: https://k6.io/docs/get-started/installation/"
+	@sed -n '1,17p' Makefile

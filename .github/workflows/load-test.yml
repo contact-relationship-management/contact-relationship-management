@@ -22,24 +22,21 @@ on:
           - smoke
           - basic-load
           - stress
-          - soak
           - spike
-          - api-contract
-          - database
-          - bridges
+          - soak
       url:
         description: Service base URL (a throwaway deployment, never production)
         required: true
         type: string
       vus:
-        description: Virtual users
+        description: Virtual users (blank for the script's default; smoke always uses one)
         required: false
-        default: "10"
+        default: ""
         type: string
       duration:
-        description: Test duration, for example 1m or 10m
+        description: Duration, for example 1m or 10m (blank for the script's default; see each script)
         required: false
-        default: 1m
+        default: ""
         type: string
 
 permissions:
@@ -64,16 +61,19 @@ jobs:
 
       - name: Check inputs
         run: |
-          case "$VUS" in ''|*[!0-9]*) echo "vus must be a whole number" >&2; exit 1 ;; esac
-          case "$DURATION" in ''|*[!0-9smh]*) echo "duration must look like 30s, 10m or 1h" >&2; exit 1 ;; esac
+          case "$VUS" in *[!0-9]*) echo "vus must be a whole number" >&2; exit 1 ;; esac
+          case "$DURATION" in *[!0-9smh]*) echo "duration must look like 30s, 10m or 1h" >&2; exit 1 ;; esac
           case "$TEST_URL" in http://*|https://*) ;; *) echo "url must start with http:// or https://" >&2; exit 1 ;; esac
 
       - name: Run k6
         run: |
           mkdir -p tests/load/results
-          docker run --rm -v "$PWD/tests/load:/work" -w /work \
-            -e TEST_URL -e CRM_BASE_URL="$TEST_URL" -e CRM_AUTH_TOKEN \
-            "$K6_IMAGE" run --vus "$VUS" --duration "$DURATION" \
+          # The scripts read VUS and DURATION themselves (blank keeps their defaults), so
+          # their scenarios stand; --vus and --duration would replace them with one.
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/tests/load:/work" -w /work \
+            -e TEST_URL -e CRM_AUTH_TOKEN -e VUS -e DURATION \
+            -e K6_WEB_DASHBOARD=true -e "K6_WEB_DASHBOARD_EXPORT=results/${TEST_TYPE}.html" \
+            "$K6_IMAGE" run \
             --summary-export "results/${TEST_TYPE}-summary.json" \
             "scripts/${TEST_TYPE}.test.js"
 
