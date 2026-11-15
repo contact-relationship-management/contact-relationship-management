@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Rust 1.99.1 (pinned in `rust-toolchain.toml`); the crates declare a minimum of 1.97 (`rust-version`, two releases back)
+- Rust 1.100.0 (pinned in `rust-toolchain.toml`); the crates declare a minimum of 1.98 (`rust-version`, two releases back)
 - PostgreSQL 18 (or `podman compose`)
 - Node.js and pnpm, for the front end
 
