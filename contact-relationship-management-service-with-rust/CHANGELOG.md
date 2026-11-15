@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — segment evaluation in four queries (CRM-T243)
+
+- A segment preview or a campaign's audience read each contact's account tier, tags, employment
+  and consent with a query per contact. They are now read in one query each for all contacts. With
+  about 1,300 contacts a preview went from 0.35–0.44 s to 6 ms, and at 20 previews a second none
+  is refused (88% were `503` when the pool ran out). No change in which contacts match.
+
 ### Added — benchmarks of the rules (CRM-T242)
 
 - `benches/rules.rs` (criterion 0.8.2, a dev dependency): scoring, segments, the forecast, the

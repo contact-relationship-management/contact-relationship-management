@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT contact_pid FROM contact_employments WHERE contact_pid = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contact_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contact_employments",
+            "name": "contact_pid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2a048b77b9da614fbbea58317224f0a8efbb1e535c1ce4aeb154bad13a13b94f"
+}

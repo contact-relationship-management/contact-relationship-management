@@ -107,6 +107,9 @@ before sending.*
 - Segment CRUD (declarative JSON filter over contact fields);
   server-side evaluation; preview returns count + sample; the
   consent AND-gate cannot be expressed away.
+- Evaluation (a preview, a campaign's audience) reads the facts of
+  every contact in a fixed number of queries, whatever the number of
+  contacts, not a query per contact (CRM-T243).
 
 ## CRM-R8 — Campaigns & ROI
 

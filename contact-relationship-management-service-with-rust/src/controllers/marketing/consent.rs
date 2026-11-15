@@ -2,8 +2,7 @@
 
 use super::{
     AppContext, Audit, Deserialize, Error, MaybeAuthUser, Problems, Response, Result, State, Uuid,
-    consent_events, contacts, debug_handler, format, segment_rules, streaming, tokens,
-    unprocessable,
+    consent_events, contacts, debug_handler, format, streaming, tokens, unprocessable,
 };
 use sqlx::{PgConnection, PgPool};
 
@@ -35,33 +34,6 @@ pub(crate) struct ConsentRequestPayload {
     purpose: String,
     /// Where the request came from, kept with the event.
     source: String,
-}
-
-/// The contact's segment facts (consent for `purpose` + status + channel + tier).
-pub(super) async fn contact_facts(
-    conn: &mut PgConnection,
-    contact: &contacts::Model,
-    purpose: &str,
-) -> Result<segment_rules::ContactFacts> {
-    let tier = match contact.account_pid {
-        Some(account_pid) => {
-            sqlx::query_scalar!(
-                "SELECT tier FROM accounts WHERE pid = $1 AND deleted_at IS NULL",
-                account_pid,
-            )
-            .fetch_optional(&mut *conn)
-            .await?
-        }
-        None => None,
-    };
-    Ok(segment_rules::ContactFacts {
-        consent: crate::consents::state_of(&mut *conn, contact, purpose).await?,
-        status: contact.status.clone(),
-        channel: contact.preferred_channel.as_str().to_string(),
-        account_tier: tier,
-        tags: crate::controllers::tags::names_of(&mut *conn, contact.pid).await?,
-        employee: crate::models::employments::is_employee(&mut *conn, contact.pid).await?,
-    })
 }
 
 /// `POST /api/contacts/{pid}/consent` — record a consent change for a purpose

@@ -2,8 +2,10 @@
 
 use super::{
     AppContext, Audit, Deserialize, Error, MaybeAuthUser, PidRef, Problems, Response, Result,
-    State, Uuid, contact_facts, contacts, debug_handler, format, segment_rules, segments, tokens,
+    State, Uuid, contacts, debug_handler, format, segment_rules, segments, tokens,
 };
+use std::collections::{HashMap, HashSet};
+
 use sqlx::PgPool;
 
 use crate::controllers::PidPath;
@@ -73,15 +75,89 @@ pub(super) async fn evaluate_segment(
     let filter: segment_rules::Filter =
         serde_json::from_value(segment.filter.clone()).unwrap_or_default();
     let all = rows::contacts(pool).await?;
-    let mut conn = pool.acquire().await?;
-    let mut matched = Vec::new();
-    for contact in all {
-        let facts = contact_facts(&mut conn, &contact, purpose).await?;
-        if segment_rules::matches(&filter, &facts) {
-            matched.push(contact);
-        }
+    let facts = facts_of_all(pool, &all, purpose).await?;
+    Ok(all
+        .into_iter()
+        .zip(facts)
+        .filter(|(_, facts)| segment_rules::matches(&filter, facts))
+        .map(|(contact, _)| contact)
+        .collect())
+}
+
+/// Each contact's segment facts, in the order given, from four queries whatever the number of
+/// contacts (CRM-T243): their accounts' tiers, their tags, which of them are employees, and their
+/// consent for `purpose` when it is not `marketing` (whose state is on the contact). One query a
+/// contact for each of these made a preview of a few thousand contacts take most of a second and
+/// hold a connection all the while.
+pub(super) async fn facts_of_all(
+    pool: &PgPool,
+    contacts: &[contacts::Model],
+    purpose: &str,
+) -> Result<Vec<segment_rules::ContactFacts>> {
+    let pids: Vec<Uuid> = contacts.iter().map(|c| c.pid).collect();
+    let account_pids: Vec<Uuid> = contacts.iter().filter_map(|c| c.account_pid).collect();
+    let tiers: HashMap<Uuid, String> = sqlx::query!(
+        "SELECT pid, tier FROM accounts WHERE pid = ANY($1) AND deleted_at IS NULL",
+        &account_pids,
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| (row.pid, row.tier))
+    .collect();
+    let mut tags: HashMap<Uuid, Vec<String>> = HashMap::new();
+    for row in sqlx::query!(
+        "SELECT g.subject_pid, t.name FROM taggings g JOIN tags t ON t.pid = g.tag_pid \
+         WHERE g.subject_pid = ANY($1) ORDER BY g.subject_pid, lower(t.name)",
+        &pids,
+    )
+    .fetch_all(pool)
+    .await?
+    {
+        tags.entry(row.subject_pid).or_default().push(row.name);
     }
-    Ok(matched)
+    let employees: HashSet<Uuid> = sqlx::query_scalar!(
+        "SELECT DISTINCT contact_pid FROM contact_employments WHERE contact_pid = ANY($1)",
+        &pids,
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .collect();
+    let consents: HashMap<Uuid, String> = if purpose == tokens::DEFAULT_PURPOSE {
+        HashMap::new()
+    } else {
+        sqlx::query!(
+            "SELECT contact_pid, state FROM contact_consents \
+             WHERE contact_pid = ANY($1) AND purpose = $2 AND channel = 'email'",
+            &pids,
+            purpose,
+        )
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|row| (row.contact_pid, row.state))
+        .collect()
+    };
+    Ok(contacts
+        .iter()
+        .map(|contact| segment_rules::ContactFacts {
+            consent: if purpose == tokens::DEFAULT_PURPOSE {
+                contact.marketing_consent.clone()
+            } else {
+                // A purpose nobody has asked about is `never`, as `consents::state_of` says.
+                consents
+                    .get(&contact.pid)
+                    .cloned()
+                    .unwrap_or_else(|| "never".to_string())
+            },
+            status: contact.status.clone(),
+            channel: contact.preferred_channel.as_str().to_string(),
+            account_tier: contact.account_pid.and_then(|a| tiers.get(&a).cloned()),
+            tags: tags.remove(&contact.pid).unwrap_or_default(),
+            employee: employees.contains(&contact.pid),
+        })
+        .collect())
 }
 
 /// `GET /api/segments/{pid}/preview` query.

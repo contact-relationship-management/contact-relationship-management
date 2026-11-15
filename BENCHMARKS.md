@@ -104,7 +104,7 @@ contacts, though it matched none (no synthetic contact has granted marketing con
 every contact, then makes four queries for each on one connection (`evaluate_segment`). Twenty a
 second need more connections than the pool holds, so requests wait 5 s for one and are refused
 with `503` ("pool timed out while waiting for an open connection"). The cost grows with the number
-of contacts, and a campaign run evaluates its segment the same way. Open as CRM-T243.
+of contacts, and a campaign run evaluates its segment the same way. Fixed in CRM-T243: see below.
 
 **Lead-import previews** depend on the names: with made-up pairs from short lists, as the script
 now sends, a 200-row preview takes about 10 ms. In a first run every name shared the word "Load"
@@ -119,6 +119,30 @@ about 340 fewer contacts), and is the read to watch as the data grows.
 minutes stopped at about 72 iterations a second, when p95 passed 2 s (2.23 s; no request failed).
 Near the end every route was slow, not one, so the limit is the service as a whole on this machine;
 segment previews (2% of the mix) were the slowest.
+
+**After CRM-T243** (segment facts in four set queries, not four a contact), at the commit that
+fixed it, on a fresh demo database seeded with 1,000 contacts (4,764 requests, none failed); the
+endpoint run then held roughly 1,000 to 1,320 contacts. The laptop was quieter than in the run
+above, so every group was faster, not only segments:
+
+| Group | p50 ms | p95 ms | p99 ms | max ms | Failed | p95 limit ms | |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| lists | 1.5 | 2.3 | 8.4 | 20.0 | 0% | 500 | pass |
+| search | 29.9 | 84.6 | 103.7 | 129.7 | 0% | 500 | pass |
+| contact reads | 2.3 | 3.2 | 8.5 | 46.8 | 0% | 300 | pass |
+| contact writes | 1.8 | 2.1 | 2.5 | 29.9 | 0% | 500 | pass |
+| other writes | 1.6 | 2.2 | 2.5 | 3.3 | 0% | 500 | pass |
+| rollups | 1.4 | 2.3 | 3.0 | 6.0 | 0% | 1,000 | pass |
+| reports | 1.8 | 2.3 | 2.9 | 49.0 | 0% | 1,000 | pass |
+| **segment previews** | **4.6** | **5.8** | **13.1** | **26.2** | **0%** | 1,000 | **pass** |
+| duplicate checks | 4.8 | 5.5 | 7.8 | 51.0 | 0% | 2,000 | pass |
+| lead-import previews, 200 rows | 6.9 | 7.9 | 8.7 | 40.9 | 0% | 1,000 | pass |
+| audit-chain check | 16.4 | 19.2 | 21.0 | 50.8 | 0% | 2,000 | pass |
+
+One preview on an idle service: 6 ms, against 0.35–0.44 s before. The breakpoint test to 200 a
+second over 3 minutes stopped at about 140 iterations a second (p95 2.15 s; none of 8,805
+requests failed), against about 72 before; near the end every route was slow together again, so
+the limit is the service as a whole on this machine.
 
 - **Commands:** from `tests/load/`, `podman run --rm -i --network contact-relationship-management_default
   -v "$PWD:/work:Z" -w /work <K6_IMAGE> run -e TEST_URL=http://api:1241 scripts/<test>.test.js`,

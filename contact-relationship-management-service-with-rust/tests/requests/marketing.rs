@@ -337,3 +337,116 @@ async fn a_funnel_can_convert_each_deal_at_the_rate_of_the_day_it_closed() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+// CRM-T243: the facts of every contact are read in a few set queries and matched up again by pid,
+// so each contact must get its own account's tier and its own tags, never a neighbour's.
+async fn a_segment_gives_each_contact_its_own_tier_and_tags() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let account = |tier: &'static str| {
+            let request = &request;
+            async move {
+                let made: Value = request
+                    .post("/api/accounts")
+                    .json(&json!({
+                        "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                        "display_name": format!("A {tier} account"),
+                        "tier": tier,
+                    }))
+                    .await
+                    .json();
+                made["pid"].as_str().unwrap().to_string()
+            }
+        };
+        let customer = account("customer").await;
+        let prospect = account("prospect").await;
+        let contact = |name: &'static str,
+                       account: Option<String>,
+                       consent: bool,
+                       tags: &'static [&'static str]| {
+            let request = &request;
+            async move {
+                let mut body = json!({ "person_ref": a_person(), "display_name": name });
+                if let Some(account) = account {
+                    body["account_pid"] = json!(account);
+                }
+                let made: Value = request.post("/api/contacts").json(&body).await.json();
+                let pid = made["pid"].as_str().unwrap().to_string();
+                if consent {
+                    request
+                        .post(&format!("/api/contacts/{pid}/consent"))
+                        .json(&json!({ "action": "granted", "source": "web form" }))
+                        .await
+                        .assert_status_ok();
+                }
+                if !tags.is_empty() {
+                    request
+                        .put(&format!("/api/contacts/{pid}/tags"))
+                        .json(&json!({ "tags": tags }))
+                        .await
+                        .assert_status_ok();
+                }
+            }
+        };
+        // Interleaved, so a lookup that lost the pairing would move a tier or a tag to a
+        // neighbour.
+        contact("Customer VIP", Some(customer.clone()), true, &["vip"]).await;
+        contact("Prospect VIP", Some(prospect.clone()), true, &["vip"]).await;
+        contact("Customer plain", Some(customer.clone()), true, &[]).await;
+        contact("No account VIP", None, true, &["vip", "trial"]).await;
+        contact(
+            "Customer VIP unconsented",
+            Some(customer.clone()),
+            false,
+            &["vip"],
+        )
+        .await;
+        contact("Prospect plain", Some(prospect), true, &["trial"]).await;
+        let preview = |filter: Value| {
+            let request = &request;
+            async move {
+                let made: Value = request
+                    .post("/api/segments")
+                    .json(&json!({ "name": "Tiered", "filter": filter }))
+                    .await
+                    .json();
+                let pid = made["pid"].as_str().unwrap().to_string();
+                let preview: Value = request
+                    .get(&format!("/api/segments/{pid}/preview"))
+                    .await
+                    .json();
+                let mut names: Vec<String> = preview["sample"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|n| n.as_str().unwrap().to_string())
+                    .collect();
+                names.sort();
+                (preview["count"].as_u64().unwrap(), names)
+            }
+        };
+        assert_eq!(
+            preview(json!({ "account_tiers": ["customer"], "tags": ["vip"] })).await,
+            (1, vec!["Customer VIP".to_string()])
+        );
+        assert_eq!(
+            preview(json!({ "account_tiers": ["customer"] })).await,
+            (
+                2,
+                vec!["Customer VIP".to_string(), "Customer plain".to_string()]
+            )
+        );
+        assert_eq!(
+            preview(json!({ "tags": ["trial"] })).await,
+            (
+                2,
+                vec!["No account VIP".to_string(), "Prospect plain".to_string()]
+            )
+        );
+        // The consent gate still holds: five consented, the sixth never.
+        assert_eq!(preview(json!({})).await.0, 5);
+    })
+    .await;
+}

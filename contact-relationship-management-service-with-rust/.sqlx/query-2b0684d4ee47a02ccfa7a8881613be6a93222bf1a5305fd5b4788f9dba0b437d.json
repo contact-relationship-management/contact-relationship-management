@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT contact_pid, state FROM contact_consents WHERE contact_pid = ANY($1) AND purpose = $2 AND channel = 'email'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contact_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "contact_consents",
+            "name": "contact_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "state",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "contact_consents",
+            "name": "state"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "2b0684d4ee47a02ccfa7a8881613be6a93222bf1a5305fd5b4788f9dba0b437d"
+}
