@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Removed — the service's old k6 scripts (CRM-T238, 2026-11-15)
+
+- `contact-relationship-management-service-with-rust/tests/load/distributed.js` and
+  `long_running.js`, which nothing ran and which `tests/load/` and `tests/long-running/` replace.
+
 ### Added — one range per shared front-end dependency (CRM-T234, 2026-11-14)
 
 - A root `package.json` holds `syncpack`; the `front-end` CI stage runs `syncpack lint` over the
