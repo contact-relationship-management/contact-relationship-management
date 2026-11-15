@@ -1,8 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.2.1
 
-- `rust-version` is 1.97, down from 1.99 (CRM-T225). The code built and its tests passed on 1.97.1. Not published.
+No change in behaviour or public API.
+
+- `rust-version` is 1.98, down from 1.99 (CRM-T225; 1.97 until the toolchain moved to 1.100.0, `62dc845`). `cargo +1.98
+  check --all-targets` passes.
+- The dependency minimums are the versions in use: `strsim` 0.11.1, `unicode-normalization` 0.1.26 (and `criterion`
+  0.8.2 for the benchmarks).
+- rustfmt 1.100.0 layout, and `map_or_default` where clippy 1.100.0 asks for it.
 
 ## 0.2.0
 
