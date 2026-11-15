@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.14.0 (CRM-T244)
+
+- axa 0.14.0, `axa-test` 0.5.0, `axa-postgres-job-queue` 0.3.0 and `axa-cursor-pagination` 0.1.2.
+  The job queue's table gains a nullable `tenant` column, added when the service starts. No change
+  in behaviour.
+
 ### Fixed — segment evaluation in four queries (CRM-T243)
 
 - A segment preview or a campaign's audience read each contact's account tier, tags, employment

@@ -107,6 +107,7 @@ mod tests {
             csp: Some("default-src 'none'".to_string()),
             permissions_policy: Some("camera=()".to_string()),
             cross_site_paths: Vec::new(),
+            log_tenant: false,
         };
         let router = Router::new().route("/x", get(|| async { "ok" }));
         let request = Request::builder().uri("/x").body(Body::empty()).unwrap();
