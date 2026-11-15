@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — Playwright 1.65.0 (CRM-T239, 2026-11-15)
+
+- The UI and the site use `@playwright/test` 1.65.0.
+
 ### Removed — the service's old k6 scripts (CRM-T238, 2026-11-15)
 
 - `contact-relationship-management-service-with-rust/tests/load/distributed.js` and

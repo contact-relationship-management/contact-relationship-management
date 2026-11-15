@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Playwright 1.65.0 (CRM-T239)
+
+`@playwright/test` `^1.65.0`, locked at 1.65.0. 197 Playwright tests pass. **Not done:** 1.65.1 is inside the seven-day cooldown.
+
 ### Changed — the API proxy drops the browser's `Origin` (CRM-T237)
 
 The proxy at `/api/proxy/*` no longer passes an `Origin` to the service, and calls it with the platform's `fetch`, as SvelteKit's sets `Origin` to the UI on any request to another origin. That `Origin` names the UI, not the service, so the service's cross-site write guard (axa 0.13) refused every write without a `Sec-Fetch-Site` as a mismatch, including those the UI's own server makes. `Sec-Fetch-Site` is still passed, so a write another site sends through the proxy is still refused. Checked against the service on axa 0.13: through the proxy, a write with no browser headers, with the UI's `Origin` alone, and same-origin is `200`; a cross-site one is `403`. **Not done:** the auth service (`AUTH_API_URL`) is still called with SvelteKit's `fetch`; a move of that service to axa 0.13 would meet the same `Origin`.
