@@ -1555,3 +1555,14 @@ recipient would get before anything is sent, and be certain every message carrie
 - Every standard, protocol, convention, locale, format and regulation the CRM adopts has equitable capability for countries, regions and federations worldwide; no jurisdiction is the default, the first-class case or the only case that works. The full text, the decision that implements it (CRM-D19) and the audit against it are in [worldwide.md](worldwide.md).
 - Where coverage is uneven today it is a gap with a task (CRM-T165 to CRM-T176), not a design.
 - Not built: CRM-T166 (consent rules as jurisdiction profiles; its design is CRM-D21, confirmed by the product owner 2026-10-31, and is being built); CRM-T165 (the regulatory register by region) is done with every region *not yet read*; the other tasks are done, each with its own "not done" list. This requirement adds no behaviour by itself.
+
+## CRM-R96 — The UI uses the browser's light/dark setting
+
+*Asked for by the product owner, 2026-11-15.* *As someone who has set my browser or system to light or dark, I see the CRM in that setting without choosing it again.*
+
+- The UI uses the browser's light/dark setting (`prefers-color-scheme`): the `dark` theme when it asks for dark, `light` otherwise, from the first paint.
+- It follows a change of that setting while a page is open, and on every later visit.
+- A theme the person picks in the theme picker overrides the setting and is remembered in this browser (`localStorage`, key `crm-theme`), on later visits too, whatever the setting says. Only a pick is remembered, never a theme the UI chose from the setting. The earlier key, `lily-theme`, held either and is removed unread.
+- Storage that cannot be used (a private window, blocked storage) counts as no pick: the UI follows the setting, and a pick lasts for that page.
+- Tests: `tests/unit/theme.test.ts` (4) and `tests/e2e/theme.spec.ts` (5): dark and light on a first visit, a change while open and after a reload, a pick kept against the setting, and the old key dropped.
+- Not built: a way to go back to following the setting once a theme is picked, other than clearing the site's storage (picking `light` or `dark` is remembered as a pick like any other, and then stays); a high-contrast setting (`prefers-contrast`); the setting on the GitHub Pages site, which is its own project.

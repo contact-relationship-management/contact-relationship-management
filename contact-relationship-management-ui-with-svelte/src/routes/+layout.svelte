@@ -7,6 +7,13 @@
   import type { LayoutData } from "./$types";
   import { IDLE_TIMEOUT_MS } from "#lib/config.js";
   import { watchIdle } from "#lib/idle.js";
+  import {
+    forgetOldKey,
+    readChosen,
+    rememberChosen,
+    startingTheme,
+    systemTheme,
+  } from "#lib/theme.js";
   import { i18n, isRtl, t, LOCALES, LOCALE_LABELS } from "#lib/i18n.svelte.js";
   import { splitLocale } from "../params";
   import { resource } from "#lib/resource.svelte.js";
@@ -85,6 +92,32 @@
       });
     });
   });
+
+  // The theme (CRM-R96): the browser's light/dark setting unless the person has picked one.
+  // Lily's ThemePicker resolves the browser's setting itself on the first paint; this effect
+  // then takes over, following a change of the setting while the page is open, and only a
+  // theme the person picks is remembered (`onThemeChange`).
+  let theme = $state("");
+  let themeReady = false;
+  $effect(() => {
+    if (!browser) return;
+    forgetOldKey(localStorage);
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    theme = startingTheme(readChosen(localStorage), media.matches);
+    themeReady = true;
+    const follow = (event: MediaQueryListEvent) => {
+      if (!readChosen(localStorage)) theme = systemTheme(event.matches);
+    };
+    media.addEventListener("change", follow);
+    return () => media.removeEventListener("change", follow);
+  });
+  // The picker reports every theme it applies: its own first one (before `themeReady`), one this
+  // layout set (equal to `theme`), or one the person picked, which is the only one remembered.
+  function onThemeChange(slug: string) {
+    if (!themeReady || slug === theme) return;
+    rememberChosen(localStorage, slug);
+    theme = slug;
+  }
 
   // Hamburger toggle state for the primary navigation.
   let menuOpen = $state(false);
@@ -241,13 +274,14 @@
         }}
         themesUrl="/assets/themes/"
         themeProps={{
-          storageKey: "lily-theme",
-          // Without a default no theme stylesheet loads until the user
-          // picks one, leaving the pickers (which Lily's theme CSS styles)
-          // unstyled on first visit. Follow the OS light/dark preference,
-          // else fall back to "light".
+          // No `storageKey`: Lily would save every theme it applies, the browser's included,
+          // so the browser's setting would stop being followed after a first visit. The layout
+          // remembers a pick itself (CRM-R96). Without a default no theme stylesheet loads, leaving
+          // the pickers (which Lily's theme CSS styles) unstyled: the browser's setting, else light.
           detectFromSystem: true,
           defaultValue: "light",
+          value: theme,
+          onChange: onThemeChange,
         }}
         locales={[...LOCALES]}
         localeProps={{

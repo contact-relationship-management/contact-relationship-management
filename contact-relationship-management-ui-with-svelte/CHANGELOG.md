@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the browser's light/dark setting (CRM-T246, CRM-R96)
+
+The UI shows the `dark` or `light` theme from the browser's `prefers-color-scheme`, follows a change of it while a page is open, and keeps following it on later visits. Before, the first visit's theme was saved as though picked, so the setting stopped being followed. A theme picked in the theme picker overrides the setting and is remembered under `crm-theme`; the old `lily-theme` key is removed, so a theme picked before this change must be picked again once. Tests: `theme.test.ts` (4), `theme.spec.ts` (5). **Not done:** no way back to following the setting once a theme is picked; Chromium only.
+
 ### Added — bundle size (CRM-T242)
 
 `scripts/bundle-size.mjs` (`pnpm size`, after `pnpm build`) reports the built JavaScript and CSS, raw and gzipped, the part every page loads, and the ten largest files. At `28c39a4`: 372.0 KiB of JavaScript gzipped in 83 files, 19.8 KiB on every page. **Not done:** no page's own code is traced, and no load time is measured.
