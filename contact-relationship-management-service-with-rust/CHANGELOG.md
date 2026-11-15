@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — matcher 0.2.1 (CRM-T241)
+
+- The service depends on `contact-relationship-management-matcher` 0.2.1, which declares Rust 1.98, so
+  the service builds on its own declared minimum. No change in behaviour.
+
 ### Changed — axa 0.13.0 (CRM-T237)
 
 - axa 0.13.0, `axa-test` 0.4.0, `axa-postgres-sqlx` 0.2.0 and `axa-redis-cache` 0.2.0.

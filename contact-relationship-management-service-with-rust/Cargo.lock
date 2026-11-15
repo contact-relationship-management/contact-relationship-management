@@ -858,9 +858,9 @@ dependencies = [
 
 [[package]]
 name = "contact-relationship-management-matcher"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "893a98f033fd757c82170592d1a3af7d0a4b5e00186a1b5c37788923341f1066"
+checksum = "091d73b8bcf4ec367833dfb509ddd67f2e9cc7844e6246757827ccdded2c5684"
 dependencies = [
  "serde",
  "strsim",
