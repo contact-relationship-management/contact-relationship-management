@@ -144,6 +144,18 @@ second over 3 minutes stopped at about 140 iterations a second (p95 2.15 s; none
 requests failed), against about 72 before; near the end every route was slow together again, so
 the limit is the service as a whole on this machine.
 
+**The other load tests**, on a fresh demo seeded with 500 contacts at `fcbd054`, at small sizes:
+stress (`VUS=3`, 30 s steps) 1,725 requests, p95 40 ms; spike (`VUS=2`, a 15 s spike) 643
+requests, p95 31 ms; soak (`VUS=3`, 2 minutes) 263 requests, p95 38 ms. None failed a request or
+a check.
+
+**A campaign run**, simulated mail, to 1,000 consented synthetic contacts in one segment: one
+`POST /api/campaigns/{pid}/run` of 2.76 s sent all 1,000 (none left). The segment step is 8.6 ms
+of it; the rest is the per-contact work done on purpose: consent read again from the live contact
+just before each send, the delivery row claimed and the touch recorded (CRM-T39), about 2.8 ms a
+contact. With real mail the run is a background job, batch by batch, and the vendor's time comes
+on top. A one-off script, not kept in `tests/load/`, as it grants consent to synthetic contacts.
+
 - **Commands:** from `tests/load/`, `podman run --rm -i --network contact-relationship-management_default
   -v "$PWD:/work:Z" -w /work <K6_IMAGE> run -e TEST_URL=http://api:1241 scripts/<test>.test.js`,
   with `-e DURATION=1m` for basic and `-e MAX_RATE=100 -e DURATION=3m` for breakpoint. The
