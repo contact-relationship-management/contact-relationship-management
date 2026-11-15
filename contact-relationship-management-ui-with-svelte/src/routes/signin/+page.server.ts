@@ -22,7 +22,7 @@ export const load: PageServerLoad = () => {
 };
 
 export const actions: Actions = {
-  default: async ({ request, fetch, url, cookies }) => {
+  default: async ({ request, url, cookies }) => {
     const form = await request.formData();
     const email = String(form.get("email") ?? "").trim();
     if (!email) {
@@ -34,7 +34,7 @@ export const actions: Actions = {
       cookies.set(SESSION_COOKIE, startDemoSession(), SESSION_COOKIE_OPTIONS);
       redirect(303, "/");
     }
-    const ok = await requestMagicLink(fetch, email, url.origin);
+    const ok = await requestMagicLink(email, url.origin);
     return ok ? { sent: true, error: null } : { sent: false, error: "failed" };
   },
 };

@@ -14,13 +14,7 @@ import { exchangeToken } from "#lib/server/auth.js";
 import { DEMO_TOUR_ENABLED } from "#lib/server/config.js";
 import { demoHandleFor, isDemoSession } from "#lib/server/demo.js";
 
-const proxy: RequestHandler = async ({
-  request,
-  params,
-  url,
-  locals,
-  fetch,
-}) => {
+const proxy: RequestHandler = async ({ request, params, url, locals }) => {
   // Guided tour: a demo session is answered from fictitious data and is never
   // forwarded to the service.
   if (DEMO_TOUR_ENABLED && isDemoSession(locals.sessionId)) {
@@ -83,7 +77,7 @@ const proxy: RequestHandler = async ({
 
   // Session → short-lived PASETO, server-side only (PF-T18).
   if (locals.sessionId) {
-    const token = await exchangeToken(fetch, locals.sessionId);
+    const token = await exchangeToken(locals.sessionId);
     if (token) headers.set("authorization", `Bearer ${token}`);
   }
 

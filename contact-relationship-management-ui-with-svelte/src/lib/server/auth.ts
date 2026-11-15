@@ -7,11 +7,17 @@ import { SESSION_COOKIE } from "./session";
 
 type FetchFn = typeof fetch;
 
+// Each call defaults to the platform's `fetch`. Do not pass SvelteKit's event `fetch`: on a request
+// to another origin it sets `Origin` to this UI, and a service on axa 0.13 refuses a write whose
+// `Origin` is not its own host when there is no `Sec-Fetch-Site` (CRM-T240, as CRM-T237 found in
+// the API proxy). The parameter is there for tests.
+const platformFetch: FetchFn = (input, init) => globalThis.fetch(input, init);
+
 /** Consume a magic-link token; returns the raw upstream response so the
  *  caller can read the `Set-Cookie` that establishes the session. */
 export function verifyMagicLink(
-  fetchFn: FetchFn,
   token: string,
+  fetchFn: FetchFn = platformFetch,
 ): Promise<Response> {
   return fetchFn(
     `${AUTH_API_URL}/api/auth/magic-link/${encodeURIComponent(token)}`,
@@ -22,10 +28,10 @@ export function verifyMagicLink(
  *  to return to THIS app's `/verify` (per-app login). `false` when the
  *  service refuses or cannot be reached, so the page says it failed. */
 export async function requestMagicLink(
-  fetchFn: FetchFn,
   email: string,
   returnUrl: string,
   locale?: string,
+  fetchFn: FetchFn = platformFetch,
 ): Promise<boolean> {
   try {
     const res = await fetchFn(`${AUTH_API_URL}/api/auth/magic-link`, {
@@ -42,8 +48,8 @@ export async function requestMagicLink(
 /** Exchange the opaque session id for a short-lived PASETO (server-to-
  *  server; sends the session as a `Cookie` header). `null` if invalid. */
 export async function exchangeToken(
-  fetchFn: FetchFn,
   sid: string,
+  fetchFn: FetchFn = platformFetch,
 ): Promise<string | null> {
   const res = await fetchFn(`${AUTH_API_URL}/api/auth/token`, {
     method: "POST",
@@ -56,9 +62,12 @@ export async function exchangeToken(
 
 /** Revoke the session server-side (best-effort) before the cookie clear:
  *  an unreachable auth service must not stop the sign-out. */
-export async function signout(fetchFn: FetchFn, sid: string): Promise<void> {
+export async function signout(
+  sid: string,
+  fetchFn: FetchFn = platformFetch,
+): Promise<void> {
   try {
-    const token = await exchangeToken(fetchFn, sid);
+    const token = await exchangeToken(sid, fetchFn);
     if (!token) return;
     await fetchFn(`${AUTH_API_URL}/api/auth/signout`, {
       method: "POST",

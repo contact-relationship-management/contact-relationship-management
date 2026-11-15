@@ -19,7 +19,7 @@ import { verifyMagicLink } from "#lib/server/auth.js";
 // without reading the DOM.
 const TITLE = "Sign-in link — Contact Relationship Management";
 
-export const load: PageServerLoad = async ({ url, fetch, cookies }) => {
+export const load: PageServerLoad = async ({ url, cookies }) => {
   const token = url.searchParams.get("token");
   if (!token) {
     return { error: "missingToken" as const, title: TITLE };
@@ -37,7 +37,7 @@ export const load: PageServerLoad = async ({ url, fetch, cookies }) => {
   // unreachable).
   let upstream: Response;
   try {
-    upstream = await verifyMagicLink(fetch, token);
+    upstream = await verifyMagicLink(token);
   } catch {
     return { error: "serviceUnavailable" as const };
   }

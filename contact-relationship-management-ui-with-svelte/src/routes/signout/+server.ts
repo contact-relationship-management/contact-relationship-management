@@ -8,11 +8,11 @@ import { signout } from "#lib/server/auth.js";
 import { endDemoSession, isDemoSession } from "#lib/server/demo.js";
 import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from "#lib/server/session.js";
 
-export const POST: RequestHandler = async ({ locals, cookies, fetch }) => {
+export const POST: RequestHandler = async ({ locals, cookies }) => {
   if (locals.sessionId && isDemoSession(locals.sessionId)) {
     endDemoSession(locals.sessionId);
   } else if (locals.sessionId) {
-    await signout(fetch, locals.sessionId);
+    await signout(locals.sessionId);
   }
   cookies.delete(SESSION_COOKIE, SESSION_COOKIE_OPTIONS);
   redirect(303, "/");

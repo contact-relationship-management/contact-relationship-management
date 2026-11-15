@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the calls to the authentication service send no `Origin` (CRM-T240)
+
+`src/lib/server/auth.ts` calls the authentication service with the platform's `fetch` by default, and the sign-in, verify, sign-out and API proxy routes no longer pass SvelteKit's, which set `Origin` to the UI. A service on axa 0.13 would refuse the token exchange and sign-out with that header. The `fetch` parameter moved last, for tests. Tests: `auth.test.ts` (no `Origin` on any of the five requests), and `verify.test.ts` now stubs the fetch the route uses. **Not done:** not run against an authentication service.
+
 ### Changed — Playwright 1.65.0 (CRM-T239)
 
 `@playwright/test` `^1.65.0`, locked at 1.65.0. 197 Playwright tests pass. **Not done:** 1.65.1 is inside the seven-day cooldown.
 
 ### Changed — the API proxy drops the browser's `Origin` (CRM-T237)
 
-The proxy at `/api/proxy/*` no longer passes an `Origin` to the service, and calls it with the platform's `fetch`, as SvelteKit's sets `Origin` to the UI on any request to another origin. That `Origin` names the UI, not the service, so the service's cross-site write guard (axa 0.13) refused every write without a `Sec-Fetch-Site` as a mismatch, including those the UI's own server makes. `Sec-Fetch-Site` is still passed, so a write another site sends through the proxy is still refused. Checked against the service on axa 0.13: through the proxy, a write with no browser headers, with the UI's `Origin` alone, and same-origin is `200`; a cross-site one is `403`. **Not done:** the auth service (`AUTH_API_URL`) is still called with SvelteKit's `fetch`; a move of that service to axa 0.13 would meet the same `Origin`.
+The proxy at `/api/proxy/*` no longer passes an `Origin` to the service, and calls it with the platform's `fetch`, as SvelteKit's sets `Origin` to the UI on any request to another origin. That `Origin` names the UI, not the service, so the service's cross-site write guard (axa 0.13) refused every write without a `Sec-Fetch-Site` as a mismatch, including those the UI's own server makes. `Sec-Fetch-Site` is still passed, so a write another site sends through the proxy is still refused. Checked against the service on axa 0.13: through the proxy, a write with no browser headers, with the UI's `Origin` alone, and same-origin is `200`; a cross-site one is `403`. **Not done:** the auth service (`AUTH_API_URL`) is still called with SvelteKit's `fetch`; a move of that service to axa 0.13 would meet the same `Origin`. (Fixed in CRM-T240.)
 
 ### Added — start the tour in one click from the tour page (CRM-T233)
 

@@ -8,6 +8,14 @@ services, blanket guard `CRM_REQUIRE_AUTH` (default **off** — the
 family activation gate; activate before any real exposure), shared
 ABAC engine.
 
+## The UI's calls to the authentication service
+
+The UI's server makes four calls to the authentication service at `AUTH_API_URL`: request a magic link, verify one,
+exchange the session for a token (on every proxied API call), and sign out. They are server-to-server, so they send no
+`Origin`: they use the platform's `fetch`, not SvelteKit's, which sets `Origin` to the UI on a request to another origin.
+A service on axa 0.13 refuses a write whose `Origin` is not its own host when there is no `Sec-Fetch-Site`, so that
+header would turn the token exchange and sign-out into `403`s (CRM-T240; the same fault in the API proxy is CRM-T237).
+
 ## Personas as policy (not code)
 
 One API; four typical policy personas expressed over `attrs`:
