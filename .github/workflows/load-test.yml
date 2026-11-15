@@ -24,6 +24,9 @@ on:
           - stress
           - spike
           - soak
+          - seed
+          - endpoints
+          - breakpoint
       url:
         description: Service base URL (a throwaway deployment, never production)
         required: true
@@ -35,6 +38,16 @@ on:
         type: string
       duration:
         description: Duration, for example 1m or 10m (blank for the script's default; see each script)
+        required: false
+        default: ""
+        type: string
+      rate:
+        description: Requests a second per group (endpoints) or the highest rate (breakpoint); blank for the default
+        required: false
+        default: ""
+        type: string
+      seed:
+        description: Contacts to make (seed); blank for the default of 1000
         required: false
         default: ""
         type: string
@@ -53,6 +66,8 @@ jobs:
       TEST_URL: ${{ inputs.url }}
       VUS: ${{ inputs.vus }}
       DURATION: ${{ inputs.duration }}
+      RATE: ${{ inputs.rate }}
+      SEED: ${{ inputs.seed }}
       CRM_AUTH_TOKEN: ${{ secrets.CRM_LOAD_TEST_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,6 +78,8 @@ jobs:
         run: |
           case "$VUS" in *[!0-9]*) echo "vus must be a whole number" >&2; exit 1 ;; esac
           case "$DURATION" in *[!0-9smh]*) echo "duration must look like 30s, 10m or 1h" >&2; exit 1 ;; esac
+          case "$RATE" in *[!0-9]*) echo "rate must be a whole number" >&2; exit 1 ;; esac
+          case "$SEED" in *[!0-9]*) echo "seed must be a whole number" >&2; exit 1 ;; esac
           case "$TEST_URL" in http://*|https://*) ;; *) echo "url must start with http:// or https://" >&2; exit 1 ;; esac
 
       - name: Run k6
@@ -71,7 +88,7 @@ jobs:
           # The scripts read VUS and DURATION themselves (blank keeps their defaults), so
           # their scenarios stand; --vus and --duration would replace them with one.
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/tests/load:/work" -w /work \
-            -e TEST_URL -e CRM_AUTH_TOKEN -e VUS -e DURATION \
+            -e TEST_URL -e CRM_AUTH_TOKEN -e VUS -e DURATION -e RATE -e SEED -e "MAX_RATE=${RATE}" \
             -e K6_WEB_DASHBOARD=true -e "K6_WEB_DASHBOARD_EXPORT=results/${TEST_TYPE}.html" \
             "$K6_IMAGE" run \
             --summary-export "results/${TEST_TYPE}-summary.json" \

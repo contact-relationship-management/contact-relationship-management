@@ -7,18 +7,32 @@
  */
 
 import {
+  ANALYTICS,
   COMMON_THRESHOLDS,
+  analytics,
+  createAccount,
   createActivity,
   createContact,
   createDeal,
   createLead,
+  createTicket,
+  duplicates,
   envInt,
+  funnel,
+  getAccount,
   getContact,
+  getLead,
   list,
   moveDeal,
+  moveTicket,
   prepare,
+  previewLeadImport,
+  previewSegment,
+  runReport,
   search,
+  tagContact,
   updateContact,
+  verifyAudits,
 } from '../lib/crm.js';
 
 export const options = {
@@ -43,12 +57,36 @@ export default function (data) {
     getContact(contact);
     updateContact(contact);
     createActivity(contact);
+    tagContact(contact);
+    duplicates(contact);
   }
-  createLead();
+  const account = createAccount();
+  if (account) getAccount(account);
+  const lead = createLead();
+  if (lead) getLead(lead);
   const deal = createDeal(data.pipeline, contact);
   if (deal) moveDeal(deal, data.stages[1]);
-  for (const path of ['/api/contacts?limit=10', '/api/leads?limit=10', '/api/deals?limit=10']) {
+  const ticket = createTicket(contact);
+  if (ticket) {
+    moveTicket(ticket, 'pending');
+    moveTicket(ticket, 'open');
+    moveTicket(ticket, 'resolved');
+  }
+  previewSegment(data.segment);
+  previewLeadImport(20);
+  for (const path of ['/api/contacts?limit=10', '/api/accounts?limit=10', '/api/leads?limit=10',
+    '/api/deals?limit=10', '/api/activities?limit=10', '/api/tickets?limit=10']) {
     list(path);
   }
   search('Load');
+  for (const path of ANALYTICS) analytics(path);
+  funnel(data.pipeline);
+  for (const spec of [
+    { kind: 'contact', group_by: 'status' },
+    { kind: 'deal', group_by: 'state', measure: 'sum_amount' },
+    { kind: 'ticket', group_by: 'priority' },
+  ]) {
+    runReport(spec);
+  }
+  verifyAudits();
 }

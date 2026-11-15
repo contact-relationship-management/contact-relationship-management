@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — benchmarks of the rules (CRM-T242)
+
+- `benches/rules.rs` (criterion 0.8.2, a dev dependency): scoring, segments, the forecast, the
+  audit chain, imports, attribution, currency conversion, reports and search. `cargo bench --bench
+  rules`; results in `BENCHMARKS.md`. Nothing in the service changed.
+
 ### Changed — matcher 0.2.1 (CRM-T241)
 
 - The service depends on `contact-relationship-management-matcher` 0.2.1, which declares Rust 1.98, so

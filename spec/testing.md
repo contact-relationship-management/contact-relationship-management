@@ -42,3 +42,28 @@
   accounts, leads in every status, 2 pipelines, ~30 deals, a
   campaign + nurture sequence, ~20 tickets against 2 SLA policies)
   — synthetic data only.
+
+## Performance (CRM-T242)
+
+Three kinds of measure, each with synthetic data only and each recorded in
+[`BENCHMARKS.md`](../BENCHMARKS.md) with its commit, machine, data size and command:
+
+- **The rules' CPU cost** (criterion): the matcher (`benches/matching.rs`), and the service's
+  pure rules a request runs (`benches/rules.rs`): lead scoring, segment evaluation, the
+  weighted forecast, the audit-chain check, a lead import at its 500-row limit, attribution
+  under each model, report currency conversion, report planning and small-cell suppression,
+  and search-query building. No database, network or clock: a request's rule step, not its
+  latency.
+- **The API under load** (k6, [`tests/load/`](../tests/load/README.md)): one module of real
+  calls with real request bodies, a weighted mixed workload, and smoke, basic, stress, spike,
+  soak and breakpoint runs; a seed that makes a volume of rows first; and an endpoint
+  benchmark that runs each group of routes on its own at a fixed arrival rate, with a p95 limit
+  per group. A load test writes synthetic records and deletes none, so it runs only against a
+  throwaway database, never one holding real personal data. It sends nothing to anyone: no
+  campaign run, nurture, webhook, MCP call or web form.
+- **The UI's browser code** (`contact-relationship-management-ui-with-svelte/scripts/bundle-size.mjs`):
+  the built JavaScript and CSS, raw and gzipped, and the part every page loads.
+
+None of these is a CI gate: a figure from a shared runner, or from a laptop, is a reading, not a
+limit. The k6 limits fail a run, and the endpoint limits are the ones a change should not
+cross on the same machine.

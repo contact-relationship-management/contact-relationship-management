@@ -107,6 +107,10 @@ paseto = ["authentication-verifier/paseto", "authentication-verifier/fetch"]
 # `CRM_KEYCLOAK_*` (see src/auth/). Off by default.
 keycloak = ["authentication-verifier/keycloak"]
 
+[[bench]]
+name = "rules"
+harness = false
+
 [[bin]]
 name = "contact-relationship-management"
 path = "src/bin/main.rs"
@@ -131,3 +135,5 @@ serial_test = { version = "4.0.1" }
 ed25519-dalek = { version = "3.0.0" }
 rusty_paseto = { version = "0.10", default-features = false, features = ["v4_public", "serde_json"] }
 jsonschema = { version = "0.60", default-features = false }
+# Benchmarks of the rules (benches/rules.rs, CRM-T242); the same version as the matcher's.
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }

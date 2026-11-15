@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — load tests and benchmarks (CRM-T242, 2026-11-15)
+
+- Criterion benchmarks of the service's rules; k6 calls for most of the API, a weighted mixed
+  workload, and seed, endpoint and breakpoint scripts; a UI bundle-size report. Results in
+  `BENCHMARKS.md`. Segment previews fail the endpoint test (CRM-T243, open).
+
 ### Changed — Playwright 1.65.0 (CRM-T239, 2026-11-15)
 
 - The UI and the site use `@playwright/test` 1.65.0.

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — bundle size (CRM-T242)
+
+`scripts/bundle-size.mjs` (`pnpm size`, after `pnpm build`) reports the built JavaScript and CSS, raw and gzipped, the part every page loads, and the ten largest files. At `28c39a4`: 372.0 KiB of JavaScript gzipped in 83 files, 19.8 KiB on every page. **Not done:** no page's own code is traced, and no load time is measured.
+
 ### Fixed — the calls to the authentication service send no `Origin` (CRM-T240)
 
 `src/lib/server/auth.ts` calls the authentication service with the platform's `fetch` by default, and the sign-in, verify, sign-out and API proxy routes no longer pass SvelteKit's, which set `Origin` to the UI. A service on axa 0.13 would refuse the token exchange and sign-out with that header. The `fetch` parameter moved last, for tests. Tests: `auth.test.ts` (no `Origin` on any of the five requests), and `verify.test.ts` now stubs the fetch the route uses. **Not done:** not run against an authentication service.
