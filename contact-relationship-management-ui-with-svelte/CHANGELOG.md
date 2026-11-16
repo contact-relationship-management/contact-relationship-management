@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — no theme-picker override (CRM-T250)
+
+- `svelte-picker-bar` 0.7.0, which asks for `svelte-theme-picker` `^0.4.0`, so the pnpm override
+  is removed. A unit test checks the lockfile holds one theme picker, 0.4.0, and no override.
+
 ### Changed — Follow this device, kept in a cookie (CRM-T249)
 
 - The theme picker's first option is "Follow this device", the browser's light/dark setting, which

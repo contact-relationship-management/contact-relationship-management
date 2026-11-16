@@ -145,3 +145,21 @@ describe("the server's links", () => {
     ).toHaveLength(1);
   });
 });
+
+describe("the theme picker the picker bar uses", () => {
+  it("is the one the layout configures: a single 0.4 in the lockfile, with no override", () => {
+    const lock = readFileSync(
+      resolvePath(__dirname, "../../pnpm-lock.yaml"),
+      "utf8",
+    );
+    const versions = new Set(
+      [
+        ...lock.matchAll(
+          /^ {2}'@lilydesignsystem\/svelte-theme-picker@([\d.]+)/gm,
+        ),
+      ].map((match) => match[1]),
+    );
+    expect([...versions]).toEqual(["0.4.0"]);
+    expect(lock).not.toMatch(/^overrides:/m);
+  });
+});

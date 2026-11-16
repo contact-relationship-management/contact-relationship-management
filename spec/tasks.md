@@ -2310,4 +2310,7 @@ Why: the owner finds GitHub-hosted CI unreliable and costly. CRM is already furt
       - **Tests:** `tests/unit/theme.test.ts` (9), `tests/e2e/theme.spec.ts` (8), 80 of 80 over ten repeats.
       - **Ran:** `scripts/ci-check.sh front-end` (314), `e2e` (205), `site` (224); `syncpack lint`.
       - **Not done / not verified:** the site keeps its picker bar's own theme handling, now on picker bar 0.6.0 and theme-picker 0.3; its theme is not checked by hand. The server's stylesheet links are checked to go, not that the page never repaints in between. Translations are machine-written.
+- [x] CRM-T250 **Drop the theme-picker override (CRM-R96).** Lily's `svelte-picker-bar` 0.7.0 (published 2026-11-16) differs from 0.6.0 only in asking for `svelte-theme-picker` `^0.4.0`, so the pnpm override CRM-T249 added is removed and the UI takes 0.7.0. It is inside the seven-day release age, taken on the owner's word on 2026-11-16 ("override for picker-bar 0.7.0") and listed by version in `minimumReleaseAgeExclude`. Spec: [requirements](requirements.md), CRM-R96. (S)
+      - **Tests:** `theme.test.ts` gains one: the lockfile holds one theme picker, 0.4.0, and no `overrides`. It failed with an `overrides` block added to the lockfile.
+      - **Not done / not verified:** the site stays on picker bar 0.6.0 and theme-picker 0.3, as CRM-T249 left it.
 - [ ] CRM-T192 **Add a second remote** (Codeberg or GitLab) so a hosted outage on one host is not an outage of the project. (S, owner)

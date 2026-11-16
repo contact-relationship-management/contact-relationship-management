@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — no theme-picker override (CRM-T250, 2026-11-16)
+
+- The UI takes Lily picker bar 0.7.0, which asks for theme picker 0.4, so the pnpm override goes.
+
 ### Changed — Follow this device, kept in a cookie (CRM-T249, 2026-11-16)
 
 - The UI's theme picker offers "Follow this device" first and keeps the choice in a cookie, which
