@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.15.0 (CRM-T247)
+
+- axa 0.15.0, `axa-test` 0.6.0 and `axa-postgres-job-queue` 0.4.0. The job queue's tables gain a
+  `unique_key` column, an index and a `cron` column, added when the service starts. No change in
+  behaviour.
+
 ### Changed — axa 0.14.0 (CRM-T244)
 
 - axa 0.14.0, `axa-test` 0.5.0, `axa-postgres-job-queue` 0.3.0 and `axa-cursor-pagination` 0.1.2.

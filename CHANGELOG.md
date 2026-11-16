@@ -9,6 +9,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa 0.15.0 (CRM-T247, 2026-11-16)
+
+- The service uses axa 0.15.0 and `axa-test` 0.6.0. No change in behaviour.
+
 ### Added — load tests and benchmarks (CRM-T242, 2026-11-15)
 
 - Criterion benchmarks of the service's rules; k6 calls for most of the API, a weighted mixed
