@@ -30,6 +30,7 @@ const DOCS = [
   "docs/tutorial-family-bridges.md",
   "spec/index.md",
   "spec/locale/index.md",
+  "docs/privacy-notice.md",
   "locales/en-001/evaluate/index.md",
 ];
 

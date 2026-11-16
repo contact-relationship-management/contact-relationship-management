@@ -15,9 +15,16 @@ sibling repository, published by `make publish-github-pages`.
 - **Static.** SvelteKit 3 with `@sveltejs/adapter-static`; every page is prerendered (`prerender = true`,
   `trailingSlash = "always"`, so `/install/` is `install/index.html`): 157 pages. No server, no API call, no form.
 - **Svelte 5 runes** and the full Lily `PickerBar`, as the CRM UI uses it, at the same pinned versions: link (every
-  page and the repository), search, theme (all 57 Lily themes, following the system preference first), locale, time
+  page and the repository), search, theme ("Follow this device" first, then all 57 Lily themes), locale, time
   zone, text size (seven steps) and share (the UI's five destinations and copy link). The time-zone picker records
   the choice on `<html data-time-zone>`, and nothing on this site shows a time, so it has no visible effect here.
+- **What is kept in the browser** ([privacy notice](../docs/privacy-notice.md), CRM-R97). Nothing, until the reader
+  makes a choice. A theme is kept as `lily-theme` in a first-party cookie (`Path=/`, `SameSite=Lax`, `Secure` on
+  https, 400 days) and in `localStorage`, so either one alone brings it back; it holds `system` or a theme's slug.
+  A text size and a time zone are kept in `localStorage` as `lily-text-size` and `lily-time-zone`. Lily's text-size
+  and time-zone pickers write their starting value too, so the site gives them no `storageKey` and keeps a value
+  itself once it changes (`src/lib/kept-choice.ts`). The language is in the address, so nothing is kept for it. No
+  program reads the cookie: the pages are static, and the browser sends it to the host.
 - **Search.** `/search-index.json` is written at build time with the text of every page, fetched on the first search,
   and searched in the browser; `/search/?words` is the page the search button opens. It is in English, whichever page
   the search began on.
@@ -25,7 +32,7 @@ sibling repository, published by `make publish-github-pages`.
   first `##`, the rest are the sections, and a list renders as cards); `docs/tutorial-first-tour.md` (`/tutorial/`),
   `COMPARISONS.md` (`/compare/`), every `docs/compare/<product>.md` (`/compare/<product>/`), `INSTALL.md`
   (`/install/`), `README.md` (`/overview/`), `docs/tutorial-family-bridges.md` (`/family-bridges/`), `spec/index.md`
-  (`/spec/`), the locale status `spec/locale/index.md` (`/locales/`), and every role brief
+  (`/spec/`), the locale status `spec/locale/index.md` (`/locales/`), `docs/privacy-notice.md` (`/privacy/`, linked from the footer), and every role brief
   `locales/<locale>/for/<slug>/index.md` at `/<locale>/for/<slug>/`, with a list per locale at `/<locale>/for/`
   (11 locales, 11 roles each), and `locales/<locale>/path-to-production/index.md` at `/<locale>/path-to-production/`
   where a locale has one (all 11 today; English the source, the others machine-written and unreviewed).
@@ -101,7 +108,7 @@ page in three languages; the sitemaps; each comparison page fair and sourced; ax
 CSP report in the console; `lang` and `dir` on a brief and on a document; the two Arabic pages right to left (header
 `dir`, the brand at the inline start, no sideways scroll, Arabic navigation, axe clean in both schemes); the site's
 words by language for five locales; the language button from English to Arabic to Welsh across scripts; links on and
-off the site; no sideways scroll at 390 px; no element with a `style` attribute. `scripts/ci-check.sh site` runs the
+off the site; no sideways scroll at 390 px; no element with a `style` attribute; what is kept in the browser: nothing on a first visit, a theme in the cookie and in `localStorage` and back from either one, "Follow this device" kept as `system` and followed, a text size and a time zone kept and back after a reload, and the footer's link to the privacy notice, which names each item. `scripts/ci-check.sh site` runs the
 content check, `svelte-check`, the build and the suite; the CI job `site` runs that stage.
 
 ## Publishing

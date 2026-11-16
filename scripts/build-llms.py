@@ -36,6 +36,7 @@ SECTIONS = [
         ("Root agent guide", "AGENTS.md", "Where to start: the three projects, how work is done here, the gates, easy mistakes."),
         ("Demo stack", "compose.yaml", "One command from a fresh clone: PostgreSQL, Redis and the API, sign-in off, synthetic data only."),
         ("Tutorial: the family bridges", "docs/tutorial-family-bridges.md", "Configure the bridges to the worker service: the environment variables, a signed hire event sent with curl, and the employment check."),
+        ("Privacy notice", "docs/privacy-notice.md", "What the site and the UI keep in the browser (theme, language, text size, time zone, table layout), and why."),
         ("Specification index", "spec/index.md", "Entry point to the specification."),
         ("Purpose", "spec/purpose.md", "The problem and what the CRM provides."),
         ("Scope", "spec/scope.md", "What is in and out."),

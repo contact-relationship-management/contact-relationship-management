@@ -8,6 +8,7 @@
   import { IDLE_TIMEOUT_MS } from "#lib/config.js";
   import { watchIdle } from "#lib/idle.js";
   import { THEMES, THEME_COOKIE, dropServerLinks, forgetOldKeys } from "#lib/theme.js";
+  import { keptChoice } from "#lib/kept-choice.js";
   import { i18n, isRtl, t, LOCALES, LOCALE_LABELS } from "#lib/i18n.svelte.js";
   import { splitLocale } from "../params";
   import { resource } from "#lib/resource.svelte.js";
@@ -127,13 +128,16 @@
   ] as const;
 
   // A language in the address (`/de-de/contacts`) is authoritative: it sets the
-  // UI language, and the links keep it so navigating does not drop it.
+  // UI language, and the links keep it so navigating does not drop it. It is
+  // shown, not kept: following a link is not a choice (docs/privacy-notice.md).
+  const textSize = keptChoice("lily-text-size");
+
   const addressed = $derived(splitLocale(page.url.pathname));
   // Set at once, before the pickers mount (they report a language they were
   // given as a change); the effect covers later navigations. Never on the
   // server, where the store is shared between requests.
   const adoptAddressedLocale = () => {
-    if (addressed.locale && addressed.locale !== i18n.locale) i18n.set(addressed.locale);
+    if (addressed.locale && addressed.locale !== i18n.locale) i18n.show(addressed.locale);
   };
   if (browser) adoptAddressedLocale();
   $effect(adoptAddressedLocale);
@@ -266,6 +270,8 @@
           localeLabels: LOCALE_LABELS,
           applyDir: false,
           onChange: (code: string) => {
+            // The picker reports the language it starts on too; that is not a choice.
+            if (code === i18n.locale) return;
             i18n.set(code);
             // On an addressed page, the address follows the language.
             if (addressed.locale && code !== addressed.locale) {
@@ -275,7 +281,9 @@
           },
         }}
         textSizeProps={{
-          storageKey: "lily-text-size",
+          // Kept here, not by Lily, which would write the starting size too.
+          storageKey: "",
+          ...textSize,
         }}
         shareTargets={SHARE_TARGETS}
         shareProps={{

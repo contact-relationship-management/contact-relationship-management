@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — nothing is kept until a choice is made (CRM-T251)
+
+- A first visit no longer writes `mxi.crm.locale` or `lily-text-size`. A language named in the
+  address is shown and not kept; a picked language, text size or theme is kept. What is kept is
+  listed in `docs/privacy-notice.md`. Tests: `kept-choice.test.ts` (4), `storage.spec.ts` (5).
+
 ### Changed — no theme-picker override (CRM-T250)
 
 - `svelte-picker-bar` 0.7.0, which asks for `svelte-theme-picker` `^0.4.0`, so the pnpm override

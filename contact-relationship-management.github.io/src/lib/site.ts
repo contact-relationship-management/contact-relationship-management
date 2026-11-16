@@ -12,7 +12,7 @@ export const SITE_URL = "https://contact-relationship-management.github.io";
 export type DocPage = { slug: string; path: string; nav: NavKey; header?: boolean };
 
 /** The navigation labels, translated in `$lib/i18n.ts`. */
-export type NavKey = "overview" | "tutorial" | "comparisons" | "install" | "bridges" | "spec" | "locales";
+export type NavKey = "overview" | "tutorial" | "comparisons" | "install" | "bridges" | "spec" | "locales" | "privacy";
 
 // `/` is not one of these: it is the landing page, from `locales/en-001/index.md`.
 export const DOC_PAGES: readonly DocPage[] = [
@@ -23,6 +23,7 @@ export const DOC_PAGES: readonly DocPage[] = [
   { slug: "family-bridges", path: "docs/tutorial-family-bridges.md", nav: "bridges" },
   { slug: "spec", path: "spec/index.md", nav: "spec" },
   { slug: "locales", path: "spec/locale/index.md", nav: "locales" },
+  { slug: "privacy", path: "docs/privacy-notice.md", nav: "privacy" },
 ];
 
 /** The products with a page at `/compare/<product>/` (`docs/compare/<product>.md`). */

@@ -9,6 +9,14 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — privacy notice; the site's theme picker (CRM-T251, 2026-11-16)
+
+- `docs/privacy-notice.md`, also at `/privacy/` on the site, lists what the site and the UI keep in the
+  browser and why. Nothing is now kept until a choice is made: the UI kept the language and text
+  size, and the site the text size and time zone, on a first visit.
+- The site's theme picker offers "Follow this device" first and keeps the choice in a cookie and in
+  `localStorage` (Lily picker bar 0.7.0, theme picker 0.4.0).
+
 ### Changed — no theme-picker override (CRM-T250, 2026-11-16)
 
 - The UI takes Lily picker bar 0.7.0, which asks for theme picker 0.4, so the pnpm override goes.

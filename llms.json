@@ -49,6 +49,12 @@
           "description": "Configure the bridges to the worker service: the environment variables, a signed hire event sent with curl, and the employment check."
         },
         {
+          "title": "Privacy notice",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/docs/privacy-notice.md",
+          "path": "docs/privacy-notice.md",
+          "description": "What the site and the UI keep in the browser (theme, language, text size, time zone, table layout), and why."
+        },
+        {
           "title": "Specification index",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/index.md",
           "path": "spec/index.md",

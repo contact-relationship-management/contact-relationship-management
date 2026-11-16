@@ -7,6 +7,7 @@
   import type { LinkItem } from "@lilydesignsystem/svelte-link-picker";
   import type { ShareTarget } from "@lilydesignsystem/svelte-share-picker";
   import { href } from "#lib/href.js";
+  import { keptChoice } from "#lib/kept-choice.js";
   import { t, languageOf } from "#lib/i18n.js";
   import {
     BRIEF_LOCALES,
@@ -116,6 +117,11 @@
     },
   ]);
 
+  // docs/privacy-notice.md: a choice is kept only once it is made. The theme picker writes nothing until then; the
+  // text-size and time-zone pickers would write their starting value, so the site keeps those two itself.
+  const textSize = keptChoice("lily-text-size");
+  const timeZone = keptChoice("lily-time-zone");
+
   const themesUrl = $derived(`${href("/")}assets/themes/`.replace(/\/{2,}assets/, "/assets"));
 </script>
 
@@ -153,15 +159,16 @@
       }}
       {themesUrl}
       themeProps={{
+        // "Follow this device" first, and the start until the reader picks a theme. The choice is kept in a
+        // cookie and in localStorage, both `lily-theme`, so it survives either one being cleared.
+        systemLabel: t(locale, "themeSystem"),
+        cookieName: "lily-theme",
         storageKey: "lily-theme",
-        // Without a default no theme stylesheet loads until the reader picks one.
-        detectFromSystem: true,
-        defaultValue: "light",
       }}
       locales={[...BRIEF_LOCALES]}
       localeProps={{ value: pickedLocale, localeLabels: LOCALE_LABELS, applyDir: false, onChange: switchLocale }}
-      timeZoneProps={{ locale: htmlLang, storageKey: "lily-time-zone" }}
-      textSizeProps={{ storageKey: "lily-text-size" }}
+      timeZoneProps={{ locale: htmlLang, storageKey: "", ...timeZone }}
+      textSizeProps={{ storageKey: "", ...textSize }}
       {shareTargets}
       shareProps={{
         title: pageTitle,
@@ -179,6 +186,7 @@
   <p>
     {t(locale, "footer.before")} <a href={REPO_URL}>{t(locale, "footer.link")}</a>.
     {t(locale, "footer.after")}
+    <a href={href("/privacy/")}>{t(locale, "nav.privacy")}</a>.
   </p>
 </footer>
 

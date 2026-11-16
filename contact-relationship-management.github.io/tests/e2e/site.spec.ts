@@ -79,8 +79,7 @@ test("a brief's html carries its locale; a document is English", async ({ page }
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
 });
 
-// One test per page and scheme: ThemePicker stores the theme it applied, so a second visit in the same browser
-// context would keep the first scheme's theme.
+// One test per page and scheme, each in its own browser context.
 for (const route of ["/ar-001/", "/ar-001/for/", briefRoute(ceo("ar-001"))])
   for (const scheme of ["light", "dark"] as const)
     test(`${route} is right to left, mirrored, its own words Arabic, and passes axe (${scheme})`, async ({ page }) => {
@@ -294,9 +293,87 @@ test("the header carries the full picker bar, on a document and on a brief", asy
 test("the theme picker offers every Lily theme and applies one", async ({ page }) => {
   await open(page, "/", "light");
   await page.getByRole("button", { name: "Theme", exact: true }).click();
-  await expect(page.locator(".theme-picker-option")).toHaveCount(THEMES.length);
+  await expect(page.locator(".theme-picker-option")).toHaveCount(THEMES.length + 1);
+  const first = page.locator(".theme-picker-option").first();
+  await expect(first).toHaveText(/Follow this device/);
+  await expect(first).toHaveAttribute("aria-selected", "true");
   await page.locator(".theme-picker-option").filter({ hasText: /^Nord$/ }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "nord");
+});
+
+// docs/privacy-notice.md: nothing is kept until the reader makes a choice, and a choice keeps only what the notice
+// names for it.
+async function kept(page: Page) {
+  await page.waitForLoadState("networkidle");
+  const storage = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage)));
+  const cookies = Object.fromEntries((await page.context().cookies()).map((c) => [c.name, c.value]));
+  return { storage, cookies };
+}
+
+async function pick(page: Page, picker: string, option: RegExp) {
+  await page.locator(`.picker-bar .${picker}-picker-button`).click();
+  await page.locator(`.${picker}-picker-option`).filter({ hasText: option }).first().click();
+}
+
+test("a first visit keeps nothing in the browser", async ({ page }) => {
+  await open(page, "/", "dark");
+  await page.goto("/install/", { waitUntil: "networkidle" });
+  expect(await kept(page)).toEqual({ storage: {}, cookies: {} });
+});
+
+test("a picked theme is kept in a cookie and in localStorage, and comes back", async ({ page }) => {
+  await open(page, "/", "light");
+  await pick(page, "theme", /^Nord$/);
+  expect(await kept(page)).toEqual({ storage: { "lily-theme": "nord" }, cookies: { "lily-theme": "nord" } });
+  const cookie = (await page.context().cookies()).find((c) => c.name === "lily-theme")!;
+  expect(cookie.sameSite).toBe("Lax");
+  expect(cookie.path).toBe("/");
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "nord");
+  // Either one alone brings it back.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "nord");
+  await page.context().clearCookies();
+  await page.evaluate(() => localStorage.setItem("lily-theme", "nord"));
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "nord");
+});
+
+test("choosing 'Follow this device' again keeps it, and the device's setting is followed", async ({ page }) => {
+  await open(page, "/", "light");
+  await pick(page, "theme", /^Nord$/);
+  await pick(page, "theme", /Follow this device/);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  expect(await kept(page)).toEqual({ storage: { "lily-theme": "system" }, cookies: { "lily-theme": "system" } });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});
+
+test("a picked text size and time zone are kept, and nothing else", async ({ page }) => {
+  await open(page, "/", "light");
+  const before = await page.locator("html").getAttribute("data-text-size");
+  expect(before).toBeTruthy();
+  await pick(page, "text-size", /large/i);
+  const size = await page.locator("html").getAttribute("data-text-size");
+  expect(size).not.toBe(before);
+  // Any zone but the one the picker started on.
+  await page.locator(".picker-bar .time-zone-picker-button").click();
+  await page.locator('.time-zone-picker-option[aria-selected="false"]').nth(3).click();
+  const zone = await page.locator("html").getAttribute("data-time-zone");
+  expect(await kept(page)).toEqual({ storage: { "lily-text-size": size, "lily-time-zone": zone }, cookies: {} });
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.locator("html")).toHaveAttribute("data-text-size", size!);
+  await expect(page.locator("html")).toHaveAttribute("data-time-zone", zone!);
+});
+
+test("the footer links to the privacy notice, which names every item the site keeps", async ({ page }) => {
+  await page.goto("/install/");
+  await page.locator(".site-footer").getByRole("link", { name: "Privacy notice" }).click();
+  await expect(page).toHaveURL(/\/privacy\/$/);
+  await expect(page.locator("h1")).toHaveText(/Privacy notice/);
+  for (const name of ["lily-theme", "lily-text-size", "lily-time-zone", "crm-theme", "mxi.crm.locale"])
+    await expect(page.locator("main"), name).toContainText(name);
 });
 
 test("the link picker opens the site's pages and the repository in a new tab", async ({ page }) => {

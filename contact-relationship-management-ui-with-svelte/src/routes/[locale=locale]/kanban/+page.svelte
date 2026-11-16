@@ -39,7 +39,7 @@
   // The address names the language.
   $effect(() => {
     const locale = page.params.locale;
-    if (locale && locale !== i18n.locale) i18n.set(locale);
+    if (locale && locale !== i18n.locale) i18n.show(locale);
   });
 
   const columns = $derived<KanbanColumn[]>(

@@ -237,13 +237,21 @@ export const i18n = {
   get locale(): Locale {
     return current;
   },
-  /** Switch the active locale and persist the choice. */
+  /** Switch the active locale and keep it: the person chose it (docs/privacy-notice.md). */
   set(next: string): void {
+    const locale = i18n.show(next);
+    try {
+      if (browser) localStorage.setItem(LOCALE_KEY, locale);
+    } catch {
+      // storage refused: the choice lasts for this page only
+    }
+  },
+  /** Switch the active locale without keeping it, as for a language named in the address. */
+  show(next: string): Locale {
     const locale = normaliseLocale(next) ?? DEFAULT_LOCALE;
     current = locale;
     void loadLocale(locale);
-    if (browser && typeof localStorage !== "undefined")
-      localStorage.setItem(LOCALE_KEY, locale);
+    return locale;
   },
   /** The list of supported locales (for the switcher). */
   get locales(): readonly Locale[] {
