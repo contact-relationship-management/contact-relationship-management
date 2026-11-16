@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE deals SET stage_pid = $2, stage_moved_at = $3, kanban_position = COALESCE($4, kanban_position), closed_at = CASE WHEN $5 THEN $3 ELSE closed_at END, won = CASE WHEN $5 THEN $6 ELSE won END, lost_reason = CASE WHEN $5 THEN $7 ELSE lost_reason END WHERE id = $1 RETURNING created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at",
+  "query": "UPDATE deals SET stage_pid = $2, stage_moved_at = now(), kanban_position = COALESCE($3, kanban_position), closed_at = CASE WHEN $4 THEN now() ELSE closed_at END, won = CASE WHEN $4 THEN $5 ELSE won END, lost_reason = CASE WHEN $4 THEN $6 ELSE lost_reason END WHERE id = $1 RETURNING created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at",
   "describe": {
     "columns": [
       {
@@ -228,7 +228,6 @@
       "Left": [
         "Int4",
         "Uuid",
-        "Timestamptz",
         "Int4",
         "Bool",
         "Bool",
@@ -258,5 +257,5 @@
       false
     ]
   },
-  "hash": "21ce998614761261fcd4e80e2b08a870557ff5c24231f13ae67b6d460cf0c0c7"
+  "hash": "86a0cb6af788cd99c1dcb6a67c708a3ef0805dfc5b8131acb166b190595abd03"
 }

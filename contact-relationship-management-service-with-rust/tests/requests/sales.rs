@@ -293,3 +293,47 @@ async fn a_deal_with_no_move_or_activity_for_n_days_is_stalled() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_deal_closes_on_the_database_clock() {
+    // Attribution compares a close with sends, provider events and leads, which the database
+    // stamps; a close on the service's estimate of that clock could fall before a click made just
+    // before it (CRM-T248). The trigger sets `updated_at` to the transaction's `now()`, so a close
+    // stamped by the database is exactly equal to it.
+    request::<App, _, _>(|request, ctx| async move {
+        let (pipeline, stages) = seed_pipeline!(&request).await;
+        let deal: Value = request
+            .post("/api/deals")
+            .json(
+                &json!({ "name": "Closes", "pipeline_pid": pipeline, "amount_minor": 100,
+                           "currency": "GBP" }),
+            )
+            .await
+            .json();
+        let pid = deal["pid"].as_str().unwrap();
+        request
+            .post(&format!("/api/deals/{pid}/stage"))
+            .json(&json!({ "stage_pid": stages[2] }))
+            .await
+            .assert_status_ok();
+        let row = sqlx::query(
+            "SELECT closed_at = updated_at AS closed, stage_moved_at = updated_at AS moved \
+               FROM deals WHERE pid = $1::uuid",
+        )
+        .bind(pid)
+        .fetch_one(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
+        assert!(
+            row.try_get::<bool, _>("closed").unwrap(),
+            "closed_at is not the database's"
+        );
+        assert!(
+            row.try_get::<bool, _>("moved").unwrap(),
+            "stage_moved_at is not the database's"
+        );
+    })
+    .await;
+}

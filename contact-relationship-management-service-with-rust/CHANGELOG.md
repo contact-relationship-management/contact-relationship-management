@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a close on the database's clock (CRM-T248)
+
+- A stage move's `stage_moved_at` and a close's `closed_at` are the database's `now()`, the clock
+  that stamps sends, provider events and leads, where they were the service's estimate of it. A
+  click a few milliseconds before a close could be counted after it, and so not credited.
+
 ### Changed — axa 0.15.0 (CRM-T247)
 
 - axa 0.15.0, `axa-test` 0.6.0 and `axa-postgres-job-queue` 0.4.0. The job queue's tables gain a

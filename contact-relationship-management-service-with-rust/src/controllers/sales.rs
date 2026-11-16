@@ -835,23 +835,24 @@ async fn deal_stage(
     }
     let from_stage = deal.stage_pid;
     let name = deal.name.clone();
-    // A stage move is a touch (CRM-D20); a move into the stage it is in still counts.
-    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    // A stage move is a touch (CRM-D20); a move into the stage it is in still counts. The database
+    // stamps it, as it stamps the sends, provider events and leads that attribution compares a
+    // close with (CRM-T248): `clock::now()` is only an estimate of that clock, which can put a
+    // click made just before the close after it.
     let terminal = stage.is_won || stage.is_lost;
     let row = sqlx::query_as!(
         deals::Model,
-        "UPDATE deals SET stage_pid = $2, stage_moved_at = $3, \
-            kanban_position = COALESCE($4, kanban_position), \
-            closed_at = CASE WHEN $5 THEN $3 ELSE closed_at END, \
-            won = CASE WHEN $5 THEN $6 ELSE won END, \
-            lost_reason = CASE WHEN $5 THEN $7 ELSE lost_reason END \
+        "UPDATE deals SET stage_pid = $2, stage_moved_at = now(), \
+            kanban_position = COALESCE($3, kanban_position), \
+            closed_at = CASE WHEN $4 THEN now() ELSE closed_at END, \
+            won = CASE WHEN $4 THEN $5 ELSE won END, \
+            lost_reason = CASE WHEN $4 THEN $6 ELSE lost_reason END \
             WHERE id = $1 RETURNING created_at, updated_at, id, pid, account_pid, primary_contact_pid, owner_ref, \
             pipeline_pid, stage_pid, name, amount_minor, currency, expected_close_on, kanban_position, \
             source_campaign_pid, closed_at AS \"closed_at: DateTimeWithTimeZone\", won, lost_reason, \
             deleted_at AS \"deleted_at: DateTimeWithTimeZone\", stage_moved_at",
         deal.id,
         stage.pid,
-        now,
         payload.kanban_position,
         terminal,
         stage.is_won,

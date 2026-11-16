@@ -79,7 +79,9 @@ rows: `name`, `position`, `probability_percent` (0–100),
 `won` (set only by entering a terminal stage), `lost_reason`,
 `stage_moved_at` (the last stage move or reopen; creation until the
 first). `stalled` and `last_touched_at` are derived on read
-(CRM-D20). Stage moves are audited; a deal in a terminal stage is immutable
+(CRM-D20). A stage move's `stage_moved_at` and a close's `closed_at` are the
+database's `now()`, the clock its sends, provider events and leads are stamped on, so attribution
+never puts a touch made just before a close after it (CRM-T248). Stage moves are audited; a deal in a terminal stage is immutable
 except reopening to its prior stage with a reason.
 
 **ForecastSnapshot** — optional persisted roll-up per period/owner
