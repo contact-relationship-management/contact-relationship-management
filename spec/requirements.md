@@ -1558,11 +1558,13 @@ recipient would get before anything is sent, and be certain every message carrie
 
 ## CRM-R96 — The UI uses the browser's light/dark setting
 
-*Asked for by the product owner, 2026-11-15.* *As someone who has set my browser or system to light or dark, I see the CRM in that setting without choosing it again.*
+*Asked for by the product owner, 2026-11-15; the choice of following it added 2026-11-16.* *As someone who has set my browser or system to light or dark, I see the CRM in that setting without choosing it again, and I can pick another theme or go back to following my device.*
 
-- The UI uses the browser's light/dark setting (`prefers-color-scheme`): the `dark` theme when it asks for dark, `light` otherwise, from the first paint.
-- It follows a change of that setting while a page is open, and on every later visit.
-- A theme the person picks in the theme picker overrides the setting and is remembered in this browser (`localStorage`, key `crm-theme`), on later visits too, whatever the setting says. Only a pick is remembered, never a theme the UI chose from the setting. The earlier key, `lily-theme`, held either and is removed unread.
-- Storage that cannot be used (a private window, blocked storage) counts as no pick: the UI follows the setting, and a pick lasts for that page.
-- Tests: `tests/unit/theme.test.ts` (4) and `tests/e2e/theme.spec.ts` (5): dark and light on a first visit, a change while open and after a reload, a pick kept against the setting, and the old key dropped.
-- Not built: a way to go back to following the setting once a theme is picked, other than clearing the site's storage (picking `light` or `dark` is remembered as a pick like any other, and then stays); a high-contrast setting (`prefers-contrast`); the setting on the GitHub Pages site, which is its own project.
+- The theme picker's first option is **Follow this device**, then a line, then every Lily theme. It is chosen until the person chooses something else.
+- While it is chosen, the UI uses the browser's light/dark setting (`prefers-color-scheme`): the `dark` theme when it asks for dark, `light` otherwise, from the first paint, and follows a change of that setting while a page is open.
+- The choice is kept in a first-party cookie, `crm-theme` (`Path=/`, `SameSite=Lax`, `Secure` on https, 400 days), holding `system` or a theme's slug. Nothing is written until the person makes a choice, so a visitor who never chooses gets no cookie. Choosing **Follow this device** again keeps `system`, so the device's setting is followed on later visits too.
+- The server reads the cookie (`src/hooks.server.ts`) and sends the page with that theme's `data-theme` and stylesheet, so a reload does not show another theme first. For `system` it sends both light and dark, each for its own `prefers-color-scheme`. A value that is not one of the choices counts as `system`, so the cookie never reaches the page as text. The server's links are removed once the picker's stylesheet has loaded.
+- The theme was kept in `localStorage` before (`lily-theme`, then `crm-theme`); both keys are removed unread. A cookie that cannot be written leaves the choice for that page only.
+- Built on Lily's ThemePicker 0.4.0 (`systemLabel`, `cookieName`). Lily's picker bar 0.6.0 asks for ThemePicker `^0.3.0`, so a pnpm override in `contact-relationship-management-ui-with-svelte/pnpm-workspace.yaml` supplies 0.4.0.
+- Tests: `tests/unit/theme.test.ts` (9): the page the server sends for no cookie, a theme, `system` and a value that is not a choice; the choices; the old keys; the server's links. `tests/e2e/theme.spec.ts` (8): dark and light on a first visit with no cookie, the first option, a change while open, a pick kept in the cookie and sent by the server after a reload, going back to following the device, one stylesheet once started, and the old keys dropped.
+- Not built: a high-contrast setting (`prefers-contrast`); the setting on the GitHub Pages site, which is its own project. A theme picked before this change is lost once, as it was kept in `localStorage`.

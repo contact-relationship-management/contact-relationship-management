@@ -398,6 +398,7 @@ export default {
   "brand.tagline": "Pob perthynas â chwsmeriaid mewn un lle",
   "nav.toggle": "Toglo'r llywio",
   "nav.theme": "Thema",
+  "nav.theme_system": "Dilyn y ddyfais hon",
   "splash.hero.title": "Adnabod pob cwsmer, cau pob dolen",
   "splash.hero.subtitle":
     "Rheolwch cysylltiadau, bargeinion, ymgyrchoedd a thocynnau cymorth mewn un gweithle, gyda chaniatâd yn cael ei barchu a phob gweithred ar gofnod.",

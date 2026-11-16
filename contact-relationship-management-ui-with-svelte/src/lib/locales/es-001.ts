@@ -369,6 +369,7 @@ export default {
   "brand.tagline": "Cada relación con el cliente, en un solo lugar",
   "nav.toggle": "Alternar navegación",
   "nav.theme": "Tema",
+  "nav.theme_system": "Seguir este dispositivo",
   "splash.hero.title": "Conoce a cada cliente, cierra cada ciclo",
   "splash.hero.subtitle":
     "Gestiona contactos, oportunidades, campañas y tickets de soporte en un solo espacio, con el consentimiento respetado y cada acción registrada.",

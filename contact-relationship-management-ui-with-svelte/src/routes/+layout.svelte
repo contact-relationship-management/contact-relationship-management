@@ -7,13 +7,7 @@
   import type { LayoutData } from "./$types";
   import { IDLE_TIMEOUT_MS } from "#lib/config.js";
   import { watchIdle } from "#lib/idle.js";
-  import {
-    forgetOldKey,
-    readChosen,
-    rememberChosen,
-    startingTheme,
-    systemTheme,
-  } from "#lib/theme.js";
+  import { THEMES, THEME_COOKIE, dropServerLinks, forgetOldKeys } from "#lib/theme.js";
   import { i18n, isRtl, t, LOCALES, LOCALE_LABELS } from "#lib/i18n.svelte.js";
   import { splitLocale } from "../params";
   import { resource } from "#lib/resource.svelte.js";
@@ -93,31 +87,15 @@
     });
   });
 
-  // The theme (CRM-R96): the browser's light/dark setting unless the person has picked one.
-  // Lily's ThemePicker resolves the browser's setting itself on the first paint; this effect
-  // then takes over, following a change of the setting while the page is open, and only a
-  // theme the person picks is remembered (`onThemeChange`).
-  let theme = $state("");
-  let themeReady = false;
-  $effect(() => {
-    if (!browser) return;
-    forgetOldKey(localStorage);
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    theme = startingTheme(readChosen(localStorage), media.matches);
-    themeReady = true;
-    const follow = (event: MediaQueryListEvent) => {
-      if (!readChosen(localStorage)) theme = systemTheme(event.matches);
-    };
-    media.addEventListener("change", follow);
-    return () => media.removeEventListener("change", follow);
-  });
-  // The picker reports every theme it applies: its own first one (before `themeReady`), one this
-  // layout set (equal to `theme`), or one the person picked, which is the only one remembered.
-  function onThemeChange(slug: string) {
-    if (!themeReady || slug === theme) return;
-    rememberChosen(localStorage, slug);
-    theme = slug;
+  // The theme (CRM-R96): Lily's ThemePicker offers "Follow this device" first, follows the browser's
+  // light/dark setting while that is chosen, and keeps the choice in the `crm-theme` cookie, which
+  // the server reads to send the page in it (`hooks.server.ts`). The earlier storage keys go.
+  function onThemeChange() {
+    dropServerLinks(document);
   }
+  $effect(() => {
+    if (browser) forgetOldKeys(localStorage);
+  });
 
   // Hamburger toggle state for the primary navigation.
   let menuOpen = $state(false);
@@ -273,14 +251,13 @@
           navigate: (href: string) => void goto(href),
         }}
         themesUrl="/assets/themes/"
+        themes={[...THEMES]}
         themeProps={{
-          // No `storageKey`: Lily would save every theme it applies, the browser's included,
-          // so the browser's setting would stop being followed after a first visit. The layout
-          // remembers a pick itself (CRM-R96). Without a default no theme stylesheet loads, leaving
-          // the pickers (which Lily's theme CSS styles) unstyled: the browser's setting, else light.
-          detectFromSystem: true,
-          defaultValue: "light",
-          value: theme,
+          // The choice is kept in the cookie alone: `storageKey: ""` turns off Lily's `localStorage`
+          // copy, which the server cannot read.
+          systemLabel: t("nav.theme_system"),
+          cookieName: THEME_COOKIE,
+          storageKey: "",
           onChange: onThemeChange,
         }}
         locales={[...LOCALES]}
@@ -467,8 +444,8 @@
     filter: brightness(1.1);
   }
 
-  /* Lily PickerBar. The Lily theme stylesheet (loaded by ThemePicker, see
-   `defaultValue` below) styles the picker buttons and places each popup
+  /* Lily PickerBar. The Lily theme stylesheet (sent by the server, then
+   loaded by ThemePicker) styles the picker buttons and places each popup
    under its own button with CSS anchor positioning, flipping it at the
    viewport edges; this only lays the buttons out in the header. */
   .header-end :global(.picker-bar) {

@@ -387,6 +387,7 @@ export default {
   "brand.tagline": "Jede Kundenbeziehung an einem Ort",
   "nav.toggle": "Navigation umschalten",
   "nav.theme": "Thema",
+  "nav.theme_system": "Diesem Gerät folgen",
   "splash.hero.title": "Jeden Kunden kennen, jeden Vorgang abschließen",
   "splash.hero.subtitle":
     "Verwalten Sie Kontakte, Deals, Kampagnen und Support-Tickets in einem Arbeitsbereich, mit respektierter Einwilligung und jeder Aktion im Protokoll.",

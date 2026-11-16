@@ -1,64 +1,147 @@
-// The theme follows the browser's light/dark setting unless the person picked one (CRM-R96).
+// The theme (CRM-R96): "Follow this device" unless the person picks a theme, kept in the
+// `crm-theme` cookie, which the server reads to send the page in that theme.
+import { readFileSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
 import { describe, expect, it } from "vitest";
+import { handle } from "../../src/hooks.server";
 import {
-  OLD_THEME_KEY,
-  THEME_KEY,
-  forgetOldKey,
-  readChosen,
-  rememberChosen,
-  startingTheme,
-  systemTheme,
+  CHOICES,
+  OLD_THEME_KEYS,
+  SYSTEM_THEME,
+  THEMES,
+  THEME_COOKIE,
+  dropServerLinks,
+  forgetOldKeys,
+  themeAttribute,
+  themeLinks,
 } from "../../src/lib/theme";
 
-function memory(initial: Record<string, string> = {}) {
-  const items = new Map(Object.entries(initial));
-  return {
-    items,
-    getItem: (key: string) => items.get(key) ?? null,
-    setItem: (key: string, value: string) => void items.set(key, value),
-    removeItem: (key: string) => void items.delete(key),
+const shell = readFileSync(
+  resolvePath(__dirname, "../../src/app.html"),
+  "utf8",
+);
+
+/** The page the server sends for a request carrying `cookie`. */
+async function pageFor(cookie: string | null): Promise<string> {
+  const headers = new Headers(cookie === null ? {} : { cookie });
+  const event = {
+    request: new Request("http://localhost/signin", { headers }),
+    cookies: { get: () => undefined },
+    locals: {},
   };
+  let html = "";
+  type Input = Parameters<typeof handle>[0];
+  await handle({
+    event: event as unknown as Input["event"],
+    resolve: async (
+      _event: unknown,
+      opts?: {
+        transformPageChunk?: (input: { html: string; done: boolean }) => string;
+      },
+    ) => {
+      html = opts?.transformPageChunk?.({ html: shell, done: true }) ?? shell;
+      return new Response(html);
+    },
+  } as unknown as Input);
+  return html;
 }
 
-const broken = {
-  getItem: () => {
-    throw new Error("blocked");
-  },
-  setItem: () => {
-    throw new Error("blocked");
-  },
-  removeItem: () => {
-    throw new Error("blocked");
-  },
-};
-
-describe("the theme", () => {
-  it("is the browser's setting when nothing was picked", () => {
-    expect(systemTheme(true)).toBe("dark");
-    expect(systemTheme(false)).toBe("light");
-    expect(startingTheme(null, true)).toBe("dark");
-    expect(startingTheme(null, false)).toBe("light");
+describe("the theme the server sends", () => {
+  it("follows the device when nothing was chosen: both themes, by the browser's setting", async () => {
+    const html = await pageFor(null);
+    expect(html).toContain('<html lang="en" data-theme="">');
+    expect(html).toContain(
+      'href="/assets/themes/light.css" media="(prefers-color-scheme: light)"',
+    );
+    expect(html).toContain(
+      'href="/assets/themes/dark.css" media="(prefers-color-scheme: dark)"',
+    );
+    expect(html).not.toContain("%crm.");
   });
 
-  it("is the person's pick when there is one, whatever the browser says", () => {
-    expect(startingTheme("cupcake", true)).toBe("cupcake");
-    expect(startingTheme("light", true)).toBe("light");
+  it("is the chosen theme when the cookie holds one", async () => {
+    const html = await pageFor(`other=1; ${THEME_COOKIE}=cupcake`);
+    expect(html).toContain('data-theme="cupcake"');
+    expect(html).toContain(
+      'href="/assets/themes/cupcake.css" data-crm-server-theme',
+    );
+    expect(html).not.toContain("light.css");
   });
 
-  it("remembers only under its own key, and drops the old one", () => {
-    const storage = memory({ [OLD_THEME_KEY]: "dark" });
-    expect(readChosen(storage)).toBeNull();
-    rememberChosen(storage, "cupcake");
-    expect(readChosen(storage)).toBe("cupcake");
-    expect(storage.items.get(THEME_KEY)).toBe("cupcake");
-    forgetOldKey(storage);
-    expect(storage.items.has(OLD_THEME_KEY)).toBe(false);
+  it("follows the device for a cookie that says so", async () => {
+    expect(await pageFor(`${THEME_COOKIE}=${SYSTEM_THEME}`)).toContain(
+      'data-theme=""',
+    );
   });
 
-  it("treats storage that cannot be used as no pick", () => {
-    expect(readChosen(broken)).toBeNull();
-    expect(readChosen(undefined)).toBeNull();
-    expect(() => rememberChosen(broken, "dark")).not.toThrow();
-    expect(() => forgetOldKey(broken)).not.toThrow();
+  it("ignores a cookie that is not one of the choices, so it never reaches the page", async () => {
+    const html = await pageFor(
+      `${THEME_COOKIE}=${encodeURIComponent('"><script>x</script>')}`,
+    );
+    expect(html).not.toContain("<script>x");
+    expect(html).toContain('data-theme=""');
+    expect(await pageFor(`${THEME_COOKIE}=../secrets`)).toContain(
+      'data-theme=""',
+    );
+  });
+});
+
+describe("the theme choices", () => {
+  it("are 'Follow this device' first, then every theme", () => {
+    expect(CHOICES[0]).toBe(SYSTEM_THEME);
+    expect(CHOICES.slice(1)).toEqual(THEMES);
+    expect(THEMES).toContain("light");
+    expect(THEMES).toContain("dark");
+  });
+
+  it("put no data-theme on the page for 'system', and the slug otherwise", () => {
+    expect(themeAttribute(SYSTEM_THEME)).toBe("");
+    expect(themeAttribute("dark")).toBe("dark");
+    expect(themeLinks("dark")).toBe(
+      '<link rel="stylesheet" href="/assets/themes/dark.css" data-crm-server-theme>',
+    );
+  });
+});
+
+describe("the earlier storage keys", () => {
+  it("are removed, and storage that cannot be used is left alone", () => {
+    const items = new Map(OLD_THEME_KEYS.map((key) => [key, "dark"]));
+    forgetOldKeys({ removeItem: (key: string) => void items.delete(key) });
+    expect(items.size).toBe(0);
+    expect(() =>
+      forgetOldKeys({
+        removeItem: () => {
+          throw new Error("blocked");
+        },
+      }),
+    ).not.toThrow();
+    expect(() => forgetOldKeys(undefined)).not.toThrow();
+  });
+});
+
+describe("the server's links", () => {
+  it("go once the picker's own stylesheet has loaded, not before", () => {
+    document.head.innerHTML =
+      themeLinks(SYSTEM_THEME) +
+      '<link rel="stylesheet" data-lily-theme-picker="theme" href="/assets/themes/dark.css">';
+    dropServerLinks(document);
+    expect(
+      document.head.querySelectorAll("link[data-crm-server-theme]"),
+    ).toHaveLength(2);
+    document.head
+      .querySelector('link[data-lily-theme-picker="theme"]')!
+      .dispatchEvent(new Event("load"));
+    expect(
+      document.head.querySelectorAll("link[data-crm-server-theme]"),
+    ).toHaveLength(0);
+    expect(document.head.querySelectorAll("link")).toHaveLength(1);
+  });
+
+  it("stay while the picker has no stylesheet", () => {
+    document.head.innerHTML = themeLinks("dark");
+    dropServerLinks(document);
+    expect(
+      document.head.querySelectorAll("link[data-crm-server-theme]"),
+    ).toHaveLength(1);
   });
 });

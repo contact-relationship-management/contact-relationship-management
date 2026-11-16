@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — Follow this device, kept in a cookie (CRM-T249, 2026-11-16)
+
+- The UI's theme picker offers "Follow this device" first and keeps the choice in a cookie, which
+  the server reads to send the page in that theme. Lily theme picker 0.4.0, picker bar 0.6.0 and
+  headless 0.9.0, the last two in the site too.
+
 ### Changed — axa 0.15.0 (CRM-T247, 2026-11-16)
 
 - The service uses axa 0.15.0 and `axa-test` 0.6.0. No change in behaviour.

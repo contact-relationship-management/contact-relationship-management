@@ -353,6 +353,7 @@ export default {
   "brand.tagline": "Every customer relationship, in one place",
   "nav.toggle": "Toggle navigation",
   "nav.theme": "Theme",
+  "nav.theme_system": "Follow this device",
   "splash.hero.title": "Know every customer, close every loop",
   "splash.hero.subtitle":
     "Manage contacts, deals, campaigns and support tickets in one workspace, with consent respected and every action on the record.",

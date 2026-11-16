@@ -374,6 +374,7 @@ export default {
   "brand.tagline": "Chaque relation client, au même endroit",
   "nav.toggle": "Afficher ou masquer la navigation",
   "nav.theme": "Thème",
+  "nav.theme_system": "Suivre cet appareil",
   "splash.hero.title": "Connaître chaque client, boucler chaque suivi",
   "splash.hero.subtitle":
     "Gérez contacts, affaires, campagnes et tickets d'assistance dans un seul espace, avec le consentement respecté et chaque action consignée.",

@@ -336,6 +336,7 @@ export default {
   "brand.tagline": "每一段客户关系，尽在一处",
   "nav.toggle": "切换导航",
   "nav.theme": "主题",
+  "nav.theme_system": "跟随此设备",
   "splash.hero.title": "了解每位客户，跟进每一件事",
   "splash.hero.subtitle":
     "在同一个工作区管理联系人、商机、营销活动和支持工单，尊重客户同意，并记录每一项操作。",
