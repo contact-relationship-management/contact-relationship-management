@@ -1,9 +1,6 @@
 // CRM-R96: the UI uses the browser's light/dark setting, unless the person picks a theme.
 import { expect, test } from "@playwright/test";
 
-const theme = (page: import("@playwright/test").Page) =>
-  page.locator("html").getAttribute("data-theme");
-
 test.describe("the theme (CRM-R96)", () => {
   test("follows the browser's dark setting on a first visit", async ({
     page,
@@ -55,7 +52,7 @@ test.describe("the theme (CRM-R96)", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "cupcake");
     await page.emulateMedia({ colorScheme: "light" });
     await page.reload();
-    expect(await theme(page)).toBe("cupcake");
+    // The theme is set as the page starts in the browser, not by the server, so this waits for it.
     await expect(page.locator("html")).toHaveAttribute("data-theme", "cupcake");
   });
 

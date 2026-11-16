@@ -2298,4 +2298,5 @@ Why: the owner finds GitHub-hosted CI unreliable and costly. CRM is already furt
       - **Tests:** `tests/unit/theme.test.ts` (4), `tests/e2e/theme.spec.ts` (5). The "next visit" case fails when every applied theme is saved, as before.
       - **Ran:** `scripts/ci-check.sh front-end` and `e2e`.
       - **Not done / not verified:** a person who picked a theme before this change loses that pick once, as the old key cannot tell a pick from a default; there is no "follow my browser" choice in the picker; only Chromium; the site is not changed.
+      - **Fixed 2026-11-16:** the pick test read `data-theme` once straight after a reload, before the page in the browser had set it, and failed once in CI (`414b0d0`). It now waits for the theme, as its next line already did; 50 of 50 runs passed. The server does not set the theme, so a reload shows the default theme for a moment before the person's pick.
 - [ ] CRM-T192 **Add a second remote** (Codeberg or GitLab) so a hosted outage on one host is not an outage of the project. (S, owner)
