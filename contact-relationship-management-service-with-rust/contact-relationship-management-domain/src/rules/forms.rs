@@ -80,7 +80,10 @@ mod tests {
         let at_limit = format!("a@{}.co", "b".repeat(MAX_EMAIL_LEN - 5));
         assert_eq!(at_limit.len(), MAX_EMAIL_LEN);
         assert!(valid_email(&at_limit));
-        assert!(!valid_email(&format!("a@{}.co", "b".repeat(MAX_EMAIL_LEN - 4))));
+        assert!(!valid_email(&format!(
+            "a@{}.co",
+            "b".repeat(MAX_EMAIL_LEN - 4)
+        )));
     }
 
     #[test]

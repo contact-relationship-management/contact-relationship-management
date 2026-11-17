@@ -1,5 +1,7 @@
 # Mutation testing for the matcher (CRM-T259). A pure library with unit and integration tests and no
 # database, so every file is examined and each mutant builds in seconds.
+# Built with the `mutants` profile in Cargo.toml: no debug information or incremental state.
+profile = "mutants"
 # Equivalent mutants: no test can tell them from the code.
 # - name_similarities: the swap needs 2 x swapped > total + 1e-9, so > and >= differ only at a value
 #   no pair of names produces exactly.
