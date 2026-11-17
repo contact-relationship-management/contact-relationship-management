@@ -137,6 +137,12 @@ pub fn app_routes() -> AppRoutes {
 /// The `contact-relationship-management` application.
 pub struct App;
 
+/// Choose `ring` as rustls's process-wide crypto provider. reqwest is built with `rustls-no-provider`, so nothing else
+/// installs one. An already-installed provider is left alone, so this is safe to call more than once.
+pub fn install_tls_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
 /// Everything a process needs before it can send campaign mail: the field-encryption check,
 /// the mail sender chosen by `CRM_MAIL_MODE` and the signed unsubscribe links. Called by the
 /// server (`after_routes`) and by the worker (`connect_workers`); calling it twice in one
@@ -243,6 +249,7 @@ impl App {
         config: ServiceConfig,
         run_jobs: bool,
     ) -> Result<AppContext> {
+        install_tls_provider();
         let db = axa::db::connect(&config.database).await?;
         let mut ctx = AppContext::new(environment, db, config);
         // Tests never share a Redis, whatever the environment says.
