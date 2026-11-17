@@ -279,9 +279,9 @@ dependencies = [
 
 [[package]]
 name = "axa"
-version = "0.17.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dadd4ce3e0bb89770b174e251348eb0060cb47056cf24a763b5ac0d50d54f171"
+checksum = "5a9ca3054501e57d018b879e5c32b450668e842143fea719af6585eb31491ab0"
 dependencies = [
  "async-trait",
  "axa-cursor-pagination",
@@ -332,11 +332,13 @@ checksum = "b9bdc35432012724d2a1a528ae83fc1117640f64ef910bbb46df8ad0261ebb15"
 
 [[package]]
 name = "axa-postgres-job-queue"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "708ce2f4f2bb8a69879b8c23258c86862bbf6cfc6792e1031c8c2709b6323a92"
+checksum = "d19135ee340af653821cbc62708306bb9eb032f51fdb631687089f0c4fbf3331"
 dependencies = [
  "croner",
+ "jiff 1.0.0",
+ "jiff-sqlx",
  "serde_json",
  "sqlx",
  "tokio",
@@ -392,9 +394,9 @@ dependencies = [
 
 [[package]]
 name = "axa-test"
-version = "0.8.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db8366db8cb6ca7a8f13fd8515aaa8f849b5980f838bd51e2a7c6d02d5027fc2"
+checksum = "f5a8c9d0a4a5c351886d9f8dbe28e4525469233ce275f5683760df869f03cb76"
 dependencies = [
  "axa",
  "axum-test",
@@ -878,7 +880,7 @@ dependencies = [
  "ed25519-dalek 3.0.0",
  "entity-ref",
  "hmac",
- "jiff",
+ "jiff 0.2.43",
  "jsonschema",
  "lettre",
  "prometheus",
@@ -909,7 +911,7 @@ dependencies = [
  "csv",
  "entity-ref",
  "hmac",
- "jiff",
+ "jiff 0.2.43",
  "schemars 1.2.3",
  "serde",
  "serde_json",
@@ -1051,7 +1053,6 @@ version = "4.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0097e28936e948e8f759478e1b5ec2e5ca70ab62cf38aaa9bd3aa660023e3fca"
 dependencies = [
- "chrono",
  "derive_builder",
  "strum 0.27.2",
 ]
@@ -2252,8 +2253,8 @@ version = "0.2.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26699905cc795a23e3949585cc7ba3ee8ade090872a27e4316304a777297894a"
 dependencies = [
- "jiff-core",
- "jiff-static",
+ "jiff-core 0.1.5",
+ "jiff-static 0.2.43",
  "jiff-tzdb",
  "jiff-tzdb-platform",
  "log",
@@ -2261,6 +2262,20 @@ dependencies = [
  "portable-atomic-util",
  "serde_core",
  "windows-link",
+]
+
+[[package]]
+name = "jiff"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cc767b5763de45e810109520123bb2829a653f3a7ed9be40b2bc4f81158f595"
+dependencies = [
+ "jiff-core 1.0.0",
+ "jiff-static 1.0.0",
+ "log",
+ "portable-atomic",
+ "portable-atomic-util",
+ "serde_core",
 ]
 
 [[package]]
@@ -2273,15 +2288,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "jiff-core"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "894f7ac42105f584100691b3bf6e6b92dd12fcfa225f6c397f95c8a94b47b68f"
+dependencies = [
+ "log",
+]
+
+[[package]]
+name = "jiff-sqlx"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4996ad290ff7f7081becdda47e28556fbebb81618c599eac5d09182b5a60e38"
+dependencies = [
+ "jiff 1.0.0",
+ "sqlx",
+]
+
+[[package]]
 name = "jiff-static"
 version = "0.2.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b4ff49b2887190c760b86207b55cdcaabbdecaf7a0660d68aa2ed6f652abf0a"
 dependencies = [
- "jiff-core",
+ "jiff-core 0.1.5",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "jiff-static"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "955491488dc99b572ea6d67b172dcd98787d00744b1fb44a5689b4e6413695a6"
+dependencies = [
+ "jiff-core 1.0.0",
+ "proc-macro2",
+ "quote",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3653,7 +3699,7 @@ dependencies = [
  "hex",
  "indexmap 1.9.3",
  "indexmap 2.14.2",
- "jiff",
+ "jiff 0.2.43",
  "schemars 0.9.0",
  "schemars 1.2.3",
  "serde_core",
@@ -3893,7 +3939,6 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "cfg-if",
- "chrono",
  "crc",
  "crossbeam-queue",
  "either",
@@ -3971,7 +4016,6 @@ dependencies = [
  "bitflags",
  "byteorder",
  "bytes",
- "chrono",
  "crc",
  "digest 0.11.3",
  "dotenvy",
@@ -4000,7 +4044,6 @@ dependencies = [
  "base64 0.22.1",
  "bitflags",
  "byteorder",
- "chrono",
  "crc",
  "dotenvy",
  "etcetera",
@@ -4034,7 +4077,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "488e99c397a62007e4229aec669a179816339afc6d2620ca6fa420dbee2e982c"
 dependencies = [
  "atoi",
- "chrono",
  "flume",
  "form_urlencoded",
  "futures-channel",

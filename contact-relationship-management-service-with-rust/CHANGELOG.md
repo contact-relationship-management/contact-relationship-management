@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.19.0 (CRM-T261)
+
+- axa 0.19.0, `axa-test` 0.10.0 and `axa-postgres-job-queue` 0.6.0, with `jiff` 1.0.0 and
+  `jiff-sqlx` 1.0.0 for the job queue. axa no longer turns on sqlx's `chrono` feature and its queue
+  takes `jiff` times, so the service's release build has no `chrono`; it is in the tests only,
+  through `axum-test`. `deny.toml`'s reason for ignoring RUSTSEC-2026-0543 says so. No code change
+  and no change in behaviour: the service calls none of the queue's time APIs and does not use
+  `axa-http-client`, whose certificates now come from the system's trust store (0.18).
+
 ### Changed — the domain crate (CRM-T260)
 
 - `src/rules/`, `src/time.rs` and `src/time/` move to `contact-relationship-management-domain/`, a

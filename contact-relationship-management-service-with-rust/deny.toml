@@ -6,9 +6,10 @@ version = 2
 # Each entry is reviewed and says why; drop it when its reason no longer holds.
 ignore = [
   # chrono is unmaintained (informational; no vulnerability, no fixed version). The service's own
-  # code moved to jiff in CRM-T258. chrono is still built for axa: its job queue's cron parser
-  # (`croner`) and axa's sqlx `chrono` feature. Drop this when axa no longer pulls it in.
-  { id = "RUSTSEC-2026-0543", reason = "unmaintained, not vulnerable; only through axa (croner, sqlx), CRM-T258" },
+  # code moved to jiff in CRM-T258, and since axa 0.19 (CRM-T261) nothing the service ships builds
+  # it: it comes only into the tests, through axa-test's axum-test (`expect-json`). Drop this when
+  # axum-test no longer pulls it in.
+  { id = "RUSTSEC-2026-0543", reason = "unmaintained, not vulnerable; test builds only, through axum-test (expect-json), CRM-T261" },
 ]
 
 [licenses]

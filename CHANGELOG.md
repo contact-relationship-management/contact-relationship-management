@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa 0.19.0 (CRM-T261, 2026-11-17)
+
+- The service uses axa 0.19.0 and `axa-test` 0.10.0. axa's job queue now uses jiff, so nothing the
+  service ships builds `chrono`. No change in behaviour.
+
 ### Changed — the domain rules are their own crate (CRM-T260, 2026-11-17)
 
 - `contact-relationship-management-domain`, in the service's workspace, holds the business rules and
