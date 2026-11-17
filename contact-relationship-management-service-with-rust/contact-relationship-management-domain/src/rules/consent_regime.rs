@@ -984,6 +984,7 @@ pub fn example_profiles() -> Vec<ExampleProfile> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jiff::SignedDuration;
 
     fn day(y: i16, m: i8, d: i8) -> Date {
         Date::from_ymd(y, m, d).unwrap()
@@ -1172,6 +1173,186 @@ mod tests {
         assert!(xa_rules.sender_identification_required && xa_rules.postal_address_required);
         assert!(xa_rules.advertising_label.is_none());
         assert_eq!(message_rules(None, &rows, as_of), MessageRules::default());
+    }
+
+    /// A row read from its source, recorded after the example profiles.
+    fn read_row(code: &str, key: &str, raw: &serde_json::Value, seq: i64) -> Row {
+        Row {
+            code: code.into(),
+            key: key.into(),
+            value: validate(key, raw).unwrap(),
+            effective_from: day(2026, 2, 1),
+            effective_to: None,
+            source: "read".into(),
+            status: Status::Read,
+            seq,
+        }
+    }
+
+    // CRM-T259: the stricter value wins wherever it sits in the chain, a tie keeps the more specific
+    // row, and a number of days is stricter when smaller. Before, every case had the strictest row
+    // first, so a resolver that took the first row passed.
+    #[test]
+    fn the_strictest_value_wins_from_any_layer_and_a_tie_keeps_the_more_specific() {
+        let (links, mut rows) = profiles();
+        let steps = chain("XB-01", &links).unwrap();
+        let as_of = day(2026, 10, 31);
+        let email = "consent.regime.email";
+        // XB, the wider layer, is now opt-in, stricter than XB-01's implied.
+        rows.push(read_row("XB", email, &serde_json::json!("opt_in"), 60));
+        let regime = resolve(email, Some(&steps), &rows, as_of).unwrap();
+        assert_eq!(regime.value(), Some(&Value::Token("opt_in".into())));
+        assert_eq!(regime.origin().unwrap().code, "XB");
+        // A tie: both say implied, and the more specific row is the one named.
+        rows.push(read_row("XB", email, &serde_json::json!("implied"), 61));
+        let tie = resolve(email, Some(&steps), &rows, as_of).unwrap();
+        assert_eq!(tie.value(), Some(&Value::Token("implied".into())));
+        assert_eq!(tie.origin().unwrap().code, "XB-01");
+        // A wider layer that is looser does not loosen it.
+        rows.push(read_row("XB", email, &serde_json::json!("opt_out"), 62));
+        let looser = resolve(email, Some(&steps), &rows, as_of).unwrap();
+        assert_eq!(looser.value(), Some(&Value::Token("implied".into())));
+        assert_eq!(looser.origin().unwrap().code, "XB-01");
+        // Days: the fewer, wherever they are.
+        let expiry = "consent.implied.expiry_days.inquiry";
+        rows.push(read_row("XB", expiry, &serde_json::json!(90), 63));
+        let days = resolve(expiry, Some(&steps), &rows, as_of).unwrap();
+        assert_eq!(days.value(), Some(&Value::Days(90)));
+        assert_eq!(days.origin().unwrap().code, "XB");
+        rows.push(read_row("XB", expiry, &serde_json::json!(365), 64));
+        let more = resolve(expiry, Some(&steps), &rows, as_of).unwrap();
+        assert_eq!(more.value(), Some(&Value::Days(180)));
+        assert_eq!(more.origin().unwrap().code, "XB-01");
+    }
+
+    #[test]
+    fn a_row_is_in_force_through_its_last_day_and_not_after() {
+        let (links, mut rows) = profiles();
+        let mut ended = read_row(
+            "XA",
+            "consent.regime.email",
+            &serde_json::json!("opt_in"),
+            70,
+        );
+        ended.effective_to = Some(day(2026, 6, 30));
+        rows.push(ended);
+        let steps = chain("XA", &links).unwrap();
+        let on = |as_of| resolve("consent.regime.email", Some(&steps), &rows, as_of).unwrap();
+        assert_eq!(
+            on(day(2026, 6, 30)).value(),
+            Some(&Value::Token("opt_in".into()))
+        );
+        // After its last day the example row, still in force, answers again.
+        assert_eq!(
+            on(day(2026, 7, 1)).value(),
+            Some(&Value::Token("soft_opt_in".into()))
+        );
+    }
+
+    #[test]
+    fn a_label_may_give_sixteen_languages_and_no_more() {
+        let languages = |n: usize| {
+            serde_json::Value::Object(
+                (0..n)
+                    .map(|i| (format!("l{i}"), serde_json::json!("[Ad]")))
+                    .collect(),
+            )
+        };
+        assert!(validate("message.advertising_label", &languages(16)).is_ok());
+        assert!(validate("message.advertising_label", &languages(17)).is_err());
+    }
+
+    #[test]
+    fn every_stored_name_reads_back() {
+        for layer in [Layer::Supranational, Layer::National, Layer::Subnational] {
+            assert_eq!(Layer::parse(layer.as_str()), Some(layer));
+        }
+        assert_eq!(
+            [Layer::Supranational, Layer::National, Layer::Subnational].map(Layer::as_str),
+            ["supranational", "national", "subnational"]
+        );
+        for status in [Status::Example, Status::Unverified, Status::Read] {
+            assert_eq!(Status::parse(status.as_str()), Some(status));
+        }
+        for regime in [
+            Regime::OptIn,
+            Regime::SoftOptIn,
+            Regime::Implied,
+            Regime::OptOut,
+        ] {
+            assert_eq!(Regime::parse(regime.as_str()), Some(regime));
+        }
+        assert_eq!(Layer::parse("Nation"), None);
+        assert_eq!(Status::parse(""), None);
+        assert_eq!(Regime::parse("opt-in"), None);
+    }
+
+    // A window from a row that may not loosen gives no window, so soft opt-in has nothing to send on.
+    #[test]
+    fn an_unacknowledged_window_gives_no_window() {
+        let (links, mut rows) = profiles();
+        rows.push(read_row(
+            "XA",
+            "consent.regime.email",
+            &serde_json::json!("soft_opt_in"),
+            80,
+        ));
+        let steps = chain("XA", &links).unwrap();
+        let rules = rules_for("email", Some(&steps), &rows, &[], day(2026, 10, 31));
+        assert_eq!(rules.regime, Regime::SoftOptIn);
+        assert_eq!(
+            rules.window_days, None,
+            "the window row is an unacknowledged example"
+        );
+        let acked = rules_for("email", Some(&steps), &rows, &acks_all(), day(2026, 10, 31));
+        assert_eq!(acked.window_days, Some(730));
+    }
+
+    // Evidence lapses at the instant its window or expiry ends: at that instant it no longer counts.
+    #[test]
+    fn evidence_lapses_at_the_instant_it_expires() {
+        let start = at(2026, 1, 1);
+        let soft = Rules {
+            regime: Regime::SoftOptIn,
+            window_days: Some(30),
+            ..Rules::none()
+        };
+        let ends = start + whole_days(30);
+        assert!(
+            basis(
+                &soft,
+                "never",
+                "news",
+                true,
+                &[won(start)],
+                ends - SignedDuration::from_secs(1)
+            )
+            .is_ok()
+        );
+        assert_eq!(
+            basis(&soft, "never", "news", true, &[won(start)], ends),
+            Err(Blocked::NoEvidence)
+        );
+        let implied = Rules {
+            regime: Regime::Implied,
+            expiry_days: [("inquiry".to_string(), 30)].into_iter().collect(),
+            ..Rules::none()
+        };
+        assert!(
+            basis(
+                &implied,
+                "pending",
+                "news",
+                false,
+                &[inquiry(start)],
+                ends - SignedDuration::from_secs(1)
+            )
+            .is_ok()
+        );
+        assert_eq!(
+            basis(&implied, "pending", "news", false, &[inquiry(start)], ends),
+            Err(Blocked::NoEvidence)
+        );
     }
 
     #[test]
