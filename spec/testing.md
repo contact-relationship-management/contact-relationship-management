@@ -43,13 +43,30 @@
   campaign + nurture sequence, ~20 tickets against 2 SLA policies)
   — synthetic data only.
 
+## Mutation testing (CRM-T94, CRM-T259)
+
+`cargo mutants` changes each rule a little and checks that a unit test notices; a mutant that
+survives is a rule no test pins. It covers the domain crate (`contact-relationship-management-domain`:
+`rules/` and `time.rs`, CRM-T260) and the matcher, which have no database or network, and leaves the
+controllers to the request tests.
+
+- **Weekly, everything:** `.github/workflows/mutants.yml`, seven shards, the matcher in shard 0;
+  `scripts/nightly.sh` runs a seventh a night locally.
+- **On every push and pull request, what changed:** `scripts/ci-check.sh mutants-diff` tests only the
+  mutants in lines changed since the push's previous commit or the pull request's base, so a new rule
+  that no test pins fails the change that adds it.
+- **Builds:** the `mutants` profile (no debug information), and the domain crate's own unit tests,
+  which build without axum, axa or sqlx: about 5 seconds a mutant.
+- **Equivalent mutants** (no test can tell them from the code) are listed with a reason in each
+  crate's `.cargo/mutants.toml`; where the code had a redundant check, the check went instead.
+
 ## Performance (CRM-T242)
 
 Three kinds of measure, each with synthetic data only and each recorded in
 [`BENCHMARKS.md`](../BENCHMARKS.md) with its commit, machine, data size and command:
 
 - **The rules' CPU cost** (criterion): the matcher (`benches/matching.rs`), and the service's
-  pure rules a request runs (`benches/rules.rs`): lead scoring, segment evaluation, the
+  pure rules a request runs (the domain crate's `benches/rules.rs`): lead scoring, segment evaluation, the
   weighted forecast, the audit-chain check, a lead import at its 500-row limit, attribution
   under each model, report currency conversion, report planning and small-cell suppression,
   and search-query building. No database, network or clock: a request's rule step, not its

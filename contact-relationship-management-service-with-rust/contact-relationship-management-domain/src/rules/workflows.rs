@@ -1,5 +1,5 @@
 //! Workflow rules (CRM-R40): the triggers, the conditions, the closed set of actions and the loop
-//! guard. Pure and DB-free; [`crate::workflows`] runs them.
+//! guard. Pure and DB-free; the service's `workflows` module runs them.
 //!
 //! A workflow never holds code or a URL. It is a trigger, conditions written in the segment filter
 //! language, and a short list of actions from a closed set, so what it will do can be read, dry-run

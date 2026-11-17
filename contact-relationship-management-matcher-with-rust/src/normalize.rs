@@ -122,11 +122,8 @@ pub(crate) fn email(raw: &str, fold_gmail: bool) -> Option<String> {
         .trim()
         .to_lowercase();
     let (local, domain) = trimmed.rsplit_once('@')?;
-    if local.is_empty()
-        || domain.is_empty()
-        || !domain.contains('.')
-        || trimmed.chars().any(char::is_whitespace)
-    {
+    // An empty domain has no dot, and an empty local part is refused below, after Gmail's folding.
+    if !domain.contains('.') || trimmed.chars().any(char::is_whitespace) {
         return None;
     }
     let (local, domain) = if fold_gmail && (domain == "gmail.com" || domain == "googlemail.com") {
@@ -402,6 +399,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_ideographic_space_is_a_space_and_full_width_forms_are_ascii() {
+        assert_eq!(fold_width('\u{3000}'), ' ');
+        assert_eq!(fold_width('\u{ff0b}'), '+');
+        assert_eq!(fold_width('\u{ff18}'), '8');
+        assert_eq!(fold_width('a'), 'a');
+        let n = name_of(None, None, Some("王\u{3000}芳"));
+        assert_eq!((n.given.as_str(), n.family.as_str()), ("王", "芳"));
+    }
+
+    #[test]
     fn folds_case_accents_and_apostrophes() {
         assert_eq!(fold("  Siân  O'Brien-Smith "), "sian obrien smith");
         assert_eq!(fold("José"), "jose");
@@ -442,6 +449,14 @@ mod tests {
         // A single word is a given name.
         let n = name_of(None, None, Some("Cher"));
         assert_eq!((n.given.as_str(), n.family.as_str()), ("cher", ""));
+        // With no particle, the family name is the last word only.
+        let n = name_of(None, None, Some("Mary Ann Smith"));
+        assert_eq!((n.given.as_str(), n.family.as_str()), ("mary", "smith"));
+        // A name that is only a title, or only a suffix, keeps it rather than becoming empty.
+        let n = name_of(None, None, Some("Dr"));
+        assert_eq!((n.given.as_str(), n.family.as_str()), ("dr", ""));
+        let n = name_of(None, None, Some("Jr"));
+        assert_eq!((n.given.as_str(), n.family.as_str()), ("jr", ""));
     }
 
     #[test]

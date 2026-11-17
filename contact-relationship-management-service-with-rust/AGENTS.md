@@ -22,7 +22,7 @@ tables) but **references identities**: contacts are person-service
 records, accounts organization-service, reps/agents the signed-in
 users, named by the person id of their sign-in subject (`person:<sub>`,
 CRM-D18; `worker:<sub>` is still accepted as input and rewritten,
-`src/rules/user_ref.rs`) — always as EntityRef URNs (`person:<uuid>`),
+`rules/user_ref.rs` in the domain crate) — always as EntityRef URNs (`person:<uuid>`),
 never duplicated demographics. Imported teams name their members by
 `person:` too (CRM-R73). Dedup/merge of identities stays upstream. See the
 cross-cutting spec's [scope boundary](../spec/scope.md).
@@ -53,7 +53,9 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
    decisions (WPM event signature, meaning and ordering in
    `wpm_events.rs`; the employment-check batches and answers in
    `employment_check.rs`; the teams import in `teams_import.rs`) live
-   in DB-free `src/rules/` modules with exhaustive unit tests;
+   in DB-free `rules` modules with exhaustive unit tests, in the
+   domain crate `contact-relationship-management-domain/src/rules/`
+   (CRM-T260; re-exported as `crate::rules`);
    controllers only wire them ([design](../spec/design.md) CRM-D3–D5).
 4. **Consent gates sends.** The campaign job and nurture scheduler
    re-check `marketing_consent` at send time; segments AND

@@ -1,0 +1,47 @@
+[package]
+name = "contact-relationship-management-domain"
+version = "0.1.5"
+edition = "2024"
+rust-version = "1.98"
+publish = true
+authors = ["Joel Parker Henderson <joel@joelparkerhenderson.com>"]
+description = "Contact Relationship Management (CRM): the domain rules, with no web routes or database storage"
+readme = "README.md"
+repository = "https://github.com/contact-relationship-management/contact-relationship-management-service-with-rust"
+license = "MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only"
+keywords = ["crm", "sales", "marketing", "support", "sfa"]
+categories = ["development-tools", "rust-patterns"]
+include = ["src/**/*", "benches/**/*", "README.md"]
+
+# CRM-T260: the business rules (lifecycles, scoring, consent, money, calendars, templates, webhooks,
+# imports and the rest), the dates and times they reason about, and nothing that serves a request
+# or touches a database. The service depends on it; an edit here rebuilds this crate and the
+# service, and its unit tests build without the service's dependencies.
+[features]
+default = []
+# Read and write `time::Timestamp` and `time::Date` as Postgres `timestamptz` and `date` (sqlx). The
+# impls must live beside the types; the service turns this on, and the rules never use it.
+postgres = ["dep:sqlx"]
+
+[dependencies]
+base64 = { version = "0.23" }
+csv = "1.4"
+entity-ref = "0.2.1"
+hmac = "0.13"
+jiff = { version = "0.2.43", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
+schemars = { version = "1.2", features = ["uuid1"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["float_roundtrip", "arbitrary_precision"] }
+sha2 = { version = "0.11" }
+sqlx = { version = "0.9", default-features = false, features = ["postgres"], optional = true }
+thiserror = "2.0"
+unicode-normalization = "0.1.26"
+url = "2.5"
+uuid = { version = "1.29", features = ["v4", "serde"] }
+
+[dev-dependencies]
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "rules"
+harness = false

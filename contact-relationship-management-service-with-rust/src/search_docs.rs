@@ -56,35 +56,9 @@ pub const SOURCES: &[(&str, &str, &str, &str, &str)] = &[
     ),
 ];
 
-/// Scripts written without spaces between words (CRM-T170), as inclusive code-point ranges: Thai,
-/// Lao, Myanmar, Khmer, Hangul syllables (Korean names are written without a space), Hiragana,
-/// Katakana and its extensions, and the CJK ideographs (unified, extension A, compatibility, and
-/// the supplementary planes' extensions). A run of these is indexed as its single characters and
-/// overlapping pairs ([`NGRAMS_FUNCTION`]), so a part of a name such as `芳` in `王芳` is found.
-/// Changing this table needs a new migration in `migrations/` that recreates the function and the
-/// indexes.
-pub const UNSPACED: &[(u32, u32)] = &[
-    (0x0E00, 0x0E7F),
-    (0x0E80, 0x0EFF),
-    (0x1000, 0x109F),
-    (0x1780, 0x17FF),
-    (0x3040, 0x309F),
-    (0x30A0, 0x30FF),
-    (0x31F0, 0x31FF),
-    (0x3400, 0x4DBF),
-    (0x4E00, 0x9FFF),
-    (0xAC00, 0xD7AF),
-    (0xF900, 0xFAFF),
-    (0xFF66, 0xFF9F),
-    (0x20000, 0x323AF),
-];
-
-/// Whether `c` is in a script of [`UNSPACED`].
-#[must_use]
-pub fn is_unspaced(c: char) -> bool {
-    let code = u32::from(c);
-    UNSPACED.iter().any(|(lo, hi)| (*lo..=*hi).contains(&code))
-}
+/// The scripts written without spaces between words, and the test for one, are the domain's
+/// (CRM-T260): [`UNSPACED`] and [`is_unspaced`] live in `rules::search`.
+pub use contact_relationship_management_domain::rules::search::{UNSPACED, is_unspaced};
 
 /// [`UNSPACED`] as a PostgreSQL regular-expression bracket expression.
 #[must_use]

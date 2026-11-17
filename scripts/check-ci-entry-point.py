@@ -48,6 +48,7 @@ EXCEPTIONS = {
 NOT_IN_ALL = {
     "all": "it is the list",
     "mutants": "it takes hours (spec/local-ci-cd.md), so it is a scheduled job",
+    "mutants-diff": "it compares with a base commit, which only a push or a pull request names",
     "pre-push": "it repeats stages `all` runs",
 }
 

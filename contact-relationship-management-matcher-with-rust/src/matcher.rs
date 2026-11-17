@@ -381,3 +381,110 @@ fn title_similarity(a: &str, b: &str) -> f64 {
     let overlap = shared as f64 / union as f64;
     text_similarity(a, b).max(overlap)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn weight(result: &MatchResult, field: Field) -> &FieldScore {
+        result.fields.iter().find(|f| f.field == field).unwrap()
+    }
+
+    // With every field missing, the probability is the prior itself; with some present, it is the
+    // prior's log-odds plus each weight.
+    #[test]
+    fn the_probability_is_the_prior_plus_the_weights() {
+        let matcher = Matcher::default();
+        let prior = matcher.config.prior;
+        let nothing = matcher.compare(&Contact::new(), &Contact::new());
+        assert!(
+            (nothing.probability - prior).abs() < 1e-12,
+            "{}",
+            nothing.probability
+        );
+        let a = Contact::new().given_name("Ana").email("ana@example.com");
+        let b = Contact::new().given_name("Ana").email("bo@example.com");
+        let result = matcher.compare(&a, &b);
+        let sum: f64 = result.fields.iter().map(|f| f.weight).sum();
+        let expected = (prior / (1.0 - prior)).ln() + sum;
+        assert!(
+            (result.log_odds - expected).abs() < 1e-12,
+            "{} {expected}",
+            result.log_odds
+        );
+        assert!((result.probability - 1.0 / (1.0 + (-expected).exp())).abs() < 1e-12);
+    }
+
+    // A field between the bands is weighted in proportion to where it falls between them.
+    #[test]
+    fn a_partial_field_is_weighted_by_its_place_between_the_bands() {
+        let matcher = Matcher::default();
+        let p = matcher.config.given_name;
+        let (agree_at, disagree_at) = (matcher.config.agree_at, matcher.config.disagree_at);
+        let agree = (p.m / p.u).ln();
+        let disagree = ((1.0 - p.m) / (1.0 - p.u)).ln();
+        let similarity = disagree_at + 0.25 * (agree_at - disagree_at);
+        let score = matcher.field(Field::GivenName, Some(similarity), p);
+        assert_eq!(score.outcome, Outcome::Partial);
+        let expected = disagree + (agree - disagree) * 0.25;
+        assert!(
+            (score.weight - expected).abs() < 1e-12,
+            "{} {expected}",
+            score.weight
+        );
+    }
+
+    // A name or title on one side only is missing, not a disagreement.
+    #[test]
+    fn a_field_on_one_side_only_is_missing() {
+        let matcher = Matcher::default();
+        let a = Contact::new()
+            .given_name("Ana")
+            .family_name("Ruiz")
+            .job_title("VP Sales");
+        let b = Contact::new().family_name("Ruiz");
+        let result = matcher.compare(&a, &b);
+        assert_eq!(weight(&result, Field::GivenName).outcome, Outcome::Missing);
+        assert_eq!(weight(&result, Field::JobTitle).outcome, Outcome::Missing);
+        let c = Contact::new().given_name("Ana");
+        assert_eq!(
+            weight(&matcher.compare(&a, &c), Field::FamilyName).outcome,
+            Outcome::Missing
+        );
+    }
+
+    // Only a single letter counts as an initial; a longer prefix is scored by its characters.
+    #[test]
+    fn only_one_letter_is_an_initial() {
+        let matcher = Matcher::default();
+        assert_eq!(
+            matcher.name_similarity("a", "anabel"),
+            Some(INITIAL_SIMILARITY)
+        );
+        assert_eq!(
+            matcher.name_similarity("ana", "anabel"),
+            Some(jaro_winkler("ana", "anabel"))
+        );
+    }
+
+    // Names that are as good straight as swapped are not called swapped.
+    #[test]
+    fn a_tie_is_not_a_swap() {
+        let matcher = Matcher::default();
+        let lee = Contact::new().given_name("Lee").family_name("Lee");
+        assert!(!matcher.compare(&lee, &lee).names_swapped);
+        let a = Contact::new().given_name("Ana").family_name("Ruiz");
+        let b = Contact::new().given_name("Ruiz").family_name("Ana");
+        assert!(matcher.compare(&a, &b).names_swapped);
+    }
+
+    // The word overlap is the shared words over all the different words.
+    #[test]
+    fn a_title_scores_the_better_of_its_characters_and_its_words() {
+        // Two of three different words are shared, and the characters alone score less.
+        let (a, b) = ("sales head regional", "regional sales");
+        assert!(jaro_winkler(a, b) < 0.5);
+        assert!((title_similarity(a, b) - 2.0 / 3.0).abs() < 1e-12);
+        assert!((title_similarity("senior engineer", "engineer senior") - 1.0).abs() < 1e-12);
+    }
+}

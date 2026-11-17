@@ -1,9 +1,12 @@
 # Mutation testing (CRM-T94): the pure rules are where a surviving mutant means a missing test.
-# Unit tests only (`--lib`): they need no database. A full run over `rules/` is still hours at
-# `-j 2` (CRM-T184), so scripts/nightly.sh runs a seventh a night. The controllers are left to the
+# Since CRM-T260 they are the domain crate, and `scripts/ci-check.sh mutants` runs from its
+# directory, so only it is built and tested; this file is read from the workspace root. Unit tests
+# only (`--lib`). scripts/nightly.sh runs a seventh a night. The controllers are left to the
 # request tests, which need PostgreSQL.
-examine_globs = ["src/rules/**/*.rs"]
+examine_globs = ["contact-relationship-management-domain/src/rules/**/*.rs", "contact-relationship-management-domain/src/time.rs"]
 additional_cargo_test_args = ["--lib"]
+# Built with the `mutants` profile in Cargo.toml: no debug information (CRM-T259).
+profile = "mutants"
 # Equivalent mutants: no test can tell them from the code (CRM-T196).
 # - terms: a two-character word's one overlapping pair is the word itself.
 # - last_touch: when the activity and the stage move are the same instant, either one is that instant.

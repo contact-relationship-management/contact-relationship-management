@@ -14,20 +14,18 @@
 //! wrappers are for what is.
 
 mod chrono_text;
+#[cfg(feature = "postgres")]
+mod postgres;
 
 use std::{fmt, str::FromStr};
 
 use jiff::{SignedDuration, civil};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use sqlx::{
-    Decode, Encode, Postgres, Type,
-    encode::IsNull,
-    error::BoxDynError,
-    postgres::{PgArgumentBuffer, PgHasArrayType, PgTypeInfo, PgValueFormat, PgValueRef},
-};
 
 /// Postgres counts timestamps in microseconds, and dates in days, from 2000-01-01.
+#[cfg(any(test, feature = "postgres"))]
 const PG_EPOCH_SECONDS: i64 = 946_684_800;
+#[cfg(any(test, feature = "postgres"))]
 const PG_EPOCH_DATE: civil::Date = civil::date(2000, 1, 1);
 
 /// An instant, as a `timestamptz` column holds one: to the microsecond, with no zone of its own.
@@ -136,18 +134,22 @@ impl Timestamp {
 
     /// Microseconds from Postgres's epoch, as a `timestamptz` is sent and stored. A fraction finer
     /// than a microsecond is dropped, as Postgres would round it away.
-    fn to_pg_micros(self) -> Result<i64, BoxDynError> {
+    #[cfg(any(test, feature = "postgres"))]
+    pub(crate) fn to_pg_micros(self) -> Result<i64, String> {
         self.0
             .as_microsecond()
             .checked_sub(PG_EPOCH_SECONDS * 1_000_000)
-            .ok_or_else(|| "timestamp out of range for Postgres".into())
+            .ok_or_else(|| "timestamp out of range for Postgres".to_string())
     }
 
-    fn from_pg_micros(micros: i64) -> Result<Self, BoxDynError> {
+    #[cfg(any(test, feature = "postgres"))]
+    pub(crate) fn from_pg_micros(micros: i64) -> Result<Self, String> {
         let unix = micros
             .checked_add(PG_EPOCH_SECONDS * 1_000_000)
             .ok_or("timestamp out of range")?;
-        Ok(Self(jiff::Timestamp::from_microsecond(unix)?))
+        jiff::Timestamp::from_microsecond(unix)
+            .map(Self)
+            .map_err(|e| e.to_string())
     }
 }
 
@@ -266,41 +268,6 @@ impl schemars::JsonSchema for Timestamp {
     }
 }
 
-impl Type<Postgres> for Timestamp {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("timestamptz")
-    }
-}
-
-impl PgHasArrayType for Timestamp {
-    fn array_type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("_timestamptz")
-    }
-}
-
-impl Encode<'_, Postgres> for Timestamp {
-    fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> Result<IsNull, BoxDynError> {
-        buf.extend_from_slice(&self.to_pg_micros()?.to_be_bytes());
-        Ok(IsNull::No)
-    }
-
-    fn size_hint(&self) -> usize {
-        8
-    }
-}
-
-impl Decode<'_, Postgres> for Timestamp {
-    fn decode(value: PgValueRef<'_>) -> Result<Self, BoxDynError> {
-        match value.format() {
-            PgValueFormat::Binary => {
-                let bytes: [u8; 8] = value.as_bytes()?.try_into()?;
-                Self::from_pg_micros(i64::from_be_bytes(bytes))
-            }
-            PgValueFormat::Text => Ok(value.as_str()?.parse()?),
-        }
-    }
-}
-
 /// A calendar day with no time or zone, as a `date` column holds one.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Date(pub civil::Date);
@@ -334,9 +301,21 @@ impl Date {
         Timestamp::now().date_utc()
     }
 
-    fn days_from_pg_epoch(self) -> Result<i32, BoxDynError> {
-        let days = self.0.since((jiff::Unit::Day, PG_EPOCH_DATE))?.get_days();
-        Ok(days)
+    #[cfg(any(test, feature = "postgres"))]
+    pub(crate) fn days_from_pg_epoch(self) -> Result<i32, String> {
+        self.0
+            .since((jiff::Unit::Day, PG_EPOCH_DATE))
+            .map(|span| span.get_days())
+            .map_err(|e| e.to_string())
+    }
+
+    #[cfg(any(test, feature = "postgres"))]
+    pub(crate) fn from_pg_days(days: i32) -> Result<Self, String> {
+        jiff::Span::new()
+            .try_days(days)
+            .and_then(|span| PG_EPOCH_DATE.checked_add(span))
+            .map(Self)
+            .map_err(|e| e.to_string())
     }
 }
 
@@ -432,44 +411,6 @@ impl schemars::JsonSchema for Date {
 
     fn inline_schema() -> bool {
         true
-    }
-}
-
-impl Type<Postgres> for Date {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("date")
-    }
-}
-
-impl PgHasArrayType for Date {
-    fn array_type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("_date")
-    }
-}
-
-impl Encode<'_, Postgres> for Date {
-    fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> Result<IsNull, BoxDynError> {
-        buf.extend_from_slice(&self.days_from_pg_epoch()?.to_be_bytes());
-        Ok(IsNull::No)
-    }
-
-    fn size_hint(&self) -> usize {
-        4
-    }
-}
-
-impl Decode<'_, Postgres> for Date {
-    fn decode(value: PgValueRef<'_>) -> Result<Self, BoxDynError> {
-        match value.format() {
-            PgValueFormat::Binary => {
-                let bytes: [u8; 4] = value.as_bytes()?.try_into()?;
-                let days = i32::from_be_bytes(bytes);
-                Ok(Self(
-                    PG_EPOCH_DATE.checked_add(jiff::Span::new().try_days(days)?)?,
-                ))
-            }
-            PgValueFormat::Text => Ok(value.as_str()?.parse()?),
-        }
     }
 }
 
@@ -605,6 +546,21 @@ mod tests {
         ] {
             assert_eq!(Timestamp::parse_rfc3339(strict), None, "{strict}");
         }
+    }
+
+    #[test]
+    fn a_date_comes_back_from_its_days_from_2000() {
+        for (days, ymd) in [
+            (0, (2000, 1, 1)),
+            (1, (2000, 1, 2)),
+            (-1, (1999, 12, 31)),
+            (9817, (2026, 11, 17)),
+        ] {
+            let date = Date::from_ymd(ymd.0, ymd.1, ymd.2).unwrap();
+            assert_eq!(Date::from_pg_days(days).unwrap(), date, "{days}");
+            assert_eq!(date.days_from_pg_epoch().unwrap(), days);
+        }
+        assert!(Date::from_pg_days(i32::MAX).is_err());
     }
 
     #[test]

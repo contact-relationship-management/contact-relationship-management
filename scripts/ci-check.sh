@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | pins | secrets | mutants | supply-chain | semver | api-types | coverage | all | pre-push
+#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | pins | secrets | mutants | mutants-diff | supply-chain | semver | api-types | coverage | all | pre-push
 # scripts/check-ci-entry-point.py fails the build if a CI step checks anything outside this file.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -9,6 +9,8 @@ cd "$(dirname "$0")/.."
 SVC=contact-relationship-management-service-with-rust
 FE=contact-relationship-management-ui-with-svelte
 MATCHER=contact-relationship-management-matcher-with-rust
+# The domain rules (CRM-T260), a crate in the service's workspace.
+DOMAIN="${SVC}/contact-relationship-management-domain"
 SITE=contact-relationship-management.github.io
 # `keycloak` gates the optional Keycloak bearer path and the `test-idp`
 # dev-dependency feature; without it CI never compiles that code.
@@ -17,21 +19,23 @@ FEATURES=(--features keycloak)
 # What `all` runs, cheapest first. `mutants` is left out: it takes hours (spec/local-ci-cd.md).
 ALL_STAGES=(fmt lint scripts pins secrets semver clippy test api-types coverage front-end e2e site supply-chain test-db)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|supply-chain|semver|api-types|coverage|all|pre-push>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|mutants-diff|supply-chain|semver|api-types|coverage|all|pre-push>}"
 
 case "${stage}" in
   fmt)
-    (cd "${SVC}" && cargo fmt --check)
+    (cd "${SVC}" && cargo fmt --all --check)
     (cd "${MATCHER}" && cargo fmt --check)
     ;;
   clippy)
-    (cd "${SVC}" && cargo clippy --all-targets "${FEATURES[@]}" -- -D warnings)
+    (cd "${SVC}" && cargo clippy --workspace --all-targets "${FEATURES[@]}" -- -D warnings)
     # The Keycloak-only build (no PASETO) the manifest documents.
     (cd "${SVC}" && cargo clippy --all-targets --no-default-features --features keycloak -- -D warnings)
+    # The domain crate without its `postgres` feature, as its own tests and benchmarks build it.
+    (cd "${DOMAIN}" && cargo clippy --all-targets -- -D warnings)
     (cd "${MATCHER}" && cargo clippy --all-targets -- -D warnings)
     ;;
   test)
-    (cd "${SVC}" && cargo test "${FEATURES[@]}")
+    (cd "${SVC}" && cargo test --workspace "${FEATURES[@]}")
     # The service depends on the published matcher (the image builds from the
     # service directory alone), so also test it against the matcher in this
     # repository: a matcher change that breaks the service fails here, before
@@ -114,7 +118,7 @@ case "${stage}" in
   coverage)
     # A report, not a gate: unit tests only (the database suite is in test-db), so the figure
     # understates what the whole suite reaches. Floors come once the numbers have been watched.
-    (cd "${SVC}" && cargo llvm-cov --lib "${FEATURES[@]}" --summary-only)
+    (cd "${SVC}" && cargo llvm-cov --workspace --lib "${FEATURES[@]}" --summary-only)
     ;;
   e2e)
     # The Playwright suites (demo-data tour, accessibility, smoke): they build
@@ -165,8 +169,34 @@ case "${stage}" in
   mutants)
     # CRM-T94: change each pure rule a little and check that a unit test notices. A mutant that
     # survives is a rule no test pins. Scheduled weekly, not on every push: it takes a while.
-    # `.cargo/mutants.toml` limits it to src/rules and the unit tests.
-    (cd "${SVC}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out" ${CRM_MUTANTS_SHARD:+--shard "${CRM_MUTANTS_SHARD}"} "${@:2}")
+    # The rules are the domain crate (CRM-T260), whose unit tests need nothing of the service.
+    # CRM-T259: the matcher too, whole: it takes minutes, so a sharded run takes it in shard 0 only.
+    if [[ -z "${CRM_MUTANTS_SHARD:-}" || "${CRM_MUTANTS_SHARD}" == 0/* ]]; then
+      (cd "${MATCHER}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out")
+    fi
+    (cd "${DOMAIN}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out" ${CRM_MUTANTS_SHARD:+--shard "${CRM_MUTANTS_SHARD}"} "${@:2}")
+    ;;
+  mutants-diff)
+    # CRM-T259: only the mutants in lines changed since a base commit (CRM_MUTANTS_BASE, or the
+    # argument, default origin/main), in the matcher and the domain rules, so a rule that no
+    # test pins fails the change that adds it rather than the weekly run.
+    base="${2:-${CRM_MUTANTS_BASE:-origin/main}}"
+    if [[ "${base}" =~ ^0+$ ]] || ! git rev-parse --verify --quiet "${base}^{commit}" >/dev/null; then
+      echo "mutants-diff: no base commit (${base}), so nothing to compare; skipped" >&2
+      exit 0
+    fi
+    status=0
+    for crate in "${MATCHER}" "${DOMAIN}"; do
+      diff="$(mktemp)"
+      git diff --relative="${crate}/" "${base}" -- "${crate}/src" >"${diff}"
+      if [[ -s "${diff}" ]]; then
+        (cd "${crate}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --in-diff "${diff}" --output "${PWD}/mutants-diff-out") || status=$?
+      else
+        echo "mutants-diff: ${crate}/src is unchanged since ${base}"
+      fi
+      rm -f "${diff}"
+    done
+    exit "${status}"
     ;;
   supply-chain)
     # CRM-T34: known-vulnerability, licence, and source gates, plus SBOMs
@@ -193,7 +223,7 @@ case "${stage}" in
     for each in fmt lint scripts pins secrets clippy; do
       "${PWD}/scripts/ci-check.sh" "${each}"
     done
-    (cd "${SVC}" && cargo test "${FEATURES[@]}" --lib)
+    (cd "${SVC}" && cargo test --workspace "${FEATURES[@]}" --lib)
     (cd "${MATCHER}" && cargo test --lib)
     (cd "${FE}" && pnpm install --frozen-lockfile && pnpm run lint)
     ;;

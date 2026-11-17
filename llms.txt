@@ -58,6 +58,7 @@
 ## Contact matcher
 
 - [Matcher README](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-matcher-with-rust/README.md): The published crate that scores whether two contact records are the same person, with a per-field explanation.
+- [Domain rules README](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/contact-relationship-management-domain/README.md): The crate of business rules and their dates and times, with no routes or storage (CRM-D25).
 - [Matcher changelog](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-matcher-with-rust/CHANGELOG.md): Changes to the matcher.
 
 ## Svelte client

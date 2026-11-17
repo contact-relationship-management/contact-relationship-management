@@ -61,7 +61,7 @@ describe("the ISO 4217 table", () => {
     const rust = readFileSync(
       join(
         process.cwd(),
-        "../contact-relationship-management-service-with-rust/src/rules/currency.rs",
+        "../contact-relationship-management-service-with-rust/contact-relationship-management-domain/src/rules/currency.rs",
       ),
       "utf8",
     );

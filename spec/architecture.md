@@ -33,11 +33,7 @@ src/
 ├── models/               helpers + _entities/ (plain row structs)
 ├── clients.rs            stub-first upstream display-name lookups and
 │                         the PPM and WPM bridge calls
-├── rules/                pure core: lifecycle machines (lead, deal,
-│                         campaign, ticket, article), lead scoring
-│                         + breakdown, forecast arithmetic, ROI,
-│                         CLV, SLA deadline/breach derivation,
-│                         segment filter evaluation
+├── (rules, time)         re-exported from the domain crate below
 ├── auth/                 offline PASETO + ABAC + personas + mask
 │   ├── mod.rs            the module guide (key source, enforcement, ABAC)
 │   ├── verifier.rs       the verifier, key fetch and rotation refresh
@@ -50,7 +46,23 @@ src/
 ├── openapi.rs            OpenAPI 3 doc
 └── search_docs.rs        the searched text per table, and the check that the baseline indexes it
 migrations/               sqlx: the baseline, then each change (CRM-T229)
+contact-relationship-management-domain/   a crate in the same workspace (CRM-T260)
+├── src/rules/            pure core: lifecycle machines (lead, deal,
+│                         campaign, ticket, article), lead scoring
+│                         + breakdown, forecast arithmetic, ROI,
+│                         CLV, SLA deadline/breach derivation,
+│                         segment filter evaluation, consent regimes,
+│                         money, calendars, templates, webhooks, imports
+├── src/time.rs           the instants and dates the rules take, on jiff;
+│                         `postgres` feature: their sqlx encoding
+└── benches/rules.rs      criterion benchmarks of the rules
 ```
+
+The domain crate holds what the service decides, apart from how it serves and stores it: no
+routes, no SQL, no clock and no network. The service depends on it and re-exports `rules` and `time`,
+so `crate::rules::…` reads as it did. Its unit tests build without the service's dependencies (axum,
+axa, sqlx), so an edit to a rule rebuilds a small crate, and a mutant is built and tested in that
+crate alone; an edit to a route or a query does not rebuild the rules.
 
 Key decisions (numbered in [design.md](design.md)): normalized
 relational schema; every lifecycle and every KPI derivation in the

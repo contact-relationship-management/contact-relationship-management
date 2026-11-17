@@ -268,6 +268,12 @@
           "description": "The published crate that scores whether two contact records are the same person, with a per-field explanation."
         },
         {
+          "title": "Domain rules README",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-service-with-rust/contact-relationship-management-domain/README.md",
+          "path": "contact-relationship-management-service-with-rust/contact-relationship-management-domain/README.md",
+          "description": "The crate of business rules and their dates and times, with no routes or storage (CRM-D25)."
+        },
+        {
           "title": "Matcher changelog",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-matcher-with-rust/CHANGELOG.md",
           "path": "contact-relationship-management-matcher-with-rust/CHANGELOG.md",

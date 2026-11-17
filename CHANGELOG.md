@@ -9,6 +9,18 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — the domain rules are their own crate (CRM-T260, 2026-11-17)
+
+- `contact-relationship-management-domain`, in the service's workspace, holds the business rules and
+  their dates and times, with no routes or storage (CRM-D25). An edit to a rule rebuilds a small
+  crate, and its tests build without the service.
+
+### Changed — mutation testing (CRM-T259, 2026-11-17)
+
+- Mutation testing covers the matcher, and on every push and pull request the lines a change
+  touches; mutants build in seconds. New tests pin the webhook address guard's ranges, the matcher's
+  weights and parsing, and other boundaries that surviving mutants showed no test held.
+
 ### Changed — dates and times on jiff (CRM-T258, 2026-11-17)
 
 - The service's dates, times and time zones use `jiff` in place of `chrono` and `chrono-tz`, which

@@ -1,6 +1,6 @@
 name: Mutation testing
 # Weekly, not on every push: it re-runs the unit tests once for each small change to a rule in
-# `src/rules` (about 1,500 of them). A surviving mutant is a rule that no test pins (CRM-T94).
+# the domain crate's rules (about 1,600 of them; CRM-T260). A surviving mutant is a rule that no test pins (CRM-T94).
 # The whole set in one job was cancelled at six hours, so seven jobs take a seventh each (CRM-T195).
 on:
   schedule:
@@ -33,4 +33,6 @@ jobs:
         if: always()
         with:
           name: mutants-shard-${{ matrix.shard }}
-          path: contact-relationship-management-service-with-rust/mutants-out/
+          path: |
+            contact-relationship-management-service-with-rust/contact-relationship-management-domain/mutants-out/
+            contact-relationship-management-matcher-with-rust/mutants-out/

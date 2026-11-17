@@ -333,7 +333,7 @@ describe("the tour's data is in more than one shape (CRM-T176)", () => {
 describe("template fallbacks and import columns in the UI's languages (CRM-T169)", () => {
   const service = (path: string) =>
     readFileSync(
-      `../contact-relationship-management-service-with-rust/src/rules/${path}`,
+      `../contact-relationship-management-service-with-rust/contact-relationship-management-domain/src/rules/${path}`,
       "utf8",
     );
 

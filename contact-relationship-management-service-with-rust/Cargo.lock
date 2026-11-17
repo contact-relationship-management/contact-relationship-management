@@ -872,8 +872,8 @@ dependencies = [
  "axum-test",
  "base64 0.23.1",
  "clap",
+ "contact-relationship-management-domain",
  "contact-relationship-management-matcher",
- "criterion",
  "csv",
  "ed25519-dalek 3.0.0",
  "entity-ref",
@@ -895,6 +895,27 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
+ "unicode-normalization",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "contact-relationship-management-domain"
+version = "0.1.5"
+dependencies = [
+ "base64 0.23.1",
+ "criterion",
+ "csv",
+ "entity-ref",
+ "hmac",
+ "jiff",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "sqlx",
+ "thiserror 2.0.21",
  "unicode-normalization",
  "url",
  "uuid",

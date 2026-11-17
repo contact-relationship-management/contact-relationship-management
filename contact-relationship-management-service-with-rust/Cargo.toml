@@ -1,4 +1,6 @@
 [workspace]
+# CRM-T260: the domain rules, apart from routes and storage.
+members = [".", "contact-relationship-management-domain"]
 
 [package]
 name = "contact-relationship-management"
@@ -50,6 +52,9 @@ sqlx = { version = "0.9", default-features = false, features = [
   "tls-rustls-ring-webpki",
   "uuid",
 ] }
+# The domain rules and their dates and times (CRM-T260), in this workspace; `postgres` reads and
+# writes its `Timestamp` and `Date` as `timestamptz` and `date`.
+contact-relationship-management-domain = { version = "0.1.5", path = "contact-relationship-management-domain", features = ["postgres"] }
 # CRM-T258: instants, dates and zones. The bundled time-zone database, as the distroless image has none.
 jiff = { version = "0.2.43", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
 url = "2.5"
@@ -106,10 +111,6 @@ paseto = ["authentication-verifier/paseto", "authentication-verifier/fetch"]
 # `CRM_KEYCLOAK_*` (see src/auth/). Off by default.
 keycloak = ["authentication-verifier/keycloak"]
 
-[[bench]]
-name = "rules"
-harness = false
-
 [[bin]]
 name = "contact-relationship-management"
 path = "src/bin/main.rs"
@@ -134,5 +135,18 @@ serial_test = { version = "4.0.1" }
 ed25519-dalek = { version = "3.0.0" }
 rusty_paseto = { version = "0.10", default-features = false, features = ["v4_public", "serde_json"] }
 jsonschema = { version = "0.60", default-features = false }
-# Benchmarks of the rules (benches/rules.rs, CRM-T242); the same version as the matcher's.
-criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+
+# Mutation testing (CRM-T259): each mutant is built once and thrown away, so it skips the debug
+# information a test build makes, most of a mutant's link time. `.cargo/mutants.toml` selects it.
+[profile.mutants]
+inherits = "test"
+debug = "none"
+
+# Faster dev/test builds: keep line tables for backtraces, drop the rest of the debug info.
+incremental = false
+[profile.dev]
+debug = "line-tables-only"
+split-debuginfo = "unpacked"
+
+[profile.dev.package."*"]
+debug = false

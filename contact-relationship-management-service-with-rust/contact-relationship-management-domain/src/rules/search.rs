@@ -5,7 +5,7 @@
 //!
 //! **Every script (CRM-T170).** A word keeps its combining marks, so a Devanagari or Thai word is
 //! not cut at a vowel sign. Scripts written without spaces between words (Chinese, Japanese,
-//! Korean names, Thai, Lao, Khmer, Myanmar: `crate::search_docs::UNSPACED`) are searched by
+//! Korean names, Thai, Lao, Khmer, Myanmar: [`UNSPACED`]) are searched by
 //! character n-grams, the method of the CJK analysers of Lucene and Elasticsearch: the index holds
 //! each run's single characters and overlapping pairs (the `search_ngrams` SQL function), and a
 //! query's run becomes the same pairs, all required ([`terms`]). A segmenter (ICU word breaks, as
@@ -14,7 +14,6 @@
 //! dictionary segmenter splits a name it does not know unpredictably, where pairs find any part
 //! of two characters or more and a single ideograph.
 
-use crate::search_docs::is_unspaced;
 use unicode_normalization::char::is_combining_mark;
 
 /// Fewest characters in a query.
@@ -99,6 +98,36 @@ pub fn tsquery(words: &[String]) -> Option<String> {
 #[must_use]
 pub fn phrase(words: &[String]) -> String {
     words.join(" ")
+}
+
+/// Scripts written without spaces between words (CRM-T170), as inclusive code-point ranges: Thai,
+/// Lao, Myanmar, Khmer, Hangul syllables (Korean names are written without a space), Hiragana,
+/// Katakana and its extensions, and the CJK ideographs (unified, extension A, compatibility, and
+/// the supplementary planes' extensions). A run of these is indexed as its single characters and
+/// overlapping pairs (the service's `search_docs::NGRAMS_FUNCTION`), so a part of a name such as `芳` in `王芳` is found.
+/// Changing this table needs a new migration in `migrations/` that recreates the function and the
+/// indexes.
+pub const UNSPACED: &[(u32, u32)] = &[
+    (0x0E00, 0x0E7F),
+    (0x0E80, 0x0EFF),
+    (0x1000, 0x109F),
+    (0x1780, 0x17FF),
+    (0x3040, 0x309F),
+    (0x30A0, 0x30FF),
+    (0x31F0, 0x31FF),
+    (0x3400, 0x4DBF),
+    (0x4E00, 0x9FFF),
+    (0xAC00, 0xD7AF),
+    (0xF900, 0xFAFF),
+    (0xFF66, 0xFF9F),
+    (0x20000, 0x323AF),
+];
+
+/// Whether `c` is in a script of [`UNSPACED`].
+#[must_use]
+pub fn is_unspaced(c: char) -> bool {
+    let code = u32::from(c);
+    UNSPACED.iter().any(|(lo, hi)| (*lo..=*hi).contains(&code))
 }
 
 #[cfg(test)]

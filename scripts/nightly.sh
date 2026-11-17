@@ -97,11 +97,13 @@ if [[ "${kind}" == nightly ]]; then
   export RUSTC_WRAPPER='' CARGO_BUILD_RUSTC_WRAPPER='' CC_KNOWN_WRAPPER_CUSTOM=''
   export HOST_CC=cc HOST_CXX=c++ CC_aarch64_apple_darwin=cc CXX_aarch64_apple_darwin=c++
   unset CC CXX CARGO_TARGET_AARCH64_APPLE_DARWIN_RUNNER
-  rm -rf "${checkout:?}/${service}/mutants-out"
+  # The rules are the domain crate in the service's workspace (CRM-T260); the matcher's results
+  # land in its own directory, on the night that takes shard 0.
+  rm -rf "${checkout:?}/${service}/contact-relationship-management-domain/mutants-out" "${checkout:?}/contact-relationship-management-matcher-with-rust/mutants-out"
   started="${SECONDS}"
   export CRM_MUTANTS_JOBS="${CRM_MUTANTS_JOBS:-8}"
   run_job mutants --shard "${shard}/7"
-  mutants_dir="${checkout}/${service}/mutants-out/mutants.out"
+  mutants_dir="${checkout}/${service}/contact-relationship-management-domain/mutants-out/mutants.out"
   missed=0
   if [[ -f "${mutants_dir}/missed.txt" ]]; then
     missed="$(wc -l <"${mutants_dir}/missed.txt" | tr -d ' ')"

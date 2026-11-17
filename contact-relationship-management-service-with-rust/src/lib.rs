@@ -39,6 +39,11 @@
 // The hand-written OpenAPI document is one large nested `json!` literal.
 #![recursion_limit = "512"]
 
+// The domain rules and their dates and times are their own crate (CRM-T260), so an edit to a route
+// or a query does not rebuild them, and their tests build without the service. They are re-exported
+// under their old paths, `crate::rules` and `crate::time`.
+pub use contact_relationship_management_domain::{rules, time};
+
 pub mod app;
 pub mod attachments;
 pub mod auth;
@@ -70,14 +75,12 @@ pub mod provider_api;
 pub mod provider_cloud;
 pub mod rate_limit;
 pub mod redis_store;
-pub mod rules;
 pub mod schema;
 pub mod search;
 pub mod search_docs;
 pub mod settings;
 pub mod streaming;
 pub mod tasks;
-pub mod time;
 pub mod unsubscribe;
 pub mod validation;
 /// Header-based API versioning (`Accepts-version`) for the REST surface.

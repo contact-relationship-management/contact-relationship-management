@@ -186,3 +186,41 @@ impl MatchConfig {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // The bounds are open: a probability of exactly 1 is refused, and so are equal bands.
+    #[test]
+    fn a_probability_of_one_and_equal_bands_are_refused() {
+        let prior_one = MatchConfig {
+            prior: 1.0,
+            ..MatchConfig::default()
+        };
+        assert!(matches!(
+            prior_one.validate(),
+            Err(ConfigError::OutOfRange { .. })
+        ));
+        let just_below = MatchConfig {
+            prior: 0.999,
+            ..MatchConfig::default()
+        };
+        assert!(just_below.validate().is_ok());
+        let equal_bands = MatchConfig {
+            agree_at: 0.8,
+            disagree_at: 0.8,
+            ..MatchConfig::default()
+        };
+        assert!(matches!(
+            equal_bands.validate(),
+            Err(ConfigError::SimilarityBandsOutOfOrder)
+        ));
+        let equal_thresholds = MatchConfig {
+            match_threshold: 0.6,
+            review_threshold: 0.6,
+            ..MatchConfig::default()
+        };
+        assert!(equal_thresholds.validate().is_ok());
+    }
+}

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the domain crate (CRM-T260)
+
+- `src/rules/`, `src/time.rs` and `src/time/` move to `contact-relationship-management-domain/`, a
+  crate in this workspace, with `benches/rules.rs`; `search_docs::UNSPACED` and `is_unspaced` move to
+  `rules::search`, and `search_docs` re-exports them. The service re-exports `rules` and `time`, so
+  paths are unchanged. The sqlx encoding of `Timestamp` and `Date` is the domain crate's `postgres`
+  feature. The host-clock census reads both crates.
+
+### Changed — mutation testing (CRM-T259)
+
+- The `mutants` profile builds without debug information. `retry_delay_seconds` drops an index cap
+  that could never apply, and `is_local_name` the `localhost` case the no-dot rule already covered.
+  New tests: every range `is_public_ip` refuses has its edges tested from both sides, including NAT64;
+  a public IPv6 literal, the longest address, and a user name or password alone in `check_target`;
+  exactly `MAX_PATTERNS` patterns, and digits and underscores in a pattern; the longest email a form
+  takes.
+
 ### Changed — dates and times on jiff (CRM-T258)
 
 - `chrono` and `chrono-tz` are replaced by `jiff` 0.2.43, with its time-zone database built in, as the

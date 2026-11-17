@@ -6,6 +6,7 @@ Entry point for AI coding agents at the repository root. Three projects live her
 | Project | Directory | Guide |
 | --- | --- | --- |
 | Service (Axum and axa REST API, PostgreSQL) | `contact-relationship-management-service-with-rust` | [AGENTS.md](contact-relationship-management-service-with-rust/AGENTS.md) |
+| Domain rules (pure Rust library, in the service's workspace) | `contact-relationship-management-service-with-rust/contact-relationship-management-domain` | [README.md](contact-relationship-management-service-with-rust/contact-relationship-management-domain/README.md) |
 | Matcher (pure Rust library) | `contact-relationship-management-matcher-with-rust` | [README.md](contact-relationship-management-matcher-with-rust/README.md) |
 | Client UI (SvelteKit, Svelte 5) | `contact-relationship-management-ui-with-svelte` | [AGENTS.md](contact-relationship-management-ui-with-svelte/AGENTS.md) |
 

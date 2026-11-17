@@ -481,3 +481,16 @@ Each query is written out with `sqlx::query!`, so a reviewer reads what runs and
 - **Builds read `.sqlx/`,** with `SQLX_OFFLINE` set in `.cargo/config.toml`, so they need no database. `test-db` fails if the cache and the migrated schema have drifted. That check clears compiler caches, because a cache hit skips the macros and the check then passes without comparing anything.
 
 Still open: whether any database is deployed, when `seaql_migrations` may be dropped, and what `db truncate` should do. Until the owner decides, CRM-T229 takes the answer that undoes nothing: a database the history built is recognised and keeps `seaql_migrations`, and `db truncate` empties the tables it emptied before. `db down` has no step to undo while the baseline is the only migration, and is refused.
+
+## CRM-D25 — The domain rules are their own crate
+
+*Decided 2026-11-17 by the owner ("refactor into new subcrate contact-relationship-management-domain"); built by CRM-T260.*
+
+The pure core of CRM-D3 to D5 is `contact-relationship-management-domain`, a crate in the service's workspace: the business rules and the dates and times they reason about, and nothing that serves a request or touches a database. The service depends on it by path and version and re-exports `rules` and `time`, so its code reads as before.
+
+- **Why.** Every edit rebuilt one 61,500-line crate. A rule's unit tests built and linked the whole service (axum, axa, sqlx, the TLS stack), so a mutant took about 140 seconds to build on CI; in the domain crate one is built and tested in seconds. An edit to a route or a query no longer rebuilds the rules.
+- **The line.** In the domain crate: no SQL, no routes, no clock, no network, no settings. A rule that needs one of those takes its value as an argument; the controller reads it. `time::Timestamp::now` and `Date::today_utc` are the only clock reads, and the service's census of host-clock readers covers both crates.
+- **Postgres stays beside the types.** Rust lets a trait be implemented for a type only in the crate of the trait or of the type, so the sqlx encoding of `Timestamp` and `Date` is in the domain crate, behind its `postgres` feature, which the service turns on and the rules never use.
+- **Database text stays with the service.** `search_docs` (the searched columns and the n-gram function) describes storage, so only the script table it shares with the rules, `UNSPACED`, moved; the service re-exports it.
+
+Still open: publishing. The service is on crates.io, so publishing a new version of it needs the domain crate published first; neither is published by this change. A further split of the service itself (the models apart from the controllers) is not decided.

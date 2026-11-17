@@ -76,6 +76,7 @@ SECTIONS = [
     ]),
     ("Contact matcher", [
         ("Matcher README", "contact-relationship-management-matcher-with-rust/README.md", "The published crate that scores whether two contact records are the same person, with a per-field explanation."),
+        ("Domain rules README", "contact-relationship-management-service-with-rust/contact-relationship-management-domain/README.md", "The crate of business rules and their dates and times, with no routes or storage (CRM-D25)."),
         ("Matcher changelog", "contact-relationship-management-matcher-with-rust/CHANGELOG.md", "Changes to the matcher."),
     ]),
     ("Svelte client", [

@@ -15,10 +15,10 @@
 use std::collections::BTreeMap;
 use std::hint::black_box;
 
-use contact_relationship_management::rules::{
+use contact_relationship_management_domain::rules::{
     analytics, attribution, audit_chain, fx, imports, reports, scoring, search, segment,
 };
-use contact_relationship_management::time::{Date, Timestamp};
+use contact_relationship_management_domain::time::{Date, Timestamp};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use jiff::SignedDuration;
 use uuid::Uuid;
@@ -254,7 +254,7 @@ fn bench_imports(c: &mut Criterion) {
 fn bench_attribution(c: &mut Criterion) {
     let mut rng = Lcg(6);
     let campaigns: Vec<Uuid> = (0..12).map(|_| rng.uuid()).collect();
-    let closed = start() + contact_relationship_management::time::days(90);
+    let closed = start() + contact_relationship_management_domain::time::days(90);
     let mut group = c.benchmark_group("attribution");
     for touches in [5_usize, 50, 500] {
         let list: Vec<_> = (0..touches)
@@ -292,7 +292,7 @@ fn bench_fx(c: &mut Criterion) {
                 from: from.to_string(),
                 to: "GBP".to_string(),
                 ppb: 500_000_000 + i64::try_from(rng.next(1_000_000_000)).unwrap(),
-                effective_on: first_day + contact_relationship_management::time::days(day),
+                effective_on: first_day + contact_relationship_management_domain::time::days(day),
                 source: "bench".to_string(),
             });
         }

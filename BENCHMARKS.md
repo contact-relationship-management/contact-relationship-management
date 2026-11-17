@@ -33,7 +33,7 @@ dominated by the person-service calls (up to 21 a request), not by the matcher.
 
 ## Service rules (CRM-T242)
 
-The pure rules a request runs, in `contact-relationship-management-service-with-rust/benches/rules.rs`:
+The pure rules a request runs, in `contact-relationship-management-service-with-rust/contact-relationship-management-domain/benches/rules.rs` (in the service crate's `benches/` until CRM-T260):
 no database, network or clock, so these are a request's rule step, not its latency. Times are
 criterion's estimate (its low and high in brackets where the spread is wide).
 
@@ -65,7 +65,7 @@ compares each row with known records using the matcher, which the k6 figures bel
 
 - **Commit:** `28c39a4` plus the benchmark file.
 - **Hardware:** Apple M4 Max, macOS 27.2.1, rustc 1.100.0, the bench profile, one run.
-- **Command:** `cd contact-relationship-management-service-with-rust && cargo bench --bench rules`
+- **Command:** `cd contact-relationship-management-service-with-rust/contact-relationship-management-domain && cargo bench --bench rules`
   (criterion 0.8; `-- segment` runs one group).
 - **Limits:** one run on a laptop that was also running other work, so spreads are wide (the
   segment group was 21–31% faster on a second run minutes later; the figures above are the

@@ -1,6 +1,6 @@
 //! Web form capture (CRM-R31): what counts as an address and a name.
 //!
-//! Pure and DB-free. The submission limits are `crate::rate_limit::Settable` (CRM-T219).
+//! Pure and DB-free. The submission limits are the service's `rate_limit::Settable` (CRM-T219).
 
 /// The longest address accepted (RFC 5321).
 pub const MAX_EMAIL_LEN: usize = 254;
@@ -76,6 +76,11 @@ mod tests {
         }
         assert!(!valid_email(&format!("{}@b.co", "a".repeat(65))));
         assert!(!valid_email(&format!("a@{}.co", "b".repeat(260))));
+        // The limit itself is allowed, one more is not (CRM-T259).
+        let at_limit = format!("a@{}.co", "b".repeat(MAX_EMAIL_LEN - 5));
+        assert_eq!(at_limit.len(), MAX_EMAIL_LEN);
+        assert!(valid_email(&at_limit));
+        assert!(!valid_email(&format!("a@{}.co", "b".repeat(MAX_EMAIL_LEN - 4))));
     }
 
     #[test]

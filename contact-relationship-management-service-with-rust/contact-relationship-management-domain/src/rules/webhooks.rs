@@ -26,8 +26,9 @@ pub fn retry_delay_seconds(failed_attempts: i32) -> Option<i64> {
     if failed_attempts >= MAX_ATTEMPTS {
         return None;
     }
+    // One delay for each attempt but the last, so every attempt before MAX_ATTEMPTS has one.
     let index = usize::try_from(failed_attempts.max(1) - 1).unwrap_or(0);
-    Some(DELAYS[index.min(DELAYS.len() - 1)])
+    DELAYS.get(index).copied()
 }
 
 /// Whether `ip` is an address on the public internet. Everything that reaches
@@ -119,8 +120,8 @@ pub fn check_target(address: &str) -> Result<String, String> {
 #[allow(clippy::case_sensitive_file_extension_comparisons)] // host names, not files
 fn is_local_name(name: &str) -> bool {
     let name = name.trim_end_matches('.').to_ascii_lowercase();
-    name == "localhost"
-        || name.ends_with(".localhost")
+    // A name with no dot, `localhost` among them, never leaves the network.
+    name.ends_with(".localhost")
         || name.ends_with(".local")
         || name.ends_with(".internal")
         || !name.contains('.')
@@ -284,6 +285,16 @@ mod tests {
             "::ffff:127.0.0.1",
             "::ffff:169.254.169.254",
             "64:ff9b::7f00:1", // NAT64 wrapping 127.0.0.1
+            // The edges of each range the standard library does not name (CRM-T259).
+            "0.1.2.3",
+            "100.127.255.255",
+            "192.0.0.8",
+            "192.0.2.255",
+            "198.19.255.255",
+            "198.51.100.7",
+            "203.0.113.9",
+            "255.0.0.1",
+            "64:ff9b::a00:1", // NAT64 wrapping 10.0.0.1
         ] {
             assert!(!is_public_ip(ip(bad)), "{bad} must be refused");
         }
@@ -297,6 +308,35 @@ mod tests {
             "93.184.216.34",
             "2606:4700:4700::1111",
             "172.32.0.1",
+            // Just outside each range refused above, so a range cannot quietly grow (CRM-T259).
+            "1.0.0.1",
+            "100.63.255.255",
+            "100.128.0.1",
+            "101.64.0.1",
+            "192.0.1.1",
+            "192.0.3.1",
+            "192.1.0.1",
+            "192.1.2.3",
+            "193.0.0.1",
+            "193.0.2.1",
+            "198.17.255.255",
+            "198.20.0.1",
+            "199.18.0.1",
+            "198.51.99.1",
+            "198.51.101.1",
+            "198.52.100.1",
+            "199.51.100.1",
+            "203.0.112.1",
+            "203.0.114.1",
+            "203.1.113.1",
+            "204.0.113.1",
+            "223.255.255.255",
+            "2001:4860:4860::8888", // 2001: but not 2001:db8::
+            "2001:db9::1",
+            "2600::a00:1", // zeros in the middle, but not under 64:ff9b::
+            "64:ff9c::a00:1",
+            "65:ff9b::a00:1",
+            "64:ff9b:1::a00:1",
         ] {
             assert!(is_public_ip(ip(good)), "{good} must be accepted");
         }
@@ -327,6 +367,14 @@ mod tests {
         }
         let long = format!("https://example.com/{}", "a".repeat(MAX_URL_LEN));
         assert!(check_target(&long).is_err());
+        // The limit itself is allowed, and so is a public IPv6 literal (CRM-T259).
+        let base = "https://example.com/";
+        let longest = format!("{base}{}", "a".repeat(MAX_URL_LEN - base.len()));
+        assert!(check_target(&longest).is_ok());
+        assert!(check_target("https://[2606:4700:4700::1111]/x").is_ok());
+        // A user name alone, or a password alone, is still a credential.
+        assert!(check_target("https://user@hooks.example.com/").is_err());
+        assert!(check_target("https://:pw@hooks.example.com/").is_err());
     }
 
     #[test]
@@ -351,6 +399,12 @@ mod tests {
             assert!(check_patterns(&[bad.into()]).is_err(), "{bad}");
         }
         assert!(check_patterns(&vec!["a.b".to_string(); 21]).is_err());
+        // Exactly the most is allowed, and a part may hold digits and underscores (CRM-T259).
+        assert!(check_patterns(&vec!["a.b".to_string(); MAX_PATTERNS]).is_ok());
+        assert_eq!(
+            check_patterns(&["web_form2.submitted".into(), "*.stage_3".into()]).unwrap(),
+            vec!["web_form2.submitted", "*.stage_3"]
+        );
         assert!(pattern_matches("*", "deal", "opened"));
         assert!(pattern_matches("deal.*", "deal", "opened"));
         assert!(!pattern_matches("deal.*", "lead", "opened"));

@@ -150,6 +150,35 @@ jobs:
       - run: pipx install rumdl==0.3.0
       - run: scripts/ci-check.sh lint
 
+  # Mutation testing of the lines a change touches, in the matcher and the domain rules (CRM-T259).
+  # A surviving mutant is a changed rule that no test pins. The weekly run covers the rest.
+  mutants-diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CRM_MUTANTS_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: |
+            contact-relationship-management-service-with-rust
+            contact-relationship-management-matcher-with-rust
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-mutants
+      - run: scripts/ci-check.sh mutants-diff
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: mutants-diff
+          path: |
+            contact-relationship-management-service-with-rust/contact-relationship-management-domain/mutants-diff-out/
+            contact-relationship-management-matcher-with-rust/mutants-diff-out/
+
   # A breaking change to the published matcher API must come with a new version (CRM-T87).
   semver:
     runs-on: ubuntu-latest

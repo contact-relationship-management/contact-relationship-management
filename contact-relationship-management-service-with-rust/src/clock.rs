@@ -159,7 +159,10 @@ mod tests {
     /// compares a record's time takes [`now`].
     const HOST_CLOCK: &[(&str, &str)] = &[
         ("src/clock.rs", "the clock itself"),
-        ("src/time.rs", "the host's reading that the clock moves"),
+        (
+            "contact-relationship-management-domain/src/time.rs",
+            "the host's reading that the clock moves",
+        ),
         (
             "src/webhook.rs",
             "a provider's signed timestamp is on the provider's clock",
@@ -190,6 +193,11 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
         let mut files = Vec::new();
         rust_files(&root.join("src"), &mut files);
+        // The domain crate (CRM-T260) is in this workspace, and its rules must not read the clock.
+        rust_files(
+            &root.join("contact-relationship-management-domain/src"),
+            &mut files,
+        );
         // `jiff`'s and the wrapper's `Timestamp::now()`, and the wrapper's `today_utc()`.
         let needles = [
             ["Timestamp", "::now()"].concat(),

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+No change in behaviour or public API.
+
+- Mutation testing (CRM-T259): `.cargo/mutants.toml`, with one equivalent mutant named and why.
+  New unit tests pin the probability as the prior plus the weights, a partial field's weight, a field
+  on one side only, the single-letter initial, a tie that is not a swap, a title's word overlap, the
+  family name of a three-word name, a name that is only a title or a suffix, the ideographic space,
+  and the open bounds of `MatchConfig::validate`. `email` drops two checks that the rest of it
+  already made (an empty domain has no dot; an empty local part is refused after Gmail's folding).
+
 ## 0.2.1
 
 No change in behaviour or public API.
