@@ -71,6 +71,41 @@ compares each row with known records using the matcher, which the k6 figures bel
   segment group was 21–31% faster on a second run minutes later; the figures above are the
   second run's); no allocation or memory figures; the inputs are drawn from short lists.
 
+### More rules (CRM-T262)
+
+Business calendars, templates, webhooks and the time types, which had no benchmark, in the same
+file. Criterion's low, estimate and high.
+
+| Case | Time |
+| --- | --- |
+| `calendar::add_working_minutes`, an SLA deadline 4 working hours on (London, two windows a weekday, eight holidays) | 159 ns, 161 ns, 164 ns |
+| the same, 5 working days on | 977 ns, 986 ns, 996 ns |
+| the same, 40 working days on | 6.69 µs, 6.74 µs, 6.79 µs |
+| `calendar::working_seconds_between`, 1 day | 295 ns, 297 ns, 299 ns |
+| the same, 30 days | 5.13 µs, 5.86 µs, 6.65 µs |
+| the same, 365 days | 44.9 µs, 50.7 µs, 57.5 µs |
+| `templates::parse`, a 1 KB mail with five tokens | 62 ns, 64 ns, 66 ns |
+| `templates::render`, the same for one recipient (subject, text and HTML) | 1.65 µs, 1.84 µs, 2.08 µs |
+| `webhooks::sign`, a 2 KB body (HMAC-SHA256) | 1.29 µs, 1.30 µs, 1.31 µs |
+| `webhooks::check_target`, one https address | 230 ns, 244 ns, 260 ns |
+| `webhooks::is_public_ip`, four addresses | 8.2 ns, 8.3 ns, 8.5 ns |
+| `time::Timestamp` read as `chrono` read it, with an offset | 66 ns, 76 ns, 88 ns |
+| the same, strict RFC 3339 | 30 ns, 35 ns, 41 ns |
+| `Timestamp` written as `chrono` wrote it | 164 ns, 176 ns, 197 ns |
+| `time::Date` read | 17.2 ns, 17.3 ns, 17.4 ns |
+
+What they say: a calendar walks day by day, so its cost grows with the span, about 170 ns a
+working day for a deadline and 140 ns a calendar day for a sum; an SLA deadline of a few days is
+about a microsecond. A campaign of 10,000 recipients spends about 18 ms rendering. Reading and
+writing times, which every request and response does, costs well under a microsecond each.
+
+- **Commit:** `a1d9825` plus the benchmark additions; the bench is now in the domain crate (CRM-T260).
+- **Hardware:** Apple M4 Max, macOS 27.2.1, rustc 1.100.0, the bench profile, one run, with a load
+  average of 26 to 33 from other work on the machine.
+- **Command:** `cd contact-relationship-management-service-with-rust/contact-relationship-management-domain && cargo bench --bench rules -- '^(calendar|templates|webhooks|time)/'`.
+- **Limits:** one run on a shared machine; the first run of `templates/parse` read 172 ns and the
+  second 64 ns, so its spread is wide; one calendar shape only.
+
 ## API under load (CRM-T242)
 
 k6 1.4.2 (`tests/load/`), from a container on the demo stack's own network, against
@@ -179,10 +214,68 @@ The largest single file is 20.5 KiB gzipped. A page's own node and the chunks it
 top of the 19.8 KiB every page loads; the script does not trace those, and no load time was
 measured in a browser.
 
+## Page load in a browser (CRM-T262)
+
+`pnpm perf:pages` in `contact-relationship-management-ui-with-svelte` (`tests/perf/page-load.spec.ts`,
+its own Playwright config, not part of the e2e suite): eleven pages of the tour, signed in as the demo
+user, against the production build served by `vite preview` with the BFF's demo data. Each page is
+loaded three times in a new browser context (no cache), keeping the median, and once more warm (a
+reload). Times are milliseconds from the start of the navigation; LCP is the largest contentful paint.
+
+**Plain** (loopback, no throttling):
+
+| Page | TTFB | DOM ready | Load | LCP | Warm load | Requests | JS KiB |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `/` | 2 | 43 | 48 | 88 | 15 | 37 | 88.1 |
+| `/contacts` | 2 | 40 | 46 | 84 | 20 | 38 | 130.5 |
+| `/contacts/con-1` | 2 | 39 | 45 | 104 | 12 | 41 | 134.3 |
+| `/accounts` | 1 | 39 | 47 | 84 | 10 | 38 | 130.3 |
+| `/leads` | 2 | 41 | 45 | 88 | 18 | 38 | 130.7 |
+| `/leads/board` | 2 | 40 | 45 | 88 | 11 | 33 | 123.1 |
+| `/deals` | 2 | 46 | 53 | 92 | 13 | 42 | 150.6 |
+| `/campaigns` | 2 | 40 | 48 | 108 | 10 | 39 | 156.7 |
+| `/tickets` | 2 | 40 | 45 | 88 | 10 | 38 | 130.9 |
+| `/executive` | 1 | 40 | 49 | 92 | 11 | 36 | 127.7 |
+| `/search?q=a` | 2 | 41 | 45 | 84 | 8 | 29 | 85.0 |
+
+**A mid-range phone** (Chrome's CPU slowed 4 times; 9 Mbit/s down, 1.5 Mbit/s up, 170 ms round trip):
+
+| Page | TTFB | DOM ready | Load | LCP | Warm load | Requests | JS KiB |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `/` | 171 | 574 | 1,165 | 1,412 | 213 | 37 | 88.1 |
+| `/contacts` | 171 | 577 | 1,316 | 1,572 | 224 | 38 | 130.5 |
+| `/contacts/con-1` | 171 | 574 | 1,300 | 1,668 | 215 | 41 | 134.3 |
+| `/accounts` | 171 | 585 | 1,320 | 1,596 | 216 | 38 | 130.3 |
+| `/leads` | 171 | 598 | 1,329 | 1,604 | 222 | 38 | 130.7 |
+| `/leads/board` | 171 | 605 | 1,184 | 1,452 | 224 | 33 | 123.1 |
+| `/deals` | 171 | 599 | 1,369 | 1,644 | 447 | 40 | 150.6 |
+| `/campaigns` | 171 | 575 | 1,317 | 1,804 | 216 | 39 | 156.7 |
+| `/tickets` | 171 | 576 | 1,316 | 1,572 | 215 | 38 | 130.9 |
+| `/executive` | 171 | 581 | 1,159 | 1,460 | 216 | 35 | 127.7 |
+| `/search?q=a` | 171 | 587 | 1,124 | 1,420 | 204 | 29 | 85.0 |
+
+What they say: on the throttled phone every page paints its largest element in 1.4 to 1.8 s, under
+the 2.5 s that Core Web Vitals counts as good, and a warm reload takes about 0.2 s. About 30 to 40
+requests and 85 to 157 KiB of JavaScript (as sent: `vite preview` does not compress) load before
+the page is usable; the campaigns and deals pages carry the most. The server's own time is a
+millisecond or two here, because the demo data is in memory: with a real service, its API time
+(see above) comes before the first byte.
+
+- **Commit:** `a1d9825` plus the benchmark script.
+- **Hardware:** Apple M4 Max, macOS 27.2.1, Node 26.8.1, Playwright 1.65.1 (Chromium), load average
+  about 26 to 30 from other work.
+- **Command:** `cd contact-relationship-management-ui-with-svelte && pnpm perf:pages`; the figures are
+  also written to `test-results/page-load.json`.
+- **Limits:** loopback, so the plain run has no network; the phone profile is Chrome's throttling of
+  this machine, not a phone; demo data in the UI's server, not the service; the transfer sizes are
+  uncompressed, which a deployment behind a compressing proxy would cut; three cold runs a page.
+
 ## Not yet measured
 
-- Request latency against a database of realistic size (tens of thousands of contacts).
-- Page load time in a browser, and each page's own code.
+- Request latency against a database of realistic size (tens of thousands of contacts). The demo
+  stack's `podman compose` does not start on this machine's Podman 6.2.0 (CRM-T254), so it was not
+  run here.
+- Page load against a real service, and with a deployment's compression.
 - Anything with sign-in on, or with real mail.
 
 ## Method

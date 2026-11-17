@@ -20,7 +20,8 @@
     "lint": "prettier --check src tests scripts \"*.{ts,js}\" && eslint .",
     "api:types": "openapi-typescript \"${OPENAPI:?set OPENAPI to the service openapi.json}\" -o src/lib/api/schema.d.ts",
     "test:live": "playwright test -c playwright.live.config.ts",
-    "size": "node scripts/bundle-size.mjs"
+    "size": "node scripts/bundle-size.mjs",
+    "perf:pages": "playwright test --config playwright.perf.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — page load benchmark (CRM-T262)
+
+- `pnpm perf:pages` (`playwright.perf.config.ts`, `tests/perf/page-load.spec.ts`): eleven tour
+  pages loaded cold and warm, plain and throttled to a mid-range phone, with first byte, DOM ready,
+  load, largest contentful paint, requests and script bytes. Not part of `test:e2e` and not a gate;
+  the results are in `BENCHMARKS.md`.
+
 ### Added — the privacy notice is held to the code (CRM-T253)
 
 - `privacy-notice.test.ts`: every cookie or storage write in the UI's and the site's source must be

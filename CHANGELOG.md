@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — more benchmarks, and page load in a browser (CRM-T262, 2026-11-17)
+
+- Criterion benchmarks of business calendars, templates, webhooks and the time types, and
+  `pnpm perf:pages`, which times eleven UI pages cold and warm, plain and throttled to a phone.
+  Results in `BENCHMARKS.md`.
+
 ### Changed — axa 0.19.0 (CRM-T261, 2026-11-17)
 
 - The service uses axa 0.19.0 and `axa-test` 0.10.0. axa's job queue now uses jiff, so nothing the

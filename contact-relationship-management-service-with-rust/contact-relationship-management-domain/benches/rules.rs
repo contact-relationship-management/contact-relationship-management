@@ -16,7 +16,8 @@ use std::collections::BTreeMap;
 use std::hint::black_box;
 
 use contact_relationship_management_domain::rules::{
-    analytics, attribution, audit_chain, fx, imports, reports, scoring, search, segment,
+    analytics, attribution, audit_chain, calendar, fx, imports, reports, scoring, search, segment,
+    templates, webhooks,
 };
 use contact_relationship_management_domain::time::{Date, Timestamp};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
@@ -373,6 +374,157 @@ fn bench_search(c: &mut Criterion) {
     group.finish();
 }
 
+/// A business calendar in a zone with summer time: two windows a weekday and eight holidays, so
+/// a deadline crosses lunches, nights, weekends and holidays (CRM-T262).
+fn london_calendar() -> calendar::Calendar {
+    let day = || {
+        vec![
+            calendar::Hours {
+                start: "09:00".into(),
+                end: "12:30".into(),
+            },
+            calendar::Hours {
+                start: "13:30".into(),
+                end: "17:30".into(),
+            },
+        ]
+    };
+    let week = calendar::Week {
+        mon: day(),
+        tue: day(),
+        wed: day(),
+        thu: day(),
+        fri: day(),
+        ..Default::default()
+    };
+    let holidays: Vec<jiff::civil::Date> = [
+        "2026-08-31",
+        "2026-12-25",
+        "2026-12-28",
+        "2027-01-01",
+        "2027-03-26",
+        "2027-03-29",
+        "2027-05-03",
+        "2027-05-31",
+    ]
+    .iter()
+    .map(|d| d.parse().unwrap())
+    .collect();
+    calendar::Calendar::build("Europe/London", &week, &holidays).unwrap()
+}
+
+fn bench_calendar(c: &mut Criterion) {
+    let cal = london_calendar();
+    let from = start().0;
+    let mut group = c.benchmark_group("calendar");
+    // An SLA deadline: a first response in 4 working hours, a resolution in 5 and 40 working days.
+    for (name, minutes) in [("4h", 4 * 60), ("5d", 5 * 450), ("40d", 40 * 450)] {
+        group.bench_function(BenchmarkId::new("add_working_minutes", name), |b| {
+            b.iter(|| cal.add_working_minutes(black_box(from), black_box(minutes)));
+        });
+    }
+    // Working time between two instants, as the SLA report sums it per ticket.
+    for (name, days) in [("1d", 1), ("30d", 30), ("365d", 365)] {
+        let to = from + SignedDuration::from_hours(24 * days);
+        group.bench_function(BenchmarkId::new("working_seconds_between", name), |b| {
+            b.iter(|| cal.working_seconds_between(black_box(from), black_box(to)));
+        });
+    }
+    group.finish();
+}
+
+fn bench_templates(c: &mut Criterion) {
+    // A campaign mail of about 1 KB with five tokens, one of them missing, rendered per recipient.
+    let subject = "{{given_name}}, your {{organization}} renewal";
+    let body = format!(
+        "Hello {{{{given_name|there}}}},\n\n{}\n\nYour account manager, {{{{owner_name}}}}, is at {{{{owner_email}}}}.\n{}\n\nTo stop these mails: {{{{unsubscribe_url}}}}",
+        "We are writing about the renewal of your service. ".repeat(10),
+        "Thank you for working with us. ".repeat(6),
+    );
+    let values: BTreeMap<String, String> = [
+        ("given_name", "Ana"),
+        ("organization", "Acme <Widgets> & Co"),
+        ("owner_name", "Sam Lee"),
+    ]
+    .iter()
+    .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
+    .collect();
+    let fallbacks = BTreeMap::new();
+    let with = templates::Fill {
+        values: &values,
+        fallbacks: &fallbacks,
+        language: Some("en"),
+        unsubscribe_url: "https://crm.example.test/u/abc",
+    };
+    let mut group = c.benchmark_group("templates");
+    group.throughput(Throughput::Bytes(u64::try_from(body.len()).unwrap()));
+    group.bench_function("parse", |b| b.iter(|| templates::parse(black_box(&body))));
+    group.bench_function("render", |b| {
+        b.iter(|| templates::render(black_box(subject), black_box(&body), black_box(&with)));
+    });
+    group.finish();
+}
+
+fn bench_webhooks(c: &mut Criterion) {
+    // A delivery's signature over a 2 KB body, and the checks on a subscription's address.
+    let secret = webhooks::new_secret();
+    let body = format!("{{\"data\":\"{}\"}}", "x".repeat(2_000));
+    let mut group = c.benchmark_group("webhooks");
+    group.bench_function("sign/2KB", |b| {
+        b.iter(|| {
+            webhooks::sign(
+                black_box(&secret),
+                black_box("msg_1"),
+                black_box(1_800_000_000),
+                black_box(&body),
+            )
+        });
+    });
+    group.bench_function("check_target", |b| {
+        b.iter(|| {
+            webhooks::check_target(black_box("https://hooks.example.com/crm/events?tenant=7"))
+        });
+    });
+    let addresses: Vec<std::net::IpAddr> = [
+        "8.8.8.8",
+        "10.1.2.3",
+        "2606:4700:4700::1111",
+        "64:ff9b::a00:1",
+    ]
+    .iter()
+    .map(|a| a.parse().unwrap())
+    .collect();
+    group.bench_function("is_public_ip/4", |b| {
+        b.iter(|| {
+            addresses
+                .iter()
+                .filter(|ip| webhooks::is_public_ip(black_box(**ip)))
+                .count()
+        });
+    });
+    group.finish();
+}
+
+fn bench_time(c: &mut Criterion) {
+    // What each request body and response does with a time (CRM-T258): read a timestamp as chrono
+    // read it, write one as chrono wrote it, and read a date.
+    let mut group = c.benchmark_group("time");
+    group.bench_function("timestamp/read", |b| {
+        b.iter(|| black_box("2026-11-17T10:00:00.123456+01:00").parse::<Timestamp>());
+    });
+    group.bench_function("timestamp/read_rfc3339", |b| {
+        b.iter(|| Timestamp::parse_rfc3339(black_box("2026-11-17T10:00:00.123456Z")));
+    });
+    let at: Timestamp = "2026-11-17T10:00:00.123456Z".parse().unwrap();
+    group.bench_function("timestamp/write", |b| {
+        b.iter(|| black_box(at).to_rfc3339_z())
+    });
+    group.bench_function("date/read", |b| {
+        b.iter(|| black_box("2026-11-17").parse::<Date>())
+    });
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_scoring,
@@ -384,5 +536,9 @@ criterion_group!(
     bench_fx,
     bench_reports,
     bench_search,
+    bench_calendar,
+    bench_templates,
+    bench_webhooks,
+    bench_time,
 );
 criterion_main!(benches);

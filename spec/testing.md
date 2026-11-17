@@ -69,7 +69,8 @@ Three kinds of measure, each with synthetic data only and each recorded in
   pure rules a request runs (the domain crate's `benches/rules.rs`): lead scoring, segment evaluation, the
   weighted forecast, the audit-chain check, a lead import at its 500-row limit, attribution
   under each model, report currency conversion, report planning and small-cell suppression,
-  and search-query building. No database, network or clock: a request's rule step, not its
+  search-query building, and (CRM-T262) business-calendar deadlines and sums, template rendering,
+  webhook signing and address checks, and reading and writing times. No database, network or clock: a request's rule step, not its
   latency.
 - **The API under load** (k6, [`tests/load/`](../tests/load/README.md)): one module of real
   calls with real request bodies, a weighted mixed workload, and smoke, basic, stress, spike,
@@ -80,6 +81,9 @@ Three kinds of measure, each with synthetic data only and each recorded in
   campaign run, nurture, webhook, MCP call or web form.
 - **The UI's browser code** (`contact-relationship-management-ui-with-svelte/scripts/bundle-size.mjs`):
   the built JavaScript and CSS, raw and gzipped, and the part every page loads.
+- **Page load in a browser** (`pnpm perf:pages`, `tests/perf/page-load.spec.ts`, CRM-T262): eleven tour
+  pages, cold and warm, plain and throttled to a mid-range phone, with time to first byte, DOM
+  ready, load, largest contentful paint, requests and JavaScript bytes.
 
 None of these is a CI gate: a figure from a shared runner, or from a laptop, is a reading, not a
 limit. The k6 limits fail a run, and the endpoint limits are the ones a change should not
