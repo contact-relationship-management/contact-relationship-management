@@ -252,6 +252,7 @@ export default {
   "contact.mergedOn": "को मर्ज किया गया",
   "nav.breakGlass": "आपातकालीन पहुँच",
   "footer.accessibility": "सुगम्यता",
+  "footer.privacy": "गोपनीयता सूचना",
   "breakGlass.title": "आपातकालीन पठन पहुँच",
   "breakGlass.intro":
     "यह सीमित समय के लिए केवल पढ़ने हेतु मास्किंग हटाता है। कारण दर्ज होता है और बाद में कोई अन्य व्यक्ति उसकी समीक्षा करता है।",

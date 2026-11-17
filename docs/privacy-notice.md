@@ -35,7 +35,7 @@ The site's language and locale are part of the page address, such as `/de-de/`, 
 | Name | Kind | What it holds | Kept for |
 | --- | --- | --- | --- |
 | `crm-theme` | Cookie | `system` ("Follow this device") or the name of a theme | 400 days |
-| `mxi.crm.locale` | `localStorage` | The language and locale you picked, such as `de-DE` | Until you clear it |
+| `mxi.crm.locale` | `localStorage` | The language and locale you picked, such as `de-de` | Until you clear it |
 | `lily-text-size` | `localStorage` | The text size you picked | Until you clear it |
 | `crm-grid-<table>` | `localStorage` | One table's column widths, hidden columns and sort order | Until you clear it |
 | `crm-grid-order-<table>` | `localStorage` | One table's column order | Until you clear it |
@@ -57,4 +57,4 @@ which your browser sends to the site's host as described above. Cookies are firs
 
 To change a choice, make it again. To remove everything, clear this site's data in your browser's settings: the
 next page then uses the defaults again, which means following your device's light or dark setting, the standard
-text size and the language your browser asks for.
+text size and the page's default language.

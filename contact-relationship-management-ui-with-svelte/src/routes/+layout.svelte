@@ -9,6 +9,7 @@
   import { watchIdle } from "#lib/idle.js";
   import { THEMES, THEME_COOKIE, dropServerLinks, forgetOldKeys } from "#lib/theme.js";
   import { keptChoice } from "#lib/kept-choice.js";
+  import { privacyNoticeUrl } from "#lib/privacy.js";
   import { i18n, isRtl, t, LOCALES, LOCALE_LABELS } from "#lib/i18n.svelte.js";
   import { splitLocale } from "../params";
   import { resource } from "#lib/resource.svelte.js";
@@ -301,6 +302,7 @@
   <footer class="site-footer">
     <a href="/help">{t("help.title")}</a>
     <a href="/accessibility">{t("footer.accessibility")}</a>
+    <a href={privacyNoticeUrl(i18n.locale)}>{t("footer.privacy")}</a>
   </footer>
 </div>
 

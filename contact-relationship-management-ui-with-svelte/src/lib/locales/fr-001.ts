@@ -272,6 +272,7 @@ export default {
   "contact.mergedOn": "fusionné le",
   "nav.breakGlass": "Accès d'urgence",
   "footer.accessibility": "Accessibilité",
+  "footer.privacy": "Avis de confidentialité",
   "breakGlass.title": "Accès en lecture d'urgence",
   "breakGlass.intro":
     "Lève le masquage pour la lecture seule, pour une durée limitée. Le motif est enregistré puis examiné par une autre personne.",

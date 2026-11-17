@@ -4,8 +4,8 @@
 // and the content security policy blocks nothing the site itself does.
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { readdirSync } from "node:fs";
-import { BRIEFS, BRIEF_LOCALES, COMPARE_PAGES, DOC_PAGES, ENDONYMS, LOCALE_HOMES, PRODUCTION_LOCALES, peerIn, routesOf } from "../../src/lib/site.ts";
+import { readdirSync, readFileSync } from "node:fs";
+import { BRIEFS, BRIEF_LOCALES, COMPARE_PAGES, DOC_PAGES, ENDONYMS, LOCALE_HOMES, PRIVACY_LOCALES, PRODUCTION_LOCALES, langTag, peerIn, routesOf } from "../../src/lib/site.ts";
 import { TABLES } from "../../src/lib/i18n.ts";
 
 // The themes the site serves. The picker's own list is in a .svelte module, which Playwright cannot import; the test
@@ -22,7 +22,8 @@ const briefRoutes = BRIEFS.map(briefRoute);
 const sampleBriefs = BRIEF_LOCALES.map((l, i) => BRIEFS.filter((b) => b.locale === l)[i % 11]!);
 const homeRoutes = LOCALE_HOMES.map((l) => `/${l}/`);
 const productionRoutes = PRODUCTION_LOCALES.map((l) => `/${l}/path-to-production/`);
-const audited = [...docRoutes, ...homeRoutes, ...productionRoutes, "/search/", ...indexRoutes, ...sampleBriefs.map(briefRoute)];
+const privacyRoutes = PRIVACY_LOCALES.map((l) => `/${l}/privacy/`);
+const audited = [...docRoutes, ...homeRoutes, ...productionRoutes, ...privacyRoutes, "/search/", ...indexRoutes, ...sampleBriefs.map(briefRoute)];
 
 const ceo = (locale: string) => peerIn(locale, BRIEFS.find((b) => b.slug === "chief-executive-officer")!.peer)!;
 
@@ -48,7 +49,7 @@ async function axe(page: Page): Promise<string[]> {
 }
 
 test("every page is built and answers 200", async ({ request }) => {
-  const all = [...docRoutes, ...indexRoutes, ...briefRoutes, ...productionRoutes];
+  const all = [...docRoutes, ...indexRoutes, ...briefRoutes, ...productionRoutes, ...privacyRoutes];
   expect(BRIEF_LOCALES.length).toBe(11);
   expect(BRIEFS.length).toBe(11 * 11);
   for (const route of all) {
@@ -478,4 +479,34 @@ test("no element carries a style attribute (the CSP allows only SvelteKit's anno
     );
     expect(styled, route).toEqual([]);
   }
+});
+
+// The privacy notice in every locale names the same items, with the same identifiers, as the English source. A page
+// address (`/cy-gb/`) and a locale code (`cy-001`) are each page's own example, so they are left out.
+const isExample = (c: string) => c.startsWith("/") || /^[a-z]{2}(-[0-9a-z]+)+$/.test(c);
+const codeIn = (text: string) =>
+  [...new Set([...text.matchAll(/`([^`]+)`/g)].map((m) => m[1]!))].filter((c) => !isExample(c)).sort();
+
+test("the privacy notice is in every locale, naming what the English one names", async ({ page }) => {
+  expect([...PRIVACY_LOCALES]).toEqual([...BRIEF_LOCALES]);
+  const english = codeIn(readFileSync("../docs/privacy-notice.md", "utf8"));
+  expect(english).toContain("lily-theme");
+  for (const locale of PRIVACY_LOCALES) {
+    expect(codeIn(readFileSync(`../locales/${locale}/privacy/index.md`, "utf8")), locale).toEqual(english);
+    await page.goto(`/${locale}/privacy/`);
+    await expect(page.locator("html"), locale).toHaveAttribute("lang", langTag(locale));
+    await expect(page.locator("html"), locale).toHaveAttribute("dir", locale.startsWith("ar") ? "rtl" : "ltr");
+    await expect(page.locator("h1"), locale).toBeVisible();
+  }
+});
+
+test("a locale's footer links to the notice in that locale, and the language button keeps to the notice", async ({ page }) => {
+  await page.goto("/cy-gb/");
+  await page.locator(".site-footer").getByRole("link", { name: TABLES.cy!["nav.privacy"] }).click();
+  await expect(page).toHaveURL(/\/cy-gb\/privacy\/$/);
+  await expect(page.locator("h1")).toHaveText(/Hysbysiad preifatrwydd/);
+  await page.locator(".picker-bar .locale-picker-button").click();
+  await page.locator(".locale-picker-option").filter({ hasText: ENDONYMS["ar"] ?? "العربية" }).first().click();
+  await expect(page).toHaveURL(/\/ar-001\/privacy\/$/);
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 });

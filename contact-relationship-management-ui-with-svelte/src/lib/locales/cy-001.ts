@@ -297,6 +297,7 @@ export default {
   "contact.mergedOn": "unwyd ar",
   "nav.breakGlass": "Mynediad brys",
   "footer.accessibility": "Hygyrchedd",
+  "footer.privacy": "Hysbysiad preifatrwydd",
   "breakGlass.title": "Mynediad darllen brys",
   "breakGlass.intro":
     "Mae hyn yn codi'r masgio ar gyfer darllen yn unig am gyfnod cyfyngedig. Cofnodir y rheswm a bydd rhywun arall yn ei adolygu wedyn.",

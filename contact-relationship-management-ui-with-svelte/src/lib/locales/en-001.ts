@@ -252,6 +252,7 @@ export default {
   "contact.mergedOn": "merged on",
   "nav.breakGlass": "Emergency access",
   "footer.accessibility": "Accessibility",
+  "footer.privacy": "Privacy notice",
   "breakGlass.title": "Emergency read access",
   "breakGlass.intro":
     "Lifts masking for reads only, for a limited time. Your reason is recorded and reviewed later by someone else.",

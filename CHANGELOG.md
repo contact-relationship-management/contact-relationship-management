@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — the privacy notice translated, and linked from the UI (CRM-T252, 2026-11-17)
+
+- The privacy notice in all 11 site locales at `/<locale>/privacy/`: Welsh, Chinese, Hindi and
+  Arabic machine-written and unreviewed. The UI's footer links to it in the UI's language where the
+  site has one, and in English otherwise.
+
 ### Added — privacy notice; the site's theme picker (CRM-T251, 2026-11-16)
 
 - `docs/privacy-notice.md`, also at `/privacy/` on the site, lists what the site and the UI keep in the

@@ -33,6 +33,20 @@ The locale home pages, `locales/<code>/index.md` with `.locale-peer-id` and a `R
 | hi-in | Translated by Claude (Hindi) | **No** |
 | hi-001 | Byte copy of hi-in | **No** |
 
+The privacy notice, `locales/<code>/privacy/index.md` with `.locale-peer-id` and a `README.md` symlink (CRM-T252; English source `docs/privacy-notice.md`):
+
+| Locale | Method | Reviewed by a native speaker |
+|---|---|---|
+| en-gb-oxendict, en-001, en-us | Same text as `docs/privacy-notice.md` | n/a |
+| en-gb | Spelling rules applied to the source (`organisation`) | n/a |
+| cy-gb | Translated by Claude (Welsh) | **No** |
+| cy-001 | Byte copy of cy-gb | **No** |
+| zh-cn | Translated by Claude (Simplified Chinese) | **No** |
+| zh-001 | Byte copy of zh-cn | **No** |
+| ar-001 | Translated by Claude (Modern Standard Arabic, right-to-left) | **No** |
+| hi-in | Translated by Claude (Hindi) | **No** |
+| hi-001 | Byte copy of hi-in | **No** |
+
 ## Two locale sets (CRM-T89)
 
 The repository has two sets of locales, for two different things, and they are not meant to be equal.

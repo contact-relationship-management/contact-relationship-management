@@ -54,6 +54,18 @@ export function hasProductionPage(locale: string): boolean {
   return PRODUCTION_LOCALES.includes(locale);
 }
 
+/** The locales with the privacy notice at `/<locale>/privacy/` (`locales/<locale>/privacy/index.md`). */
+export const PRIVACY_LOCALES: readonly string[] = index.privacy;
+
+export function hasPrivacyPage(locale: string): boolean {
+  return PRIVACY_LOCALES.includes(locale);
+}
+
+/** The privacy notice in the page's locale, or the English one. */
+export function privacyRoute(locale: string | null): string {
+  return locale && hasPrivacyPage(locale) ? `/${locale}/privacy/` : "/privacy/";
+}
+
 /** The `*-001` home pages, for the "Translations:" sentence on a hero. */
 export const TRANSLATIONS: readonly string[] = LOCALE_HOMES.filter((l) => l.endsWith("-001"));
 
@@ -141,6 +153,8 @@ export function routeOfRepoPath(path: string): string | null {
   if (home?.[1] && hasHome(home[1])) return `/${home[1]}/`;
   const prod = /^locales\/([^/]+)\/path-to-production(?:\/(?:index|README)\.md)?$/.exec(clean);
   if (prod?.[1] && hasProductionPage(prod[1])) return `/${prod[1]}/path-to-production/`;
+  const privacy = /^locales\/([^/]+)\/privacy(?:\/(?:index|README)\.md)?$/.exec(clean);
+  if (privacy?.[1] && hasPrivacyPage(privacy[1])) return `/${privacy[1]}/privacy/`;
   const m = /^locales\/([^/]+)\/for(?:\/([^/]+))?(?:\/(?:index|README)\.md)?$/.exec(clean);
   if (m && m[1] && isBriefLocale(m[1])) {
     if (!m[2]) return `/${m[1]}/for/`;
@@ -149,11 +163,12 @@ export function routeOfRepoPath(path: string): string | null {
   return null;
 }
 
-/** Every route of one locale: its home and path-to-production pages if it has them, its list of briefs, and its briefs. */
+/** Every route of one locale: its home, path-to-production and privacy pages if it has them, its list of briefs, and its briefs. */
 export function routesOf(locale: string): string[] {
   return [
     ...(hasHome(locale) ? [`/${locale}/`] : []),
     ...(hasProductionPage(locale) ? [`/${locale}/path-to-production/`] : []),
+    ...(hasPrivacyPage(locale) ? [`/${locale}/privacy/`] : []),
     `/${locale}/for/`,
     ...briefsOf(locale).map((b) => `/${locale}/for/${b.slug}/`),
   ];

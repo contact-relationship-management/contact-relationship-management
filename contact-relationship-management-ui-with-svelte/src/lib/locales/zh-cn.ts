@@ -243,6 +243,7 @@ export default {
   "contact.mergedOn": "合并于",
   "nav.breakGlass": "紧急访问",
   "footer.accessibility": "无障碍",
+  "footer.privacy": "隐私声明",
   "breakGlass.title": "紧急只读访问",
   "breakGlass.intro":
     "在有限时间内解除只读数据的屏蔽。原因将被记录,并由他人事后审核。",

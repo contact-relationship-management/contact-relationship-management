@@ -75,6 +75,13 @@ function productionPages() {
     .filter((locale) => existsSync(join(ROOT, "locales", locale, "path-to-production", "index.md")));
 }
 
+// The privacy notice in each locale: locales/<locale>/privacy/index.md (English source docs/privacy-notice.md).
+function privacyPages() {
+  return readdirSync(join(ROOT, "locales"))
+    .sort()
+    .filter((locale) => existsSync(join(ROOT, "locales", locale, "privacy", "index.md")));
+}
+
 /** @param {unknown} value */
 const json = (value) => JSON.stringify(value, null, 2) + "\n";
 
@@ -82,15 +89,17 @@ function render() {
   const list = briefs();
   const homeLocales = homes();
   const production = productionPages();
+  const privacy = privacyPages();
   /** @type {Record<string, string>} */
   const files = {};
-  for (const p of [...DOCS, ...COMPARE, ...homeLocales.map((l) => `locales/${l}/index.md`), ...production.map((l) => `locales/${l}/path-to-production/index.md`), ...list.map((b) => b.path)]) files[p] = readFileSync(join(ROOT, p), "utf8");
+  for (const p of [...DOCS, ...COMPARE, ...homeLocales.map((l) => `locales/${l}/index.md`), ...production.map((l) => `locales/${l}/path-to-production/index.md`), ...privacy.map((l) => `locales/${l}/privacy/index.md`), ...list.map((b) => b.path)]) files[p] = readFileSync(join(ROOT, p), "utf8");
   return {
     docs: json({ generated: "by scripts/sync-content.mjs from the monorepo; do not edit by hand", files }),
     briefs: json({
       generated: "by scripts/sync-content.mjs from the monorepo; do not edit by hand",
       homes: homeLocales,
       production,
+      privacy,
       compare: COMPARE.map((p) => p.replace(/^docs\/compare\/|\.md$/g, "")),
       briefs: list.map(({ locale, slug, peer }) => ({ locale, slug, peer })),
     }),

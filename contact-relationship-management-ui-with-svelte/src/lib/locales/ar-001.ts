@@ -292,6 +292,7 @@ export default {
   "contact.mergedOn": "دُمجت في",
   "nav.breakGlass": "وصول طارئ",
   "footer.accessibility": "إمكانية الوصول",
+  "footer.privacy": "إشعار الخصوصية",
   "breakGlass.title": "وصول طارئ للقراءة",
   "breakGlass.intro":
     "يرفع هذا الإخفاء عن البيانات للقراءة فقط لمدة محدودة. يُسجَّل السبب وتتم مراجعته لاحقًا من شخص آخر.",

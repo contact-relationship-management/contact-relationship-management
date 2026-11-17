@@ -269,6 +269,7 @@ export default {
   "contact.mergedOn": "fusionado el",
   "nav.breakGlass": "Acceso de emergencia",
   "footer.accessibility": "Accesibilidad",
+  "footer.privacy": "Aviso de privacidad",
   "breakGlass.title": "Acceso de lectura de emergencia",
   "breakGlass.intro":
     "Levanta el enmascaramiento solo para lecturas y por tiempo limitado. El motivo queda registrado y lo revisa después otra persona.",

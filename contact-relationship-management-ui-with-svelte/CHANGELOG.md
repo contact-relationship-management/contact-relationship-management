@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a footer link to the privacy notice (CRM-T252)
+
+- "Privacy notice" in the footer, in eight languages (machine-written), links to the notice on the
+  project's site in the UI's language, or in English where the site has none. Tests:
+  `privacy.test.ts` (2), one in `storage.spec.ts`.
+
 ### Fixed — nothing is kept until a choice is made (CRM-T251)
 
 - A first visit no longer writes `mxi.crm.locale` or `lily-text-size`. A language named in the

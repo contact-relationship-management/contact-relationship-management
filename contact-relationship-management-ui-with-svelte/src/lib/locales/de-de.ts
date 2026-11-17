@@ -264,6 +264,7 @@ export default {
   "contact.mergedOn": "zusammengeführt am",
   "nav.breakGlass": "Notfallzugriff",
   "footer.accessibility": "Barrierefreiheit",
+  "footer.privacy": "Datenschutzhinweis",
   "breakGlass.title": "Notfall-Lesezugriff",
   "breakGlass.intro":
     "Hebt die Maskierung für lesende Zugriffe zeitlich begrenzt auf. Der Grund wird protokolliert und später von einer anderen Person geprüft.",

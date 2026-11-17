@@ -69,4 +69,26 @@ test.describe("what the UI keeps in the browser (docs/privacy-notice.md)", () =>
     await pick(page, "theme", /^\s*dark\s*$/i);
     expect(await kept(page)).toEqual({ storage: [], cookies: ["crm-theme"] });
   });
+
+  test("the footer links to the privacy notice, in the UI's language", async ({
+    page,
+  }) => {
+    await page.goto("/signin");
+    const link = page
+      .locator("footer.site-footer")
+      .getByRole("link", { name: "Privacy notice" });
+    await expect(link).toHaveAttribute(
+      "href",
+      "https://contact-relationship-management.github.io/en-001/privacy/",
+    );
+    await page.goto("/cy-001/signin");
+    await expect(
+      page
+        .locator("footer.site-footer")
+        .getByRole("link", { name: "Hysbysiad preifatrwydd" }),
+    ).toHaveAttribute(
+      "href",
+      "https://contact-relationship-management.github.io/cy-001/privacy/",
+    );
+  });
 });

@@ -21,6 +21,7 @@
     isRtl,
     langTag,
     peerIn,
+    privacyRoute,
   } from "#lib/site.js";
 
   let { children }: { children: Snippet } = $props();
@@ -53,6 +54,7 @@
     const here = locale && role ? briefAt(locale, role) : undefined;
     const there = here ? peerIn(code, here.peer) : undefined;
     if (there) void goto(href(`/${code}/for/${there.slug}/`));
+    else if (/\/privacy\/$/.test(page.url.pathname)) void goto(href(privacyRoute(code)));
     else if (page.url.pathname.endsWith("/for/") || !hasHome(code)) void goto(href(`/${code}/for/`));
     else void goto(href(`/${code}/`));
   }
@@ -186,7 +188,7 @@
   <p>
     {t(locale, "footer.before")} <a href={REPO_URL}>{t(locale, "footer.link")}</a>.
     {t(locale, "footer.after")}
-    <a href={href("/privacy/")}>{t(locale, "nav.privacy")}</a>.
+    <a href={href(privacyRoute(locale))}>{t(locale, "nav.privacy")}</a>.
   </p>
 </footer>
 

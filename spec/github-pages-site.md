@@ -32,7 +32,7 @@ sibling repository, published by `make publish-github-pages`.
   first `##`, the rest are the sections, and a list renders as cards); `docs/tutorial-first-tour.md` (`/tutorial/`),
   `COMPARISONS.md` (`/compare/`), every `docs/compare/<product>.md` (`/compare/<product>/`), `INSTALL.md`
   (`/install/`), `README.md` (`/overview/`), `docs/tutorial-family-bridges.md` (`/family-bridges/`), `spec/index.md`
-  (`/spec/`), the locale status `spec/locale/index.md` (`/locales/`), `docs/privacy-notice.md` (`/privacy/`, linked from the footer), and every role brief
+  (`/spec/`), the locale status `spec/locale/index.md` (`/locales/`), `docs/privacy-notice.md` (`/privacy/`) and `locales/<locale>/privacy/index.md` (`/<locale>/privacy/`), linked from the footer in the page's locale (the language button on a notice opens the notice in the other locale), and every role brief
   `locales/<locale>/for/<slug>/index.md` at `/<locale>/for/<slug>/`, with a list per locale at `/<locale>/for/`
   (11 locales, 11 roles each), and `locales/<locale>/path-to-production/index.md` at `/<locale>/path-to-production/`
   where a locale has one (all 11 today; English the source, the others machine-written and unreviewed).
@@ -108,7 +108,7 @@ page in three languages; the sitemaps; each comparison page fair and sourced; ax
 CSP report in the console; `lang` and `dir` on a brief and on a document; the two Arabic pages right to left (header
 `dir`, the brand at the inline start, no sideways scroll, Arabic navigation, axe clean in both schemes); the site's
 words by language for five locales; the language button from English to Arabic to Welsh across scripts; links on and
-off the site; no sideways scroll at 390 px; no element with a `style` attribute; what is kept in the browser: nothing on a first visit, a theme in the cookie and in `localStorage` and back from either one, "Follow this device" kept as `system` and followed, a text size and a time zone kept and back after a reload, and the footer's link to the privacy notice, which names each item. `scripts/ci-check.sh site` runs the
+off the site; no sideways scroll at 390 px; no element with a `style` attribute; what is kept in the browser: nothing on a first visit, a theme in the cookie and in `localStorage` and back from either one, "Follow this device" kept as `system` and followed, a text size and a time zone kept and back after a reload, and the footer's link to the privacy notice, which names each item; the notice in every locale, naming the same identifiers as the English one, with its `lang` and `dir`; a locale's footer linking to its own notice, and the language button keeping to the notice. `scripts/ci-check.sh site` runs the
 content check, `svelte-check`, the build and the suite; the CI job `site` runs that stage.
 
 ## Publishing
