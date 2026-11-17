@@ -1580,3 +1580,28 @@ recipient would get before anything is sent, and be certain every message carrie
 - Translations (CRM-T252): Welsh, Simplified Chinese, Hindi and Arabic, machine-written by Claude and **unreviewed** ([locale status](locale/index.md)); `cy-001`, `zh-001` and `hi-001` are byte copies; the English locales are the source text, with `organisation` in `en-gb`. A site test fails when a locale's notice names other identifiers than the English one. UI `tests/unit/privacy.test.ts` (2) and a footer test in `storage.spec.ts`.
 - A census (CRM-T253, UI `tests/unit/privacy-notice.test.ts`, 3 tests) holds the notice to the code: every line in the UI's and the site's source that writes a cookie or a storage item (`setItem`, `document.cookie =`, `cookies.set`, a non-empty `storageKey` or `cookieName`, `keptChoice("…")`) must be a listed write, each listed write and the constant behind it must still be in its file, and the names in the notice's tables must be exactly the names written.
 - Not built: the census reads source lines, so a write through a Lily component's default key (passing no `storageKey`) or one split over lines it does not match is not caught by it; the e2e first-visit tests catch a default key that writes on load. The UI links to the notice on the public site, so a deployer's UI points at the project's notice, not its own, and the link works only once the site is published. German, Spanish and French UI readers get the English notice. A deployer's own notice, for the personal data the CRM holds about contacts, is the deployer's ([regulatory.md](regulatory.md)).
+
+## CRM-R98 — A formal security policy
+
+*Asked for by the product owner, 2026-11-17 ("add formal security policy").* *As someone who has found a
+vulnerability, I know where to report it, what will happen and when, and that research in good faith
+will not be met with legal action by the maintainer.*
+
+- [SECURITY.md](../SECURITY.md) is the policy: the status of the software; what is in and out of scope;
+  how to report (email, and GitHub's private reporting form once it is enabled) and what to include;
+  response targets (acknowledgement in 7 days, triage in 14, a fix or mitigation 14, 30 or 90 days after
+  triage for critical, high and medium issues, low in the next release); severity by CVSS v4.0 base
+  score, with any finding that exposes personal data or consent records, defeats sign-in or
+  authorization, breaks the audit chain or mails a contact without consent rated at least high;
+  coordinated disclosure (at the fix or 90 days, 7 days for one being exploited, a GitHub security
+  advisory with a CVE requested through GitHub); supported versions (`main` only); a safe harbour that
+  binds the maintainer only; and how the project keeps itself secure.
+- The site publishes `/.well-known/security.txt` (RFC 9116), with `Contact`, `Expires`, `Policy`,
+  `Preferred-Languages` and `Canonical`.
+- Tests: site `tests/e2e/site.spec.ts` "security.txt names the contact, the policy, and an expiry that
+  has not lapsed": served as `text/plain`, a `mailto:` or `https:` contact, one `Expires` more than 30
+  days and at most a year away (it failed with an expiry 14 days away), the canonical address, a policy
+  link to `SECURITY.md`, which has each of the policy's sections and the same contact.
+- Not built: GitHub private vulnerability reporting is off for the repository (a setting for the owner);
+  there is no encryption key for reports; the policy has not been reviewed by a lawyer; the targets are
+  one maintainer's and have not been tested by a real report.

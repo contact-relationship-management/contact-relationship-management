@@ -71,6 +71,33 @@ for (const route of audited)
       expect(csp).toEqual([]);
     });
 
+// CRM-R98: the security contact, RFC 9116. It must have a Contact and an Expires, which must be in
+// the future and, as the RFC advises, less than a year away; this fails 30 days before it lapses, so
+// renew it then (and the date in SECURITY.md's summary is the file's). The policy it names must exist.
+test("security.txt names the contact, the policy, and an expiry that has not lapsed", async ({ request }) => {
+  const res = await request.get("/.well-known/security.txt");
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toMatch(/^text\/plain/);
+  const fields = new Map<string, string[]>();
+  for (const line of (await res.text()).split("\n")) {
+    const m = /^([A-Za-z-]+): (.+)$/.exec(line.trim());
+    if (m) fields.set(m[1]!.toLowerCase(), [...(fields.get(m[1]!.toLowerCase()) ?? []), m[2]!]);
+  }
+  expect(fields.get("contact")?.[0]).toMatch(/^(mailto:|https:\/\/)/);
+  const expires = fields.get("expires") ?? [];
+  expect(expires, "exactly one Expires").toHaveLength(1);
+  const days = (Date.parse(expires[0]!) - Date.now()) / 86_400_000;
+  expect(days, `Expires ${expires[0]} is ${Math.round(days)} days away: renew it`).toBeGreaterThan(30);
+  expect(days, "Expires should be less than a year away").toBeLessThanOrEqual(366);
+  expect(fields.get("canonical")?.[0]).toBe("https://contact-relationship-management.github.io/.well-known/security.txt");
+  const policy = fields.get("policy")?.[0] ?? "";
+  expect(policy).toMatch(/\/blob\/main\/SECURITY\.md$/);
+  const text = readFileSync("../SECURITY.md", "utf8");
+  for (const heading of ["Scope", "Reporting a vulnerability", "What happens after a report", "Severity", "Coordinated disclosure", "Supported versions", "Safe harbour"])
+    expect(text, `SECURITY.md has "## ${heading}"`).toContain(`\n## ${heading}\n`);
+  expect(text, "SECURITY.md reports to the same contact").toContain(fields.get("contact")![0]!.replace(/^mailto:/, ""));
+});
+
 test("a brief's html carries its locale; a document is English", async ({ page }) => {
   await page.goto(briefRoute(ceo("cy-gb")));
   await expect(page.locator("html")).toHaveAttribute("lang", "cy-GB");

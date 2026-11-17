@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Added — a formal security policy (CRM-T257, 2026-11-17)
+
+- `SECURITY.md` is now a formal policy: scope, how to report, response targets by severity (CVSS
+  v4.0), coordinated disclosure with GitHub security advisories, supported versions and a safe
+  harbour. The site publishes `/.well-known/security.txt` (RFC 9116).
+
 ### Changed — axa 0.17.0 (CRM-T254, 2026-11-17)
 
 - The service uses axa 0.17.0 and `axa-test` 0.8.0. A path with a trailing slash is now a `308`

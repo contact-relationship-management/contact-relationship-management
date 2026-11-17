@@ -335,7 +335,7 @@
           "title": "Security policy",
           "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/SECURITY.md",
           "path": "SECURITY.md",
-          "description": "Reporting vulnerabilities."
+          "description": "Scope, reporting, response targets, severity, disclosure, safe harbour."
         },
         {
           "title": "Compliance evidence pack",

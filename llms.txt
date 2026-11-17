@@ -73,7 +73,7 @@
 
 ## Security and compliance
 
-- [Security policy](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/SECURITY.md): Reporting vulnerabilities.
+- [Security policy](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/SECURITY.md): Scope, reporting, response targets, severity, disclosure, safe harbour.
 - [Compliance evidence pack](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/index.md): Control mapping, DPIA template, runbook; not a certification.
 - [Operations runbook](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/operations-runbook.md): Hardening, backup, keys, logging, release verification.
 - [Penetration test scope](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/compliance/penetration-test-scope.md): Brief for an independent tester (no test has been done).

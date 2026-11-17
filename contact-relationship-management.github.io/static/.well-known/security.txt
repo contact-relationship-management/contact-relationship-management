@@ -1,0 +1,7 @@
+# Security contact for the Contact Relationship Management project (RFC 9116).
+# The policy: how to report, what happens after, coordinated disclosure, safe harbour.
+Contact: mailto:joel@joelparkerhenderson.com
+Expires: 2027-11-16T00:00:00Z
+Policy: https://github.com/contact-relationship-management/contact-relationship-management/blob/main/SECURITY.md
+Preferred-Languages: en
+Canonical: https://contact-relationship-management.github.io/.well-known/security.txt

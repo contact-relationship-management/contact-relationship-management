@@ -89,7 +89,7 @@ SECTIONS = [
         ("Strings identical to English", "contact-relationship-management-ui-with-svelte/spec/locale-review.md", "Generated list of translated values that equal the English, for a reviewer."),
     ]),
     ("Security and compliance", [
-        ("Security policy", "SECURITY.md", "Reporting vulnerabilities."),
+        ("Security policy", "SECURITY.md", "Scope, reporting, response targets, severity, disclosure, safe harbour."),
         ("Compliance evidence pack", "spec/compliance/index.md", "Control mapping, DPIA template, runbook; not a certification."),
         ("Operations runbook", "spec/compliance/operations-runbook.md", "Hardening, backup, keys, logging, release verification."),
         ("Penetration test scope", "spec/compliance/penetration-test-scope.md", "Brief for an independent tester (no test has been done)."),

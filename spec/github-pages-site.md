@@ -18,6 +18,9 @@ sibling repository, published by `make publish-github-pages`.
   page and the repository), search, theme ("Follow this device" first, then all 57 Lily themes), locale, time
   zone, text size (seven steps) and share (the UI's five destinations and copy link). The time-zone picker records
   the choice on `<html data-time-zone>`, and nothing on this site shows a time, so it has no visible effect here.
+- **Security contact** (CRM-R98): `static/.well-known/security.txt` (RFC 9116) names the contact, the policy
+  (`SECURITY.md`) and an expiry, which the e2e test requires to be more than 30 days away, so it is renewed
+  before it lapses.
 - **What is kept in the browser** ([privacy notice](../docs/privacy-notice.md), CRM-R97). Nothing, until the reader
   makes a choice. A theme is kept as `lily-theme` in a first-party cookie (`Path=/`, `SameSite=Lax`, `Secure` on
   https, 400 days) and in `localStorage`, so either one alone brings it back; it holds `system` or a theme's slug.
