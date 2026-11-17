@@ -394,6 +394,108 @@ mod tests {
         }
     }
 
+    /// The problems `check` finds for a contact workflow with these actions.
+    fn problems(actions: &[Action]) -> Vec<(String, String)> {
+        check("contact_created", None, &Conditions::default(), actions)
+    }
+
+    fn lead_problems(actions: &[Action]) -> Vec<(String, String)> {
+        check("lead_created", None, &Conditions::default(), actions)
+    }
+
+    fn set(field: &str, value: Option<&str>) -> Action {
+        Action::SetField {
+            field: field.to_string(),
+            value: value.map(str::to_string),
+        }
+    }
+
+    // CRM-T259: each limit at its value is allowed and one more is refused, and every check on an
+    // action's own text is reached.
+    #[test]
+    fn each_limit_allows_its_value_and_refuses_one_more() {
+        assert!(problems(&vec![task("t"); MAX_ACTIONS]).is_empty());
+        assert_eq!(problems(&vec![task("t"); MAX_ACTIONS + 1])[0].0, "actions");
+        assert!(problems(&[task(&"s".repeat(MAX_TEXT))]).is_empty());
+        assert_eq!(problems(&[task(&"s".repeat(MAX_TEXT + 1))]).len(), 1);
+        let pool = |n: usize| Action::AssignOwner {
+            pool: (0..n)
+                .map(|i| format!("person:00000000-0000-4000-8000-{i:012}"))
+                .collect(),
+            strategy: "least_open".into(),
+            notify: false,
+        };
+        assert!(lead_problems(&[pool(MAX_POOL)]).is_empty());
+        assert_eq!(lead_problems(&[pool(MAX_POOL + 1)]).len(), 1);
+        assert!(problems(&[set("job_title", Some(&"j".repeat(MAX_TEXT)))]).is_empty());
+        assert_eq!(
+            problems(&[set("job_title", Some(&"j".repeat(MAX_TEXT + 1)))]).len(),
+            1
+        );
+        assert!(
+            problems(&[set("job_title", None)]).is_empty(),
+            "a free-text field may be cleared"
+        );
+    }
+
+    #[test]
+    fn a_set_field_value_must_be_one_of_its_tokens() {
+        assert!(problems(&[set("status", Some("active"))]).is_empty());
+        assert_eq!(problems(&[set("status", Some("someone_else"))]).len(), 1);
+        assert_eq!(
+            problems(&[set("status", None)]).len(),
+            1,
+            "a token field cannot be cleared"
+        );
+        assert_eq!(problems(&[set("nickname", Some("x"))]).len(), 1);
+    }
+
+    #[test]
+    fn a_webhook_event_is_one_to_forty_lower_case_letters_digits_or_underscores() {
+        let hook = |event: &str| Action::SendWebhook {
+            event: event.to_string(),
+        };
+        for good in ["a", "stage_2_reached", &"e".repeat(40)] {
+            assert!(problems(&[hook(good)]).is_empty(), "{good}");
+        }
+        for bad in ["", &"e".repeat(41), "Stage", "stage-2", "stage.2", "étape"] {
+            assert_eq!(problems(&[hook(bad)]).len(), 1, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn the_conditions_are_the_segment_filter_without_tags() {
+        let c = Conditions {
+            statuses: vec!["active".into()],
+            channels: vec!["email".into()],
+            account_tiers: vec!["customer".into()],
+            sources: vec!["web".into()],
+        };
+        let f = c.filter();
+        assert_eq!(
+            (f.statuses, f.channels, f.account_tiers, f.tags),
+            (
+                vec!["active".to_string()],
+                vec!["email".to_string()],
+                vec!["customer".to_string()],
+                Vec::<String>::new()
+            )
+        );
+    }
+
+    #[test]
+    fn an_assignment_with_no_strategy_takes_turns() {
+        let action: Action = serde_json::from_value(serde_json::json!({
+            "type": "assign_owner",
+            "pool": ["person:00000000-0000-4000-8000-000000000001"],
+        }))
+        .unwrap();
+        let Action::AssignOwner { strategy, .. } = action else {
+            panic!("not an assignment");
+        };
+        assert_eq!(strategy, "round_robin");
+    }
+
     /// CRM-D18: every user reference an action names is stored as `person:`; a legacy `worker:`
     /// keeps its id, and nothing else an action holds is touched.
     #[test]
