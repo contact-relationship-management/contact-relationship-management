@@ -176,6 +176,38 @@ pub fn remaining(quota_minor: i64, revenue_minor: i64) -> i64 {
 mod tests {
     use super::*;
 
+    // CRM-T259: each limit at its value is allowed and one more is refused.
+    #[test]
+    fn each_limit_allows_its_value_and_refuses_one_more() {
+        assert!(name(&"n".repeat(MAX_NAME)).is_ok());
+        assert!(name(&"n".repeat(MAX_NAME + 1)).is_err());
+        let tiers = |n: usize| -> Vec<Tier> {
+            (0..n)
+                .map(|i| Tier {
+                    from_percent: u32::try_from(i).unwrap() * 10,
+                    rate_bps: 100,
+                })
+                .collect()
+        };
+        assert!(check_tiers(&tiers(MAX_TIERS)).is_ok());
+        assert!(check_tiers(&tiers(MAX_TIERS + 1)).is_err());
+        let two = |from: u32, rate: u32| {
+            vec![
+                Tier {
+                    from_percent: 0,
+                    rate_bps: 100,
+                },
+                Tier {
+                    from_percent: from,
+                    rate_bps: rate,
+                },
+            ]
+        };
+        assert!(check_tiers(&two(MAX_FROM_PERCENT, MAX_RATE_BPS)).is_ok());
+        assert!(check_tiers(&two(MAX_FROM_PERCENT + 1, 100)).is_err());
+        assert!(check_tiers(&two(50, MAX_RATE_BPS + 1)).is_err());
+    }
+
     /// A split adds up to the amount, leftovers going to the largest remainders, earliest first.
     #[test]
     fn a_split_adds_up_to_the_amount() {

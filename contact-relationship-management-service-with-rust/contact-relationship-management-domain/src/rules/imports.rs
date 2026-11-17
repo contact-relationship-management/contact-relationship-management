@@ -172,6 +172,28 @@ pub fn judge(
 mod tests {
     use super::*;
 
+    // CRM-T259: each limit at its value is allowed and one more is refused.
+    #[test]
+    fn the_largest_file_is_read_and_one_byte_more_is_refused() {
+        let file = |n: usize| format!("a\n{}", "x".repeat(n - 2));
+        assert!(parse(&file(MAX_BYTES)).is_ok());
+        assert!(parse(&file(MAX_BYTES + 1)).unwrap_err().contains("bytes"));
+    }
+
+    #[test]
+    fn only_the_name_must_be_mapped() {
+        let headers = vec!["Name".to_string()];
+        let mapping = Mapping {
+            display_name: Some("Name".into()),
+            email: None,
+            company: None,
+        };
+        assert_eq!(
+            resolve(&mapping, &headers).unwrap().get("display_name"),
+            Some(&0)
+        );
+    }
+
     #[test]
     fn csv_with_quotes_a_bom_and_blank_lines_is_read() {
         let table =

@@ -139,7 +139,8 @@ pub fn pick(rates: &[Rate], from: &str, to: &str, day: Date) -> Option<Picked> {
 pub(crate) fn divide(numerator: i128, denominator: i128) -> i128 {
     let (quotient, remainder) = (numerator / denominator, numerator % denominator);
     let twice = remainder.abs() * 2;
-    let step = if numerator < 0 { -1 } else { 1 };
+    // The step is only taken when there is a remainder, so the numerator is never zero then.
+    let step = numerator.signum();
     if twice > denominator || (twice == denominator && quotient % 2 != 0) {
         quotient + step
     } else {
@@ -178,7 +179,11 @@ pub fn convert(amount_minor: i64, picked: &Picked) -> i64 {
     } else {
         divide(amount * ppb * up, one * down)
     };
-    i64::try_from(converted).unwrap_or(if converted < 0 { i64::MIN } else { i64::MAX })
+    i64::try_from(converted).unwrap_or(if converted.is_negative() {
+        i64::MIN
+    } else {
+        i64::MAX
+    })
 }
 
 /// Sums in one currency that could not be converted, because no rate was in force.
@@ -381,6 +386,16 @@ pub fn convert_dated(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // CRM-T259: a sign is not a digit, before the point or after it, though the integer parser
+    // would take one.
+    #[test]
+    fn a_rate_with_a_sign_is_refused() {
+        for bad in ["+1.5", "-1", "1.+5", "1.-5", "+0.5"] {
+            assert!(parse_rate(bad).is_err(), "{bad}");
+        }
+        assert_eq!(parse_rate("1.5"), Ok(1_500_000_000));
+    }
 
     fn day(m: i8, d: i8) -> Date {
         Date::from_ymd(2026, m, d).unwrap()

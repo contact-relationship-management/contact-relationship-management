@@ -240,6 +240,15 @@ pub fn decide(event: &Event) -> Result<Decision, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // CRM-T259: each limit at its value is allowed and one more is refused.
+    #[test]
+    fn the_longest_id_is_taken_and_the_body_limit_is_sixteen_kilobytes() {
+        let body = |id: String| format!(r#"{{"id":"{id}","kind":"worker_hired"}}"#);
+        assert!(parse(body("e".repeat(MAX_ID)).as_bytes()).is_ok());
+        assert!(parse(body("e".repeat(MAX_ID + 1)).as_bytes()).is_err());
+        assert_eq!(MAX_BODY, 16_384);
+    }
     use serde_json::json;
 
     const S: &[u8] = b"wpm-secret-0123456789abcdef-0123456789";

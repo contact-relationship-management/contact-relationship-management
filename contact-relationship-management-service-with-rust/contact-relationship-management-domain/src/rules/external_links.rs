@@ -82,6 +82,17 @@ pub fn check_url(system: &str, address: &str) -> Result<String, String> {
 mod tests {
     use super::*;
 
+    // CRM-T259: each limit at its value is allowed and one more is refused.
+    #[test]
+    fn the_longest_address_is_allowed_and_a_user_or_password_alone_is_refused() {
+        let base = "https://app.hubspot.com/";
+        let longest = format!("{base}{}", "a".repeat(MAX_URL_LEN - base.len()));
+        assert!(check_url("hubspot", &longest).is_ok());
+        assert!(check_url("hubspot", &format!("{longest}a")).is_err());
+        assert!(check_url("hubspot", "https://user@app.hubspot.com/x").is_err());
+        assert!(check_url("hubspot", "https://:pw@app.hubspot.com/x").is_err());
+    }
+
     #[test]
     fn named_systems_must_be_on_their_own_domains() {
         assert!(check_url("hubspot", "https://app.hubspot.com/contacts/1/record/0-1/2").is_ok());

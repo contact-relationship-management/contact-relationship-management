@@ -520,7 +520,8 @@ pub fn negotiate(chosen: Option<&str>, accept_language: Option<&str>) -> &'stati
         let weight = parts
             .find_map(|p| p.trim().strip_prefix("q="))
             .map_or(1000, quality);
-        if !range.is_empty() && range != "*" && weight > 0 {
+        // An empty range and `*` name no page, so `text_for` passes over them; q=0 refuses one.
+        if weight > 0 {
             ranges.push((weight, position, range));
         }
     }
@@ -549,6 +550,34 @@ fn quality(text: &str) -> u16 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // CRM-T259: a range with q=0, `*`, or nothing chooses nothing, and a q value is 0 to 1 with up
+    // to three decimals.
+    #[test]
+    fn a_zero_star_or_empty_range_chooses_nothing() {
+        assert_eq!(negotiate(None, Some("de;q=0, fr;q=0.1")).lang, "fr");
+        assert_eq!(negotiate(None, Some("*, de;q=0.5")).lang, "de");
+        assert_eq!(negotiate(None, Some(", de;q=0.5")).lang, "de");
+        assert_eq!(
+            negotiate(None, Some("de;q=0")).lang,
+            "en",
+            "q=0 refuses it, so English"
+        );
+        assert_eq!(negotiate(None, Some("*")).lang, "en");
+        assert_eq!(negotiate(None, Some("")).lang, "en");
+    }
+
+    #[test]
+    fn a_quality_is_zero_to_one_in_thousandths() {
+        assert_eq!(quality("1"), 1000);
+        assert_eq!(quality("1.000"), 1000);
+        assert_eq!(quality("1.001"), 0);
+        assert_eq!(quality("0.5"), 500);
+        assert_eq!(quality("0.123"), 123);
+        assert_eq!(quality("0.1234"), 0);
+        assert_eq!(quality("0.1x"), 0);
+        assert_eq!(quality("2"), 0);
+    }
 
     #[test]
     fn the_browser_s_language_is_chosen_by_weight_then_order() {
