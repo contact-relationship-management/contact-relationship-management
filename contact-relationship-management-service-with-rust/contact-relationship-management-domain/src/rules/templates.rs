@@ -508,6 +508,82 @@ mod tests {
         }
     }
 
+    // CRM-T259: each limit at its value is allowed and one more is refused, a template that
+    // starts with a token has no empty text before it, and a token that falls back is named once.
+    #[test]
+    fn each_length_allows_its_limit_and_refuses_one_more() {
+        let body = "Hi {{unsubscribe_url}}";
+        let fits = |subject: &str, body: &str, fallbacks: &BTreeMap<String, String>| {
+            check(subject, body, fallbacks, Some("en")).is_empty()
+        };
+        assert!(fits(&"s".repeat(MAX_SUBJECT), body, &none()));
+        assert!(!fits(&"s".repeat(MAX_SUBJECT + 1), body, &none()));
+        let long_body = |n: usize| {
+            format!(
+                "{}{{{{unsubscribe_url}}}}",
+                "b".repeat(n - "{{unsubscribe_url}}".len())
+            )
+        };
+        assert!(fits("s", &long_body(MAX_BODY), &none()));
+        assert!(!fits("s", &long_body(MAX_BODY + 1), &none()));
+        assert!(fits(
+            "s",
+            body,
+            &values(&[("given_name", &"f".repeat(MAX_FALLBACK))])
+        ));
+        assert!(!fits(
+            "s",
+            body,
+            &values(&[("given_name", &"f".repeat(MAX_FALLBACK + 1))])
+        ));
+    }
+
+    #[test]
+    fn a_leading_token_has_no_text_before_it_and_errors_say_what_is_wrong() {
+        assert_eq!(
+            parse("{{given_name}} hi").unwrap(),
+            vec![
+                Segment::Token("given_name".into()),
+                Segment::Text(" hi".into())
+            ]
+        );
+        assert_eq!(
+            ParseError::Unclosed.to_string(),
+            "has a {{ with no closing }}"
+        );
+        assert_eq!(
+            ParseError::Unknown("nickname".into()).to_string(),
+            "uses {{nickname}}, which is not a merge token"
+        );
+    }
+
+    #[test]
+    fn only_a_missing_token_falls_back_and_it_is_named_once() {
+        let filled = values(&[("given_name", "Ana")]);
+        let fallbacks = values(&[("account_name", "your company")]);
+        let with = fill_with(&filled, &fallbacks);
+        let shown = render(
+            "{{given_name}}",
+            "{{given_name}} at {{account_name}}, {{account_name}}",
+            &with,
+        );
+        assert_eq!(shown.text, "Ana at your company, your company");
+        assert_eq!(shown.fell_back, vec!["account_name".to_string()]);
+    }
+
+    #[test]
+    fn the_preview_contact_is_the_synthetic_one() {
+        let preview = synthetic_values();
+        assert_eq!(preview.len(), 6);
+        assert_eq!(preview["given_name"], "Alex");
+        assert_eq!(preview["name"], "Alex Example");
+        assert_eq!(preview["account_name"], "Example Ltd");
+        assert!(
+            TOKENS.iter().all(|t| preview.contains_key(t.name)),
+            "every token has a preview value"
+        );
+    }
+
     #[test]
     fn tokens_are_found_with_or_without_spaces() {
         let parsed = parse("Hi {{given_name}}, {{ account_name }}!").unwrap();

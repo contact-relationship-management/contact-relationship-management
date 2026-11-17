@@ -595,6 +595,57 @@ mod tests {
         );
     }
 
+    // CRM-T259: the counts, conversions and schemas each have a test of their own.
+    #[test]
+    fn the_counts_and_conversions_keep_the_instant() {
+        let t = at("2026-11-17T10:00:01.250001Z");
+        assert_eq!(t.as_second(), 1_794_909_601);
+        assert_eq!(t.as_microsecond(), 1_794_909_601_250_001);
+        assert_eq!(
+            Timestamp::from_second(1_794_909_601).unwrap(),
+            at("2026-11-17T10:00:01Z")
+        );
+        let raw: jiff::Timestamp = t.into();
+        assert_eq!(Timestamp::from(raw), t);
+        let d = Date::from_ymd(2026, 11, 17).unwrap();
+        let civil: civil::Date = d.into();
+        assert_eq!(civil, civil::date(2026, 11, 17));
+        assert_eq!(t.to_string(), "2026-11-17T10:00:01.250001+00:00");
+        assert_eq!(d.to_string(), "2026-11-17");
+    }
+
+    #[test]
+    fn adding_moves_the_instant_and_stops_at_the_range() {
+        let t = at("2026-11-17T10:00:00Z");
+        let mut later = t;
+        later += SignedDuration::from_mins(90);
+        assert_eq!(later, at("2026-11-17T11:30:00Z"));
+        assert_eq!(
+            t.checked_add(SignedDuration::from_hours(1)),
+            Some(at("2026-11-17T11:00:00Z"))
+        );
+        assert_eq!(
+            Timestamp(jiff::Timestamp::MAX).checked_add(SignedDuration::from_secs(1)),
+            None
+        );
+    }
+
+    // The OpenAPI document names both as inline strings, as `chrono`'s did (CRM-T258).
+    #[test]
+    fn the_schemas_are_inline_strings_with_a_format() {
+        use schemars::JsonSchema as _;
+        let mut generator = schemars::SchemaGenerator::default();
+        assert!(Timestamp::inline_schema() && Date::inline_schema());
+        assert_eq!(
+            serde_json::to_value(Timestamp::json_schema(&mut generator)).unwrap(),
+            serde_json::json!({ "type": "string", "format": "date-time" })
+        );
+        assert_eq!(
+            serde_json::to_value(Date::json_schema(&mut generator)).unwrap(),
+            serde_json::json!({ "type": "string", "format": "date" })
+        );
+    }
+
     #[test]
     fn the_utc_day_and_arithmetic() {
         let late = at("2026-11-17T23:59:59Z");

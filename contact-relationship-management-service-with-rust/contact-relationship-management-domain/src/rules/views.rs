@@ -120,6 +120,74 @@ pub fn check(
 mod tests {
     use super::*;
 
+    // CRM-T259: every list's columns, and every filterable field with one value it holds and one
+    // it does not.
+    #[test]
+    fn each_list_has_its_columns() {
+        assert_eq!(
+            columns("contact"),
+            ["display_name", "job_title", "status", "marketing_consent"]
+        );
+        assert_eq!(columns("account"), ["display_name", "tier", "industry"]);
+        assert_eq!(
+            columns("deal"),
+            [
+                "name",
+                "amount_minor",
+                "currency",
+                "state",
+                "expected_close_on"
+            ]
+        );
+        assert_eq!(
+            columns("lead"),
+            ["display_name", "source", "status", "score"]
+        );
+        assert_eq!(
+            columns("ticket"),
+            ["title", "priority", "status", "channel"]
+        );
+        assert!(columns("invoice").is_empty());
+    }
+
+    #[test]
+    fn each_filterable_field_takes_its_own_values() {
+        for (kind, field, good, bad) in [
+            ("contact", "status", "inactive", "qualified"),
+            ("lead", "status", "qualified", "inactive"),
+            ("ticket", "status", "resolved", "qualified"),
+            ("contact", "marketing_consent", "withdrawn", "maybe"),
+            ("account", "tier", "partner", "gold"),
+            ("deal", "currency", "EUR", "eur"),
+            ("deal", "state", "won", "closed"),
+            ("lead", "source", "referral", "radio"),
+            ("ticket", "priority", "urgent", "critical"),
+            ("ticket", "channel", "chat", "fax"),
+        ] {
+            assert_eq!(
+                allows(kind, field, good),
+                Some(true),
+                "{kind}.{field} = {good}"
+            );
+            assert_eq!(
+                allows(kind, field, bad),
+                Some(false),
+                "{kind}.{field} = {bad}"
+            );
+        }
+        assert_eq!(allows("account", "status", "active"), None);
+    }
+
+    #[test]
+    fn a_clause_takes_up_to_twenty_values() {
+        let many = |n: usize| {
+            let values: Vec<String> = (0..n).map(|_| "web".to_string()).collect();
+            BTreeMap::from([("source".to_string(), values)])
+        };
+        assert!(check("lead", &many(MAX_VALUES), None, None).is_empty());
+        assert_eq!(check("lead", &many(MAX_VALUES + 1), None, None).len(), 1);
+    }
+
     fn filter(pairs: &[(&str, &[&str])]) -> BTreeMap<String, Vec<String>> {
         pairs
             .iter()
