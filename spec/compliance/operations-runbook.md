@@ -67,6 +67,10 @@ Commands assume the container images from the repository's `Containerfile`s.
     Since axa 0.11 (CRM-T228) the database setting is `DB_URL`, and the probes are
     `/_health/live`, `/_health/ready` and `/_health/startup`; images before it read
     `DATABASE_URL` and answer on `/_ping`, `/_health` and `/_readiness`.
+    Since axa 0.17 (CRM-T254) the binary has a `health` command for an image with no `curl`:
+    `contact-relationship-management health` asks `/_health/live` on this machine, `--ready`
+    asks `/_health/ready`, and `--port` names another port; it exits non-zero unless the answer
+    is `2xx` within five seconds, and connects to no database.
     A `start` without `--worker` runs no background jobs; run a second container
     with `--worker` for campaign sends (the image's entrypoint is already `start`, so the
     argument is `--worker`, not `start --worker`). **Releases up to v0.1.3 have a bug here (fixed in v0.1.4):**

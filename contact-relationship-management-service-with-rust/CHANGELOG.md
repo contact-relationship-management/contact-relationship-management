@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.17.0 (CRM-T254)
+
+- axa 0.17.0, `axa-test` 0.8.0, `axa-postgres-job-queue` 0.5.1, `axa-postgres-sqlx` 0.2.1 and
+  `axa-request-rate-limit` 0.3.3; `ppp` 2.3.0 comes with axa's PROXY protocol support, which is
+  off unless `PROXY_PROTOCOL_FROM` is set.
+- A mounted path with a trailing slash, such as `/api/contacts/`, is a `308` to the path without
+  it, keeping the query, and runs no handler. It was a `404`. A path with nothing mounted is still
+  a `404`.
+- `contact-relationship-management health [--ready] [--port PORT]` asks the server on this
+  machine for `/_health/live`, or `/_health/ready`, and exits non-zero unless it answers `2xx` in
+  five seconds. It connects to no database.
+- The Postgres job queue listens for new jobs (`LISTEN`/`NOTIFY`, a trigger added when the service
+  starts), so an idle worker starts a job at once; retries are spread at random over the upper half
+  of their backoff; a job whose heartbeat fails stops before another worker may take it; and a job
+  still running at the shutdown time limit is stopped.
+
 ### Fixed — a close on the database's clock (CRM-T248)
 
 - A stage move's `stage_moved_at` and a close's `closed_at` are the database's `now()`, the clock

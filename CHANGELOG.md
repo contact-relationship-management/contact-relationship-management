@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — axa 0.17.0 (CRM-T254, 2026-11-17)
+
+- The service uses axa 0.17.0 and `axa-test` 0.8.0. A path with a trailing slash is now a `308`
+  to the path without it, not a `404`, and the service has a `health` command for an image with
+  no `curl`.
+
 ### Added — the privacy notice translated, and linked from the UI (CRM-T252, 2026-11-17)
 
 - The privacy notice in all 11 site locales at `/<locale>/privacy/`: Welsh, Chinese, Hindi and

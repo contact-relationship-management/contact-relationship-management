@@ -120,3 +120,32 @@ async fn api_responses_are_not_cacheable() {
     })
     .await;
 }
+
+// axa 0.16 (CRM-T254): a trailing slash on a mounted path is a `308` to the path without it,
+// keeping the query, and runs no handler, so a client that sent the slash follows the redirect
+// rather than getting a `404`, and a POST is not run twice.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_trailing_slash_redirects_to_the_path_without_it_and_runs_nothing() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let list = request.get("/api/contacts/?limit=1").await;
+        list.assert_status(axum::http::StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(list.header("location"), "/api/contacts?limit=1");
+
+        let before: serde_json::Value = request.get("/api/contacts?limit=100").await.json();
+        let post = request
+            .post("/api/contacts/")
+            .json(&json!({"person_ref": a_person(), "display_name": "Slash Test"}))
+            .await;
+        post.assert_status(axum::http::StatusCode::PERMANENT_REDIRECT);
+        let after: serde_json::Value = request.get("/api/contacts?limit=100").await.json();
+        assert_eq!(before, after, "the redirect must not create a contact");
+
+        request
+            .get("/api/no-such-thing/")
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+    })
+    .await;
+}

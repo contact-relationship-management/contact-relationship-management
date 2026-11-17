@@ -317,6 +317,10 @@ impl App {
         if matches!(cli.command, Command::Check) {
             return cli::check(&environment, &defaults());
         }
+        // `health` asks the server already running on this machine, so it connects to nothing.
+        if let Command::Health { ready, port } = cli.command {
+            return cli::health(&environment, &defaults(), ready, port).await;
+        }
         let mut config = service_config(&environment)?;
         config.apply_cli(&cli);
         let (serve, jobs) = match &cli.command {
@@ -360,7 +364,7 @@ impl App {
                 };
                 tasks.run(&name, &ctx, &parse_vars(&params)?).await
             }
-            Command::Check => Ok(()),
+            Command::Check | Command::Health { .. } => Ok(()),
         }
     }
 
@@ -587,6 +591,41 @@ mod tests {
         let cache = connect_cache(None, false).await.unwrap();
         cache.set("key", &1_u32).await.unwrap();
         assert_eq!(cache.get::<u32>("key").await.unwrap(), Some(1));
+    }
+
+    /// A port on loopback with a server that answers each connection with `answer`.
+    async fn answering(answer: &'static str) -> u16 {
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                let mut buf = [0_u8; 1024];
+                let _ = socket.read(&mut buf).await;
+                let _ = socket.write_all(answer.as_bytes()).await;
+            }
+        });
+        port
+    }
+
+    async fn health(port: u16) -> Result<()> {
+        use clap::Parser as _;
+        let port = port.to_string();
+        App::run(Cli::parse_from(["crm", "health", "--port", &port])).await
+    }
+
+    // `health` asks the server already running, so it needs no database: an answer of 200 is
+    // success and anything else is an error, which `main` turns into a non-zero exit.
+    #[tokio::test]
+    async fn health_asks_the_running_server_and_connects_to_nothing_else() {
+        let up =
+            answering("HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok").await;
+        health(up).await.unwrap();
+        let down = answering(
+            "HTTP/1.1 503 Service Unavailable\r\ncontent-length: 0\r\nconnection: close\r\n\r\n",
+        )
+        .await;
+        assert!(health(down).await.is_err());
     }
 
     #[test]
