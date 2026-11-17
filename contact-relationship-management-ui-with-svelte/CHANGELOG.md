@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the privacy notice is held to the code (CRM-T253)
+
+- `privacy-notice.test.ts`: every cookie or storage write in the UI's and the site's source must be
+  listed, and the notice must name exactly what is written.
+
 ### Added — a footer link to the privacy notice (CRM-T252)
 
 - "Privacy notice" in the footer, in eight languages (machine-written), links to the notice on the
