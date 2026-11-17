@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Run a released service image the way a deployment would, and use it (CRM-T72).
 #   scripts/image-smoke.sh [IMAGE]       default: the v0.1.5 multi-arch image by digest
+# The v0.1.5 image predates axa (CRM-T228): it reads DATABASE_URL, not DB_URL, and serves /_ping,
+# so it no longer passes. Pass an image built from this tree until a release after the move
+# (CRM-T256): podman build -t localhost/crm-service -f Containerfile contact-relationship-management-service-with-rust
 #
 # Phase 1, production mode: hardened flags (read-only root, no capabilities, no new
 # privileges, non-root), authentication on with real signed tokens (PASETO v4.public,
@@ -91,6 +94,15 @@ check "the image's own 'db migrate' applies every migration" bash -c "[[ \"\$(po
 say "phase 1: production mode, hardened, authentication on"
 run_image "${SVC}" -p "${PORT}:1241" --
 check "the service starts and answers /_health/live" wait_for 60 serves
+# `health` (CRM-T254, axa 0.16) asks the server in the same container, for an image with no curl.
+# Images before it have no such command, so the check is skipped for them, and says so.
+if podman exec "${SVC}" /app/crm-service --help 2>/dev/null | grep -q '^  health'; then
+  check "'health' in the image: the running server is live" podman exec "${SVC}" /app/crm-service health
+  check "'health --ready': and ready" podman exec "${SVC}" /app/crm-service health --ready
+  check "'health' fails when nothing answers on the port" bash -c "! podman exec ${SVC} /app/crm-service health --port 1 >/dev/null 2>&1"
+else
+  printf '  skip  this image has no health command (before CRM-T254)\n'
+fi
 check "it runs as a non-root user" bash -c "[[ \"\$(podman exec ${PG} true; podman inspect ${SVC} --format '{{.Config.User}}')\" == nonroot* ]]"
 check "no token: 401" test "$(status '' GET /api/contacts)" = 401
 check "a forged token: 401" test "$(status 'v4.public.AAAA.bbb' GET /api/contacts)" = 401
@@ -125,7 +137,7 @@ check "the service starts in development mode with SMTP" wait_for 60 serves
 C1="$(contact 'Mail One')"; C2="$(contact 'Mail Two')"; contact 'Mail Three, never consented' >/dev/null  # created and never given consent
 for c in "${C1}" "${C2}"; do status "${ADMIN}" POST "/api/contacts/${c}/consent" '{"action":"granted","source":"image smoke"}' >/dev/null; done
 SEG="$(body "${ADMIN}" POST /api/segments '{"name":"Everyone","filter":{}}' | pid_of)"
-CAMP="$(body "${ADMIN}" POST /api/campaigns "{\"name\":\"Smoke send\",\"segment_pid\":\"${SEG}\",\"subject\":\"Smoke\",\"body\":\"Hello from the image.\"}" | pid_of)"
+CAMP="$(body "${ADMIN}" POST /api/campaigns "{\"name\":\"Smoke send\",\"segment_pid\":\"${SEG}\",\"subject\":\"Smoke\",\"body\":\"Hello from the image.\",\"currency\":\"GBP\"}" | pid_of)"
 status "${ADMIN}" POST "/api/campaigns/${CAMP}/status" '{"to":"scheduled"}' >/dev/null
 code="$(status "${ADMIN}" POST "/api/campaigns/${CAMP}/run")"
 check "running the campaign answers 202 (queued, not done)" test "${code}" = 202

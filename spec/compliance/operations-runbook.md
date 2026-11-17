@@ -264,6 +264,11 @@ on a native runner); the same script passed 27 of 27 on the pulled arm64 image o
 v0.1.5 is the first stable release published that way: both images are indexes with amd64 and arm64, provenance
 verified with `gh attestation verify` and with `cosign verify` (cosign 3.1.3), and the script passed 27 of 27 on the pulled
 arm64 image (2026-10-21).
+On 2026-11-17 (CRM-T256) it passed 31 of 31 on an image built from `0fcd28a` (axa 0.17) with Podman,
+including three checks of the image's `health` command, which an image without it skips. The released
+v0.1.5 image no longer passes: it predates the move to axa (CRM-T228), reads `DATABASE_URL` rather than
+`DB_URL` and serves `/_ping`, so the default run fails until a release after the move. Until then, pass
+an image built from the tree.
 The UI image has its own check, `scripts/ui-image-smoke.sh` (hardened flags, headers, tour off and on); it passed 23 of 23
 on the pulled v0.1.5 UI image. The guided tour is on in the shipped image unless `CRM_DEMO_TOUR=off` (INSTALL.md).
 
