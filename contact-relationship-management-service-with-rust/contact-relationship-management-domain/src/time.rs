@@ -72,7 +72,7 @@ impl Timestamp {
     /// The day this instant falls on in UTC.
     #[must_use]
     pub fn date_utc(self) -> Date {
-        Date(self.0.to_zoned(jiff::tz::TimeZone::UTC).date())
+        Date(self.0.to_zoned_datetime(jiff::tz::TimeZone::UTC).date())
     }
 
     /// The clock time in UTC at this instant.
@@ -88,7 +88,9 @@ impl Timestamp {
         self,
         format: &F,
     ) -> jiff::fmt::strtime::Display<'_> {
-        self.0.to_zoned(jiff::tz::TimeZone::UTC).strftime(format)
+        self.0
+            .to_zoned_datetime(jiff::tz::TimeZone::UTC)
+            .strftime(format)
     }
 
     /// The instant `by` later, or earlier for a negative `by`; `None` outside `jiff`'s range.
@@ -118,7 +120,7 @@ impl Timestamp {
     }
 
     fn rfc3339(self, offset: &str) -> String {
-        let zoned = self.0.to_zoned(jiff::tz::TimeZone::UTC);
+        let zoned = self.0.to_zoned_datetime(jiff::tz::TimeZone::UTC);
         let nanos = self.0.subsec_nanosecond();
         let fraction = if nanos == 0 {
             String::new()

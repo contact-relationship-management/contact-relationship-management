@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   transport through `scoped_auth`, which put them back when the test ends; the Keycloak and
   command-line tests are `#[serial]`. Run one with `cargo test --test main rate_limit -- --ignored`.
 
+### Changed — jiff 1.0.0 (CRM-T265)
+
+- `jiff` 1.0.0 in the service and the domain crate, from 0.2.43; `to_zoned` is `to_zoned_datetime`.
+  The build no longer compiles `jiff` 0.2 beside axa's 1.0. No change in behaviour.
+
 ### Changed — axa 0.20.0 (CRM-T264)
 
 - axa 0.20.0 and `axa-test` 0.11.0. axa's Zstd support is now its `zstd` feature, which the service

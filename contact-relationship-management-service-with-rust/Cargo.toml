@@ -59,7 +59,7 @@ sqlx = { version = "0.9", default-features = false, features = [
 # writes its `Timestamp` and `Date` as `timestamptz` and `date`.
 contact-relationship-management-domain = { version = "0.1.5", path = "contact-relationship-management-domain", features = ["postgres"] }
 # CRM-T258: instants, dates and zones. The bundled time-zone database, as the distroless image has none.
-jiff = { version = "0.2.43", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
+jiff = { version = "1.0.0", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
 url = "2.5"
 thiserror = "2.0"
 csv = "1.4"

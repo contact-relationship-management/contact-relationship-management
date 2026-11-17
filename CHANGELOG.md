@@ -21,6 +21,11 @@ subproject keeps a detailed changelog:
   `pnpm perf:pages`, which times eleven UI pages cold and warm, plain and throttled to a phone.
   Results in `BENCHMARKS.md`.
 
+### Changed — jiff 1.0.0 (CRM-T265, 2026-11-17)
+
+- The service and its domain rules use jiff 1.0.0, the version axa's job queue already uses, so one
+  version is compiled instead of two. No change in behaviour.
+
 ### Changed — axa 0.20.0 (CRM-T264, 2026-11-17)
 
 - The service uses axa 0.20.0 and `axa-test` 0.11.0. A request body compressed with Zstd is now refused
