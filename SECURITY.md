@@ -47,9 +47,9 @@ Out of scope:
 
 ## Reporting a vulnerability
 
-Report privately, by email to <joel@joelparkerhenderson.com>. When GitHub private vulnerability
-reporting is enabled for the repository, its "Report a vulnerability" form on the Security tab
-works too. Do not open a public issue, discussion or pull request for a vulnerability.
+Report privately, by email to <joel@joelparkerhenderson.com>, or through GitHub's private
+vulnerability reporting: the "Report a vulnerability" form on the repository's Security tab
+(<https://github.com/contact-relationship-management/contact-relationship-management/security/advisories/new>), which only the maintainer can read. Do not open a public issue, discussion or pull request for a vulnerability.
 
 Include:
 

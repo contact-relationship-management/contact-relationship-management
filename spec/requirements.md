@@ -1588,7 +1588,7 @@ vulnerability, I know where to report it, what will happen and when, and that re
 will not be met with legal action by the maintainer.*
 
 - [SECURITY.md](../SECURITY.md) is the policy: the status of the software; what is in and out of scope;
-  how to report (email, and GitHub's private reporting form once it is enabled) and what to include;
+  how to report (email, and GitHub's private reporting form, on since 2026-11-17) and what to include;
   response targets (acknowledgement in 7 days, triage in 14, a fix or mitigation 14, 30 or 90 days after
   triage for critical, high and medium issues, low in the next release); severity by CVSS v4.0 base
   score, with any finding that exposes personal data or consent records, defeats sign-in or
@@ -1602,6 +1602,5 @@ will not be met with legal action by the maintainer.*
   has not lapsed": served as `text/plain`, a `mailto:` or `https:` contact, one `Expires` more than 30
   days and at most a year away (it failed with an expiry 14 days away), the canonical address, a policy
   link to `SECURITY.md`, which has each of the policy's sections and the same contact.
-- Not built: GitHub private vulnerability reporting is off for the repository (a setting for the owner);
-  there is no encryption key for reports; the policy has not been reviewed by a lawyer; the targets are
+- Not built: there is no encryption key for reports; the policy has not been reviewed by a lawyer; the targets are
   one maintainer's and have not been tested by a real report.
