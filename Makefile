@@ -115,6 +115,13 @@ test-service:
 	cd $(SERVICE) && make test
 
 ##
+# make test-minimum-supported-rust-version: Check and test on the minimum supported Rust version (N-2) and N-1.
+##
+.PHONY: test-minimum-supported-rust-version
+test-minimum-supported-rust-version:
+	bin/make-test-minimum-supported-rust-version
+
+##
 # make test-ui: Test the front-end UI.
 ##
 .PHONY: test-ui

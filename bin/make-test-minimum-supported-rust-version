@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Check and test every Cargo workspace on the minimum supported Rust version (N-2) and the release
+# after it (N-1). The MSRV is read from the first `rust-version` in a workspace Cargo.toml.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+
+workspaces=()
+while IFS= read -r manifest; do
+  if grep -q '^\[workspace\]' "$manifest"; then
+    workspaces+=("$(dirname "$manifest")")
+  fi
+done < <(find . -name Cargo.toml -not -path '*/target/*' -not -path '*/node_modules/*' -not -path '*/.claude/*' -not -path './.git/*' | sort)
+
+if [ "${#workspaces[@]}" -eq 0 ]; then
+  echo "No Cargo workspaces found under $root" >&2
+  exit 1
+fi
+
+msrv="$(grep -h '^rust-version' "${workspaces[0]}/Cargo.toml" | head -1 | sed -E 's/.*"([0-9]+\.[0-9]+)(\.[0-9]+)?".*/\1/')"
+if [ -z "$msrv" ]; then
+  echo "No rust-version found in ${workspaces[0]}/Cargo.toml" >&2
+  exit 1
+fi
+major="${msrv%%.*}"
+minor="${msrv##*.}"
+next="$major.$((minor + 1))"
+
+for tc in "$msrv" "$next"; do
+  if ! rustup toolchain list | grep -q "^$tc"; then
+    echo "Rust toolchain $tc is not installed. Run: rustup toolchain install $tc --profile minimal" >&2
+    exit 1
+  fi
+done
+
+for tc in "$msrv" "$next"; do
+  for ws in "${workspaces[@]}"; do
+    echo "== Rust $tc: $ws"
+    (cd "$ws" && RUSTUP_TOOLCHAIN="$tc" cargo check --all-targets && RUSTUP_TOOLCHAIN="$tc" cargo test)
+  done
+done
