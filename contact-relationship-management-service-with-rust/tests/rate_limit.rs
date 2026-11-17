@@ -310,3 +310,31 @@ async fn a_tool_call_is_counted_against_the_client_that_made_it() {
     })
     .await;
 }
+
+/// axa's trailing-slash `308` (CRM-T255) is the router's fallback, and the service's layers wrap
+/// it: with sign-in on, a slashed path without a token is the guard's `401`, so the redirect tells
+/// nobody signed out which paths are mounted, and with a token it is the `308`.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn with_sign_in_on_a_trailing_slash_is_refused_before_it_is_redirected() {
+    set("CRM_RATE_LIMIT_PER_MIN", "0");
+    set("CRM_AUTH_FAIL_LIMIT", "0");
+    set(rate_limit::ADDRESS_LOCKOUT_VAR, "0");
+    let (kid, _sign_in) = sign_in_required();
+    request::<App, _, _>(|request, _ctx| async move {
+        for path in ["/api/contacts/", "/api/no-such-thing/"] {
+            request
+                .get(path)
+                .await
+                .assert_status(StatusCode::UNAUTHORIZED);
+        }
+        let signed_in = request
+            .get("/api/contacts/")
+            .add_header("authorization", token(&kid, "person-a", "one"))
+            .await;
+        signed_in.assert_status(StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(signed_in.header("location"), "/api/contacts");
+    })
+    .await;
+}
