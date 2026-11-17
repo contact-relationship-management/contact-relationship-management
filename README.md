@@ -51,8 +51,8 @@ To publish a change, from a clone with the `github-pages` remote:
 
 1. After editing any document the site shows, run `pnpm run sync` in the site's
    directory (CI fails on a stale copy).
-2. Commit, then run `make github-pages` from the repository root. That runs
-   `bin/make-github-pages`, which checks the remote, the site's copy of the
+2. Commit, then run `make publish-github-pages` from the repository root. That runs
+   `bin/publish-github-pages`, which checks the remote, the site's copy of the
    documents and a clean directory, then runs
    `git subtree push --prefix=contact-relationship-management.github.io github-pages main`.
 3. Watch the deploy run in the exported repository.

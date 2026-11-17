@@ -16,7 +16,7 @@ none=0000000000000000000000000000000000000000
 commits=()
 while read -r _ local_sha _ _; do
   [[ -z "${local_sha}" || "${local_sha}" == "${none}" ]] && continue
-  # A branch deleted above; here, a tree with no gate: `make github-pages` pushes only the site.
+  # A branch deleted above; here, a tree with no gate: `make publish-github-pages` pushes only the site.
   git cat-file -e "${local_sha}:scripts/ci-check.sh" 2>/dev/null || continue
   commits+=("${local_sha}")
 done

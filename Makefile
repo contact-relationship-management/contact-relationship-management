@@ -72,7 +72,7 @@ lint: lint-markdown
 ##
 .PHONY: lint-markdown
 lint-markdown:
-	@bash scripts/lint-markdown.sh check --quiet
+	@scripts/ci-check.sh lint
 
 ##
 # make publish-github-pages: Publish the website subproject to its own sibling repository.
