@@ -185,10 +185,14 @@ case "${stage}" in
       echo "mutants-diff: no base commit (${base}), so nothing to compare; skipped" >&2
       exit 0
     fi
+    # cargo-mutants reads the diff's paths from the workspace root, so each crate's diff is relative
+    # to its own root: the matcher is one, and the domain crate's is the service's directory. A diff
+    # relative to the wrong directory matches no file and passes having tested nothing.
     status=0
-    for crate in "${MATCHER}" "${DOMAIN}"; do
+    for each in "${MATCHER}:${MATCHER}" "${SVC}:${DOMAIN}"; do
+      root="${each%%:*}" crate="${each#*:}"
       diff="$(mktemp)"
-      git diff --relative="${crate}/" "${base}" -- "${crate}/src" >"${diff}"
+      git diff --relative="${root}/" "${base}" -- "${crate}/src" >"${diff}"
       if [[ -s "${diff}" ]]; then
         (cd "${crate}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --in-diff "${diff}" --output "${PWD}/mutants-diff-out") || status=$?
       else
