@@ -13,7 +13,7 @@ sibling repository, published by `make publish-github-pages`.
 - **An introduction, then the documents.** The site states what the software offers, how to try it and how it
   compares, in the neutral voice of a business analyst, and that it is demonstration software (CRM-T193).
 - **Static.** SvelteKit 3 with `@sveltejs/adapter-static`; every page is prerendered (`prerender = true`,
-  `trailingSlash = "always"`, so `/install/` is `install/index.html`): 157 pages. No server, no API call, no form.
+  `trailingSlash = "always"`, so `/install/` is `install/index.html`): every doc, index, brief, production and privacy route, in every locale. No server, no API call, no form.
 - **Svelte 5 runes** and the full Lily `PickerBar`, as the CRM UI uses it, at the same pinned versions: link (every
   page and the repository), search, theme ("Follow this device" first, then all 57 Lily themes), locale, time
   zone, text size (seven steps) and share (the UI's five destinations and copy link). The time-zone picker records
@@ -102,7 +102,7 @@ scripts (`mode: "hash"`): `default-src 'self'`, `script-src 'self'` plus hashes,
 ## Tests
 
 `tests/e2e/site.spec.ts` (Playwright with `@axe-core/playwright`, against `vite preview` of the build): every page
-answers 200 (157); each of the seven pickers changes colour on hover and opens under its button without moving
+answers 200 (the routes `routesOf` lists, so the count follows the content); each of the seven pickers changes colour on hover and opens under its button without moving
 the page, left to right and right to left; search across scripts; share and copy; the time-zone record; the landing
 page in three languages; the sitemaps; each comparison page fair and sourced; axe in every theme; axe under light and dark on every document, every locale's list and one brief per locale, with no
 CSP report in the console; `lang` and `dir` on a brief and on a document; the two Arabic pages right to left (header
