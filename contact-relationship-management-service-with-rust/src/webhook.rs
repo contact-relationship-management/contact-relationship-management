@@ -88,7 +88,7 @@ pub fn signed_request(headers: &axum::http::HeaderMap, body: &[u8]) -> Option<bo
         header("x-crm-timestamp"),
         header("x-crm-signature"),
         body,
-        chrono::Utc::now().timestamp(),
+        jiff::Timestamp::now().as_second(),
     ))
 }
 

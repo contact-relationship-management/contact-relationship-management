@@ -14,7 +14,7 @@
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
+use crate::time::Timestamp;
 use serde::Serialize;
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
@@ -140,11 +140,7 @@ pub struct Report {
 }
 
 /// Create the deliveries for outbox rows not yet handled, oldest first.
-async fn fan_out(
-    pool: &PgPool,
-    now: DateTime<Utc>,
-    report: &mut Report,
-) -> Result<(), sqlx::Error> {
+async fn fan_out(pool: &PgPool, now: Timestamp, report: &mut Report) -> Result<(), sqlx::Error> {
     let mut txn = pool.begin().await?;
     let rows = sqlx::query!(
         "SELECT id, event_id, entity, kind, entity_pid, occurred_at FROM event_outbox \
@@ -157,7 +153,7 @@ async fn fan_out(
     if rows.is_empty() {
         return txn.commit().await;
     }
-    let subscriptions: Vec<(i32, Vec<String>, DateTime<Utc>)> =
+    let subscriptions: Vec<(i32, Vec<String>, Timestamp)> =
         sqlx::query!("SELECT id, events, created_at FROM webhook_subscriptions WHERE enabled")
             .fetch_all(&mut *txn)
             .await?
@@ -198,7 +194,7 @@ async fn fan_out(
 }
 
 /// Claim up to [`SEND_BATCH`] due deliveries and return their ids.
-async fn claim_due(pool: &PgPool, now: DateTime<Utc>) -> Result<Vec<i32>, sqlx::Error> {
+async fn claim_due(pool: &PgPool, now: Timestamp) -> Result<Vec<i32>, sqlx::Error> {
     sqlx::query_scalar!(
         "UPDATE webhook_deliveries SET next_attempt_at = $2 + make_interval(secs => $3) \
          WHERE id IN (SELECT d.id FROM webhook_deliveries d \
@@ -223,7 +219,7 @@ async fn claim_due(pool: &PgPool, now: DateTime<Utc>) -> Result<Vec<i32>, sqlx::
 pub async fn run(
     pool: &PgPool,
     sender: &dyn Sender,
-    now: DateTime<Utc>,
+    now: Timestamp,
 ) -> Result<Report, sqlx::Error> {
     let mut report = Report::default();
     fan_out(pool, now, &mut report).await?;
@@ -254,7 +250,7 @@ enum Loaded {
 }
 
 /// Load a claimed delivery with its subscription and event, and sign it.
-async fn prepare(pool: &PgPool, id: i32, now: DateTime<Utc>) -> Result<Loaded, sqlx::Error> {
+async fn prepare(pool: &PgPool, id: i32, now: Timestamp) -> Result<Loaded, sqlx::Error> {
     // The event is a left join: it may have been pruned since the delivery was made.
     let Some(row) = sqlx::query!(
         "SELECT d.attempts, d.event_id, d.subscription_id AS sub, s.pid AS sub_pid, s.url, \
@@ -294,7 +290,7 @@ async fn prepare(pool: &PgPool, id: i32, now: DateTime<Utc>) -> Result<Loaded, s
         secrets.push(secret);
     }
     let body = rules::body(event_id, &entity, &kind, entity_pid, occurred_at);
-    let timestamp = now.timestamp();
+    let timestamp = now.as_second();
     let refs: Vec<&str> = secrets.iter().map(String::as_str).collect();
     let Ok(signature) = rules::signature_header(&refs, &event_id.to_string(), timestamp, &body)
     else {
@@ -320,7 +316,7 @@ async fn send_one(
     pool: &PgPool,
     sender: &dyn Sender,
     id: i32,
-    now: DateTime<Utc>,
+    now: Timestamp,
     report: &mut Report,
 ) -> Result<(), sqlx::Error> {
     let prepared = match prepare(pool, id, now).await? {
@@ -359,7 +355,7 @@ async fn send_one(
             };
             if let Some(delay) = rules::retry_delay_seconds(attempts) {
                 report.retrying += 1;
-                let next = now + chrono::Duration::seconds(delay);
+                let next = now + jiff::SignedDuration::from_secs(delay);
                 let mut conn = pool.acquire().await?;
                 record_attempt(
                     &mut conn,
@@ -386,7 +382,7 @@ async fn disable_gone(
     id: i32,
     attempts: i32,
     prepared: &Prepared,
-    now: DateTime<Utc>,
+    now: Timestamp,
 ) -> Result<(), sqlx::Error> {
     const WHY: &str = "the receiver answered 410 Gone";
     let mut txn = pool.begin().await?;
@@ -442,7 +438,7 @@ async fn record_attempt(
     attempts: i32,
     code: Option<u16>,
     why: Option<&str>,
-    next: Option<DateTime<Utc>>,
+    next: Option<Timestamp>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         "UPDATE webhook_deliveries SET status = $2::text, attempts = $3, last_status = $4, \

@@ -7,11 +7,12 @@ use std::sync::Mutex;
 
 use axa_test::prelude::*;
 use axum::http::StatusCode;
-use chrono::{DateTime, Duration, Utc};
 use contact_relationship_management::app::App;
 use contact_relationship_management::db;
 use contact_relationship_management::rules::webhooks as rules;
+use contact_relationship_management::time::Timestamp;
 use contact_relationship_management::webhooks::{HttpSender, Outcome, Sender, run};
+use jiff::SignedDuration;
 use serde_json::{Value, json};
 use serial_test::serial;
 use uuid::Uuid;
@@ -71,7 +72,7 @@ impl Sender for Recorder {
 }
 
 /// Write an outbox row, as the `outbox` transport does with a mutation.
-async fn emit(db: &sqlx::PgPool, entity: &str, kind: &str, pid: Uuid, at: DateTime<Utc>) -> Uuid {
+async fn emit(db: &sqlx::PgPool, entity: &str, kind: &str, pid: Uuid, at: Timestamp) -> Uuid {
     let event_id = Uuid::new_v4();
     sqlx::query("INSERT INTO event_outbox (event_id, entity, entity_pid, kind, occurred_at, schema_version, payload) \
          VALUES ($1, $2, $3, $4, $5, 1, $6)").bind(event_id).bind(entity).bind(pid).bind(kind).bind(at).bind(json!({ "name": "Private Person Name", "data": { "email": "private@example.test" } })).execute(db)
@@ -199,7 +200,7 @@ async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
             assert_eq!(call.url, "https://hooks.example.com/crm");
             assert_eq!(call.header("webhook-id"), event.to_string());
             let timestamp: i64 = call.header("webhook-timestamp").parse().unwrap();
-            assert_eq!(timestamp, now.timestamp());
+            assert_eq!(timestamp, now.as_second());
             let expected = rules::sign(secret, &event.to_string(), timestamp, &call.body).unwrap();
             assert_eq!(call.header("webhook-signature"), expected);
             let body: Value = serde_json::from_str(&call.body).unwrap();
@@ -214,9 +215,13 @@ async fn a_matching_event_is_sent_signed_once_with_ids_and_no_contact_values() {
         }
 
         // Nothing is sent twice, however often the relay runs.
-        let again = run(db::pool(&ctx), &recorder, now + Duration::minutes(10))
-            .await
-            .unwrap();
+        let again = run(
+            db::pool(&ctx),
+            &recorder,
+            now + SignedDuration::from_mins(10),
+        )
+        .await
+        .unwrap();
         assert_eq!((again.deliveries_created, again.attempted), (0, 0));
         let rows = log!(request, pid).await;
         assert_eq!(rows.len(), 1);
@@ -237,7 +242,7 @@ async fn a_subscription_does_not_hear_what_happened_before_it_existed() {
             "contact",
             "created",
             Uuid::new_v4(),
-            contact_relationship_management::clock::now() - Duration::hours(1),
+            contact_relationship_management::clock::now() - SignedDuration::from_hours(1),
         )
         .await;
         let made = subscribe!(request, ["*"]).await;
@@ -280,9 +285,13 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
         let first = run(db::pool(&ctx), &recorder, start).await.unwrap();
         assert_eq!((first.attempted, first.retrying), (1, 1));
         // Too soon: the first retry waits 30 seconds.
-        let soon = run(db::pool(&ctx), &recorder, start + Duration::seconds(10))
-            .await
-            .unwrap();
+        let soon = run(
+            db::pool(&ctx),
+            &recorder,
+            start + SignedDuration::from_secs(10),
+        )
+        .await
+        .unwrap();
         assert_eq!(soon.attempted, 0);
         let rows = log!(request, pid).await;
         assert_eq!(rows[0]["status"], "pending");
@@ -291,17 +300,25 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
 
         // Seven more attempts, each after the previous wait, then dead.
         for n in 1..8 {
-            let r = run(db::pool(&ctx), &recorder, start + Duration::days(2 * n))
-                .await
-                .unwrap();
+            let r = run(
+                db::pool(&ctx),
+                &recorder,
+                start + contact_relationship_management::time::days(2 * n),
+            )
+            .await
+            .unwrap();
             assert_eq!(r.attempted, 1, "attempt {}", n + 1);
         }
         let rows = log!(request, pid).await;
         assert_eq!(rows[0]["status"], "dead");
         assert_eq!(rows[0]["attempts"], 8);
-        let after = run(db::pool(&ctx), &recorder, start + Duration::days(30))
-            .await
-            .unwrap();
+        let after = run(
+            db::pool(&ctx),
+            &recorder,
+            start + contact_relationship_management::time::days(30),
+        )
+        .await
+        .unwrap();
         assert_eq!(after.attempted, 0, "a dead delivery is not tried again");
         assert_eq!(recorder.calls().len(), 8);
 
@@ -318,7 +335,8 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
         let ok = run(
             db::pool(&ctx),
             &recorder,
-            contact_relationship_management::clock::now() + Duration::days(31),
+            contact_relationship_management::clock::now()
+                + contact_relationship_management::time::days(31),
         )
         .await
         .unwrap();
@@ -367,7 +385,8 @@ async fn a_410_disables_the_subscription_cancels_what_is_queued_and_is_audited()
         let later = run(
             db::pool(&ctx),
             &recorder,
-            contact_relationship_management::clock::now() + Duration::days(1),
+            contact_relationship_management::clock::now()
+                + contact_relationship_management::time::days(1),
         )
         .await
         .unwrap();
@@ -448,7 +467,8 @@ async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
         run(
             db::pool(&ctx),
             &recorder,
-            contact_relationship_management::clock::now() + Duration::days(2),
+            contact_relationship_management::clock::now()
+                + contact_relationship_management::time::days(2),
         )
         .await
         .unwrap();
@@ -509,9 +529,13 @@ async fn erasing_a_contact_cancels_its_queued_deliveries() {
             .await
             .assert_status_ok();
 
-        let later = run(db::pool(&ctx), &recorder, start + Duration::days(1))
-            .await
-            .unwrap();
+        let later = run(
+            db::pool(&ctx),
+            &recorder,
+            start + contact_relationship_management::time::days(1),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             later.attempted, 1,
             "only the other contact's delivery is still queued"
@@ -569,7 +593,8 @@ async fn a_removed_subscription_sends_nothing_more_and_keeps_its_log() {
         let report = run(
             db::pool(&ctx),
             &recorder,
-            contact_relationship_management::clock::now() + Duration::days(1),
+            contact_relationship_management::clock::now()
+                + contact_relationship_management::time::days(1),
         )
         .await
         .unwrap();

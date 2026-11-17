@@ -36,8 +36,8 @@ pub(crate) struct SlaRegister {
     breaches: Vec<Breach>,
     workload: Vec<Workload>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// `GET /api/insights/sla` — the breach register (open/pending tickets
@@ -50,7 +50,7 @@ pub(super) async fn sla_register(
     headers: HeaderMap,
 ) -> Result<Response> {
     let now = crate::clock::now();
-    let at_risk_horizon = now + chrono::Duration::hours(4);
+    let at_risk_horizon = now + jiff::SignedDuration::from_hours(4);
     let open: Vec<tickets::Model> =
         crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?;
     let mut breaches: Vec<(i64, Breach)> = Vec::new();
@@ -66,20 +66,18 @@ pub(super) async fn sla_register(
         let mut worst_overdue: Option<(&str, i64)> = None;
         // A ticket waiting for the customer has a stopped clock, so it is not running toward a
         // deadline (CRM-R55); one that was already late when paused stays late.
-        let paused = ticket.paused_at.map(|at| at.to_utc());
-        let now = paused.map_or(now, |at| at.min(now));
+        let now = ticket.paused_at.map_or(now, |at| at.min(now));
         for (which, due) in [
             ("first_response", ticket.first_response_due_at),
             ("resolution", ticket.resolution_due_at),
         ] {
             let Some(due) = due else { continue };
-            let due = due.to_utc();
             if due < now {
-                let hours = (now - due).num_hours();
+                let hours = (now - due).as_hours();
                 if worst_overdue.is_none_or(|(_, worst)| hours > worst) {
                     worst_overdue = Some((which, hours));
                 }
-            } else if paused.is_none() && due <= at_risk_horizon {
+            } else if ticket.paused_at.is_none() && due <= at_risk_horizon {
                 entry.2 += 1;
             }
         }

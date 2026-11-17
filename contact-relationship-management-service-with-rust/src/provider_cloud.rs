@@ -144,9 +144,9 @@ pub fn ses_headers(
     host: &str,
     path: &str,
     body: &[u8],
-    now: chrono::DateTime<chrono::Utc>,
+    now: crate::time::Timestamp,
 ) -> Vec<(String, String)> {
-    let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+    let amz_date = now.strftime_utc("%Y%m%dT%H%M%SZ").to_string();
     let mut signed = vec![
         ("content-type".to_string(), "application/json".to_string()),
         ("host".to_string(), host.to_string()),
@@ -338,12 +338,12 @@ pub fn azure_headers(
     host: &str,
     path_and_query: &str,
     body: &[u8],
-    now: chrono::DateTime<chrono::Utc>,
+    now: crate::time::Timestamp,
 ) -> Result<Vec<(String, String)>, String> {
     let key = STANDARD
         .decode(access_key)
         .map_err(|_| "CRM_AZURE_ACCESS_KEY is not base64".to_string())?;
-    let date = now.format("%a, %d %b %Y %H:%M:%S GMT").to_string();
+    let date = now.strftime_utc("%a, %d %b %Y %H:%M:%S GMT").to_string();
     let content_hash = STANDARD.encode(Sha256::digest(body));
     let to_sign = format!("POST\n{path_and_query}\n{date};{host};{content_hash}");
     let signature = STANDARD.encode(hmac(&key, to_sign.as_bytes()));
@@ -471,9 +471,7 @@ mod tests {
             session_token: Some("tok".into()),
             region: "eu-west-1".into(),
         };
-        let now = chrono::DateTime::parse_from_rfc3339("2026-10-13T01:02:03Z")
-            .unwrap()
-            .to_utc();
+        let now: crate::time::Timestamp = "2026-10-13T01:02:03Z".parse().unwrap();
         let headers = ses_headers(
             &creds,
             "email.eu-west-1.amazonaws.com",
@@ -640,9 +638,7 @@ mod tests {
             body["headers"]["List-Unsubscribe-Post"],
             "List-Unsubscribe=One-Click"
         );
-        let now = chrono::DateTime::parse_from_rfc3339("2026-10-13T01:02:03Z")
-            .unwrap()
-            .to_utc();
+        let now: crate::time::Timestamp = "2026-10-13T01:02:03Z".parse().unwrap();
         let key = STANDARD.encode(b"0123456789abcdef");
         let headers = azure_headers(
             &key,

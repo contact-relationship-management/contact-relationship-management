@@ -2,7 +2,9 @@
 //! open time + the priority's policy (24×7 clocks in v1); breaches
 //! are computed facts that clear only by meeting the metric.
 
-use chrono::{DateTime, Duration, FixedOffset};
+use jiff::SignedDuration;
+
+use crate::time::Timestamp;
 
 use super::calendar::Calendar;
 
@@ -19,19 +21,20 @@ pub struct Targets {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Deadlines {
     /// First response due.
-    pub first_response_due_at: DateTime<FixedOffset>,
+    pub first_response_due_at: Timestamp,
     /// Resolution due.
-    pub resolution_due_at: DateTime<FixedOffset>,
+    pub resolution_due_at: Timestamp,
 }
 
 /// Derive the deadlines from the ticket's opened time (re-derived on
 /// an audited priority change).
 #[must_use]
-pub fn deadlines(opened_at: DateTime<FixedOffset>, targets: Targets) -> Deadlines {
+pub fn deadlines(opened_at: Timestamp, targets: Targets) -> Deadlines {
     Deadlines {
         first_response_due_at: opened_at
-            + Duration::minutes(i64::from(targets.first_response_minutes)),
-        resolution_due_at: opened_at + Duration::minutes(i64::from(targets.resolution_minutes)),
+            + SignedDuration::from_mins(i64::from(targets.first_response_minutes)),
+        resolution_due_at: opened_at
+            + SignedDuration::from_mins(i64::from(targets.resolution_minutes)),
     }
 }
 
@@ -41,7 +44,7 @@ pub fn deadlines(opened_at: DateTime<FixedOffset>, targets: Targets) -> Deadline
 /// never loses its deadline.
 #[must_use]
 pub fn deadlines_on(
-    opened_at: DateTime<FixedOffset>,
+    opened_at: Timestamp,
     targets: Targets,
     calendar: Option<&Calendar>,
 ) -> Deadlines {
@@ -62,17 +65,17 @@ pub struct Paused {
 /// deadline can always be derived again from the open time (CRM-R55).
 #[must_use]
 pub fn deadlines_paused(
-    opened_at: DateTime<FixedOffset>,
+    opened_at: Timestamp,
     targets: Targets,
     calendar: Option<&Calendar>,
     paused: Paused,
 ) -> Deadlines {
     let place = |minutes: i32, extra: i64| {
         let seconds = i64::from(minutes) * 60 + extra.max(0);
-        let round_the_clock = opened_at + Duration::seconds(seconds);
+        let round_the_clock = opened_at + SignedDuration::from_secs(seconds);
         calendar
-            .and_then(|c| c.add_working_seconds(opened_at, seconds))
-            .unwrap_or(round_the_clock)
+            .and_then(|c| c.add_working_seconds(opened_at.0, seconds))
+            .map_or(round_the_clock, Timestamp)
     };
     Deadlines {
         first_response_due_at: place(
@@ -86,10 +89,7 @@ pub fn deadlines_paused(
 /// The moment the SLA clock reads: `now`, or the moment the ticket was paused while it waits for
 /// the customer (the clock is stopped, so a paused ticket does not run into a deadline).
 #[must_use]
-pub fn clock_now(
-    now: DateTime<FixedOffset>,
-    paused_at: Option<DateTime<FixedOffset>>,
-) -> DateTime<FixedOffset> {
+pub fn clock_now(now: Timestamp, paused_at: Option<Timestamp>) -> Timestamp {
     paused_at.map_or(now, |paused| paused.min(now))
 }
 
@@ -99,9 +99,9 @@ pub fn clock_now(
 #[must_use]
 pub fn pause_counted(
     calendar: Option<&Calendar>,
-    paused_at: DateTime<FixedOffset>,
-    resumed_at: DateTime<FixedOffset>,
-    due: Option<DateTime<FixedOffset>>,
+    paused_at: Timestamp,
+    resumed_at: Timestamp,
+    due: Option<Timestamp>,
     met: bool,
 ) -> i64 {
     let Some(due) = due.filter(|_| !met) else {
@@ -112,8 +112,8 @@ pub fn pause_counted(
         return 0;
     }
     match calendar {
-        Some(calendar) => calendar.working_seconds_between(paused_at, end),
-        None => (end - paused_at).num_seconds(),
+        Some(calendar) => calendar.working_seconds_between(paused_at.0, end.0),
+        None => (end - paused_at).as_secs(),
     }
 }
 
@@ -122,9 +122,9 @@ pub fn pause_counted(
 /// the deadline can never breach later.
 #[must_use]
 pub fn first_response_breached(
-    now: DateTime<FixedOffset>,
-    due: DateTime<FixedOffset>,
-    first_responded_at: Option<DateTime<FixedOffset>>,
+    now: Timestamp,
+    due: Timestamp,
+    first_responded_at: Option<Timestamp>,
 ) -> bool {
     match first_responded_at {
         Some(responded) => responded > due,
@@ -134,11 +134,7 @@ pub fn first_response_breached(
 
 /// Whether the resolution metric is breached at `now`.
 #[must_use]
-pub fn resolution_breached(
-    now: DateTime<FixedOffset>,
-    due: DateTime<FixedOffset>,
-    resolved_at: Option<DateTime<FixedOffset>>,
-) -> bool {
+pub fn resolution_breached(now: Timestamp, due: Timestamp, resolved_at: Option<Timestamp>) -> bool {
     match resolved_at {
         Some(resolved) => resolved > due,
         None => now > due,
@@ -148,13 +144,10 @@ pub fn resolution_breached(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
+    use crate::time::days;
 
-    fn at(h: u32, m: u32) -> DateTime<FixedOffset> {
-        FixedOffset::east_opt(0)
-            .unwrap()
-            .with_ymd_and_hms(2026, 7, 6, h, m, 0)
-            .unwrap()
+    fn at(h: i8, m: i8) -> Timestamp {
+        format!("2026-07-06T{h:02}:{m:02}:00Z").parse().unwrap()
     }
 
     /// Deadlines add the policy minutes to the open time.
@@ -193,7 +186,7 @@ mod tests {
         let opened = at(16, 0);
         let d = deadlines_on(opened, targets, Some(&calendar));
         assert_eq!(d.first_response_due_at, at(17, 0));
-        assert_eq!(d.resolution_due_at, at(17, 0) + Duration::days(1));
+        assert_eq!(d.resolution_due_at, at(17, 0) + days(1));
         // With no calendar it is the round-the-clock answer.
         assert_eq!(
             deadlines_on(opened, targets, None),
@@ -283,8 +276,8 @@ mod tests {
         let calendar = office();
         // Paused Monday 16:00, resumed Tuesday 10:00; the deadline is far off. One hour on Monday
         // and one on Tuesday: two working hours, not eighteen elapsed ones.
-        let due = Some(at(9, 0) + Duration::days(7));
-        let resumed = at(10, 0) + Duration::days(1);
+        let due = Some(at(9, 0) + days(7));
+        let resumed = at(10, 0) + days(1);
         assert_eq!(
             pause_counted(Some(&calendar), at(16, 0), resumed, due, false),
             2 * 3600
@@ -322,6 +315,6 @@ mod tests {
                 resolution_seconds: 0,
             },
         );
-        assert_eq!(d.first_response_due_at, at(10, 0) + Duration::days(1));
+        assert_eq!(d.first_response_due_at, at(10, 0) + days(1));
     }
 }

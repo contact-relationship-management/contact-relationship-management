@@ -18,7 +18,8 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use chrono::{DateTime, Duration, Utc};
+use crate::time::Timestamp;
+use jiff::SignedDuration;
 
 /// Shortest acceptable written reason.
 pub const MIN_REASON_CHARS: usize = 20;
@@ -106,19 +107,19 @@ pub fn validate_review(grantee: &str, reviewer: &str, note: &str) -> Result<Stri
 
 /// Expiry of a grant taken at `now`.
 #[must_use]
-pub fn expiry(now: DateTime<Utc>, minutes: i64) -> DateTime<Utc> {
-    now + Duration::minutes(minutes)
+pub fn expiry(now: Timestamp, minutes: i64) -> Timestamp {
+    now + SignedDuration::from_mins(minutes)
 }
 
 /// The live grants this process knows about: subject to expiry.
 #[derive(Debug, Default)]
 pub struct Registry {
-    live: Mutex<HashMap<String, DateTime<Utc>>>,
+    live: Mutex<HashMap<String, Timestamp>>,
 }
 
 impl Registry {
     /// Record a grant (keeping the later expiry if one exists).
-    pub fn grant(&self, subject: &str, expires_at: DateTime<Utc>) {
+    pub fn grant(&self, subject: &str, expires_at: Timestamp) {
         let mut live = self
             .live
             .lock()
@@ -130,7 +131,7 @@ impl Registry {
     }
 
     /// Replace the whole set (the database refresh).
-    pub fn replace(&self, grants: HashMap<String, DateTime<Utc>>) {
+    pub fn replace(&self, grants: HashMap<String, Timestamp>) {
         *self
             .live
             .lock()
@@ -139,7 +140,7 @@ impl Registry {
 
     /// Whether `subject` holds a live grant at `now`.
     #[must_use]
-    pub fn active(&self, subject: &str, now: DateTime<Utc>) -> bool {
+    pub fn active(&self, subject: &str, now: Timestamp) -> bool {
         self.live
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -223,8 +224,8 @@ mod tests {
         let now = crate::clock::now();
         registry.grant("u", expiry(now, 30));
         assert!(registry.active("u", now));
-        assert!(registry.active("u", now + Duration::minutes(29)));
-        assert!(!registry.active("u", now + Duration::minutes(30)));
+        assert!(registry.active("u", now + SignedDuration::from_mins(29)));
+        assert!(!registry.active("u", now + SignedDuration::from_mins(30)));
         assert!(!registry.active("other", now));
     }
 
@@ -234,7 +235,7 @@ mod tests {
         let now = crate::clock::now();
         registry.grant("u", expiry(now, 10));
         registry.grant("u", expiry(now, 5));
-        assert!(registry.active("u", now + Duration::minutes(9)));
+        assert!(registry.active("u", now + SignedDuration::from_mins(9)));
         registry.replace(HashMap::new());
         assert!(!registry.active("u", now));
     }

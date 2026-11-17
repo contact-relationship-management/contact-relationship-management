@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, NaiveDate, Utc};
+use crate::time::{Date, Timestamp};
 use serde::Serialize;
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
@@ -103,14 +103,14 @@ impl Loaded {
 
     /// The rules for `channel` under `code` on `as_of`.
     #[must_use]
-    pub fn rules(&self, channel: &str, code: Option<&str>, as_of: NaiveDate) -> Rules {
+    pub fn rules(&self, channel: &str, code: Option<&str>, as_of: Date) -> Rules {
         let chain = self.chain_for(code);
         regime::rules_for(channel, chain.as_deref(), &self.rows, &self.acks, as_of)
     }
 
     /// The message rules under `code` on `as_of`.
     #[must_use]
-    pub fn message_rules(&self, code: Option<&str>, as_of: NaiveDate) -> MessageRules {
+    pub fn message_rules(&self, code: Option<&str>, as_of: Date) -> MessageRules {
         let chain = self.chain_for(code);
         regime::message_rules(chain.as_deref(), &self.rows, as_of)
     }
@@ -302,8 +302,8 @@ pub async fn decide(
     purpose: &str,
     channel: &str,
     send_code: Option<&str>,
-    now: DateTime<Utc>,
-    as_of: NaiveDate,
+    now: Timestamp,
+    as_of: Date,
 ) -> Result<Decision, sqlx::Error> {
     let state = state_on(&mut *db, contact, purpose, channel).await?;
     let code = regime::applicable_code(contact.consent_jurisdiction.as_deref(), send_code)

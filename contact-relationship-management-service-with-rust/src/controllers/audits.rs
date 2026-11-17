@@ -62,7 +62,7 @@ async fn for_entity(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Res
 #[derive(Debug, Deserialize)]
 struct OwnerParams {
     owner: String,
-    since: chrono::DateTime<chrono::FixedOffset>,
+    since: crate::time::Timestamp,
 }
 
 #[debug_handler]

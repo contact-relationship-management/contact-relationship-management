@@ -283,7 +283,7 @@ async fn combine(
         rules::stricter_consent(&survivor.marketing_consent, &merged.marketing_consent).to_string();
     let consent_changed = consent != survivor.marketing_consent;
     let pid = survivor.pid;
-    let now: crate::models::DateTimeWithTimeZone = crate::clock::now().into();
+    let now: crate::models::DateTimeWithTimeZone = crate::clock::now();
     // Both rows are locked, so each filled column is written from them.
     sqlx::query!(
         "UPDATE contacts SET account_pid = $2, owner_ref = $3, job_title = $4, given_name = $5, \
@@ -508,7 +508,7 @@ async fn merge(
     let moved = move_rows(&mut txn, survivor_pid, merged_pid).await?;
     let (filled, consent, purposes) = combine(&mut txn, survivor, &merged).await?;
 
-    let now: crate::models::DateTimeWithTimeZone = crate::clock::now().into();
+    let now: crate::models::DateTimeWithTimeZone = crate::clock::now();
     sqlx::query!(
         "UPDATE contacts SET deleted_at = $2, merged_into_pid = $3 WHERE id = $1 \
          AND deleted_at IS NULL",

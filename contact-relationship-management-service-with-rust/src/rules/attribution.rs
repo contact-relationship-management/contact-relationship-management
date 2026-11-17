@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, Utc};
+use crate::time::Timestamp;
 use uuid::Uuid;
 
 /// Shortest window, in days.
@@ -132,7 +132,7 @@ pub struct Touch {
     /// The campaign.
     pub campaign: Uuid,
     /// When.
-    pub at: DateTime<Utc>,
+    pub at: Timestamp,
 }
 
 /// Share `amount` among `weights` in proportion, exactly: each gets its floor, and the minor units
@@ -186,7 +186,7 @@ pub fn credit(
     model: Model,
     amount_minor: i64,
     touches: &[Touch],
-    closed_at: DateTime<Utc>,
+    closed_at: Timestamp,
 ) -> Vec<(Uuid, i64)> {
     credit_with(model, amount_minor, touches, closed_at, HALF_LIFE_DAYS)
 }
@@ -198,7 +198,7 @@ pub fn credit_with(
     model: Model,
     amount_minor: i64,
     touches: &[Touch],
-    closed_at: DateTime<Utc>,
+    closed_at: Timestamp,
     half_life_days: i64,
 ) -> Vec<(Uuid, i64)> {
     credit_tuned(
@@ -219,7 +219,7 @@ pub fn credit_tuned(
     model: Model,
     amount_minor: i64,
     touches: &[Touch],
-    closed_at: DateTime<Utc>,
+    closed_at: Timestamp,
     half_life_days: i64,
     end_percent: i64,
 ) -> Vec<(Uuid, i64)> {
@@ -235,7 +235,7 @@ pub fn credit_tuned(
         Model::Linear => vec![1; n],
         Model::TimeDecay => ordered
             .iter()
-            .map(|t| decay_weight((closed_at - t.at).num_seconds(), half_life_days))
+            .map(|t| decay_weight((closed_at - t.at).as_secs(), half_life_days))
             .collect(),
         Model::Position => match n {
             1 | 2 => vec![1; n],
@@ -273,16 +273,23 @@ pub fn credit_tuned(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
+    fn utc(y: i16, m: i8, d: i8, h: i8) -> Timestamp {
+        format!(
+            "{}T{h:02}:00:00Z",
+            crate::time::Date::from_ymd(y, m, d).unwrap()
+        )
+        .parse()
+        .unwrap()
+    }
 
     fn id(n: u128) -> Uuid {
         Uuid::from_u128(n)
     }
 
-    fn touch(campaign: u128, day: u32) -> Touch {
+    fn touch(campaign: u128, day: i8) -> Touch {
         Touch {
             campaign: id(campaign),
-            at: Utc.with_ymd_and_hms(2026, 6, day, 9, 0, 0).unwrap(),
+            at: utc(2026, 6, day, 9),
         }
     }
 
@@ -295,8 +302,8 @@ mod tests {
     ];
 
     /// The deal closed on 30 June at 09:00; the touches are earlier in June.
-    fn closed() -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(2026, 6, 30, 9, 0, 0).unwrap()
+    fn closed() -> Timestamp {
+        utc(2026, 6, 30, 9)
     }
 
     fn total(shares: &[(Uuid, i64)]) -> i64 {
@@ -416,7 +423,7 @@ mod tests {
         let closed = closed();
         let at = |days: i64, campaign: u128| Touch {
             campaign: id(campaign),
-            at: closed - chrono::Duration::days(days),
+            at: closed - crate::time::days(days),
         };
         let touches = [at(14, 1), at(0, 2)];
         // Seven days: 14 days is two half-lives, so 1 : 4 of 10,000.
@@ -462,7 +469,7 @@ mod tests {
         let closed = closed();
         let at = |days: i64, campaign: u128| Touch {
             campaign: id(campaign),
-            at: closed - chrono::Duration::days(days),
+            at: closed - crate::time::days(days),
         };
         let touches = [at(14, 1), at(7, 2), at(0, 3)];
         let shares = credit(Model::TimeDecay, 7000, &touches, closed);
@@ -486,7 +493,7 @@ mod tests {
         // A touch after the close counts as just happened, not as a negative age.
         let after = Touch {
             campaign: id(4),
-            at: closed + chrono::Duration::days(2),
+            at: closed + crate::time::days(2),
         };
         assert_eq!(
             credit(Model::TimeDecay, 10, &[after], closed),

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — dates and times on jiff (CRM-T258)
+
+- `chrono` and `chrono-tz` are replaced by `jiff` 0.2.43, with its time-zone database built in, as the
+  image has none. `src/time.rs` holds `Timestamp` and `Date`, which read and write Postgres's
+  `timestamptz` and `date` themselves (sqlx has no `jiff` support), and `sqlx.toml` maps those
+  columns to them. They serialize as `chrono` did, and `src/time/chrono_text.rs` reads text as
+  `chrono` read it, so requests and responses are unchanged; the OpenAPI document is byte-identical.
+- Differences: a timestamp a client sends with an offset is held as UTC, so one echoed back before
+  it is stored comes back with `Z`; a leap second (`:60`) is read as `:59`; years beyond 9999
+  either side are refused; `as_second` rounds toward zero, where `chrono` rounded down, which differs
+  only before 1970.
+- `RUSTSEC-2026-0543` (chrono unmaintained) is ignored in `deny.toml`: chrono is still built for
+  axa's job queue (`croner`) and its sqlx feature. `chrono-tz` is gone from the tree.
+
 ### Changed — axa 0.17.0 (CRM-T254)
 
 - axa 0.17.0, `axa-test` 0.8.0, `axa-postgres-job-queue` 0.5.1, `axa-postgres-sqlx` 0.2.1 and

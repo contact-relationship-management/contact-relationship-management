@@ -176,7 +176,7 @@ impl Task for Seed {
                 format!("Demo Deal {:02}", i + 1),
                 amount_minor,
                 currency,
-                chrono::NaiveDate::from_ymd_opt(2026, 9, 30),
+                crate::time::Date::from_ymd(2026, 9, 30),
                 i32::try_from(i).unwrap_or(0),
                 closed.then(crate::clock::now),
                 stage_index == 3,

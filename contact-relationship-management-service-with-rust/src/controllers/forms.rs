@@ -472,7 +472,7 @@ async fn send_confirmation(
     else {
         return false;
     };
-    let expires = crate::clock::now() + chrono::Duration::days(CONFIRM_DAYS);
+    let expires = crate::clock::now() + crate::time::days(CONFIRM_DAYS);
     let mut conn = match pool.acquire().await {
         Ok(conn) => conn,
         Err(error) => {

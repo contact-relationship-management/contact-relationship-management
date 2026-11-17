@@ -73,7 +73,7 @@ pub(crate) struct View {
     sort: Option<SortSpec>,
     columns: Option<Vec<String>>,
     shared: bool,
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
 }
 
 /// `GET /api/views` query.
@@ -114,7 +114,7 @@ struct Row {
     sort_direction: Option<String>,
     columns: Option<serde_json::Value>,
     shared: bool,
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
 }
 
 fn view(row: Row, me: &str) -> View {

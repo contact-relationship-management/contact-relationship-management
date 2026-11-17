@@ -116,7 +116,7 @@ fn signed(id: &str, kind: &str, person_ref: &str, occurred_at: &str) -> (String,
     .to_string();
     let signature = sign(
         SECRET.as_bytes(),
-        chrono::Utc::now().timestamp(),
+        jiff::Timestamp::now().as_second(),
         body.as_bytes(),
     );
     (body, signature)
@@ -275,7 +275,7 @@ async fn the_check_marks_the_contacts_wpm_says_are_workers_and_a_no_changes_noth
             );
         }
         // Ada is now an employee since today, and out of marketing; Linus, who left, is not.
-        let today = contact_relationship_management::clock::now().date_naive().to_string();
+        let today = contact_relationship_management::clock::now().date_utc().to_string();
         let detail: Value = request.get(&format!("/api/contacts/{ada}")).await.json();
         assert_eq!(
             detail["employments"],

@@ -39,8 +39,8 @@ pub(crate) struct StakeholderRegister {
     undeclared_contacts: usize,
     account_roles: Vec<AccountRole>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// One partnership in the register.
@@ -53,7 +53,7 @@ pub(crate) struct PartnershipRow {
     kind: String,
     stage: String,
     summary: String,
-    started_on: Option<chrono::NaiveDate>,
+    started_on: Option<crate::time::Date>,
 }
 
 /// `GET /api/insights/partnerships`.
@@ -63,8 +63,8 @@ pub(crate) struct PartnershipsRegister {
     by_stage: std::collections::BTreeMap<String, usize>,
     register: Vec<PartnershipRow>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// One membership row.
@@ -74,8 +74,8 @@ pub(crate) struct MembershipRow {
     account_pid: Uuid,
     account: Option<String>,
     status: String,
-    joined_on: chrono::NaiveDate,
-    renewal_on: Option<chrono::NaiveDate>,
+    joined_on: crate::time::Date,
+    renewal_on: Option<crate::time::Date>,
 }
 
 /// `GET /api/insights/memberships`.
@@ -86,8 +86,8 @@ pub(crate) struct MembershipsView {
     renewals_due: Vec<MembershipRow>,
     lapsed: Vec<MembershipRow>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// `GET /api/insights/stakeholders` — the declared-stakeholder
@@ -102,7 +102,7 @@ pub(super) async fn stakeholders(
     let now = crate::clock::now();
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
-    let last_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
+    let last_touch: std::collections::BTreeMap<Uuid, crate::time::Timestamp> =
         super::rollup::touches(crate::db::pool(&ctx))
             .await?
             .into_iter()
@@ -121,8 +121,8 @@ pub(super) async fn stakeholders(
         match contact.stakeholder_role.as_deref() {
             Some(role) => {
                 let days = last_touch.get(&contact.pid).map_or_else(
-                    || (now - contact.created_at.to_utc()).num_days(),
-                    |at| (now - *at).num_days(),
+                    || crate::time::whole_days(now - contact.created_at),
+                    |at| crate::time::whole_days(now - *at),
                 );
                 if let Some(bucket) = by_role.get_mut(role) {
                     bucket.push(StakeholderContact {
@@ -230,7 +230,7 @@ pub(super) async fn memberships_view(
     // The caller's day (CRM-T179), as attainment's.
     let today =
         crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
-    let horizon = today + chrono::Days::new(u64::try_from(window).unwrap_or(90));
+    let horizon = today + crate::time::days(window);
     let rows: Vec<memberships::Model> = live!(memberships, &ctx);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let names: std::collections::BTreeMap<Uuid, &str> = account_rows

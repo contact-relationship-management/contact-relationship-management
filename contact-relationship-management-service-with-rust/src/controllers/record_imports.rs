@@ -81,7 +81,7 @@ pub(crate) struct ContactCommitPayload {
     /// Where the list came from.
     source_note: String,
     /// The day the list was obtained.
-    obtained_on: chrono::NaiveDate,
+    obtained_on: crate::time::Date,
     /// Leave out rows that look like someone already known.
     #[serde(default)]
     skip_likely_duplicates: bool,
@@ -95,7 +95,7 @@ pub(crate) struct AccountCommitPayload {
     csv: String,
     mapping: AccountMapping,
     source_note: String,
-    obtained_on: chrono::NaiveDate,
+    obtained_on: crate::time::Date,
     #[serde(default)]
     skip_likely_duplicates: bool,
 }
@@ -137,10 +137,10 @@ pub(crate) struct ImportRecord {
     kind: String,
     created_by: Option<String>,
     source_note: String,
-    obtained_on: chrono::NaiveDate,
+    obtained_on: crate::time::Date,
     /// `running`, `completed` or `undone`.
     status: String,
-    created_at: chrono::DateTime<chrono::Utc>,
+    created_at: crate::time::Timestamp,
     row_count: i32,
     invalid_count: i32,
     /// Left out as likely duplicates, or because the person or organization was already here.
@@ -149,7 +149,7 @@ pub(crate) struct ImportRecord {
     failed_count: i32,
     /// Records this import made.
     created_count: usize,
-    undone_at: Option<chrono::DateTime<chrono::Utc>>,
+    undone_at: Option<crate::time::Timestamp>,
     undone_count: Option<i32>,
 }
 
@@ -159,15 +159,15 @@ struct Stored {
     kind: String,
     created_by: Option<String>,
     source_note: String,
-    obtained_on: chrono::NaiveDate,
+    obtained_on: crate::time::Date,
     status: String,
-    created_at: chrono::DateTime<chrono::Utc>,
+    created_at: crate::time::Timestamp,
     row_count: i32,
     invalid_count: i32,
     skipped_count: i32,
     failed_count: i32,
     created_pids: serde_json::Value,
-    undone_at: Option<chrono::DateTime<chrono::Utc>>,
+    undone_at: Option<crate::time::Timestamp>,
     undone_count: Option<i32>,
 }
 
@@ -421,8 +421,8 @@ async fn preview_accounts(
 /// What a commit needs checked before it starts.
 fn check_commit(
     source_note: &str,
-    obtained_on: chrono::NaiveDate,
-    today: chrono::NaiveDate,
+    obtained_on: crate::time::Date,
+    today: crate::time::Date,
 ) -> Result<()> {
     let mut problems = Problems::new();
     problems.require_text("source_note", source_note);
@@ -439,7 +439,7 @@ async fn open_import(
     caller: &MaybeAuthUser,
     kind: Kind,
     source_note: &str,
-    obtained_on: chrono::NaiveDate,
+    obtained_on: crate::time::Date,
     counts: (usize, usize, usize),
 ) -> Result<Uuid> {
     let import = Uuid::new_v4();
@@ -467,7 +467,7 @@ async fn close_import(
     kind: Kind,
     import: Uuid,
     totals: (usize, usize, usize, usize),
-    note: (&str, chrono::NaiveDate),
+    note: (&str, crate::time::Date),
 ) -> Result<()> {
     let (rows, created, skipped_more, failed) = totals;
     let toi = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);

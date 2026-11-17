@@ -10,8 +10,8 @@
 
 use std::collections::BTreeMap;
 
+use crate::time::Date;
 use axa::prelude::*;
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
@@ -209,9 +209,9 @@ pub(crate) struct QuotaPayload {
     /// The user, `person:<id>` (`worker:` is read as `person:`, CRM-D18).
     owner_ref: String,
     /// First day of the period.
-    period_from: NaiveDate,
+    period_from: Date,
     /// Last day of the period, inclusive; at most 366 days after the first.
-    period_to: NaiveDate,
+    period_to: Date,
     /// An ISO 4217 code (CRM-T168).
     currency: String,
     /// What is to be won, in minor units; above zero.
@@ -227,8 +227,8 @@ pub(crate) struct QuotaPayload {
 pub(crate) struct QuotaView {
     pid: Uuid,
     owner_ref: String,
-    period_from: NaiveDate,
-    period_to: NaiveDate,
+    period_from: Date,
+    period_to: Date,
     currency: String,
     amount_minor: i64,
     plan_pid: Option<Uuid>,
@@ -288,7 +288,7 @@ async fn set_quota(
     }
     if payload.period_to < payload.period_from {
         problems.push_field("period_to", "the period ends before it starts");
-    } else if (payload.period_to - payload.period_from).num_days() >= MAX_PERIOD_DAYS {
+    } else if crate::time::whole_days(payload.period_to - payload.period_from) >= MAX_PERIOD_DAYS {
         problems.push_field(
             "period_to",
             format!("a period is at most {MAX_PERIOD_DAYS} days"),
@@ -787,7 +787,7 @@ struct AttainmentQuery {
     /// Only this worker.
     owner_ref: Option<String>,
     /// The day the quota's period must contain (today when absent).
-    at: Option<NaiveDate>,
+    at: Option<Date>,
 }
 
 /// One worker's attainment of one quota.
@@ -798,8 +798,8 @@ pub(crate) struct Attainment {
     #[schemars(with = "uuid::Uuid")]
     quota_pid: String,
     pub(super) owner_ref: String,
-    period_from: NaiveDate,
-    period_to: NaiveDate,
+    period_from: Date,
+    period_to: Date,
     pub(super) currency: String,
     pub(super) quota_minor: i64,
     /// Won revenue of the worker's deals closed in the period, in the quota's currency.
@@ -824,9 +824,9 @@ pub(crate) struct Attainment {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "QuotaAttainmentReport")]
 pub(crate) struct AttainmentReport {
-    as_of: chrono::DateTime<chrono::Utc>,
+    as_of: crate::time::Timestamp,
     /// The day the periods contain.
-    at: NaiveDate,
+    at: Date,
     rows: Vec<Attainment>,
     note: &'static str,
 }
@@ -837,8 +837,8 @@ pub(crate) struct AttainmentReport {
 async fn credited_deals(
     pool: &PgPool,
     owner: &str,
-    from: NaiveDate,
-    to: NaiveDate,
+    from: Date,
+    to: Date,
 ) -> Result<Vec<(String, i64)>> {
     // The days deals closed on are the organization's (CRM-T181), as a quota's period is.
     let calendar = super::organization::periods(pool).await?;
@@ -852,7 +852,7 @@ async fn credited_deals(
         owner,
         from,
         to,
-        calendar.zone.name(),
+        crate::rules::periods::zone_name(&calendar.zone),
     )
     .fetch_all(pool)
     .await?;
@@ -889,7 +889,7 @@ async fn credited_deals(
 /// worker's credited deals reached and the commission its plan pays.
 pub(super) async fn standings(
     pool: &PgPool,
-    at: NaiveDate,
+    at: Date,
     owner_filter: Option<String>,
 ) -> Result<Vec<Attainment>> {
     let quotas = sqlx::query!(

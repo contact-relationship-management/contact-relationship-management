@@ -127,9 +127,9 @@ pub fn check_value(kind: &str, choices: &[String], value: &Value) -> Result<Stri
             .filter(|f| f.is_finite())
             .map(|_| n.to_string())
             .ok_or_else(|| "is not a finite number".to_string()),
-        ("date", Value::String(s)) => chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
+        ("date", Value::String(s)) => crate::time::Date::parse_ymd(s)
             .map(|d| d.to_string())
-            .map_err(|_| "must be a date written YYYY-MM-DD".to_string()),
+            .ok_or_else(|| "must be a date written YYYY-MM-DD".to_string()),
         ("choice", Value::String(s)) => choices
             .iter()
             .find(|c| c.as_str() == s)

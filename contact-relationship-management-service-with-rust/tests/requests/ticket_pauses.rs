@@ -21,7 +21,8 @@ async fn sql(db: &sqlx::PgPool, text: &str, pid: &str) {
 /// measured the gap between the two clocks too: a container nine minutes behind its host turned
 /// 30 minutes into 39 (CRM-T220).
 async fn paused_for(db: &sqlx::PgPool, pid: &str, minutes: i64) {
-    let at = contact_relationship_management::clock::now() - chrono::Duration::minutes(minutes);
+    let at =
+        contact_relationship_management::clock::now() - jiff::SignedDuration::from_mins(minutes);
     sqlx::query("UPDATE tickets SET paused_at = $2 WHERE pid = $1::uuid")
         .bind(pid)
         .bind(at)
@@ -31,8 +32,11 @@ async fn paused_for(db: &sqlx::PgPool, pid: &str, minutes: i64) {
 }
 
 fn seconds_between(a: &Value, b: &Value) -> i64 {
-    let parse = |v: &Value| chrono::DateTime::parse_from_rfc3339(v.as_str().unwrap()).unwrap();
-    (parse(b) - parse(a)).num_seconds()
+    let parse = |v: &Value| {
+        contact_relationship_management::time::Timestamp::parse_rfc3339(v.as_str().unwrap())
+            .unwrap()
+    };
+    (parse(b) - parse(a)).as_secs()
 }
 
 #[tokio::test]
@@ -599,7 +603,7 @@ async fn a_reply_by_mail_resumes_the_ticket_it_names_when_it_comes_from_the_cust
         let post = |from: &str, subject: &str, signed: bool| {
             let request = &request;
             let body = json!({ "from": from, "subject": subject, "text": "ignored" }).to_string();
-            let timestamp = chrono::Utc::now().timestamp().to_string();
+            let timestamp = jiff::Timestamp::now().as_second().to_string();
             let signature = if signed {
                 webhook::sign(INBOUND_SECRET, &timestamp, body.as_bytes())
             } else {

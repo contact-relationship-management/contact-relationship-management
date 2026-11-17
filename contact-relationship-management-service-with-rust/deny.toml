@@ -3,7 +3,13 @@
 
 [advisories]
 version = 2
-ignore = []
+# Each entry is reviewed and says why; drop it when its reason no longer holds.
+ignore = [
+  # chrono is unmaintained (informational; no vulnerability, no fixed version). The service's own
+  # code moved to jiff in CRM-T258. chrono is still built for axa: its job queue's cron parser
+  # (`croner`) and axa's sqlx `chrono` feature. Drop this when axa no longer pulls it in.
+  { id = "RUSTSEC-2026-0543", reason = "unmaintained, not vulnerable; only through axa (croner, sqlx), CRM-T258" },
+]
 
 [licenses]
 version = 2

@@ -779,7 +779,7 @@ async fn notifications_are_made_and_shown_only_for_records_the_recipient_may_rea
                 .json();
             let pid = created["pid"].as_str().unwrap().to_string();
             let remind = (contact_relationship_management::clock::now()
-                - chrono::Duration::hours(1))
+                - jiff::SignedDuration::from_hours(1))
             .to_rfc3339();
             request
                 .post("/api/activities")

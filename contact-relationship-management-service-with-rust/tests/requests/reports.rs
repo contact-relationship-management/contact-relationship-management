@@ -91,13 +91,13 @@ async fn records_are_counted_by_a_field_a_tag_and_a_date_range() {
         assert_eq!(rows(&only_press), [("active".to_string(), 1)]);
 
         // A date range: today is in, last year is out.
-        let today = contact_relationship_management::clock::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_utc();
         let in_range = run!(
             &request,
             json!({ "kind": "contact", "group_by": "status", "from": today, "to": today })
         );
         assert_eq!(rows(&in_range), [("active".to_string(), 3)]);
-        let last_year = today - chrono::Duration::days(400);
+        let last_year = today - contact_relationship_management::time::days(400);
         let out = run!(
             &request,
             json!({ "kind": "contact", "group_by": "status", "to": last_year })
@@ -109,7 +109,10 @@ async fn records_are_counted_by_a_field_a_tag_and_a_date_range() {
             &request,
             json!({ "kind": "contact", "group_by": "created_month" })
         );
-        assert_eq!(rows(&by_month), [(today.format("%Y-%m").to_string(), 3)]);
+        assert_eq!(
+            rows(&by_month),
+            [(today.0.strftime("%Y-%m").to_string(), 3)]
+        );
     })
     .await;
 }

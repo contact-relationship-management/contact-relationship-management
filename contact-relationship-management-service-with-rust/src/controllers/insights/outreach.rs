@@ -38,8 +38,8 @@ pub(crate) struct Cadence {
     untouched_accounts: Vec<CadenceAccount>,
     contacts_without_next_touch: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// `GET /api/insights/engagement`.
@@ -53,8 +53,8 @@ pub(crate) struct EngagementView {
     sentiment: std::collections::BTreeMap<String, usize>,
     note: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// The pipeline a funnel is about.
@@ -86,8 +86,8 @@ pub(crate) struct StageFunnel {
     derivation: &'static str,
     stages: Vec<FunnelStage>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// A membership, as the members view shows it.
@@ -95,8 +95,8 @@ pub(crate) struct StageFunnel {
 #[schemars(rename = "MemberAccountMembership")]
 pub(crate) struct MemberMembership {
     status: String,
-    joined_on: chrono::NaiveDate,
-    renewal_on: Option<chrono::NaiveDate>,
+    joined_on: crate::time::Date,
+    renewal_on: Option<crate::time::Date>,
 }
 
 /// One account in the members view.
@@ -124,8 +124,8 @@ pub(crate) struct MembersView {
     accounts: Vec<MemberAccount>,
     silent_accounts: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// `GET /api/insights/cadence?days=` — relationship-cadence aging:
@@ -146,9 +146,9 @@ pub(super) async fn cadence(
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let touches = super::rollup::touches(crate::db::pool(&ctx)).await?;
 
-    let mut last_contact_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
+    let mut last_contact_touch: std::collections::BTreeMap<Uuid, crate::time::Timestamp> =
         std::collections::BTreeMap::new();
-    let mut last_account_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
+    let mut last_account_touch: std::collections::BTreeMap<Uuid, crate::time::Timestamp> =
         std::collections::BTreeMap::new();
     let mut has_next_contact: std::collections::HashSet<Uuid> = std::collections::HashSet::new();
     let account_of: std::collections::BTreeMap<Uuid, Option<Uuid>> = contact_rows
@@ -157,7 +157,7 @@ pub(super) async fn cadence(
         .collect();
     for touch in &touches {
         let at = touch.last_at;
-        let bump = |map: &mut std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>>,
+        let bump = |map: &mut std::collections::BTreeMap<Uuid, crate::time::Timestamp>,
                     pid: Uuid| {
             let entry = map.entry(pid).or_insert(at);
             if at > *entry {
@@ -182,8 +182,8 @@ pub(super) async fn cadence(
         .iter()
         .map(|contact| {
             let days = last_contact_touch.get(&contact.pid).map_or_else(
-                || (now - contact.created_at.to_utc()).num_days(),
-                |at| (now - *at).num_days(),
+                || crate::time::whole_days(now - contact.created_at),
+                |at| crate::time::whole_days(now - *at),
             );
             (
                 days,
@@ -203,8 +203,8 @@ pub(super) async fn cadence(
         .iter()
         .map(|account| {
             let days = last_account_touch.get(&account.pid).map_or_else(
-                || (now - account.created_at.to_utc()).num_days(),
-                |at| (now - *at).num_days(),
+                || crate::time::whole_days(now - account.created_at),
+                |at| crate::time::whole_days(now - *at),
             );
             (
                 days,
@@ -250,7 +250,7 @@ pub(super) async fn engagement(
 ) -> Result<Response> {
     let window = days_or(query.days, 90);
     let now = crate::clock::now();
-    let since = now - chrono::Days::new(u64::try_from(window).unwrap_or(90));
+    let since = now - crate::time::days(window);
     let groups = super::rollup::engagement_counts(crate::db::pool(&ctx), since, now).await?;
     let mut per_recorder_month: std::collections::BTreeMap<String, usize> =
         std::collections::BTreeMap::new();
@@ -411,7 +411,7 @@ pub(super) async fn members(
         .iter()
         .map(|c| (c.pid, c.account_pid))
         .collect();
-    let mut last_touch: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
+    let mut last_touch: std::collections::BTreeMap<Uuid, crate::time::Timestamp> =
         std::collections::BTreeMap::new();
     let mut open_followups: std::collections::BTreeMap<Uuid, usize> =
         std::collections::BTreeMap::new();
@@ -449,8 +449,8 @@ pub(super) async fn members(
             .filter(|c| c.account_pid == Some(account.pid))
             .count();
         let days = last_touch.get(&account.pid).map_or_else(
-            || (now - account.created_at.to_utc()).num_days(),
-            |at| (now - *at).num_days(),
+            || crate::time::whole_days(now - account.created_at),
+            |at| crate::time::whole_days(now - *at),
         );
         let is_silent = days > threshold;
         if is_silent {

@@ -10,11 +10,11 @@
 use std::net::IpAddr;
 use std::num::NonZeroU32;
 
+use crate::time::{Date, Timestamp};
 use axa::client::ClientAddr;
 use axa::prelude::*;
 use axum::http::{StatusCode, header};
 use axum::response::IntoResponse;
-use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -158,7 +158,7 @@ pub(crate) struct Listing {
     snippet: String,
     keywords: Option<String>,
     version: i32,
-    updated_at: DateTime<Utc>,
+    updated_at: Timestamp,
 }
 
 /// A published article, as the public reads it.
@@ -172,7 +172,7 @@ pub(crate) struct PublicArticle {
     body: String,
     keywords: Option<String>,
     version: i32,
-    updated_at: DateTime<Utc>,
+    updated_at: Timestamp,
 }
 
 /// What `GET /kb/articles` may be asked.
@@ -231,7 +231,7 @@ async fn search(
                 snippet: snippet(&a.body),
                 keywords: a.keywords.clone(),
                 version: a.version,
-                updated_at: a.updated_at.to_utc(),
+                updated_at: a.updated_at,
             })
             .collect::<Vec<_>>(),
     )
@@ -263,7 +263,7 @@ async fn read(
         body: article.body,
         keywords: article.keywords,
         version: article.version,
-        updated_at: article.updated_at.to_utc(),
+        updated_at: article.updated_at,
     })
 }
 
@@ -322,9 +322,9 @@ pub(crate) struct ArticleStats {
 #[allow(clippy::struct_field_names)] // `deflection` is the response member clients read
 pub(crate) struct Deflection {
     /// First day counted.
-    from: NaiveDate,
+    from: Date,
     /// Last day counted (today).
-    to: NaiveDate,
+    to: Date,
     days: i64,
     views: i64,
     /// Searches with words in them.
@@ -367,8 +367,8 @@ async fn deflection(
     // The organization's days (CRM-T179): the counts are kept by them, and a ticket counts on
     // the day it was opened there.
     let calendar = super::organization::periods(crate::db::pool(&ctx)).await?;
-    let to = crate::rules::periods::today_in(crate::clock::now(), calendar.zone);
-    let from = to - chrono::Duration::days(days - 1);
+    let to = crate::rules::periods::today_in(crate::clock::now(), &calendar.zone);
+    let from = to - crate::time::days(days - 1);
     let pool = db::pool(&ctx);
     let totals = sqlx::query!(
         "SELECT COALESCE(SUM(views), 0)::bigint AS \"views!\", \
@@ -389,7 +389,7 @@ async fn deflection(
          WHERE deleted_at IS NULL AND (opened_at AT TIME ZONE $3)::date BETWEEN $1 AND $2",
         from,
         to,
-        calendar.zone.name(),
+        crate::rules::periods::zone_name(&calendar.zone),
     )
     .fetch_one(pool)
     .await?;

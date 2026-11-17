@@ -463,7 +463,7 @@ async fn act(
             let due = match *due_in_days {
                 Some(d) => Some(
                     crate::controllers::organization::organization_today(&mut *txn).await?
-                        + chrono::Duration::days(i64::from(d)),
+                        + crate::time::days(i64::from(d)),
                 ),
                 None => None,
             };

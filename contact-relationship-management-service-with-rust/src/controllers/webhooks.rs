@@ -6,8 +6,9 @@
 
 use crate::controllers::PidPath;
 use crate::json::Json;
+use crate::time::Timestamp;
 use axa::prelude::*;
-use chrono::{DateTime, Duration, Utc};
+use jiff::SignedDuration;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -45,7 +46,7 @@ pub(crate) struct SubscriptionView {
     disabled_reason: Option<String>,
     /// Whether the previous secret still signs, after a rotation.
     rotating: bool,
-    created_at: DateTime<Utc>,
+    created_at: Timestamp,
 }
 
 /// `POST /api/webhook-subscriptions`: the subscription and its secret, shown once.
@@ -67,7 +68,7 @@ pub(crate) struct SecretRotated {
     /// The new signing secret, shown once.
     secret: String,
     /// Until when the old secret also signs, so receivers can switch.
-    previous_secret_valid_until: DateTime<Utc>,
+    previous_secret_valid_until: Timestamp,
 }
 
 /// One delivery in the log.
@@ -80,11 +81,11 @@ pub(crate) struct DeliveryView {
     /// `pending`, `delivered`, `dead` or `cancelled`.
     status: String,
     attempts: i32,
-    next_attempt_at: DateTime<Utc>,
+    next_attempt_at: Timestamp,
     last_status: Option<i32>,
     last_error: Option<String>,
-    delivered_at: Option<DateTime<Utc>>,
-    created_at: DateTime<Utc>,
+    delivered_at: Option<Timestamp>,
+    created_at: Timestamp,
 }
 
 fn patterns_of(value: serde_json::Value) -> Vec<String> {
@@ -230,7 +231,7 @@ async fn rotate_secret(
     PidPath(pid): PidPath,
 ) -> Result<Response> {
     let secret = rules::new_secret();
-    let until = crate::clock::now() + Duration::hours(rules::ROTATION_GRACE_HOURS);
+    let until = crate::clock::now() + SignedDuration::from_hours(rules::ROTATION_GRACE_HOURS);
     let mut txn = db::pool(&ctx).begin().await?;
     let changed = sqlx::query!(
         "UPDATE webhook_subscriptions SET previous_secret = secret, \

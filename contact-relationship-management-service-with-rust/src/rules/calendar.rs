@@ -7,8 +7,9 @@
 
 use std::collections::BTreeSet;
 
-use chrono::{DateTime, Datelike, Duration, FixedOffset, NaiveDate, NaiveTime, TimeZone, Utc};
-use chrono_tz::Tz;
+use jiff::civil::{Date, Time};
+use jiff::tz::{AmbiguousOffset, TimeZone};
+use jiff::{SignedDuration, Timestamp};
 use serde::{Deserialize, Serialize};
 
 /// Most windows in one day.
@@ -75,15 +76,30 @@ impl Week {
 /// A calendar ready to count on.
 #[derive(Debug, Clone)]
 pub struct Calendar {
-    tz: Tz,
+    tz: TimeZone,
     /// Monday first.
-    windows: [Vec<(NaiveTime, NaiveTime)>; 7],
-    holidays: BTreeSet<NaiveDate>,
+    windows: [Vec<(Time, Time)>; 7],
+    holidays: BTreeSet<Date>,
 }
 
-fn time_of(text: &str) -> Option<NaiveTime> {
+/// `HH:MM`, read as `chrono`'s `NaiveTime::parse_from_str(text, "%H:%M")` read it, of five
+/// bytes: one or two digits of hours and of minutes, each of which may follow a space (`" 9:05"`,
+/// `"9: 05"`), from `00:00` to `23:59`.
+fn time_of(text: &str) -> Option<Time> {
     (text.len() == 5).then_some(())?;
-    NaiveTime::parse_from_str(text, "%H:%M").ok()
+    let (hour, rest) = digits(text.trim_start())?;
+    let (minute, rest) = digits(rest.strip_prefix(':')?.trim_start())?;
+    rest.is_empty().then_some(())?;
+    Time::new(hour, minute, 0, 0).ok()
+}
+
+/// One or two ASCII digits at the start of `text`, and what follows them.
+fn digits(text: &str) -> Option<(i8, &str)> {
+    let count = text.bytes().take(2).take_while(u8::is_ascii_digit).count();
+    let value = text[..count].bytes().fold(0_i8, |value, digit| {
+        value * 10 + i8::try_from(digit - b'0').unwrap_or(0)
+    });
+    (count > 0).then(|| (value, &text[count..]))
 }
 
 impl Calendar {
@@ -97,17 +113,17 @@ impl Calendar {
     pub fn build(
         timezone: &str,
         week: &Week,
-        holidays: &[NaiveDate],
+        holidays: &[Date],
     ) -> Result<Self, Vec<(String, String)>> {
         let mut problems = Vec::new();
-        let tz = timezone.parse::<Tz>().unwrap_or_else(|_| {
+        let tz = super::periods::named_zone(timezone).unwrap_or_else(|| {
             problems.push((
                 "timezone".to_string(),
                 format!("{timezone:?} is not a time zone name such as Europe/London"),
             ));
-            Tz::UTC
+            TimeZone::UTC
         });
-        let mut windows: [Vec<(NaiveTime, NaiveTime)>; 7] = Default::default();
+        let mut windows: [Vec<(Time, Time)>; 7] = Default::default();
         for (index, (day, hours)) in week.days().into_iter().enumerate() {
             if hours.len() > MAX_WINDOWS {
                 problems.push((
@@ -156,27 +172,19 @@ impl Calendar {
     /// The instant `minutes` of working time after `start`: time outside the windows, and holidays,
     /// do not count. `None` if the target is longer than the search horizon allows.
     #[must_use]
-    pub fn add_working_minutes(
-        &self,
-        start: DateTime<FixedOffset>,
-        minutes: i64,
-    ) -> Option<DateTime<FixedOffset>> {
+    pub fn add_working_minutes(&self, start: Timestamp, minutes: i64) -> Option<Timestamp> {
         self.add_working_seconds(start, minutes.checked_mul(60)?)
     }
 
     /// The instant `seconds` of working time after `start` (see [`Self::add_working_minutes`]).
     #[must_use]
-    pub fn add_working_seconds(
-        &self,
-        start: DateTime<FixedOffset>,
-        seconds: i64,
-    ) -> Option<DateTime<FixedOffset>> {
+    pub fn add_working_seconds(&self, start: Timestamp, seconds: i64) -> Option<Timestamp> {
         let mut remaining = seconds;
-        let mut cursor = start.with_timezone(&Utc);
-        let mut date = start.with_timezone(&self.tz).date_naive();
+        let mut cursor = start;
+        let mut date = self.tz.to_datetime(start).date();
         for _ in 0..HORIZON_DAYS {
             if !self.holidays.contains(&date) {
-                for (from, to) in &self.windows[date.weekday().num_days_from_monday() as usize] {
+                for (from, to) in &self.windows[weekday_index(date)] {
                     // A clock time the zone skips (the hour a clock goes forward) has no instant;
                     // that end of the window is dropped.
                     let (Some(opens), Some(closes)) =
@@ -188,15 +196,15 @@ impl Calendar {
                     if begin >= closes {
                         continue;
                     }
-                    let room = (closes - begin).num_seconds();
+                    let room = closes.duration_since(begin).as_secs();
                     if remaining <= room {
-                        return Some((begin + Duration::seconds(remaining)).fixed_offset());
+                        return begin.checked_add(SignedDuration::from_secs(remaining)).ok();
                     }
                     remaining -= room;
                 }
             }
-            date = date.succ_opt()?;
-            cursor = cursor.max(self.instant(date, NaiveTime::MIN).unwrap_or(cursor));
+            date = date.tomorrow().ok()?;
+            cursor = cursor.max(self.instant(date, Time::midnight()).unwrap_or(cursor));
         }
         None
     }
@@ -204,22 +212,16 @@ impl Calendar {
     /// The seconds of working time between two instants (zero when `to` is not after `from`).
     /// Counted over at most the search horizon, so a longer span is cut short rather than refused.
     #[must_use]
-    pub fn working_seconds_between(
-        &self,
-        from: DateTime<FixedOffset>,
-        to: DateTime<FixedOffset>,
-    ) -> i64 {
-        let (from, to) = (from.with_timezone(&Utc), to.with_timezone(&Utc));
+    pub fn working_seconds_between(&self, from: Timestamp, to: Timestamp) -> i64 {
         let mut total = 0;
-        let mut date = from.with_timezone(&self.tz).date_naive();
-        let last = to.with_timezone(&self.tz).date_naive();
+        let mut date = self.tz.to_datetime(from).date();
+        let last = self.tz.to_datetime(to).date();
         for _ in 0..HORIZON_DAYS {
             if date > last {
                 break;
             }
             if !self.holidays.contains(&date) {
-                for (opens, closes) in &self.windows[date.weekday().num_days_from_monday() as usize]
-                {
+                for (opens, closes) in &self.windows[weekday_index(date)] {
                     let (Some(opens), Some(closes)) =
                         (self.instant(date, *opens), self.instant(date, *closes))
                     else {
@@ -227,22 +229,32 @@ impl Calendar {
                     };
                     let (begin, end) = (opens.max(from), closes.min(to));
                     if end > begin {
-                        total += (end - begin).num_seconds();
+                        total += end.duration_since(begin).as_secs();
                     }
                 }
             }
-            let Some(next) = date.succ_opt() else { break };
+            let Ok(next) = date.tomorrow() else { break };
             date = next;
         }
         total
     }
 
-    fn instant(&self, date: NaiveDate, time: NaiveTime) -> Option<DateTime<Utc>> {
-        self.tz
-            .from_local_datetime(&date.and_time(time))
-            .earliest()
-            .map(|d| d.with_timezone(&Utc))
+    /// The instant a local clock time on `date` names: the earlier of two when the clock goes back
+    /// and that hour happens twice, and none when the clock goes forward over it.
+    fn instant(&self, date: Date, time: Time) -> Option<Timestamp> {
+        let local = self.tz.to_ambiguous_timestamp(date.to_datetime(time));
+        match local.offset() {
+            AmbiguousOffset::Gap { .. } => None,
+            AmbiguousOffset::Unambiguous { .. } | AmbiguousOffset::Fold { .. } => {
+                local.earlier().ok()
+            }
+        }
     }
+}
+
+/// Monday 0 to Sunday 6, the index of a day's windows.
+fn weekday_index(date: Date) -> usize {
+    usize::try_from(date.weekday().to_monday_zero_offset()).unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -266,12 +278,12 @@ mod tests {
             fri: day,
             ..Week::default()
         };
-        let holidays: Vec<NaiveDate> = holidays.iter().map(|d| d.parse().unwrap()).collect();
+        let holidays: Vec<Date> = holidays.iter().map(|d| d.parse().unwrap()).collect();
         Calendar::build(zone, &week, &holidays).unwrap()
     }
 
-    fn utc(text: &str) -> DateTime<FixedOffset> {
-        DateTime::parse_from_rfc3339(text).unwrap()
+    fn utc(text: &str) -> Timestamp {
+        text.parse().unwrap()
     }
 
     #[test]
@@ -361,8 +373,51 @@ mod tests {
     }
 
     #[test]
+    fn a_clock_time_twice_is_the_earlier_and_one_skipped_is_none() {
+        let c = office("America/New_York", &[]);
+        let at = |h, m| Time::new(h, m, 0, 0).unwrap();
+        // 01:30 on Sunday 1 November 2026 happens in summer time and again in winter time.
+        assert_eq!(
+            c.instant(jiff::civil::date(2026, 11, 1), at(1, 30)),
+            Some(utc("2026-11-01T05:30:00Z"))
+        );
+        // 02:30 on Sunday 8 March 2026 does not happen: the clock goes from 02:00 to 03:00.
+        assert_eq!(c.instant(jiff::civil::date(2026, 3, 8), at(2, 30)), None);
+        assert_eq!(
+            c.instant(jiff::civil::date(2026, 3, 8), at(3, 0)),
+            Some(utc("2026-03-08T07:00:00Z"))
+        );
+    }
+
+    #[test]
+    fn a_window_reads_as_chrono_read_hh_mm() {
+        assert_eq!(time_of("09:05"), Time::new(9, 5, 0, 0).ok());
+        assert_eq!(time_of("23:59"), Time::new(23, 59, 0, 0).ok());
+        // `chrono` let a field follow a space, so these five-byte forms were accepted.
+        for spaced in [" 9:05", "9: 05", "\t9:05"] {
+            assert_eq!(time_of(spaced), Time::new(9, 5, 0, 0).ok(), "{spaced}");
+        }
+        assert_eq!(time_of("  1:2"), Time::new(1, 2, 0, 0).ok());
+        for bad in [
+            "9:05",
+            "09:5",
+            "0905",
+            "24:00",
+            "09:60",
+            "+9:05",
+            "-9:05",
+            "9:05 ",
+            "9 :05",
+            "09:05:00",
+            "٠٩:٠٥",
+        ] {
+            assert_eq!(time_of(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
     fn a_bad_calendar_says_what_is_wrong() {
-        let bad = |zone: &str, week: &Week, holidays: &[NaiveDate]| {
+        let bad = |zone: &str, week: &Week, holidays: &[Date]| {
             Calendar::build(zone, week, holidays).unwrap_err()
         };
         let none = Week::default();
@@ -407,8 +462,8 @@ mod tests {
             ..Week::default()
         };
         assert!(!bad("UTC", &many, &[]).is_empty());
-        let days: Vec<NaiveDate> = (0..=i64::try_from(MAX_HOLIDAYS).unwrap())
-            .map(|i| NaiveDate::from_ymd_opt(2026, 1, 1).unwrap() + Duration::days(i))
+        let days: Vec<Date> = (0..=i64::try_from(MAX_HOLIDAYS).unwrap())
+            .map(|i| jiff::civil::date(2026, 1, 1) + SignedDuration::from_hours(24 * i))
             .collect();
         let one = Week {
             mon: vec![hours("09:00", "17:00")],
@@ -427,8 +482,8 @@ mod tests {
             mon: four,
             ..Week::default()
         };
-        let days: Vec<NaiveDate> = (0..i64::try_from(MAX_HOLIDAYS).unwrap())
-            .map(|i| NaiveDate::from_ymd_opt(2026, 1, 1).unwrap() + Duration::days(i))
+        let days: Vec<Date> = (0..i64::try_from(MAX_HOLIDAYS).unwrap())
+            .map(|i| jiff::civil::date(2026, 1, 1) + SignedDuration::from_hours(24 * i))
             .collect();
         assert!(Calendar::build("UTC", &week, &days).is_ok());
         // One window ending where the next starts is not an overlap.

@@ -7,17 +7,17 @@
 //! everyone. Fiscal labels name the calendar year a fiscal year starts in: with a January start
 //! `2026` and `2026-Q1`; with an April start `2026/27` and `2026/27-Q1` (April to June 2026).
 
-use chrono::{DateTime, Datelike, NaiveDate, Utc};
-use chrono_tz::Tz;
+use jiff::civil::Date;
+use jiff::tz::TimeZone;
 
 /// The request header in which a caller names its own time zone.
 pub const USER_ZONE_HEADER: &str = "crm-time-zone";
 
 /// The organization's calendar.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Periods {
-    /// The organization's time zone.
-    pub zone: Tz,
+    /// The organization's time zone, always one read by its IANA name (see [`zone`]).
+    pub zone: TimeZone,
     /// The month (1 to 12) its fiscal year starts in.
     pub fiscal_start_month: u32,
 }
@@ -27,7 +27,7 @@ impl Default for Periods {
     /// shown as such in the settings, so nobody mistakes them for a choice.
     fn default() -> Self {
         Self {
-            zone: Tz::UTC,
+            zone: TimeZone::UTC,
             fiscal_start_month: 1,
         }
     }
@@ -38,10 +38,24 @@ impl Default for Periods {
 /// # Errors
 ///
 /// The reason, when it is not one.
-pub fn zone(name: &str) -> Result<Tz, String> {
-    name.trim()
-        .parse::<Tz>()
-        .map_err(|_| "is an IANA time zone such as Asia/Tokyo or America/Sao_Paulo".to_string())
+pub fn zone(name: &str) -> Result<TimeZone, String> {
+    named_zone(name.trim())
+        .ok_or_else(|| "is an IANA time zone such as Asia/Tokyo or America/Sao_Paulo".to_string())
+}
+
+/// The zone of an IANA name, written exactly as the database writes it. `jiff` looks a name up
+/// regardless of case; the name is also written into SQL and stored, so `asia/tokyo` is refused,
+/// as `chrono-tz` refused it.
+pub(crate) fn named_zone(name: &str) -> Option<TimeZone> {
+    TimeZone::get(name)
+        .ok()
+        .filter(|zone| zone.iana_name() == Some(name))
+}
+
+/// A zone's IANA name; `UTC` for one without a name, which [`zone`] never gives.
+#[must_use]
+pub fn zone_name(zone: &TimeZone) -> &str {
+    zone.iana_name().unwrap_or("UTC")
 }
 
 /// A fiscal year's first month, checked.
@@ -56,38 +70,38 @@ pub fn fiscal_start_month(month: i64) -> Result<u32, String> {
         .ok_or_else(|| "is a month from 1 (January) to 12 (December)".to_string())
 }
 
-/// The day it is at `now` in `zone`.
+/// The day it is at `now` in `zone`. Takes and gives the stored types, as every caller has one
+/// and binds or sends the other.
 #[must_use]
-pub fn today_in(now: DateTime<Utc>, zone: Tz) -> NaiveDate {
-    now.with_timezone(&zone).date_naive()
+pub fn today_in(now: crate::time::Timestamp, zone: &TimeZone) -> crate::time::Date {
+    crate::time::Date(zone.to_datetime(now.0).date())
 }
 
 /// The organization's day of an event at `at`: the day a deal closed on, for its close-day rate
 /// and for a range of close days (CRM-T181), is the organization's, not UTC's.
 #[must_use]
-#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
-pub fn day_of(at: DateTime<Utc>, periods: &Periods) -> NaiveDate {
-    today_in(at, periods.zone)
+pub fn day_of(at: crate::time::Timestamp, periods: &Periods) -> crate::time::Date {
+    today_in(at, &periods.zone)
 }
 
 /// The zone for a caller's "today": the one it named, when it is a real zone, else the
 /// organization's.
 #[must_use]
-#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
-pub fn caller_zone(named: Option<&str>, periods: &Periods) -> Tz {
+pub fn caller_zone(named: Option<&str>, periods: &Periods) -> TimeZone {
     named
         .and_then(|name| zone(name).ok())
-        .unwrap_or(periods.zone)
+        .unwrap_or_else(|| periods.zone.clone())
 }
 
 /// The calendar year a fiscal year containing `day` starts in, and its quarter (1 to 4).
 #[must_use]
-pub fn fiscal_position(day: NaiveDate, start_month: u32) -> (i32, u32) {
-    let shift = (day.month() + 12 - start_month) % 12; // months since the fiscal year began
-    let year = if day.month() >= start_month {
-        day.year()
+pub fn fiscal_position(day: Date, start_month: u32) -> (i32, u32) {
+    let month = u32::from(day.month().unsigned_abs()); // 1 to 12
+    let shift = (month + 12 - start_month) % 12; // months since the fiscal year began
+    let year = if month >= start_month {
+        i32::from(day.year())
     } else {
-        day.year() - 1
+        i32::from(day.year()) - 1
     };
     (year, shift / 3 + 1)
 }
@@ -104,8 +118,8 @@ pub fn fiscal_year_label(start_year: i32, start_month: u32) -> String {
 
 /// `zone`'s name as a SQL literal. Safe to write into a query: an IANA name holds only letters,
 /// digits, `_`, `-`, `+` and `/`, which [`zone`] has already checked it is.
-fn zone_literal(zone: Tz) -> String {
-    let name = zone.name();
+fn zone_literal(zone: &TimeZone) -> String {
+    let name = zone_name(zone);
     debug_assert!(
         name.chars()
             .all(|c| c.is_ascii_alphanumeric() || "_-+/".contains(c))
@@ -115,28 +129,24 @@ fn zone_literal(zone: Tz) -> String {
 
 /// SQL for the local time of the timestamp `column` in the organization's zone.
 #[must_use]
-#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
 pub fn local(column: &str, periods: &Periods) -> String {
-    format!("({column} AT TIME ZONE {})", zone_literal(periods.zone))
+    format!("({column} AT TIME ZONE {})", zone_literal(&periods.zone))
 }
 
 /// SQL for the day of the timestamp `column` in the organization's zone (see [`day_of`]).
 #[must_use]
-#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
 pub fn local_day(column: &str, periods: &Periods) -> String {
     format!("{}::date", local(column, periods))
 }
 
 /// SQL for the month (`YYYY-MM`) of `column` in the organization's zone.
 #[must_use]
-#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
 pub fn month_expr(column: &str, periods: &Periods) -> String {
     format!("to_char({}, 'YYYY-MM')", local(column, periods))
 }
 
 /// SQL for the fiscal year label of `column` (see [`fiscal_year_label`]).
 #[must_use]
-#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
 pub fn fiscal_year_expr(column: &str, periods: &Periods) -> String {
     let shifted = shifted(column, periods);
     if periods.fiscal_start_month == 1 {
@@ -151,7 +161,6 @@ pub fn fiscal_year_expr(column: &str, periods: &Periods) -> String {
 
 /// SQL for the fiscal quarter label of `column`: the fiscal year, `-Q`, and 1 to 4.
 #[must_use]
-#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
 pub fn fiscal_quarter_expr(column: &str, periods: &Periods) -> String {
     format!(
         "({} || '-Q' || extract(quarter FROM {})::int)",
@@ -162,7 +171,6 @@ pub fn fiscal_quarter_expr(column: &str, periods: &Periods) -> String {
 
 /// The local time moved back by the months before the fiscal year starts, so its calendar year
 /// and quarter are the fiscal ones.
-#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
 fn shifted(column: &str, periods: &Periods) -> String {
     let months = periods.fiscal_start_month.saturating_sub(1);
     if months == 0 {
@@ -175,23 +183,31 @@ fn shifted(column: &str, periods: &Periods) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
 
-    fn day(y: i32, m: u32, d: u32) -> NaiveDate {
-        NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    fn day(y: i16, m: i8, d: i8) -> Date {
+        Date::new(y, m, d).unwrap()
+    }
+
+    fn utc(y: i16, mo: i8, d: i8, h: i8, mi: i8) -> crate::time::Timestamp {
+        crate::time::Date(day(y, mo, d))
+            .at_utc(jiff::civil::time(h, mi, 0, 0))
+            .unwrap()
     }
 
     #[test]
     fn today_is_the_zone_s_day_not_utc_s() {
         // 23:30 UTC on 31 December is already 1 January in Tokyo and still 31 December in Lima.
-        let now = Utc.with_ymd_and_hms(2026, 12, 31, 23, 30, 0).unwrap();
-        assert_eq!(today_in(now, zone("Asia/Tokyo").unwrap()), day(2027, 1, 1));
+        let now = utc(2026, 12, 31, 23, 30);
         assert_eq!(
-            today_in(now, zone("America/Lima").unwrap()),
+            today_in(now, &zone("Asia/Tokyo").unwrap()).0,
+            day(2027, 1, 1)
+        );
+        assert_eq!(
+            today_in(now, &zone("America/Lima").unwrap()).0,
             day(2026, 12, 31)
         );
         assert_eq!(
-            today_in(now, zone("Pacific/Kiritimati").unwrap()),
+            today_in(now, &zone("Pacific/Kiritimati").unwrap()).0,
             day(2027, 1, 1)
         );
     }
@@ -200,18 +216,18 @@ mod tests {
     fn an_event_s_day_is_the_organization_s() {
         // A deal closed at 10:30 UTC on 30 June is closed on 1 July in Kiritimati (UTC+14) and on
         // 29 June in Pago Pago (UTC-11): three days for one moment. The SQL reads the same zone.
-        let at = Utc.with_ymd_and_hms(2026, 6, 30, 10, 30, 0).unwrap();
+        let at = utc(2026, 6, 30, 10, 30);
         let kiritimati = Periods {
             zone: zone("Pacific/Kiritimati").unwrap(),
             fiscal_start_month: 1,
         };
-        assert_eq!(day_of(at, &kiritimati), day(2026, 7, 1));
+        assert_eq!(day_of(at, &kiritimati).0, day(2026, 7, 1));
         let pago = Periods {
             zone: zone("Pacific/Pago_Pago").unwrap(),
             fiscal_start_month: 1,
         };
-        assert_eq!(day_of(at, &pago), day(2026, 6, 29));
-        assert_eq!(day_of(at, &Periods::default()), day(2026, 6, 30));
+        assert_eq!(day_of(at, &pago).0, day(2026, 6, 29));
+        assert_eq!(day_of(at, &Periods::default()).0, day(2026, 6, 30));
         assert_eq!(
             local_day("d.closed_at", &kiritimati),
             "(d.closed_at AT TIME ZONE 'Pacific/Kiritimati')::date"
@@ -225,14 +241,14 @@ mod tests {
             fiscal_start_month: 4,
         };
         assert_eq!(
-            caller_zone(Some("Asia/Kolkata"), &org).name(),
+            zone_name(&caller_zone(Some("Asia/Kolkata"), &org)),
             "Asia/Kolkata"
         );
         assert_eq!(
-            caller_zone(Some("Mars/Olympus"), &org).name(),
+            zone_name(&caller_zone(Some("Mars/Olympus"), &org)),
             "Europe/London"
         );
-        assert_eq!(caller_zone(None, &org).name(), "Europe/London");
+        assert_eq!(zone_name(&caller_zone(None, &org)), "Europe/London");
     }
 
     #[test]
@@ -256,6 +272,11 @@ mod tests {
         assert!(zone("Asia/Tokyo").is_ok());
         assert!(zone("Tokyo").is_err());
         assert!(zone("'; DROP TABLE x; --").is_err());
+        // A name is written as the database writes it, as `chrono-tz` required.
+        assert!(zone("asia/tokyo").is_err() && zone("utc").is_err());
+        assert_eq!(zone_name(&zone(" UTC ").unwrap()), "UTC");
+        assert_eq!(zone_name(&zone("US/Pacific").unwrap()), "US/Pacific");
+        assert_eq!(zone_name(&Periods::default().zone), "UTC");
         assert_eq!(fiscal_start_month(4), Ok(4));
         assert!(fiscal_start_month(0).is_err() && fiscal_start_month(13).is_err());
     }

@@ -8,9 +8,9 @@ use crate::controllers::PidPath;
 use crate::json::Json;
 use std::collections::HashMap;
 
+use crate::time::Timestamp;
 use axa::prelude::*;
 use axum::http::StatusCode;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -41,7 +41,7 @@ pub(crate) struct ReviewPayload {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct Grant {
     pid: Uuid,
-    expires_at: DateTime<Utc>,
+    expires_at: Timestamp,
     minutes: i64,
 }
 
@@ -52,9 +52,9 @@ pub(crate) struct GrantRecord {
     pid: Uuid,
     subject: String,
     reason: String,
-    granted_at: DateTime<Utc>,
-    expires_at: DateTime<Utc>,
-    reviewed_at: Option<DateTime<Utc>>,
+    granted_at: Timestamp,
+    expires_at: Timestamp,
+    reviewed_at: Option<Timestamp>,
     reviewed_by: Option<String>,
     review_note: Option<String>,
 }
@@ -198,7 +198,7 @@ async fn review(
 /// When the query fails.
 pub async fn refresh(
     pool: &PgPool,
-) -> std::result::Result<HashMap<String, DateTime<Utc>>, sqlx::Error> {
+) -> std::result::Result<HashMap<String, Timestamp>, sqlx::Error> {
     let rows = sqlx::query!(
         "SELECT subject, max(expires_at) AS \"expires_at!\" FROM break_glass_grants \
          WHERE expires_at > now() GROUP BY subject"

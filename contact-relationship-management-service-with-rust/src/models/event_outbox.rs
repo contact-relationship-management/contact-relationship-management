@@ -150,7 +150,6 @@ impl Model {
 mod tests {
     use super::OutboxInsert;
     use crate::streaming::Envelope;
-    use chrono::{FixedOffset, TimeZone};
     use uuid::Uuid;
 
     fn an_envelope(kind: &str, pid: &str) -> Envelope {
@@ -167,11 +166,8 @@ mod tests {
         }
     }
 
-    fn an_instant() -> chrono::DateTime<FixedOffset> {
-        FixedOffset::east_opt(0)
-            .unwrap()
-            .with_ymd_and_hms(2026, 7, 17, 9, 0, 0)
-            .unwrap()
+    fn an_instant() -> crate::time::Timestamp {
+        "2026-07-17T09:00:00Z".parse().unwrap()
     }
 
     /// Every field maps and the full envelope survives as the payload.

@@ -114,8 +114,7 @@ pub fn mask_text_json(mut value: serde_json::Value, keys: &[&str]) -> serde_json
 /// these attributes are inert.
 #[must_use]
 pub fn request_env_attrs() -> BTreeMap<String, Vec<String>> {
-    use chrono::Timelike;
-    env_attrs_at(crate::clock::now().hour())
+    env_attrs_at(u32::from(crate::clock::now().utc().hour().unsigned_abs()))
 }
 
 /// Pure derivation of the environment attributes for a given UTC `hour`

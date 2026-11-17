@@ -7,7 +7,7 @@
 
 use std::collections::BTreeMap;
 
-use chrono::NaiveDate;
+use crate::time::Date;
 use serde::{Deserialize, Serialize};
 
 use super::periods::{self as period, Periods};
@@ -46,16 +46,16 @@ pub struct Spec {
     pub filter: BTreeMap<String, Vec<String>>,
     /// Only records created (tickets: opened) on or after this day.
     #[serde(default)]
-    pub from: Option<NaiveDate>,
+    pub from: Option<Date>,
     /// Only records created (tickets: opened) on or before this day.
     #[serde(default)]
-    pub to: Option<NaiveDate>,
+    pub to: Option<Date>,
     /// Show a sum of amounts in this currency (CRM-R50); only with `sum_amount`.
     #[serde(default)]
     pub convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
     #[serde(default)]
-    pub rate_date: Option<NaiveDate>,
+    pub rate_date: Option<Date>,
     /// `close_day`: convert each deal at the rate in force on the day it closed (CRM-R83), not at
     /// one day's rates; only with `convert_to`, and only for closed deals (`state` won or lost).
     #[serde(default)]
@@ -72,7 +72,7 @@ pub enum Bind {
     /// A list of texts, bound as JSON and unpacked in SQL.
     List(Vec<String>),
     /// A day.
-    Day(NaiveDate),
+    Day(Date),
 }
 
 /// The query for a report.
@@ -506,7 +506,7 @@ pub struct Cell {
     /// The records counted or summed.
     pub n: i64,
     /// The day the deals closed, for a report converted at close-day rates (CRM-R83).
-    pub day: Option<NaiveDate>,
+    pub day: Option<Date>,
 }
 
 /// Small-cell suppression (CRM-R78): leave out every cell with fewer than `min` records behind it,
@@ -612,7 +612,7 @@ mod tests {
                 .contains(&format!("LIMIT {}", MAX_DAY_CELLS + 1)),
             "the group limit would cut a group's days short"
         );
-        s.rate_date = NaiveDate::from_ymd_opt(2026, 6, 1);
+        s.rate_date = Date::from_ymd(2026, 6, 1);
         assert_eq!(members(&s), ["rate_date"], "each deal has its own day");
         s.rate_date = None;
         s.rate_basis = Some("open_day".to_string());
@@ -630,7 +630,7 @@ mod tests {
         let mut s = spec("deal", "state");
         s.measure = "sum_amount".to_string();
         s.convert_to = Some("GBP".to_string());
-        s.rate_date = NaiveDate::from_ymd_opt(2026, 6, 1);
+        s.rate_date = Date::from_ymd(2026, 6, 1);
         assert!(plan(&s).is_ok());
         let members = |s: &Spec| -> Vec<String> {
             plan(s)
@@ -715,8 +715,8 @@ mod tests {
             "tag".into(),
             vec!["VIP".into(), "x'; DROP TABLE contacts; --".into()],
         );
-        s.from = NaiveDate::from_ymd_opt(2026, 1, 1);
-        s.to = NaiveDate::from_ymd_opt(2026, 12, 31);
+        s.from = Date::from_ymd(2026, 1, 1);
+        s.to = Date::from_ymd(2026, 12, 31);
         let p = plan(&s).unwrap();
         assert!(!p.sql.contains("DROP"));
         assert!(!p.sql.contains("VIP"));
@@ -774,8 +774,8 @@ mod tests {
         empty.filter.insert("status".into(), vec![]);
         assert_eq!(members(&empty), ["filter"]);
         let mut range = spec("lead", "source");
-        range.from = NaiveDate::from_ymd_opt(2026, 2, 1);
-        range.to = NaiveDate::from_ymd_opt(2026, 1, 1);
+        range.from = Date::from_ymd(2026, 2, 1);
+        range.to = Date::from_ymd(2026, 1, 1);
         assert_eq!(members(&range), ["from"]);
     }
 
@@ -855,7 +855,7 @@ mod tests {
         s.filter.insert("owner".into(), vec!["  ".into()]);
         assert!(plan(&s).is_err(), "a blank value is not");
         s.filter.clear();
-        let day = NaiveDate::from_ymd_opt(2026, 6, 1);
+        let day = Date::from_ymd(2026, 6, 1);
         s.from = day;
         s.to = day;
         assert!(plan(&s).is_ok(), "one day is a range");
@@ -932,7 +932,7 @@ mod tests {
         assert!(p.sql.contains("interval '3 months'"), "{}", p.sql);
         assert!(p.sql.contains("'(open)'"));
         let mut ranged = spec("ticket", "opened_month");
-        ranged.from = NaiveDate::from_ymd_opt(2026, 4, 1);
+        ranged.from = Date::from_ymd(2026, 4, 1);
         let p = plan_in(&ranged, &periods).unwrap();
         assert!(
             p.sql

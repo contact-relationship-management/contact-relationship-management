@@ -14,6 +14,6 @@ pub mod event_outbox;
 pub mod records;
 pub mod rows;
 
-/// A `timestamptz` as the models carry it: the instant with its offset, the type `SeaORM`'s alias
-/// named, kept so the records serialize as they did (CRM-D24).
-pub type DateTimeWithTimeZone = chrono::DateTime<chrono::FixedOffset>;
+/// A `timestamptz` as the models carry it: the instant, in UTC (CRM-T258). The name is the one
+/// `SeaORM` gave it, kept so the records read as they did (CRM-D24).
+pub type DateTimeWithTimeZone = crate::time::Timestamp;

@@ -35,8 +35,8 @@ pub(crate) struct DpoView {
     consent_events_by_source: std::collections::BTreeMap<String, usize>,
     duplicate_person_refs: Vec<DuplicatePersonRef>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// One account's consent picture.
@@ -56,8 +56,8 @@ pub(crate) struct ConsentByAccount {
     note: &'static str,
     accounts: Vec<ConsentAccount>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// `GET /api/insights/dpo?days=` — the data-protection view: consent
@@ -73,7 +73,7 @@ pub(super) async fn dpo(
 ) -> Result<Response> {
     let window_days = days_or(query.days, 30);
     let now = crate::clock::now();
-    let since = now - chrono::Days::new(u64::try_from(window_days).unwrap_or(30));
+    let since = now - crate::time::days(window_days);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let mut coverage: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     for contact in &contact_rows {
@@ -138,7 +138,7 @@ pub(super) async fn consent_by_account(
 ) -> Result<Response> {
     let window = days_or(query.days, 30);
     let now = crate::clock::now();
-    let since = now - chrono::Days::new(u64::try_from(window).unwrap_or(30));
+    let since = now - crate::time::days(window);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let withdrawals = super::rollup::withdrawals_by_account(crate::db::pool(&ctx), since).await?;

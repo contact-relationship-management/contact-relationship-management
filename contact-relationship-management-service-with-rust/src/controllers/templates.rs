@@ -87,7 +87,7 @@ pub(crate) struct TemplateView {
     language: Option<String>,
     /// How many live campaigns and nurture steps refer to it.
     in_use: i64,
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
 }
 
 /// A template rendered for the synthetic contact.
@@ -127,7 +127,7 @@ struct Row {
     fallbacks: serde_json::Value,
     language: Option<String>,
     in_use: i64,
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
 }
 
 impl From<Row> for TemplateView {

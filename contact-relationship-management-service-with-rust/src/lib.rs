@@ -77,6 +77,7 @@ pub mod search_docs;
 pub mod settings;
 pub mod streaming;
 pub mod tasks;
+pub mod time;
 pub mod unsubscribe;
 pub mod validation;
 /// Header-based API versioning (`Accepts-version`) for the REST surface.

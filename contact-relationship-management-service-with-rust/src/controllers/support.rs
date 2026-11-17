@@ -271,7 +271,7 @@ async fn create_ticket(
     } else {
         None
     };
-    let opened_at: DateTimeWithTimeZone = crate::clock::now().into();
+    let opened_at: DateTimeWithTimeZone = crate::clock::now();
     let mut txn = pool.begin().await?;
     let deadlines = targets_for(&mut txn, &payload.priority)
         .await?
@@ -340,7 +340,7 @@ async fn list_tickets(
     let pool = db::pool(&ctx);
     let rows = rows::tickets_page(pool, params.status.as_deref(), limit, offset).await?;
     let (rows, more) = page.split(rows);
-    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let now: DateTimeWithTimeZone = crate::clock::now();
     let rows: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|ticket| {
@@ -423,7 +423,7 @@ async fn sweep_waiting(
         else {
             continue;
         };
-        if now - since <= chrono::Duration::minutes(i64::from(*limit)) {
+        if now - since <= jiff::SignedDuration::from_mins(i64::from(*limit)) {
             continue;
         }
         let (pid, title) = (ticket.pid, ticket.title.clone());
@@ -497,7 +497,7 @@ async fn sweep_closing(
         let (Some(limit), Some(since)) = (days.get(&ticket.priority), ticket.resolved_at) else {
             continue;
         };
-        if now - since <= chrono::Duration::days(i64::from(*limit)) {
+        if now - since <= crate::time::days(i64::from(*limit)) {
             continue;
         }
         transition(ctx, caller, ticket.pid, "closed", Some("auto_close")).await?;
@@ -754,7 +754,7 @@ async fn transition(
         .map_err(|e| unprocessable(&e.to_string()))?;
     // The SLA clock stops while the ticket waits for the customer and starts again when it leaves
     // `pending`, moving each deadline by the waiting that counted against it (CRM-R55).
-    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let now: DateTimeWithTimeZone = crate::clock::now();
     let resumed = match ticket.paused_at {
         Some(paused_at) if ticket.status == "pending" => {
             Some(resume_clock(&mut txn, &ticket, paused_at, now).await?)
@@ -778,7 +778,7 @@ async fn transition(
         }
     }
     if to == "resolved" {
-        next.resolved_at = Some(crate::clock::now().into());
+        next.resolved_at = Some(crate::clock::now());
     } else if to == "open" && from == "resolved" {
         next.resolved_at = None; // reopen clears it
     }
@@ -902,7 +902,7 @@ async fn ticket_priority(
 /// stored flag is still false flip and emit).
 #[debug_handler]
 async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
-    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let now: DateTimeWithTimeZone = crate::clock::now();
     let pool = db::pool(&ctx);
     let open = rows::tickets_with_status(pool, &["open", "pending", "resolved"]).await?;
     let mut breaches = 0_u64;

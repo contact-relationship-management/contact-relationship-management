@@ -1,7 +1,10 @@
-# Say which date types the query macros use (CRM-D24). SeaORM turned on sqlx's `time` feature too;
-# since CRM-T232 nothing does, and this keeps `chrono` if a dependency turns it on again.
-[macros.preferred-crates]
-date-time = "chrono"
+# Dates are `jiff` (CRM-T258). sqlx has no `jiff` support, so every `timestamptz` and `date` column
+# the query macros see is read as the service's own wrapper, which encodes and decodes them itself.
+# axa still turns on sqlx's `chrono` feature; these overrides keep it out of the service's types. The keys
+# are the names sqlx gives the types, which are upper case.
+[macros.type-overrides]
+'TIMESTAMPTZ' = "crate::time::Timestamp"
+'DATE' = "crate::time::Date"
 
 # These two columns are sealed at rest (CRM-T41). Without this, `query_as!` turns the stored text into `EncryptedText`
 # through `From<String>`, which compiles and serves ciphertext. An override needs a column with an origin, so an

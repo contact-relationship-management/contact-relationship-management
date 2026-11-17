@@ -125,7 +125,10 @@ async fn leads_and_tickets_are_edited_and_reordered() {
         assert_eq!(renamed["display_name"], "Lead Z");
         // An edit moves `updated_at` past `created_at` (a database trigger).
         let at = |v: &Value, key: &str| {
-            chrono::DateTime::parse_from_rfc3339(v[key].as_str().unwrap()).unwrap()
+            contact_relationship_management::time::Timestamp::parse_rfc3339(
+                v[key].as_str().unwrap(),
+            )
+            .unwrap()
         };
         assert!(at(&renamed, "updated_at") > at(&renamed, "created_at"));
         request

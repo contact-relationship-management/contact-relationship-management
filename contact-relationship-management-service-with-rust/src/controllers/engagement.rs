@@ -150,7 +150,7 @@ pub(crate) struct PartnershipPayload {
     kind: String,
     summary: String,
     #[serde(default)]
-    started_on: Option<chrono::NaiveDate>,
+    started_on: Option<crate::time::Date>,
 }
 
 /// `POST /api/accounts/{pid}/partnerships` — open a partnership record
@@ -249,11 +249,11 @@ async fn partnership_stage(
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct MembershipPayload {
-    joined_on: chrono::NaiveDate,
+    joined_on: crate::time::Date,
     #[serde(default)]
     status: Option<String>,
     #[serde(default)]
-    renewal_on: Option<chrono::NaiveDate>,
+    renewal_on: Option<crate::time::Date>,
 }
 
 /// `PUT /api/accounts/{pid}/membership` — declare or update the

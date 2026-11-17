@@ -131,7 +131,7 @@ impl Model {
     pub async fn for_owner_since(
         pool: &PgPool,
         owner: &str,
-        since: chrono::DateTime<chrono::FixedOffset>,
+        since: crate::time::Timestamp,
         limit: i64,
     ) -> Result<Vec<Self>, sqlx::Error> {
         let rows = sqlx::query_as!(
@@ -171,7 +171,7 @@ pub fn chain_hash_of(row: &Model) -> String {
         action: &row.action,
         actor: row.actor.as_deref(),
         snapshot: snapshot.as_deref(),
-        created_micros: row.created_at.timestamp_micros(),
+        created_micros: row.created_at.as_microsecond(),
     })
 }
 
@@ -206,7 +206,7 @@ pub async fn verify_chain(pool: &PgPool) -> Result<audit_chain::Verdict, sqlx::E
                 action: &row.action,
                 actor: row.actor.as_deref(),
                 snapshot: snapshot.as_deref(),
-                created_micros: row.created_at.timestamp_micros(),
+                created_micros: row.created_at.as_microsecond(),
             },
             hash: row.hash.as_deref(),
         },

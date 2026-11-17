@@ -38,7 +38,7 @@ pub(crate) struct DealEditPayload {
     #[serde(default)]
     amount_minor: Option<i64>,
     #[serde(default)]
-    expected_close_on: Option<chrono::NaiveDate>,
+    expected_close_on: Option<crate::time::Date>,
 }
 
 /// `PUT /api/leads/{pid}` body.
@@ -70,7 +70,7 @@ pub(crate) struct PositionPayload {
 #[serde(deny_unknown_fields)]
 pub(crate) struct ActivityEditPayload {
     #[serde(default)]
-    due_on: Option<chrono::NaiveDate>,
+    due_on: Option<crate::time::Date>,
     #[serde(default)]
     summary: Option<String>,
     /// Who the task is for (a `person:` URN, CRM-D18); tasks only (CRM-R32).
@@ -78,7 +78,7 @@ pub(crate) struct ActivityEditPayload {
     assignee_ref: Option<String>,
     /// When to remind the assignee; tasks only. A new time makes a new reminder possible.
     #[serde(default)]
-    remind_at: Option<chrono::DateTime<chrono::FixedOffset>>,
+    remind_at: Option<crate::time::Timestamp>,
 }
 
 /// The column's pids with `pid` moved to `position` (0-based; clamped to the

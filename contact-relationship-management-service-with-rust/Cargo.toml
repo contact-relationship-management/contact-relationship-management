@@ -41,7 +41,6 @@ contact-relationship-management-matcher = "0.2.1"
 # Plain SQL, checked at build time against `.sqlx/` (CRM-D24). TLS to the database is rustls with
 # the webpki roots, the backend axa's own sqlx uses; it was enabled through SeaORM until CRM-T232.
 sqlx = { version = "0.9", default-features = false, features = [
-  "chrono",
   "json",
   "macros",
   "migrate",
@@ -51,8 +50,8 @@ sqlx = { version = "0.9", default-features = false, features = [
   "tls-rustls-ring-webpki",
   "uuid",
 ] }
-chrono = { version = "0.4.45", features = ["serde"] }
-chrono-tz = { version = "0.10" }
+# CRM-T258: instants, dates and zones. The bundled time-zone database, as the distroless image has none.
+jiff = { version = "0.2.43", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
 url = "2.5"
 thiserror = "2.0"
 csv = "1.4"
@@ -60,7 +59,7 @@ csv = "1.4"
 unicode-normalization = "0.1.26"
 uuid = { version = "1.29", features = ["v4", "serde"] }
 # Request schemas for the OpenAPI document come from the payload structs themselves (CRM-T83).
-schemars = { version = "1.2", features = ["uuid1", "chrono04"] }
+schemars = { version = "1.2", features = ["uuid1"] }
 
 # Tamper-evident audit hash chain (CRM-T31).
 sha2 = { version = "0.11" }

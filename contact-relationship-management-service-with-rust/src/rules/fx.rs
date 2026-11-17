@@ -5,7 +5,7 @@
 //! amount is converted with integer arithmetic, scaled by the two currencies' own minor units
 //! (ISO 4217, [`super::currency`]) and rounded half to even.
 
-use chrono::NaiveDate;
+use crate::time::Date;
 
 /// Billionths in one: a rate is held as `rate * 1_000_000_000`.
 pub const ONE: i64 = 1_000_000_000;
@@ -93,7 +93,7 @@ pub struct Rate {
     /// Billionths of `to` per one `from`.
     pub ppb: i64,
     /// The day it takes effect.
-    pub effective_on: NaiveDate,
+    pub effective_on: Date,
     /// Where it came from.
     pub source: String,
 }
@@ -111,7 +111,7 @@ pub struct Picked {
 /// pair's own or the inverse of the reverse pair's, the pair's own on a tie. `None` when there is
 /// none (nothing later than `day` is ever used, and no third currency is gone through).
 #[must_use]
-pub fn pick(rates: &[Rate], from: &str, to: &str, day: NaiveDate) -> Option<Picked> {
+pub fn pick(rates: &[Rate], from: &str, to: &str, day: Date) -> Option<Picked> {
     let latest = |a: &str, b: &str| {
         rates
             .iter()
@@ -212,7 +212,7 @@ pub struct Converted {
 pub fn convert_rows(
     rows: &[(String, String, i64)],
     target: &str,
-    day: NaiveDate,
+    day: Date,
     rates: &[Rate],
 ) -> Converted {
     use std::collections::BTreeMap;
@@ -270,12 +270,12 @@ pub fn convert_rows(
 /// converted has no row, as in [`convert_rows`].
 #[must_use]
 pub fn convert_rows_dated(
-    rows: &[(String, NaiveDate, String, i64)],
+    rows: &[(String, Date, String, i64)],
     target: &str,
     rates: &[Rate],
 ) -> Converted {
     use std::collections::BTreeMap;
-    let mut used: BTreeMap<(String, NaiveDate, bool), Picked> = BTreeMap::new();
+    let mut used: BTreeMap<(String, Date, bool), Picked> = BTreeMap::new();
     let mut merged: BTreeMap<&str, i64> = BTreeMap::new();
     let mut left: BTreeMap<&str, (usize, i64)> = BTreeMap::new();
     for (group, day, currency, value) in rows {
@@ -338,13 +338,13 @@ pub struct DatedConverted {
 /// kept as it is; one with no rate on its day is left out and counted, never taken at one-to-one.
 #[must_use]
 pub fn convert_dated(
-    deals: &[(NaiveDate, String, i64)],
+    deals: &[(Date, String, i64)],
     target: &str,
     rates: &[Rate],
 ) -> DatedConverted {
     use std::collections::BTreeMap;
     let mut total = 0_i64;
-    let mut used: BTreeMap<(String, NaiveDate, bool), Picked> = BTreeMap::new();
+    let mut used: BTreeMap<(String, Date, bool), Picked> = BTreeMap::new();
     let mut left: BTreeMap<&str, (usize, i64)> = BTreeMap::new();
     for (day, currency, amount) in deals {
         if currency == target {
@@ -382,11 +382,11 @@ pub fn convert_dated(
 mod tests {
     use super::*;
 
-    fn day(m: u32, d: u32) -> NaiveDate {
-        NaiveDate::from_ymd_opt(2026, m, d).unwrap()
+    fn day(m: i8, d: i8) -> Date {
+        Date::from_ymd(2026, m, d).unwrap()
     }
 
-    fn rate(from: &str, to: &str, text: &str, on: NaiveDate) -> Rate {
+    fn rate(from: &str, to: &str, text: &str, on: Date) -> Rate {
         Rate {
             from: from.to_string(),
             to: to.to_string(),
@@ -465,7 +465,7 @@ mod tests {
         assert_eq!(at(day(8, 31)).as_deref(), Some("0.8"));
         assert_eq!(at(day(12, 31)).as_deref(), Some("0.9"));
         assert!(
-            at(NaiveDate::from_ymd_opt(2025, 12, 31).unwrap()).is_none(),
+            at(Date::from_ymd(2025, 12, 31).unwrap()).is_none(),
             "none before the first"
         );
     }
@@ -688,12 +688,7 @@ mod tests {
             800
         );
         assert_eq!(convert_rows(&rows, "GBP", day(6, 1), &rates).rows[0].1, 900);
-        let before = convert_rows(
-            &rows,
-            "GBP",
-            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
-            &rates,
-        );
+        let before = convert_rows(&rows, "GBP", Date::from_ymd(2025, 1, 1).unwrap(), &rates);
         assert!(before.rows.is_empty());
         assert_eq!(
             before.left_out.len(),
@@ -726,7 +721,7 @@ mod tests {
             rate("USD", "GBP", "0.80", day(1, 1)),
             rate("USD", "GBP", "0.50", day(6, 1)),
         ];
-        let dated = |group: &str, on: NaiveDate, currency: &str, value: i64| {
+        let dated = |group: &str, on: Date, currency: &str, value: i64| {
             (group.to_string(), on, currency.to_string(), value)
         };
         let rows = [
@@ -752,12 +747,7 @@ mod tests {
                 amount_minor: 500
             }]
         );
-        let before = [dated(
-            "ann",
-            day(1, 1) - chrono::Duration::days(1),
-            "USD",
-            100,
-        )];
+        let before = [dated("ann", day(1, 1) - crate::time::days(1), "USD", 100)];
         let none = convert_rows_dated(&before, "GBP", &rates);
         assert!(
             none.rows.is_empty() && none.left_out.len() == 1,

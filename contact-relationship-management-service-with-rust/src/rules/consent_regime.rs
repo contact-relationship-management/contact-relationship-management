@@ -15,7 +15,7 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, Duration, NaiveDate, Utc};
+use crate::time::{Date, Timestamp, days as whole_days};
 use serde::{Deserialize, Serialize};
 
 /// The channels consent is held on (decision 7). Only `email` is sent; the others are recorded.
@@ -407,9 +407,9 @@ pub struct Row {
     /// The value, already validated.
     pub value: Value,
     /// The first day it is in force.
-    pub effective_from: NaiveDate,
+    pub effective_from: Date,
     /// The last day it is in force, if it ends.
-    pub effective_to: Option<NaiveDate>,
+    pub effective_to: Option<Date>,
     /// What it rests on.
     pub source: String,
     /// How far it was checked.
@@ -429,7 +429,7 @@ pub struct Origin {
     /// That row's source.
     pub source: String,
     /// That row's first day in force.
-    pub effective_from: NaiveDate,
+    pub effective_from: Date,
     /// That row's recording order.
     pub seq: i64,
 }
@@ -468,7 +468,7 @@ impl Resolution {
     }
 }
 
-fn in_force<'a>(rows: &'a [Row], code: &str, key: &str, as_of: NaiveDate) -> Option<&'a Row> {
+fn in_force<'a>(rows: &'a [Row], code: &str, key: &str, as_of: Date) -> Option<&'a Row> {
     rows.iter()
         .filter(|row| row.code == code && row.key == key)
         .filter(|row| row.effective_from <= as_of && row.effective_to.is_none_or(|to| as_of <= to))
@@ -506,7 +506,7 @@ pub fn resolve(
     key: &str,
     chain: Option<&[Step]>,
     rows: &[Row],
-    as_of: NaiveDate,
+    as_of: Date,
 ) -> Result<Resolution, String> {
     let entry = parameter(key).ok_or_else(|| format!("{key} is not in the parameter registry"))?;
     Ok(resolve_entry(entry, chain, rows, as_of))
@@ -518,7 +518,7 @@ pub fn resolve_entry(
     entry: &Parameter,
     chain: Option<&[Step]>,
     rows: &[Row],
-    as_of: NaiveDate,
+    as_of: Date,
 ) -> Resolution {
     let Some(chain) = chain else {
         return Resolution::Unknown;
@@ -648,7 +648,7 @@ fn usable_days(
     chain: &[Step],
     rows: &[Row],
     acks: &[Acknowledgement],
-    as_of: NaiveDate,
+    as_of: Date,
 ) -> Option<i64> {
     match resolve(key, Some(chain), rows, as_of) {
         Ok(Resolution::Resolved { value, from }) if may_loosen(&from, acks) => value.as_days(),
@@ -663,7 +663,7 @@ pub fn rules_for(
     chain: Option<&[Step]>,
     rows: &[Row],
     acks: &[Acknowledgement],
-    as_of: NaiveDate,
+    as_of: Date,
 ) -> Rules {
     let Some(chain) = chain else {
         return Rules::none();
@@ -739,7 +739,7 @@ pub struct MessageRules {
 
 /// The message rules under `chain`. Requirements tighten, so any row counts, acknowledged or not.
 #[must_use]
-pub fn message_rules(chain: Option<&[Step]>, rows: &[Row], as_of: NaiveDate) -> MessageRules {
+pub fn message_rules(chain: Option<&[Step]>, rows: &[Row], as_of: Date) -> MessageRules {
     let required = |key: &str| {
         resolve(key, chain, rows, as_of)
             .ok()
@@ -783,7 +783,7 @@ pub struct Evidence {
     /// The record it is (a deal's, a form submission's or a ticket's pid).
     pub pid: String,
     /// When it happened.
-    pub at: DateTime<Utc>,
+    pub at: Timestamp,
     /// The purpose it concerns, when it concerns one (a web-form submission names its purpose); `None` for any.
     pub purpose: Option<String>,
 }
@@ -799,7 +799,7 @@ pub enum Basis {
         /// The deal's pid.
         evidence_pid: String,
         /// When the window closes.
-        expires_at: DateTime<Utc>,
+        expires_at: Timestamp,
     },
     /// Implied consent on evidence.
     Implied {
@@ -808,7 +808,7 @@ pub enum Basis {
         /// The evidence's pid.
         evidence_pid: String,
         /// When it lapses.
-        expires_at: DateTime<Utc>,
+        expires_at: Timestamp,
     },
     /// An opt-out regime and no withdrawal.
     OptOut,
@@ -869,7 +869,7 @@ pub fn basis(
     purpose: &str,
     soft_opt_in_eligible: bool,
     evidence: &[Evidence],
-    now: DateTime<Utc>,
+    now: Timestamp,
 ) -> Result<Basis, Blocked> {
     match state {
         "granted" => return Ok(Basis::Granted),
@@ -890,7 +890,7 @@ pub fn basis(
                 .iter()
                 .filter(|item| item.kind == "won_deal" && item.at <= now)
                 .filter(concerns)
-                .map(|item| (item, item.at + Duration::days(window)))
+                .map(|item| (item, item.at + whole_days(window)))
                 .filter(|(_, expires)| *expires > now)
                 .max_by_key(|(_, expires)| *expires)
                 .map(|(item, expires_at)| Basis::SoftOptIn {
@@ -907,7 +907,7 @@ pub fn basis(
                 rules
                     .expiry_days
                     .get(&item.kind)
-                    .map(|days| (item, item.at + Duration::days(*days)))
+                    .map(|days| (item, item.at + whole_days(*days)))
             })
             .filter(|(_, expires)| *expires > now)
             .max_by_key(|(_, expires)| *expires)
@@ -984,14 +984,13 @@ pub fn example_profiles() -> Vec<ExampleProfile> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
 
-    fn day(y: i32, m: u32, d: u32) -> NaiveDate {
-        NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    fn day(y: i16, m: i8, d: i8) -> Date {
+        Date::from_ymd(y, m, d).unwrap()
     }
 
-    fn at(y: i32, m: u32, d: u32) -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(y, m, d, 12, 0, 0).unwrap()
+    fn at(y: i16, m: i8, d: i8) -> Timestamp {
+        format!("{}T12:00:00Z", day(y, m, d)).parse().unwrap()
     }
 
     /// The example profiles as rows and links, every row `example`, recorded on 2026-01-01.
@@ -1038,7 +1037,7 @@ mod tests {
         rules_for("email", steps.as_deref(), &rows, acks, day(2026, 10, 31))
     }
 
-    fn won(at: DateTime<Utc>) -> Evidence {
+    fn won(at: Timestamp) -> Evidence {
         Evidence {
             kind: "won_deal".into(),
             pid: "deal-1".into(),
@@ -1047,7 +1046,7 @@ mod tests {
         }
     }
 
-    fn inquiry(at: DateTime<Utc>) -> Evidence {
+    fn inquiry(at: Timestamp) -> Evidence {
         Evidence {
             kind: "inquiry".into(),
             pid: "form-1".into(),
@@ -1353,7 +1352,7 @@ mod tests {
             got,
             Basis::SoftOptIn {
                 evidence_pid: "deal-1".into(),
-                expires_at: at(2025, 1, 1) + Duration::days(730),
+                expires_at: at(2025, 1, 1) + whole_days(730),
             }
         );
         // Pending is treated as never (decision 11).
@@ -1415,7 +1414,7 @@ mod tests {
         assert_eq!(rules.expiry_days.get("won_deal"), Some(&730));
         let now = at(2026, 10, 31);
         // An inquiry 200 days ago has lapsed; a won deal 200 days ago has not.
-        let then = now - Duration::days(200);
+        let then = now - whole_days(200);
         assert_eq!(
             basis(&rules, "never", "marketing", false, &[inquiry(then)], now),
             Err(Blocked::NoEvidence)
@@ -1423,23 +1422,20 @@ mod tests {
         let deal = basis(&rules, "pending", "marketing", false, &[won(then)], now).unwrap();
         assert_eq!(deal.as_str(), "implied");
         // The longest-lasting evidence is the basis recorded.
-        let both = [
-            inquiry(now - Duration::days(10)),
-            won(now - Duration::days(700)),
-        ];
+        let both = [inquiry(now - whole_days(10)), won(now - whole_days(700))];
         match basis(&rules, "never", "marketing", false, &both, now).unwrap() {
             Basis::Implied {
                 kind, expires_at, ..
             } => {
                 assert_eq!(kind, "inquiry");
-                assert_eq!(expires_at, now + Duration::days(170));
+                assert_eq!(expires_at, now + whole_days(170));
             }
             other => panic!("{other:?}"),
         }
         // Evidence for another purpose does not count.
         let other = Evidence {
             purpose: Some("events".into()),
-            ..inquiry(now - Duration::days(1))
+            ..inquiry(now - whole_days(1))
         };
         assert_eq!(
             basis(

@@ -1,14 +1,14 @@
 //! Whole-row reads on `sqlx` (CRM-D24, CRM-T207). Each finder names every
 //! column, so `query_as!` checks the entity's `Model` against the schema at
 //! build time; a nullable timestamp names its type, which `query_as!` cannot
-//! reach from `Option<DateTime<Utc>>` by `Into`. A soft-deleted row is left
+//! reach from `Option<Timestamp>` by `Into`. A soft-deleted row is left
 //! out, as `find_live` did, and the rows come in a stated order.
 //!
 //! A selected column the `Model` lacks, or one whose type differs, fails the
 //! build. A column added to a table and not listed here does not: add it to
 //! the `Model` and to every finder of that table.
 
-use chrono::{DateTime, Utc};
+use crate::time::Timestamp;
 use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
@@ -127,8 +127,8 @@ pub async fn open_deals(pool: &PgPool) -> Result<Vec<deals::Model>, sqlx::Error>
 /// When the query fails.
 pub async fn deals_closed_between(
     pool: &PgPool,
-    from: DateTime<Utc>,
-    to: DateTime<Utc>,
+    from: Timestamp,
+    to: Timestamp,
 ) -> Result<Vec<deals::Model>, sqlx::Error> {
     sqlx::query_as!(
         deals::Model,

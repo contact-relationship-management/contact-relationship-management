@@ -3,7 +3,7 @@
 #![allow(missing_docs)]
 
 use crate::models::DateTimeWithTimeZone;
-use chrono::NaiveDate as Date;
+use crate::time::Date;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

@@ -6,7 +6,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use chrono::{DateTime, NaiveDate, Utc};
+use crate::time::{Date, Timestamp};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -51,13 +51,13 @@ struct AttributionQuery {
     /// (CRM-R91). Opens are not affected.
     min_click_seconds: Option<i64>,
     /// First day a deal may have closed on.
-    from: Option<NaiveDate>,
+    from: Option<Date>,
     /// Last day a deal may have closed on.
-    to: Option<NaiveDate>,
+    to: Option<Date>,
     /// Show every figure in this currency (CRM-R51), an ISO 4217 code (CRM-T168).
     convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
-    rate_date: Option<NaiveDate>,
+    rate_date: Option<Date>,
     /// `close_day`: convert each deal's share at the rate of the day the deal closed (CRM-R85);
     /// only with `convert_to`, and not with `rate_date`.
     rate_basis: Option<String>,
@@ -107,7 +107,7 @@ pub(crate) struct Attribution {
     min_click_seconds: Option<i64>,
     /// The e-mail touches counted: `sent`, `opened`, `clicked`.
     touches: Vec<String>,
-    as_of: DateTime<Utc>,
+    as_of: Timestamp,
     /// Won deals considered.
     deals: usize,
     /// Deals with no touch at all, and what they were worth: kept apart, never dropped.
@@ -121,7 +121,7 @@ pub(crate) struct Attribution {
     convert_to: Option<String>,
     /// With `convert_to`: the day whose exchange rates were used; `null` with `rate_basis`, where
     /// each deal has its own.
-    rate_date: Option<NaiveDate>,
+    rate_date: Option<Date>,
     /// `close_day` when each deal's share was converted at the rate of the day it closed.
     rate_basis: Option<String>,
     /// With `convert_to`: the rate used for each currency that was converted.
@@ -139,11 +139,11 @@ struct Won {
     amount_minor: i64,
     currency: String,
     source_campaign: Option<Uuid>,
-    created_at: DateTime<Utc>,
-    closed_at: DateTime<Utc>,
+    created_at: Timestamp,
+    closed_at: Timestamp,
     /// The day it closed on in the organization's zone (CRM-T181), for `from`/`to` and its
     /// close-day rate.
-    closed_on: NaiveDate,
+    closed_on: Date,
 }
 
 /// The kinds of e-mail touch that count.
@@ -314,7 +314,7 @@ async fn won_deals(ctx: &AppContext, query: &AttributionQuery) -> Result<Vec<Won
         query.from,
         query.to,
         i64::try_from(MAX_DEALS + 1).unwrap_or(i64::MAX),
-        calendar.zone.name(),
+        crate::rules::periods::zone_name(&calendar.zone),
     )
     .fetch_all(crate::db::pool(ctx))
     .await?;
@@ -432,14 +432,14 @@ struct Tally {
     deals: usize,
     credit: BTreeMap<String, i64>,
     /// Each share with the day its deal closed, for conversion at close-day rates (CRM-R85).
-    dated: Vec<(NaiveDate, String, i64)>,
+    dated: Vec<(Date, String, i64)>,
 }
 
 /// What sharing the deals out came to.
 struct Shared {
     tallies: BTreeMap<Uuid, Tally>,
     unattributed: BTreeMap<String, i64>,
-    unattributed_dated: Vec<(NaiveDate, String, i64)>,
+    unattributed_dated: Vec<(Date, String, i64)>,
     unattributed_deals: usize,
 }
 
@@ -516,7 +516,7 @@ async fn convert_credit(
     } = shared;
     if query.rate_basis.is_some() {
         // Each deal's share at the rate of the day the deal closed (CRM-R85), converted once.
-        let mut rows: Vec<(String, NaiveDate, String, i64)> = Vec::new();
+        let mut rows: Vec<(String, Date, String, i64)> = Vec::new();
         for (pid, tally) in tallies {
             for (day, currency, amount) in &tally.dated {
                 rows.push((pid.to_string(), *day, currency.clone(), *amount));

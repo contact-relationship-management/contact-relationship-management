@@ -98,8 +98,8 @@ pub(crate) struct SalesDashboard {
     open_deals: usize,
     pipeline_by_stage: std::collections::BTreeMap<String, StageTotals>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// One priority row of the SLA dashboard.
@@ -117,8 +117,8 @@ pub(crate) struct SlaDashboard {
     open_tickets: usize,
     by_priority: Vec<PriorityRow>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// `GET /api/accounts/{pid}/clv`.
@@ -129,7 +129,7 @@ pub(crate) struct Clv {
     won_deals: usize,
     /// Minor units per ISO 4217 code, never summed across currencies; `null` when masked.
     clv_minor: Option<std::collections::BTreeMap<String, i64>>,
-    as_of: chrono::DateTime<chrono::Utc>,
+    as_of: crate::time::Timestamp,
     /// With `convert_to`: the currency of `converted_minor` (CRM-R54).
     convert_to: Option<String>,
     /// With `convert_to`: every currency's CLV converted and added, in minor units of
@@ -137,7 +137,7 @@ pub(crate) struct Clv {
     converted_minor: Option<i64>,
     /// With `convert_to`: the day whose exchange rates were used; `null` with
     /// `rate_basis=close_day`, where each deal has its own.
-    rate_date: Option<chrono::NaiveDate>,
+    rate_date: Option<crate::time::Date>,
     /// With `rate_basis=close_day`: `close_day`; `null` otherwise (CRM-R70).
     rate_basis: Option<String>,
     /// With `convert_to`: the rate used for each currency that was converted (each distinct rate,
@@ -191,7 +191,7 @@ struct ClvQuery {
     /// Also show the CLV in this currency, an ISO 4217 code (CRM-R54, CRM-T168).
     convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
-    rate_date: Option<chrono::NaiveDate>,
+    rate_date: Option<crate::time::Date>,
     /// `close_day`: convert each won deal at the rate in force on the day it closed, instead of
     /// all at `rate_date`; needs `convert_to` and not with `rate_date`, `margin_bps` or a
     /// look-ahead (CRM-R70).
@@ -255,7 +255,7 @@ async fn sales_dashboard(
 /// state; live breach truth (CRM-R13).
 #[debug_handler]
 async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Result<Response> {
-    let now: chrono::DateTime<chrono::FixedOffset> = crate::clock::now().into();
+    let now: crate::time::Timestamp = crate::clock::now();
     let open = crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?;
     let mut by_priority: std::collections::BTreeMap<String, (i64, i64)> =
         std::collections::BTreeMap::new();
@@ -304,7 +304,7 @@ fn clv_outlook(
     query: &ClvQuery,
     totals: &std::collections::BTreeMap<String, i64>,
     won: &[deals::Model],
-    now: chrono::DateTime<chrono::Utc>,
+    now: crate::time::Timestamp,
 ) -> Result<Outlook> {
     let (mut margin_minor, mut projection) = (None, None);
     {
@@ -325,8 +325,8 @@ fn clv_outlook(
             query.years,
         ) {
             let discount = query.discount_bps.unwrap_or(0);
-            let since = now - chrono::Duration::days(365);
-            let before = since - chrono::Duration::days(365);
+            let since = now - crate::time::days(365);
+            let before = since - crate::time::days(365);
             let (mut recent, mut prior): (
                 std::collections::BTreeMap<String, i64>,
                 std::collections::BTreeMap<String, i64>,
@@ -406,7 +406,7 @@ fn clv_outlook(
 async fn convert_outlook(
     ctx: &AppContext,
     target: &str,
-    rate_date: Option<chrono::NaiveDate>,
+    rate_date: Option<crate::time::Date>,
     margin: Option<&std::collections::BTreeMap<String, i64>>,
     projection: Option<&mut ClvProjection>,
 ) -> Result<Option<i64>> {
@@ -531,12 +531,12 @@ async fn account_clv(
         // Each deal at the rate of the day it closed, rounded once per deal (CRM-R70); the day is
         // the organization's (CRM-T181).
         let calendar = super::organization::periods(crate::db::pool(&ctx)).await?;
-        let deals_by_day: Vec<(chrono::NaiveDate, String, i64)> = won
+        let deals_by_day: Vec<(crate::time::Date, String, i64)> = won
             .iter()
             .map(|deal| {
                 (
                     crate::rules::periods::day_of(
-                        deal.closed_at.unwrap_or(deal.updated_at).to_utc(),
+                        deal.closed_at.unwrap_or(deal.updated_at),
                         &calendar,
                     ),
                     deal.currency.clone(),
@@ -608,7 +608,7 @@ pub(crate) struct ActivityDashboard {
     window_days: i64,
     total: i64,
     by_kind: std::collections::BTreeMap<String, i64>,
-    as_of: chrono::DateTime<chrono::Utc>,
+    as_of: crate::time::Timestamp,
 }
 
 /// `GET /api/dashboards/activity?days=` — per-kind activity counts
@@ -630,7 +630,7 @@ async fn activity_dashboard(
     State(ctx): State<AppContext>,
     Query(params): Query<ActivityParams>,
 ) -> Result<Response> {
-    let since = crate::clock::now() - chrono::Duration::days(params.days.clamp(1, 365));
+    let since = crate::clock::now() - crate::time::days(params.days.clamp(1, 365));
     let counts: Vec<(String, i64)> = sqlx::query!(
         "SELECT kind, COUNT(id) AS \"n!\" FROM activities \
          WHERE deleted_at IS NULL AND occurred_at >= $1 GROUP BY kind",

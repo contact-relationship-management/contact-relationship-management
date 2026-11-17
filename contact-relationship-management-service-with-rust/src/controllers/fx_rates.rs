@@ -6,8 +6,8 @@
 //!
 //! Everything runs on `sqlx` (CRM-D24, CRM-T205); the conversions' rate reader since CRM-T216.
 
+use crate::time::Date;
 use axa::prelude::*;
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -35,7 +35,7 @@ pub(crate) struct RatePayload {
     /// How many `to` one `from` buys, as a decimal text such as `"1.27"` (at most 9 places).
     rate: String,
     /// The day the rate takes effect.
-    effective_on: NaiveDate,
+    effective_on: Date,
     /// Where it came from, in words.
     source: String,
 }
@@ -50,7 +50,7 @@ pub(crate) struct RateView {
     to: String,
     /// A decimal text, trailing zeros dropped.
     rate: String,
-    effective_on: NaiveDate,
+    effective_on: Date,
     source: String,
     /// Who set it.
     set_by: String,
@@ -62,7 +62,7 @@ struct Row {
     from_currency: String,
     to_currency: String,
     rate_ppb: i64,
-    effective_on: NaiveDate,
+    effective_on: Date,
     source: String,
     set_by: String,
 }
@@ -116,7 +116,7 @@ pub(crate) struct RateUsed {
     to: String,
     /// How many `to` one `from` buys, as recorded.
     rate: String,
-    effective_on: NaiveDate,
+    effective_on: Date,
     source: String,
     /// The recorded rate is for the reverse pair, so the amount was divided by it.
     inverted: bool,
@@ -138,7 +138,7 @@ pub(crate) struct Done {
     /// `(group, value in the target currency)`, largest first.
     pub rows: Vec<(String, i64)>,
     /// The day whose rates were used.
-    pub rate_date: NaiveDate,
+    pub rate_date: Date,
     pub rates: Vec<RateUsed>,
     pub unconverted: Vec<Unconverted>,
 }
@@ -152,7 +152,7 @@ pub(crate) struct Done {
 pub(crate) async fn convert_sums(
     ctx: &AppContext,
     target: &str,
-    rate_date: Option<NaiveDate>,
+    rate_date: Option<Date>,
     member: &str,
     sums: &[(String, String, i64)],
 ) -> Result<Done> {
@@ -202,7 +202,7 @@ pub(crate) async fn convert_sums(
 pub(crate) async fn convert_dated(
     ctx: &AppContext,
     target: &str,
-    deals: &[(NaiveDate, String, i64)],
+    deals: &[(Date, String, i64)],
 ) -> Result<(i64, Vec<RateUsed>, Vec<Unconverted>)> {
     let rates = rates_involving(db::pool(ctx), target).await?;
     let done = fx::convert_dated(deals, target, &rates);
@@ -239,7 +239,7 @@ pub(crate) async fn convert_dated(
 pub(crate) async fn convert_rows_dated(
     ctx: &AppContext,
     target: &str,
-    rows: &[(String, NaiveDate, String, i64)],
+    rows: &[(String, Date, String, i64)],
 ) -> Result<(Vec<(String, i64)>, Vec<RateUsed>, Vec<Unconverted>)> {
     let rates = rates_involving(db::pool(ctx), target).await?;
     let done = fx::convert_rows_dated(rows, target, &rates);

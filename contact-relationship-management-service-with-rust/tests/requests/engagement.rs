@@ -4,7 +4,6 @@
 //! lifecycle, memberships + renewals, and working groups.
 
 use axa_test::prelude::*;
-use chrono::Duration;
 use contact_relationship_management::app::App;
 use serde_json::{Value, json};
 use serial_test::serial;
@@ -105,8 +104,8 @@ async fn engagement_round_trip() {
                             // date silently stops being upcoming the day it
                             // passes. This one did, on 2026-08-15, and the
                             // suite had been failing every day since.
-                            "due_on": (contact_relationship_management::clock::now() + Duration::days(7))
-                                .format("%Y-%m-%d").to_string() }),
+                            "due_on": (contact_relationship_management::clock::now() + contact_relationship_management::time::days(7))
+                                .strftime_utc("%Y-%m-%d").to_string() }),
             )
             .await
             .assert_status_ok();

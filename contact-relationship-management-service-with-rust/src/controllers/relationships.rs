@@ -177,11 +177,11 @@ pub(crate) struct ActivityPayload {
     kind: String,
     summary: String,
     #[serde(default)]
-    occurred_at: Option<chrono::DateTime<chrono::FixedOffset>>,
+    occurred_at: Option<crate::time::Timestamp>,
     #[serde(default)]
     actor_ref: Option<String>,
     #[serde(default)]
-    due_on: Option<chrono::NaiveDate>,
+    due_on: Option<crate::time::Date>,
     /// Optional recorded sentiment (`positive` / `neutral` / `negative`).
     #[serde(default)]
     sentiment: Option<String>,
@@ -190,7 +190,7 @@ pub(crate) struct ActivityPayload {
     assignee_ref: Option<String>,
     /// When to remind the assignee; tasks only.
     #[serde(default)]
-    remind_at: Option<chrono::DateTime<chrono::FixedOffset>>,
+    remind_at: Option<crate::time::Timestamp>,
 }
 
 fn default_channel() -> String {
@@ -1200,9 +1200,7 @@ async fn create_activity(
         problems.push("only a task has an assignee or a reminder");
     }
     problems.finish()?;
-    let occurred_at: DateTimeWithTimeZone = payload
-        .occurred_at
-        .unwrap_or_else(|| crate::clock::now().into());
+    let occurred_at: DateTimeWithTimeZone = payload.occurred_at.unwrap_or_else(crate::clock::now);
     let pid = Uuid::new_v4();
     let mut txn = db::pool(&ctx).begin().await?;
     // `summary` is sealed: binding `EncryptedText` seals it (CRM-T41).

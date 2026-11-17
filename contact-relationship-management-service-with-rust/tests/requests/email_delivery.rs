@@ -435,7 +435,7 @@ const WEBHOOK_SECRET: &str = "webhook-secret-0123456789abcdef-xyz";
 macro_rules! provider_event {
     ($request:expr, $message_id:expr, $event:expr) => {{
         let body = json!({ "message_id": $message_id, "event": $event }).to_string();
-        let timestamp = chrono::Utc::now().timestamp().to_string();
+        let timestamp = jiff::Timestamp::now().as_second().to_string();
         let signature = webhook::sign(WEBHOOK_SECRET, &timestamp, body.as_bytes());
         $request
             .post("/webhooks/email")
@@ -712,7 +712,7 @@ async fn cloud_and_relay_callbacks_are_authenticated_and_matched() {
         assert!(suppressed(&contacts[1]).await);
 
         // Mailgun: authenticated by its own body signature, not our secret.
-        let timestamp = chrono::Utc::now().timestamp().to_string();
+        let timestamp = jiff::Timestamp::now().as_second().to_string();
         let mut mac = Hmac::<sha2::Sha256>::new_from_slice(SIGNING.as_bytes()).unwrap();
         mac.update(timestamp.as_bytes());
         mac.update(b"token-1");

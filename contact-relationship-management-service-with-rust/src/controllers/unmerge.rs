@@ -428,7 +428,7 @@ async fn unmerge(
     let (restored, left_behind) = restore_moved(&mut txn, &ledger).await?;
     let dropped_restored = restore_dropped(&mut txn, &ledger, &before).await?;
     let (cleared, kept) = clear_filled(&mut txn, &ledger, &before).await?;
-    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let now: DateTimeWithTimeZone = crate::clock::now();
     let (result, purposes) = bring_back(&mut txn, &merged, &survivor, now).await?;
 
     let body = ContactUnmerge {
@@ -501,7 +501,7 @@ pub(crate) struct ContactUnmerge {
 pub(crate) struct MergeEntry {
     merged_pid: Uuid,
     merged_name: String,
-    merged_at: chrono::DateTime<chrono::FixedOffset>,
+    merged_at: crate::time::Timestamp,
     undoable: bool,
 }
 

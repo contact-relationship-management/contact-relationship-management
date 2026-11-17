@@ -23,7 +23,7 @@ async fn count(db: &sqlx::PgPool, sql: &str) -> i64 {
 /// The database's clock. The sweep compares `remind_at` with `now()` in SQL, so a reminder this
 /// test means to be just due is set from that clock, not the test's: the two can disagree, as
 /// a container's clock drifting behind its host did by nine minutes (CRM-T220).
-async fn database_now(db: &sqlx::PgPool) -> chrono::DateTime<chrono::Utc> {
+async fn database_now(db: &sqlx::PgPool) -> contact_relationship_management::time::Timestamp {
     sqlx::query("SELECT now() AS now")
         .fetch_optional(db)
         .await
@@ -34,7 +34,8 @@ async fn database_now(db: &sqlx::PgPool) -> chrono::DateTime<chrono::Utc> {
 }
 
 fn an_hour_ago() -> String {
-    (contact_relationship_management::clock::now() - chrono::Duration::hours(1)).to_rfc3339()
+    (contact_relationship_management::clock::now() - jiff::SignedDuration::from_hours(1))
+        .to_rfc3339()
 }
 
 macro_rules! task {
@@ -78,7 +79,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
         let contact = seed_contact!(&request, "Reminded").await;
 
         // Not yet due, not a task, and finished tasks make nothing.
-        let future = (contact_relationship_management::clock::now() + chrono::Duration::days(1)).to_rfc3339();
+        let future = (contact_relationship_management::clock::now() + contact_relationship_management::time::days(1)).to_rfc3339();
         let _later = task!(request, contact, me, future);
         let done = task!(request, contact, me, an_hour_ago());
         request
@@ -134,7 +135,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
         // A new reminder time on the same task fires once more; the same time does not.
         request
             .put(&format!("/api/activities/{due}"))
-            .json(&json!({ "remind_at": (database_now(contact_relationship_management::db::pool(&ctx)).await - chrono::Duration::minutes(5)).to_rfc3339() }))
+            .json(&json!({ "remind_at": (database_now(contact_relationship_management::db::pool(&ctx)).await - jiff::SignedDuration::from_mins(5)).to_rfc3339() }))
             .await
             .assert_status_ok();
         assert_eq!(sweep!(request), json!({ "created": 1, "suppressed": 0 }));

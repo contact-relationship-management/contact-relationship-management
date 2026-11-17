@@ -308,7 +308,7 @@ async fn wpm_event(
         secret.as_bytes(),
         signature,
         &body,
-        chrono::Utc::now().timestamp(),
+        jiff::Timestamp::now().as_second(),
     ) {
         return Ok(StatusCode::UNAUTHORIZED.into_response());
     }
@@ -537,7 +537,7 @@ async fn record_worker(
     txn: &mut PgConnection,
     caller: &MaybeAuthUser,
     person_ref: &str,
-    (organization_ref, today, source, check_id): (&str, chrono::NaiveDate, &str, Uuid),
+    (organization_ref, today, source, check_id): (&str, crate::time::Date, &str, Uuid),
     view: &mut EmploymentCheckView,
 ) -> Result<()> {
     use crate::models::employments;

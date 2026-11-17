@@ -192,7 +192,7 @@ pub(crate) async fn enrol_in(
     else {
         return Ok(None);
     };
-    let due = crate::clock::now() + chrono::Duration::hours(i64::from(first.delay_hours));
+    let due = crate::clock::now() + jiff::SignedDuration::from_hours(i64::from(first.delay_hours));
     let pid = Uuid::new_v4();
     sqlx::query!(
         "INSERT INTO nurture_enrollments (pid, sequence_pid, contact_pid, current_step, \
@@ -360,7 +360,7 @@ pub(super) fn advance_enrollment(
     let next_index = row.current_step + 1;
     match steps.get(usize::try_from(next_index).unwrap_or(usize::MAX)) {
         Some(next_step) => {
-            let next_due = now + chrono::Duration::hours(i64::from(next_step.delay_hours));
+            let next_due = now + jiff::SignedDuration::from_hours(i64::from(next_step.delay_hours));
             ((next_index, Some(next_due), "active"), false)
         }
         None => ((next_index, None, "completed"), true),
@@ -422,7 +422,7 @@ pub(super) async fn advance_nurture(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
 ) -> Result<Response> {
-    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let now: DateTimeWithTimeZone = crate::clock::now();
     let pool = db::pool(&ctx);
     let due = sqlx::query_scalar!(
         "SELECT pid FROM nurture_enrollments WHERE status = 'active' AND deleted_at IS NULL \

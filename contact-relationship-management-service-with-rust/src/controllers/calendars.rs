@@ -8,7 +8,6 @@
 //! handlers in `support.rs` call (CRM-T208).
 
 use axa::prelude::*;
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use sqlx::PgExecutor;
 use uuid::Uuid;
@@ -20,6 +19,7 @@ use crate::db;
 use crate::json::Json;
 use crate::models::audit_logs::Model as Audit;
 use crate::rules::calendar::{Calendar, Week};
+use crate::time::Date;
 use crate::validation::Problems;
 
 /// `POST /api/business-calendars` and `PUT /api/business-calendars/{pid}` body (a `PUT` replaces).
@@ -35,7 +35,7 @@ pub(crate) struct CalendarPayload {
     week: Week,
     /// Days that are not working days, as `YYYY-MM-DD`.
     #[serde(default)]
-    holidays: Vec<NaiveDate>,
+    holidays: Vec<Date>,
 }
 
 /// One calendar.
@@ -47,7 +47,7 @@ pub(crate) struct CalendarView {
     name: String,
     timezone: String,
     week: Week,
-    holidays: Vec<NaiveDate>,
+    holidays: Vec<Date>,
     /// How many SLA policies use it.
     in_use: i64,
 }
@@ -89,7 +89,8 @@ pub(crate) async fn load<'e>(db: impl PgExecutor<'e>, pid: Uuid) -> Result<Optio
         return Ok(None);
     };
     let week: Week = serde_json::from_value(row.week).unwrap_or_default();
-    let holidays: Vec<NaiveDate> = serde_json::from_value(row.holidays).unwrap_or_default();
+    let holidays: Vec<Date> = serde_json::from_value(row.holidays).unwrap_or_default();
+    let holidays: Vec<jiff::civil::Date> = holidays.into_iter().map(Into::into).collect();
     Ok(Calendar::build(&row.timezone, &week, &holidays).ok())
 }
 
@@ -106,7 +107,8 @@ pub(crate) async fn exists<'e>(db: impl PgExecutor<'e>, pid: Uuid) -> Result<boo
 fn validate(payload: &CalendarPayload) -> Result<()> {
     let mut problems = Problems::new();
     problems.require_text("name", &payload.name);
-    if let Err(found) = Calendar::build(&payload.timezone, &payload.week, &payload.holidays) {
+    let holidays: Vec<jiff::civil::Date> = payload.holidays.iter().map(|day| day.0).collect();
+    if let Err(found) = Calendar::build(&payload.timezone, &payload.week, &holidays) {
         for (member, message) in found {
             problems.push_field(&member, message);
         }

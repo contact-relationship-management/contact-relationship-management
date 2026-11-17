@@ -36,8 +36,8 @@ pub(crate) struct Notification {
     /// What the notification is about: `contact`, `account`, `lead`, `deal` or `ticket`.
     subject_kind: String,
     subject_pid: Uuid,
-    created_at: chrono::DateTime<chrono::Utc>,
-    read_at: Option<chrono::DateTime<chrono::Utc>>,
+    created_at: crate::time::Timestamp,
+    read_at: Option<crate::time::Timestamp>,
 }
 
 /// The query for the inbox routes.

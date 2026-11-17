@@ -34,9 +34,7 @@ async fn the_organization_s_zone_and_fiscal_year_shape_today_and_the_reports() {
             .await
             .json();
         assert_eq!(set["time_zone"], "Pacific/Kiritimati");
-        let kiritimati = contact_relationship_management::clock::now()
-            .with_timezone(&chrono_tz::Pacific::Kiritimati)
-            .date_naive();
+        let kiritimati = pacific_today("Kiritimati");
         assert_eq!(set["today"], json!(kiritimati));
 
         // Leads made at a time that is a different day, month and fiscal year in the zone: 23:30
@@ -114,9 +112,7 @@ async fn the_organization_s_zone_and_fiscal_year_shape_today_and_the_reports() {
         assert_eq!(snap["taken_on"], json!(kiritimati), "{snap}");
 
         // A caller's own zone decides its "today": quota attainment is read on that day.
-        let pago = contact_relationship_management::clock::now()
-            .with_timezone(&chrono_tz::Pacific::Pago_Pago)
-            .date_naive();
+        let pago = pacific_today("Pago_Pago");
         let read: Value = request
             .get("/api/quotas/attainment")
             .add_header("crm-time-zone", "Pacific/Pago_Pago")
@@ -134,8 +130,17 @@ async fn the_organization_s_zone_and_fiscal_year_shape_today_and_the_reports() {
     .await;
 }
 
+/// Today in `Pacific/<name>`, on the service's clock.
+fn pacific_today(name: &str) -> contact_relationship_management::time::Date {
+    let zone = jiff::tz::TimeZone::get(&format!("Pacific/{name}")).unwrap();
+    contact_relationship_management::rules::periods::today_in(
+        contact_relationship_management::clock::now(),
+        &zone,
+    )
+}
+
 /// One value from a query.
-async fn one_date(db: &sqlx::PgPool, sql: &str) -> chrono::NaiveDate {
+async fn one_date(db: &sqlx::PgPool, sql: &str) -> contact_relationship_management::time::Date {
     sqlx::query(sqlx::AssertSqlSafe(sql))
         .fetch_optional(db)
         .await
@@ -161,16 +166,12 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
             .json(&json!({ "time_zone": "Pacific/Kiritimati", "fiscal_year_start_month": 1 }))
             .await
             .assert_status_ok();
-        let kiritimati = contact_relationship_management::clock::now()
-            .with_timezone(&chrono_tz::Pacific::Kiritimati)
-            .date_naive();
+        let kiritimati = pacific_today("Kiritimati");
         // Pago Pago is 25 hours behind Kiritimati: its calendar day is one or two days before, depending on the hour
         // (two for the hour between 10:00 and 11:00 UTC), and never the same day.
-        let pago = contact_relationship_management::clock::now()
-            .with_timezone(&chrono_tz::Pacific::Pago_Pago)
-            .date_naive();
+        let pago = pacific_today("Pago_Pago");
         assert!(
-            pago + chrono::Days::new(1) == kiritimati || pago + chrono::Days::new(2) == kiritimati,
+            pago + contact_relationship_management::time::days(1) == kiritimati || pago + contact_relationship_management::time::days(2) == kiritimati,
             "{pago} vs {kiritimati}"
         );
 
@@ -257,7 +258,7 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
             ),
         )
         .await;
-        assert_eq!(due, kiritimati + chrono::Days::new(2));
+        assert_eq!(due, kiritimati + contact_relationship_management::time::days(2));
 
         // A follow-up due on Pago Pago's today is not overdue for a caller there, and a day
         // overdue on the organization's day.
@@ -288,7 +289,7 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
             .iter()
             .find(|f| f["summary"] == "Call back")
             .unwrap_or_else(|| panic!("{here}"));
-        assert_eq!(late["overdue_days"], (kiritimati - pago).num_days(), "{here}");
+        assert_eq!(late["overdue_days"], contact_relationship_management::time::whole_days(kiritimati - pago), "{here}");
 
         request
             .put("/api/settings/organization")

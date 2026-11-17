@@ -146,9 +146,10 @@ async fn a_ticket_under_a_calendar_has_working_time_deadlines() {
             .assert_status_ok();
         let detail: Value = request.get(&format!("/api/tickets/{pid}")).await.json();
         let at = |field: &str| {
-            chrono::DateTime::parse_from_rfc3339(detail["ticket"][field].as_str().unwrap())
-                .unwrap()
-                .to_utc()
+            contact_relationship_management::time::Timestamp::parse_rfc3339(
+                detail["ticket"][field].as_str().unwrap(),
+            )
+            .unwrap()
         };
         // One hour of first response fits in Friday's last hour.
         assert_eq!(
@@ -176,14 +177,11 @@ async fn a_ticket_under_a_calendar_has_working_time_deadlines() {
                 .get(..16),
             Some("2026-07-10T17:00")
         );
-        let normal_resolution = chrono::DateTime::parse_from_rfc3339(
+        let normal_resolution = contact_relationship_management::time::Timestamp::parse_rfc3339(
             detail["ticket"]["resolution_due_at"].as_str().unwrap(),
         )
         .unwrap();
-        assert_eq!(
-            normal_resolution.to_utc().to_rfc3339(),
-            "2026-07-11T02:00:00+00:00"
-        );
+        assert_eq!(normal_resolution.to_rfc3339(), "2026-07-11T02:00:00+00:00");
     })
     .await;
 }

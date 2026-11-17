@@ -52,7 +52,7 @@ pub(crate) struct ReportView {
     name: String,
     spec: Spec,
     shared: bool,
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
 }
 
 /// One row of an answer.
@@ -73,13 +73,13 @@ pub(crate) struct ReportRow {
 pub(crate) struct ReportResult {
     spec: Spec,
     /// When it was read.
-    as_of: chrono::DateTime<chrono::Utc>,
+    as_of: crate::time::Timestamp,
     /// The groups, largest first.
     rows: Vec<ReportRow>,
     /// There were more groups than are returned.
     truncated: bool,
     /// With `convert_to`: the day whose exchange rates were used.
-    rate_date: Option<chrono::NaiveDate>,
+    rate_date: Option<crate::time::Date>,
     /// With `convert_to`: the rate used for each currency that was converted.
     rates: Vec<RateUsed>,
     /// With `convert_to`: sums that had no rate in force and were left out, never taken at 1.0.
@@ -99,7 +99,7 @@ pub(crate) struct ReportResult {
 /// What a conversion made of the rows of a report.
 struct Conversion {
     rows: Vec<ReportRow>,
-    rate_date: Option<chrono::NaiveDate>,
+    rate_date: Option<crate::time::Date>,
     rates: Vec<RateUsed>,
     unconverted: Vec<Unconverted>,
 }
@@ -124,7 +124,7 @@ async fn converted(ctx: &AppContext, spec: &Spec, raw: Vec<rules::Cell>) -> Resu
     };
     if spec.rate_basis.is_some() {
         // Each closing day at its own rate (CRM-R83): no one date stands for the answer.
-        let dated: Vec<(String, chrono::NaiveDate, String, i64)> = raw
+        let dated: Vec<(String, crate::time::Date, String, i64)> = raw
             .into_iter()
             .filter_map(|c| Some((c.group, c.day?, c.currency.unwrap_or_default(), c.value)))
             .collect();
@@ -247,7 +247,7 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
     )
     .await?;
     Ok(ReportResult {
-        time_zone: periods.zone.name().to_string(),
+        time_zone: crate::rules::periods::zone_name(&periods.zone).to_string(),
         fiscal_year_start_month: periods.fiscal_start_month,
         spec,
         as_of: crate::clock::now(),
@@ -281,7 +281,7 @@ struct Stored {
     name: String,
     spec: serde_json::Value,
     shared: bool,
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
 }
 
 fn view(row: Stored, me: &str) -> Result<ReportView> {

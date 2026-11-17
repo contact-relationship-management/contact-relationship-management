@@ -183,14 +183,14 @@ pub async fn is_suppressed<'e>(db: impl PgExecutor<'e>, contact_pid: Uuid) -> Re
 pub async fn suppression<'e>(
     db: impl PgExecutor<'e>,
     contact_pid: Uuid,
-) -> Result<Option<(String, chrono::DateTime<chrono::FixedOffset>)>> {
+) -> Result<Option<(String, crate::time::Timestamp)>> {
     Ok(sqlx::query!(
         "SELECT reason, created_at FROM email_suppressions WHERE contact_pid = $1",
         contact_pid,
     )
     .fetch_optional(db)
     .await?
-    .map(|row| (row.reason, row.created_at.into())))
+    .map(|row| (row.reason, row.created_at)))
 }
 
 /// Take a contact off the suppression list. Returns whether one was removed.

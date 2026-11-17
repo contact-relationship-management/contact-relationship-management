@@ -10,15 +10,15 @@ use sqlx::Row as _;
 
 /// The host's clock and the database's, on this machine, right now: the gap the service has to
 /// make up. Printed so a run with the clocks apart can be told from one with them in step.
-async fn host_gap(db: &sqlx::PgPool) -> chrono::TimeDelta {
+async fn host_gap(db: &sqlx::PgPool) -> jiff::SignedDuration {
     let row = sqlx::query("SELECT now() AS now")
         .fetch_optional(db)
         .await
         .unwrap()
         .unwrap();
-    let database: chrono::DateTime<chrono::FixedOffset> = row.try_get("now").unwrap();
-    let gap = database.to_utc() - chrono::Utc::now();
-    println!("database minus host: {} ms", gap.num_milliseconds());
+    let database: contact_relationship_management::time::Timestamp = row.try_get("now").unwrap();
+    let gap = database.0.duration_since(jiff::Timestamp::now());
+    println!("database minus host: {} ms", gap.as_millis());
     gap
 }
 
@@ -29,10 +29,10 @@ async fn the_service_and_the_database_stamp_a_ticket_on_one_clock() {
     request::<App, _, _>(|request, ctx| async move {
         let gap = host_gap(contact_relationship_management::db::pool(&ctx)).await;
         assert!(
-            (clock::offset() - gap).abs() < chrono::TimeDelta::seconds(1),
+            (clock::offset() - gap).abs() < jiff::SignedDuration::from_secs(1),
             "measured {} ms, the gap is {} ms",
-            clock::offset().num_milliseconds(),
-            gap.num_milliseconds()
+            clock::offset().as_millis(),
+            gap.as_millis()
         );
         let made: Value = request
             .post("/api/tickets")

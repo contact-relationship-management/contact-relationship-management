@@ -239,7 +239,7 @@ pub fn body(
     entity: &str,
     kind: &str,
     pid: uuid::Uuid,
-    occurred_at: chrono::DateTime<chrono::Utc>,
+    occurred_at: crate::time::Timestamp,
 ) -> String {
     serde_json::json!({
         "id": event_id,
@@ -423,9 +423,7 @@ mod tests {
     #[test]
     fn the_body_has_ids_and_the_time_and_nothing_else() {
         let (event, pid) = (uuid::Uuid::new_v4(), uuid::Uuid::new_v4());
-        let at = chrono::DateTime::parse_from_rfc3339("2026-10-24T10:00:00Z")
-            .unwrap()
-            .to_utc();
+        let at: crate::time::Timestamp = "2026-10-24T10:00:00Z".parse().unwrap();
         let value: serde_json::Value =
             serde_json::from_str(&body(event, "contact", "created", pid, at)).unwrap();
         assert_eq!(value["id"], event.to_string());

@@ -8,7 +8,7 @@
 //!
 //! On `sqlx` (CRM-D24, CRM-T207).
 
-use chrono::{DateTime, Utc};
+use crate::time::Timestamp;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -22,7 +22,7 @@ pub(super) struct Touch {
     /// The subject.
     pub subject_pid: Uuid,
     /// When its latest activity happened.
-    pub last_at: DateTime<Utc>,
+    pub last_at: Timestamp,
     /// How many of its activities are not done and carry a due date.
     pub open_next: i64,
 }
@@ -61,8 +61,8 @@ pub(super) struct EngagementCount {
 /// grouped by recorder, month, kind and sentiment.
 pub(super) async fn engagement_counts(
     pool: &PgPool,
-    since: DateTime<Utc>,
-    until: DateTime<Utc>,
+    since: Timestamp,
+    until: Timestamp,
 ) -> Result<Vec<EngagementCount>> {
     sqlx::query_as!(
         EngagementCount,
@@ -93,7 +93,7 @@ pub(super) async fn consent_events_by_source(
 }
 
 /// How many withdrawals happened since `since`, estate-wide.
-pub(super) async fn withdrawals_since(pool: &PgPool, since: DateTime<Utc>) -> Result<usize> {
+pub(super) async fn withdrawals_since(pool: &PgPool, since: Timestamp) -> Result<usize> {
     let n = sqlx::query_scalar!(
         "SELECT COUNT(*) AS \"n!\" FROM consent_events \
          WHERE action = 'withdrawn' AND occurred_at >= $1",
@@ -108,7 +108,7 @@ pub(super) async fn withdrawals_since(pool: &PgPool, since: DateTime<Utc>) -> Re
 /// have an account; a withdrawal for any other contact is not counted).
 pub(super) async fn withdrawals_by_account(
     pool: &PgPool,
-    since: DateTime<Utc>,
+    since: Timestamp,
 ) -> Result<std::collections::BTreeMap<Uuid, usize>> {
     let rows = sqlx::query!(
         "SELECT c.account_pid AS \"account_pid!\", COUNT(*) AS \"n!\" \

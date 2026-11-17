@@ -50,7 +50,7 @@ pub(crate) struct AttachmentView {
     /// SHA-256 of the content, hex.
     sha256: String,
     uploaded_by: Option<String>,
-    created_at: chrono::DateTime<chrono::Utc>,
+    created_at: crate::time::Timestamp,
 }
 
 /// An attachment row, as the routes read it.
@@ -63,7 +63,7 @@ struct Stored {
     size_bytes: i64,
     sha256: String,
     uploaded_by: Option<String>,
-    created_at: chrono::DateTime<chrono::Utc>,
+    created_at: crate::time::Timestamp,
 }
 
 impl From<Stored> for AttachmentView {

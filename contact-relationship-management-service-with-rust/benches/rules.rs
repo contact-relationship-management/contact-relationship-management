@@ -15,11 +15,12 @@
 use std::collections::BTreeMap;
 use std::hint::black_box;
 
-use chrono::{DateTime, Duration, NaiveDate, TimeZone, Utc};
 use contact_relationship_management::rules::{
     analytics, attribution, audit_chain, fx, imports, reports, scoring, search, segment,
 };
+use contact_relationship_management::time::{Date, Timestamp};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use jiff::SignedDuration;
 use uuid::Uuid;
 
 /// A tiny deterministic generator, as in the matcher's benchmark, so the inputs need no extra
@@ -45,8 +46,8 @@ impl Lcg {
 const SIZES: [usize; 3] = [100, 1_000, 10_000];
 const CURRENCIES: [&str; 5] = ["GBP", "EUR", "USD", "JPY", "KWD"];
 
-fn start() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 6, 1, 9, 0, 0).unwrap()
+fn start() -> Timestamp {
+    "2026-06-01T09:00:00Z".parse().unwrap()
 }
 
 fn lead_facts(rng: &mut Lcg) -> scoring::LeadFacts {
@@ -253,13 +254,13 @@ fn bench_imports(c: &mut Criterion) {
 fn bench_attribution(c: &mut Criterion) {
     let mut rng = Lcg(6);
     let campaigns: Vec<Uuid> = (0..12).map(|_| rng.uuid()).collect();
-    let closed = start() + Duration::days(90);
+    let closed = start() + contact_relationship_management::time::days(90);
     let mut group = c.benchmark_group("attribution");
     for touches in [5_usize, 50, 500] {
         let list: Vec<_> = (0..touches)
             .map(|_| attribution::Touch {
                 campaign: campaigns[rng.next(campaigns.len())],
-                at: start() + Duration::hours(i64::try_from(rng.next(90 * 24)).unwrap()),
+                at: start() + SignedDuration::from_hours(i64::try_from(rng.next(90 * 24)).unwrap()),
             })
             .collect();
         for (name, model) in [
@@ -283,7 +284,7 @@ fn bench_attribution(c: &mut Criterion) {
 /// A report's money rows converted into one currency (CRM-R50), with a year of daily rates.
 fn bench_fx(c: &mut Criterion) {
     let mut rng = Lcg(7);
-    let first_day = NaiveDate::from_ymd_opt(2025, 6, 1).unwrap();
+    let first_day = Date::from_ymd(2025, 6, 1).unwrap();
     let mut rates = Vec::new();
     for day in 0..365 {
         for from in ["EUR", "USD", "JPY", "KWD"] {
@@ -291,12 +292,12 @@ fn bench_fx(c: &mut Criterion) {
                 from: from.to_string(),
                 to: "GBP".to_string(),
                 ppb: 500_000_000 + i64::try_from(rng.next(1_000_000_000)).unwrap(),
-                effective_on: first_day + Duration::days(day),
+                effective_on: first_day + contact_relationship_management::time::days(day),
                 source: "bench".to_string(),
             });
         }
     }
-    let day = NaiveDate::from_ymd_opt(2026, 5, 31).unwrap();
+    let day = Date::from_ymd(2026, 5, 31).unwrap();
     let mut group = c.benchmark_group("fx");
     for size in SIZES {
         let rows: Vec<(String, String, i64)> = (0..size)
@@ -326,8 +327,8 @@ fn bench_reports(c: &mut Criterion) {
             "currency".to_string(),
             vec!["GBP".to_string(), "EUR".to_string()],
         )]),
-        from: NaiveDate::from_ymd_opt(2026, 1, 1),
-        to: NaiveDate::from_ymd_opt(2026, 12, 31),
+        from: Date::from_ymd(2026, 1, 1),
+        to: Date::from_ymd(2026, 12, 31),
         convert_to: None,
         rate_date: None,
         rate_basis: None,

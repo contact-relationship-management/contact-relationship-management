@@ -98,7 +98,7 @@ pub(crate) async fn apply_consent_in(
     source: &str,
     actor: Option<&str>,
 ) -> Result<()> {
-    let now: crate::models::DateTimeWithTimeZone = crate::clock::now().into();
+    let now: crate::models::DateTimeWithTimeZone = crate::clock::now();
     sqlx::query!(
         "INSERT INTO consent_events (pid, contact_pid, action, source, purpose, occurred_at) \
          VALUES ($1, $2, $3, $4, $5, $6)",
@@ -123,7 +123,7 @@ pub(crate) async fn apply_consent_in(
         .execute(&mut *txn)
         .await?;
     } else {
-        crate::consents::set_other(&mut *txn, contact_pid, purpose, action, now.to_utc()).await?;
+        crate::consents::set_other(&mut *txn, contact_pid, purpose, action, now).await?;
     }
     if action == "withdrawn" {
         // Exit every active enrolment in a sequence sent under this purpose.
@@ -183,7 +183,7 @@ pub(crate) struct ConsentRequested {
     /// The page to put in the confirmation message. It changes nothing until its button
     /// is pressed.
     confirm_url: String,
-    expires_at: chrono::DateTime<chrono::Utc>,
+    expires_at: crate::time::Timestamp,
 }
 
 /// How long a confirmation link works.
@@ -226,7 +226,7 @@ pub(super) async fn request_consent(
         .position(|p| *p == payload.purpose)
         .and_then(|i| u8::try_from(i).ok())
         .ok_or_else(|| unprocessable("unknown purpose"))?;
-    let expires_at = crate::clock::now() + chrono::Duration::days(CONFIRM_DAYS);
+    let expires_at = crate::clock::now() + crate::time::days(CONFIRM_DAYS);
     apply_consent(
         pool,
         contact,
@@ -252,7 +252,7 @@ pub(super) async fn request_consent(
 #[schemars(rename = "PreferencesLink")]
 pub(crate) struct PreferencesLink {
     url: String,
-    expires_at: chrono::DateTime<chrono::Utc>,
+    expires_at: crate::time::Timestamp,
 }
 
 /// `POST /api/contacts/{pid}/preferences-link` — a signed link to the page where
@@ -265,7 +265,7 @@ pub(super) async fn preferences_link(
     let signer = unsubscriber()?;
     let pool = db::pool(&ctx);
     let contact = find_contact(pool, pid).await?;
-    let expires_at = crate::clock::now() + chrono::Duration::days(PREFERENCES_DAYS);
+    let expires_at = crate::clock::now() + crate::time::days(PREFERENCES_DAYS);
     let token = crate::link_tokens::issue(
         pool,
         crate::link_tokens::PREFERENCES,

@@ -37,11 +37,11 @@ pub(crate) struct SettingsView {
     /// 365; 14 until one is set).
     stalled_after_days: u32,
     /// When they were last changed.
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
     /// Who changed them last; absent while they are the starting values.
     set_by: Option<String>,
     /// "Today" in the organization's zone.
-    today: chrono::NaiveDate,
+    today: crate::time::Date,
 }
 
 /// `PUT /api/settings/organization` body.
@@ -64,7 +64,7 @@ struct Stored {
     time_zone: String,
     fiscal_year_start_month: i16,
     stalled_after_days: i16,
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
     set_by: Option<String>,
 }
 
@@ -142,12 +142,12 @@ pub async fn stalled_after_days<'e>(db: impl PgExecutor<'e>) -> Result<u32> {
 pub async fn caller_today<'e>(
     db: impl PgExecutor<'e>,
     headers: &axum::http::HeaderMap,
-) -> Result<chrono::NaiveDate> {
+) -> Result<crate::time::Date> {
     let org = periods(db).await?;
     let named = headers.get(USER_ZONE_HEADER).and_then(|v| v.to_str().ok());
     Ok(periods::today_in(
         crate::clock::now(),
-        periods::caller_zone(named, &org),
+        &periods::caller_zone(named, &org),
     ))
 }
 
@@ -156,10 +156,10 @@ pub async fn caller_today<'e>(
 /// # Errors
 ///
 /// A database error.
-pub async fn organization_today<'e>(db: impl PgExecutor<'e>) -> Result<chrono::NaiveDate> {
+pub async fn organization_today<'e>(db: impl PgExecutor<'e>) -> Result<crate::time::Date> {
     Ok(periods::today_in(
         crate::clock::now(),
-        periods(db).await?.zone,
+        &periods(db).await?.zone,
     ))
 }
 
@@ -176,12 +176,12 @@ async fn view(pool: &PgPool) -> Result<SettingsView> {
         None => (crate::clock::now(), None),
     };
     Ok(SettingsView {
-        time_zone: found.zone.name().to_string(),
+        time_zone: periods::zone_name(&found.zone).to_string(),
         fiscal_year_start_month: found.fiscal_start_month,
         stalled_after_days: stalled_days,
         updated_at,
         set_by,
-        today: periods::today_in(crate::clock::now(), found.zone),
+        today: periods::today_in(crate::clock::now(), &found.zone),
     })
 }
 
@@ -227,7 +227,7 @@ async fn set(
          fiscal_year_start_month = EXCLUDED.fiscal_year_start_month, \
          stalled_after_days = EXCLUDED.stalled_after_days, set_by = EXCLUDED.set_by, \
          updated_at = now()",
-        zone.name(),
+        periods::zone_name(&zone),
         i16::try_from(month).unwrap_or(1),
         i16::try_from(stalled_days).unwrap_or(14),
         who,
@@ -241,7 +241,7 @@ async fn set(
         "set",
         caller.actor(),
         Some(serde_json::json!({
-            "time_zone": zone.name(),
+            "time_zone": periods::zone_name(&zone),
             "fiscal_year_start_month": month,
             "stalled_after_days": stalled_days,
         })),

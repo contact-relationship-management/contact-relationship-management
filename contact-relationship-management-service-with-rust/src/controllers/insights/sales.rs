@@ -35,8 +35,8 @@ pub(crate) struct StaleDeals {
     stale_deals: usize,
     deals: Vec<StaleDeal>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// An activity with a due day, in the follow-ups view.
@@ -49,8 +49,8 @@ pub(crate) struct Followup {
     subject_pid: Uuid,
     actor_ref: Option<String>,
     /// Always set: only activities with a due day are listed.
-    #[schemars(with = "chrono::NaiveDate")]
-    due_on: Option<chrono::NaiveDate>,
+    #[schemars(with = "crate::time::Date")]
+    due_on: Option<crate::time::Date>,
     overdue_days: Option<i64>,
 }
 
@@ -62,8 +62,8 @@ pub(crate) struct Followups {
     upcoming_30d: Vec<Followup>,
     open_by_recorder: std::collections::BTreeMap<String, usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// The deal a hygiene finding is about.
@@ -87,7 +87,7 @@ pub(crate) struct HygieneFinding {
     #[serde(skip_serializing_if = "Option::is_none")]
     score: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    expected_close_on: Option<chrono::NaiveDate>,
+    expected_close_on: Option<crate::time::Date>,
 }
 
 impl HygieneFinding {
@@ -109,16 +109,16 @@ pub(crate) struct HygieneFindings {
     threshold_days: i64,
     findings: Vec<HygieneFinding>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// The period an executive pack covers.
 #[derive(Debug, serde::Serialize, schemars::JsonSchema)]
 #[schemars(rename = "ExecutiveWindow")]
 pub(crate) struct ExecutiveWindow {
-    from: chrono::DateTime<chrono::Utc>,
-    to: chrono::DateTime<chrono::Utc>,
+    from: crate::time::Timestamp,
+    to: crate::time::Timestamp,
 }
 
 /// `GET /api/insights/executive`. Won value is `null` when masked.
@@ -137,15 +137,15 @@ pub(crate) struct ExecutivePack {
     consent_withdrawals: u64,
     note: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// One stored forecast snapshot. Totals are `null` when masked.
 #[derive(Debug, serde::Serialize, schemars::JsonSchema)]
 #[schemars(rename = "ForecastTrendPoint")]
 pub(crate) struct TrendPoint {
-    taken_on: chrono::NaiveDate,
+    taken_on: crate::time::Date,
     #[schemars(with = "Option<std::collections::BTreeMap<String, i64>>")]
     totals: Option<serde_json::Value>,
 }
@@ -156,8 +156,8 @@ pub(crate) struct ForecastTrends {
     note: &'static str,
     series: Vec<TrendPoint>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "chrono::DateTime<chrono::Utc>")]
-    as_of: Option<chrono::DateTime<chrono::Utc>>,
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
 }
 
 /// `GET /api/insights/stale-deals?days=` — open deals by days in their
@@ -179,10 +179,10 @@ pub(super) async fn stale_deals(
         .map(|stage| (stage.pid, stage.name))
         .collect();
     let moves = rows::deal_audits(db::pool(&ctx), &["deal_stage_changed"]).await?;
-    let mut last_move: std::collections::BTreeMap<Uuid, chrono::DateTime<chrono::Utc>> =
+    let mut last_move: std::collections::BTreeMap<Uuid, crate::time::Timestamp> =
         std::collections::BTreeMap::new();
     for row in &moves {
-        let at = row.created_at.to_utc();
+        let at = row.created_at;
         let entry = last_move.entry(row.entity_pid).or_insert(at);
         if at > *entry {
             *entry = at;
@@ -199,11 +199,8 @@ pub(super) async fn stale_deals(
                 &auth::deal_resource_attrs(deal),
             )
             .ok()?;
-            let entered = last_move
-                .get(&deal.pid)
-                .copied()
-                .unwrap_or_else(|| deal.created_at.to_utc());
-            let days_in_stage = (now - entered).num_days();
+            let entered = last_move.get(&deal.pid).copied().unwrap_or(deal.created_at);
+            let days_in_stage = crate::time::whole_days(now - entered);
             let masked = obligations.iter().any(|o| o == "mask");
             Some((
                 days_in_stage,
@@ -257,7 +254,7 @@ pub(super) async fn followups(
     // The caller's day (CRM-T179), as attainment's.
     let today =
         crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
-    let horizon = today + chrono::Days::new(30);
+    let horizon = today + crate::time::days(30);
     let rows: Vec<activities::Model> =
         rows::open_dated_activities(db::pool(&ctx), query.kind.as_deref()).await?;
     let view = |activity: &activities::Model| Followup {
@@ -271,7 +268,7 @@ pub(super) async fn followups(
         overdue_days: activity
             .due_on
             .filter(|due| *due < today)
-            .map(|due| (today - due).num_days()),
+            .map(|due| crate::time::whole_days(today - due)),
     };
     let mut overdue: Vec<&activities::Model> = rows
         .iter()
@@ -322,13 +319,13 @@ pub(super) async fn pipeline_hygiene(
     let open: Vec<deals::Model> = rows::open_deals(db::pool(&ctx)).await?;
     // Only the leads the rule is about, not all of them.
     let lead_rows: Vec<leads::Model> = rows::unworked_leads(db::pool(&ctx)).await?;
-    let touches: std::collections::HashMap<(String, Uuid), chrono::DateTime<chrono::Utc>> =
+    let touches: std::collections::HashMap<(String, Uuid), crate::time::Timestamp> =
         super::rollup::touches(crate::db::pool(&ctx))
             .await?
             .into_iter()
             .map(|t| ((t.subject_kind, t.subject_pid), t.last_at))
             .collect();
-    let last_touch = |kind: &str, pid: Uuid| -> Option<chrono::DateTime<chrono::Utc>> {
+    let last_touch = |kind: &str, pid: Uuid| -> Option<crate::time::Timestamp> {
         touches.get(&(kind.to_string(), pid)).copied()
     };
     let mut findings: Vec<HygieneFinding> = Vec::new();
@@ -361,7 +358,7 @@ pub(super) async fn pipeline_hygiene(
             });
         }
         let untouched = match last_touch("deal", deal.pid) {
-            Some(at) => (now - at).num_days() > threshold,
+            Some(at) => crate::time::whole_days(now - at) > threshold,
             None => true,
         };
         if untouched {
@@ -377,8 +374,8 @@ pub(super) async fn pipeline_hygiene(
         .filter(|l| matches!(l.status.as_str(), "new" | "contacted"))
     {
         let untouched = match last_touch("lead", lead.pid) {
-            Some(at) => (now - at).num_days() > threshold,
-            None => (now - lead.created_at.to_utc()).num_days() > threshold,
+            Some(at) => crate::time::whole_days(now - at) > threshold,
+            None => crate::time::whole_days(now - lead.created_at) > threshold,
         };
         if untouched {
             findings.push(HygieneFinding {
@@ -428,8 +425,8 @@ pub(super) async fn executive(
         .from
         .as_deref()
         .and_then(|raw| parse_instant(raw, false))
-        .unwrap_or(to - chrono::Days::new(30));
-    let in_window = |at: chrono::DateTime<chrono::Utc>| at >= from && at <= to;
+        .unwrap_or(to - crate::time::days(30));
+    let in_window = |at: crate::time::Timestamp| at >= from && at <= to;
 
     // Only the deals closed in the window.
     let deal_rows: Vec<deals::Model> = rows::deals_closed_between(db::pool(&ctx), from, to).await?;
@@ -440,7 +437,7 @@ pub(super) async fn executive(
         std::collections::BTreeMap::new();
     for deal in deal_rows
         .iter()
-        .filter(|d| d.closed_at.is_some_and(|at| in_window(at.to_utc())))
+        .filter(|d| d.closed_at.is_some_and(&in_window))
     {
         if deal.won {
             won += 1;

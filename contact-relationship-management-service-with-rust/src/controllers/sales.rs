@@ -90,7 +90,7 @@ pub(crate) struct DealPayload {
     #[serde(default)]
     owner_ref: Option<String>,
     #[serde(default)]
-    expected_close_on: Option<chrono::NaiveDate>,
+    expected_close_on: Option<crate::time::Date>,
     #[serde(default)]
     source_campaign_pid: Option<Uuid>,
 }
@@ -128,7 +128,7 @@ async fn score_lead<'e>(
     .fetch_one(db)
     .await?;
     let now = crate::clock::now();
-    let days_since_last = activity.last.map(|at| (now - at).num_days());
+    let days_since_last = activity.last.map(|at| crate::time::whole_days(now - at));
     let facts = scoring::LeadFacts {
         source: lead.source.clone(),
         campaign_attributed: lead.campaign_pid.is_some(),
@@ -296,7 +296,7 @@ pub(crate) struct PipelineWithStages {
 /// `GET /api/forecast`: the stage-weighted forecast per currency over open deals.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct Forecast {
-    as_of: chrono::DateTime<chrono::Utc>,
+    as_of: crate::time::Timestamp,
     open_deals: usize,
     /// Minor units per currency, never summed across currencies; `null` when masked.
     #[schemars(with = "Option<std::collections::BTreeMap<String, i64>>")]
@@ -307,7 +307,7 @@ pub(crate) struct Forecast {
     /// `convert_to`; what had no rate is left out (see `unconverted`). `null` when masked.
     converted_minor: Option<i64>,
     /// With `convert_to`: the day whose exchange rates were used.
-    rate_date: Option<chrono::NaiveDate>,
+    rate_date: Option<crate::time::Date>,
     /// With `convert_to`: the rate used for each currency that was converted.
     rates: Vec<super::fx_rates::RateUsed>,
     /// With `convert_to`: totals that had no rate in force, left out and never taken at 1.0.
@@ -320,7 +320,7 @@ struct ForecastQuery {
     /// Also show the forecast in this currency, an ISO 4217 code (CRM-R53, CRM-T168).
     convert_to: Option<String>,
     /// The day whose exchange rates are used (today when absent); only with `convert_to`.
-    rate_date: Option<chrono::NaiveDate>,
+    rate_date: Option<crate::time::Date>,
 }
 
 /// `GET /api/leads/{pid}` — the lead + its live score breakdown.
@@ -674,14 +674,14 @@ pub(crate) struct ListedDeal {
     /// `stalled_after_days` or more. Derived on every read, never stored.
     stalled: bool,
     /// The later of the last stage move and the last activity on the deal that has happened.
-    last_touched_at: chrono::DateTime<chrono::Utc>,
+    last_touched_at: crate::time::Timestamp,
 }
 
 /// The newest `occurred_at` that has happened of the live activities on each of `pids`.
 async fn last_activities(
     pool: &PgPool,
     pids: &[Uuid],
-) -> Result<std::collections::HashMap<Uuid, chrono::DateTime<chrono::Utc>>> {
+) -> Result<std::collections::HashMap<Uuid, crate::time::Timestamp>> {
     if pids.is_empty() {
         return Ok(std::collections::HashMap::new());
     }
@@ -709,11 +709,8 @@ async fn listed(ctx: &AppContext, rows: Vec<deals::Model>) -> Result<Vec<ListedD
     Ok(rows
         .into_iter()
         .map(|deal| {
-            let touched = stalled::last_touch(
-                deal.stage_moved_at.to_utc(),
-                activity.get(&deal.pid).copied(),
-                now,
-            );
+            let touched =
+                stalled::last_touch(deal.stage_moved_at, activity.get(&deal.pid).copied(), now);
             ListedDeal {
                 stalled: stalled::is_stalled(deal.closed_at.is_some(), touched, now, days),
                 last_touched_at: touched,
@@ -931,7 +928,7 @@ async fn reopen_deal(
     let target = rows::last_open_stage_of(&mut *txn, deal.pipeline_pid)
         .await?
         .ok_or_else(|| unprocessable("pipeline has no open stage"))?;
-    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let now: DateTimeWithTimeZone = crate::clock::now();
     let row = sqlx::query_as!(
         deals::Model,
         "UPDATE deals SET stage_pid = $2, stage_moved_at = $3, closed_at = NULL, won = false, \

@@ -42,9 +42,7 @@ fn insight_key(
 
 /// Make every cached insight stale: a write has happened.
 async fn bump_cache_generation(cache: &Cache) {
-    let stamp = crate::clock::now()
-        .timestamp_nanos_opt()
-        .unwrap_or_default();
+    let stamp = i64::try_from(crate::clock::now().0.as_nanosecond()).unwrap_or_default();
     match tokio::time::timeout(
         CACHE_WAIT,
         cache.set_with_ttl(CACHE_GEN_KEY, &stamp, INSIGHT_TTL * 4),

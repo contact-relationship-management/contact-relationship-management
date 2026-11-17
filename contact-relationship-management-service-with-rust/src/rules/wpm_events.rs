@@ -12,7 +12,7 @@
 
 use std::str::FromStr;
 
-use chrono::{DateTime, NaiveDate, Utc};
+use crate::time::{Date, Timestamp};
 use entity_ref::{EntityRef, EntityType};
 use hmac::{Hmac, KeyInit, Mac};
 use serde::Deserialize;
@@ -129,9 +129,9 @@ pub struct Handoff {
     /// An `organization:` URN.
     pub organization_ref: String,
     /// The first day of employment, or the day it ends.
-    pub effective_on: NaiveDate,
+    pub effective_on: Date,
     /// When WPM recorded the change.
-    pub occurred_at: DateTime<Utc>,
+    pub occurred_at: Timestamp,
 }
 
 /// When a hire or leave happened, for ordering (CRM-R93): first by when WPM recorded it, then, for
@@ -140,9 +140,9 @@ pub struct Handoff {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Stamp {
     /// When WPM recorded the change.
-    pub occurred_at: DateTime<Utc>,
+    pub occurred_at: Timestamp,
     /// The day it takes effect.
-    pub effective_on: NaiveDate,
+    pub effective_on: Date,
 }
 
 impl Handoff {
@@ -216,14 +216,13 @@ pub fn decide(event: &Event) -> Result<Decision, String> {
     let effective_on = data
         .get("effective_on")
         .and_then(serde_json::Value::as_str)
-        .and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+        .and_then(Date::parse_ymd)
         .ok_or("data.effective_on is not a date (YYYY-MM-DD)")?;
     let occurred_at = event
         .occurred_at
         .as_ref()
         .and_then(serde_json::Value::as_str)
-        .and_then(|t| DateTime::parse_from_rfc3339(t).ok())
-        .map(|t| t.with_timezone(&Utc))
+        .and_then(Timestamp::parse_rfc3339)
         .ok_or("occurred_at is not a time (RFC 3339)")?;
     let handoff = Handoff {
         person_ref,
@@ -366,10 +365,8 @@ mod tests {
         let want = Handoff {
             person_ref: P.to_string(),
             organization_ref: O.to_string(),
-            effective_on: NaiveDate::from_ymd_opt(2026, 11, 2).unwrap(),
-            occurred_at: DateTime::parse_from_rfc3339("2026-10-30T12:00:00Z")
-                .unwrap()
-                .with_timezone(&Utc),
+            effective_on: Date::from_ymd(2026, 11, 2).unwrap(),
+            occurred_at: "2026-10-30T12:00:00Z".parse().unwrap(),
         };
         assert_eq!(
             decide(&event("worker_hired", Some(handoff()))),
@@ -466,12 +463,10 @@ mod tests {
         );
     }
 
-    fn stamp(at: &str, on: (i32, u32, u32)) -> Stamp {
+    fn stamp(at: &str, on: (i16, i8, i8)) -> Stamp {
         Stamp {
-            occurred_at: DateTime::parse_from_rfc3339(at)
-                .unwrap()
-                .with_timezone(&Utc),
-            effective_on: NaiveDate::from_ymd_opt(on.0, on.1, on.2).unwrap(),
+            occurred_at: Timestamp::parse_rfc3339(at).unwrap(),
+            effective_on: Date::from_ymd(on.0, on.1, on.2).unwrap(),
         }
     }
 

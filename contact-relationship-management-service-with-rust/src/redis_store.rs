@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use chrono::{DateTime, Utc};
+use crate::time::Timestamp;
 use redis::AsyncCommands;
 use redis::aio::ConnectionManager;
 
@@ -97,18 +97,18 @@ impl Shared {
     pub async fn put_grant(
         &self,
         subject: &str,
-        expires_at: DateTime<Utc>,
+        expires_at: Timestamp,
     ) -> Result<(), redis::RedisError> {
         let key = format!("{GRANT_PREFIX}{subject}");
-        let secs = (expires_at - crate::clock::now()).num_seconds();
+        let secs = (expires_at - crate::clock::now()).as_secs();
         if secs <= 0 {
             return Ok(());
         }
         let mut conn = self.conn.clone();
         let existing: Option<String> = conn.get(&key).await?;
         if existing
-            .and_then(|v| DateTime::parse_from_rfc3339(&v).ok())
-            .is_some_and(|e| e.with_timezone(&Utc) >= expires_at)
+            .and_then(|v| Timestamp::parse_rfc3339(&v))
+            .is_some_and(|e| e >= expires_at)
         {
             return Ok(());
         }
@@ -121,7 +121,7 @@ impl Shared {
     /// # Errors
     ///
     /// On any Redis error.
-    pub async fn grants(&self) -> Result<HashMap<String, DateTime<Utc>>, redis::RedisError> {
+    pub async fn grants(&self) -> Result<HashMap<String, Timestamp>, redis::RedisError> {
         let mut conn = self.conn.clone();
         let keys: Vec<String> = {
             let mut iter = conn
@@ -138,9 +138,9 @@ impl Shared {
             let value: Option<String> = conn.get(&key).await?;
             if let (Some(subject), Some(expires_at)) = (
                 key.strip_prefix(GRANT_PREFIX),
-                value.and_then(|v| DateTime::parse_from_rfc3339(&v).ok()),
+                value.and_then(|v| Timestamp::parse_rfc3339(&v)),
             ) {
-                live.insert(subject.to_string(), expires_at.with_timezone(&Utc));
+                live.insert(subject.to_string(), expires_at);
             }
         }
         Ok(live)
@@ -178,16 +178,19 @@ mod tests {
             return;
         };
         let subject = format!("user-{}", uuid::Uuid::new_v4());
-        let later = crate::clock::now() + chrono::Duration::minutes(30);
-        let sooner = crate::clock::now() + chrono::Duration::minutes(5);
+        let later = crate::clock::now() + jiff::SignedDuration::from_mins(30);
+        let sooner = crate::clock::now() + jiff::SignedDuration::from_mins(5);
         shared.put_grant(&subject, later).await.unwrap();
         shared.put_grant(&subject, sooner).await.unwrap();
         let live = shared.grants().await.unwrap();
         let seen = live.get(&subject).expect("grant published");
-        assert!((*seen - later).num_seconds().abs() <= 1, "kept the later");
+        assert!((*seen - later).as_secs().abs() <= 1, "kept the later");
         let expired = format!("user-{}", uuid::Uuid::new_v4());
         shared
-            .put_grant(&expired, crate::clock::now() - chrono::Duration::minutes(1))
+            .put_grant(
+                &expired,
+                crate::clock::now() - jiff::SignedDuration::from_mins(1),
+            )
             .await
             .unwrap();
         assert!(!shared.grants().await.unwrap().contains_key(&expired));

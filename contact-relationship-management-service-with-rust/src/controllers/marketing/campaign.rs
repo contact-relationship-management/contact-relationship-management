@@ -368,7 +368,7 @@ pub(super) async fn deliver_one(
     };
     drop(conn);
     // The delivery row and the touch activity commit together.
-    let now: DateTimeWithTimeZone = crate::clock::now().into();
+    let now: DateTimeWithTimeZone = crate::clock::now();
     let mut txn = pool.begin().await?;
     deliveries::settle(&mut *txn, item.id, "sent", Some(&message_id), None).await?;
     if let Some(provider_id) = &provider_id {
@@ -653,7 +653,7 @@ pub(crate) struct CampaignFunnel {
     roi: Option<analytics::Ratio>,
     /// With `convert=true`: the day whose exchange rates were used (CRM-R52); `null` with
     /// `rate_basis`, where each deal has its own.
-    rate_date: Option<chrono::NaiveDate>,
+    rate_date: Option<crate::time::Date>,
     /// `close_day` when each deal was converted at the rate of the day it closed (CRM-R86).
     rate_basis: Option<String>,
     /// With `convert=true`: the rate used for each currency that was converted.
@@ -668,7 +668,7 @@ pub(super) struct FunnelQuery {
     /// Convert revenue won in other currencies into the campaign's currency (CRM-R52).
     convert: Option<bool>,
     /// The day whose exchange rates are used (today when absent); only with `convert=true`.
-    rate_date: Option<chrono::NaiveDate>,
+    rate_date: Option<crate::time::Date>,
     /// `close_day`: convert each deal at the rate of the day it closed (CRM-R86); only with
     /// `convert=true`, and not with `rate_date`.
     rate_basis: Option<String>,
@@ -812,13 +812,13 @@ pub(super) async fn campaign_funnel(
         // no rate on its day is all that stays listed apart. The day is the organization's
         // (CRM-T181).
         let calendar = crate::controllers::organization::periods(crate::db::pool(&ctx)).await?;
-        let foreign: Vec<(chrono::NaiveDate, String, i64)> = attributed_deals
+        let foreign: Vec<(crate::time::Date, String, i64)> = attributed_deals
             .iter()
             .filter(|deal| !deal.currency.eq_ignore_ascii_case(&campaign.currency))
             .map(|deal| {
                 (
                     crate::rules::periods::day_of(
-                        deal.closed_at.unwrap_or(deal.updated_at).to_utc(),
+                        deal.closed_at.unwrap_or(deal.updated_at),
                         &calendar,
                     ),
                     deal.currency.clone(),

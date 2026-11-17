@@ -178,7 +178,7 @@ pub async fn emit_in(
 ) -> axa::Result<()> {
     let env = envelope(entity, kind, pid, name, actor, data);
     if transport().is_outbox() {
-        OutboxInsert::from_envelope(&env, crate::clock::now().into())
+        OutboxInsert::from_envelope(&env, crate::clock::now())
             .map_err(axa::Error::Model)?
             .insert_in(conn)
             .await?;

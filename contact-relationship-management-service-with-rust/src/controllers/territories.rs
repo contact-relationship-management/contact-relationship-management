@@ -7,8 +7,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
 
+use crate::time::Date;
 use axa::prelude::*;
-use chrono::NaiveDate;
 use entity_ref::{EntityRef, EntityType};
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
@@ -220,9 +220,9 @@ async fn remove_territory(
 #[derive(Debug, Deserialize)]
 struct TerritoryQuery {
     /// First day of the period (90 days before `to` when absent).
-    from: Option<NaiveDate>,
+    from: Option<Date>,
     /// Last day of the period (today when absent).
-    to: Option<NaiveDate>,
+    to: Option<Date>,
 }
 
 /// Won revenue in one currency.
@@ -251,9 +251,9 @@ pub(crate) struct TerritoryStanding {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "TerritoryAttainmentReport")]
 pub(crate) struct TerritoryReport {
-    as_of: chrono::DateTime<chrono::Utc>,
-    from: NaiveDate,
-    to: NaiveDate,
+    as_of: crate::time::Timestamp,
+    from: Date,
+    to: Date,
     rows: Vec<TerritoryStanding>,
     /// Won revenue on accounts in no territory, and on deals with no account.
     unassigned: Vec<TerritoryRevenue>,
@@ -279,8 +279,8 @@ async fn territory_attainment(
     };
     let from = query
         .from
-        .unwrap_or_else(|| to - chrono::Duration::days(DEFAULT_PERIOD_DAYS));
-    if from > to || (to - from).num_days() > MAX_PERIOD_DAYS {
+        .unwrap_or_else(|| to - crate::time::days(DEFAULT_PERIOD_DAYS));
+    if from > to || crate::time::whole_days(to - from) > MAX_PERIOD_DAYS {
         return Err(super::unprocessable(&format!(
             "/from: not after /to, and at most {MAX_PERIOD_DAYS} days before it"
         )));
@@ -301,7 +301,7 @@ async fn territory_attainment(
              AND (d.closed_at AT TIME ZONE $3::text)::date BETWEEN $1 AND $2"#,
         from,
         to,
-        calendar.zone.name(),
+        crate::rules::periods::zone_name(&calendar.zone),
     )
     .fetch_all(&mut *conn)
     .await?;

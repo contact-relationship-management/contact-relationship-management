@@ -2,7 +2,7 @@
 //! last touch, the later of its last stage move and its last activity that has happened. A closed
 //! deal never is. N is the organization's `stalled_after_days`.
 
-use chrono::{DateTime, Duration, Utc};
+use crate::time::{Timestamp, days as whole_days};
 
 /// N until an administrator sets one.
 pub const DEFAULT_DAYS: u32 = 14;
@@ -25,10 +25,10 @@ pub fn days(raw: i64) -> Result<u32, &'static str> {
 /// happened by `now` (a planned activity is not a touch yet).
 #[must_use]
 pub fn last_touch(
-    stage_moved_at: DateTime<Utc>,
-    last_activity: Option<DateTime<Utc>>,
-    now: DateTime<Utc>,
-) -> DateTime<Utc> {
+    stage_moved_at: Timestamp,
+    last_activity: Option<Timestamp>,
+    now: Timestamp,
+) -> Timestamp {
     match last_activity {
         Some(at) if at <= now && at > stage_moved_at => at,
         _ => stage_moved_at,
@@ -37,16 +37,16 @@ pub fn last_touch(
 
 /// Whether a deal last touched at `touched` is stalled at `now` after `days` days.
 #[must_use]
-pub fn is_stalled(closed: bool, touched: DateTime<Utc>, now: DateTime<Utc>, days: u32) -> bool {
-    !closed && now - touched >= Duration::days(i64::from(days))
+pub fn is_stalled(closed: bool, touched: Timestamp, now: Timestamp, days: u32) -> bool {
+    !closed && now - touched >= whole_days(i64::from(days))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn at(s: &str) -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339(s).unwrap().to_utc()
+    fn at(s: &str) -> Timestamp {
+        s.parse().unwrap()
     }
 
     #[test]

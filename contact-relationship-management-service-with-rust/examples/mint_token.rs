@@ -39,7 +39,7 @@ fn main() {
                                    "kid": kid, "x": URL_SAFE_NO_PAD.encode(public) }] });
     std::fs::write(&keys_file, keys.to_string()).expect("write the key set");
 
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let payload: Value = json!({
         "sub": sub, "email": "operator@example.com", "name": "Image smoke test",
         "iss": "authentication-service", "aud": "main-x-service",

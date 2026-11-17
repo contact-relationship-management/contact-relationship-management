@@ -19,14 +19,16 @@
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::time::Duration;
 
-use chrono::{DateTime, TimeDelta, Utc};
+use jiff::SignedDuration;
 use sqlx::PgPool;
+
+use crate::time::Timestamp;
 
 /// How often the gap is measured again.
 pub const SYNC_EVERY: Duration = Duration::from_secs(60);
 
 /// A gap larger than this is logged as a warning.
-pub const WARN_AFTER: TimeDelta = TimeDelta::seconds(1);
+pub const WARN_AFTER: SignedDuration = SignedDuration::from_secs(1);
 
 /// How long start-up waits for the first measurement before going on with the last one.
 const FIRST_SYNC_WAIT: Duration = Duration::from_secs(5);
@@ -39,28 +41,35 @@ static STARTED: AtomicBool = AtomicBool::new(false);
 
 /// The time now, on the database's clock.
 #[must_use]
-pub fn now() -> DateTime<Utc> {
-    shifted(Utc::now(), offset())
+pub fn now() -> Timestamp {
+    shifted(Timestamp::now(), offset())
 }
 
-fn shifted(host: DateTime<Utc>, offset: TimeDelta) -> DateTime<Utc> {
+fn shifted(host: Timestamp, offset: SignedDuration) -> Timestamp {
     host + offset
 }
 
 /// The database's clock minus the host's, as last measured; zero before the first measurement.
 #[must_use]
-pub fn offset() -> TimeDelta {
-    TimeDelta::milliseconds(OFFSET_MS.load(Ordering::Relaxed))
+pub fn offset() -> SignedDuration {
+    SignedDuration::from_millis(OFFSET_MS.load(Ordering::Relaxed))
 }
 
-fn set_offset(offset: TimeDelta) {
-    OFFSET_MS.store(offset.num_milliseconds(), Ordering::Relaxed);
+fn set_offset(offset: SignedDuration) {
+    // Whole milliseconds toward zero, as `chrono`'s `num_milliseconds` gave them; a gap too large
+    // for an `i64` of milliseconds (some 292 million years) is held at the largest.
+    let ms = i64::try_from(offset.as_millis()).unwrap_or(if offset.is_negative() {
+        i64::MIN
+    } else {
+        i64::MAX
+    });
+    OFFSET_MS.store(ms, Ordering::Relaxed);
 }
 
 /// The gap, from a database reading `database` taken between host readings `sent` and
 /// `received`: the database read its clock, at best guess, halfway between.
 #[must_use]
-pub fn gap(sent: DateTime<Utc>, database: DateTime<Utc>, received: DateTime<Utc>) -> TimeDelta {
+pub fn gap(sent: Timestamp, database: Timestamp, received: Timestamp) -> SignedDuration {
     let midpoint = sent + (received - sent) / 2;
     database - midpoint
 }
@@ -70,19 +79,19 @@ pub fn gap(sent: DateTime<Utc>, database: DateTime<Utc>, received: DateTime<Utc>
 /// # Errors
 ///
 /// When the database cannot be asked; the last gap stays.
-pub async fn sync(pool: &PgPool) -> Result<TimeDelta, sqlx::Error> {
-    let sent = Utc::now();
-    let database: DateTime<Utc> = sqlx::query_scalar("SELECT now()").fetch_one(pool).await?;
-    let received = Utc::now();
+pub async fn sync(pool: &PgPool) -> Result<SignedDuration, sqlx::Error> {
+    let sent = Timestamp::now();
+    let database: Timestamp = sqlx::query_scalar("SELECT now()").fetch_one(pool).await?;
+    let received = Timestamp::now();
     let measured = gap(sent, database, received);
     set_offset(measured);
     Ok(measured)
 }
 
-fn report(measured: TimeDelta) {
+fn report(measured: SignedDuration) {
     if measured.abs() > WARN_AFTER {
         tracing::warn!(
-            offset_ms = measured.num_milliseconds(),
+            offset_ms = measured.as_millis(),
             "this host's clock is off from the database's; record times follow the database's"
         );
     }
@@ -118,27 +127,39 @@ mod tests {
 
     use super::*;
 
-    fn at(ms: i64) -> DateTime<Utc> {
-        DateTime::from_timestamp_millis(1_800_000_000_000 + ms).unwrap()
+    fn at(ms: i64) -> Timestamp {
+        jiff::Timestamp::from_millisecond(1_800_000_000_000 + ms)
+            .unwrap()
+            .into()
     }
 
     #[test]
     fn the_gap_is_taken_from_the_middle_of_the_round_trip() {
-        assert_eq!(gap(at(0), at(50), at(100)), TimeDelta::zero());
-        assert_eq!(gap(at(0), at(539_050), at(100)), TimeDelta::seconds(539));
-        assert_eq!(gap(at(0), at(-1_950), at(100)), TimeDelta::seconds(-2));
+        assert_eq!(gap(at(0), at(50), at(100)), SignedDuration::ZERO);
+        assert_eq!(
+            gap(at(0), at(539_050), at(100)),
+            SignedDuration::from_secs(539)
+        );
+        assert_eq!(
+            gap(at(0), at(-1_950), at(100)),
+            SignedDuration::from_secs(-2)
+        );
     }
 
     #[test]
     fn now_is_the_host_clock_moved_by_the_offset() {
-        assert_eq!(shifted(at(1_000), TimeDelta::seconds(-539)), at(-538_000));
-        assert_eq!(shifted(at(1_000), TimeDelta::zero()), at(1_000));
+        assert_eq!(
+            shifted(at(1_000), SignedDuration::from_secs(-539)),
+            at(-538_000)
+        );
+        assert_eq!(shifted(at(1_000), SignedDuration::ZERO), at(1_000));
     }
 
     /// The files that may still read the host's clock, and why. Anything else that stamps or
     /// compares a record's time takes [`now`].
     const HOST_CLOCK: &[(&str, &str)] = &[
         ("src/clock.rs", "the clock itself"),
+        ("src/time.rs", "the host's reading that the clock moves"),
         (
             "src/webhook.rs",
             "a provider's signed timestamp is on the provider's clock",
@@ -169,10 +190,17 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
         let mut files = Vec::new();
         rust_files(&root.join("src"), &mut files);
-        let needle = ["Utc", "::now()"].concat();
+        // `jiff`'s and the wrapper's `Timestamp::now()`, and the wrapper's `today_utc()`.
+        let needles = [
+            ["Timestamp", "::now()"].concat(),
+            ["today", "_utc()"].concat(),
+        ];
         let mut readers: Vec<String> = files
             .iter()
-            .filter(|path| std::fs::read_to_string(path).unwrap().contains(&needle))
+            .filter(|path| {
+                let text = std::fs::read_to_string(path).unwrap();
+                needles.iter().any(|needle| text.contains(needle.as_str()))
+            })
             .map(|path| path.strip_prefix(root).unwrap().display().to_string())
             .collect();
         readers.sort();

@@ -9,8 +9,8 @@
 
 use std::collections::BTreeMap;
 
+use crate::time::Date;
 use axa::prelude::*;
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
 use uuid::Uuid;
@@ -207,7 +207,7 @@ async fn remove_team(
 #[derive(Debug, Deserialize)]
 struct TeamQuery {
     /// The day the quotas' periods must contain (today when absent).
-    at: Option<NaiveDate>,
+    at: Option<Date>,
 }
 
 /// A team's quotas and revenue in one currency.
@@ -248,8 +248,8 @@ pub(crate) struct TeamStanding {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "TeamAttainmentReport")]
 pub(crate) struct TeamReport {
-    as_of: chrono::DateTime<chrono::Utc>,
-    at: NaiveDate,
+    as_of: crate::time::Timestamp,
+    at: Date,
     rows: Vec<TeamStanding>,
     note: &'static str,
 }

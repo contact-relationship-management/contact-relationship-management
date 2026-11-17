@@ -54,7 +54,7 @@ pub(crate) struct CommitPayload {
     /// Where the list came from (a trade show, a partner).
     source_note: String,
     /// The day the list was obtained.
-    obtained_on: chrono::NaiveDate,
+    obtained_on: crate::time::Date,
     /// Leave out rows that look like someone already known.
     #[serde(default)]
     skip_likely_duplicates: bool,
@@ -322,16 +322,16 @@ pub(crate) struct ImportRecord {
     pid: String,
     created_by: Option<String>,
     source_note: String,
-    obtained_on: chrono::NaiveDate,
+    obtained_on: crate::time::Date,
     /// `running`, `completed` or `undone`.
     status: String,
-    created_at: chrono::DateTime<chrono::Utc>,
+    created_at: crate::time::Timestamp,
     row_count: i32,
     invalid_count: i32,
     skipped_count: i32,
     /// Leads this import made.
     created_count: usize,
-    undone_at: Option<chrono::DateTime<chrono::Utc>>,
+    undone_at: Option<crate::time::Timestamp>,
     /// Leads removed by the undo.
     undone_count: Option<i32>,
 }
@@ -341,14 +341,14 @@ struct Stored {
     pid: Uuid,
     created_by: Option<String>,
     source_note: String,
-    obtained_on: chrono::NaiveDate,
+    obtained_on: crate::time::Date,
     status: String,
-    created_at: chrono::DateTime<chrono::Utc>,
+    created_at: crate::time::Timestamp,
     row_count: i32,
     invalid_count: i32,
     skipped_count: i32,
     lead_pids: serde_json::Value,
-    undone_at: Option<chrono::DateTime<chrono::Utc>>,
+    undone_at: Option<crate::time::Timestamp>,
     undone_count: Option<i32>,
 }
 

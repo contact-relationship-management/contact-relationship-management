@@ -66,17 +66,17 @@ struct WindowQuery {
 }
 
 /// Parse one window boundary.
-fn parse_instant(raw: &str, end_of_day: bool) -> Option<chrono::DateTime<chrono::Utc>> {
-    if let Ok(instant) = raw.parse::<chrono::DateTime<chrono::Utc>>() {
+fn parse_instant(raw: &str, end_of_day: bool) -> Option<crate::time::Timestamp> {
+    if let Ok(instant) = raw.parse::<crate::time::Timestamp>() {
         return Some(instant);
     }
-    let date = raw.parse::<chrono::NaiveDate>().ok()?;
+    let date = raw.parse::<crate::time::Date>().ok()?;
     let time = if end_of_day {
-        chrono::NaiveTime::from_hms_opt(23, 59, 59)?
+        jiff::civil::time(23, 59, 59, 0)
     } else {
-        chrono::NaiveTime::MIN
+        jiff::civil::Time::midnight()
     };
-    Some(date.and_time(time).and_utc())
+    date.at_utc(time)
 }
 
 /// The insight routes (all read-only GETs).

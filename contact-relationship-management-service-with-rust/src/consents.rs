@@ -8,7 +8,7 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, Utc};
+use crate::time::Timestamp;
 use serde::Serialize;
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
@@ -25,7 +25,7 @@ pub struct PurposeState {
     /// `granted`, `withdrawn`, `never` or `pending`.
     pub state: String,
     /// When it last changed; absent for a purpose nobody has asked about.
-    pub changed_at: Option<DateTime<Utc>>,
+    pub changed_at: Option<Timestamp>,
 }
 
 /// The states held for the non-default purposes, with when they changed.
@@ -36,7 +36,7 @@ pub struct PurposeState {
 pub async fn others<'e>(
     db: impl PgExecutor<'e>,
     contact: Uuid,
-) -> Result<BTreeMap<String, (String, DateTime<Utc>)>, sqlx::Error> {
+) -> Result<BTreeMap<String, (String, Timestamp)>, sqlx::Error> {
     Ok(sqlx::query!(
         "SELECT purpose, state, changed_at FROM contact_consents WHERE contact_pid = $1 \
          AND channel = 'email'",
@@ -85,7 +85,7 @@ pub async fn all<'e>(
                 PurposeState {
                     purpose: (*purpose).to_string(),
                     state: contact.marketing_consent.clone(),
-                    changed_at: contact.consent_changed_at.map(|t| t.to_utc()),
+                    changed_at: contact.consent_changed_at,
                 }
             } else if let Some((state, at)) = held.remove(*purpose) {
                 PurposeState {
@@ -114,7 +114,7 @@ pub async fn set_other<'e>(
     contact: Uuid,
     purpose: &str,
     state: &str,
-    at: DateTime<Utc>,
+    at: Timestamp,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         "INSERT INTO contact_consents (contact_pid, purpose, state, changed_at) \
@@ -211,7 +211,7 @@ pub async fn tighten(
     let now = crate::clock::now();
     let mut out = Vec::new();
     for purpose in PURPOSES.iter().filter(|p| **p != DEFAULT_PURPOSE) {
-        let held = |m: &BTreeMap<String, (String, DateTime<Utc>)>| {
+        let held = |m: &BTreeMap<String, (String, Timestamp)>| {
             m.get(*purpose)
                 .map_or_else(|| "never".to_string(), |(state, _)| state.clone())
         };

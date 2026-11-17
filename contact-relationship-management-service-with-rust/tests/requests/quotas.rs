@@ -219,10 +219,10 @@ async fn attainment_is_the_workers_won_revenue_in_the_period_and_the_commission_
                 { "from_percent": 100, "rate_bps": 800 } ] }))
             .await
             .json();
-        let today = contact_relationship_management::clock::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_utc();
         let (from, to) = (
-            today - chrono::Duration::days(10),
-            today + chrono::Duration::days(80),
+            today - contact_relationship_management::time::days(10),
+            today + contact_relationship_management::time::days(80),
         );
         for (owner, amount, plan_pid) in [
             (&ada, 100_000, Some(plan["pid"].clone())),
@@ -330,10 +330,10 @@ async fn a_split_deal_is_credited_in_shares_to_the_minor_unit_and_a_removed_spli
         let handed = win(ada.clone(), "Handed over", 10_000).await;
         win(grace.clone(), "Own", 7_000).await;
 
-        let today = contact_relationship_management::clock::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_utc();
         let (from, to) = (
-            today - chrono::Duration::days(10),
-            today + chrono::Duration::days(80),
+            today - contact_relationship_management::time::days(10),
+            today + contact_relationship_management::time::days(80),
         );
         for owner in [&ada, &grace] {
             request
@@ -437,10 +437,10 @@ async fn a_team_adds_its_workers_standings_per_currency_and_is_replaced_by_name_
                 .await
                 .assert_status_ok();
         }
-        let today = contact_relationship_management::clock::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_utc();
         let (from, to) = (
-            today - chrono::Duration::days(10),
-            today + chrono::Duration::days(80),
+            today - contact_relationship_management::time::days(10),
+            today + contact_relationship_management::time::days(80),
         );
         for owner in [&ada, &grace] {
             request
@@ -690,13 +690,13 @@ async fn a_clawback_takes_credit_back_from_one_worker_and_is_refused_beyond_what
                 { "owner_ref": grace, "share_bps": 5_000 } ] }))
             .await
             .assert_status_ok();
-        let today = contact_relationship_management::clock::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_utc();
         for owner in [&ada, &grace] {
             request
                 .put("/api/quotas")
                 .json(
-                    &json!({ "owner_ref": owner, "period_from": today - chrono::Duration::days(10),
-                               "period_to": today + chrono::Duration::days(80),
+                    &json!({ "owner_ref": owner, "period_from": today - contact_relationship_management::time::days(10),
+                               "period_to": today + contact_relationship_management::time::days(80),
                                "currency": "GBP", "amount_minor": 100_000 }),
                 )
                 .await

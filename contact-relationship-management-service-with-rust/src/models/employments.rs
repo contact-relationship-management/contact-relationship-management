@@ -20,7 +20,7 @@ pub struct Employment {
     /// The employer, an `organization:` URN.
     pub organization_ref: String,
     /// The first day of employment WPM gave.
-    pub since: chrono::NaiveDate,
+    pub since: crate::time::Date,
 }
 
 /// Whether the contact is an employee of any organization (their marketing is paused).
@@ -115,7 +115,7 @@ pub async fn record<'e>(
     contact_pid: Uuid,
     person_ref: &str,
     organization_ref: &str,
-    since: chrono::NaiveDate,
+    since: crate::time::Date,
     event_id: &str,
 ) -> Result<bool> {
     let done = sqlx::query!(
@@ -163,9 +163,9 @@ pub struct LastEvent {
     /// `hired` or `left`.
     pub kind: String,
     /// When WPM recorded it.
-    pub occurred_at: chrono::DateTime<chrono::Utc>,
+    pub occurred_at: crate::time::Timestamp,
     /// The day it took effect.
-    pub effective_on: chrono::NaiveDate,
+    pub effective_on: crate::time::Date,
 }
 
 /// Hold the order of `person_ref`'s employment by `organization_ref` until the transaction ends,

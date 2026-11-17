@@ -378,7 +378,7 @@ pub(super) fn callback_authentic(
         return Some(crate::provider_api::mailgun_verified(
             &key,
             body,
-            chrono::Utc::now().timestamp(),
+            jiff::Timestamp::now().as_second(),
         ));
     }
     let secret = crate::webhook::secret()?;

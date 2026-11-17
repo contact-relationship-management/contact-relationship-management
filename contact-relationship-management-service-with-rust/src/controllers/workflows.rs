@@ -57,7 +57,7 @@ pub(crate) struct WorkflowView {
     every_minutes: Option<i32>,
     conditions: Conditions,
     actions: Vec<Action>,
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
 }
 
 /// One run: why it fired and what it did.
@@ -82,7 +82,7 @@ pub(crate) struct RunView {
     /// Why it fired, or why it was held back.
     reason: String,
     steps: Vec<Step>,
-    created_at: chrono::DateTime<chrono::Utc>,
+    created_at: crate::time::Timestamp,
 }
 
 /// What `POST /api/workflows/run-due` did.
@@ -105,7 +105,7 @@ struct Stored {
     every_minutes: Option<i32>,
     conditions: serde_json::Value,
     actions: serde_json::Value,
-    updated_at: chrono::DateTime<chrono::Utc>,
+    updated_at: crate::time::Timestamp,
 }
 
 fn view(row: Stored) -> WorkflowView {

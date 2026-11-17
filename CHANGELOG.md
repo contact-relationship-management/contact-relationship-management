@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — dates and times on jiff (CRM-T258, 2026-11-17)
+
+- The service's dates, times and time zones use `jiff` in place of `chrono` and `chrono-tz`, which
+  RustSec now lists as unmaintained. The API's JSON, the OpenAPI document and the dates and times
+  the service accepts are unchanged.
+
 ### Added — a formal security policy (CRM-T257, 2026-11-17)
 
 - `SECURITY.md` is now a formal policy: scope, how to report, response targets by severity (CVSS

@@ -79,7 +79,7 @@ macro_rules! deliver {
             .await
     }};
     ($request:expr, $body:expr) => {
-        deliver!($request, $body, SECRET, chrono::Utc::now().timestamp())
+        deliver!($request, $body, SECRET, jiff::Timestamp::now().as_second())
     };
 }
 
@@ -120,7 +120,7 @@ async fn a_bad_missing_or_stale_signature_is_refused_and_changes_nothing() {
             .unwrap()
             .to_string();
         let body = event("e-bad", "worker_hired", &person, true);
-        let now = chrono::Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
 
         let unsigned = request
             .post("/api/bridges/wpm/events")

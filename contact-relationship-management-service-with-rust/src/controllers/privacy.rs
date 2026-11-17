@@ -42,7 +42,7 @@ const OPEN_TICKET_STATUSES: [&str; 2] = ["open", "pending"];
 /// `GET /api/contacts/{pid}/subject-access`: everything CRM holds keyed to the contact.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct SubjectAccessExport {
-    as_of: chrono::DateTime<chrono::Utc>,
+    as_of: crate::time::Timestamp,
     contact: contacts::Model,
     consent_history: Vec<consent_events::Model>,
     /// Where the contact stands on each purpose now.
@@ -406,7 +406,7 @@ async fn erase(
     let employment_events_deleted =
         crate::models::employments::forget_last_events(&mut *txn, &person_refs).await?;
     // Identity fields scrubbed in place; the row soft-deleted.
-    let now: crate::models::DateTimeWithTimeZone = crate::clock::now().into();
+    let now: crate::models::DateTimeWithTimeZone = crate::clock::now();
     sqlx::query!(
         "UPDATE contacts SET display_name = $2, person_ref = $3, job_title = NULL, \
          given_name = NULL, family_name = NULL, marketing_consent = 'withdrawn', deleted_at = $4 \
@@ -467,7 +467,7 @@ pub(crate) struct Erased {
 /// `GET /api/retention`: what the sweep would delete, and what needs an operator.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct RetentionReport {
-    as_of: chrono::DateTime<chrono::Utc>,
+    as_of: crate::time::Timestamp,
     horizon_days: i64,
     /// Rows past the horizon, by table (tables with none are left out).
     soft_deleted_past_horizon: std::collections::BTreeMap<String, i64>,
@@ -594,7 +594,7 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
     let withdrawn = sqlx::query_scalar!(
         "SELECT COUNT(*) AS \"n!\" FROM contacts WHERE deleted_at IS NULL \
          AND marketing_consent = 'withdrawn' AND consent_changed_at < $1",
-        crate::clock::now() - chrono::Duration::days(days),
+        crate::clock::now() - crate::time::days(days),
     )
     .fetch_one(pool)
     .await?;

@@ -12,8 +12,8 @@
 //!
 //! On `sqlx` since CRM-T211 (CRM-D24).
 
+use crate::time::Timestamp;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
-use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
 use sqlx::PgExecutor;
 use uuid::Uuid;
@@ -34,7 +34,7 @@ pub struct Target {
     /// The purpose index for a confirmation; `0` otherwise.
     pub detail: u8,
     /// When it stops working.
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: Timestamp,
 }
 
 /// A new random token: 256 bits from the operating system's generator, as 43 URL-safe characters.
@@ -77,7 +77,7 @@ pub async fn issue<'e>(
     kind: &str,
     contact: Uuid,
     detail: u8,
-    expires_at: DateTime<Utc>,
+    expires_at: Timestamp,
 ) -> Result<String, sqlx::Error> {
     let token = generate();
     sqlx::query!(
@@ -98,7 +98,7 @@ pub async fn issue<'e>(
 struct Stored {
     contact_pid: Uuid,
     detail: i16,
-    expires_at: DateTime<Utc>,
+    expires_at: Timestamp,
 }
 
 impl From<Stored> for Target {

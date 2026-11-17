@@ -486,10 +486,10 @@ async fn an_imported_teams_roll_up_meets_the_quotas_set_for_the_same_people() {
                 .await
                 .assert_status_ok();
         }
-        let today = contact_relationship_management::clock::now().date_naive();
+        let today = contact_relationship_management::clock::now().date_utc();
         let (from, to) = (
-            today - chrono::Duration::days(10),
-            today + chrono::Duration::days(80),
+            today - contact_relationship_management::time::days(10),
+            today + contact_relationship_management::time::days(80),
         );
         for owner in [ada.clone(), legacy(&grace)] {
             let quota: Value = request

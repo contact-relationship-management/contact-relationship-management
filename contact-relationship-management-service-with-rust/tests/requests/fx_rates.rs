@@ -198,7 +198,7 @@ async fn a_report_shows_its_sums_in_one_currency_naming_the_rates_and_what_it_co
 
         // With no date, today is used; a report in another currency is just another conversion.
         let today = contact_relationship_management::clock::now()
-            .date_naive()
+            .date_utc()
             .to_string();
         let now: Value = run(json!({})).await.json();
         assert_eq!(now["rate_date"], today);
@@ -220,9 +220,10 @@ async fn a_report_shows_its_sums_in_one_currency_naming_the_rates_and_what_it_co
         assert!(plain["rate_date"].is_null());
 
         // Refusals: a future day, a count, a lower-case currency, a date for nothing.
-        let tomorrow = (contact_relationship_management::clock::now() + chrono::Duration::days(1))
-            .date_naive()
-            .to_string();
+        let tomorrow = (contact_relationship_management::clock::now()
+            + contact_relationship_management::time::days(1))
+        .date_utc()
+        .to_string();
         for (extra, pointer) in [
             (json!({ "rate_date": tomorrow }), "/spec/rate_date"),
             (json!({ "measure": "count" }), "/spec/convert_to"),
