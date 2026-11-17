@@ -50,12 +50,14 @@ NOT_IN_ALL = {
     "mutants": "it takes hours (spec/local-ci-cd.md), so it is a scheduled job",
     "mutants-diff": "it compares with a base commit, which only a push or a pull request names",
     "pre-push": "it repeats stages `all` runs",
+    "bench": "it is a reading of the machine for BENCHMARKS.md, not a check",
 }
 
 # Stages for this machine only, which no hosted workflow calls, and why.
 LOCAL_ONLY = {
     "all": "the hosted workflow runs the same stages as separate jobs",
     "pre-push": "the hook's subset of stages the hosted workflow already runs",
+    "bench": "a shared hosted runner's timings say little; clippy --all-targets builds the benchmarks",
 }
 
 

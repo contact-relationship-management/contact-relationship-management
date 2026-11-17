@@ -21,6 +21,14 @@ subproject keeps a detailed changelog:
   `pnpm perf:pages`, which times eleven UI pages cold and warm, plain and throttled to a phone.
   Results in `BENCHMARKS.md`.
 
+### Changed — benchmarks in one stage, coverage by tarpaulin (CRM-T266, 2026-11-17)
+
+- `scripts/ci-check.sh bench` runs the criterion benchmarks of the matcher and the domain rules, and
+  can keep a run as a named baseline and compare a later one with it. `BENCHMARKS.md` has every case
+  rerun.
+- The coverage report uses `cargo-tarpaulin`. It leaves test code out, so it reads 30% where the old
+  tool read 45%: the same tests reach the same code, and the old figure counted the tests' own lines.
+
 ### Changed — jiff 1.0.0 (CRM-T265, 2026-11-17)
 
 - The service and its domain rules use jiff 1.0.0, the version axa's job queue already uses, so one

@@ -67,8 +67,7 @@ steps:
   - name: coverage
     image: *rust_image
     commands:
-      - rustup component add llvm-tools-preview
-      - cargo install --locked cargo-llvm-cov
+      - cargo install --locked cargo-tarpaulin
       - scripts/ci-check.sh coverage
 
   - name: scripts

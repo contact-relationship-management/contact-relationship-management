@@ -1,7 +1,7 @@
 # Benchmarks
 
 Four sets, each with synthetic data only ([spec/testing.md](spec/testing.md), "Performance"):
-the matcher and the service's rules (criterion), the API under load (k6), and the UI's browser
+the matcher and the service's rules (criterion, `scripts/ci-check.sh bench`), the API under load (k6), and the UI's browser
 code. Each records its commit, machine, data size and command. They are readings from one
 machine, not limits, and none is a CI gate.
 
@@ -105,6 +105,86 @@ writing times, which every request and response does, costs well under a microse
 - **Command:** `cd contact-relationship-management-service-with-rust/contact-relationship-management-domain && cargo bench --bench rules -- '^(calendar|templates|webhooks|time)/'`.
 - **Limits:** one run on a shared machine; the first run of `templates/parse` read 172 ns and the
   second 64 ns, so its spread is wide; one calendar shape only.
+
+## Rerun of both criterion suites (CRM-T266)
+
+Every criterion case, rerun through `scripts/ci-check.sh bench` after the move to axa 0.20 and jiff
+1.0 (CRM-T264, CRM-T265), and kept as the baseline `crm-t266`. "Earlier" is the estimate in the
+tables above, from the commits they name; "now" is criterion's estimate, with its low and high.
+
+| Case | Earlier | Now (low – high) |
+| --- | --- | --- |
+| `compare one pair` | 2.68 µs | 5.9769 µs (4.8939 µs – 7.1518 µs) |
+| `compare_one_to_many/1000` | 1.79 ms | 2.6893 ms (2.2447 ms – 3.4456 ms) |
+| `compare_one_to_many/5000` | 7.31 ms | 16.351 ms (11.934 ms – 23.138 ms) |
+| `compare_one_to_many/50000` | 74.0 ms | 94.877 ms (81.768 ms – 114.02 ms) |
+| `scoring/score/one` | 102 ns | 328.90 ns (239.63 ns – 427.81 ns) |
+| `scoring/score/100` | 19.1 µs | 16.566 µs (13.745 µs – 20.022 µs) |
+| `scoring/score/1000` | 212 µs | 159.27 µs (129.73 µs – 192.33 µs) |
+| `scoring/score/10000` | 1.22 ms | 1.1051 ms (1.0580 ms – 1.1575 ms) |
+| `segment/matches/100` | 3.0 µs | 5.7906 µs (5.0038 µs – 6.5998 µs) |
+| `segment/matches/1000` | 27.9 µs | 30.849 µs (28.401 µs – 33.566 µs) |
+| `segment/matches/10000` | 291 µs | 423.29 µs (368.71 µs – 484.44 µs) |
+| `forecast/by_currency/100` | 2.7 µs | 2.5555 µs (2.5391 µs – 2.5756 µs) |
+| `forecast/by_currency/1000` | 26.9 µs | 26.621 µs (26.427 µs – 26.828 µs) |
+| `forecast/by_currency/10000` | 350 µs | 277.25 µs (271.63 µs – 283.54 µs) |
+| `audit_chain/verify/100` | 90.5 µs | 52.568 µs (52.255 µs – 52.893 µs) |
+| `audit_chain/verify/1000` | 557 µs | 559.18 µs (551.55 µs – 568.41 µs) |
+| `audit_chain/verify/10000` | 6.60 ms | 6.0205 ms (5.7630 ms – 6.3175 ms) |
+| `imports/parse_and_judge/500` | 203 µs | 198.68 µs (191.66 µs – 207.64 µs) |
+| `attribution/credit/first/5` | 187 ns | 254.88 ns (229.54 ns – 284.68 ns) |
+| `attribution/credit/linear/5` | 233 ns | 540.04 ns (430.03 ns – 665.83 ns) |
+| `attribution/credit/time_decay/5` | 345 ns | 354.52 ns (315.83 ns – 395.51 ns) |
+| `attribution/credit/position/5` | 226 ns | 191.82 ns (188.82 ns – 195.73 ns) |
+| `attribution/credit/first/50` | 1.50 µs | 1.2571 µs (1.2199 µs – 1.3078 µs) |
+| `attribution/credit/linear/50` | 1.87 µs | 1.7377 µs (1.6037 µs – 1.9105 µs) |
+| `attribution/credit/time_decay/50` | 5.58 µs | 5.7017 µs (5.1977 µs – 6.3627 µs) |
+| `attribution/credit/position/50` | 3.27 µs | 2.8712 µs (2.8400 µs – 2.9068 µs) |
+| `attribution/credit/first/500` | 15.1 µs | 11.152 µs (10.863 µs – 11.520 µs) |
+| `attribution/credit/linear/500` | 20.5 µs | 12.858 µs (12.817 µs – 12.907 µs) |
+| `attribution/credit/time_decay/500` | 78.3 µs | 52.143 µs (51.946 µs – 52.378 µs) |
+| `attribution/credit/position/500` | 22.6 µs | 16.821 µs (16.651 µs – 17.015 µs) |
+| `fx/convert_rows/100` | 61.2 µs | 69.345 µs (63.731 µs – 76.309 µs) |
+| `fx/convert_rows/1000` | 179 µs | 153.01 µs (151.28 µs – 155.39 µs) |
+| `fx/convert_rows/10000` | 1.22 ms | 1.1403 ms (1.1132 ms – 1.1754 ms) |
+| `reports/plan` | 1.67 µs | 1.0599 µs (1.0530 µs – 1.0673 µs) |
+| `reports/suppress/1000` | 129 µs | 104.81 µs (103.72 µs – 106.75 µs) |
+| `search/tsquery/latin` | 747 ns | 656.71 ns (647.60 ns – 669.18 ns) |
+| `search/tsquery/cjk` | 911 ns | 758.13 ns (751.53 ns – 767.23 ns) |
+| `calendar/add_working_minutes/4h` | 161 ns | 154.75 ns (153.00 ns – 157.11 ns) |
+| `calendar/add_working_minutes/5d` | 986 ns | 1.1199 µs (1.0387 µs – 1.2223 µs) |
+| `calendar/add_working_minutes/40d` | 6.74 µs | 6.6972 µs (6.5770 µs – 6.8883 µs) |
+| `calendar/working_seconds_between/1d` | 297 ns | 423.32 ns (364.78 ns – 486.57 ns) |
+| `calendar/working_seconds_between/30d` | 5.86 µs | 4.8108 µs (4.2148 µs – 5.4928 µs) |
+| `calendar/working_seconds_between/365d` | 50.7 µs | 76.714 µs (62.510 µs – 91.591 µs) |
+| `templates/parse` | 64 ns | 91.512 ns (84.069 ns – 99.691 ns) |
+| `templates/render` | 1.84 µs | 1.4690 µs (1.4298 µs – 1.5171 µs) |
+| `webhooks/sign/2KB` | 1.30 µs | 1.6310 µs (1.5392 µs – 1.7277 µs) |
+| `webhooks/check_target` | 244 ns | 463.32 ns (403.32 ns – 532.49 ns) |
+| `webhooks/is_public_ip/4` | 8.3 ns | 9.9538 ns (9.2540 ns – 10.849 ns) |
+| `time/timestamp/read` | 76 ns | 62.770 ns (56.030 ns – 70.476 ns) |
+| `time/timestamp/read_rfc3339` | 35 ns | 18.608 ns (18.484 ns – 18.750 ns) |
+| `time/timestamp/write` | 176 ns | 160.94 ns (159.16 ns – 163.09 ns) |
+| `time/date/read` | 17.3 ns | 17.342 ns (16.959 ns – 17.900 ns) |
+
+What they say: little that can be trusted to a few tens of percent. The machine's load average was
+31 to 37 from other work for the whole run, against 26 to 33 for CRM-T262's and less for the
+earlier ones, and the cases with the widest spreads (the matcher's, one lead's score, linear
+attribution at 5 touches, `webhooks::check_target`) are the ones that read slower. Cases with
+narrow spreads read about the same or faster: the forecast, the audit check, reports, search and
+time decay at 500 touches (52 µs, from 78 µs). Strict RFC 3339 reads in 19 ns, from 35 ns, which
+may be jiff 1.0 or the quieter moment; this run cannot say which. The matcher, which neither
+move touches, reads about twice as slow, which shows the size of the load's effect. Nothing reads
+as a regression from the dependency moves.
+
+- **Commit:** `f30de40` (jiff 1.0.0) plus the `bench` stage; criterion 0.8.2.
+- **Hardware:** Apple M4 Max, macOS 27.2.1, rustc 1.100.0, the bench profile, one run, load average
+  31 to 37.
+- **Command:** `CRM_BENCH_SAVE=crm-t266 scripts/ci-check.sh bench` (615 s). A later run compares with
+  it by `CRM_BENCH_BASELINE=crm-t266 scripts/ci-check.sh bench`, on this machine only: the baseline
+  is in each crate's `target/criterion`, which is not committed.
+- **Limits:** one run on a loaded machine; the earlier figures came from different commits and loads,
+  so a difference under about 30% is not a finding.
 
 ## API under load (CRM-T242)
 
