@@ -353,14 +353,18 @@ test("choosing 'Follow this device' again keeps it, and the device's setting is 
 
 test("a picked text size and time zone are kept, and nothing else", async ({ page }) => {
   await open(page, "/", "light");
+  // Wait for the picker to apply its starting size, then for the pick: no one-shot read.
+  await expect(page.locator("html")).toHaveAttribute("data-text-size", /.+/);
   const before = await page.locator("html").getAttribute("data-text-size");
-  expect(before).toBeTruthy();
   await pick(page, "text-size", /large/i);
+  await expect(page.locator("html")).not.toHaveAttribute("data-text-size", before!);
   const size = await page.locator("html").getAttribute("data-text-size");
-  expect(size).not.toBe(before);
   // Any zone but the one the picker started on.
+  await expect(page.locator("html")).toHaveAttribute("data-time-zone", /.+/);
+  const startZone = await page.locator("html").getAttribute("data-time-zone");
   await page.locator(".picker-bar .time-zone-picker-button").click();
   await page.locator('.time-zone-picker-option[aria-selected="false"]').nth(3).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-time-zone", startZone!);
   const zone = await page.locator("html").getAttribute("data-time-zone");
   expect(await kept(page)).toEqual({ storage: { "lily-text-size": size, "lily-time-zone": zone }, cookies: {} });
   await page.reload({ waitUntil: "networkidle" });

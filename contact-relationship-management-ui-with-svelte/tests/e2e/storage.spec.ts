@@ -39,11 +39,15 @@ test.describe("what the UI keeps in the browser (docs/privacy-notice.md)", () =>
     page,
   }) => {
     await page.goto("/signin");
+    // Wait for the picker to apply its starting size, then for the pick: no one-shot read.
+    await expect(page.locator("html")).toHaveAttribute("data-text-size", /.+/);
     const before = await page.locator("html").getAttribute("data-text-size");
-    expect(before).toBeTruthy();
     await pick(page, "text-size", /large/i);
+    await expect(page.locator("html")).not.toHaveAttribute(
+      "data-text-size",
+      before!,
+    );
     const size = await page.locator("html").getAttribute("data-text-size");
-    expect(size).not.toBe(before);
     expect(await kept(page)).toEqual({
       storage: ["lily-text-size"],
       cookies: [],
