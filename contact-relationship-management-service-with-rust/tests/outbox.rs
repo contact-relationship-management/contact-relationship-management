@@ -1,12 +1,12 @@
 //! The `outbox` event transport: the event is a row committed with the write.
 //!
-//! Its own test binary (not part of `tests/mod.rs`) because the transport is
-//! process-wide and read once.
-//! Run with `cargo test --test outbox -- --ignored`.
+//! The transport is a process-wide setting, so each test sets it for its own length
+//! (`scoped_auth::scoped`, CRM-T263) and the tests after it get the default back.
+//! Run with `cargo test --test main outbox -- --ignored`.
 
 use axa_test::prelude::*;
 use contact_relationship_management::streaming::{self, EventTransport};
-use contact_relationship_management::{app::App, db, settings};
+use contact_relationship_management::{app::App, db};
 use serde_json::{Value, json};
 use serial_test::serial;
 
@@ -14,7 +14,7 @@ use serial_test::serial;
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_event_is_an_outbox_row() {
-    settings::update(|s| s.event_transport = EventTransport::Outbox);
+    let _outbox = crate::scoped_auth::scoped(|s| s.event_transport = EventTransport::Outbox);
     request::<App, _, _>(|request, _ctx| async move {
         let name = format!("Outbox Lead {}", uuid::Uuid::new_v4());
         let created: Value = request
@@ -39,7 +39,7 @@ async fn the_event_is_an_outbox_row() {
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_event_shares_a_sqlx_transaction() {
-    settings::update(|s| s.event_transport = EventTransport::Outbox);
+    let _outbox = crate::scoped_auth::scoped(|s| s.event_transport = EventTransport::Outbox);
     request::<App, _, _>(|request, ctx| async move {
         let pid = uuid::Uuid::new_v4();
         let text = pid.to_string();

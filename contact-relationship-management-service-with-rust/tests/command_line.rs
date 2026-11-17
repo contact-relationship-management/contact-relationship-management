@@ -1,6 +1,10 @@
 //! What the real binary says about itself, and what it refuses before it connects (CRM-T200,
 //! CRM-T201).
 
+// They start the binary, which reads the environment, so they wait for any test that sets it
+// (CRM-T263).
+use serial_test::serial;
+
 use std::process::{Command, Output};
 
 fn run(args: &[&str], env: &[(&str, &str)]) -> Output {
@@ -16,6 +20,7 @@ fn run(args: &[&str], env: &[(&str, &str)]) -> Output {
 }
 
 #[test]
+#[serial]
 fn version_names_this_service_and_not_axa() {
     let text = String::from_utf8(run(&["--version"], &[]).stdout).unwrap();
     assert!(text.starts_with(env!("CARGO_PKG_NAME")), "{text}");
@@ -23,12 +28,14 @@ fn version_names_this_service_and_not_axa() {
 }
 
 #[test]
+#[serial]
 fn help_describes_this_service() {
     let text = String::from_utf8(run(&["--help"], &[]).stdout).unwrap();
     assert!(text.contains(env!("CARGO_PKG_DESCRIPTION")), "{text}");
 }
 
 #[test]
+#[serial]
 fn production_refuses_a_database_address_that_could_go_in_the_clear() {
     let production = [
         ("APP_ENV", "production"),
@@ -48,6 +55,7 @@ fn production_refuses_a_database_address_that_could_go_in_the_clear() {
 /// No database is reachable here, so a refusal that names the setting can only come from the
 /// check that runs before the service connects.
 #[test]
+#[serial]
 fn commands_that_destroy_data_are_refused_before_connecting() {
     let unreachable = "postgres://crm:crm@127.0.0.1:1/crm";
     for command in [
@@ -77,6 +85,7 @@ fn commands_that_destroy_data_are_refused_before_connecting() {
 
 /// The setting opens the guard outside production: this call gets as far as the database.
 #[test]
+#[serial]
 fn the_setting_lets_a_destructive_command_through_in_development() {
     let attempted = run(
         &["db", "down", "1"],

@@ -9,6 +9,9 @@ edition = "2024"
 rust-version = "1.98"
 publish = true
 default-run = "contact-relationship-management"
+# The integration tests are one binary, tests/main.rs (CRM-T263): each file in tests/ was its own,
+# and each linked the whole service.
+autotests = false
 authors = ["Joel Parker Henderson <joel@joelparkerhenderson.com>"]
 description = "Contact Relationship Management (CRM): service for APIs, inbound contacts, outbound contacts, conversation automation, engagement analytics"
 readme = "README.md"
@@ -109,6 +112,10 @@ paseto = ["authentication-verifier/paseto", "authentication-verifier/fetch"]
 # Also accept Keycloak (OIDC) access tokens, configured by
 # `CRM_KEYCLOAK_*` (see src/auth/). Off by default.
 keycloak = ["authentication-verifier/keycloak"]
+
+[[test]]
+name = "main"
+path = "tests/main.rs"
 
 [[bin]]
 name = "contact-relationship-management"

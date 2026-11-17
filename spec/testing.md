@@ -19,6 +19,11 @@
   (`FOR UPDATE`, one winner); nurture scheduler idempotency (rerun
   ⇒ no double-send); unknown-pid 404s (family lesson, pinned from
   day one).
+- **One integration-test binary** (CRM-T263): `tests/main.rs` declares every suite as a module
+  (`autotests = false`, one `[[test]]` target), so the service is linked into one test binary, not
+  seven. A test that changes the settings or the environment does it for its own length through
+  `tests/support/scoped_auth.rs` or `scoped_env.rs`, which put them back, including by panic, and
+  is `#[serial]`. Run one suite with `cargo test --test main <module>`.
 - **Enforcement tests** (`tests/requests/enforcement.rs`; they once
   ran in their own process for the OnceLock lesson, and now set the
   settings for their own length through `tests/support/scoped_auth.rs`

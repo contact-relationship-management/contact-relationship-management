@@ -947,7 +947,7 @@ async fn nurture_steps_are_really_mailed_once_and_a_failure_is_held_for_the_next
 /// them delivered (found by `scripts/image-smoke.sh`, CRM-T72).
 #[tokio::test]
 #[serial]
-#[ignore = "boots the app: needs PostgreSQL (see tests/mod.rs)"]
+#[ignore = "boots the app: needs PostgreSQL (see tests/main.rs)"]
 async fn a_worker_only_process_sets_up_the_real_sender() {
     use axa::queue::{Queue, QueueOptions};
 

@@ -3,15 +3,21 @@
 //! decision, with `CRM_REQUIRE_AUTH` on. DB-free: a local OIDC
 //! provider (`authentication_verifier::test_idp`) stands in for Keycloak.
 //!
-//! One test function because the verifiers, policy and flag live in
-//! process-wide `OnceLock`s that read the environment on first use.
-#![cfg(feature = "keycloak")]
+//! One test function because the Keycloak verifier lives in a process-wide
+//! `OnceLock` that reads the environment when `auth::init` first finds it
+//! configured. Since CRM-T263 it shares the one test binary: it is `#[serial]`,
+//! its variables are put back when it ends, and the verifier it leaves set is
+//! harmless to the others, which send no Keycloak token (`--ignored` runs, the
+//! ones that boot the app, do not run it at all). Built only with `keycloak`.
 
 use authentication_verifier::test_idp::TestIdp;
 use axum::http::header::AUTHORIZATION;
 use axum::http::{HeaderMap, Method};
 use contact_relationship_management::auth;
 use serde_json::json;
+use serial_test::serial;
+
+use crate::scoped_env::ScopedEnv;
 
 fn bearer(token: &str) -> HeaderMap {
     let mut h = HeaderMap::new();
@@ -27,18 +33,17 @@ async fn status(method: &Method, path: &str, headers: &HeaderMap) -> u16 {
 }
 
 #[tokio::test]
+#[serial]
 async fn a_keycloak_token_is_authenticated_and_authorized_through_the_real_guard() {
     let idp = TestIdp::start().await;
-    unsafe {
-        std::env::set_var("CRM_KEYCLOAK_URL", &idp.base_url);
-        std::env::set_var("CRM_KEYCLOAK_REALM", "mxi");
-        std::env::set_var("CRM_KEYCLOAK_AUDIENCES", "mxi-api");
-        std::env::set_var(
-            "CRM_KEYCLOAK_ROLE_MAP",
-            json!({ "editor": { "access": ["write"] }, "root": { "access": ["admin"] } })
-                .to_string(),
-        );
-    }
+    let mut env = ScopedEnv::default();
+    env.set("CRM_KEYCLOAK_URL", &idp.base_url);
+    env.set("CRM_KEYCLOAK_REALM", "mxi");
+    env.set("CRM_KEYCLOAK_AUDIENCES", "mxi-api");
+    env.set(
+        "CRM_KEYCLOAK_ROLE_MAP",
+        &json!({ "editor": { "access": ["write"] }, "root": { "access": ["admin"] } }).to_string(),
+    );
     auth::init().await;
     assert!(auth::keycloak_verifier().is_some(), "keycloak configured");
 

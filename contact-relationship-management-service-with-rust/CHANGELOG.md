@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — one integration-test binary (CRM-T263)
+
+- `tests/mod.rs` is `tests/main.rs`, and `command_line`, `keycloak_guard`, `outbox`, `rate_limit`,
+  `router_order` and `smtp_live` are its modules (`autotests = false`, one `[[test]]` target named
+  `main`). Their environment variables go through `tests/support/scoped_env.rs` and the outbox's
+  transport through `scoped_auth`, which put them back when the test ends; the Keycloak and
+  command-line tests are `#[serial]`. Run one with `cargo test --test main rate_limit -- --ignored`.
+
 ### Changed — axa 0.19.0 (CRM-T261)
 
 - axa 0.19.0, `axa-test` 0.10.0 and `axa-postgres-job-queue` 0.6.0, with `jiff` 1.0.0 and

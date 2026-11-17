@@ -67,8 +67,11 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
 6. **Known family gotchas.** `axa::schema::create_table` pluralizes table
    names (use already-plural names / explicit SQL);
    `ModelError::EntityNotFound` is NOT mapped to 404 (return
-   `Error::NotFound` at `find_by_pid` call sites); enforcement tests
-   need their own test binary (OnceLock caching).
+   `Error::NotFound` at `find_by_pid` call sites); the integration
+   tests are one binary, `tests/main.rs` (CRM-T263), so a test that
+   changes the settings or the environment does it through
+   `tests/support/scoped_auth.rs` or `scoped_env.rs`, which put them
+   back, and is `#[serial]`.
 
 ## Running
 

@@ -2,8 +2,8 @@
 //! booted app. Outside it, a refusal had no request id, security headers or CORS, and the layers
 //! read compressed bodies.
 //!
-//! Its own test binary because these settings are read from the environment when the app boots.
-//! Run with `cargo test --test router_order -- --ignored`.
+//! These settings are read from the environment when the app boots, so each test sets them for its
+//! own length (`ScopedEnv`, CRM-T263). Run with `cargo test --test main router_order -- --ignored`.
 
 use axa::problem::PROBLEM_JSON;
 use axa_test::prelude::*;
@@ -11,22 +11,24 @@ use axum::http::{Method, StatusCode};
 use contact_relationship_management::app::App;
 use serial_test::serial;
 
+use crate::scoped_env::ScopedEnv;
+
 const ORIGIN: &str = "https://crm.example.org";
 
-/// What these tests vary. Safe: `#[serial]`, and set before the app boots.
-fn boot_with(limit: &str, compression: &str) {
-    unsafe {
-        std::env::set_var("CRM_RATE_LIMIT_PER_MIN", limit);
-        std::env::set_var("HTTP_COMPRESSION", compression);
-        std::env::set_var("CORS_ALLOWED_ORIGINS", ORIGIN);
-    }
+/// What these tests vary, until the guard is dropped. Set before the app boots, in `#[serial]` tests.
+fn boot_with(limit: &str, compression: &str) -> ScopedEnv {
+    let mut env = ScopedEnv::default();
+    env.set("CRM_RATE_LIMIT_PER_MIN", limit);
+    env.set("HTTP_COMPRESSION", compression);
+    env.set("CORS_ALLOWED_ORIGINS", ORIGIN);
+    env
 }
 
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_refusal_from_the_abuse_guard_carries_the_standard_headers() {
-    boot_with("1", "false");
+    let _env = boot_with("1", "false");
     request::<App, _, _>(|request, _ctx| async move {
         request.get("/api/contacts").await.assert_status_ok();
         let refused = request
@@ -51,7 +53,7 @@ async fn a_refusal_from_the_abuse_guard_carries_the_standard_headers() {
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_preflight_is_answered_even_when_the_client_is_over_its_limit() {
-    boot_with("1", "false");
+    let _env = boot_with("1", "false");
     request::<App, _, _>(|request, _ctx| async move {
         request.get("/api/contacts").await.assert_status_ok();
         let preflight = request
@@ -96,7 +98,7 @@ async fn a_preflight_is_answered_even_when_the_client_is_over_its_limit() {
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_compressed_error_is_a_problem_document_compressed_once() {
-    boot_with("0", "true");
+    let _env = boot_with("0", "true");
     request::<App, _, _>(|request, _ctx| async move {
         let path = "/api/contacts/00000000-0000-4000-8000-000000000000";
         let refused =

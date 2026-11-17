@@ -110,7 +110,7 @@ PY
       CRM_SMTP_USERNAME=crm@crm.test CRM_SMTP_PASSWORD=crm-dev-password \
       CRM_MAIL_FROM='CRM <crm@crm.test>' CRM_SMTP_ACCEPT_INVALID_CERTS=1 \
       CRM_TEST_JMAP_URL="http://127.0.0.1:$http_port" \
-      cargo test --test smtp_live -- --ignored --nocapture)
+      cargo test --test main smtp_live -- --ignored --nocapture)
     ;;
   down)
     "${compose[@]}" down

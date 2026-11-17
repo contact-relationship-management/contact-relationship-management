@@ -9,6 +9,12 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed — one integration-test binary (CRM-T263, 2026-11-17)
+
+- The service's integration tests are one binary, `tests/main.rs`, in place of seven, each of which
+  linked the whole service. After a change to the service they build in about 9 seconds here, from
+  about 15.
+
 ### Added — more benchmarks, and page load in a browser (CRM-T262, 2026-11-17)
 
 - Criterion benchmarks of business calendars, templates, webhooks and the time types, and
