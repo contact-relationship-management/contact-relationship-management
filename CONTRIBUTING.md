@@ -13,10 +13,17 @@ Thank you for considering a contribution. There are several ways to help.
 1. Read the [specification](spec/index.md) first. It is the source of truth;
    code and tests should cite it.
 2. Rust service: `cd contact-relationship-management-service-with-rust`, then
-   `cargo test` and `cargo clippy`. Database tests need PostgreSQL (see `compose.test.yaml`).
+   `cargo test --features keycloak` and
+   `cargo clippy --workspace --all-targets --features keycloak -- -D warnings`. Database
+   tests (`cargo test -- --ignored`) need PostgreSQL and Redis: run
+   `scripts/ci-services.sh run test-db` from the root, which starts and stops them.
+   The matcher (`contact-relationship-management-matcher-with-rust`) is a separate crate with its own
+   `cargo test`.
 3. Svelte front end: `cd contact-relationship-management-ui-with-svelte`,
-   then `pnpm install` and `pnpm test`.
-4. Run `scripts/ci-check.sh` before opening a pull request.
+   then `pnpm install`, `pnpm check`, `pnpm lint` and `pnpm test`.
+4. Run `scripts/ci-check.sh <stage>` for each CI check (`fmt`, `clippy`, `test`, `lint`, `pins`
+   and so on; `all` runs every stage but `mutants`), and `scripts/ci-check.sh pre-push` before
+   opening a pull request. See [AGENTS.md](AGENTS.md) for the stages.
 5. Do not weaken a test, expectation, or gate to make something pass.
 6. Keep changes small and explain the why in the pull request description.
 
