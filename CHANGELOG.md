@@ -21,6 +21,12 @@ subproject keeps a detailed changelog:
   `pnpm perf:pages`, which times eleven UI pages cold and warm, plain and throttled to a phone.
   Results in `BENCHMARKS.md`.
 
+### Changed — axa 0.20.0 (CRM-T264, 2026-11-17)
+
+- The service uses axa 0.20.0 and `axa-test` 0.11.0. A request body compressed with Zstd is now refused
+  with `415`, and a caller that accepts only Zstd is answered uncompressed; gzip, Brotli and deflate are
+  unchanged. The build no longer compiles the C zstd library.
+
 ### Changed — axa 0.19.0 (CRM-T261, 2026-11-17)
 
 - The service uses axa 0.19.0 and `axa-test` 0.10.0. axa's job queue now uses jiff, so nothing the

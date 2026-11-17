@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   transport through `scoped_auth`, which put them back when the test ends; the Keycloak and
   command-line tests are `#[serial]`. Run one with `cargo test --test main rate_limit -- --ignored`.
 
+### Changed — axa 0.20.0 (CRM-T264)
+
+- axa 0.20.0 and `axa-test` 0.11.0. axa's Zstd support is now its `zstd` feature, which the service
+  leaves off: a `Content-Encoding: zstd` request body is a `415` problem
+  (`router_order::a_zstd_request_body_is_refused_as_unsupported`), and an `Accept-Encoding` of `zstd`
+  alone gets no compression. `zstd`, `zstd-safe` and `zstd-sys` leave the lockfile.
+
 ### Changed — axa 0.19.0 (CRM-T261)
 
 - axa 0.19.0, `axa-test` 0.10.0 and `axa-postgres-job-queue` 0.6.0, with `jiff` 1.0.0 and

@@ -120,3 +120,28 @@ async fn a_compressed_error_is_a_problem_document_compressed_once() {
     })
     .await;
 }
+
+/// "hi" as one zstd frame, from axa's own test of the same refusal.
+const ZSTD_HI: [u8; 15] = [
+    0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x58, 0x11, 0x00, 0x00, 0x68, 0x69, 0xfa, 0x38, 0x26, 0xea,
+];
+
+/// The service builds axa without its `zstd` feature (CRM-T264), so a Zstd request body is
+/// refused as unsupported, in a problem document, before any handler reads it.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_zstd_request_body_is_refused_as_unsupported() {
+    let _env = boot_with("0", "true");
+    request::<App, _, _>(|request, _ctx| async move {
+        let refused = request
+            .post("/api/contacts")
+            .add_header("content-type", "application/json")
+            .add_header("content-encoding", "zstd")
+            .bytes(ZSTD_HI.to_vec().into())
+            .await;
+        refused.assert_status(StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        assert_eq!(refused.headers()["content-type"], PROBLEM_JSON);
+    })
+    .await;
+}
