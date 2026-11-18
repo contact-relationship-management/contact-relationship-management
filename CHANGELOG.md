@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-11-18
+
+Service, domain crate and UI 0.2.0: images on GitHub Container Registry, the service and the domain
+crate on crates.io. The matcher stays at 0.2.1, unchanged in behaviour and API.
+
 ### Changed — one integration-test binary (CRM-T263, 2026-11-17)
 
 - The service's integration tests are one binary, `tests/main.rs`, in place of seven, each of which

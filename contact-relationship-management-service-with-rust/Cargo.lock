@@ -861,7 +861,7 @@ checksum = "be95d4a884358a21a199689323c29e9256b4a1b315e22f183d155422041d3a9a"
 
 [[package]]
 name = "contact-relationship-management"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "aes-gcm",
  "async-trait",
@@ -902,7 +902,7 @@ dependencies = [
 
 [[package]]
 name = "contact-relationship-management-domain"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "criterion",

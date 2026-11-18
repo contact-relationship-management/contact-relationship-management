@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-11-18
+
+The first release on axa and sqlx in place of Loco and SeaORM (CRM-D23, CRM-D24), and the first
+with the domain rules as their own crate, `contact-relationship-management-domain` 0.2.0, published
+with it (CRM-D25). **Breaking for operators** since 0.1.5: the database URL is `DB_URL`; the probes
+are `/_health/live`, `/_health/ready` and `/_health/startup`; production needs `CRM_CURSOR_SECRET`;
+`JWT_SECRET` and `CRM_TRUST_FORWARDED_FOR` are gone; a Zstd request body is refused. Each entry
+below says what it changes.
+
 ### Changed — one integration-test binary (CRM-T263)
 
 - `tests/mod.rs` is `tests/main.rs`, and `command_line`, `keycloak_guard`, `outbox`, `rate_limit`,

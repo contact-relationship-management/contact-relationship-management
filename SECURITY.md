@@ -107,8 +107,8 @@ whatever its score. These are the controls the project's
 ## Supported versions
 
 Only the latest commit on `main` is supported. A fix lands on `main` first and is released in the
-next tag; earlier releases are not patched. The latest release, v0.1.5, predates the move to axa
-(CRM-T228), so it differs from `main` in its configuration and probes.
+next tag; earlier releases are not patched. The latest release is v0.2.0 (2026-11-18), the first on axa; v0.1.5 and earlier differ from
+`main` in their configuration and probes.
 
 ## Safe harbour
 
