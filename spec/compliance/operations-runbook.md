@@ -267,10 +267,12 @@ arm64 image (2026-10-21).
 On 2026-11-17 (CRM-T256) it passed 31 of 31 on an image built from `0fcd28a` (axa 0.17) with Podman,
 including three checks of the image's `health` command, which an image without it skips. The released
 v0.1.5 image no longer passes: it predates the move to axa (CRM-T228), reads `DATABASE_URL` rather than
-`DB_URL` and serves `/_ping`, so the default run fails until a release after the move. Until then, pass
-an image built from the tree.
+`DB_URL` and serves `/_ping`. v0.2.0 (2026-11-18, CRM-T267) is the first release after the move and the
+script's default: it passed 31 of 31 on the pulled arm64 image, with no registry login, and
+`gh attestation verify` traced both images to `release.yml` at `v0.2.0` from `f52b522`. Both packages
+are public from v0.2.0, so a pull needs no login.
 The UI image has its own check, `scripts/ui-image-smoke.sh` (hardened flags, headers, tour off and on); it passed 23 of 23
-on the pulled v0.1.5 UI image. The guided tour is on in the shipped image unless `CRM_DEMO_TOUR=off` (INSTALL.md).
+on the pulled v0.1.5 UI image, and 23 of 23 on the pulled v0.2.0 UI image (arm64, no login). The guided tour is on in the shipped image unless `CRM_DEMO_TOUR=off` (INSTALL.md).
 
 ### Migrating a database that holds data
 
