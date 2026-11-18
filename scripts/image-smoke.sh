@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Run a released service image the way a deployment would, and use it (CRM-T72).
-#   scripts/image-smoke.sh [IMAGE]       default: the v0.1.5 multi-arch image by digest
-# The v0.1.5 image predates axa (CRM-T228): it reads DATABASE_URL, not DB_URL, and serves /_ping,
-# so it no longer passes. Pass an image built from this tree until a release after the move
-# (CRM-T256): podman build -t localhost/crm-service -f Containerfile contact-relationship-management-service-with-rust
+#   scripts/image-smoke.sh [IMAGE]       default: the v0.2.0 multi-arch image by digest
+# v0.2.0 is the first release on axa (CRM-T267). Images up to v0.1.5 predate it (CRM-T228): they read
+# DATABASE_URL, not DB_URL, and serve /_ping, so they do not pass. An image built from this tree:
+# podman build -t localhost/crm-service -f Containerfile contact-relationship-management-service-with-rust
 #
 # Phase 1, production mode: hardened flags (read-only root, no capabilities, no new
 # privileges, non-root), authentication on with real signed tokens (PASETO v4.public,
@@ -20,7 +20,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
-IMAGE="${1:-ghcr.io/contact-relationship-management/contact-relationship-management/service@sha256:8579252e8a2702199cd9f12b768f75a1b2ba510ad22c53cd9041255b2ce2d5a5}"
+IMAGE="${1:-ghcr.io/contact-relationship-management/contact-relationship-management/service@sha256:fd4d308db1e47aba57e4b4a531fcb546c0b1af0bf81e9cad8ee44a484be3ba3f}"
 NET=crm-smoke-net PG=crm-smoke-pg RD=crm-smoke-redis MAIL=crm-smoke-mail SVC=crm-smoke-svc WRK=crm-smoke-worker
 PORT=15150 MAIL_API=18025
 API="http://localhost:${PORT}"

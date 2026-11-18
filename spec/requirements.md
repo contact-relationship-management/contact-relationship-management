@@ -1597,7 +1597,8 @@ will not be met with legal action by the maintainer.*
   advisory with a CVE requested through GitHub); supported versions (`main` only); a safe harbour that
   binds the maintainer only; and how the project keeps itself secure.
 - The site publishes `/.well-known/security.txt` (RFC 9116), with `Contact`, `Expires`, `Policy`,
-  `Preferred-Languages` and `Canonical`.
+  `Preferred-Languages` and `Canonical`. The deploy keeps dot paths in the Pages artifact (`include-hidden-files`), which it
+  otherwise drops.
 - Tests: site `tests/e2e/site.spec.ts` "security.txt names the contact, the policy, and an expiry that
   has not lapsed": served as `text/plain`, a `mailto:` or `https:` contact, one `Expires` more than 30
   days and at most a year away (it failed with an expiry 14 days away), the canonical address, a policy
