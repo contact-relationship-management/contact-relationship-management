@@ -17,7 +17,7 @@ receive mail. Those two decisions take priority over adding more features.
 | Correct financial input | The deal editor stripped misplaced group separators. The FX form converted decimal text through a JavaScript number before sending it to a service that accepts plain decimals down to one billionth. | CRM-T268 covers locale grouping, digits, and the exact request sent by each form. See [worldwide.md](worldwide.md#entering-amounts-and-rates-crm-r50-crm-r95-crm-d19). |
 | Preserve large deal amounts | The service stores signed 64-bit minor units. The UI reads a JSON number and divides by the currency scale before editing. | CRM-T269 should establish a lossless service-to-editor contract, including a save that changes only the deal name. |
 | Match telephone numbers across scripts | CRM-T270 now covers all 770 Unicode 18.0 decimal digits in the matcher. The service manifest still selects the published 0.2.1 release. | Publish the corrected matcher, update the service dependency and lockfile, and verify the service against the released crate before rebuilding its image. |
-| Avoid false duplicate advice for national numbers | With no calling code, the matcher removes leading zeros from both national numbers during comparison. This can give agreement for two different digit strings. | CRM-T271 covers equality when the numbering plan is unknown. Measure suffix-only matches separately before adjusting their score. |
+| Avoid false duplicate advice for national numbers | CRM-T271 preserves leading zeros for two national numbers with no calling code. A national number can still agree with the suffix of an international number. | Measure the precision of suffix-only matches on labelled pairs before adjusting their score (CRM-T273). |
 
 ## Verdict
 

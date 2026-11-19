@@ -339,7 +339,7 @@ pub(crate) fn phone(raw: &str, default_code: Option<&str>) -> Option<Phone> {
 /// Whether two reduced phone numbers are the same line.
 pub(crate) fn same_phone(a: &Phone, b: &Phone) -> bool {
     if a.international == b.international {
-        return a.digits.trim_start_matches('0') == b.digits.trim_start_matches('0');
+        return a.digits == b.digits;
     }
     let (international, national) = if a.international { (a, b) } else { (b, a) };
     let national = national.digits.trim_start_matches('0');

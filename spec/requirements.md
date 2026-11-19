@@ -332,8 +332,10 @@ that two contact records are the same person, and why.*
   numerals contribute no digits (CRM-T270). With a default calling code, a national number
   loses its trunk prefix only where that code's plan has one (`0` for most, `8` for Russia, Kazakhstan and Belarus,
   `06` for Hungary, none for Italy, Spain and the other plans in the matcher's
-  table), and a code not in the table loses nothing (CRM-T170). A field
-  empty on either side counts for nothing, so a sparse record is not punished.
+  table), and a code not in the table loses nothing (CRM-T170). When comparing two national
+  numbers with no default calling code, all digits must agree, including any leading zero
+  (CRM-T271). Two international numbers likewise compare by their complete normalized digits.
+  A field empty on either side counts for nothing, so a sparse record is not punished.
 - The same `person_ref` is a certain match. A different one is no evidence.
 - It compares one contact with many and ranks the answer, in a stable order.
 - The tuning (prior, per-field agreement and coincidence rates, thresholds) is

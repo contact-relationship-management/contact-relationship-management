@@ -1885,12 +1885,16 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   A public matcher test covers ASCII, Adlam, mixed digits and a one-digit disagreement.
   The original matcher reported the all-Adlam number as missing. Matcher tests and strict Clippy
   passed. The service image still needs a published matcher release and dependency update.
-- [ ] CRM-T271 **Preserve leading zeros when comparing two national phone numbers.** (CRM-R23, CRM-R95, CRM-D19)
-  With no default calling code, `same_phone` currently calls `01234567` and `1234567` equal.
-  Require exact normalized digits when both numbers are national and the numbering plan is
-  unknown. Test both argument orders, numbers in different scripts, and existing comparisons
-  with an explicit calling code. Assess national-to-international suffix matching separately
-  against labelled pairs before changing its evidential weight.
+- [x] CRM-T271 **Preserve leading zeros when comparing two national phone numbers.** (2026-11-19, CRM-R23, CRM-R95, CRM-D19)
+  With no default calling code, `01234567` and `1234567` previously contributed phone agreement.
+  Normalized national numbers now compare digit for digit. The public matcher test checks both
+  argument orders and an equivalent Arabic-Indic number. Existing calling-code tests cover
+  normalization under differently shaped national plans. The change awaits a matcher release.
+- [ ] CRM-T273 **Measure the reliability of national-to-international suffix matches.** (CRM-R23, CRM-R95, CRM-D19)
+  The matcher accepts the last seven or more digits when only one side has a calling code.
+  Include labelled same-line and different-line pairs with overlapping suffixes across multiple
+  numbering plans. Report their phone-field outcomes and effects on the verdict before deciding
+  whether this evidence warrants full or partial agreement.
 
 Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 2026-10-31) and names the rows of the audit it closes ("spec" rows are the spec audit,
 "code" rows the code and UI check).

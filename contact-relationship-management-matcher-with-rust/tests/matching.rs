@@ -317,6 +317,21 @@ fn phone_comparison_preserves_adlam_digits_even_among_ascii_digits() {
 }
 
 #[test]
+fn national_numbers_keep_leading_zeros_without_a_calling_code() {
+    let national = Contact::new().phone("0123 4567");
+    let equivalent = Contact::new().phone("٠١٢٣٤٥٦٧");
+    let shorter = Contact::new().phone("1234567");
+    let matcher = matcher();
+    for (a, b, expected) in [
+        (&national, &equivalent, Outcome::Agree),
+        (&national, &shorter, Outcome::Disagree),
+    ] {
+        assert_eq!(outcome(&matcher.compare(a, b), Field::Phone), expected);
+        assert_eq!(outcome(&matcher.compare(b, a), Field::Phone), expected);
+    }
+}
+
+#[test]
 fn configuration_loads_from_partial_json() {
     let config: MatchConfig =
         serde_json::from_str(r#"{ "prior": 0.05, "default_calling_code": "44" }"#).unwrap();
