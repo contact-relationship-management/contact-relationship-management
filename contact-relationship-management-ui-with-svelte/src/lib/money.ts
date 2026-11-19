@@ -64,13 +64,52 @@ export function exponentOf(
 }
 
 function format(
-  minor: number,
+  minor: number | string,
   currency: string,
   locale: string,
   options: Intl.NumberFormatOptions = {},
 ): string {
   const e = exponentOf(currency, locale);
   try {
+    if (typeof minor === "string" && /^-?\d+$/.test(minor)) {
+      const negative = minor.startsWith("-");
+      const digits = negative ? minor.slice(1) : minor;
+      const padded = digits.padStart(e + 1, "0");
+      const whole = e === 0 ? padded : padded.slice(0, -e);
+      const fraction = e === 0 ? "" : padded.slice(-e);
+      const formatter = new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: e,
+        maximumFractionDigits: e,
+        ...options,
+      });
+      const wholeNumber = BigInt(whole);
+      const template = negative
+        ? wholeNumber === 0n
+          ? -0
+          : -wholeNumber
+        : wholeNumber;
+      const localizedDigits = Array.from(
+        { length: 10 },
+        (_, digit) =>
+          new Intl.NumberFormat(locale, { useGrouping: false })
+            .formatToParts(digit)
+            .find((part) => part.type === "integer")!.value,
+      );
+      return formatter
+        .formatToParts(template)
+        .map((part) =>
+          part.type === "fraction"
+            ? Array.from(
+                fraction,
+                (digit) => localizedDigits[Number(digit)],
+              ).join("")
+            : part.value,
+        )
+        .join("");
+    }
+    if (typeof minor === "string") return `${currency} ${minor}`;
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
@@ -88,7 +127,7 @@ function format(
  * `null`, `undefined` or no currency renders as an em dash (the masked or absent state), never 0.
  */
 export function money(
-  minor: number | null | undefined,
+  minor: number | string | null | undefined,
   currency: string | null | undefined,
   locale: string = currentLocale(),
 ): string {
@@ -108,20 +147,81 @@ export function signedMoney(
 
 /** Plain amount for a text input ("1234,50" in a decimal-comma locale), no symbol, no grouping. */
 export function minorToInput(
-  minor: number,
+  minor: number | string,
   currency: string,
   locale: string = currentLocale(),
 ): string {
   const e = exponentOf(currency, locale);
   try {
+    if (typeof minor === "string" && /^-?\d+$/.test(minor)) {
+      const negative = minor.startsWith("-");
+      const digits = negative ? minor.slice(1) : minor;
+      const padded = digits.padStart(e + 1, "0");
+      const whole = e === 0 ? padded : padded.slice(0, -e);
+      const fraction = e === 0 ? "" : padded.slice(-e);
+      const formatter = new Intl.NumberFormat(locale, { useGrouping: false });
+      const localizedDigits = Array.from(
+        { length: 10 },
+        (_, digit) =>
+          formatter
+            .formatToParts(digit)
+            .find((part) => part.type === "integer")!.value,
+      );
+      const localize = (value: string) =>
+        Array.from(value, (digit) => localizedDigits[Number(digit)]).join("");
+      const decimal = new Intl.NumberFormat(locale)
+        .formatToParts(1.1)
+        .find((part) => part.type === "decimal")?.value;
+      const minus = formatter
+        .formatToParts(-1)
+        .slice(
+          0,
+          formatter
+            .formatToParts(-1)
+            .findIndex((part) => part.type === "integer"),
+        )
+        .map((part) => part.value)
+        .join("");
+      return `${negative ? minus : ""}${localize(whole)}${fraction ? (decimal ?? ".") + localize(fraction) : ""}`;
+    }
+    if (typeof minor === "string") return minor;
     return new Intl.NumberFormat(locale, {
       minimumFractionDigits: e,
       maximumFractionDigits: e,
       useGrouping: false,
     }).format(minor / 10 ** e);
   } catch {
-    return String(minor / 10 ** e);
+    return typeof minor === "number" ? String(minor / 10 ** e) : minor;
   }
+}
+
+/**
+ * For an edit form, read a localized major-unit amount into exact base-ten minor-unit text.
+ * The result is limited to the service's signed 64-bit range and never passes through a
+ * JavaScript number.
+ */
+export function formMinorText(
+  text: string,
+  code: string | null | undefined,
+  locale: string = currentLocale(),
+): { minor: string; currency: string } {
+  const currency = currencyCode(code ?? "");
+  if (currency === null) throw new PageError(t("money.currencyRequired"));
+  const decimal = parseDecimalInput(text, locale);
+  if (decimal === null) throw new PageError(t("money.amountInvalid"));
+  const negative = decimal.startsWith("-");
+  const unsigned = negative ? decimal.slice(1) : decimal;
+  const [whole = "0", fraction = ""] = unsigned.split(".");
+  const exponent = exponentOf(currency, locale);
+  if (whole.length > 19 || fraction.length > exponent)
+    throw new PageError(t("money.amountInvalid"));
+  const scaled =
+    BigInt(whole) * 10n ** BigInt(exponent) +
+    BigInt((fraction + "0".repeat(exponent)).slice(0, exponent) || "0");
+  const minor = negative ? -scaled : scaled;
+  if (minor < -(2n ** 63n) || minor > 2n ** 63n - 1n)
+    throw new PageError(t("money.amountInvalid"));
+  return { minor: minor.toString(), currency };
 }
 
 /** Plain ASCII decimal text for the API, preserving fractional digits entered by the reader. */

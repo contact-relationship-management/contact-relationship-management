@@ -97,7 +97,7 @@ case "${stage}" in
     cd "${FE}"
     pnpm install --frozen-lockfile
     pnpm run check
-    # Coverage is a report for now (CRM-T94); no floor is enforced.
+    # CRM-T274: Vitest enforces the 95% executable-line floor in vite.config.ts.
     pnpm exec vitest run --coverage --coverage.reporter=text-summary
     pnpm run build
     pnpm run lint
@@ -116,9 +116,38 @@ case "${stage}" in
     pnpm run check
     ;;
   coverage)
-    # A report, not a gate: unit tests only (the database suite is in test-db), so the figure
-    # understates what the whole suite reaches. Floors come once the numbers have been watched.
-    (cd "${SVC}" && cargo llvm-cov --workspace --lib "${FEATURES[@]}" --summary-only)
+    # CRM-T275: one clean profile merges DB-free workspace tests, the normal integration tests,
+    # PostgreSQL request tests and the Redis adapter tests before enforcing the executable-line
+    # floor. This stage therefore needs the same services as test-db.
+    : "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=loco}" "${PG_PASSWORD:=loco}"
+    db=ci_contact_relationship_management_coverage
+    export PGPASSWORD="${PG_PASSWORD}"
+    dropdb --if-exists -h "${PG_HOST}" -p "${PG_PORT}" -U "${PG_USER}" "${db}"
+    createdb -h "${PG_HOST}" -p "${PG_PORT}" -U "${PG_USER}" "${db}"
+    psql -h "${PG_HOST}" -p "${PG_PORT}" -U "${PG_USER}" -d "${db}" -q -c \
+      'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+       CREATE EXTENSION IF NOT EXISTS citext;
+       CREATE EXTENSION IF NOT EXISTS unaccent;' || true
+    url="postgres://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}"
+    (cd "${SVC}" && DB_URL="${url}" DATABASE_URL="${url}" cargo run "${FEATURES[@]}" -- db migrate)
+    : "${REDIS_HOST:=localhost}" "${REDIS_PORT:=6379}"
+    if [[ -n "${REDIS_PASSWORD:-}" ]]; then
+      redis_url="redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}"
+    else
+      redis_url="redis://${REDIS_HOST}:${REDIS_PORT}"
+    fi
+    (cd "${SVC}" \
+      && export RUSTC_WRAPPER='' CARGO_BUILD_RUSTC_WRAPPER='' \
+      && cargo llvm-cov clean --workspace \
+      && cargo llvm-cov --offline --workspace --lib "${FEATURES[@]}" --summary-only \
+      && cargo llvm-cov --no-clean --offline --test main "${FEATURES[@]}" --summary-only \
+      && DB_URL="${url}" DATABASE_URL="${url}" \
+         cargo llvm-cov --no-clean --offline --test main "${FEATURES[@]}" --summary-only -- \
+         --ignored --test-threads=1 \
+      && CRM_REDIS_URL="${redis_url}" \
+         cargo llvm-cov --no-clean --offline --workspace --lib "${FEATURES[@]}" \
+           --summary-only --fail-under-lines 95 -- \
+           redis_store --ignored --test-threads=1)
     ;;
   e2e)
     # The Playwright suites (demo-data tour, accessibility, smoke): they build

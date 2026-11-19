@@ -670,6 +670,9 @@ async fn create_deal(
 pub(crate) struct ListedDeal {
     #[serde(flatten)]
     deal: deals::Model,
+    /// Exact base-ten text for clients whose number type cannot represent every JSON `int64`.
+    /// `null` carries the same masked state as `amount_minor`.
+    amount_minor_text: Option<String>,
     /// Open, with no stage move and no activity on the deal for the organization's
     /// `stalled_after_days` or more. Derived on every read, never stored.
     stalled: bool,
@@ -712,6 +715,7 @@ async fn listed(ctx: &AppContext, rows: Vec<deals::Model>) -> Result<Vec<ListedD
             let touched =
                 stalled::last_touch(deal.stage_moved_at, activity.get(&deal.pid).copied(), now);
             ListedDeal {
+                amount_minor_text: Some(deal.amount_minor.to_string()),
                 stalled: stalled::is_stalled(deal.closed_at.is_some(), touched, now, days),
                 last_touched_at: touched,
                 deal,
@@ -784,7 +788,7 @@ fn readable_deals(
                 if drop_masked {
                     return None;
                 }
-                value = auth::mask_json(value, &["amount_minor"]);
+                value = auth::mask_json(value, &["amount_minor", "amount_minor_text"]);
             }
             Some(value)
         })

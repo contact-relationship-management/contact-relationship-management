@@ -17,7 +17,12 @@
     moveDeal,
     placeCard,
   } from "#lib/api/crm.js";
-  import { minorToInput, minorToMajor, money, toMinor } from "#lib/money.js";
+  import {
+    formMinorText,
+    minorToInput,
+    minorToMajor,
+    money,
+  } from "#lib/money.js";
   import { i18n, t, tf } from "#lib/i18n.svelte.js";
   import { formatDate, formatDecimalText } from "#lib/locale-format.js";
   import { ratioFraction, ratioPercent, stageLabel } from "#lib/format.js";
@@ -39,7 +44,8 @@
     async () => {
       const want = chosen;
       const pipelines = await listPipelines();
-      const active = pipelines.find((p) => p.pipeline.pid === want) ?? pipelines[0];
+      const active =
+        pipelines.find((p) => p.pipeline.pid === want) ?? pipelines[0];
       const deals = active ? await listDeals(active.pipeline.pid) : [];
       const totals = (await forecast()).totals_minor ?? {};
       const stageFunnel = active ? await funnel(active.pipeline.pid) : null;
@@ -51,7 +57,9 @@
   const deals = $derived<ListedDeal[] | null>(board.value?.deals ?? null);
   const totals = $derived<Record<string, number>>(board.value?.totals ?? {});
   const pipelines = $derived(board.value?.pipelines ?? []);
-  const selectedPipeline = $derived(board.value?.active?.pipeline.pid ?? chosen);
+  const selectedPipeline = $derived(
+    board.value?.active?.pipeline.pid ?? chosen,
+  );
   const stageFunnel = $derived(board.value?.stageFunnel ?? null);
   const error = $derived(board.error);
 
@@ -61,7 +69,9 @@
     stages.map((stage) => ({ id: stage.pid, title: stageLabel(stage) })),
   );
 
-  const openDeals = $derived((deals ?? []).filter((deal) => deal.closed_at === null));
+  const openDeals = $derived(
+    (deals ?? []).filter((deal) => deal.closed_at === null),
+  );
   const UNASSIGNED = "__unassigned";
   const cards = $derived<KanbanCard[]>(
     openDeals.map((deal) => ({
@@ -73,10 +83,12 @@
       flag: deal.stalled ? t("deal.stalled") : undefined,
       values: {
         // The amount as the page's own number format types it, in the deal's own minor unit.
-        amount:
-          deal.amount_minor === null
+        amount: (() => {
+          const minor = deal.amount_minor_text ?? deal.amount_minor;
+          return minor === null
             ? null
-            : minorToInput(deal.amount_minor, deal.currency, i18n.locale),
+            : minorToInput(minor, deal.currency, i18n.locale);
+        })(),
         close: deal.expected_close_on ?? null,
         currency: deal.currency,
       },
@@ -87,16 +99,24 @@
   const lanes = $derived<KanbanLane[]>(
     [...new Set(openDeals.map((d) => d.owner_ref ?? UNASSIGNED))]
       .sort()
-      .map((id) => ({ id, title: id === UNASSIGNED ? t("kanban.unassigned") : id })),
+      .map((id) => ({
+        id,
+        title: id === UNASSIGNED ? t("kanban.unassigned") : id,
+      })),
   );
 
   // The amount shows with its own currency and edits as text in the page's own number format
   // ("1234,50" in German, "1500" yen), so a decimal comma is accepted (CRM-T167). A deal with no
   // currency shows a dash: none is assumed (CRM-T168).
-  const minorOf = (value: unknown, currency: unknown) =>
-    typeof value === "string" && typeof currency === "string" && currency
-      ? toMinor(value, currency, i18n.locale)
-      : null;
+  const minorOf = (value: unknown, currency: unknown) => {
+    if (typeof value !== "string" || typeof currency !== "string" || !currency)
+      return null;
+    try {
+      return formMinorText(value, currency, i18n.locale).minor;
+    } catch {
+      return null;
+    }
+  };
   const fields = $derived<KanbanField[]>([
     {
       id: "amount",
@@ -104,18 +124,27 @@
       type: "text",
       editable: true,
       format: (value: unknown, row: Record<string, unknown>) =>
-        money(minorOf(value, row.currency), String(row.currency ?? ""), i18n.locale),
+        money(
+          minorOf(value, row.currency),
+          String(row.currency ?? ""),
+          i18n.locale,
+        ),
       validate: (value: unknown, values: Record<string, unknown>) =>
-        minorOf(value, values.currency) === null ? t("money.amountInvalid") : undefined,
+        minorOf(value, values.currency) === null
+          ? t("money.amountInvalid")
+          : undefined,
     },
     { id: "close", header: t("kanban.closeOn"), type: "date", editable: true },
   ]);
 
   async function onEdit(edit: KanbanFieldEdit) {
-    const currency = openDeals.find((deal) => deal.pid === edit.cardId)?.currency;
-    const minor = edit.fieldId === "amount" ? minorOf(edit.value, currency) : null;
+    const currency = openDeals.find(
+      (deal) => deal.pid === edit.cardId,
+    )?.currency;
+    const minor =
+      edit.fieldId === "amount" ? minorOf(edit.value, currency) : null;
     if (minor !== null) {
-      await editDeal(edit.cardId, { amount_minor: minor });
+      await editDeal(edit.cardId, { amount_minor_text: minor });
     } else if (edit.fieldId === "close" && typeof edit.value === "string") {
       await editDeal(edit.cardId, { expected_close_on: edit.value });
     }
@@ -164,14 +193,18 @@
       name: deal.name,
       // Major units of the deal's own currency, so the column sorts as numbers.
       amount_minor:
-        deal.amount_minor === null ? "" : minorToMajor(deal.amount_minor, deal.currency, i18n.locale),
+        deal.amount_minor === null
+          ? ""
+          : minorToMajor(deal.amount_minor, deal.currency, i18n.locale),
       currency: deal.currency,
       state: deal.closed_at === null ? "open" : deal.won ? "won" : "lost",
       expected_close_on: deal.expected_close_on ?? "",
     })),
   );
   const shaped = $derived(applyShape(dealRows, dealColumns, view));
-  const headings = $derived(Object.fromEntries(dealColumns.map((c) => [c.id, c.header])));
+  const headings = $derived(
+    Object.fromEntries(dealColumns.map((c) => [c.id, c.header])),
+  );
 
   const funnelColumns = $derived([
     { id: "stage", header: t("deal.stage") },
@@ -218,13 +251,24 @@
   {/each}
   <label>
     {t("rpt.convertTo")}
-    <input bind:value={showIn} maxlength="3" size="4" data-testid="forecast-convert" />
+    <input
+      bind:value={showIn}
+      maxlength="3"
+      size="4"
+      data-testid="forecast-convert"
+    />
   </label>
 </p>
 {#if converted.value?.converted_minor != null}
   <p data-testid="forecast-converted">
     {t("dash.forecast")} ({converted.value.convert_to}):
-    <strong>{money(converted.value.converted_minor, converted.value.convert_to!, i18n.locale)}</strong>
+    <strong
+      >{money(
+        converted.value.converted_minor,
+        converted.value.convert_to!,
+        i18n.locale,
+      )}</strong
+    >
     {#each converted.value.rates as used (used.from)}
       <span class="chip muted small">
         1 {used.from} = {formatDecimalText(used.rate)}

@@ -2105,13 +2105,18 @@ function editDeal(pid: string, body: unknown): DemoReply {
   const deal = state.deals.find((d) => d.pid === pid);
   if (!deal) return problem(404, "deal not found");
   if (deal.closed_at) return problem(422, "deal is closed — reopen it first");
-  const { name, amount_minor, expected_close_on } = bodyOf(body);
+  const { name, amount_minor, amount_minor_text, expected_close_on } =
+    bodyOf(body);
   if (
     name === undefined &&
     amount_minor === undefined &&
+    amount_minor_text === undefined &&
     expected_close_on === undefined
   ) {
     return problem(422, "nothing to change");
+  }
+  if (amount_minor !== undefined && amount_minor_text !== undefined) {
+    return problem(422, "send amount_minor or amount_minor_text, not both");
   }
   if (name !== undefined) {
     if (typeof name !== "string" || !name.trim())
@@ -2123,6 +2128,19 @@ function editDeal(pid: string, body: unknown): DemoReply {
       return problem(422, "amount_minor must not be negative");
     }
     deal.amount_minor = Math.round(amount_minor);
+  }
+  if (amount_minor_text !== undefined) {
+    if (
+      typeof amount_minor_text !== "string" ||
+      !/^\d+$/.test(amount_minor_text) ||
+      BigInt(amount_minor_text) > BigInt(Number.MAX_SAFE_INTEGER)
+    ) {
+      return problem(
+        422,
+        "amount_minor_text must be a safe non-negative decimal in demo mode",
+      );
+    }
+    deal.amount_minor = Number(amount_minor_text);
   }
   if (typeof expected_close_on === "string")
     deal.expected_close_on = expected_close_on;

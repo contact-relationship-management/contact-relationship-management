@@ -56,6 +56,9 @@ truthfully.*
 
 - Pipeline + ordered stages with probabilities and terminal
   won/lost flags; Deal CRUD with amount in minor units + ISO-4217.
+- Every deal read carries the exact decimal text of its signed 64-bit minor-unit amount alongside
+  the compatible JSON number. The text is masked with the number. Browser edits use the text, and a
+  name-only edit preserves every minor unit through the service, BFF and editor (CRM-D7, CRM-T269).
 - Stage moves validate pipeline membership, keep `kanban_position`,
   audit + emit; entering a terminal stage closes the deal (lost
   requires a reason); closed deals immutable except a reasoned

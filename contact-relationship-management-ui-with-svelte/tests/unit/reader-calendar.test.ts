@@ -8,13 +8,16 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  browserLanguages,
   calendarLocale,
+  countryOf,
   FALLBACK_REGIONS,
   isoDateIn,
   readerRegion,
+  readerTimeZone,
   todayIso,
   weekInfo,
 } from "../../src/lib/reader-calendar";
@@ -42,6 +45,16 @@ describe("today is the reader's date, not the UTC date", () => {
 
   it("uses the runtime's zone when none is given", () => {
     expect(todayIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(readerTimeZone()).toBeTruthy();
+    expect(browserLanguages()).toEqual(navigator.languages);
+  });
+
+  it("has no reader zone when the internationalisation runtime is unavailable", () => {
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementationOnce(() => {
+      throw new RangeError("Intl unavailable");
+    });
+    expect(readerTimeZone()).toBeUndefined();
+    vi.restoreAllMocks();
   });
 });
 
@@ -52,6 +65,7 @@ describe("the reader's region", () => {
     expect(readerRegion("ar-001", ["ar", "fr-FR"])).toBe("FR");
     expect(readerRegion("ar-001", ["ar", "en"])).toBeNull();
     expect(readerRegion("ar-001")).toBeNull();
+    expect(countryOf("not_a_locale")).toBeNull();
   });
 });
 

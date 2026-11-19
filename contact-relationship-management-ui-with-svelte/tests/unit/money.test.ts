@@ -12,6 +12,7 @@ import {
   currencyCode,
   exponentOf,
   formMinor,
+  formMinorText,
   majorToMinor,
   minorToInput,
   minorToMajor,
@@ -86,6 +87,15 @@ describe("money", () => {
     expect(money(1_234_567, "KWD", "en-001")).toContain("1,234.567");
     expect(money(123_450, "EUR", "en-001")).toBe("€1,234.50");
     expect(money(12_345, "CLF", "en-001")).toContain("1.2345");
+    expect(money("9223372036854775807", "JPY", "en-001")).toBe(
+      "JP¥9,223,372,036,854,775,807",
+    );
+    expect(money("9223372036854775807", "EUR", "en-001")).toBe(
+      "€92,233,720,368,547,758.07",
+    );
+    expect(money("9223372036854775807", "KWD", "de-de")).toMatch(
+      /^9\.223\.372\.036\.854\.775,807\s/u,
+    );
   });
   it("uses the reader's own separators", () => {
     expect(money(123_450, "EUR", "de-de")).toMatch(/^1\.234,50\s€$/u);
@@ -172,6 +182,12 @@ describe("minorToInput", () => {
     }
     expect(minorToInput(150_050, "EUR", "de-de")).toBe("1500,50");
     expect(minorToInput(1500, "JPY", "en-001")).toBe("1500");
+    expect(minorToInput("9007199254740991", "EUR", "en-001")).toBe(
+      "90071992547409.91",
+    );
+    expect(minorToInput("9223372036854775807", "KWD", "de-de")).toBe(
+      "9223372036854775,807",
+    );
   });
 });
 
@@ -200,6 +216,24 @@ describe("formMinor", () => {
     expect(() => formMinor("10", "", "en-001")).toThrow(PageError);
     expect(() => formMinor("10", undefined, "en-001")).toThrow(PageError);
     expect(() => formMinor("ten", "EUR", "en-001")).toThrow(PageError);
+  });
+});
+
+describe("formMinorText", () => {
+  it("keeps JPY, EUR and KWD exact through the signed 64-bit boundary", () => {
+    expect(formMinorText("9223372036854775807", "JPY", "en-001").minor).toBe(
+      "9223372036854775807",
+    );
+    expect(formMinorText("92233720368547758.07", "EUR", "en-001").minor).toBe(
+      "9223372036854775807",
+    );
+    expect(formMinorText("9223372036854775,807", "KWD", "de-de").minor).toBe(
+      "9223372036854775807",
+    );
+    expect(() =>
+      formMinorText("92233720368547758.08", "EUR", "en-001"),
+    ).toThrow(PageError);
+    expect(() => formMinorText("1.001", "EUR", "en-001")).toThrow(PageError);
   });
 });
 

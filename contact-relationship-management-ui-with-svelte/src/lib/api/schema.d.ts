@@ -7451,7 +7451,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["ExactDeal"];
+                    };
                 };
                 /** @description Missing, expired or invalid bearer token */
                 401: {
@@ -19832,6 +19834,12 @@ export interface components {
              */
             amount_minor: number | null;
             /**
+             * @description Exact decimal `i64` text for clients whose number type cannot represent every minor unit.
+             *     When present, `amount_minor` must be absent.
+             * @default null
+             */
+            amount_minor_text: string | null;
+            /**
              * Format: date
              * @default null
              */
@@ -20201,6 +20209,52 @@ export interface components {
              * @description The envelope sequence.
              */
             seq: number;
+        };
+        /** @description A deal returned to a client that may not represent a JSON `int64` exactly. */
+        ExactDeal: {
+            /** Format: uuid */
+            account_pid?: string | null;
+            /**
+             * Format: int64
+             * @description Absent (`null`) when masked: a masked amount is never a fake zero.
+             */
+            amount_minor?: number | null;
+            /** @description The exact value of `amount_minor`, in base-ten ASCII. */
+            amount_minor_text: string;
+            /** Format: date-time */
+            closed_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            currency: string;
+            /** Format: date-time */
+            deleted_at?: string | null;
+            /** Format: date */
+            expected_close_on?: string | null;
+            /** Format: int32 */
+            id: number;
+            /** Format: int32 */
+            kanban_position: number;
+            lost_reason?: string | null;
+            name: string;
+            owner_ref?: string | null;
+            /** Format: uuid */
+            pid: string;
+            /** Format: uuid */
+            pipeline_pid: string;
+            /** Format: uuid */
+            primary_contact_pid?: string | null;
+            /** Format: uuid */
+            source_campaign_pid?: string | null;
+            /**
+             * Format: date-time
+             * @description The last stage move or reopen; the deal's creation until the first (CRM-D20).
+             */
+            stage_moved_at: string;
+            /** Format: uuid */
+            stage_pid: string;
+            /** Format: date-time */
+            updated_at: string;
+            won: boolean;
         };
         /** @description `GET /api/insights/executive`. Won value is `null` when masked. */
         ExecutivePack: {
@@ -20805,6 +20859,11 @@ export interface components {
              * @description Absent (`null`) when masked: a masked amount is never a fake zero.
              */
             amount_minor: number | null;
+            /**
+             * @description Exact base-ten text for clients whose number type cannot represent every JSON `int64`.
+             *     `null` carries the same masked state as `amount_minor`.
+             */
+            amount_minor_text: string | null;
             /** Format: date-time */
             closed_at: string | null;
             /** Format: date-time */

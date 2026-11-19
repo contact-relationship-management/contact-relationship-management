@@ -58,4 +58,41 @@ describe("verify load", () => {
     });
     expect(upstream).toHaveBeenCalledOnce();
   });
+
+  it("reports an upstream success that omitted its session cookie", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null)));
+    await expect(
+      load({
+        url: new URL("http://localhost/verify?token=abc"),
+        cookies,
+      } as unknown as Parameters<typeof load>[0]),
+    ).resolves.toEqual({
+      error: "noSession",
+      title: "Sign-in link — Contact Relationship Management",
+    });
+  });
+
+  it("sets the host-only cookie and redirects after a valid exchange", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          headers: {
+            "set-cookie": "__Host-mxi_session=opaque; Secure; HttpOnly",
+          },
+        }),
+      ),
+    );
+    await expect(
+      load({
+        url: new URL("http://localhost/verify?token=abc"),
+        cookies,
+      } as unknown as Parameters<typeof load>[0]),
+    ).rejects.toMatchObject({ status: 303, location: "/" });
+    expect(cookies.set).toHaveBeenCalledWith(
+      "__Host-mxi_session",
+      "opaque",
+      expect.objectContaining({ httpOnly: true, secure: true, path: "/" }),
+    );
+  });
 });

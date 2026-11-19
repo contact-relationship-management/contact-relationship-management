@@ -12,7 +12,7 @@
     type ListedDeal,
     type DealDelivery,
   } from "#lib/api/crm.js";
-  import { formMinor, minorToInput, money } from "#lib/money.js";
+  import { formMinorText, minorToInput, money } from "#lib/money.js";
   import Attachments from "#lib/components/Attachments.svelte";
   import CustomFields from "#lib/components/CustomFields.svelte";
   import Tags from "#lib/components/Tags.svelte";
@@ -56,13 +56,16 @@
   let amount = $state("");
   let closeOn = $state("");
 
+  const exactMinor = (current: Deal): string | null =>
+    current.amount_minor_text ??
+    (current.amount_minor === null ? null : String(current.amount_minor));
+
   function startEdit(current: Deal) {
     name = current.name;
     // An amount the caller's policy masks arrives null and stays uneditable.
+    const minor = exactMinor(current);
     amount =
-      current.amount_minor === null
-        ? ""
-        : minorToInput(current.amount_minor, current.currency, i18n.locale);
+      minor === null ? "" : minorToInput(minor, current.currency, i18n.locale);
     closeOn = current.expected_close_on ?? "";
     formError = null;
     saved = false;
@@ -90,20 +93,26 @@
 
   // Only what changed is sent, so a masked amount is never overwritten with nothing.
   async function save(current: ListedDeal) {
-    const fields: { name?: string; amount_minor?: number; expected_close_on?: string } = {};
+    const fields: {
+      name?: string;
+      amount_minor_text?: string;
+      expected_close_on?: string;
+    } = {};
     if (name.trim() !== current.name) fields.name = name.trim();
-    if (current.amount_minor !== null && amount.trim() !== "") {
+    const currentMinor = exactMinor(current);
+    if (currentMinor !== null && amount.trim() !== "") {
       // The deal's own minor unit (CRM-T167): 1500 yen is 1500, not 150000.
-      let minor: number;
+      let minor: string;
       try {
-        minor = formMinor(amount, current.currency, i18n.locale).minor;
+        minor = formMinorText(amount, current.currency, i18n.locale).minor;
       } catch (cause) {
         formError = errorMessage(cause);
         return;
       }
-      if (minor !== current.amount_minor) fields.amount_minor = minor;
+      if (minor !== currentMinor) fields.amount_minor_text = minor;
     }
-    if (closeOn && closeOn !== (current.expected_close_on ?? "")) fields.expected_close_on = closeOn;
+    if (closeOn && closeOn !== (current.expected_close_on ?? ""))
+      fields.expected_close_on = closeOn;
     if (Object.keys(fields).length === 0) {
       editing = false;
       return;
@@ -124,7 +133,11 @@
   }
 </script>
 
-<p><a href="/deals"><span aria-hidden="true">{backArrow()}</span> {t("nav.deals")}</a></p>
+<p>
+  <a href="/deals"
+    ><span aria-hidden="true">{backArrow()}</span> {t("nav.deals")}</a
+  >
+</p>
 {#if error}
   <p class="error" data-testid="error">{t("common.error")}: {error}</p>
 {:else if deal === null}
@@ -132,8 +145,11 @@
 {:else}
   <h1 data-testid="record-title">{deal.name}</h1>
   <p>
-    {#if deal.amount_minor !== null}<strong>{money(deal.amount_minor, deal.currency, i18n.locale)}</strong>{/if}
-    {#if deal.closed_at}<span class="chip">{deal.won ? "won" : "closed"}</span>{/if}
+    {#if exactMinor(deal) !== null}<strong
+        >{money(exactMinor(deal), deal.currency, i18n.locale)}</strong
+      >{/if}
+    {#if deal.closed_at}<span class="chip">{deal.won ? "won" : "closed"}</span
+      >{/if}
   </p>
   {#if deal.stalled}
     <!-- Derived by the service (CRM-R4, CRM-D20); the page only says it. -->
@@ -142,11 +158,19 @@
       {tf("deal.stalledSince", { date: formatDate(deal.last_touched_at) })}
     </p>
   {/if}
-  {#if reopened}<p role="status" data-testid="deal-reopened">{t("deal.reopened")}</p>{/if}
-  {#if saved}<p role="status" data-testid="deal-saved">{t("deal.saved")}</p>{/if}
+  {#if reopened}<p role="status" data-testid="deal-reopened">
+      {t("deal.reopened")}
+    </p>{/if}
+  {#if saved}<p role="status" data-testid="deal-saved">
+      {t("deal.saved")}
+    </p>{/if}
   {#if deal.won}
     <section class="panel" data-testid="deal-delivery">
-      <button type="button" onclick={() => deal && void openDeliveryIdea(deal)} data-testid="deal-delivery-open">
+      <button
+        type="button"
+        onclick={() => deal && void openDeliveryIdea(deal)}
+        data-testid="deal-delivery-open"
+      >
         {t("deal.delivery")}
       </button>
       {#if delivery}
@@ -161,7 +185,13 @@
           <span class="muted">{delivery.idea.title}</span>
         </p>
       {/if}
-      {#if deliveryError}<p class="error" role="alert" data-testid="deal-delivery-error">{deliveryError}</p>{/if}
+      {#if deliveryError}<p
+          class="error"
+          role="alert"
+          data-testid="deal-delivery-error"
+        >
+          {deliveryError}
+        </p>{/if}
     </section>
   {/if}
   {#if deal.closed_at}
@@ -176,15 +206,29 @@
       >
         <label>
           {t("deal.reopenReason")}
-          <input bind:value={reason} required data-testid="deal-reopen-reason" />
+          <input
+            bind:value={reason}
+            required
+            data-testid="deal-reopen-reason"
+          />
         </label>
-        <button type="submit" disabled={busy || !reason.trim()} data-testid="deal-reopen-confirm">
+        <button
+          type="submit"
+          disabled={busy || !reason.trim()}
+          data-testid="deal-reopen-confirm"
+        >
           {t("deal.reopenConfirm")}
         </button>
-        <button type="button" onclick={() => (reopening = false)} data-testid="deal-reopen-cancel">
+        <button
+          type="button"
+          onclick={() => (reopening = false)}
+          data-testid="deal-reopen-cancel"
+        >
           {t("deal.cancel")}
         </button>
-        {#if formError}<p role="alert" data-testid="deal-error">{formError}</p>{/if}
+        {#if formError}<p role="alert" data-testid="deal-error">
+            {formError}
+          </p>{/if}
       </form>
     {:else}
       <button
@@ -223,16 +267,28 @@
         {t("kanban.closeOn")}
         <input type="date" bind:value={closeOn} data-testid="deal-close-on" />
       </label>
-      <button type="submit" disabled={busy || !name.trim()} data-testid="deal-save">
+      <button
+        type="submit"
+        disabled={busy || !name.trim()}
+        data-testid="deal-save"
+      >
         {t("deal.save")}
       </button>
-      <button type="button" onclick={() => (editing = false)} data-testid="deal-cancel">
+      <button
+        type="button"
+        onclick={() => (editing = false)}
+        data-testid="deal-cancel"
+      >
         {t("deal.cancel")}
       </button>
-      {#if formError}<p role="alert" data-testid="deal-error">{formError}</p>{/if}
+      {#if formError}<p role="alert" data-testid="deal-error">
+          {formError}
+        </p>{/if}
     </form>
   {:else}
-    <button onclick={() => deal && startEdit(deal)} data-testid="deal-edit">{t("deal.edit")}</button>
+    <button onclick={() => deal && startEdit(deal)} data-testid="deal-edit"
+      >{t("deal.edit")}</button
+    >
   {/if}
   <Tags kind="deals" {pid} />
   <CustomFields kind="deals" {pid} />

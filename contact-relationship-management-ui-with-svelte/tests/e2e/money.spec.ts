@@ -22,12 +22,13 @@ async function signIn(page: Page) {
   ]);
 }
 
-const deal = (pid: string, amount_minor: number, currency: string) => ({
+const deal = (pid: string, amount: number | string, currency: string) => ({
   pid,
   name: `Deal in ${currency}`,
   pipeline_pid: "p1",
   stage_pid: "s1",
-  amount_minor,
+  amount_minor: Number(amount),
+  amount_minor_text: String(amount),
   currency,
   won: false,
   closed_at: null,
@@ -87,7 +88,7 @@ test.describe("money in its own minor unit and the reader's format", () => {
     await page.getByTestId("deal-save").click();
     await expect(page.getByTestId("deal-saved")).toBeVisible();
     // Sent as 2500 minor units, not 250000.
-    expect(puts).toEqual([{ amount_minor: 2500 }]);
+    expect(puts).toEqual([{ amount_minor_text: "2500" }]);
     await expect(page.getByRole("main")).toContainText("¥2,500");
     await axeClean(page);
   });
@@ -107,7 +108,7 @@ test.describe("money in its own minor unit and the reader's format", () => {
     await page.getByTestId("deal-amount").fill("1.234,56");
     await page.getByTestId("deal-save").click();
     await expect(page.getByTestId("deal-saved")).toBeVisible();
-    expect(puts).toEqual([{ amount_minor: 123_456 }]);
+    expect(puts).toEqual([{ amount_minor_text: "123456" }]);
     await expect(page.getByRole("main")).toContainText("1.234,56 €");
     // Text that is not a number in German is refused before anything is sent.
     await page.getByTestId("deal-edit").click();
@@ -122,6 +123,37 @@ test.describe("money in its own minor unit and the reader's format", () => {
     await stub(page, [deal("dk", 1_234_567, "KWD")]);
     await page.goto("/deals/dk");
     await expect(page.getByRole("main")).toContainText("1,234.567");
+    await axeClean(page);
+  });
+
+  test("large JPY, EUR and KWD amounts survive display and a name-only edit", async ({
+    page,
+  }) => {
+    const maximum = "9223372036854775807";
+    const puts = await stub(page, [
+      deal("large-jpy", maximum, "JPY"),
+      deal("large-eur", maximum, "EUR"),
+      deal("large-kwd", maximum, "KWD"),
+    ]);
+
+    await page.goto("/deals/large-jpy");
+    await page.getByTestId("deal-edit").click();
+    await expect(page.getByTestId("deal-amount")).toHaveValue(maximum);
+
+    await page.goto("/deals/large-eur");
+    await page.getByTestId("deal-edit").click();
+    await expect(page.getByTestId("deal-amount")).toHaveValue(
+      "92233720368547758.07",
+    );
+    await page.getByTestId("deal-name").fill("Renamed exact deal");
+    await page.getByTestId("deal-save").click();
+    expect(puts).toEqual([{ name: "Renamed exact deal" }]);
+
+    await page.goto("/deals/large-kwd");
+    await page.getByTestId("deal-edit").click();
+    await expect(page.getByTestId("deal-amount")).toHaveValue(
+      "9223372036854775.807",
+    );
     await axeClean(page);
   });
 });

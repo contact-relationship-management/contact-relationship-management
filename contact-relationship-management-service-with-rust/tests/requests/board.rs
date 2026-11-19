@@ -46,10 +46,13 @@ async fn deals_are_edited_and_reordered() {
             .json();
         assert_eq!(edited["name"], "Alpha Prime");
         assert_eq!(edited["amount_minor"], 250_000);
+        assert_eq!(edited["amount_minor_text"], "250000");
         for bad in [
             json!({ "name": "  " }),
             json!({ "amount_minor": -1 }),
             json!({}),
+            json!({ "amount_minor": 1, "amount_minor_text": "1" }),
+            json!({ "amount_minor_text": "9223372036854775808" }),
         ] {
             let refused = request
                 .put(&format!("/api/deals/{}", deal_pids[0]))
@@ -57,6 +60,32 @@ async fn deals_are_edited_and_reordered() {
                 .await;
             assert_eq!(refused.status_code(), 422, "{bad}");
         }
+        // JSON numbers cannot preserve every i64 in a browser. The string companion does, and a
+        // name-only edit leaves the database value untouched.
+        let maximum = i64::MAX.to_string();
+        let exact: Value = request
+            .put(&format!("/api/deals/{}", deal_pids[0]))
+            .json(&json!({ "amount_minor_text": maximum }))
+            .await
+            .json();
+        assert_eq!(exact["amount_minor_text"], i64::MAX.to_string());
+        let renamed: Value = request
+            .put(&format!("/api/deals/{}", deal_pids[0]))
+            .json(&json!({ "name": "Maximum" }))
+            .await
+            .json();
+        assert_eq!(renamed["amount_minor_text"], i64::MAX.to_string());
+        let listed: Value = request
+            .get(&format!("/api/deals?pipeline={pipeline_pid}"))
+            .await
+            .json();
+        let maximum_row = listed
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["pid"] == deal_pids[0])
+            .unwrap();
+        assert_eq!(maximum_row["amount_minor_text"], i64::MAX.to_string());
         // Move Alpha to the end of its stage; the list follows.
         request
             .put(&format!("/api/deals/{}/position", deal_pids[0]))

@@ -20,7 +20,7 @@ async fn swagger_ui() -> Result<Response> {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Patient Flow Service API</title>
+  <title>Contact Relationship Management API</title>
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
 </head>
 <body>

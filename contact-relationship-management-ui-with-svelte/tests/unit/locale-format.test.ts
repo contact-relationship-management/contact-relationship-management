@@ -16,6 +16,7 @@ import {
   formatDate,
   formatDateTime,
   formatDecimal,
+  formatDecimalText,
   formatInteger,
   formatMonth,
   formatNumber,
@@ -74,6 +75,15 @@ describe("numbers in the page's locale", () => {
     expect(formatBasisPoints(250, 0, "en-001")).toBe("3%");
   });
 
+  it("handles absent, textual, and unusually precise decimal text", () => {
+    expect(formatDecimalText(null)).toBe(DASH);
+    expect(formatDecimalText("")).toBe(DASH);
+    expect(formatDecimalText("not a decimal")).toBe("not a decimal");
+    expect(formatDecimalText(" 1.2300 ", "en-001")).toBe("1.23");
+    expect(formatPercentValue(Number.POSITIVE_INFINITY)).toBe(DASH);
+    expect(formatNumber(1234.5, {}, "bad_locale")).toBe("1,234.5");
+  });
+
   it("is what the ratio and stage helpers in format.ts now write", () => {
     const half = { numerator: 1, denominator: 2, value: 0.5 };
     expect(ratioPercent(half, "en-001")).toBe("50%");
@@ -102,6 +112,9 @@ describe("dates in the page's locale", () => {
     expect(formatDate("")).toBe(DASH);
     expect(formatDate("soon")).toBe("soon");
     expect(formatDate("2026-13-45", "medium", "en-001")).toBe("2026-13-45");
+    expect(formatDate("2026-10-30", "medium", "bad_locale")).toBe(
+      "Oct 30, 2026",
+    );
   });
 
   it("writes a timestamp as a date, a date and time, or a time", () => {
@@ -111,6 +124,10 @@ describe("dates in the page's locale", () => {
     expect(formatTime(at, "en-001")).toMatch(/^\d{1,2}[:.]\d{2}/);
     // A civil date has no time of day.
     expect(formatDateTime("2026-10-30", "en-001")).toBe("30 Oct 2026");
+    expect(formatDateTime(null)).toBe(DASH);
+    expect(formatDateTime("soon")).toBe("soon");
+    expect(formatTime(null)).toBe(DASH);
+    expect(formatTime("2026-10-30", "en-001")).toBe("2026-10-30");
   });
 
   it("writes a timestamp in the page's locale, not the browser's", () => {
@@ -123,6 +140,8 @@ describe("dates in the page's locale", () => {
     expect(formatMonth("2026-10", "short", "en-001")).toBe("Oct 2026");
     expect(formatMonth("2026-10-01", "long", "en-001")).toBe("October 2026");
     expect(formatMonth("2026-10", "long", "de-de")).toBe("Oktober 2026");
+    expect(formatMonth(null)).toBe(DASH);
+    expect(formatMonth("someday")).toBe("someday");
   });
 });
 

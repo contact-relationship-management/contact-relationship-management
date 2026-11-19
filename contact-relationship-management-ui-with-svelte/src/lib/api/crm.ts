@@ -82,6 +82,8 @@ export interface Deal {
   pipeline_pid: string;
   stage_pid: string;
   amount_minor: number | null;
+  /** Exact base-ten text for values outside JavaScript's safe integer range. */
+  amount_minor_text?: string | null;
   currency: string;
   won: boolean;
   closed_at: string | null;
@@ -477,7 +479,12 @@ export function reopenDeal(pid: string, reason: string): Promise<Deal> {
 /** Edit an open deal in place (name, amount, expected close). */
 export function editDeal(
   pid: string,
-  fields: { name?: string; amount_minor?: number; expected_close_on?: string },
+  fields: {
+    name?: string;
+    amount_minor?: number;
+    amount_minor_text?: string;
+    expected_close_on?: string;
+  },
 ): Promise<Deal> {
   return api(`/deals/${pid}`, { method: "PUT", body: fields });
 }

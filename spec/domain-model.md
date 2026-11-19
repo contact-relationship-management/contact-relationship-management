@@ -83,6 +83,8 @@ first). `stalled` and `last_touched_at` are derived on read
 database's `now()`, the clock its sends, provider events and leads are stamped on, so attribution
 never puts a touch made just before a close after it (CRM-T248). Stage moves are audited; a deal in a terminal stage is immutable
 except reopening to its prior stage with a reason.
+The JSON representation also carries `amount_minor_text`, an exact decimal rendering of the stored
+`i64`; it is a wire-format companion rather than another stored value (CRM-D7).
 
 **ForecastSnapshot** — optional persisted roll-up per period/owner
 (the live forecast is derived; snapshots freeze month-end).

@@ -304,13 +304,10 @@ async fn a_ticket_left_waiting_past_its_policy_limit_is_flagged_once_and_cleared
             open("normal").await,
         );
         for (pid, minutes) in [(&limited, 90), (&unlimited, 90), (&recent, 30)] {
-            sql(
+            paused_for(
                 contact_relationship_management::db::pool(&ctx),
-                &format!(
-                    "UPDATE tickets SET paused_at = now() - interval '{minutes} minutes' \
-                     WHERE pid = $1::uuid"
-                ),
                 pid,
+                minutes,
             )
             .await;
         }
@@ -406,13 +403,7 @@ async fn a_policy_can_resolve_or_escalate_a_ticket_left_waiting_past_its_limit()
                     .json(&json!({ "to": "pending" }))
                     .await
                     .assert_status_ok();
-                sql(
-                    contact_relationship_management::db::pool(ctx),
-                    "UPDATE tickets SET paused_at = now() - interval '90 minutes' \
-                     WHERE pid = $1::uuid",
-                    &pid,
-                )
-                .await;
+                paused_for(contact_relationship_management::db::pool(ctx), &pid, 90).await;
                 pid
             }
         };

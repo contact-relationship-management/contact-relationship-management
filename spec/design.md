@@ -50,6 +50,12 @@ exits everything immediately.
 report per-currency lines, never a silent sum; no FX in v1 (the report builder
 alone can convert a deal sum, from hand-entered rates, naming them: CRM-R50).
 
+A deal read includes `amount_minor_text`, the exact base-ten form of `amount_minor`, because a
+browser number cannot represent every signed 64-bit integer. It is `null` whenever the numeric
+amount is masked. Deal edits accept that string companion and retain the numeric field for existing
+clients. A client with an exact-integer type uses the string for display, comparison and writes and
+never converts it through a floating-point number.
+
 ## CRM-D8 — Jobs on `bg_pg`, idempotent by key
 
 Nurture advancement (idempotent per enrolment+step), the SLA breach

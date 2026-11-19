@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { apiAll, MAX_PAGES, nextLink } from "#lib/api/client.js";
+import {
+  ApiError,
+  apiAll,
+  apiConditional,
+  apiUpload,
+  MAX_PAGES,
+  nextLink,
+} from "#lib/api/client.js";
 
 const page = (rows: unknown[], next?: string) =>
   new Response(JSON.stringify(rows), {
@@ -54,5 +61,60 @@ describe("apiAll", () => {
         status: 422,
       })) as unknown as typeof fetch;
     await expect(apiAll("/x", { fetch: fetcher })).rejects.toThrow("nope");
+  });
+});
+
+describe("conditional reads and uploads", () => {
+  it("keeps the current body on 304 and carries forward an ETag", async () => {
+    const fetcher = (async (_url: string, init?: RequestInit) => {
+      expect(init?.headers).toEqual({ "if-none-match": '"old"' });
+      return new Response(null, { status: 304 });
+    }) as typeof fetch;
+    await expect(
+      apiConditional("/deals", '"old"', { fetch: fetcher }),
+    ).resolves.toEqual({ status: 304, etag: '"old"', body: null });
+  });
+
+  it("parses a changed conditional response and its new ETag", async () => {
+    const fetcher = (async () =>
+      new Response('{"changed":true}', {
+        status: 200,
+        headers: { etag: '"new"' },
+      })) as typeof fetch;
+    await expect(
+      apiConditional<{ changed: boolean }>("/deals", null, { fetch: fetcher }),
+    ).resolves.toEqual({
+      status: 200,
+      etag: '"new"',
+      body: { changed: true },
+    });
+  });
+
+  it("surfaces conditional and upload problem responses", async () => {
+    const refused = (async () =>
+      new Response('{"description":"refused"}', {
+        status: 422,
+      })) as typeof fetch;
+    await expect(
+      apiConditional("/deals", null, { fetch: refused }),
+    ).rejects.toBeInstanceOf(ApiError);
+    await expect(
+      apiUpload("/attachments", new Blob(["abc"]), { fetch: refused }),
+    ).rejects.toThrow("refused");
+  });
+
+  it("uploads raw bytes with the required headers", async () => {
+    const file = new Blob(["abc"]);
+    const fetcher = (async (_url: string, init?: RequestInit) => {
+      expect(init?.method).toBe("POST");
+      expect(init?.body).toBe(file);
+      expect(init?.headers).toMatchObject({
+        "content-type": "application/octet-stream",
+      });
+      return new Response('{"pid":"att-1"}', { status: 200 });
+    }) as typeof fetch;
+    await expect(
+      apiUpload<{ pid: string }>("/attachments", file, { fetch: fetcher }),
+    ).resolves.toEqual({ pid: "att-1" });
   });
 });

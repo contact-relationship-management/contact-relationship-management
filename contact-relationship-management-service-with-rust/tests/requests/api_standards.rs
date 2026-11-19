@@ -117,6 +117,14 @@ async fn api_responses_are_not_cacheable() {
         // The documentation endpoint is outside /api and is left alone.
         let docs = request.get("/api-docs/openapi.json").await;
         assert!(docs.headers().get("cache-control").is_none());
+
+        let swagger = request.get("/swagger-ui").await;
+        swagger.assert_status_ok();
+        assert_eq!(swagger.content_type(), "text/html; charset=utf-8");
+        let html = swagger.text();
+        assert!(html.contains("<title>Contact Relationship Management API</title>"));
+        assert!(html.contains("url: '/api-docs/openapi.json'"));
+        assert!(!html.contains("Patient Flow"));
     })
     .await;
 }

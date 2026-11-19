@@ -1873,12 +1873,14 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
     The form tests used a stubbed API. Live database and mail paths were outside this change.
     Repository lint remains red on existing spelling and Markdown findings in the imported audit and
     code of conduct. Spelling and Markdown checks passed on the edited files.
-- [ ] CRM-T269 **Keep every supported minor unit through a deal edit.** (CRM-R4, CRM-R50, CRM-D7)
-  Compare the Rust `i64` API with the TypeScript `number` contract. Decide how to represent
-  amounts outside the browser's exact range across the API, BFF and editor, with a compatibility
-  path for existing clients. Even within that range, the editor formats `9007199254740991`
-  euro cents as `90071992547409.90`, one cent short. Test JPY, EUR and KWD near this boundary
-  and at the service maximum, including a name-only edit that preserves the original amount.
+- [x] CRM-T269 **Keep every supported minor unit through a deal edit.** (2026-11-19, CRM-R4, CRM-R50, CRM-D7)
+  Deal reads and edit responses now carry `amount_minor_text`, exact base-ten `i64` text, beside
+  the compatible numeric field; masking clears both. Edits accept the string while retaining the
+  numeric request field for existing clients. The UI formats and parses the text with `BigInt`,
+  locale digits and the currency exponent, and the demo accepts exact strings in its safe range.
+  Unit tests cover JPY, EUR and KWD at `i64::MAX`, overflow and excess fractional precision;
+  Chromium covers all three and a name-only edit; the database request test stores, lists and
+  preserves `i64::MAX`. Generated OpenAPI types describe both fields.
 - [x] CRM-T270 **Complete decimal digit coverage in phone matching.** (2026-11-19, CRM-R23, CRM-R95, CRM-D19)
   The matcher maps all 770 Unicode 18.0 decimal digits to their ASCII values. A unit test compares
   the result for every Unicode scalar with independent, version-pinned general-category data.
@@ -1895,6 +1897,24 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   Include labelled same-line and different-line pairs with overlapping suffixes across multiple
   numbering plans. Report their phone-field outcomes and effects on the verdict before deciding
   whether this evidence warrants full or partial agreement.
+- [x] CRM-T274 **Gate the client at 95% line coverage.** (2026-11-19)
+  Vitest's V8 census now covers 2,676 of 2,816 executable UI lines (95.02%), up from 1,648
+  (58.52%) at the start of this task. The new tests exercise the complete demo workflows and their
+  validation boundaries, exact-money paths, the typed API surface, session cookies, conditional
+  reads, uploads, component persistence failures, localized formatting and server-side sign-in.
+  `vite.config.ts` makes 95% a failing line threshold, and generated `coverage/` output is ignored.
+  The measured run passed 369 tests in 37 files. Statements (93.89%), branches (84.68%) and
+  functions (92.59%) remain reported but are not misrepresented as having reached 95%.
+- [x] CRM-T275 **Measure and raise whole-service Rust line coverage to 95%.** (2026-11-19)
+  A clean merged census now covers 31,767 of 33,424 executable Rust lines (95.04%),
+  3,860/4,109 functions (93.94%) and 38,566/42,163 regions (91.47%). The coverage stage
+  runs the workspace library tests, normal integration tests, ignored PostgreSQL request tests and
+  ignored Redis adapter tests, then fails below 95% lines. It has PostgreSQL and Redis in both CI
+  systems. New behavior coverage exercises stored consent profiles end to end: loading and skipping
+  invalid rows, chains, purposes, per-channel state, evidence, implied-consent decisions and their
+  audit record. The Swagger contract test also caught and fixed stale Patient Flow branding. No
+  controller or generated-looking application code is excluded; function and region coverage are
+  reported but are not represented as 95%.
 
 Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 2026-10-31) and names the rows of the audit it closes ("spec" rows are the spec audit,
 "code" rows the code and UI check).

@@ -37,8 +37,31 @@ pub(crate) struct DealEditPayload {
     name: Option<String>,
     #[serde(default)]
     amount_minor: Option<i64>,
+    /// Exact decimal `i64` text for clients whose number type cannot represent every minor unit.
+    /// When present, `amount_minor` must be absent.
+    #[serde(default)]
+    amount_minor_text: Option<String>,
     #[serde(default)]
     expected_close_on: Option<crate::time::Date>,
+}
+
+/// A deal returned to a client that may not represent a JSON `int64` exactly.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ExactDeal")]
+pub(crate) struct ExactDeal {
+    #[serde(flatten)]
+    deal: deals::Model,
+    /// The exact value of `amount_minor`, in base-ten ASCII.
+    amount_minor_text: String,
+}
+
+impl From<deals::Model> for ExactDeal {
+    fn from(deal: deals::Model) -> Self {
+        Self {
+            amount_minor_text: deal.amount_minor.to_string(),
+            deal,
+        }
+    }
 }
 
 /// `PUT /api/leads/{pid}` body.
@@ -147,6 +170,18 @@ async fn edit_deal(
     if let Some(name) = &payload.name {
         problems.require_text("name", name);
     }
+    if payload.amount_minor.is_some() && payload.amount_minor_text.is_some() {
+        problems.push("send amount_minor or amount_minor_text, not both");
+    }
+    let exact_amount = payload.amount_minor_text.as_deref().and_then(|text| {
+        if text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) {
+            return None;
+        }
+        text.parse::<i64>().ok()
+    });
+    if payload.amount_minor_text.is_some() && exact_amount.is_none() {
+        problems.push("amount_minor_text must be a non-negative decimal i64");
+    }
     if payload.amount_minor.is_some_and(|amount| amount < 0) {
         problems.push("amount_minor must not be negative");
     }
@@ -161,7 +196,7 @@ async fn edit_deal(
         }
         None => deal.name,
     };
-    let amount = match payload.amount_minor {
+    let amount = match exact_amount.or(payload.amount_minor) {
         Some(amount) => {
             changed.push("amount_minor");
             amount
@@ -202,7 +237,7 @@ async fn edit_deal(
     )
     .await?;
     txn.commit().await?;
-    format::json(row)
+    format::json(ExactDeal::from(row))
 }
 
 /// `PUT /api/leads/{pid}` — edit a lead in place.

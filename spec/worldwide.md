@@ -59,6 +59,11 @@ The FX form sends plain decimal text directly from that input. For example, the 
 `0,000000001` sends `0.000000001`, the smallest rate the service accepts. The service enforces
 its existing range and precision. CRM-T268 covers the form and its request body.
 
+A deal's signed 64-bit `amount_minor` also travels as exact base-ten `amount_minor_text`. Browser
+editors display, compare and submit that text without a JavaScript number conversion. The numeric
+field remains during compatibility migration. The exact field is `null` whenever the amount is
+masked. CRM-T269 covers JPY, EUR and KWD at the service maximum and a name-only save.
+
 ## Tasks
 
 - [x] (2026-10-30) CRM-T164 **Worldwide equity audit.** *(CRM-R95, CRM-D19)* Done: the spec audit (19 rows) and the code and UI check

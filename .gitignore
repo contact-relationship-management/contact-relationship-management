@@ -3,6 +3,7 @@ node_modules/
 .svelte-kit/
 test-results/
 playwright-report/
+coverage/
 sbom/
 build/
 .vibe/
