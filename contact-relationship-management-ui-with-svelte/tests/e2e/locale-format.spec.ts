@@ -114,6 +114,11 @@ test.describe("dates, numbers and the week in the reader's locale", () => {
     // The day it starts is today in the reader's own time zone.
     expect(puts[0]!.effective_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
+    await expect(page.getByTestId("fx-rate")).toHaveValue("");
+    await page.getByTestId("fx-rate").fill("0,000000001");
+    await page.getByTestId("fx-set").click();
+    await expect.poll(() => puts[1]?.rate).toBe("0.000000001");
+
     // Two decimal marks are not a number: refused, in German, before anything is sent.
     // A saved rate clears the box; wait for that before typing the next one.
     await expect(page.getByTestId("fx-rate")).toHaveValue("");
@@ -122,7 +127,7 @@ test.describe("dates, numbers and the week in the reader's locale", () => {
     await expect(page.getByTestId("fx-error")).toContainText(
       "Zahlenformat dieser Seite",
     );
-    expect(puts.length).toBe(1);
+    expect(puts.length).toBe(2);
     await axeClean(page);
   });
 

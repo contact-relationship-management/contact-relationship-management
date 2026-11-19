@@ -1864,6 +1864,26 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
 
 ## Worldwide equity (from the 2026-10-30 audit, [worldwide.md](worldwide.md))
 
+- [x] CRM-T268 **Read grouped amounts and submit exact FX rates.** (2026-11-19, CRM-R50, CRM-R95, CRM-D7, CRM-D19)
+  The shared UI parser checks the locale's group widths and preserves decimal digits through the FX form.
+  Chromium verified that a German deal edit of `12.50` sends no update and that the FX form submits
+  `0.000000001`. The Rust domain test accepts that string as one billionth.
+  [Input examples and acceptance criteria](worldwide.md#entering-amounts-and-rates-crm-r50-crm-r95-crm-d19).
+  - Verified with the front-end and Chromium gates, the Rust rate test, the pin checks and the history secret scan.
+    The form tests used a stubbed API. Live database and mail paths were outside this change.
+    Repository lint remains red on existing spelling and Markdown findings in the imported audit and
+    code of conduct. Spelling and Markdown checks passed on the edited files.
+- [ ] CRM-T269 **Keep every supported minor unit through a deal edit.** (CRM-R4, CRM-R50, CRM-D7)
+  Compare the Rust `i64` API with the TypeScript `number` contract. Decide how to represent
+  amounts outside the browser's exact range across the API, BFF and editor, with a compatibility
+  path for existing clients. Even within that range, the editor formats `9007199254740991`
+  euro cents as `90071992547409.90`, one cent short. Test JPY, EUR and KWD near this boundary
+  and at the service maximum, including a name-only edit that preserves the original amount.
+- [ ] CRM-T270 **Complete decimal digit coverage in phone matching.** (CRM-R23, CRM-R95, CRM-D19)
+  Replace the matcher's partial digit list with versioned Unicode decimal digit data. Compare
+  ASCII with Adlam and mixed-script versions of the same synthetic number, verify every decimal
+  digit against that version, and keep superscripts and Roman numerals outside the digit set.
+
 Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 2026-10-31) and names the rows of the audit it closes ("spec" rows are the spec audit,
 "code" rows the code and UI check).
 

@@ -127,6 +127,26 @@ describe("parseAmount and toMinor", () => {
     expect(parseAmount("1.2.3", "en-001")).toBeNull();
     expect(parseAmount("12 EUR", "en-001")).toBeNull();
   });
+  it.each([
+    ["12.50", "EUR", "de-de"],
+    ["12,50", "JPY", "en-001"],
+    ["1,234.5,67", "KWD", "en-001"],
+    ["1,,234", "EUR", "en-001"],
+    ["123,456.5", "KWD", "hi-001"],
+    ["12 34,50", "EUR", "fr-001"],
+    ["1\n234,50", "EUR", "fr-001"],
+    ["1'234", "JPY", "en-001"],
+  ])("refuses misplaced separators in %s %s (%s)", (input, code, locale) => {
+    expect(() => formMinor(input, code, locale)).toThrow(PageError);
+  });
+  it("reads a grouped negative as formatted by each locale", () => {
+    for (const locale of [...LOCALES, "ar-EG", "fa-IR", "bn-BD"]) {
+      const input = new Intl.NumberFormat(locale).format(-1234567.125);
+      expect(toMinor(input, "KWD", locale), locale).toBe(-1234567125);
+    }
+    expect(parseAmount("1\u00a0234,50", "fr-001")).toBe(1234.5);
+    expect(parseAmount("1\u202f234,50", "fr-001")).toBe(1234.5);
+  });
   it("scales by the exponent without float error", () => {
     expect(toMinor("1500", "JPY", "en-001")).toBe(1500);
     expect(toMinor("1.234", "KWD", "en-001")).toBe(1234);

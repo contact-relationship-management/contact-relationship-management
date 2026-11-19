@@ -9,7 +9,8 @@
   import { deleteFxRate, listFxRates, setFxRate } from "#lib/api/crm.js";
   import { t } from "#lib/i18n.svelte.js";
   import { todayIso } from "#lib/reader-calendar.js";
-  import { formatDate, formatDecimalText, parseNumber } from "#lib/locale-format.js";
+  import { formatDate, formatDecimalText } from "#lib/locale-format.js";
+  import { parseDecimalInput } from "#lib/money.js";
 
   // No pair is assumed (CRM-T168): the person types both codes.
   let from = $state("");
@@ -25,7 +26,7 @@
   async function save() {
     error = null;
     // A rate typed in the page's format ("0,86" in German) is sent as the API's decimal text.
-    const typed = parseNumber(rate);
+    const typed = parseDecimalInput(rate);
     if (typed === null) {
       error = t("number.invalid");
       return;
@@ -34,7 +35,7 @@
       await setFxRate({
         from: from.trim().toUpperCase(),
         to: to.trim().toUpperCase(),
-        rate: String(typed),
+        rate: typed,
         effective_on: effectiveOn,
         source,
       });

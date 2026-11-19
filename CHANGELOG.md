@@ -9,6 +9,11 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Fixed — localized numeric input (CRM-T268)
+
+- Deal and quota forms reject misplaced digit separators. The FX form preserves all nine
+  supported decimal places when a reader enters a rate in the page's number format.
+
 ### Changed — one integration-test binary (CRM-T263, 2026-11-17)
 
 - The service's integration tests are one binary, `tests/main.rs`, in place of seven, each of which

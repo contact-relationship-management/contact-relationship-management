@@ -46,6 +46,19 @@ app's `governance/worldwide-equity-audit.md` (WW-1, against its `spec/02-scope.m
   - **Equity is tested.** A change that adds a jurisdiction-specific rule is not done without a test that runs it with a second,
     differently shaped profile; a money change is not done without a JPY (exponent 0) and a KWD (exponent 3) case.
 
+## Entering amounts and rates (CRM-R50, CRM-R95, CRM-D19)
+
+The page locale determines how a typed decimal is read. Ungrouped digits are always accepted.
+When a reader includes group separators, they must separate complete groups in the integer part.
+For example, `12,34,567.50` is valid on the Hindi page, and `1 234,50` is valid on the French
+page. A regular or nonbreaking space may stand for a locale's space separator. The German deal
+form must refuse `12.50` before saving and accept `12,50` as 1,250 euro cents. Readers can paste
+a negative number as formatted by their locale, including its sign and direction mark.
+
+The FX form sends plain decimal text directly from that input. For example, the German entry
+`0,000000001` sends `0.000000001`, the smallest rate the service accepts. The service enforces
+its existing range and precision. CRM-T268 covers the form and its request body.
+
 ## Tasks
 
 - [x] (2026-10-30) CRM-T164 **Worldwide equity audit.** *(CRM-R95, CRM-D19)* Done: the spec audit (19 rows) and the code and UI check

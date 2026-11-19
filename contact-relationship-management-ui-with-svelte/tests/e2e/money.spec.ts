@@ -100,6 +100,10 @@ test.describe("money in its own minor unit and the reader's format", () => {
     await expect(page.getByRole("main")).toContainText("1.500,50 €");
     await page.getByTestId("deal-edit").click();
     await expect(page.getByTestId("deal-amount")).toHaveValue("1500,50");
+    await page.getByTestId("deal-amount").fill("12.50");
+    await page.getByTestId("deal-save").click();
+    await expect(page.getByTestId("deal-error")).toContainText("Zahlenformat");
+    expect(puts).toEqual([]);
     await page.getByTestId("deal-amount").fill("1.234,56");
     await page.getByTestId("deal-save").click();
     await expect(page.getByTestId("deal-saved")).toBeVisible();

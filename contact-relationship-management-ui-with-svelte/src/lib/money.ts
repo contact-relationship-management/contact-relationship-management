@@ -1,27 +1,9 @@
 // The one money formatter and parser (CRM-T167, CRM-T168; spec/worldwide.md, CRM-R95, CRM-D19).
 //
-// Amounts are integer minor units plus an ISO 4217 code, exactly as the API sends and takes them.
-// The exponent (0 for JPY, 2 for EUR, 3 for KWD, 4 for CLF) and the number format come from `Intl`
-// in the reader's locale, never from a hand-written `/100` or `* 100`. There is no default
-// currency: a caller always passes the one the record carries or the one the person chose.
-//
-// THREE APPS SHARE THIS BEHAVIOUR and should change together: this file, the project portfolio
-// management UI's `src/lib/money.ts` (its commit 956d9ed) and the workforce planning management
-// UI's `src/lib/money.ts` (WPM-T373, WPM-T376). The exponent, the formatting and the parsing rules
-// are the same in all three; copy a fix to the other two (there is no shared package, by the family
-// convention of copy-adapting between front-ends). The differences here are the CRM's conventions:
-// an unknown amount or a missing currency renders as an em dash ("—"), as in WPM; there is no
-// `moneyWhole` (WPM's own); and `minorToMajor` / `majorToMinor` are the CRM's, for the grid and
-// board columns that sort or edit a plain number.
-//
-// One deliberate difference from the two siblings: the exponent comes from the ISO 4217 table
-// below, the same table as the service's `src/rules/currency.rs` (a unit test holds the two
-// equal), and only falls back to `Intl` for a code the table does not hold. `Intl` takes its
-// digits from CLDR, which differs from ISO 4217 for 16 codes (AFN, ALL, COP, HUF, IDR, IQD, IRR,
-// KPW, LAK, LBP, MGA, MMK, PKR, SOS, SYP, YER: CLDR shows 0 places, ISO 4217 has 2, or 3 for IQD).
-// The service converts by the ISO exponent, so a UI that typed and showed amounts by CLDR's would
-// store a forint deal at a hundredth of what the service converts. The siblings still use
-// `Intl`'s digits; that is recorded in spec/worldwide.md for the three apps to settle together.
+// Adapted from the project portfolio and workforce planning UIs. The CRM uses the service's ISO
+// exponents even where CLDR displays fewer places, e.g. IQD. Intl supplies the reader's digits,
+// separators and grouping. A caller supplies the record's currency or the one the reader selected.
+// The parser also supplies plain decimal text for FX rates (CRM-T268).
 
 import { PageError } from "./errors.js";
 import { i18n, t } from "./i18n.svelte.js";
@@ -142,51 +124,74 @@ export function minorToInput(
   }
 }
 
-function symbols(locale: string): {
-  decimal: string;
-  group: string;
-  digits: string[];
-} {
-  let decimal = ".";
-  let group = ",";
-  const digits: string[] = [];
+/** Plain ASCII decimal text for the API, preserving fractional digits entered by the reader. */
+export function parseDecimalInput(
+  text: string,
+  locale: string = currentLocale(),
+): string | null {
+  let value = text.trim();
+  if (!value) return null;
+  let nf: Intl.NumberFormat;
   try {
-    const nf = new Intl.NumberFormat(locale);
-    for (const p of nf.formatToParts(1234567.5)) {
-      if (p.type === "decimal") decimal = p.value;
-      if (p.type === "group") group = p.value;
-    }
-    for (let d = 0; d < 10; d++) digits.push(nf.format(d));
+    nf = new Intl.NumberFormat(locale);
   } catch {
-    for (let d = 0; d < 10; d++) digits.push(String(d));
+    nf = new Intl.NumberFormat("en");
   }
-  return { decimal, group, digits };
+  // A long sample exposes both group widths (e.g. 12,34,56,789) and any mark preceding the sign.
+  const parts = nf.formatToParts(-123456789.5);
+  const decimal = parts.find((part) => part.type === "decimal")!.value;
+  const group = parts.find((part) => part.type === "group")?.value;
+  const firstInteger = parts.findIndex((part) => part.type === "integer");
+  const minus = parts
+    .slice(0, firstInteger)
+    .map((part) => part.value)
+    .join("");
+  const sign = [minus, "-"].find(
+    (prefix) => prefix && value.startsWith(prefix),
+  );
+  if (sign) value = value.slice(sign.length);
+
+  const digits = Array.from({ length: 10 }, (_, d) => nf.format(d));
+  value = Array.from(value, (c) => {
+    const digit = digits.indexOf(c);
+    return digit < 0 ? c : String(digit);
+  }).join("");
+  const [integer = "", fraction = "", ...extra] = value.split(decimal);
+  if (extra.length || !/^\d*$/.test(fraction)) return null;
+
+  let whole = integer;
+  if (group) {
+    const grouped =
+      group.trim() === "" ? whole.replace(/[ \u00a0\u202f]/g, group) : whole;
+    const groups = grouped.split(group);
+    if (groups.length > 1) {
+      const widths = parts
+        .filter((part) => part.type === "integer")
+        .map((part) => Array.from(part.value).length);
+      const lastWidth = widths.at(-1)!;
+      const repeatWidth = widths.at(-2)!;
+      if (
+        !groups[0] ||
+        groups[0].length > repeatWidth ||
+        groups.at(-1)!.length !== lastWidth ||
+        groups.slice(1, -1).some((part) => part.length !== repeatWidth)
+      )
+        return null;
+      whole = groups.join("");
+    }
+  }
+  if (!/^\d*$/.test(whole) || (!whole && !fraction)) return null;
+  return (sign ? "-" : "") + (whole || "0") + (fraction ? "." + fraction : "");
 }
 
-/**
- * An amount typed in `locale`'s own format to a number of major units, or `null` when it is not a
- * plain number. The locale's decimal mark is the only decimal mark ("1,5" and "1 234,50" in a
- * decimal-comma locale, "1,234.50" in an English one); its group mark and any space are ignored, and
- * the locale's own digits (০–৯, ٠–٩) are read as digits.
- */
+/** A finite number typed in the page's own format. */
 export function parseAmount(
   text: string,
   locale: string = currentLocale(),
 ): number | null {
-  const { decimal, group, digits } = symbols(locale);
-  let s = text.trim();
-  if (s === "") return null;
-  s = s.replace(/[\s\u00a0\u202f']/g, "");
-  if (group !== decimal && group.trim() !== "") s = s.split(group).join("");
-  s = s.split(decimal).join(".");
-  s = [...s]
-    .map((c) => {
-      const i = digits.indexOf(c);
-      return i >= 0 ? String(i) : c;
-    })
-    .join("");
-  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(s)) return null;
-  const n = Number(s);
+  const decimal = parseDecimalInput(text, locale);
+  if (decimal === null) return null;
+  const n = Number(decimal);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -196,7 +201,7 @@ export function toMinor(
   currency: string,
   locale: string = currentLocale(),
 ): number | null {
-  const n = parseAmount(text, locale);
+  const n = parseDecimalInput(text, locale);
   if (n === null) return null;
   const e = exponentOf(currency, locale);
   // "1.005e2" is exactly 100.5, where 1.005 * 100 is 100.49999…

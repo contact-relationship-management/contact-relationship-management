@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — localized numeric input (CRM-T268)
+
+- A German deal edit of `12.50` now shows the existing format error. Correctly grouped inputs
+  such as `1.234,50` in German and `12,34,567.50` in Hindi still work. Negative numbers copied
+  from the locale's formatter can include its direction mark.
+- The FX form sends a one-billionth rate as `0.000000001`, which the service accepts.
+
 ### Added — page load benchmark (CRM-T262)
 
 - `pnpm perf:pages` (`playwright.perf.config.ts`, `tests/perf/page-load.spec.ts`): eleven tour

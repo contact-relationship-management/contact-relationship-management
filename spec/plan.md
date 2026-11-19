@@ -5,6 +5,19 @@ Companion to [tasks.md](tasks.md) (the CRM-T30–T44 rows) and
 [regulatory.md](regulatory.md). This is an engineering assessment, not a
 legal or accreditation opinion.
 
+## Worldwide readiness review, 2026-11-19
+
+This checkout has automated coverage for the locale catalogues, currency exponents and request
+authorization. A deployment still needs to demonstrate who can see real contact data and who may
+receive mail. Those two decisions take priority over adding more features.
+
+| Priority | Evidence from this checkout | Action and acceptance |
+|---|---|---|
+| Before using real contact data or sending mail | CRM-G1 and CRM-G2 still require evidence from the actual deployment. The UI translation register still lists machine drafts. CRM-T48 is open for keyboard, screen reader and zoom testing. | Exercise the deployment's persona matrix, obtain the consent and retention review for its recipients, and record speaker and assistive-technology findings for the languages offered. Use the existing gates and CRM-T48. |
+| Correct financial input | The deal editor stripped misplaced group separators. The FX form converted decimal text through a JavaScript number before sending it to a service that accepts plain decimals down to one billionth. | CRM-T268 covers locale grouping, digits, and the exact request sent by each form. See [worldwide.md](worldwide.md#entering-amounts-and-rates-crm-r50-crm-r95-crm-d19). |
+| Preserve large deal amounts | The service stores signed 64-bit minor units. The UI reads a JSON number and divides by the currency scale before editing. | CRM-T269 should establish a lossless service-to-editor contract, including a save that changes only the deal name. |
+| Match telephone numbers across scripts | The matcher normalizes ASCII, full-width digits and a hand-maintained list of 31 decimal digit sets. A decimal digit outside the list can disappear from a mixed-script number. | CRM-T270 should verify all decimal digits for a pinned Unicode version and test the resulting phone comparisons. |
+
 ## Verdict
 
 **Not ready.** The software is honest demo software and says so. Its design
