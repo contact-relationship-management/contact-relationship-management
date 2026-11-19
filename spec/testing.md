@@ -24,6 +24,9 @@
   seven. A test that changes the settings or the environment does it for its own length through
   `tests/support/scoped_auth.rs` or `scoped_env.rs`, which put them back, including by panic, and
   is `#[serial]`. Run one suite with `cargo test --test main <module>`.
+- Tests that construct an outbound HTTP client before creating an application context call
+  `app::install_tls_provider()` first, as the server and worker do on startup. Each test must
+  also pass in a fresh process with only that test selected.
 - **Enforcement tests** (`tests/requests/enforcement.rs`; they once
   ran in their own process for the OnceLock lesson, and now set the
   settings for their own length through `tests/support/scoped_auth.rs`

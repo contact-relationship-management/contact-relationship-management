@@ -824,6 +824,7 @@ mod tests {
 
     #[test]
     fn configuration_is_checked() {
+        crate::app::install_tls_provider();
         let all = |name: &str| match name {
             "CRM_MAIL_FROM" => Some("CRM <crm@example.test>".to_string()),
             "CRM_BREVO_API_KEY" | "CRM_MAILJET_API_KEY" => Some("k".to_string()),
@@ -863,6 +864,7 @@ mod tests {
 
     #[test]
     fn every_provider_is_configured_from_its_own_settings() {
+        crate::app::install_tls_provider();
         let vars = |pairs: Vec<(&'static str, &'static str)>| {
             move |name: &str| {
                 pairs

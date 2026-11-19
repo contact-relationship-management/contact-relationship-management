@@ -2403,4 +2403,10 @@ Why: the owner finds GitHub-hosted CI unreliable and costly. CRM is already furt
       - **Measured** (this machine, load average about 34, a warm build): after a one-line change to a controller, building the test targets took 14.8 s (19.3 s user, 6.5 s system CPU) with seven binaries, and 8.8 s (12.3 to 12.5 s user, 3.1 to 3.3 s system) with one.
       - **Ran:** `cargo test --test main` (9 passed, 259 ignored, as before); `scripts/ci-check.sh test-db` (all 259 ignored tests in the one process, 169 s, none failed; the Redis run 3).
       - **Not done / not verified:** a clean build was not timed; the default run's 9 tests now run partly one at a time (`#[serial]`), which costs a fraction of a second here.
+- [x] CRM-T272 **Initialize TLS in service tests that bypass application startup.** (2026-11-19, CRM-R15, CRM-R25, CRM-D23)
+  Five DB-free tests panicked while building an HTTP client before reaching their assertions.
+  The two key-fetch tests, bridge-credential test, two mail-provider tests, standalone Keycloak
+  test and live SMTP fixture now install the same process-wide TLS provider as `App::context`.
+  The repository Rust test gate passed with both the published and local matcher. The live SMTP
+  fixture compiled. Delivery to a mail server and database-backed tests were outside this run.
 - [ ] CRM-T192 **Add a second remote** (Codeberg or GitLab) so a hosted outage on one host is not an outage of the project. (S, owner)

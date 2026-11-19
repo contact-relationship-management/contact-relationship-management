@@ -35,6 +35,7 @@ async fn status(method: &Method, path: &str, headers: &HeaderMap) -> u16 {
 #[tokio::test]
 #[serial]
 async fn a_keycloak_token_is_authenticated_and_authorized_through_the_real_guard() {
+    contact_relationship_management::app::install_tls_provider();
     let idp = TestIdp::start().await;
     let mut env = ScopedEnv::default();
     env.set("CRM_KEYCLOAK_URL", &idp.base_url);
