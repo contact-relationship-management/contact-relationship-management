@@ -299,6 +299,24 @@ fn a_refusal_says_which_setting() {
 }
 
 #[test]
+fn phone_comparison_preserves_adlam_digits_even_among_ascii_digits() {
+    let ascii = Contact::new().phone("+1234567890");
+    for equivalent in ["+𞥑𞥒𞥓𞥔𞥕𞥖𞥗𞥘𞥙𞥐", "+123𞥔567890"] {
+        let other = Contact::new().phone(equivalent);
+        assert_eq!(
+            outcome(&matcher().compare(&ascii, &other), Field::Phone),
+            Outcome::Agree
+        );
+    }
+    let first = Contact::new().phone("+123𞥔567890");
+    let second = Contact::new().phone("+123𞥙567890");
+    assert_eq!(
+        outcome(&matcher().compare(&first, &second), Field::Phone),
+        Outcome::Disagree
+    );
+}
+
+#[test]
 fn configuration_loads_from_partial_json() {
     let config: MatchConfig =
         serde_json::from_str(r#"{ "prior": 0.05, "default_calling_code": "44" }"#).unwrap();

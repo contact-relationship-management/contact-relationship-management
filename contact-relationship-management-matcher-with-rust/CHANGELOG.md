@@ -2,8 +2,7 @@
 
 ## Unreleased
 
-No change in behaviour or public API.
-
+- Phone comparisons preserve all 770 Unicode 18.0 decimal digits, including Adlam and mixed-script numbers (CRM-T270).
 - Mutation testing (CRM-T259): `.cargo/mutants.toml`, with one equivalent mutant named and why.
   New unit tests pin the probability as the prior plus the weights, a partial field's weight, a field
   on one side only, the single-letter initial, a tie that is not a swap, a title's word overlap, the

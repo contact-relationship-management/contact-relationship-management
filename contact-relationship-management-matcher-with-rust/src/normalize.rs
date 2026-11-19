@@ -138,17 +138,17 @@ pub(crate) fn email(raw: &str, fold_gmail: bool) -> Option<String> {
     Some(format!("{local}@{domain}"))
 }
 
-/// The zero of each Unicode decimal digit set a phone number may be typed in; the nine digits after
-/// it are 1 to 9 (the same table as the workforce planning service's `rules::contact_details`,
-/// WPM-T382). ASCII, and full width (folded by [`fold_width`]), are read before this: Arabic-Indic,
-/// Extended Arabic-Indic (Persian, Urdu), N'Ko, Devanagari, Bengali, Gurmukhi, Gujarati, Oriya,
-/// Tamil, Telugu, Kannada, Malayalam, Sinhala Lith, Thai, Lao, Tibetan, Myanmar, Myanmar Shan,
-/// Khmer, Mongolian, Limbu, New Tai Lue, Balinese, Sundanese, Lepcha, Ol Chiki, Vai, Javanese,
-/// Myanmar Tai Laing, Cham, Meetei Mayek.
-pub(crate) const DIGIT_ZEROS: [u32; 31] = [
-    0x0660, 0x06f0, 0x07c0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66, 0x0be6, 0x0c66, 0x0ce6, 0x0d66,
-    0x0de6, 0x0e50, 0x0ed0, 0x0f20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1b50, 0x1bb0,
-    0x1c40, 0x1c50, 0xa620, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0,
+/// Unicode 18.0 decimal zeros in code-point order, from ICU 79.1
+/// (`u_charDigitValue(c) == 0`). Each starts a sequence of ten decimal digits.
+const DIGIT_ZEROS: &[u32] = &[
+    0x0030, 0x0660, 0x06f0, 0x07c0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66, 0x0be6, 0x0c66, 0x0ce6,
+    0x0d66, 0x0de6, 0x0e50, 0x0ed0, 0x0f20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80,
+    0x1a90, 0x1b50, 0x1bb0, 0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0,
+    0xff10, 0x104a0, 0x10d30, 0x10d40, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0, 0x11450,
+    0x114d0, 0x11650, 0x116c0, 0x116d0, 0x116da, 0x11730, 0x118e0, 0x11950, 0x11bf0, 0x11c50,
+    0x11d50, 0x11da0, 0x11de0, 0x11f50, 0x16130, 0x16a60, 0x16ac0, 0x16b50, 0x16d70, 0x1ccf0,
+    0x1d7ce, 0x1d7d8, 0x1d7e2, 0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e5f1, 0x1e950,
+    0x1fbf0,
 ];
 
 /// A full-width form (`＋`, `８`, `（`) as its ASCII one, and the ideographic space as a space, as an
@@ -161,18 +161,15 @@ fn fold_width(c: char) -> char {
     }
 }
 
-/// The ASCII digit of a decimal digit in ASCII, full width or any set in [`DIGIT_ZEROS`]; `None`
-/// otherwise (a superscript or a Roman numeral is not a digit).
+/// Map a Unicode decimal digit to its ASCII value.
 fn ascii_digit(c: char) -> Option<char> {
-    let c = fold_width(c);
-    if c.is_ascii_digit() {
-        return Some(c);
+    if c.is_ascii() {
+        return c.is_ascii_digit().then_some(c);
     }
     let code = u32::from(c);
-    DIGIT_ZEROS
-        .iter()
-        .find(|zero| (**zero..**zero + 10).contains(&code))
-        .and_then(|zero| char::from_digit(code - zero, 10))
+    let end = DIGIT_ZEROS.partition_point(|&zero| zero <= code);
+    let zero = DIGIT_ZEROS[..end].last()?;
+    char::from_digit(code - zero, 10)
 }
 
 /// The trunk prefix a national number starts with, by country calling code, where the plan has
@@ -538,13 +535,25 @@ mod tests {
             &phone("+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧", None).unwrap(),
             &phone("+966 50 123 4567", None).unwrap()
         ));
-        // Every set is ten consecutive code points that Unicode calls numeric.
-        for zero in DIGIT_ZEROS {
-            for d in 0..10 {
-                let c = char::from_u32(zero + d).unwrap();
-                assert!(c.is_numeric(), "{zero:#x} + {d}");
-                assert_eq!(ascii_digit(c), char::from_digit(d, 10));
-            }
+    }
+
+    #[test]
+    fn phone_digit_values_cover_unicode_18_decimal_numbers() {
+        use unicode_properties::{GeneralCategory, UnicodeGeneralCategory};
+
+        assert_eq!(unicode_properties::UNICODE_VERSION, (18, 0, 0));
+        // Decimal sets run from zero to nine. Several mathematical sets are adjacent.
+        let mut next = 0;
+        for c in char::MIN..=char::MAX {
+            let expected = if c.general_category() == GeneralCategory::DecimalNumber {
+                let digit = char::from_digit(next, 10);
+                next = (next + 1) % 10;
+                digit
+            } else {
+                assert_eq!(next, 0);
+                None
+            };
+            assert_eq!(ascii_digit(c), expected, "U+{:04X}", u32::from(c));
         }
     }
 

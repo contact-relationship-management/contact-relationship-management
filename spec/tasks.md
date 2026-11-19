@@ -1879,10 +1879,18 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   path for existing clients. Even within that range, the editor formats `9007199254740991`
   euro cents as `90071992547409.90`, one cent short. Test JPY, EUR and KWD near this boundary
   and at the service maximum, including a name-only edit that preserves the original amount.
-- [ ] CRM-T270 **Complete decimal digit coverage in phone matching.** (CRM-R23, CRM-R95, CRM-D19)
-  Replace the matcher's partial digit list with versioned Unicode decimal digit data. Compare
-  ASCII with Adlam and mixed-script versions of the same synthetic number, verify every decimal
-  digit against that version, and keep superscripts and Roman numerals outside the digit set.
+- [x] CRM-T270 **Complete decimal digit coverage in phone matching.** (2026-11-19, CRM-R23, CRM-R95, CRM-D19)
+  The matcher maps all 770 Unicode 18.0 decimal digits to their ASCII values. A unit test compares
+  the result for every Unicode scalar with independent, version-pinned general-category data.
+  A public matcher test covers ASCII, Adlam, mixed digits and a one-digit disagreement.
+  The original matcher reported the all-Adlam number as missing. Matcher tests and strict Clippy
+  passed. The service image still needs a published matcher release and dependency update.
+- [ ] CRM-T271 **Preserve leading zeros when comparing two national phone numbers.** (CRM-R23, CRM-R95, CRM-D19)
+  With no default calling code, `same_phone` currently calls `01234567` and `1234567` equal.
+  Require exact normalized digits when both numbers are national and the numbering plan is
+  unknown. Test both argument orders, numbers in different scripts, and existing comparisons
+  with an explicit calling code. Assess national-to-international suffix matching separately
+  against labelled pairs before changing its evidential weight.
 
 Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 2026-10-31) and names the rows of the audit it closes ("spec" rows are the spec audit,
 "code" rows the code and UI check).

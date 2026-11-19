@@ -327,9 +327,10 @@ that two contact records are the same person, and why.*
   (`src/words.rs`, `src/nicknames.rs`: English and a dozen other languages, Arabic,
   Hindi, Russian, Chinese, Japanese and Korean forms among them, joined forms such
   as `株式会社` and `女士` stripped too), all applied to every contact (CRM-T169). A phone
-  number's digits may be typed in any Unicode decimal digit set or in full width;
-  with a default calling code, a national number loses its trunk prefix only where
-  that code's plan has one (`0` for most, `8` for Russia, Kazakhstan and Belarus,
+  number's digits may be typed in any Unicode 18.0 decimal digit set, including full width.
+  Changing scripts within one number preserves each digit's value. Superscripts and Roman
+  numerals contribute no digits (CRM-T270). With a default calling code, a national number
+  loses its trunk prefix only where that code's plan has one (`0` for most, `8` for Russia, Kazakhstan and Belarus,
   `06` for Hungary, none for Italy, Spain and the other plans in the matcher's
   table), and a code not in the table loses nothing (CRM-T170). A field
   empty on either side counts for nothing, so a sparse record is not punished.
