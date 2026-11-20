@@ -2516,6 +2516,9 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Found on the hosted run:** the matcher's half then failed with "failed to download `cc v1.11.2`": it runs
       `cargo llvm-cov --offline` and nothing had fetched the matcher's own lockfile (the service's half is fetched by
       its `db migrate` build). The stage now runs `cargo fetch --locked` in the matcher first.
+      - **Found on the next hosted run:** the service's half failed the same way ("failed to download `ahash v0.8.12`"):
+      `db migrate` builds only what the binary needs, not the test-only dependencies, so the run before passed only on
+      what the cache held. The service's half now runs `cargo fetch --locked` first too.
       - **Ran:** `scripts/ci-check.sh pins`, `lint` and `scripts`; the matcher's half of the stage on this machine.
       - **Not done / not verified:** the stage itself was not run here (it needs PostgreSQL and Redis, and the Podman VM
       would not start); whether the 95% floor holds in CI is seen only on the hosted run.

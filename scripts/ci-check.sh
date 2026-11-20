@@ -146,6 +146,7 @@ case "${stage}" in
     fi
     (cd "${SVC}" \
       && export RUSTC_WRAPPER='' CARGO_BUILD_RUSTC_WRAPPER='' \
+      && cargo fetch --locked \
       && cargo llvm-cov clean --workspace \
       && cargo llvm-cov --offline --workspace --lib "${FEATURES[@]}" --summary-only \
       && cargo llvm-cov --no-clean --offline --test main "${FEATURES[@]}" --summary-only \
