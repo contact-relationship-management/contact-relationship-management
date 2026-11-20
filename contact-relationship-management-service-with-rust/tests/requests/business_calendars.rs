@@ -185,3 +185,88 @@ async fn a_ticket_under_a_calendar_has_working_time_deadlines() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_calendar_is_replaced_whole_audited_and_refused_when_unknown_invalid_or_taken() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let make = |name: &'static str| {
+            let request = &request;
+            async move {
+                let made = request
+                    .post("/api/business-calendars")
+                    .json(&office(name))
+                    .await;
+                made.assert_status_ok();
+                made.json::<Value>()["pid"].as_str().unwrap().to_string()
+            }
+        };
+        let pid = make("Head office").await;
+        make("Branch").await;
+
+        // Replaced whole: the new name, zone, week and holidays are what is shown after.
+        let mut changed = office("Head office (summer)");
+        changed["timezone"] = json!("Europe/London");
+        changed["week"] = json!({ "mon": [{ "start": "08:00", "end": "16:00" }] });
+        changed["holidays"] = json!(["2026-08-31", "2026-08-31"]);
+        let replaced = request
+            .put(&format!("/api/business-calendars/{pid}"))
+            .json(&changed)
+            .await;
+        replaced.assert_status_ok();
+        assert_eq!(replaced.json::<Value>()["pid"], json!(pid));
+        let shown: Value = request
+            .get(&format!("/api/business-calendars/{pid}"))
+            .await
+            .json();
+        assert_eq!(shown["name"], "Head office (summer)");
+        assert_eq!(shown["timezone"], "Europe/London");
+        assert_eq!(shown["week"]["mon"][0]["start"], "08:00");
+        assert_eq!(shown["week"]["tue"], json!([]));
+        assert_eq!(
+            shown["holidays"],
+            json!(["2026-08-31"]),
+            "each holiday once"
+        );
+        let audits: Value = request.get(&format!("/api/audits/{pid}")).await.json();
+        assert!(
+            audits
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|a| a["action"] == "updated"),
+            "{audits}"
+        );
+
+        // Refused: another calendar's name, an invalid body, a calendar that is not there.
+        request
+            .put(&format!("/api/business-calendars/{pid}"))
+            .json(&office("BRANCH"))
+            .await
+            .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        let mut bad_zone = office("Head office");
+        bad_zone["timezone"] = json!("Mars/Olympus");
+        request
+            .put(&format!("/api/business-calendars/{pid}"))
+            .json(&bad_zone)
+            .await
+            .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        request
+            .put(&format!("/api/business-calendars/{}", uuid::Uuid::new_v4()))
+            .json(&office("Nowhere"))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+        request
+            .delete(&format!("/api/business-calendars/{}", uuid::Uuid::new_v4()))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
+        // The failed replaces changed nothing.
+        let after: Value = request
+            .get(&format!("/api/business-calendars/{pid}"))
+            .await
+            .json();
+        assert_eq!(after["name"], "Head office (summer)");
+    })
+    .await;
+}

@@ -2595,3 +2595,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Ran:** `fmt`, `clippy`, `test`, `supply-chain` and `test-db` against PostgreSQL 18 and Redis 8 under
       `podman run`.
       - **Not done / not verified:** `scripts/ci-check.sh all` was not run, so there is no attestation.
+- [ ] CRM-T292 **Rust line coverage toward 100%.** Asked for by the product owner on 2026-11-20 ("aim for test coverage
+      100%"). On 2026-11-20 the merged census was 95.05% (32,444 of 34,134 lines; 1,690 uncovered in 108 files), the
+      largest gaps `clients.rs` (189), `app.rs` (114), `provider.rs` (112) and `controllers/marketing/nurture.rs` (83). Each
+      round closes one file's gaps with tests of behaviour, not of lines, and records here what it covered. (L)
+      - **Round 1:** `controllers/calendars.rs` (79%): replacing a calendar, its audit row, and refusals for a taken
+      name, an invalid body and a calendar that is not there. `controllers/insights/support.rs` (67%): the SLA register
+      with late tickets worst first, the worst of two deadlines, a paused ticket late only by the time before it paused,
+      and at-risk counts.
+      - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be named
+      here with its reason rather than counted as covered.
