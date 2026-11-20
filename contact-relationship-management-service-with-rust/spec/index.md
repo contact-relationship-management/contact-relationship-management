@@ -10,8 +10,7 @@ adds its spec detail here in the same PR as the code.
 
 ## Stack
 
-Per [architecture](../../spec/architecture.md) and the family
-[rust-loco-stack](../../../agents/share/rust-loco-stack.md):
+Per [architecture](../../spec/architecture.md):
 Rust 2024, Axum, axa, and sqlx, PostgreSQL 18, crate-root
 `migrations/` (sqlx), conventional `src/controllers/` layout, pure
 `src/rules/` core, Postgres-queue background jobs (campaign send,

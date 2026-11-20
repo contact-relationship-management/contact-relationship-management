@@ -28,8 +28,8 @@ REPLICA=crm-chaos-replica
 REPLICA_PORT=15441
 NET=crm-chaos-net
 PRIMARY="${PG}"                       # the container `sql` talks to; failover changes it
-DIRECT_URL="postgres://loco:loco@localhost:${PG_PORT}/chaos"
-PROXIED_URL="postgres://loco:loco@localhost:${PROXY_PORT}/chaos"   # the service goes through the proxy
+DIRECT_URL="postgres://postgres:postgres@localhost:${PG_PORT}/chaos"
+PROXIED_URL="postgres://postgres:postgres@localhost:${PROXY_PORT}/chaos"   # the service goes through the proxy
 CTL="$(mktemp -d -t crm-chaos-ctl.XXXXXX)"
 PROXY_PID=""
 LOG="$(mktemp -t crm-chaos.XXXXXX)"
@@ -42,7 +42,7 @@ pass() { PASSES=$((PASSES + 1)); printf '  ok    %s\n' "$*"; }
 fail() { FAILS=$((FAILS + 1)); printf '  FAIL  %s\n' "$*"; }
 check() { local what="$1"; shift; if "$@"; then pass "${what}"; else fail "${what}"; fi; }
 
-sql() { podman exec "${PRIMARY}" psql -U loco -d chaos -Atc "$1"; }
+sql() { podman exec "${PRIMARY}" psql -U postgres -d chaos -Atc "$1"; }
 
 cleanup() {
   [[ -n "${SVC_PID}" ]] && kill -9 "${SVC_PID}" 2>/dev/null
@@ -108,10 +108,10 @@ command -v podman >/dev/null && command -v python3 >/dev/null || { echo "podman 
 podman rm -f "${PG}" "${RD}" "${REPLICA}" >/dev/null 2>&1
 podman network rm "${NET}" >/dev/null 2>&1
 podman network create "${NET}" >/dev/null
-podman run -d --name "${PG}" --network "${NET}" -p "${PG_PORT}:5432" -e POSTGRES_USER=loco -e POSTGRES_PASSWORD=loco \
+podman run -d --name "${PG}" --network "${NET}" -p "${PG_PORT}:5432" -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=chaos docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5 >/dev/null
 podman run -d --name "${RD}" -p "${RD_PORT}:6379" docker.io/library/redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537 >/dev/null
-wait_for 40 podman exec "${PG}" pg_isready -U loco -d chaos || { echo "postgres did not start"; exit 2; }
+wait_for 40 podman exec "${PG}" pg_isready -U postgres -d chaos || { echo "postgres did not start"; exit 2; }
 sleep 2
 echo "${PG_PORT}" >"${CTL}/target"; echo forward >"${CTL}/mode"
 python3 "$(dirname "$0")/chaos-proxy.py" "${PROXY_PORT}" "${CTL}" >>"${LOG}" 2>&1 &
@@ -155,7 +155,7 @@ read -r c t <<<"$(req POST /api/contacts "{\"person_ref\":\"$(person)\",\"displa
 check "a write is refused, not pretended" bash -c "[[ ${c} -ge 500 || ${c} == 000 ]]"
 check "the process is still running" kill -0 "${SVC_PID}"
 podman start "${PG}" >/dev/null
-wait_for 40 podman exec "${PG}" pg_isready -U loco -d chaos
+wait_for 40 podman exec "${PG}" pg_isready -U postgres -d chaos
 check "recovers after PostgreSQL returns, without a restart" wait_for 60 serves
 check "and accepts writes again" test -n "$(new_contact 'After outage')"
 
@@ -289,11 +289,11 @@ invariants
 say "failover: the primary dies and a streaming replica is promoted"
 podman exec "${PG}" sh -c 'echo "host replication all all scram-sha-256" >>"$PGDATA/pg_hba.conf"' >/dev/null
 sql "SELECT pg_reload_conf()" >/dev/null
-podman run -d --name "${REPLICA}" --network "${NET}" -p "${REPLICA_PORT}:5432" -e PGPASSWORD=loco --user postgres \
+podman run -d --name "${REPLICA}" --network "${NET}" -p "${REPLICA_PORT}:5432" -e PGPASSWORD=postgres --user postgres \
   --entrypoint sh docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5 \
-  -c 'pg_basebackup -h crm-chaos-pg -U loco -D "$PGDATA" -R -X stream && exec postgres' >/dev/null
-rsql() { podman exec "${REPLICA}" psql -U loco -d chaos -Atc "$1"; }
-check "a streaming replica starts and is in recovery" wait_for 60 bash -c "[[ \"\$(podman exec ${REPLICA} psql -U loco -d chaos -Atc 'select pg_is_in_recovery()' 2>/dev/null)\" == t ]]"
+  -c 'pg_basebackup -h crm-chaos-pg -U postgres -D "$PGDATA" -R -X stream && exec postgres' >/dev/null
+rsql() { podman exec "${REPLICA}" psql -U postgres -d chaos -Atc "$1"; }
+check "a streaming replica starts and is in recovery" wait_for 60 bash -c "[[ \"\$(podman exec ${REPLICA} psql -U postgres -d chaos -Atc 'select pg_is_in_recovery()' 2>/dev/null)\" == t ]]"
 synced() { [[ "$(sql 'SELECT count(*) FROM contacts')" == "$(rsql 'SELECT count(*) FROM contacts')" ]]; }
 safe="$(mktemp)"
 for i in $(seq 1 20); do new_contact "Failover safe ${i}" >>"${safe}"; done
@@ -304,7 +304,7 @@ podman kill "${PG}" >/dev/null 2>&1                                   # the prim
 rsql "SELECT pg_promote()" >/dev/null
 echo "${REPLICA_PORT}" >"${CTL}/target"
 PRIMARY="${REPLICA}"
-check "the replica is promoted" wait_for 30 bash -c "[[ \"\$(podman exec ${REPLICA} psql -U loco -d chaos -Atc 'select pg_is_in_recovery()')\" == f ]]"
+check "the replica is promoted" wait_for 30 bash -c "[[ \"\$(podman exec ${REPLICA} psql -U postgres -d chaos -Atc 'select pg_is_in_recovery()')\" == f ]]"
 check "the service recovers through the proxy, without a restart" wait_for 90 serves
 lost=0; while read -r p; do [[ "$(code GET "/api/contacts/${p}")" == 200 ]] || lost=$((lost + 1)); done <"${safe}"
 check "every write acknowledged before the replica caught up survived" test "${lost}" = 0

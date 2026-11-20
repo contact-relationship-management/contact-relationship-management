@@ -2555,3 +2555,15 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       `e2e` are left to CI; no deployment's settings were renamed; old names are ignored without a warning, as asked,
       so an optional setting left under an old name takes its default silently; `scripts/image-smoke.sh` now sets the
       new names, so run against the published v0.2.0 image it would not configure it.
+- [x] CRM-T290 **No Loco left in use; the test database user is `postgres`.** Asked for by the product owner on 2026-11-20
+      ("remove use of Loco.rs, including in database connection URLs as username `loco` or password `loco`"). (S)
+      - **Done:** every `loco`/`loco` user and password is `postgres`/`postgres` (52 in 12 files: CI, Woodpecker, both
+      compose files, the README, the scripts' `PG_USER` and `PG_PASSWORD` defaults, `pg_isready` and `psql` calls,
+      the image smoke, chaos and migration rehearsals). The service's AGENTS.md, spec index and `compose.test.yaml` no
+      longer cite the family's `rust-loco-stack.md`, and the comment on `seed_pipeline!` no longer says the test
+      helper comes from Loco (it is `axa_test`'s, on the same `axum-test` as the crate's own).
+      - **Left as they are:** the family's repositories are named `*-service-with-loco`, so the links to them keep
+      those names; history (CRM-D23, released changelog entries, done tasks, `.gitleaksignore` reasons) records the
+      move off Loco and is not a use of it. The service has had no Loco dependency since CRM-T199.
+      - **Not done / not verified:** a developer's own PostgreSQL with a `loco` role now needs `PG_USER` and
+      `PG_PASSWORD` set; `scripts/chaos.sh`, `scripts/image-smoke.sh` and `scripts/migrate-with-data.sh` were not run.

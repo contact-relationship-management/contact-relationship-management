@@ -15,17 +15,17 @@ if [[ -d "$SVC/migrations" ]]; then
 fi
 BIN=$SVC/target/debug/contact-relationship-management
 PG=crm-mig-pg RD=crm-mig-redis PGP=15440 RDP=16380 PORT=5181
-export DB_URL="postgres://loco:loco@localhost:$PGP/legacy" CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL="redis://localhost:$RDP"
+export DB_URL="postgres://postgres:postgres@localhost:$PGP/legacy" CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL="redis://localhost:$RDP"
 export AXA_DESTROY_DATA=true # this throwaway database is rolled back below
 API=http://localhost:$PORT
-sql() { podman exec "$PG" psql -U loco -d legacy -Atc "$1"; }
+sql() { podman exec "$PG" psql -U postgres -d legacy -Atc "$1"; }
 run() { (cd "$SVC" && "$BIN" "$@" 2>&1); }
 cleanup() { [[ -n "${SP:-}" ]] && kill "$SP" 2>/dev/null; podman rm -f $PG $RD >/dev/null 2>&1; }
 trap cleanup EXIT
 podman rm -f $PG $RD >/dev/null 2>&1
-podman run -d --name $PG -e POSTGRES_USER=loco -e POSTGRES_PASSWORD=loco -e POSTGRES_DB=legacy -p $PGP:5432 postgres:18-alpine >/dev/null
+podman run -d --name $PG -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=legacy -p $PGP:5432 postgres:18-alpine >/dev/null
 podman run -d --name $RD -p $RDP:6379 redis:8-alpine >/dev/null
-for _ in $(seq 40); do podman exec $PG pg_isready -U loco -d legacy >/dev/null 2>&1 && break; sleep 1; done
+for _ in $(seq 40); do podman exec $PG pg_isready -U postgres -d legacy >/dev/null 2>&1 && break; sleep 1; done
 
 echo "== 1. build a populated database"
 run db migrate | tail -1

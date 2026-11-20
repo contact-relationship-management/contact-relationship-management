@@ -52,7 +52,7 @@ case "${stage}" in
     # Needs a Postgres reachable with the PG_* settings (defaults match
     # the service's compose.test.yaml: podman compose -f compose.test.yaml
     # up -d --wait), and a Redis at REDIS_HOST:REDIS_PORT.
-    : "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=loco}" "${PG_PASSWORD:=loco}"
+    : "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=postgres}" "${PG_PASSWORD:=postgres}"
     db=ci_contact_relationship_management
     export PGPASSWORD="${PG_PASSWORD}"
     dropdb --if-exists -h "${PG_HOST}" -p "${PG_PORT}" -U "${PG_USER}" "${db}"
@@ -127,7 +127,7 @@ case "${stage}" in
     # CRM-T275: one clean profile merges DB-free service-workspace tests, the normal integration
     # tests, PostgreSQL request tests and the Redis adapter tests before enforcing the executable-
     # line floor. This part therefore needs the same services as test-db.
-    : "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=loco}" "${PG_PASSWORD:=loco}"
+    : "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=postgres}" "${PG_PASSWORD:=postgres}"
     db=ci_contact_relationship_management_coverage
     export PGPASSWORD="${PG_PASSWORD}"
     dropdb --if-exists -h "${PG_HOST}" -p "${PG_PORT}" -U "${PG_USER}" "${db}"

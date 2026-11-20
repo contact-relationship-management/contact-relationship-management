@@ -54,7 +54,7 @@ fi
 trap stop_services EXIT
 compose up --detach --wait >&2
 
-export PG_HOST=localhost PG_PORT="${TEST_DB_PORT}" PG_USER=loco PG_PASSWORD=loco
+export PG_HOST=localhost PG_PORT="${TEST_DB_PORT}" PG_USER=postgres PG_PASSWORD=postgres
 export REDIS_HOST=localhost REDIS_PORT="${TEST_REDIS_PORT}"
 
 status=0

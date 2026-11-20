@@ -44,7 +44,7 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
    (`Accepts-version`), Podman not Docker, PostgreSQL not SQLite,
    `worker` (Postgres-backed) jobs, a Redis cache (`CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`,
    required in production, in-process elsewhere). The family notes cited in comments as
-   `agents/share/*.md` (for example `rust-loco-stack.md`, `jwt.md`,
+   `agents/share/*.md` (for example `jwt.md` and
    `event-bus.md`) live in the `main-x-service` repository, not here.
 3. **Pure core.** Every lifecycle machine (lead, deal, campaign,
    ticket, article), the scoring rule table + breakdown, forecast /

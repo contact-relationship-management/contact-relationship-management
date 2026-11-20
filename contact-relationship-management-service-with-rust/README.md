@@ -29,7 +29,7 @@ beyond a demo.
 ```bash
 # PostgreSQL and Redis in Podman (disposable; the database is in memory).
 podman compose -f compose.test.yaml up -d
-export DB_URL=postgres://loco:loco@localhost:5432/contact_relationship_management_development
+export DB_URL=postgres://postgres:postgres@localhost:5432/contact_relationship_management_development
 cargo run -- db create     # the container creates only contact_relationship_management_test
 cargo run -- db migrate && cargo run -- task seed && cargo run -- start
 curl localhost:1241/api/forecast | jq .

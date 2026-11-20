@@ -7,7 +7,7 @@
 # same id, that nothing else changed (ids, counts, updated_at, history, the imported team), that the
 # imported team's roll-up now meets the quotas, and that the migration rolls back and forward again.
 # Usage: N=500 scripts/migrate-person-refs.sh   (needs psql and the debug binary; a Postgres
-# reachable with PG_HOST, PG_PORT, PG_USER and PG_PASSWORD, defaulting to localhost:5432 loco/loco;
+# reachable with PG_HOST, PG_PORT, PG_USER and PG_PASSWORD, defaulting to localhost:5432 postgres/postgres;
 # PG_ADMIN_USER, defaulting to PG_USER, creates and drops the database)
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -17,7 +17,7 @@ if [[ -d "$SVC/migrations" ]]; then
   exit 2
 fi
 BIN=$SVC/target/debug/contact-relationship-management
-: "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=loco}" "${PG_PASSWORD:=loco}"
+: "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=postgres}" "${PG_PASSWORD:=postgres}"
 : "${PG_ADMIN_USER:=$PG_USER}"
 export PGPASSWORD="$PG_PASSWORD"
 DB=crm_mig_person_refs
