@@ -149,10 +149,10 @@ its code and tests, under the three-part rule.
 | Q17 | The SvelteKit migration is unfinished | `MIGRATION_TASKS.md` has 10 open boxes; `src/env.ts` falls back to `""` silently; `$lib` and `#lib` imports are mixed | S | T91 |
 | Q18 | The demo tour was on by default, and every visitor shared one fixed session id and one copy of the data | Closed by CRM-T92: explicit `CRM_DEMO_TOUR=on`, random per-visitor sessions and a 200-copy LRU cap | S | T92 |
 | Q19 | No component tests; the API client is hand-written | `@testing-library/svelte` installed but unused; `api/crm.ts` 911 lines; a vitest `deps.inline` regex that matches nothing | M | T93 |
-| Q20 | Missing CI gates | no coverage, mutation testing, ESLint, `typos`/markdown/`shellcheck`/`actionlint`, or Playwright in CI; `ci.yml` has no `permissions:`; Woodpecker installs Node 24 while the project needs 26; the matcher is not audited | M | T94 |
+| Q20 | CI gates were missing | Closed by CRM-T94: 95% coverage floors, changed-line and weekly mutation tests, browser suites, lint, supply-chain checks, least-privilege workflows and Node 26 now share one entry point | M | T94 |
 
-**Order:** start with the small gates and cleanups (T75, T84 to T87, T91,
-T92, T94) so that later changes cannot regress. Then the service structure
+**Order:** the small gates and cleanups (T75, T84 to T87, T91, T92, T94)
+landed first so that later changes cannot regress. Then the service structure
 (T76, T78, T79, T82), then the larger rewrites (T77, T80, T83) and the UI
 (T89, T90, T93).
 

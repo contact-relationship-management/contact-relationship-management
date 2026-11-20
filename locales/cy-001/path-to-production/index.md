@@ -55,8 +55,9 @@ Amcangyfrif a wnaed ar 2026-11-13 o'r rhestr dasgau yw pob canran, nid mesuriad.
   llofnodion yn gwirio. Mae camau gweithredu a delweddau wedi'u pinio wrth eu crynhoad, a chaiff yr hanes ei sganio
   am gyfrinachau. Nid yw hanner amd64 delwedd ryddhau a dynnwyd wedi'i wirio, ac nid oes ail westeiwr cod eto
   (CRM-T192).
-- **Integreiddio parhaus** (60%): Mae un sgript yn rhedeg pob gwiriad, ar GitHub Actions a Woodpecker. Mae lloriau
-  cwmpas, profi mwtaniadau wedi'i amserlennu a gatiau eraill ar agor o hyd (CRM-T94).
+- **Integreiddio parhaus** (100%): Mae un sgript yn rhedeg pob gwiriad ar GitHub Actions a Woodpecker. Mae gan y ddau
+  god Rust a'r UI loriau llinell 95%; mae gatiau porwr, lint, cadwyn gyflenwi, mwtaniad llinellau wedi'u newid a
+  mwtaniad llawn wythnosol ar waith (CRM-T94).
 - **Mesurau diogelu'r arddangosiad** (100%): Mae pob ymwelydd â'r daith yn cael copi ar wahân o'r data arddangos, hyd
   at uchafswm o 200 copi. Mae'r daith i ffwrdd yn ddiofyn; gosodwch `CRM_DEMO_TOUR=on` i'w chynnig (CRM-T92).
 

@@ -1217,7 +1217,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       - **Kept constructible, on purpose** (README, "Changing the API"):
         - `Contact`, `MatchConfig` and `FieldParameters` are built with `..Default::default()`, which `#[non_exhaustive]` forbids.
         - `Ranked` is built by the service to re-sort and re-score candidates. The service's unit tests against the matcher in the repo caught this (E0639) before anything was published.
-      - **`scripts/ci-check.sh semver`** runs `cargo semver-checks`. It is not in the workflows yet (CRM-T94).
+      - **`scripts/ci-check.sh semver`** runs `cargo semver-checks`; CRM-T94 added it to hosted CI.
       - **Verified:** cargo-semver-checks 0.51.0 against the published 0.1.2 reports exactly three failures, all intended (enums marked non-exhaustive, structs marked non-exhaustive, `ConfigError` became an enum) and "requires a new major version"; with `--release-type major` it passes. Matcher clippy and tests pass; the service's 184 unit tests pass against the local matcher.
 
       **Finished (2026-10-25):** the matcher is bumped to 0.2.0 in the tree (changelog headed "0.2.0 (not published yet)"), and CI has a `semver` job (`taiki-e/install-action` with cargo-semver-checks, then `scripts/ci-check.sh semver`); against the published 0.1.2 it reports a major change and passes. **Not done, and not mine to do unasked:** `cargo publish` of 0.2.0, then moving the service to `0.2.0` and releasing it. The service still depends on 0.1.2.
@@ -1270,8 +1270,8 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       - **Generated types:** `openapi-typescript` (dev dependency) writes `src/lib/api/schema.d.ts` from the service's document; `cargo run --example openapi` prints that document, and `OPENAPI=… pnpm api:types` regenerates. `src/lib/api/schema-check.ts` makes `svelte-check` fail when a hand-written type in `crm.ts` is not satisfied by what the service says it sends (22 types checked).
       - **Found by the check, fixed:** the document marked every `Option` member of a response as possibly absent, though the service always sends `null`. Requests are now generated as deserialized and responses as serialized, so response members are required. `Followup.due_on` and the first five members of a break-glass grant are documented non-null (the code guarantees it). `crm.ts` `StaleDeal.amount_minor` is now `number | null` (masked amounts).
       - **Narrowed on purpose:** `ExternalLink.system`, `Duplicate.verdict` and `DuplicateField.outcome` are closed sets in the UI and plain strings in the document; the check skips them, with a comment.
-      - **Not done:** `crm.ts` is still hand-written (911 lines); replacing it with the generated types, and running the check in CI, wait for T94.
-- [~] CRM-T94 **CI gates and hygiene.**
+      - **Limit:** `crm.ts` is still hand-written (911 lines); replacing it with generated client code remains a separate refactor. The schema check now runs in the `api-types` CI stage.
+- [x] CRM-T94 **CI gates and hygiene.** (completed 2026-11-20)
   - Add coverage (`cargo llvm-cov`, vitest `--coverage`) as a report first, and set floors later.
   - Add a scheduled `cargo mutants` run on `rules/`.
   - Add ESLint with `eslint-plugin-svelte`, plus `typos`, markdown lint, `shellcheck`, and `actionlint` or `zizmor`.
@@ -1283,35 +1283,14 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 
   (Q20, M)
 
-      **Done 2026-10-21 (not yet run by GitHub Actions or Woodpecker):**
-      - **Playwright in CI:** a new `e2e` stage in `scripts/ci-check.sh`, a GitHub job and a Woodpecker step. Passes locally, 105 of 105.
-      - **Keycloak-only build:** `--no-default-features --features keycloak` is now in the `clippy` stage (clean locally).
-      - **shellcheck:** a `scripts` stage (warnings and errors only). Fixed what it found: four `cd` without `|| exit`, an unused `C3` and an unused `START`.
-      - **Matcher supply chain:** `cargo audit` and `cargo deny` run on the matcher too, with its own `deny.toml` (the licences it uses today). Both pass.
-      - **`permissions: contents: read`** at the top of `ci.yml`.
-      - **Woodpecker supply-chain step:** Node 26 (was 24) and pnpm from npm, since Node 25+ has no corepack. The nodesource `setup_26.x` URL answers 200; the step itself has not run.
-      - **`semver` stage** from CRM-T87 exists in the script but is in neither workflow: it fails by design until the matcher version is bumped.
-      **Added 2026-10-25 (not yet run by GitHub Actions):**
-      - **`semver` job** is now in `ci.yml` (the matcher is 0.2.0 in the tree, so it passes: a major change against the published 0.1.2).
-      - **`lint` stage and job:** `typos` (spelling; `_typos.toml` leaves the translations out and lists names and test data that look like misspellings, and two real typos in `spec/locales-x-for-roles` were fixed) and `zizmor --offline .github` (a security audit of the workflows). Both pass locally (typos 1.51.1, zizmor 1.31.1, installed with `cargo install`).
-      - **What zizmor found, and was fixed:** 14 template-injection errors (a tag name, the actor, matrix values and step outputs were expanded into shell text in `release.yml`; they now arrive as environment variables), 11 `actions/checkout` steps that left the token in the workspace (`persist-credentials: false`), 2 build caches in the release job that signs and publishes (removed), and 7 Dependabot entries without a cooldown (7 days). The release workflow was edited but **has not run**: the next tag will be its first test, so tag a release candidate first.
-      - **Coverage** already has a report-only `coverage` job.
-      - **Mutation testing, added 2026-10-25:** `.cargo/mutants.toml` limits `cargo mutants` to `src/rules` and the unit tests (about 780 mutants); `scripts/ci-check.sh mutants` and a weekly `mutants.yml` workflow (also by hand) run it and keep the report. Not yet run by GitHub; the full run was not done here (about three hours), but the two newest rule files were: `calendar.rs` and `reports.rs`, 102 mutants. **It found 21 untested behaviours** (the boundaries of the limits, one match arm per fixed filter set, the default measure, and a test loop that tested nothing when a kind had no fields). Tests were added for each, and a second run left one survivor (two filters each keeping their own expression), which a further test closed (checked on that mutant alone). `tags.rs` (13 mutants) had none missed.
-      - **ESLint, added 2026-10-25:** `eslint.config.js` with the recommended rules of ESLint, `typescript-eslint` and `eslint-plugin-svelte` (dev dependencies; `pnpm lint` now runs it after prettier, and the CI `front-end` stage already runs `pnpm lint`). It found 58 problems; clean now. **Fixed:** 8 unused imports, a `let` that never changes, 5 `{#each}` without a key (on the splash and tour pages), a useless `{" "}`. **Switched off, with the reason in the file:** `svelte/no-navigation-without-resolve` (40 links; the app is served from the root, so a plain absolute link is right; turn it on if a base path is ever set), `no-empty-object-type` for SvelteKit's own `app.d.ts`, and one `prefer-svelte-reactivity` line for a map of loads in flight that nothing renders.
-      - **Markdown lint and Woodpecker, added 2026-10-25:** `rumdl` 0.3.0 checks every Markdown file (`.rumdl.toml`) in the `lint` stage, which Woodpecker now runs too (it had no lint step). Its first run found 1,852 findings: 1,701 were line length (the prose is one paragraph per line, so that rule is off), 37 inline HTML (used on purpose, off) and 28 links to sibling projects outside this repository (off: this check cannot see them, so **those links are unchecked**). The other 86 were formatting and were fixed. `spec/special-files-for-public-repos` is left out because it is copied as it is. GitHub's `install-action` has no `rumdl`, so that job installs the pinned wheel from PyPI; the Woodpecker step compiles it. Neither job has run `rumdl` yet.
-      - **Still not done:** a full run over every rule file (its survivors are the list of rules no test pins), and `actionlint` (not installable here without changing Homebrew's permissions; zizmor covers the security half of what it checks, not the syntax half). Woodpecker has no `lint` step.
-
-      **Not done, and why:**
-      - **Coverage** (`cargo llvm-cov`, vitest `--coverage`): the tool is not installed here, and a report-only job is best added when its output can be seen.
-      - **Mutation testing:** `cargo-mutants` is installed, but a run over `rules/` needs the database suite and takes long; a scheduled job should be set up and watched once.
-      - **ESLint** with `eslint-plugin-svelte`: new dev dependencies and a lockfile change, and its rule set is a team choice.
-      - **`typos`, markdown lint, `actionlint`/`zizmor`:** none installed here; each needs its first run reviewed for noise before it can gate.
-      - The two new workflow jobs and the Woodpecker steps have not run on their providers; expect a first-run fix.
-
-      **Added 2026-10-24:**
-      - **Coverage report:** `front-end` runs `vitest --coverage` (`@vitest/coverage-v8`): statements 68.0%, branches 56.9%, functions 67.9%, lines 70.4% today. A new `coverage` stage runs `cargo llvm-cov --lib --summary-only`: 39% of lines, but unit tests only, since the database suite (which most handlers need) is in `test-db`. Both are reports; no floor is set. A figure for the whole suite needs `llvm-cov` around `test-db`.
-      - **`api-types` stage** (GitHub job and Woodpecker step): regenerates `schema.d.ts` from `cargo run --example openapi`, fails if it differs from the committed file, then runs `svelte-check`, so the T93 type check runs against the service as it is.
-      - **Still not done:** mutation testing, ESLint, `typos`, markdown lint, `actionlint`/`zizmor` (none installed here; each needs a reviewed first run).
+      **Closed:** every requested gate is now implemented. The UI and both Rust codebases fail below
+      95% executable-line coverage; Playwright, ESLint, shellcheck, typos, rumdl, zizmor, API-type
+      generation, Keycloak-only compilation and matcher supply-chain checks run through
+      `scripts/ci-check.sh`. GitHub Actions has read-only top-level permissions and Node 26; Woodpecker
+      uses Node 26 and the same entry point. Changed Rust lines are mutation-tested on each hosted CI
+      run and the complete domain and matcher sets run weekly in seven shards. Hosted runs have
+      exercised the coverage, lint, scripts, E2E, API-type and mutation-diff jobs. Surviving weekly
+      mutants are test-depth findings tracked by CRM-T259, not a missing CRM-T94 gate.
 
 ## New capabilities (from the 2026-10-21 research, [plan.md](plan.md) C1 to C10)
 

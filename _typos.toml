@@ -60,3 +60,6 @@ ecs = "ecs"
 eks = "eks"
 # Google Cloud container service.
 gke = "gke"
+# Product names cited by the external audit: OpenSCAP and Activiti.
+scap = "scap"
+activiti = "activiti"

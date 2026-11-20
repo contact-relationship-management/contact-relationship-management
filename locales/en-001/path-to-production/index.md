@@ -50,8 +50,9 @@ Each percentage is an estimate made on 2026-11-13 from the task list, not a meas
 - **Release integrity** (85%): Release images are multi-architecture, signed and attested, and their signatures
   verify. Actions and images are pinned by digest, and history is scanned for secrets. The amd64 half of a pulled
   release image has not been checked, and there is no second code host yet (CRM-T192).
-- **Continuous integration** (60%): One script runs every check, on GitHub Actions and Woodpecker. Coverage floors,
-  scheduled mutation testing and other gates are still open (CRM-T94).
+- **Continuous integration** (100%): One script runs every check on GitHub Actions and Woodpecker. Both Rust
+  codebases and the UI have 95% line floors; browser, lint, supply-chain, changed-line mutation and weekly full
+  mutation gates are in place (CRM-T94).
 - **Demo safeguards** (100%): Each tour visitor gets a separate copy of the demo data, capped at 200 copies. The tour
   is off by default; set `CRM_DEMO_TOUR=on` to offer it (CRM-T92).
 
