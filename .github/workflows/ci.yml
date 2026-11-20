@@ -141,9 +141,10 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: contact-relationship-management-service-with-rust
+      - run: rustup component add llvm-tools-preview
       - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: cargo-tarpaulin@0.37.6
+          tool: cargo-llvm-cov@0.9.1
       - run: scripts/ci-check.sh coverage
 
   scripts:

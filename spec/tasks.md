@@ -2498,3 +2498,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Ran:** `scripts/ci-check.sh supply-chain`, `clippy` and `test`, all passing.
       - **Not done / not verified:** no mail was sent through a real SMTP server; `test-db` was not run (the Podman VM
       would not start), nor the UI's unit tests, which vitest cannot find from a worktree under `.git/`.
+- [x] CRM-T288 **GitHub's coverage job installs `cargo-llvm-cov`.** CRM-T275 moved `scripts/ci-check.sh coverage` from
+      tarpaulin to `cargo llvm-cov` and changed Woodpecker's install, but GitHub's job still installed
+      `cargo-tarpaulin@0.37.6`, so `coverage` failed on `main` with "no such command: `llvm-cov`". It now adds
+      `llvm-tools-preview` and installs `cargo-llvm-cov@0.9.1`, the version on this machine. (S)
+      - **Ran:** `scripts/ci-check.sh pins` and `lint`.
+      - **Not done / not verified:** the stage itself was not run here (it needs PostgreSQL and Redis, and the Podman VM
+      would not start); whether the 95% floor holds in CI is seen only on the hosted run.
