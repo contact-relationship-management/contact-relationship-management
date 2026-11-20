@@ -1139,3 +1139,156 @@ async fn opens_and_clicks_a_provider_reports_become_attribution_touches_while_th
     .await;
     settings::update(|s| s.webhook_secret = None);
 }
+
+/// A nurture sequence's steps are checked when it is made (CRM-R8): steps between 1 and 32, a
+/// template or a subject and body but not both, no negative delay, a one-line subject, a body of a
+/// sane length, and a template that exists.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_nurture_sequence_with_a_bad_step_is_refused() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let step = json!({ "delay_hours": 0, "template_ref": "t", "body": "Hello." });
+        let with = |change: Value| {
+            let mut s = step.clone();
+            for (k, v) in change.as_object().unwrap() {
+                s[k] = v.clone();
+            }
+            json!({ "name": "Bad", "steps": [s] })
+        };
+        for bad in [
+            json!({ "name": "Bad", "steps": [] }),
+            json!({ "name": "Bad", "steps": vec![step.clone(); 33] }),
+            with(json!({ "template_pid": Uuid::new_v4(), "subject": "Both" })),
+            with(json!({ "delay_hours": -1 })),
+            with(json!({ "subject": "Two\nlines" })),
+            with(json!({ "body": "x".repeat(20_001) })),
+            with(json!({ "template_pid": Uuid::new_v4(), "body": null })),
+        ] {
+            let answer = request.post("/api/nurture-sequences").json(&bad).await;
+            assert_eq!(answer.status_code(), 422, "{bad}: {}", answer.text());
+        }
+        request
+            .post("/api/nurture-sequences")
+            .json(&json!({ "name": "Good", "steps": vec![step; 32] }))
+            .await
+            .assert_status_ok();
+    })
+    .await;
+}
+
+/// Each way a real nurture send can end (CRM-R8, CRM-T39): sent from a template; held for no
+/// address or no body, to be tried again; ended for a suppressed mailbox, a mailbox the sender
+/// refuses outright, or a template that is gone.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_nurture_send_is_sent_held_or_ended_by_what_it_meets() {
+    request::<App, _, _>(|request, ctx| async move {
+        let pool = contact_relationship_management::db::pool(&ctx);
+        // A step with no body can only be made while mail is simulated.
+        let bodyless: Value = request
+            .post("/api/nurture-sequences")
+            .json(&json!({ "name": "Bodyless", "steps": [{ "delay_hours": 0, "template_ref": "t" }] }))
+            .await
+            .json();
+        let (recorder, _restore) = recording();
+        let template = |name: &'static str| {
+            let request = &request;
+            async move {
+                let made: Value = request
+                    .post("/api/email-templates")
+                    .json(&json!({ "name": name, "subject": "Hello {{given_name}}",
+                                   "body": "Hi.\n\nStop: {{unsubscribe_url}}" }))
+                    .await
+                    .json();
+                made["pid"].as_str().unwrap().to_string()
+            }
+        };
+        let sequence = |name: &'static str, template: String| {
+            let request = &request;
+            async move {
+                let made: Value = request
+                    .post("/api/nurture-sequences")
+                    .json(&json!({ "name": name, "steps": [
+                        { "delay_hours": 0, "template_ref": "x", "template_pid": template }] }))
+                    .await
+                    .json();
+                made["pid"].as_str().unwrap().to_string()
+            }
+        };
+        let kept = sequence("Kept", template("Kept").await).await;
+        let gone_template = template("Gone").await;
+        let gone = sequence("Gone", gone_template.clone()).await;
+
+        let mut contacts = Vec::new();
+        for (name, address, sequence_pid) in [
+            ("Sent Person", Some("sent@example.test"), kept.clone()),
+            ("No Address", None, kept.clone()),
+            ("Suppressed Person", Some("suppressed@example.test"), kept.clone()),
+            ("Refused Person", Some("refused@example.test"), kept.clone()),
+            ("Template Gone", Some("gone@example.test"), gone.clone()),
+            ("No Body", Some("nobody@example.test"), bodyless["pid"].as_str().unwrap().to_string()),
+        ] {
+            let pid = seed_contact!(&request, name).await;
+            if let Some(address) = address {
+                give_address!(&request, pid, address);
+            }
+            request
+                .post(&format!("/api/nurture-sequences/{sequence_pid}/enrollments"))
+                .json(&json!({ "contact_pid": pid }))
+                .await
+                .assert_status_ok();
+            contacts.push(pid);
+        }
+        recorder.refuse("refused@example.test");
+        sqlx::query("INSERT INTO email_suppressions (contact_pid, reason) VALUES ($1::uuid, 'bounce_hard')")
+            .bind(&contacts[2])
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM email_templates WHERE pid = $1::uuid")
+            .bind(&gone_template)
+            .execute(pool)
+            .await
+            .unwrap();
+
+        let swept: Value = request.post("/api/nurture/advance").await.json();
+        assert_eq!((swept["sent"].as_u64(), swept["held"].as_u64()), (Some(1), Some(2)), "{swept}");
+        let sent = recorder.sent();
+        assert_eq!(sent.len(), 1);
+        assert_eq!(sent[0].to, "sent@example.test");
+        assert!(sent[0].subject.starts_with("Hello"), "{}", sent[0].subject);
+
+        let outcome = |pid: String| async move {
+            sqlx::query_as::<_, (String, Option<String>, String)>(
+                "SELECT d.state, d.error, e.status FROM email_deliveries d \
+                 JOIN nurture_enrollments e ON e.contact_pid = d.contact_pid \
+                 WHERE d.contact_pid = $1::uuid",
+            )
+            .bind(pid)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+        };
+        let (status, _, enrolment) = outcome(contacts[0].clone()).await;
+        assert_eq!((status.as_str(), enrolment.as_str()), ("sent", "completed"));
+        for (who, delivery, why, enrolment) in [
+            (1, "no_address", "no address on file", "active"),
+            (2, "suppressed", "mailbox suppressed", "exited"),
+            (4, "failed", "permanent: the email template is gone", "exited"),
+            (5, "failed", "permanent: step has no body", "active"),
+        ] {
+            let got = outcome(contacts[who].clone()).await;
+            assert_eq!(
+                (got.0.as_str(), got.1.as_deref(), got.2.as_str()),
+                (delivery, Some(why), enrolment),
+                "contact {who}"
+            );
+        }
+        let (status, error, enrolment) = outcome(contacts[3].clone()).await;
+        assert_eq!((status.as_str(), enrolment.as_str()), ("failed", "exited"), "{error:?}");
+        assert!(error.unwrap_or_default().starts_with("permanent"));
+    })
+    .await;
+}

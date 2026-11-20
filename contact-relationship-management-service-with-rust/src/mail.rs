@@ -138,6 +138,7 @@ pub struct SmtpSender {
 pub struct Recorder {
     sent: Arc<Mutex<Vec<Message>>>,
     fail: Arc<Mutex<HashSet<String>>>,
+    refuse: Arc<Mutex<HashSet<String>>>,
 }
 
 impl Recorder {
@@ -161,6 +162,11 @@ impl Recorder {
     /// Stop failing sends to `address`.
     pub fn heal(&self, address: &str) {
         lock(&self.fail).remove(address);
+    }
+
+    /// Make every send to `address` fail permanently, as a server refusing the mailbox would.
+    pub fn refuse(&self, address: &str) {
+        lock(&self.refuse).insert(address.to_string());
     }
 }
 
@@ -229,6 +235,9 @@ impl Sender {
             Self::Recording(recorder) => {
                 if lock(&recorder.fail).contains(&message.to) {
                     return Err(SendError::Transient("simulated outage".to_string()));
+                }
+                if lock(&recorder.refuse).contains(&message.to) {
+                    return Err(SendError::Permanent("simulated refusal".to_string()));
                 }
                 lock(&recorder.sent).push(message.clone());
                 Ok(None)

@@ -2607,5 +2607,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       with no keyring, and stops naming the row when a stored value is under a key the ring no longer has, in a sealed
       column and in a sensitive custom field. Left: a database error part-way through a rotation, which a test can only
       cause by breaking the connection.
+      - **Round 3:** `controllers/marketing/nurture.rs` (78.6%): a sequence refused for each bad step (none, 33, a
+      template with a subject, a negative delay, a two-line subject, a body over 20,000 characters, a template that
+      does not exist) and taken at 32; a real send that is sent from a template, held for no address or no body, or
+      ended for a suppressed mailbox, a refused mailbox or a template that is gone, with each delivery and enrolment
+      state checked. The test recorder gained `refuse`, a permanent failure, as only a temporary one existed.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
