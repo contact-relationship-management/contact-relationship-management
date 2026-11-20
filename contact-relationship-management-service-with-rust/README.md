@@ -106,6 +106,10 @@ input and is stored as `person:<id>`.
 - **List cursors** are signed with `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET` (32 bytes or more,
   the same on every replica), which production requires. Elsewhere, unset,
   each process makes its own key.
+- **Outside hosts:** `CONTACT_RELATIONSHIP_MANAGEMENT_OUTBOUND_HOSTS` lists the hosts the service may call
+  (`api.brevo.com`, `*.amazonaws.com`); with it, a configured outside service on another host stops the
+  start, and a webhook to one is refused (CRM-R106). `CONTACT_RELATIONSHIP_MANAGEMENT_DATA_REGION` names the
+  region for `GET /api/operations/residency`.
 - **Deployment name:** `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` (1 to 64 letters, digits, `.`, `_`, `-`). The first start
   with it writes it to the database; a later start with another name, or with none, is refused
   (CRM-R105). Unset against a database that has no name, the start goes ahead and logs a warning.

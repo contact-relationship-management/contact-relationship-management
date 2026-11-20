@@ -29,6 +29,7 @@ pub mod marketing;
 pub mod merge;
 pub mod metrics;
 pub mod notifications;
+pub mod operations;
 pub mod organization;
 pub mod paging;
 pub mod privacy;

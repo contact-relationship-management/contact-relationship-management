@@ -45,13 +45,15 @@ pub const PRIVILEGED_READ_PREFIXES: [&str; 4] = [
 /// Path prefixes that only an admin or service caller may use with *any* method
 /// (outbound webhook subscriptions, CRM-R28: they decide where change notifications go; quotas and
 /// commission plans, CRM-R59: what a person is paid is neither theirs to set nor everyone's to read;
-/// the bridges to other services, CRM-R72: they send data out and read people in). Every
+/// the bridges to other services, CRM-R72: they send data out and read people in; operational
+/// facts for an assurance review, CRM-R106: they describe the deployment). Every
 /// request under one derives [`Action::Destructive`].
-pub const ADMIN_ONLY_PREFIXES: [&str; 4] = [
+pub const ADMIN_ONLY_PREFIXES: [&str; 5] = [
     "/api/webhook-subscriptions",
     "/api/quotas",
     "/api/commission-plans",
     "/api/bridges",
+    "/api/operations",
 ];
 
 /// Whether `path` is under an [`ADMIN_ONLY_PREFIXES`] entry, on whole path segments.

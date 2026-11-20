@@ -22,6 +22,13 @@ Commands assume the container images from the repository's `Containerfile`s.
    points at another customer's database stops the start (CRM-R105). The name cannot
    be changed once written. The software has no shared multi-customer mode: give each
    customer its own database, file store, Redis and keys.
+   Where the customer has a residency rule, set `CONTACT_RELATIONSHIP_MANAGEMENT_OUTBOUND_HOSTS`
+   to the outside hosts it allows (the mail provider, the family services, the identity
+   provider, each webhook receiver) and `CONTACT_RELATIONSHIP_MANAGEMENT_DATA_REGION` to the
+   region. A configured service on another host then stops the start, and
+   `GET /api/operations/residency` shows the list for the assurance pack (CRM-R106). Host the
+   database, Redis, the file store, backups and logs in the region yourself: the list does not
+   cover them.
 5. Mount an ABAC policy (`CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE`) derived from
    `config/abac-policy.reference.json` and run
    `cargo test --test enforcement -- --ignored` against it in staging.

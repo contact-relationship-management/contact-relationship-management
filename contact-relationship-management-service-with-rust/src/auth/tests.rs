@@ -487,6 +487,9 @@ fn derive_action_matrix() {
             "/api/webhook-subscriptions/relay",
             "/api/webhook-subscriptions/abc/deliveries",
             "/api/webhook-subscriptions/abc/rotate-secret",
+            // CRM-R106: what the deployment may call is for an administrator to read.
+            "/api/operations/residency",
+            "/api/operations/residency/",
         ] {
             assert_eq!(
                 derive_action(&method, path),
@@ -495,6 +498,10 @@ fn derive_action_matrix() {
             );
         }
     }
+    assert_eq!(
+        derive_action(&Method::GET, "/api/operationsx/residency"),
+        Action::Read
+    );
     assert_eq!(
         derive_action(&Method::POST, "/api/webhook-subscriptionsfoo"),
         Action::Write

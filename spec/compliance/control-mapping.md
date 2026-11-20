@@ -70,7 +70,7 @@ controls for every other region are in [By region](#by-region) below.
 | Processor agreements, ESP | GDPR 28 | Gap | T39 |
 | Records of processing, DPIA | GDPR 30, 35 | Deployer | [dpia-template.md](dpia-template.md) |
 | Breach notification | GDPR 33; HIPAA §164.404 | Deployer | [operations-runbook.md](operations-runbook.md) |
-| Data residency | GDPR Ch. V | Deployer | choose region; service makes no cross-border transfers itself |
+| Data residency | GDPR Ch. V | Partial (CRM-R106) | the service makes no cross-border transfer itself; with `CONTACT_RELATIONSHIP_MANAGEMENT_OUTBOUND_HOSTS` it refuses to start against an undeclared outside service and refuses webhooks to undeclared hosts (CRM-T283, `src/residency.rs`, `tests/requests/residency.rs`); where the deployment and its sub-processors are hosted is the deployer's |
 | Exit export and certified erasure | ISO A.5.23; GDPR 28(3)(g) | Gap (CRM-R109) | subject-access export per contact and table exports only; the supplier's steps are in [exit-and-retention.md](supplier-assurance/exit-and-retention.md) (CRM-T285) |
 
 ## By region

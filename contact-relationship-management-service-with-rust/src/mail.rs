@@ -129,6 +129,8 @@ pub enum Security {
 pub struct SmtpSender {
     transport: AsyncSmtpTransport<Tokio1Executor>,
     from: Mailbox,
+    /// The server's host name, for the residency check (CRM-R106).
+    host: String,
 }
 
 /// A sender that records instead of sending, for tests.
@@ -183,6 +185,16 @@ pub enum Sender {
 }
 
 impl Sender {
+    /// The outside host this sender hands mail to, if it sends any (CRM-R106).
+    #[must_use]
+    pub fn outside_host(&self) -> Option<String> {
+        match self {
+            Self::Smtp(smtp) => crate::rules::residency::host_of(&smtp.host),
+            Self::Api(api) => crate::rules::residency::host_of(api.url()),
+            Self::Simulated | Self::Recording(_) => None,
+        }
+    }
+
     /// Whether a send needs a real recipient address.
     #[must_use]
     pub fn needs_address(&self) -> bool {
@@ -265,6 +277,7 @@ impl SmtpSender {
         Ok(Self {
             transport: builder.build(),
             from,
+            host: host.to_string(),
         })
     }
 

@@ -28,6 +28,7 @@ pub mod public_text;
 pub mod quota;
 pub mod record_imports;
 pub mod reports;
+pub mod residency;
 pub mod scoring;
 pub mod search;
 pub mod segment;

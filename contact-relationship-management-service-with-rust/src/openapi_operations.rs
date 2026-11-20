@@ -1596,6 +1596,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
     ),
     (
         "get",
+        "/api/operations/residency",
+        "operations",
+        "Declared region and outside hosts, and each configured outside service with whether the list allows it (CRM-R106); admin only",
+        Kind::Ok,
+    ),
+    (
+        "get",
         "/api/retention",
         "privacy",
         "Retention report: soft-deleted rows past the floored horizon, per table",

@@ -1776,8 +1776,16 @@ the service sends nothing outside it that we have not listed.*
 - `GET /api/operations/residency` (admin) answers the declared region and the declared outside services, for the
   assurance pack.
 - Where production, backups and recovery copies are hosted is the supplier's; the runbook lists what must be in region.
-- There today: the service makes no cross-border transfers itself; webhooks refuse private addresses. Not built: a
-  declared list of outside hosts; refusing undeclared ones; the residency read.
+- Built 2026-11-20 (CRM-T283): `CONTACT_RELATIONSHIP_MANAGEMENT_OUTBOUND_HOSTS` (host names, or `*.` and a domain)
+  and `CONTACT_RELATIONSHIP_MANAGEMENT_DATA_REGION`. With a list, a start is refused when a configured outside service
+  (the person, organization, worker and portfolio services, the token keys, Keycloak, the mail provider or SMTP server)
+  names a host not on it; a webhook to an undeclared host is refused when registered (`422`), and one registered before
+  the list is not sent: its delivery is dead and `webhook_refused_undeclared_host` is audited. Without a list nothing is
+  checked and the start logs that. `GET /api/operations/residency` (admin) answers the region, the list and each
+  configured service with whether the list allows it.
+- Not built: the database, Redis and the file store are the deployment's own infrastructure and are not checked; a call
+  is checked by its host name, not by where that name resolves; the UI's own outside calls (its authentication
+  service) are not checked; the region is a label the software does not verify.
 
 ## CRM-R107 — Known vulnerabilities are patched within a stated time
 

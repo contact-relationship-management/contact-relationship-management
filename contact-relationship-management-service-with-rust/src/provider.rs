@@ -87,6 +87,12 @@ pub struct ApiSender {
 }
 
 impl ApiSender {
+    /// The provider URL messages are posted to (CRM-R106 checks its host).
+    #[must_use]
+    pub fn url(&self) -> &str {
+        &self.url
+    }
+
     /// The `From` mailbox.
     #[must_use]
     pub fn from_domain(&self) -> String {

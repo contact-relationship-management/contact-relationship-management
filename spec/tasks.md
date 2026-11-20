@@ -2500,8 +2500,23 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Not done / not verified:** the setting is not required in production (an owner's decision: it would stop every
       deployment that has not set it); `db` commands and tasks do not check it; no way to rename a deployment but a
       database owner's `TRUNCATE`; the image was not rebuilt and run.
-- [ ] CRM-T283 **Declared outside hosts and the residency read (CRM-R106).** Refuse and audit a call to an undeclared
+- [x] CRM-T283 **Declared outside hosts and the residency read (CRM-R106).** Refuse and audit a call to an undeclared
       host; `GET /api/operations/residency`. (M)
+      - **Built (2026-11-20):** `rules::residency` in the domain crate (reading the list, matching a whole host name or
+      a `*.` domain, a host from a URL or a bare name; 5 tests, among them a lookalike such as
+      `api.brevo.com.evil.example`); `src/residency.rs` (the settings, the configured outside services, the start
+      check, run from `init_sending` so the server and the worker both make it); the webhook registration and send
+      checks; `controllers/operations.rs` and the `/api/operations` admin-only prefix. The mail senders say their host
+      (`ApiSender::url`, and `SmtpSender` now keeps its host).
+      - **Why at start, not at each call:** every outside service but a webhook is named by a setting fixed for the
+      life of the process, so checking it once refuses the mistake before anything is sent. Webhook addresses are added
+      while the service runs, so they are checked when registered and at each send.
+      - **Ran:** `fmt`, `clippy`, `test` (the start check with no list, a list without a configured service, with it,
+      and a list that does not read; the admin-only prefix); `test-db`, with the two request tests in
+      `tests/requests/residency.rs` (one unrelated boot failed to connect, "unexpected response from SSLRequest", and
+      its tests then passed three times); `coverage`, 95.05% of lines, the domain rule 100%, `src/residency.rs` 95.8%.
+      - **Not done / not verified:** the database, Redis and the file store are not covered; a name is checked, not where
+      it resolves; the UI's call to its authentication service is not checked; not tried against a real provider.
 - [ ] CRM-T284 **Upstream patch targets with evidence (CRM-R107).** Extend SECURITY.md's targets to dependencies and base
       images; scan the built images; open an issue with a deadline for a critical or high finding; vulnerability lines in
       release notes. (M)

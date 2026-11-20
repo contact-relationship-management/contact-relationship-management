@@ -109,6 +109,7 @@ pub fn app_routes() -> AppRoutes {
         .add_route(controllers::insights::routes())
         .add_route(controllers::engagement::routes())
         .add_route(controllers::privacy::routes())
+        .add_route(controllers::operations::routes())
         .add_route(controllers::external_links::routes())
         .add_route(controllers::merge::routes())
         .add_route(controllers::unmerge::routes())
@@ -160,6 +161,12 @@ fn init_sending(ctx: &AppContext) -> Result<()> {
     // Real mail must carry signed unsubscribe links.
     crate::unsubscribe::init(!crate::mail::current().is_simulated(), production)
         .map_err(|e| Error::string(&e))?;
+    // CRM-R106: every configured outside service is on the declared list, when there is one.
+    if let Some(note) =
+        crate::residency::check_start(&crate::mail::current()).map_err(|e| Error::string(&e))?
+    {
+        tracing::warn!("{note}");
+    }
     Ok(())
 }
 

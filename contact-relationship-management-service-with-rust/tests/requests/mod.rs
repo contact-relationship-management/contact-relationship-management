@@ -44,6 +44,7 @@ mod quotas;
 mod record_imports;
 mod relationships;
 mod reports;
+mod residency;
 mod sales;
 mod schema;
 mod search;

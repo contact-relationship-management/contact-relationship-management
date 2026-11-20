@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — outside calls limited to a declared list (CRM-T283)
+
+- `CONTACT_RELATIONSHIP_MANAGEMENT_OUTBOUND_HOSTS` lists the outside hosts the service may call. With it, a start
+  whose person, organization, worker or portfolio service, token keys, Keycloak or mail provider names another host
+  is refused; a webhook to an undeclared host is refused when registered, and one made before the list is not sent
+  (dead, and audited). `GET /api/operations/residency` (admin) shows the region, the list and each configured service.
+  Without the setting nothing changes.
+
 ### Changed — axa 0.20.1 (CRM-T291)
 
 - axa 0.20.0 → 0.20.1. Its one change is that axa's `mail` feature requires `axa-mail` 0.1.2 and so lettre 0.11.24;
