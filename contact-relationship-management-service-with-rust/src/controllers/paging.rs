@@ -23,7 +23,7 @@ use axum::http::Uri;
 use serde::Serialize;
 
 /// The setting that holds the key cursors are signed with, 32 bytes or more.
-pub const SECRET_VAR: &str = "CRM_CURSOR_SECRET";
+pub const SECRET_VAR: &str = "CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET";
 
 static KEY: OnceLock<CursorKey> = OnceLock::new();
 

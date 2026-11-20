@@ -18,7 +18,7 @@ this file is legal advice.
   demographics stay in the identity registries; CRM holds
   relationship state.
 - **Access control** — ABAC personas + amount/channel masking;
-  the `CRM_REQUIRE_AUTH` activation gate must be on before real
+  the `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` activation gate must be on before real
   exposure.
 - **No tracking switched on by the CRM** — the service never asks a mail
   provider to track opens or clicks (the SendGrid request turns both off

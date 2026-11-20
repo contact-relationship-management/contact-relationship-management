@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — the guided tour is opt-in (CRM-T92)
 
-- The in-memory tour is disabled unless `CRM_DEMO_TOUR=on`. Each visitor still gets an isolated,
+- The in-memory tour is disabled unless `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on`. Each visitor still gets an isolated,
   random session and the least-recently-used copy is removed above the 200-session cap.
 - Playwright opts in explicitly. The image smoke checks both the unconfigured, off-by-default image
   and an explicitly enabled tour.
@@ -137,9 +137,9 @@ The stand-in's `deal()` and `campaign()` take minor units (the `pounds` paramete
 
 `src/lib/money.ts`, ported from the project portfolio and workforce planning UIs (the three share the behaviour and change together), replaces `money()` in `crm.ts`, the hand-made formatters on the attribution and reports pages, and every `* 100` and `/ 100` on money: the deal board edits the amount as text in the page's number format, the deal page and the quota and clawback forms read a decimal comma, and the deal list sorts major units of each deal's own currency. The exponent comes from the service's ISO 4217 table (a unit test compares the two), falling back to `Intl`. The quota, rate and campaign forms start empty; the campaign form has a currency field, since the service now requires one. The tour's stand-in converts by exponent and refuses what the service refuses. Three strings in all 8 locales (machine drafts); `schema.d.ts` regenerated. Tests: `tests/unit/money.test.ts` (21, with scans for a fixed 100, a hand-made currency formatter and a built-in currency) and `tests/e2e/money.spec.ts` (a yen deal, a German decimal comma, a KWD deal, each axe-clean); the board tests find the editor as a text box. 228 vitest, 181 Playwright. **Not done:** the rate field takes a decimal point only; percentages are CRM-T172's; the tour is GBP only (CRM-T176); the live suite (`tests/live`) was changed but not run.
 
-### Fixed — the default `CRM_API_URL` reaches the service (maintenance, 2026-10-30)
+### Fixed — the default `CONTACT_RELATIONSHIP_MANAGEMENT_API_URL` reaches the service (maintenance, 2026-10-30)
 
-The default and `.env.example` were `http://localhost:1241`, but the BFF proxy sends `/api/proxy/<path>` to `<CRM_API_URL>/<path>`, so a default local setup missed the service's `/api` routes. Both are now `http://localhost:1241/api`. `src/lib/server/api-url.ts` holds the default and the URL building (a blank value takes the default, trailing slashes are dropped), pinned by `tests/unit/api-url.test.ts`. No `/api` is appended to a value without it: a service behind another prefix sets the whole base, and guessing would hide a wrong setting. A deployment that set the old form keeps missing the routes until it adds `/api`. **Not verified:** the proxy was not run against a running service; the live Playwright suite already passes `<API>/api` and was not run.
+The default and `.env.example` were `http://localhost:1241`, but the BFF proxy sends `/api/proxy/<path>` to `<CONTACT_RELATIONSHIP_MANAGEMENT_API_URL>/<path>`, so a default local setup missed the service's `/api` routes. Both are now `http://localhost:1241/api`. `src/lib/server/api-url.ts` holds the default and the URL building (a blank value takes the default, trailing slashes are dropped), pinned by `tests/unit/api-url.test.ts`. No `/api` is appended to a value without it: a service behind another prefix sets the whole base, and guessing would hide a wrong setting. A deployment that set the old form keeps missing the routes until it adds `/api`. **Not verified:** the proxy was not run against a running service; the live Playwright suite already passes `<API>/api` and was not run.
 
 ### Fixed — `/followups` passes the WCAG AA contrast check again (CRM-R77)
 
@@ -372,7 +372,7 @@ Signing in as `example@example.com` now starts a new demo session with a random 
 fictitious data, so one visitor no longer sees what another typed or moved. Before, every visitor shared one copy
 under one fixed session id, and each new sign-in reset it for everyone. At most 200 copies are kept in memory; the
 least recently used goes first, and that visitor starts again from the original data. Sign-out forgets the copy.
-The tour remained on unless `CRM_DEMO_TOUR=off`; CRM-T92's later opt-in change closes that gap.
+The tour remained on unless `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=off`; CRM-T92's later opt-in change closes that gap.
 
 ### Fixed — sign-in when the authentication service is down
 
@@ -645,7 +645,7 @@ answers a demo session from `src/lib/server/demo.ts` and never forwards it to
 the service. Writes (moving a deal, resolving a ticket, recording consent,
 erasing a contact with the same refusals as the service) change an in-memory
 copy that every demo visitor shares and that signing in to the tour again
-resets. A banner marks the session. `CRM_DEMO_TOUR=off` disables it. Tests: a
+resets. A banner marks the session. `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=off` disables it. Tests: a
 unit test that every read in `crm.ts` has sample data, and end-to-end tests that
 walk all 18 screens.
 

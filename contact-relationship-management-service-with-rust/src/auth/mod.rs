@@ -16,29 +16,29 @@
 //! called from `App::after_routes`, before the app serves traffic) and
 //! built from the environment:
 //!
-//! - `CRM_PASETO_KEYS_URL` — optional URL of the auth service's
+//! - `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL` — optional URL of the auth service's
 //!   published key set (`/.well-known/paseto-keys`). Set (non-blank) ⇒
 //!   the key set is fetched over HTTP **once at boot** via
 //!   [`Verifier::from_paseto_keys_url`]; on success the fetched key set
-//!   wins over `CRM_PASETO_KEYS` (`tracing::info!`), on failure the
+//!   wins over `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS` (`tracing::info!`), on failure the
 //!   service logs a `tracing::warn!` and falls back to the env path
 //!   below — the service always boots. The key set is then **re-fetched
 //!   periodically** ([`spawn_key_refresh`]) so a key rotation is picked
-//!   up without a restart (interval `CRM_PASETO_KEYS_REFRESH_SECS`,
+//!   up without a restart (interval `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS`,
 //!   default 1 h; `0` disables; keeps the current keys on a failed
 //!   fetch).
-//! - `CRM_PASETO_KEYS` — the Ed25519 key set (JSON, OKP/Ed25519
+//! - `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS` — the Ed25519 key set (JSON, OKP/Ed25519
 //!   JWK form) the auth service publishes at `/.well-known/paseto-keys`.
 //!   Absent ⇒ an empty key set, so every token is rejected (the service
 //!   still boots).
-//! - `CRM_TOKEN_ISSUER` — expected `iss` (default
+//! - `CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_ISSUER` — expected `iss` (default
 //!   `authentication-service`).
-//! - `CRM_TOKEN_AUDIENCE` — expected `aud` (default
+//! - `CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_AUDIENCE` — expected `aud` (default
 //!   `main-x-service`).
 //!
 //! ## Blanket enforcement
 //!
-//! When `CRM_REQUIRE_AUTH` is truthy (`1`/`true`/`yes`/`on`,
+//! When `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` is truthy (`1`/`true`/`yes`/`on`,
 //! case-insensitive), the [`enforce`] decision — wired as an Axum
 //! middleware layer in `src/app.rs` — requires a valid bearer token on
 //! every route except the public health/ping, OpenAPI/Swagger, and
@@ -52,7 +52,7 @@
 //!
 //! ## Authorization (ABAC)
 //!
-//! Inside the same guard — so it applies only when `CRM_REQUIRE_AUTH`
+//! Inside the same guard — so it applies only when `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH`
 //! is on — a verified token is further checked against an
 //! **attribute-based access control** policy per
 //! `agents/share/authorization-attributes.md`: the request's action is
@@ -60,8 +60,8 @@
 //! POSTs ([`DESTRUCTIVE_POST_SUFFIXES`]), and the shared engine in the
 //! `authentication-verifier` crate evaluates the policy over the
 //! token's `attrs` claim. The policy is read once per process
-//! ([`policy`], built by [`policy_from_env`]) from `CRM_ABAC_POLICY`
-//! (inline JSON) or `CRM_ABAC_POLICY_FILE` (path); unset or unparsable
+//! ([`policy`], built by [`policy_from_env`]) from `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY`
+//! (inline JSON) or `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE` (path); unset or unparsable
 //! ⇒ the built-in default policy (`svc=true` ⇒ everything;
 //! `access=admin` ⇒ destructive+write; `access=write` ⇒ write;
 //! otherwise read-only) — the service always boots. **401** =

@@ -15,7 +15,7 @@ if [[ -d "$SVC/migrations" ]]; then
 fi
 BIN=$SVC/target/debug/contact-relationship-management
 PG=crm-mig-pg RD=crm-mig-redis PGP=15440 RDP=16380 PORT=5181
-export DB_URL="postgres://loco:loco@localhost:$PGP/legacy" CRM_REDIS_URL="redis://localhost:$RDP"
+export DB_URL="postgres://loco:loco@localhost:$PGP/legacy" CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL="redis://localhost:$RDP"
 export AXA_DESTROY_DATA=true # this throwaway database is rolled back below
 API=http://localhost:$PORT
 sql() { podman exec "$PG" psql -U loco -d legacy -Atc "$1"; }

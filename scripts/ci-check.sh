@@ -82,12 +82,12 @@ case "${stage}" in
     (cd "${SVC}" \
       && DB_URL="${url}" DATABASE_URL="${url}" \
          cargo test "${FEATURES[@]}" -- --ignored --test-threads=1)
-    # The Redis tests skip silently when CRM_REDIS_URL is unset, so run them
+    # The Redis tests skip silently when CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL is unset, so run them
     # on their own, against a real Redis. Not set for the run above: the rate
     # limiter would then share counters across the whole suite.
     : "${REDIS_HOST:=localhost}" "${REDIS_PORT:=6379}"
     (cd "${SVC}" \
-      && CRM_REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}" \
+      && CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}" \
          cargo test "${FEATURES[@]}" redis_store -- --ignored --test-threads=1)
     ;;
   front-end)
@@ -153,7 +153,7 @@ case "${stage}" in
       && DB_URL="${url}" DATABASE_URL="${url}" \
          cargo llvm-cov --no-clean --offline --test main "${FEATURES[@]}" --summary-only -- \
          --ignored --test-threads=1 \
-      && CRM_REDIS_URL="${redis_url}" \
+      && CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL="${redis_url}" \
          cargo llvm-cov --no-clean --offline --workspace --lib "${FEATURES[@]}" \
            --summary-only --fail-under-lines 95 -- \
            redis_store --ignored --test-threads=1)
@@ -211,29 +211,29 @@ case "${stage}" in
     # survives is a rule no test pins. Scheduled weekly, not on every push: it takes a while.
     # The rules are the domain crate (CRM-T260), whose unit tests need nothing of the service.
     # CRM-T259: the matcher too, whole: it takes minutes, so a sharded run takes it in shard 0 only.
-    if [[ -z "${CRM_MUTANTS_SHARD:-}" || "${CRM_MUTANTS_SHARD}" == 0/* ]]; then
-      (cd "${MATCHER}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out")
+    if [[ -z "${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_SHARD:-}" || "${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_SHARD}" == 0/* ]]; then
+      (cd "${MATCHER}" && cargo mutants -j "${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out")
     fi
-    (cd "${DOMAIN}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out" ${CRM_MUTANTS_SHARD:+--shard "${CRM_MUTANTS_SHARD}"} "${@:2}")
+    (cd "${DOMAIN}" && cargo mutants -j "${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out" ${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_SHARD:+--shard "${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_SHARD}"} "${@:2}")
     ;;
   bench)
     # CRM-T266: the criterion benchmarks, the matcher's and the domain rules'. A reading of this
     # machine for BENCHMARKS.md, not a gate, so no hosted runner's noisy neighbours run it.
-    # CRM_BENCH_SAVE=<name> saves the run as a named baseline (in each crate's target/criterion);
-    # CRM_BENCH_BASELINE=<name> compares with one saved earlier, and criterion prints each change.
+    # CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_SAVE=<name> saves the run as a named baseline (in each crate's target/criterion);
+    # CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_BASELINE=<name> compares with one saved earlier, and criterion prints each change.
     # Further arguments go to criterion, such as a filter: scripts/ci-check.sh bench '^calendar/'.
     bench_args=()
-    if [[ -n "${CRM_BENCH_SAVE:-}" ]]; then bench_args+=(--save-baseline "${CRM_BENCH_SAVE}"); fi
-    if [[ -n "${CRM_BENCH_BASELINE:-}" ]]; then bench_args+=(--baseline-lenient "${CRM_BENCH_BASELINE}"); fi
+    if [[ -n "${CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_SAVE:-}" ]]; then bench_args+=(--save-baseline "${CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_SAVE}"); fi
+    if [[ -n "${CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_BASELINE:-}" ]]; then bench_args+=(--baseline-lenient "${CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_BASELINE}"); fi
     bench_args+=("${@:2}")
     (cd "${MATCHER}" && cargo bench --bench matching -- ${bench_args[@]+"${bench_args[@]}"})
     (cd "${DOMAIN}" && cargo bench --bench rules -- ${bench_args[@]+"${bench_args[@]}"})
     ;;
   mutants-diff)
-    # CRM-T259: only the mutants in lines changed since a base commit (CRM_MUTANTS_BASE, or the
+    # CRM-T259: only the mutants in lines changed since a base commit (CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_BASE, or the
     # argument, default origin/main), in the matcher and the domain rules, so a rule that no
     # test pins fails the change that adds it rather than the weekly run.
-    base="${2:-${CRM_MUTANTS_BASE:-origin/main}}"
+    base="${2:-${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_BASE:-origin/main}}"
     if [[ "${base}" =~ ^0+$ ]] || ! git rev-parse --verify --quiet "${base}^{commit}" >/dev/null; then
       echo "mutants-diff: no base commit (${base}), so nothing to compare; skipped" >&2
       exit 0
@@ -247,7 +247,7 @@ case "${stage}" in
       diff="$(mktemp)"
       git diff --relative="${root}/" "${base}" -- "${crate}/src" >"${diff}"
       if [[ -s "${diff}" ]]; then
-        (cd "${crate}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --in-diff "${diff}" --output "${PWD}/mutants-diff-out") || status=$?
+        (cd "${crate}" && cargo mutants -j "${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_JOBS:-2}" --no-shuffle --in-diff "${diff}" --output "${PWD}/mutants-diff-out") || status=$?
       else
         echo "mutants-diff: ${crate}/src is unchanged since ${base}"
       fi

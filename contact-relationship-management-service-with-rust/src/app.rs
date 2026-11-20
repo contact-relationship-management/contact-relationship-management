@@ -34,15 +34,19 @@ fn defaults() -> Defaults {
 /// How long an entry lives unless a call says otherwise. The insight cache says.
 const CACHE_TTL: Duration = Duration::from_secs(30);
 
-/// The response cache. `url` is `CRM_REDIS_URL`. Replicas must share what they cache, so
+/// The response cache. `url` is `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`. Replicas must share what they cache, so
 /// production refuses to start without it, and elsewhere the cache stays in this process.
 async fn connect_cache(url: Option<&str>, production: bool) -> Result<Cache> {
     let cache = match url {
         Some(url) => Cache::connect(&CacheConfig::new(url, "", CACHE_TTL)).await,
-        None if production => return Err(Error::string("CRM_REDIS_URL is required in production")),
+        None if production => {
+            return Err(Error::string(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL is required in production",
+            ));
+        }
         None => Cache::memory("", CACHE_TTL),
     };
-    cache.map_err(|e| Error::string(&format!("CRM_REDIS_URL: {e}")))
+    cache.map_err(|e| Error::string(&format!("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL: {e}")))
 }
 
 /// The browser origins allowed to call the service directly. Browsers reach it through the
@@ -61,7 +65,7 @@ fn cors_origins(
 
 /// The paths `axa`'s cross-site write guard (axa 0.13) leaves to the service, because each
 /// checks the browser's origin itself against a list of its own: the MCP endpoint
-/// (`CRM_MCP_ALLOWED_ORIGINS`, CRM-R30) and each web form (its `origins` in `CRM_WEB_FORMS`,
+/// (`CONTACT_RELATIONSHIP_MANAGEMENT_MCP_ALLOWED_ORIGINS`, CRM-R30) and each web form (its `origins` in `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS`,
 /// CRM-R31), which a page on another site posts by design. `axa` matches them exactly, so a form
 /// is listed by its slug; forms are read when the service starts, as these are (CRM-T237).
 fn cross_site_paths(settings: &crate::settings::Settings) -> Vec<String> {
@@ -144,13 +148,13 @@ pub fn install_tls_provider() {
 }
 
 /// Everything a process needs before it can send campaign mail: the field-encryption check,
-/// the mail sender chosen by `CRM_MAIL_MODE` and the signed unsubscribe links. Called by the
+/// the mail sender chosen by `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE` and the signed unsubscribe links. Called by the
 /// server (`after_routes`) and by the worker (`connect_workers`); calling it twice in one
 /// process (`--server-and-worker`) installs the same settings again.
 fn init_sending(ctx: &AppContext) -> Result<()> {
     let production = ctx.environment.is_production_like();
     crate::hardening::check_field_encryption().map_err(Error::string)?;
-    // CRM-T39: choose the mail sender (simulated unless CRM_MAIL_MODE=smtp);
+    // CRM-T39: choose the mail sender (simulated unless CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp);
     // a bad or unsafe setting stops the start rather than failing at send time.
     crate::mail::init(production).map_err(|e| Error::string(&e))?;
     // Real mail must carry signed unsubscribe links.
@@ -408,9 +412,9 @@ impl App {
         auth::init().await;
         auth::spawn_key_refresh();
         auth::spawn_policy_watcher();
-        let shared = redis_store::Shared::from_env()
-            .await
-            .map_err(|e| Error::string(&format!("CRM_REDIS_URL: {e}")))?;
+        let shared = redis_store::Shared::from_env().await.map_err(|e| {
+            Error::string(&format!("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL: {e}"))
+        })?;
         if let Some(shared) = &shared {
             redis_store::set_global(shared.clone());
         }
@@ -419,9 +423,9 @@ impl App {
         spawn_notification_sweep(ctx);
         // Unread since CRM-T217, so a deployment that relied on it now counts its proxy as one
         // client. A log line rather than a refusal: nothing it did was safe to keep.
-        if std::env::var_os("CRM_TRUST_FORWARDED_FOR").is_some() {
+        if std::env::var_os("CONTACT_RELATIONSHIP_MANAGEMENT_TRUST_FORWARDED_FOR").is_some() {
             tracing::warn!(
-                "CRM_TRUST_FORWARDED_FOR is ignored: list your proxies in TRUSTED_PROXIES instead"
+                "CONTACT_RELATIONSHIP_MANAGEMENT_TRUST_FORWARDED_FOR is ignored: list your proxies in TRUSTED_PROXIES instead"
             );
         }
         let guard = std::sync::Arc::new(rate_limit::Guard::from_env(
@@ -594,7 +598,11 @@ mod tests {
     #[tokio::test]
     async fn production_refuses_to_start_with_no_redis() {
         let refused = connect_cache(None, true).await.unwrap_err();
-        assert!(refused.to_string().contains("CRM_REDIS_URL is required"));
+        assert!(
+            refused
+                .to_string()
+                .contains("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL is required")
+        );
     }
 
     #[tokio::test]

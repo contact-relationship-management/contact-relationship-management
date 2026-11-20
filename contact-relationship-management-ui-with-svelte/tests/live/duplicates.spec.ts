@@ -3,7 +3,9 @@
 
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
-const API = process.env.CRM_API_URL ?? "http://localhost:5160";
+const API =
+  process.env.CONTACT_RELATIONSHIP_MANAGEMENT_API_URL ??
+  "http://localhost:5160";
 // Records from earlier runs stay behind and can resemble these, so the test
 // looks at the twin's own row and its rank, never at a count.
 const surname = `Qvx${Date.now().toString(36)}`;

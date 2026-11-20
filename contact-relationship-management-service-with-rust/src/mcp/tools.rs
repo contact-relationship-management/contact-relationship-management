@@ -6,7 +6,7 @@
 //!
 //! Three kinds: **read** tools (the default), **dry-run** tools (a merge or unmerge that reports
 //! what it would do and changes nothing, so a person confirms in the CRM), and **write** tools
-//! (off unless `CRM_MCP_WRITES` is set). Nothing here can erase a contact.
+//! (off unless `CONTACT_RELATIONSHIP_MANAGEMENT_MCP_WRITES` is set). Nothing here can erase a contact.
 
 use serde_json::{Map, Value, json};
 use uuid::Uuid;

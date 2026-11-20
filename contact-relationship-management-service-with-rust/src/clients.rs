@@ -6,12 +6,12 @@
 //! writes**: an unreachable upstream degrades a view to showing the
 //! URN.
 //!
-//! Selection is per-process via `CRM_UPSTREAM_MODE`:
+//! Selection is per-process via `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE`:
 //! - `stub` (default) — no network; returns `None` so callers fall
 //!   back to the caller-supplied or URN-derived label.
 //! - `http` — `GET {base}/api/<plural>/{pid}` against
-//!   `CRM_PERSON_SERVICE_URL` / `CRM_WORKER_SERVICE_URL` /
-//!   `CRM_ORGANIZATION_SERVICE_URL` / `CRM_COURSE_SERVICE_URL`,
+//!   `CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL` / `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL` /
+//!   `CONTACT_RELATIONSHIP_MANAGEMENT_ORGANIZATION_SERVICE_URL` / `CONTACT_RELATIONSHIP_MANAGEMENT_COURSE_SERVICE_URL`,
 //!   reading a best-effort `name`-ish field. (Thin by design; the
 //!   family front-ends do the rich rendering.)
 
@@ -30,7 +30,7 @@ pub enum Mode {
     Http,
 }
 
-/// The process-wide mode, from `CRM_UPSTREAM_MODE` (see [`crate::settings`]).
+/// The process-wide mode, from `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE` (see [`crate::settings`]).
 #[must_use]
 pub fn mode() -> Mode {
     crate::settings::current().upstream_mode
@@ -152,7 +152,7 @@ pub fn prime_email(urn: &str, address: &str) {
 /// The CRM holds no addresses (identity data stays in the person service), so
 /// this asks for one each time: a primed address (tests, development), then in
 /// `http` mode the person service's `email` field, then, in `stub` mode only,
-/// `<id>@$CRM_MAIL_DEV_DOMAIN` when that is set (for a local mail server with a
+/// `<id>@$CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_DEV_DOMAIN` when that is set (for a local mail server with a
 /// catch-all). Failures are swallowed like the display-name lookups, and the
 /// caller records the contact as having no address.
 pub async fn email_address(person_ref: &str) -> Option<String> {
@@ -183,7 +183,7 @@ pub async fn email_address(person_ref: &str) -> Option<String> {
 /// Find or create the person for `email` and return the `person:` reference (CRM-R31).
 ///
 /// The CRM stores no address, so a web form's address goes to the person service: in `http`
-/// mode `POST {CRM_PERSON_SERVICE_URL}/api/persons` with `{"name", "email"}`, which is expected
+/// mode `POST {CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL}/api/persons` with `{"name", "email"}`, which is expected
 /// to find the person by address or make one and answer `{"pid"}` (or `{"id"}`). In `stub` mode
 /// a process-local person is made and its address primed, an existing one for the same address
 /// being reused; that is lost on restart and is for development.
@@ -204,8 +204,8 @@ pub async fn resolve_person(name: &str, email: &str) -> Result<String, String> {
         known.insert(urn.clone(), email.to_string());
         return Ok(urn);
     }
-    let base = std::env::var("CRM_PERSON_SERVICE_URL")
-        .map_err(|_| "CRM_PERSON_SERVICE_URL is not set".to_string())?;
+    let base = std::env::var("CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL")
+        .map_err(|_| "CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL is not set".to_string())?;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
         .redirect(reqwest::redirect::Policy::none())
@@ -238,7 +238,7 @@ pub async fn resolve_person(name: &str, email: &str) -> Result<String, String> {
 }
 
 /// Find or create the organization called `name` and return the `organization:` reference
-/// (CRM-R43), like [`resolve_person`]: in `http` mode `POST {CRM_ORGANIZATION_SERVICE_URL}/api/organizations`
+/// (CRM-R43), like [`resolve_person`]: in `http` mode `POST {CONTACT_RELATIONSHIP_MANAGEMENT_ORGANIZATION_SERVICE_URL}/api/organizations`
 /// with `{"name"}`, expected to find or make one and answer `{"pid"}` (or `{"id"}`); in `stub`
 /// mode a process-local organization is made, one for the same name (any case) being reused.
 /// The organization service's contract is not confirmed (`spec/integrations.md`); this is the
@@ -261,8 +261,9 @@ pub async fn resolve_organization(name: &str) -> Result<String, String> {
             .or_insert_with(|| format!("organization:{}", uuid::Uuid::new_v4()));
         return Ok(urn.clone());
     }
-    let base = std::env::var("CRM_ORGANIZATION_SERVICE_URL")
-        .map_err(|_| "CRM_ORGANIZATION_SERVICE_URL is not set".to_string())?;
+    let base = std::env::var("CONTACT_RELATIONSHIP_MANAGEMENT_ORGANIZATION_SERVICE_URL").map_err(
+        |_| "CONTACT_RELATIONSHIP_MANAGEMENT_ORGANIZATION_SERVICE_URL is not set".to_string(),
+    )?;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
         .redirect(reqwest::redirect::Policy::none())
@@ -357,10 +358,10 @@ fn with_credential(
     }
 }
 
-/// Open a delivery idea in the project portfolio service (CRM-R72): `POST {CRM_PPM_SERVICE_URL}/api/ideas`
+/// Open a delivery idea in the project portfolio service (CRM-R72): `POST {CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL}/api/ideas`
 /// with `{"title", "pitch", "tags"}`, answered `{"pid"}`. The contract was checked against that
 /// service's source (`strategy.rs`, `create_idea`) on 2026-10-28 and is not run against a live one.
-/// With `CRM_PPM_SERVICE_TOKEN` set it sends that as a bearer credential (CRM-R87); without, it
+/// With `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN` set it sends that as a bearer credential (CRM-R87); without, it
 /// reaches a service with authentication off.
 ///
 /// # Errors
@@ -372,7 +373,7 @@ pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Resu
     let base = settings
         .ppm_service_url
         .clone()
-        .ok_or_else(|| "CRM_PPM_SERVICE_URL is not set".to_string())?;
+        .ok_or_else(|| "CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL is not set".to_string())?;
     let response = with_credential(
         bridge_client()?
             .post(format!("{}/api/ideas", base.trim_end_matches('/')))
@@ -403,13 +404,13 @@ pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Resu
 }
 
 /// The active workers of the worker service, with their department (CRM-R73): `GET
-/// {CRM_WORKER_SERVICE_URL}/api/workers?status=active&fields=pid,department,person_ref&limit=&offset=`,
+/// {CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL}/api/workers?status=active&fields=pid,department,person_ref&limit=&offset=`,
 /// read page by page. Checked against that service's source (`hr_core.rs`, `list_workers`: a bare
 /// JSON array of worker records, a page of at most 500, an offset of at most 10,000, `active` a real
 /// status; since WPM-R216 `fields` limits each row to the named fields, so no name, job or pay is
 /// sent) on 2026-10-28 and again on 2026-10-30, and run against a live WPM on 2026-11-01. A WPM older than
 /// WPM-R216 answers `fields` with `422`, which fails the import with that status; the whole record
-/// is never asked for. Only `pid`, `department` and `person_ref` are read from each row. With `CRM_WORKER_SERVICE_TOKEN` set it sends that as a
+/// is never asked for. Only `pid`, `department` and `person_ref` are read from each row. With `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` set it sends that as a
 /// bearer credential (CRM-R87), and the list is then the one that token may see.
 ///
 /// # Errors
@@ -418,10 +419,9 @@ pub async fn open_delivery_idea(title: &str, pitch: &str, tags: &[&str]) -> Resu
 /// list, or has more than [`MAX_WORKER_PAGES`] pages.
 pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
     let settings = crate::settings::current();
-    let base = settings
-        .worker_service_url
-        .clone()
-        .ok_or_else(|| "CRM_WORKER_SERVICE_URL is not set".to_string())?;
+    let base = settings.worker_service_url.clone().ok_or_else(|| {
+        "CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL is not set".to_string()
+    })?;
     let client = bridge_client()?;
     let mut workers = Vec::new();
     for page in 0..MAX_WORKER_PAGES {
@@ -468,11 +468,11 @@ pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
 }
 
 /// Ask the worker service which of `person_refs` (at most 500) are workers of `organization_ref`
-/// today (CRM-R94, WPM-R208): `POST {CRM_WORKER_SERVICE_URL}/api/bridges/overlap` with
+/// today (CRM-R94, WPM-R208): `POST {CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL}/api/bridges/overlap` with
 /// `{"organization_ref", "person_refs"}`, answered `{"organization_ref", "results": [{"person_ref",
 /// "worker"}]}`. Checked against that service's source (`controllers/bridges.rs`, `rules/bridge.rs`)
 /// on 2026-10-30, and run against a live WPM on 2026-11-01. WPM requires an HR caller of the organization, so
-/// `CRM_WORKER_SERVICE_TOKEN` is sent as the bearer credential (CRM-R87, CRM-D16). Only references
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` is sent as the bearer credential (CRM-R87, CRM-D16). Only references
 /// are sent, never a name.
 ///
 /// # Errors
@@ -484,10 +484,9 @@ pub async fn overlap_check(
     person_refs: &[String],
 ) -> Result<serde_json::Value, String> {
     let settings = crate::settings::current();
-    let base = settings
-        .worker_service_url
-        .clone()
-        .ok_or_else(|| "CRM_WORKER_SERVICE_URL is not set".to_string())?;
+    let base = settings.worker_service_url.clone().ok_or_else(|| {
+        "CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL is not set".to_string()
+    })?;
     let response = with_credential(
         bridge_client()?
             .post(format!(
@@ -555,7 +554,7 @@ pub fn extract_email(record: &serde_json::Value) -> Option<String> {
 /// The env var naming the base URL for an entity type's service.
 fn base_url_var(entity_ref: &EntityRef) -> String {
     format!(
-        "CRM_{}_SERVICE_URL",
+        "CONTACT_RELATIONSHIP_MANAGEMENT_{}_SERVICE_URL",
         entity_ref.entity_type.as_str().to_ascii_uppercase()
     )
 }

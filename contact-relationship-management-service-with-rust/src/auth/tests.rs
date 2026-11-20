@@ -200,7 +200,7 @@ fn enforce_off_allows_without_token() {
     }
 }
 
-/// SEC-G8 — the default-off **exposure pin**. With `CRM_REQUIRE_AUTH`
+/// SEC-G8 — the default-off **exposure pin**. With `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH`
 /// off (the shipped default), the most sensitive reads — the audit
 /// trail, patient locate, and a single stay's PII — are **open without
 /// a token**. This is by design

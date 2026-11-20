@@ -4378,7 +4378,7 @@ function territoryRoutes(
 
 /**
  * The tour's bridges (CRM-R72, CRM-R73, CRM-R94). The tour has no other services, so it answers as the
- * service does without `CRM_UPSTREAM_MODE=http`: nothing is sent or read, and it says what would be.
+ * service does without `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`: nothing is sent or read, and it says what would be.
  */
 function bridgeRoutes(method: string, seg: string[]) {
   if (method !== "POST") return problem(405, "POST only");

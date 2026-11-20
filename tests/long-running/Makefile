@@ -32,7 +32,7 @@ K6_RUN = $(K6) run
 K6_URL = $(TEST_URL)
 endif
 
-K6_ENV = -e TEST_URL=$(K6_URL) -e CRM_AUTH_TOKEN=$(AUTH_TOKEN) -e VUS=$(VUS)
+K6_ENV = -e TEST_URL=$(K6_URL) -e CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN=$(AUTH_TOKEN) -e VUS=$(VUS)
 
 .PHONY: stability quick clean help
 

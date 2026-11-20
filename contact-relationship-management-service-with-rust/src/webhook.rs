@@ -1,7 +1,7 @@
 //! Signature check for provider webhooks (CRM-T39).
 //!
 //! A webhook is authenticated by an HMAC-SHA256 over `"{timestamp}.{body}"`
-//! with `CRM_WEBHOOK_SECRET`, sent as `X-CRM-Timestamp` (Unix seconds) and
+//! with `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET`, sent as `X-CRM-Timestamp` (Unix seconds) and
 //! `X-CRM-Signature` (`sha256=<hex>`). A timestamp outside five minutes is
 //! refused, so a captured request cannot be replayed later; within the window
 //! a replay is harmless because each (message, event) is recorded once.

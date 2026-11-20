@@ -40,7 +40,7 @@ commands. The stages are `fmt`, `clippy`, `test`, `test-db`, `front-end`, `e2e`,
 `secrets`, `mutants`, `bench`, `supply-chain`, `semver`, `api-types` and `coverage`; `all` runs every stage but `mutants` and `bench`, and
 `pre-push` the fast ones. A pass of `all` on a clean tree is recorded by `scripts/attest.sh`. A CI step that checks anything outside the script fails `pins`
 (`scripts/check-ci-entry-point.py`). `scripts/install-pre-push.sh` installs a hook that runs `pre-push` on the commit
-being pushed; `CRM_SKIP_PRE_PUSH="why" git push` skips it and records the reason. `scripts/nightly.sh` runs the slow jobs on
+being pushed; `CONTACT_RELATIONSHIP_MANAGEMENT_SKIP_PRE_PUSH="why" git push` skips it and records the reason. `scripts/nightly.sh` runs the slow jobs on
 `origin/main`, and `scripts/install-nightly.sh` schedules them with launchd.
 
 ```bash
@@ -58,5 +58,5 @@ A one-command demo (sign-in off, synthetic data only) is `podman compose up --bu
 - A contact is a person-service record: store the `person:<uuid>` reference, never a copy of a name or address. See
   the scope boundary in [`spec/scope.md`](spec/scope.md).
 - Consent comes first: nothing is sent to a contact without recorded consent, and a bridge never grants it.
-- Production refuses to start without authentication. Demo settings (`CRM_REQUIRE_AUTH=0`) are for synthetic data only.
+- Production refuses to start without authentication. Demo settings (`CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=0`) are for synthetic data only.
 - Use Podman in instructions and scripts; CI still builds with Docker.

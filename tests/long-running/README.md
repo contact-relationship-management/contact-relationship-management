@@ -49,7 +49,7 @@ AUTH_TOKEN=... make stability     # a service with sign-in on
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `TEST_URL` | `http://localhost:1241` | Service base URL |
-| `AUTH_TOKEN` | empty | Bearer token, passed as `CRM_AUTH_TOKEN` |
+| `AUTH_TOKEN` | empty | Bearer token, passed as `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN` |
 | `VUS` | `5` | Virtual users in the steady phase |
 | `DURATION` | `6h` | Length of the steady phase |
 | `RAMP` | `5m` | Length of the ramp up and of the ramp down |

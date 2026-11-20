@@ -229,57 +229,62 @@ fn credentials(kind: Kind, get: &dyn Fn(&str) -> Option<String>) -> Result<Crede
     let mut config_set = None;
     let (key, secret, default_url) = match kind {
         Kind::Brevo => (
-            need("CRM_BREVO_API_KEY")?,
+            need("CONTACT_RELATIONSHIP_MANAGEMENT_BREVO_API_KEY")?,
             String::new(),
             "https://api.brevo.com/v3/smtp/email".to_string(),
         ),
         Kind::Mailjet => (
-            need("CRM_MAILJET_API_KEY")?,
-            need("CRM_MAILJET_API_SECRET")?,
+            need("CONTACT_RELATIONSHIP_MANAGEMENT_MAILJET_API_KEY")?,
+            need("CONTACT_RELATIONSHIP_MANAGEMENT_MAILJET_API_SECRET")?,
             "https://api.mailjet.com/v3.1/send".to_string(),
         ),
         Kind::SendGrid => (
-            need("CRM_SENDGRID_API_KEY")?,
+            need("CONTACT_RELATIONSHIP_MANAGEMENT_SENDGRID_API_KEY")?,
             String::new(),
             "https://api.sendgrid.com/v3/mail/send".to_string(),
         ),
         Kind::Mailgun => {
-            let domain = need("CRM_MAILGUN_DOMAIN")?;
+            let domain = need("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_DOMAIN")?;
             if !domain
                 .chars()
                 .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
             {
-                return Err("CRM_MAILGUN_DOMAIN is not a domain name".to_string());
+                return Err(
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_DOMAIN is not a domain name"
+                        .to_string(),
+                );
             }
-            let base = get("CRM_MAILGUN_API_BASE")
+            let base = get("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_API_BASE")
                 .unwrap_or_else(|| "https://api.mailgun.net".to_string());
             (
-                need("CRM_MAILGUN_API_KEY")?,
+                need("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_API_KEY")?,
                 String::new(),
                 format!("{}/v3/{domain}/messages", base.trim_end_matches('/')),
             )
         }
         Kind::Ses => {
-            region = need("CRM_SES_REGION")?;
+            region = need("CONTACT_RELATIONSHIP_MANAGEMENT_SES_REGION")?;
             if !region
                 .chars()
                 .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
             {
-                return Err("CRM_SES_REGION is not a region name".to_string());
+                return Err(
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_SES_REGION is not a region name".to_string(),
+                );
             }
-            session_token = get("CRM_SES_SESSION_TOKEN");
-            config_set = get("CRM_SES_CONFIGURATION_SET");
+            session_token = get("CONTACT_RELATIONSHIP_MANAGEMENT_SES_SESSION_TOKEN");
+            config_set = get("CONTACT_RELATIONSHIP_MANAGEMENT_SES_CONFIGURATION_SET");
             (
-                need("CRM_SES_ACCESS_KEY_ID")?,
-                need("CRM_SES_SECRET_ACCESS_KEY")?,
+                need("CONTACT_RELATIONSHIP_MANAGEMENT_SES_ACCESS_KEY_ID")?,
+                need("CONTACT_RELATIONSHIP_MANAGEMENT_SES_SECRET_ACCESS_KEY")?,
                 format!("https://email.{region}.amazonaws.com/v2/email/outbound-emails"),
             )
         }
         Kind::Azure => {
-            let endpoint = need("CRM_AZURE_ENDPOINT")?;
+            let endpoint = need("CONTACT_RELATIONSHIP_MANAGEMENT_AZURE_ENDPOINT")?;
             (
                 String::new(),
-                need("CRM_AZURE_ACCESS_KEY")?,
+                need("CONTACT_RELATIONSHIP_MANAGEMENT_AZURE_ACCESS_KEY")?,
                 format!(
                     "{}/emails:send?api-version=2023-03-31",
                     endpoint.trim_end_matches('/')
@@ -316,22 +321,24 @@ pub fn configure(
     };
     if production
         && !matches!(
-            get("CRM_MAIL_ALLOW_PRODUCTION")
+            get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION")
                 .map(|v| v.to_ascii_lowercase())
                 .as_deref(),
             Some("1" | "true" | "yes" | "on")
         )
     {
         return Err(format!(
-            "CRM_MAIL_MODE={} in production needs CRM_MAIL_ALLOW_PRODUCTION=1: \
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE={} in production needs CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION=1: \
              the vendor agreement and legal review is open (CRM-T39)",
             kind.name()
         ));
     }
-    let from: Mailbox = get("CRM_MAIL_FROM")
-        .ok_or("CRM_MAIL_FROM is required")?
+    let from: Mailbox = get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM")
+        .ok_or("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM is required")?
         .parse()
-        .map_err(|e| format!("CRM_MAIL_FROM is not a valid mailbox: {e}"))?;
+        .map_err(|e| {
+            format!("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM is not a valid mailbox: {e}")
+        })?;
     let Credentials {
         key,
         secret,
@@ -340,7 +347,7 @@ pub fn configure(
         session_token,
         config_set,
     } = credentials(kind, &get)?;
-    let url = get("CRM_MAIL_API_URL").unwrap_or(default_url);
+    let url = get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_API_URL").unwrap_or(default_url);
     if production && !url.starts_with("https://") {
         return Err("the mail API URL must be https in production".to_string());
     }
@@ -826,16 +833,19 @@ mod tests {
     fn configuration_is_checked() {
         crate::app::install_tls_provider();
         let all = |name: &str| match name {
-            "CRM_MAIL_FROM" => Some("CRM <crm@example.test>".to_string()),
-            "CRM_BREVO_API_KEY" | "CRM_MAILJET_API_KEY" => Some("k".to_string()),
-            "CRM_MAILJET_API_SECRET" => Some("s".to_string()),
-            "CRM_MAIL_ALLOW_PRODUCTION" => Some("1".to_string()),
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM" => {
+                Some("CRM <crm@example.test>".to_string())
+            }
+            "CONTACT_RELATIONSHIP_MANAGEMENT_BREVO_API_KEY"
+            | "CONTACT_RELATIONSHIP_MANAGEMENT_MAILJET_API_KEY" => Some("k".to_string()),
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAILJET_API_SECRET" => Some("s".to_string()),
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION" => Some("1".to_string()),
             _ => None,
         };
         assert!(configure(Kind::Brevo, &all, true).is_ok());
         assert!(configure(Kind::Mailjet, &all, true).is_ok());
         let no_secret = |n: &str| {
-            if n == "CRM_MAILJET_API_SECRET" {
+            if n == "CONTACT_RELATIONSHIP_MANAGEMENT_MAILJET_API_SECRET" {
                 None
             } else {
                 all(n)
@@ -843,7 +853,7 @@ mod tests {
         };
         assert!(configure(Kind::Mailjet, &no_secret, false).is_err());
         let no_ack = |n: &str| {
-            if n == "CRM_MAIL_ALLOW_PRODUCTION" {
+            if n == "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION" {
                 None
             } else {
                 all(n)
@@ -852,7 +862,7 @@ mod tests {
         assert!(configure(Kind::Brevo, &no_ack, true).is_err());
         assert!(configure(Kind::Brevo, &no_ack, false).is_ok());
         let http = |n: &str| {
-            if n == "CRM_MAIL_API_URL" {
+            if n == "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_API_URL" {
                 Some("http://x.test".to_string())
             } else {
                 all(n)
@@ -873,12 +883,15 @@ mod tests {
                     .map(|(_, v)| (*v).to_string())
             }
         };
-        let from = ("CRM_MAIL_FROM", "CRM <crm@example.test>");
+        let from = (
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM",
+            "CRM <crm@example.test>",
+        );
         let ses = vars(vec![
             from,
-            ("CRM_SES_REGION", "eu-west-1"),
-            ("CRM_SES_ACCESS_KEY_ID", "AKID"),
-            ("CRM_SES_SECRET_ACCESS_KEY", "s"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_REGION", "eu-west-1"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_ACCESS_KEY_ID", "AKID"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_SECRET_ACCESS_KEY", "s"),
         ]);
         let sender = configure(Kind::Ses, &ses, false).unwrap();
         assert_eq!(
@@ -887,15 +900,18 @@ mod tests {
         );
         let bad_region = vars(vec![
             from,
-            ("CRM_SES_REGION", "eu west"),
-            ("CRM_SES_ACCESS_KEY_ID", "AKID"),
-            ("CRM_SES_SECRET_ACCESS_KEY", "s"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_REGION", "eu west"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_ACCESS_KEY_ID", "AKID"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_SECRET_ACCESS_KEY", "s"),
         ]);
         assert!(configure(Kind::Ses, &bad_region, false).is_err());
         let azure = vars(vec![
             from,
-            ("CRM_AZURE_ENDPOINT", "https://x.communication.azure.com/"),
-            ("CRM_AZURE_ACCESS_KEY", "a2V5"),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_AZURE_ENDPOINT",
+                "https://x.communication.azure.com/",
+            ),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_AZURE_ACCESS_KEY", "a2V5"),
         ]);
         assert_eq!(
             configure(Kind::Azure, &azure, false).unwrap().url,
@@ -903,9 +919,15 @@ mod tests {
         );
         let mailgun = vars(vec![
             from,
-            ("CRM_MAILGUN_DOMAIN", "mg.example.test"),
-            ("CRM_MAILGUN_API_KEY", "k"),
-            ("CRM_MAILGUN_API_BASE", "https://api.eu.mailgun.net/"),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_DOMAIN",
+                "mg.example.test",
+            ),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_API_KEY", "k"),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_API_BASE",
+                "https://api.eu.mailgun.net/",
+            ),
         ]);
         assert_eq!(
             configure(Kind::Mailgun, &mailgun, false).unwrap().url,
@@ -913,11 +935,14 @@ mod tests {
         );
         let bad_domain = vars(vec![
             from,
-            ("CRM_MAILGUN_DOMAIN", "a/b"),
-            ("CRM_MAILGUN_API_KEY", "k"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_DOMAIN", "a/b"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_API_KEY", "k"),
         ]);
         assert!(configure(Kind::Mailgun, &bad_domain, false).is_err());
-        let sendgrid = vars(vec![from, ("CRM_SENDGRID_API_KEY", "k")]);
+        let sendgrid = vars(vec![
+            from,
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_SENDGRID_API_KEY", "k"),
+        ]);
         assert!(configure(Kind::SendGrid, &sendgrid, false).is_ok());
         assert!(configure(Kind::SendGrid, &vars(vec![from]), false).is_err());
     }

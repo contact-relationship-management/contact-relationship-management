@@ -7,7 +7,7 @@
  *
  * Run it only against a throwaway service on its own machine: it is meant to overload it.
  *
- * Environment: TEST_URL, CRM_AUTH_TOKEN, and
+ * Environment: TEST_URL, CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN, and
  *   MAX_RATE  the highest rate, iterations a second   default 200
  *   DURATION  time to climb to it                     default 10m
  */

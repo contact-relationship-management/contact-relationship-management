@@ -51,7 +51,7 @@ Severity: **B** blocks any non-demo deployment; **H** blocks regulated buyers;
 
 | # | Gap | Sev | Task |
 |---|---|---|---|
-| 1 | `CRM_REQUIRE_AUTH` defaults **off**; the service boots wide open in production with no warning | B | T30 |
+| 1 | `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` defaults **off**; the service boots wide open in production with no warning | B | T30 |
 | 2 | Audit rows are plain inserts: anyone with DB write access can alter or delete history undetected (HIPAA §164.312(b)/(c), NIST AU-9/AU-10) | H | T31 |
 | 3 | `mask` obligation not applied to forecast values, campaign ROI/cost, or the activities/deals/tickets bundled in `get_contact` | H | T32 |
 | 4 | No security response headers on the service or the UI; production CORS is `enable: true` with no origin list | H | T33 |
@@ -147,7 +147,7 @@ its code and tests, under the three-part rule.
 | Q15 | The UI ships all 8 locales in one bundle | `i18n.svelte.ts` is 3,320 lines; the chunk is 52 KB gzipped; 19 de-de values identical to English | M | T89 |
 | Q16 | Pages fetch in `$effect` instead of `load`, with no cancellation | 28 `$effect`s; 11 `void (async…)()`; 36 copies of the same error idiom; 0 `AbortController` | M | T90 |
 | Q17 | The SvelteKit migration is unfinished | `MIGRATION_TASKS.md` has 10 open boxes; `src/env.ts` falls back to `""` silently; `$lib` and `#lib` imports are mixed | S | T91 |
-| Q18 | The demo tour was on by default, and every visitor shared one fixed session id and one copy of the data | Closed by CRM-T92: explicit `CRM_DEMO_TOUR=on`, random per-visitor sessions and a 200-copy LRU cap | S | T92 |
+| Q18 | The demo tour was on by default, and every visitor shared one fixed session id and one copy of the data | Closed by CRM-T92: explicit `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on`, random per-visitor sessions and a 200-copy LRU cap | S | T92 |
 | Q19 | No component tests; the API client is hand-written | `@testing-library/svelte` installed but unused; `api/crm.ts` 911 lines; a vitest `deps.inline` regex that matches nothing | M | T93 |
 | Q20 | CI gates were missing | Closed by CRM-T94: 95% coverage floors, changed-line and weekly mutation tests, browser suites, lint, supply-chain checks, least-privilege workflows and Node 26 now share one entry point | M | T94 |
 

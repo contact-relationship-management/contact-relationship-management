@@ -4,7 +4,7 @@
 //!     cargo run --example mint_token -- KEYS_FILE SUB [name=value,name=value ...]
 //!
 //! Writes the published-key-set JSON to KEYS_FILE (give it to the service as
-//! `CRM_PASETO_KEYS`) and prints one token on stdout. The Ed25519 seed is fixed and public:
+//! `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS`) and prints one token on stdout. The Ed25519 seed is fixed and public:
 //! these tokens prove nothing outside a test, so never trust this key anywhere real.
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;

@@ -364,7 +364,7 @@ pub(super) async fn apply_event(
 }
 
 /// Whether a provider callback is authentic. Mailgun signs the body with its
-/// own scheme; every other provider carries `CRM_WEBHOOK_SECRET` as a bearer
+/// own scheme; every other provider carries `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET` as a bearer
 /// token, a basic-auth password or `X-CRM-Webhook-Token`. `None` when the
 /// credential for this provider is not configured (the route then does not
 /// exist).

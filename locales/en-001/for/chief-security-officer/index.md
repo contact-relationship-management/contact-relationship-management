@@ -52,7 +52,7 @@ as "built and self-tested", not "verified".
 
 ## What the deployer must do
 
-1. Keep authentication on; supply production keys and `CRM_REDIS_URL`.
+1. Keep authentication on; supply production keys and `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`.
 2. Alert on `break_glass_granted` and review grants promptly.
 3. Anchor the audit chain head outside the database and verify it
    (`GET /api/audits/verify`) on a schedule.

@@ -62,7 +62,7 @@ Nurture advancement (idempotent per enrolment+step), the SLA breach
 sweep (one `sla_breached` per breach fact), and simulated campaign
 sends run inline in the request handler (no job queue, no external broker),
 in batches, through `mail::Sender` (simulated by default; SMTP with
-`CRM_MAIL_MODE=smtp`, CRM-T39). A background job is still future work.
+`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp`, CRM-T39). A background job is still future work.
 
 ## CRM-D9 — Transactional integrity
 
@@ -124,7 +124,7 @@ text, soft-deleted row) rather than deletes, mirroring WPM-D22's
 "neither pretends" framing: deals/tickets/consent history remain for
 reporting and compliance-evidence continuity, keyed to a pid that no
 longer identifies anyone, and the retention sweep (floored horizon,
-`CRM_RETENTION_DAYS`) is the separate, generic hard-delete path for
+`CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`) is the separate, generic hard-delete path for
 soft-deleted rows past that horizon — it never bulk-anonymises a
 contact, because a contact carries the erasure gate above and the
 sweep has no way to evaluate it per row.
@@ -163,20 +163,20 @@ leave was recorded), and keeping the ended employment row with an end date (ever
 ## CRM-D16 — The employment check asks under one HR token, for one configured organization
 
 *Confirmed by the product owner, 2026-10-31, as the accepted design.* The difference from WPM-D135 named below is
-accepted, not open: the CRM keeps one deployer-held HR token (`CRM_WORKER_SERVICE_TOKEN`) and does not forward the
+accepted, not open: the CRM keeps one deployer-held HR token (`CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`) and does not forward the
 caller's own. WPM's own spec still mentions the gap; it was not edited from this repository.
 
 The employment check (CRM-R94) calls WPM's overlap check (WPM-R208), which answers only a privileged
 caller of the organization (HR), and WPM-D135 says an inbound call acts under **the caller's own
 token**. The CRM does not forward its caller's token: that token is issued for the CRM's audience
-(`CRM_TOKEN_AUDIENCE`), so WPM's verifier would refuse it, and a token good for both would let any
+(`CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_AUDIENCE`), so WPM's verifier would refuse it, and a token good for both would let any
 CRM caller act in WPM. Like the teams import (CRM-R73, CRM-R87), the check sends
-**`CRM_WORKER_SERVICE_TOKEN`**, which the deployer obtains for an **HR identity of the organization
+**`CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`**, which the deployer obtains for an **HR identity of the organization
 in WPM**; WPM's own policy then decides, and the CRM's side is admin only and audited. This is
 closer to WPM-D135 than a shared key and **not the same as it**; the difference is named in the
 integrations table and in WPM's spec, and is accepted (confirmed 2026-10-31, above).
 
-**The organization is a setting, `CRM_WPM_ORGANIZATION_REF`**, not a field of the request, because
+**The organization is a setting, `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF`**, not a field of the request, because
 the token belongs to HR of one organization: asking about another would be refused by WPM, and a
 field would invite asking anyway. It is the CRM operator's own employer, whose staff are not to be
 marketed to.
@@ -303,7 +303,7 @@ not calendar days in a zone, so the answer is the same wherever the reader is an
   `occurred_at` (a planned call) is not a touch until it has happened.
 - **N lives in `organization_settings`** (CRM-T171's one row), as `stalled_after_days`, a whole number from 1 to 365, default 14,
   read and set with the calendar at `/api/settings/organization` (an administrator sets it; a `PUT` without it keeps the stored
-  value). Rejected: a `CRM_*` environment setting, because N is a sales-process choice an administrator makes and changes, not a
+  value). Rejected: a `CONTACT_RELATIONSHIP_MANAGEMENT_*` environment setting, because N is a sales-process choice an administrator makes and changes, not a
   deployment fact, and the organization's other process settings already live in that row.
 - **Where it shows:** `GET /api/deals` gives each deal `stalled` and `last_touched_at`; the UI's Kanban board marks a stalled card
   with the board's non-colour flag and the deal page says since when. Nothing is stored: the flag is derived on every read (CRM-D4).
@@ -405,7 +405,7 @@ naming the setting), before anything is queued. With no profile, nothing is refu
   rows, every decision equals today's, for every state, purpose and contact; a test holds that exhaustively over the states.
 - Existing consent becomes the `email` channel's (the only one ever sent); `sms`, `phone` and `post` start `never`. Existing events
   become `email` events. `marketing_consent` keeps meaning `marketing` on `email`.
-- No deployment-wide setting (`CRM_*`) chooses a regime: that would make one jurisdiction the deployment's.
+- No deployment-wide setting (`CONTACT_RELATIONSHIP_MANAGEMENT_*`) chooses a regime: that would make one jurisdiction the deployment's.
 - Loosening is explicit: an administrator sets a contact's or a send's code and loads the rows; a campaign's preview shows how many
   recipients would be sent to on each basis and under which profile and status before it runs.
 
@@ -515,7 +515,7 @@ A's contacts, deals and consent records. Nothing stopped that before this decisi
 
 **How it works.**
 
-1. Each deployment is given a name in `CRM_DEPLOYMENT_ID`, for example `acme-example`: 1 to 64 ASCII letters, digits, `.`,
+1. Each deployment is given a name in `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID`, for example `acme-example`: 1 to 64 ASCII letters, digits, `.`,
    `_` or `-`.
 2. On the first start, the database has no name yet. The service writes `acme-example` into the one-row `deployment` table
    (migration `20261120000000`), then starts normally.
@@ -541,7 +541,7 @@ A's contacts, deals and consent records. Nothing stopped that before this decisi
 - **Where it runs.** In `start` (the server and the background worker), after any migration. `db` commands and tasks do
   not check it.
 
-Still open: making production refuse to start without `CRM_DEPLOYMENT_ID`, as it refuses without authentication or
-`CRM_CURSOR_SECRET`. That is the safer default, but every deployment that has not set the name would stop on its next
+Still open: making production refuse to start without `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID`, as it refuses without authentication or
+`CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET`. That is the safer default, but every deployment that has not set the name would stop on its next
 upgrade until it does. It catches a service pointed at the wrong database; it does not separate file stores, Redis or
 keys, which the [operations runbook](compliance/operations-runbook.md) asks the supplier to give each customer.

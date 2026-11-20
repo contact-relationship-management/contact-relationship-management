@@ -5,7 +5,7 @@ name: Load Test
 # there is no push, pull-request or scheduled trigger.
 #
 # To run: Actions > Load Test > Run workflow, then choose the test, the URL and the size.
-# Set the repository secret CRM_LOAD_TEST_AUTH_TOKEN if the service has sign-in on.
+# Set the repository secret CONTACT_RELATIONSHIP_MANAGEMENT_LOAD_TEST_AUTH_TOKEN if the service has sign-in on.
 #
 # k6 runs from the pinned image, as tests/long-running/Makefile does. Inputs reach the
 # shell only through environment variables, never through template expansion.
@@ -68,7 +68,7 @@ jobs:
       DURATION: ${{ inputs.duration }}
       RATE: ${{ inputs.rate }}
       SEED: ${{ inputs.seed }}
-      CRM_AUTH_TOKEN: ${{ secrets.CRM_LOAD_TEST_AUTH_TOKEN }}
+      CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN: ${{ secrets.CONTACT_RELATIONSHIP_MANAGEMENT_LOAD_TEST_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -88,7 +88,7 @@ jobs:
           # The scripts read VUS and DURATION themselves (blank keeps their defaults), so
           # their scenarios stand; --vus and --duration would replace them with one.
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/tests/load:/work" -w /work \
-            -e TEST_URL -e CRM_AUTH_TOKEN -e VUS -e DURATION -e RATE -e SEED -e "MAX_RATE=${RATE}" \
+            -e TEST_URL -e CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN -e VUS -e DURATION -e RATE -e SEED -e "MAX_RATE=${RATE}" \
             -e K6_WEB_DASHBOARD=true -e "K6_WEB_DASHBOARD_EXPORT=results/${TEST_TYPE}.html" \
             "$K6_IMAGE" run \
             --summary-export "results/${TEST_TYPE}-summary.json" \

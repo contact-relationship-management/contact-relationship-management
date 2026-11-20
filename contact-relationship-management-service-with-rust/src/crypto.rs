@@ -6,10 +6,10 @@
 //! unchanged, so turning encryption on never strands existing rows; the
 //! `rotate-field-keys` task re-seals everything under the active key.
 //!
-//! Keys come from `CRM_FIELD_KEYS` (`id:base64,id:base64`, 32-byte keys; the
-//! **first** is the active one) or the file named by `CRM_FIELD_KEYS_FILE`.
+//! Keys come from `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS` (`id:base64,id:base64`, 32-byte keys; the
+//! **first** is the active one) or the file named by `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE`.
 //! With no keys configured values are stored as plaintext (development), and
-//! `CRM_REQUIRE_FIELD_ENCRYPTION=1` makes the service refuse to start in that
+//! `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION=1` makes the service refuse to start in that
 //! state. **Honest limits:** keys are read from the environment or a mounted
 //! file, not fetched from a KMS (the [`Keyring`] is the seam for one); the
 //! additional authenticated data names the format and key id but not the

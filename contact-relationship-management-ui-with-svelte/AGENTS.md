@@ -50,7 +50,7 @@ every page round-trips through the API.
    rows shown and the campaign timeline's critical path
    (`src/lib/critical-path.ts`); neither is a KPI.
 6. **Eight-locale i18n** (`ar-001, cy-001, de-de, en-001, es-001,
-   fr-001, hi-001, zh-cn`) with the full-coverage parity test; a
+fr-001, hi-001, zh-cn`) with the full-coverage parity test; a
    language in the address (`/de-de/contacts`) sets the language.
    Translations are unreviewed by native speakers.
 7. **Tests.** vitest (`tests/unit/`) for the API client, `money()`,
@@ -69,7 +69,7 @@ every page round-trips through the API.
 
 ```bash
 pnpm install
-pnpm dev           # :5173; the service at CRM_API_URL (default http://localhost:1241/api)
+pnpm dev           # :5173; the service at CONTACT_RELATIONSHIP_MANAGEMENT_API_URL (default http://localhost:1241/api)
 pnpm test          # vitest
 pnpm exec playwright test
 pnpm test:live     # against a running service (creates records)

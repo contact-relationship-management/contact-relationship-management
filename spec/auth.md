@@ -4,7 +4,7 @@ The family stack unchanged
 ([authentication-sessions](../../agents/share/authentication-sessions.md),
 [authorization-attributes](../../agents/share/authorization-attributes.md)):
 cookie sessions + BFF for humans, offline PASETO v4.public for
-services, blanket guard `CRM_REQUIRE_AUTH` (default **off** — the
+services, blanket guard `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` (default **off** — the
 family activation gate; activate before any real exposure), shared
 ABAC engine.
 
@@ -52,7 +52,7 @@ every table keyed to the contact, exclusions named in the payload),
 contact holds an open deal, an open ticket, or an active nurture
 enrolment — CRM-D14), and `GET /api/retention` /
 `POST /api/retention/sweep` (the floored-horizon report and sweep,
-`CRM_RETENTION_DAYS`, default 365, floor 30). `/erase` and `/sweep`
+`CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`, default 365, floor 30). `/erase` and `/sweep`
 join [`DESTRUCTIVE_POST_SUFFIXES`](../contact-relationship-management-service-with-rust/src/auth/policy.rs)
 (⇒ `access=admin` or `svc=true` under enforcement — no persona below
 admin/svc can erase or sweep, including a manager or the record's own
@@ -75,12 +75,12 @@ config tweak:
    ownership-enforcing write handler yet, so this is a plain write
    grant, not a scoped one); `marketing=true` / `support=true` write
    and read **masked**; every other authenticated caller gets the
-   masked-read fallback. Point `CRM_ABAC_POLICY_FILE` at your copy (it
-   hot-reloads on change) or inline it via `CRM_ABAC_POLICY`.
-2. **Point at the keys.** `CRM_PASETO_KEYS_URL` (boot-fetched +
-   refreshed) or `CRM_PASETO_KEYS`; set `CRM_TOKEN_ISSUER` /
-   `CRM_TOKEN_AUDIENCE` if they differ from the defaults.
-3. **Flip the flag.** `CRM_REQUIRE_AUTH=1` (read once at boot —
+   masked-read fallback. Point `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE` at your copy (it
+   hot-reloads on change) or inline it via `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY`.
+2. **Point at the keys.** `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL` (boot-fetched +
+   refreshed) or `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS`; set `CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_ISSUER` /
+   `CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_AUDIENCE` if they differ from the defaults.
+3. **Flip the flag.** `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1` (read once at boot —
    restart to change).
 4. **Verify.** `cargo test --test main enforcement -- --ignored` runs the
    activation matrix against the reference policy shape: public paths
@@ -132,7 +132,7 @@ in the wrong direction: less is actually enforced today):
 ## Production start-up check (CRM-T30)
 
 In the `production` environment the service refuses to start unless
-`CRM_REQUIRE_AUTH` is on. `CRM_ALLOW_INSECURE=1` overrides it and logs an
+`CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` is on. `CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE=1` overrides it and logs an
 error. The default stays off in development and test. The full readiness
 assessment, with the remaining access-model gaps (mask coverage, admin-only
 audit reads, read auditing, break-glass), is in [plan.md](plan.md).
@@ -142,7 +142,7 @@ audit reads, read auditing, break-glass), is in [plan.md](plan.md).
 `GET` under `/api/audits`, `/api/events`, and `/api/retention` derives the
 `destructive` action (the admin/service tier), so an ordinary reader,
 manager, marketing, or support caller is refused. A policy must grant
-`destructive` to whoever may review audits. `CRM_PROTECT_OPERATIONAL=1`
+`destructive` to whoever may review audits. `CONTACT_RELATIONSHIP_MANAGEMENT_PROTECT_OPERATIONAL=1`
 also requires authentication on `/metrics.prom` and the OpenAPI paths.
 
 ## Break-glass (CRM-T44)

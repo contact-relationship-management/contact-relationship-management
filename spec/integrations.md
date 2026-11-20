@@ -13,7 +13,7 @@ URNs** and never duplicates upstream records.
 ## Contract the person service must meet for email
 
 Sending needs a mailbox, and the CRM stores none. At send time it reads the
-person record at `GET {CRM_PERSON_SERVICE_URL}/api/persons/{id}` and accepts
+person record at `GET {CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL}/api/persons/{id}` and accepts
 `{"email": "a@b"}` or `{"emails": [...]}` (strings, or objects with `address`,
 `email` or `value`; an entry marked `primary` or `is_primary` is preferred). A
 record with no usable address is recorded as `no_address`. **This contract is
@@ -45,15 +45,15 @@ id, which WPM and PPM write `person:<sub>` (CRM-D18).
 
 | Bridge | Direction | Contract | State in the CRM |
 |---|---|---|---|
-| Won deal → delivery idea | CRM → PPM | `POST {CRM_PPM_SERVICE_URL}/api/ideas`; CRM-R72, token CRM-R87 | Built (`POST /api/bridges/ppm/deals/{pid}`), admin only, stub-first; tested against a stand-in |
-| Teams from departments | CRM ← WPM (CRM reads) | `GET {CRM_WORKER_SERVICE_URL}/api/workers?status=active&fields=pid,department,person_ref`; CRM-R73, token `CRM_WORKER_SERVICE_TOKEN` (CRM-R87) | Built (`POST /api/bridges/wpm/teams-import`), admin only, stub-first; tested against a stand-in. **Resolved 2026-10-30 (CRM-D17):** a team's members are the workers' `person_ref` (`person:` URNs), as the hire and leave events and the overlap check speak; a worker without one is counted in `without_person_ref` and never becomes `worker:`; teams an earlier import set with `worker:` members are replaced by the next import, not migrated. WPM's spec still records the mismatch as open (WPM cross-app-bridges, "What CRM was read to say"), for WPM's owner to update. **Resolved 2026-10-30 (WPM-R216):** the import asks for `fields=pid,department,person_ref`, so WPM answers only those three fields (no name, job, manager or pay) and records no salary read; anything more a row carries is dropped unread. A WPM from before WPM-R216 answers `422`, the import then fails with `502` and changes nothing (accepted; the whole record is never asked for). Tested against a stand-in that projects `fields` as WPM's source does, not against a running WPM. **Resolved 2026-10-30 (CRM-D18):** the CRM names its own users by `person:<sign-in subject>`, as WPM matches a sign-in subject (`person:<sub>`), so quotas and deal owners are the same references as an imported team's members and the roll-up (CRM-R67) meets them; `worker:` input is read as `person:` for a deprecation period; migration 54 rewrote stored references, leaving teams last set by the import alone. Tested against a stand-in WPM and a database migrated with data, not against a running WPM with real sign-ins |
+| Won deal → delivery idea | CRM → PPM | `POST {CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL}/api/ideas`; CRM-R72, token CRM-R87 | Built (`POST /api/bridges/ppm/deals/{pid}`), admin only, stub-first; tested against a stand-in |
+| Teams from departments | CRM ← WPM (CRM reads) | `GET {CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL}/api/workers?status=active&fields=pid,department,person_ref`; CRM-R73, token `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` (CRM-R87) | Built (`POST /api/bridges/wpm/teams-import`), admin only, stub-first; tested against a stand-in. **Resolved 2026-10-30 (CRM-D17):** a team's members are the workers' `person_ref` (`person:` URNs), as the hire and leave events and the overlap check speak; a worker without one is counted in `without_person_ref` and never becomes `worker:`; teams an earlier import set with `worker:` members are replaced by the next import, not migrated. WPM's spec still records the mismatch as open (WPM cross-app-bridges, "What CRM was read to say"), for WPM's owner to update. **Resolved 2026-10-30 (WPM-R216):** the import asks for `fields=pid,department,person_ref`, so WPM answers only those three fields (no name, job, manager or pay) and records no salary read; anything more a row carries is dropped unread. A WPM from before WPM-R216 answers `422`, the import then fails with `502` and changes nothing (accepted; the whole record is never asked for). Tested against a stand-in that projects `fields` as WPM's source does, not against a running WPM. **Resolved 2026-10-30 (CRM-D18):** the CRM names its own users by `person:<sign-in subject>`, as WPM matches a sign-in subject (`person:<sub>`), so quotas and deal owners are the same references as an imported team's members and the roll-up (CRM-R67) meets them; `worker:` input is read as `person:` for a deprecation period; migration 54 rewrote stored references, leaving teams last set by the import alone. Tested against a stand-in WPM and a database migrated with data, not against a running WPM with real sign-ins |
 | Hire and leave | WPM → CRM (WPM posts) | WPM's outbound webhooks (WPM-R151) with the handoff of WPM-R207; [below](#inbound-wpm-hire-and-leave-events-crm-r92) | Built (`POST /api/bridges/wpm/events`, CRM-R92), ordered by `occurred_at` (CRM-R93); tested with requests signed as WPM signs, not with a running WPM |
 | Pool link, demand and supply | PPM ↔ WPM | WPM-R210 to R213, WPM-D138 to D141 | Not the CRM's: built in PPM and WPM |
-| Overlap check | CRM → WPM (CRM asks) | `POST {CRM_WORKER_SERVICE_URL}/api/bridges/overlap` (WPM-R208): `{organization_ref, person_refs}` with 1 to 500 `person:` refs in, `{organization_ref, results: [{person_ref, worker}]}` out, HR of the organization only; CRM-R94, CRM-D16 | Built (`POST /api/bridges/wpm/employment-check`), admin only, stub-first; the organization is `CRM_WPM_ORGANIZATION_REF` and the token `CRM_WORKER_SERVICE_TOKEN` (one deployer-held HR token, **not** the caller's own as WPM-D135 asks: CRM-D16, confirmed by the product owner 2026-10-31 as the accepted design); tested against a stand-in, not a running WPM |
+| Overlap check | CRM → WPM (CRM asks) | `POST {CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL}/api/bridges/overlap` (WPM-R208): `{organization_ref, person_refs}` with 1 to 500 `person:` refs in, `{organization_ref, results: [{person_ref, worker}]}` out, HR of the organization only; CRM-R94, CRM-D16 | Built (`POST /api/bridges/wpm/employment-check`), admin only, stub-first; the organization is `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` and the token `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` (one deployer-held HR token, **not** the caller's own as WPM-D135 asks: CRM-D16, confirmed by the product owner 2026-10-31 as the accepted design); tested against a stand-in, not a running WPM |
 
 ## Events
 
-Family envelope via the `CRM_EVENT_TRANSPORT` seam (default
+Family envelope via the `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT` seam (default
 `memory`; Postgres outbox rows share the mutation's transaction
 under `outbox`). Event kinds are listed in
 [domain-model.md](domain-model.md).
@@ -88,7 +88,7 @@ WPM's `webhook_deliver` task posts each queued event to the subscription's addre
 `content-type: application/json`, `x-wpm-event` (the kind), `x-wpm-delivery` (the delivery's id,
 new per subscription) and `x-wpm-signature: t=<unix>,v1=<hex>`, the HMAC-SHA256 of `"<t>.<raw
 body>"` under the subscription's secret (WPM reads it from `WPM_WEBHOOK_SECRET_<NAME>`; the CRM from
-`CRM_WPM_WEBHOOK_SECRET`; the deployer sets both to the same value). It retries a 5xx, 408, 429 or
+`CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET`; the deployer sets both to the same value). It retries a 5xx, 408, 429 or
 network failure with a doubling back-off up to a day, at most ten attempts, re-signing each time,
 and gives up on any other 4xx. So the CRM answers `200` for every well-formed event it does not act
 on, and dedupes on the body's `id` (the event id, the same on every retry), not on `x-wpm-delivery`.
@@ -100,7 +100,7 @@ say it delivers in order, and its retries make sure it does not.
 
 To wire it: in WPM, an administrator creates a webhook subscription to
 `https://<crm>/api/bridges/wpm/events` for the kinds `worker_hired`, `worker_terminated` and
-`worker_retired`; in the CRM, `CRM_WPM_WEBHOOK_SECRET` is set. Not done here: running the two
+`worker_retired`; in the CRM, `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` is set. Not done here: running the two
 together.
 
 ## MCP for AI agents (CRM-R30)
@@ -114,7 +114,7 @@ tool call is refused, masked,
 rate-limited and audited exactly as the REST call it is. The endpoint adds only the protocol, an argument check against a
 closed schema, the `mcp_tool_called` audit row (written first), the data notice, and the cut at 200 KB.
 
-Settings: `CRM_MCP_WRITES` (off) lists `add_activity`; `CRM_MCP_ALLOWED_ORIGINS` (none) lists browser origins. A new tool is
+Settings: `CONTACT_RELATIONSHIP_MANAGEMENT_MCP_WRITES` (off) lists `add_activity`; `CONTACT_RELATIONSHIP_MANAGEMENT_MCP_ALLOWED_ORIGINS` (none) lists browser origins. A new tool is
 one entry in `src/mcp/tools.rs`; a test fails if it names a route that is not documented, if a non-GET tool is neither a
 dry run nor the write tool, or if its path mentions erase, webhooks or break-glass.
 
@@ -125,7 +125,7 @@ nothing to keep per client, and for the older versions no `Mcp-Session-Id` is is
 ## Web form lead capture (CRM-R31)
 
 `POST /forms/{slug}` is public by design and sits outside `/api`, like the unsubscribe and confirmation pages (`auth::is_public_path`).
-The forms are configuration, not data: `CRM_WEB_FORMS` is a JSON list of `{slug, origins, purpose?, sequence?}`, read into
+The forms are configuration, not data: `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS` is a JSON list of `{slug, origins, purpose?, sequence?}`, read into
 `Settings` (an entry that is not valid is left out, a list that is not JSON gives no forms). Nothing the caller sends chooses the
 purpose or the sequence.
 

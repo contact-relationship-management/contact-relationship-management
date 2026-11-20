@@ -8,11 +8,11 @@ which region, is the hosting supplier's ([CRM-R106](../../requirements.md#crm-r1
         │  https; HttpOnly session cookie, no token in page script
         ▼
  UI (SvelteKit server) ───────────────► authentication service  AUTH_API_URL
-        │  Bearer PASETO v4.public      (or Keycloak / OIDC: CRM_KEYCLOAK_URL)
+        │  Bearer PASETO v4.public      (or Keycloak / OIDC: CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_URL)
         ▼
  service (Rust) ──► PostgreSQL  DB_URL           all records, the audit trail, the outbox
-        │       ──► Redis       CRM_REDIS_URL    counters, break-glass grants, cached insight answers
-        │       ──► file store  CRM_ATTACHMENT_DIR   attachments, on local disk or a mounted volume
+        │       ──► Redis       CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL    counters, break-glass grants, cached insight answers
+        │       ──► file store  CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR   attachments, on local disk or a mounted volume
         │
         ├──► person / organization services   display names; an address at send time
         ├──► worker service (WPM), project portfolio service (PPM)   the family bridges
@@ -25,28 +25,28 @@ which region, is the hosting supplier's ([CRM-R106](../../requirements.md#crm-r1
 ## Every connection
 
 "Off when unset" means nothing leaves the process until the setting is given. The upstream services and bridges are
-also stub-first: without `CRM_UPSTREAM_MODE=http` they send nothing (CRM-D11).
+also stub-first: without `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http` they send nothing (CRM-D11).
 
 | Connection | Setting | Direction | What crosses it | Personal data | Off when unset |
 | --- | --- | --- | --- | --- | --- |
 | Browser and UI | the deployment's address | both | every page a person sees | yes, all the person may see | no |
-| UI to service | `CRM_API_URL` | out | every API call, with the person's token | yes | no |
+| UI to service | `CONTACT_RELATIONSHIP_MANAGEMENT_API_URL` | out | every API call, with the person's token | yes | no |
 | UI to authentication service | `AUTH_API_URL` | out | magic-link request and verify, token exchange, sign-out | the signing-in person's address | no |
-| Keycloak / OIDC | `CRM_KEYCLOAK_URL` | out | sign-in and its tokens | the signing-in person | yes |
-| Token keys | `CRM_PASETO_KEYS_URL` | out | public keys only | no | yes |
+| Keycloak / OIDC | `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_URL` | out | sign-in and its tokens | the signing-in person | yes |
+| Token keys | `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL` | out | public keys only | no | yes |
 | Database | `DB_URL` | out | every record | yes | no: required in production |
-| Redis | `CRM_REDIS_URL` | out | rate-limit and lockout counters, break-glass grants, cached insight answers | yes, in the cached answers | no: required in production |
-| File store | `CRM_ATTACHMENT_DIR` | local | attachments ([CRM-R42](../../requirements.md)) | yes; not encrypted by the software | yes |
-| Person service | `CRM_PERSON_SERVICE_URL` | out | a `person:` id; back, a display name, and a mailbox at send time | yes | yes |
-| Organization service | `CRM_ORGANIZATION_SERVICE_URL` | out | an `organization:` id; back, a display name | an organization's name | yes |
-| Worker service (WPM) | `CRM_WORKER_SERVICE_URL` | out | teams import (departments, `person:` refs), overlap check (`person:` refs) | references only | yes |
-| Project portfolio (PPM) | `CRM_PPM_SERVICE_URL` | out | a won deal's name, id, amount and currency | no | yes |
-| Mail | `CRM_MAIL_MODE` (a provider's name or `smtp`) | out | recipient address and name, subject, body, unsubscribe link | yes | yes: `simulated`, nothing is sent |
+| Redis | `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL` | out | rate-limit and lockout counters, break-glass grants, cached insight answers | yes, in the cached answers | no: required in production |
+| File store | `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR` | local | attachments ([CRM-R42](../../requirements.md)) | yes; not encrypted by the software | yes |
+| Person service | `CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL` | out | a `person:` id; back, a display name, and a mailbox at send time | yes | yes |
+| Organization service | `CONTACT_RELATIONSHIP_MANAGEMENT_ORGANIZATION_SERVICE_URL` | out | an `organization:` id; back, a display name | an organization's name | yes |
+| Worker service (WPM) | `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL` | out | teams import (departments, `person:` refs), overlap check (`person:` refs) | references only | yes |
+| Project portfolio (PPM) | `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL` | out | a won deal's name, id, amount and currency | no | yes |
+| Mail | `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE` (a provider's name or `smtp`) | out | recipient address and name, subject, body, unsubscribe link | yes | yes: `simulated`, nothing is sent |
 | Outbound webhooks | addresses an admin registers | out | each matching event's envelope, signed | ids of the records an event is about | yes: none registered |
-| WPM events | `CRM_WPM_WEBHOOK_SECRET` | in | hire and leave events for `person:` refs | references only | yes |
+| WPM events | `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` | in | hire and leave events for `person:` refs | references only | yes |
 | Mail-provider events | per provider | in | delivery, bounce and complaint reports | the mailbox concerned | yes |
 | Web forms | a published form | in | what a member of the public types into it | yes | yes: no form published |
-| Unsubscribe and preference pages | `CRM_UNSUBSCRIBE_SECRET` and `CRM_PUBLIC_URL` | in | a one-time link and the choice made | the contact's consent | yes: no links are made |
+| Unsubscribe and preference pages | `CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET` and `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL` | in | a one-time link and the choice made | the contact's consent | yes: no links are made |
 | MCP | `POST /mcp` | in | tool calls, routed as the REST calls they stand for | yes, as the REST call | no |
 
 The mail providers the service can call directly are Brevo, Mailjet, Amazon SES, Azure Communication Services, Mailgun

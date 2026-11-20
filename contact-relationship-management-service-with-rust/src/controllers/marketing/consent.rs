@@ -193,7 +193,7 @@ const PREFERENCES_DAYS: i64 = 90;
 
 fn unsubscriber() -> Result<std::sync::Arc<crate::unsubscribe::Unsubscriber>> {
     crate::unsubscribe::current().ok_or_else(|| {
-        unprocessable("CRM_UNSUBSCRIBE_SECRET and CRM_PUBLIC_URL are needed to make signed links")
+        unprocessable("CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET and CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL are needed to make signed links")
     })
 }
 

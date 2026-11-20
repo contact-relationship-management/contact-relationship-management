@@ -37,7 +37,7 @@ Mae'r gwasanaeth yn **methu'n ddiogel**, yn rheoli mynediad yn ôl rôl ac yn ô
 
 ## Beth mae'n rhaid i'r sawl sy'n lleoli ei wneud
 
-1. Cadw dilysu ymlaen; darparu allweddi cynhyrchu a `CRM_REDIS_URL`.
+1. Cadw dilysu ymlaen; darparu allweddi cynhyrchu a `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`.
 2. Rhybuddio ar `break_glass_granted` ac adolygu caniatadau'n brydlon.
 3. Angori pen y gadwyn archwilio y tu allan i'r gronfa ddata a'i wirio yn ôl amserlen (`GET /api/audits/verify`).
 4. Diogelu PostgreSQL a Redis (rhwydwaith, TLS, manylion mewngofnodi, copïau wrth gefn, amgryptio wrth orffwys); cylchdroi allweddi meysydd gyda'r dasg a ddarperir.

@@ -3,7 +3,7 @@
 //! A file is accepted only from the allow-list in [`crate::rules::attachments`], is size-limited,
 //! is scanned when a scan command is configured, and is stored outside the database under a random
 //! id. A download is always an attachment, served with the type the allow-list gives, never the
-//! one the uploader claimed. Without `CRM_ATTACHMENT_DIR` attachments are off, and say so.
+//! one the uploader claimed. Without `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR` attachments are off, and say so.
 //!
 //! The routes run on `sqlx` (CRM-D24, CRM-T206), and so, since CRM-T216, do [`export_for`] and
 //! [`erase_rows`], which the privacy routes call.
@@ -103,7 +103,11 @@ fn directory() -> Result<PathBuf> {
         .attachment_dir
         .as_deref()
         .map(PathBuf::from)
-        .ok_or_else(|| unavailable("attachments are not configured (CRM_ATTACHMENT_DIR)"))
+        .ok_or_else(|| {
+            unavailable(
+                "attachments are not configured (CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR)",
+            )
+        })
 }
 
 /// A masked read may not see or fetch files: they are the record's content, not its summary.

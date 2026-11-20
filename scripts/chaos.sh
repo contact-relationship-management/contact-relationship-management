@@ -71,7 +71,7 @@ new_contact() { json /api/contacts "{\"person_ref\":\"$(person)\",\"display_name
 
 start_service() {
   # The outbox transport is the one that writes events in the mutation's own transaction.
-  CRM_EVENT_TRANSPORT=outbox DB_URL="${PROXIED_URL}" CRM_REDIS_URL="redis://localhost:${RD_PORT}" \
+  CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT=outbox DB_URL="${PROXIED_URL}" CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL="redis://localhost:${RD_PORT}" \
     nohup bash -c "cd '${SVC_DIR}' && exec '${BIN}' start --all --port ${PORT}" >>"${LOG}" 2>&1 &
   SVC_PID=$!
 }
@@ -117,7 +117,7 @@ echo "${PG_PORT}" >"${CTL}/target"; echo forward >"${CTL}/mode"
 python3 "$(dirname "$0")/chaos-proxy.py" "${PROXY_PORT}" "${CTL}" >>"${LOG}" 2>&1 &
 PROXY_PID=$!
 sleep 1
-( cd "${SVC_DIR}" && DB_URL="${DIRECT_URL}" CRM_REDIS_URL="redis://localhost:${RD_PORT}" "${BIN}" db migrate ) >>"${LOG}" 2>&1 \
+( cd "${SVC_DIR}" && DB_URL="${DIRECT_URL}" CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL="redis://localhost:${RD_PORT}" "${BIN}" db migrate ) >>"${LOG}" 2>&1 \
   || { echo "migration failed"; tail -20 "${LOG}"; exit 2; }
 start_service
 wait_for 40 up || { echo "service did not start"; tail -20 "${LOG}"; exit 2; }

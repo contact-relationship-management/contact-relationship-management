@@ -4,11 +4,11 @@
 // contact-relationship-management service. No token ever lives in browser JS: when a
 // session cookie is present (PF-T18 magic-link flow), the server
 // exchanges it for a short-lived PASETO and injects the bearer here.
-// With `CRM_REQUIRE_AUTH` off (the shipped default) the
+// With `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` off (the shipped default) the
 // unauthenticated forward is sufficient and the exchange is skipped.
 
 import type { RequestHandler } from "./$types";
-import { CRM_API_URL } from "#lib/server/config.js";
+import { CONTACT_RELATIONSHIP_MANAGEMENT_API_URL } from "#lib/server/config.js";
 import { upstreamUrl } from "#lib/server/api-url.js";
 import { exchangeToken } from "#lib/server/auth.js";
 import { DEMO_TOUR_ENABLED } from "#lib/server/config.js";
@@ -59,7 +59,11 @@ const proxy: RequestHandler = async ({ request, params, url, locals }) => {
     });
   }
 
-  const target = upstreamUrl(CRM_API_URL, params.path ?? "", url.search);
+  const target = upstreamUrl(
+    CONTACT_RELATIONSHIP_MANAGEMENT_API_URL,
+    params.path ?? "",
+    url.search,
+  );
 
   // Copy request headers, but drop hop-by-hop / origin-specific ones and
   // never forward the browser's cookie to the entity service.

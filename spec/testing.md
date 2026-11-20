@@ -98,8 +98,8 @@ Three kinds of measure, each with synthetic data only and each recorded in
   under each model, report currency conversion, report planning and small-cell suppression,
   search-query building, and (CRM-T262) business-calendar deadlines and sums, template rendering,
   webhook signing and address checks, and reading and writing times. No database, network or clock: a request's rule step, not its
-  latency. `scripts/ci-check.sh bench` runs both (CRM-T266); `CRM_BENCH_SAVE=<name>` keeps the run as
-  a criterion baseline and `CRM_BENCH_BASELINE=<name>` reports each case's change against one, so a
+  latency. `scripts/ci-check.sh bench` runs both (CRM-T266); `CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_SAVE=<name>` keeps the run as
+  a criterion baseline and `CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_BASELINE=<name>` reports each case's change against one, so a
   change to a rule can be read against the run before it on the same machine.
 - **The API under load** (k6, [`tests/load/`](../tests/load/README.md)): one module of real
   calls with real request bodies, a weighted mixed workload, and smoke, basic, stress, spike,

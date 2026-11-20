@@ -40,19 +40,19 @@ and the [record of processing](record-of-processing.md).
 - **Recipients** *(system fact)*: the email provider the deployer configures (real email is **off by
   default**: the simulated sender sends nothing); the receivers of webhook subscriptions the
   deployer registers; the project portfolio service (PPM), which is sent a deal's name, amount and
-  currency when an admin opens a delivery idea (CRM-R72, off unless `CRM_UPSTREAM_MODE=http`); the
+  currency when an admin opens a delivery idea (CRM-R72, off unless `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`); the
   worker service (WPM), which is read (CRM-R73) and, when an admin runs the employment check
-  (CRM-R94, off unless `CRM_UPSTREAM_MODE=http`), is sent contacts' `person:` references and nothing
+  (CRM-R94, off unless `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`), is sent contacts' `person:` references and nothing
   else; the identity services,
   which are asked for a display name or an address. [Deployer decides: hosting provider, backup
   provider, identity provider, and whether each is a processor.]
 - **Sources other than the user** *(system fact)*: when an admin runs the teams import (CRM-R73,
-  off unless `CRM_UPSTREAM_MODE=http`), the worker service's list of active workers, of which the
+  off unless `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`), the worker service's list of active workers, of which the
   CRM keeps each worker's department and `person:` reference as a team's members (CRM-D17). The
   CRM asks for only `pid`, `department` and `person_ref` (`fields`, WPM-R216), so a WPM that
   supports it sends no name, job or pay; one that does not answers `422` and the import fails
   without receiving any record. Anything else a row carries is dropped unread and unlogged. The worker service (WPM) may also post hire and leave
-  events (CRM-R92, off unless `CRM_WPM_WEBHOOK_SECRET` is set). From each the CRM keeps the event's
+  events (CRM-R92, off unless `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` is set). From each the CRM keeps the event's
   id and kind, and, **only for a person who is already a contact**, the person reference, the
   employer's organization reference and the date: the fact that this contact is now an employee,
   which stops marketing to them until a leave event lifts it. To put the events in order (CRM-R93)
@@ -60,7 +60,7 @@ and the [record of processing](record-of-processing.md).
   when WPM recorded it and the day it took effect; a leave's is pruned after the event horizon, and
   erasure deletes them.
 - **Sent to the worker service** *(system fact)*: when an administrator runs the employment check
-  (CRM-R94, stub unless `CRM_UPSTREAM_MODE=http`), the CRM sends WPM the `person:` references of
+  (CRM-R94, stub unless `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`), the CRM sends WPM the `person:` references of
   its live contacts, at most 500 a call, with the organization reference, and receives a yes or no
   for each. **No name, address or other field is sent**; WPM answers only about references it is
   sent, only to an HR identity of that organization, and audits each call by count. From a yes the
@@ -72,7 +72,7 @@ and the [record of processing](record-of-processing.md).
   purpose for which WPM holds it; the intent is to *stop* marketing to staff, which is to the
   person's benefit.]
 - **Retention** *(system fact)*: the [schedule](personal-data-inventory.md#retention-schedule).
-  Soft-deleted rows are hard-deleted by an operator-run sweep after `CRM_RETENTION_DAYS` (365,
+  Soft-deleted rows are hard-deleted by an operator-run sweep after `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS` (365,
   never below 30; every default here is a starting point the project chose, no jurisdiction's
   period, as `GET /api/retention` says in `horizon_basis`); consent history and the audit log are kept as evidence; a 24-hour cache expires
   by itself; email delivery and event rows are pruned by their own horizon (730 days by default,
@@ -113,16 +113,16 @@ Rated for the software as shipped. **L** = likelihood, **S** = severity, each Lo
 
 | Risk | L | S | Measures in the system | Residual |
 |---|---|---|---|---|
-| Unauthorized access to contact data | M | H | Authentication enforced when `CRM_REQUIRE_AUTH` is on (it is a deployer's switch, off for demos); attribute-based access control on every route; record-level masking for aggregate reads and money; destructive actions and the routes that send data out (`/api/bridges`, quotas, webhooks) admin-only; TLS at the ingress is the deployer's | M if auth is on and the policy is reviewed; **High if it is left off** |
+| Unauthorized access to contact data | M | H | Authentication enforced when `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` is on (it is a deployer's switch, off for demos); attribute-based access control on every route; record-level masking for aggregate reads and money; destructive actions and the routes that send data out (`/api/bridges`, quotas, webhooks) admin-only; TLS at the ingress is the deployer's | M if auth is on and the policy is reviewed; **High if it is left off** |
 | Alteration of the audit record | L | H | Hash-chained, append-only audit log; the chain is verifiable by an endpoint; external anchoring is the deployer's | L |
 | Over-retention | M | M | Retention sweep with a floor for soft-deleted rows; delivery and event logs pruned by age once finished with, each with its own horizon and floor (CRM-R81); the sweep is **run by an operator**, not on a schedule | L–M: it depends on the operator running the sweep |
 | Marketing without consent | L | H | Consent gate in the send path and again at send time; segments require `consent = granted`; suppression survives; unsubscribe in every message | L |
 | Special-category data in free text | M | H | Policy and training (deployer); the system cannot detect it; erasure scrubs activity summaries and a lead's name | M, **High if patients or citizens are contacts** |
-| Data sent to another service by a bridge | L | M | Admin only; stub unless `CRM_UPSTREAM_MODE=http`; only a deal's name, amount and tags are sent, once per deal; every opening is audited | L |
-| Contact references sent to the worker service by the employment check (CRM-R94) | L | M | Admin only; stub unless `CRM_UPSTREAM_MODE=http`; references only, never names; the token goes only over `https` or to this machine; WPM answers only HR of the organization and only about the references sent; the check is audited by count in the CRM and in WPM; a no never ends an employment | L |
-| A forged or replayed employment event (CRM-R92) | L | M | The route is off without `CRM_WPM_WEBHOOK_SECRET` (32+ characters); each event is HMAC-signed with a five-minute window and compared in constant time; an event id is applied once; the effect is only to pause or resume marketing, never to grant consent; every change is audited with `via: wpm`. A leaked secret lets someone pause or un-pause a contact's marketing, not read anything | L |
+| Data sent to another service by a bridge | L | M | Admin only; stub unless `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`; only a deal's name, amount and tags are sent, once per deal; every opening is audited | L |
+| Contact references sent to the worker service by the employment check (CRM-R94) | L | M | Admin only; stub unless `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`; references only, never names; the token goes only over `https` or to this machine; WPM answers only HR of the organization and only about the references sent; the check is audited by count in the CRM and in WPM; a no never ends an employment | L |
+| A forged or replayed employment event (CRM-R92) | L | M | The route is off without `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` (32+ characters); each event is HMAC-signed with a five-minute window and compared in constant time; an event id is applied once; the effect is only to pause or resume marketing, never to grant consent; every change is audited with `via: wpm`. A leaked secret lets someone pause or un-pause a contact's marketing, not read anything | L |
 | Employment status kept on a contact | L | L | Only the employer's reference and a date; shown on the contact and in the subject-access export; deleted on leave or erasure; nothing kept for non-contacts. The last hire or leave (for ordering, CRM-R93) is in the export, pruned 30 days after a leave and deleted on erasure | L |
-| Re-identification from small analytics groups | M | M | Aggregates and money are masked for callers who may not read them; the report builder **leaves out any group with fewer than `CRM_MIN_CELL_SIZE` records** (5 by default) and says how many it left out (CRM-R78); **primary suppression only**: two differently asked reports can still be compared, and the fixed dashboards, attribution and attainment views are not suppressed | L–M |
+| Re-identification from small analytics groups | M | M | Aggregates and money are masked for callers who may not read them; the report builder **leaves out any group with fewer than `CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE` records** (5 by default) and says how many it left out (CRM-R78); **primary suppression only**: two differently asked reports can still be compared, and the fixed dashboards, attribution and attainment views are not suppressed | L–M |
 | Processor failure or breach | [ ] | [ ] | [Deployer decides: contracts, monitoring, breach process; the runbook has incident response] | [ ] |
 | Loss of availability | L | M | Backups and restore tests are the deployer's (runbook); the data model has no single store that cannot be rebuilt from the database | L |
 | A link token used twice or guessed | L | M | Confirmation and preference links are 256-bit random tokens that work **once** and expire; the database keeps only a hash, so a copy of it opens nothing; a preference choice spends the link and the answer carries the next one; looking at a page spends nothing, since mail scanners follow links; erasing the contact deletes its links. The unsubscribe link is signed and stateless and deliberately neither expires nor is single-use (a recipient must be able to leave from any old message; replaying it only withdraws consent again) | L |

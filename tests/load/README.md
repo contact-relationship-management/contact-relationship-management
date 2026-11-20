@@ -107,7 +107,7 @@ service's OpenAPI document and in the UI's generated `src/lib/api/schema.d.ts`. 
 
 ## Not covered
 
-- Sign-in. With `CRM_REQUIRE_AUTH=1` the tests need a token in `AUTH_TOKEN`; they do not sign in.
+- Sign-in. With `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1` the tests need a token in `AUTH_TOKEN`; they do not sign in.
 - The bridges to project-portfolio and workforce-planning services, which are off unless configured.
 - Many users from many machines. k6 runs from one machine here; nothing in these scripts stops you
   running several copies at once.

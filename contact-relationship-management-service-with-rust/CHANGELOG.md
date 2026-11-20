@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — breaking: every setting is `CONTACT_RELATIONSHIP_MANAGEMENT_*` (CRM-T289)
+
+- Each of the 101 settings named `CRM_<NAME>` is now `CONTACT_RELATIONSHIP_MANAGEMENT_<NAME>`, in the service,
+  the UI, the scripts and CI; the rest of each name is unchanged (`CRM_REQUIRE_AUTH` is
+  `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH`). **Old names are ignored**, with no fallback and no warning:
+  rename every setting before upgrading. Production still refuses to start without authentication and a cursor
+  secret, but an optional setting left under its old name (field encryption, mail mode, protected metrics and the
+  rest) silently takes its default. Earlier entries in this file were rewritten to the new names.
+
 ### Added — a database belongs to one deployment (CRM-T282)
 
-- `CRM_DEPLOYMENT_ID` names the deployment. The first `start` with it writes it to a new one-row
+- `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` names the deployment. The first `start` with it writes it to a new one-row
   `deployment` table (migration `20261120000000`), which refuses any change or delete; every later
   `start` compares, and a different name, or none against a database that has one, stops the start.
   With neither, the start goes ahead and logs a warning. Not required in production yet.
@@ -28,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 The first release on axa and sqlx in place of Loco and SeaORM (CRM-D23, CRM-D24), and the first
 with the domain rules as their own crate, `contact-relationship-management-domain` 0.2.0, published
 with it (CRM-D25). **Breaking for operators** since 0.1.5: the database URL is `DB_URL`; the probes
-are `/_health/live`, `/_health/ready` and `/_health/startup`; production needs `CRM_CURSOR_SECRET`;
-`JWT_SECRET` and `CRM_TRUST_FORWARDED_FOR` are gone; a Zstd request body is refused. Each entry
+are `/_health/live`, `/_health/ready` and `/_health/startup`; production needs `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET`;
+`JWT_SECRET` and `CONTACT_RELATIONSHIP_MANAGEMENT_TRUST_FORWARDED_FOR` are gone; a Zstd request body is refused. Each entry
 below says what it changes.
 
 ### Changed — one integration-test binary (CRM-T263)
@@ -322,10 +331,10 @@ below says what it changes.
 ### Added — lockout by client address (CRM-T224)
 
 - `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT=N` layers `axa::ratelimit::lock_out_failures` outside the
-  abuse guard: after N `401`s from one address within `CRM_AUTH_FAIL_WINDOW_SECS`, the address
+  abuse guard: after N `401`s from one address within `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_WINDOW_SECS`, the address
   answers `429` with `Retry-After` until the window ends, signed in or not. Unset or `0` is off; a
   value that is not a whole number stops the start. It counts by address and per process, unlike
-  `CRM_AUTH_FAIL_LIMIT`.
+  `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT`.
 
 ### Fixed — one clock for records (CRM-T221)
 
@@ -339,7 +348,7 @@ below says what it changes.
 
 ### Changed — signed list cursors (CRM-T223, CRM-D23)
 
-- **Breaking for operators:** production refuses to start without `CRM_CURSOR_SECRET`, 32 bytes
+- **Breaking for operators:** production refuses to start without `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET`, 32 bytes
   or more and the same on every replica.
 - A list's `cursor` is `axa::cursor_pagination`'s, signed over its position, path and filters. A
   made-up, edited or moved cursor, and every cursor handed out before this change, is `422`.
@@ -399,7 +408,7 @@ reaches the CORS layer before the abuse guard, and `problem_mw` reads plain bodi
 compression on it used to send gzip as text, under `Content-Encoding: gzip`. A `408` and the `500`
 for a panic now come from axa, outside `problem_mw`, so they are not problem documents.
 
-**`CRM_TRUST_FORWARDED_FOR` is gone; behind a proxy, set `TRUSTED_PROXIES`.** The abuse guard, the
+**`CONTACT_RELATIONSHIP_MANAGEMENT_TRUST_FORWARDED_FOR` is gone; behind a proxy, set `TRUSTED_PROXIES`.** The abuse guard, the
 web forms and the public knowledge base count by the address axa resolves, walking
 `X-Forwarded-For` from the right. A token counts only once verified, by its subject. A start with
 the old setting logs a warning.
@@ -456,7 +465,7 @@ Migration `000059`: `consent_jurisdictions` (code, layer, parent, name); `consen
 
 ### Added — whose each retention default is; the access export names whose right it serves (CRM-T165, CRM-D19)
 
-`rules::privacy::RETENTION_DEFAULTS` (with `DefaultFrom`, the shape of the workforce planning service's `default_from`, WPM-T384): `CRM_RETENTION_DAYS`, `CRM_EVENT_RETENTION_DAYS` and `CRM_MAIL_RETENTION_DAYS` with their defaults (365, 30, 730), floors (30, 7, 400) and `default_from` (`regime: null`, a `reference`, `status: starting_point`). `GET /api/retention` answers `horizon_basis` (setting, days in force, `set`, default, floor, `default_from`); its `derivation` says no default is any jurisdiction's. The OpenAPI summary of `GET /api/contacts/{pid}/subject-access` names the contact's right of access under the data-protection law that applies to the deployer (GDPR Art. 15 as an example), not "GDPR subject-access export". Tests: two unit tests (the table equals the horizon constants; the served summary, and no summary starting with one law's name) and the privacy request test reading `horizon_basis`. **Not done:** the sweep's answer has no `horizon_basis`; the horizons are still one value per deployment, not per jurisdiction.
+`rules::privacy::RETENTION_DEFAULTS` (with `DefaultFrom`, the shape of the workforce planning service's `default_from`, WPM-T384): `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`, `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS` and `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS` with their defaults (365, 30, 730), floors (30, 7, 400) and `default_from` (`regime: null`, a `reference`, `status: starting_point`). `GET /api/retention` answers `horizon_basis` (setting, days in force, `set`, default, floor, `default_from`); its `derivation` says no default is any jurisdiction's. The OpenAPI summary of `GET /api/contacts/{pid}/subject-access` names the contact's right of access under the data-protection law that applies to the deployer (GDPR Art. 15 as an example), not "GDPR subject-access export". Tests: two unit tests (the table equals the horizon constants; the served summary, and no summary starting with one law's name) and the privacy request test reading `horizon_basis`. **Not done:** the sweep's answer has no `horizon_basis`; the horizons are still one value per deployment, not per jurisdiction.
 
 ### Added — the stalled-deal flag (CRM-T183, CRM-R4, CRM-D20)
 
@@ -524,7 +533,7 @@ The pure `rules::stalled` (`days`, `last_touch`, `is_stalled`). Migration `00005
 
 ### Added — WPM employment check (CRM-T160, CRM-R94)
 
-`POST /api/bridges/wpm/employment-check`; `rules::employment_check` (batches, answer, decision); `clients::overlap_check`; `CRM_WPM_ORGANIZATION_REF`; `models::employments::{last_kind, live_person_refs}`. Tested against a stand-in WPM; not run against a live one.
+`POST /api/bridges/wpm/employment-check`; `rules::employment_check` (batches, answer, decision); `clients::overlap_check`; `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF`; `models::employments::{last_kind, live_person_refs}`. Tested against a stand-in WPM; not run against a live one.
 
 ### Fixed — WPM events ordered (CRM-T159, CRM-R93)
 
@@ -532,7 +541,7 @@ The pure `rules::stalled` (`days`, `last_touch`, `is_stalled`). Migration `00005
 
 ### Added — WPM hire and leave events (CRM-T158, CRM-R92)
 
-`POST /api/bridges/wpm/events` (public to the session check, signed with `CRM_WPM_WEBHOOK_SECRET`); `rules::wpm_events` (signature, parse, decide); `models::employments`; migration 000052 (`wpm_events`, `contact_employments`); the segment facts gain `employee`; a campaign skips and a nurture sweep holds an employee; `employments` on the contact detail and the subject-access export; erasure deletes them; `wpm_events` pruned with the event logs. Not run against a live WPM.
+`POST /api/bridges/wpm/events` (public to the session check, signed with `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET`); `rules::wpm_events` (signature, parse, decide); `models::employments`; migration 000052 (`wpm_events`, `contact_employments`); the segment facts gain `employee`; a campaign skips and a nurture sweep holds an employee; `employments` on the contact detail and the subject-access export; erasure deletes them; `wpm_events` pruned with the event logs. Not run against a live WPM.
 
 ### Added — a delay for clicks (CRM-T157, CRM-R91)
 
@@ -576,7 +585,7 @@ The pure `rules::stalled` (`days`, `last_touch`, `is_stalled`). Migration `00005
 
 ### Added — log retention (CRM-T140, CRM-R81)
 
-`CRM_EVENT_RETENTION_DAYS`, `CRM_MAIL_RETENTION_DAYS`; `logs_past_horizon` in `GET /api/retention`; `logs_deleted` in the sweep's answer.
+`CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`, `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS`; `logs_past_horizon` in `GET /api/retention`; `logs_deleted` in the sweep's answer.
 
 ### Changed — single-use link tokens (CRM-T146, CRM-R79)
 
@@ -584,7 +593,7 @@ Migration `000050` (`link_tokens`); the `link_tokens` module; the signed confirm
 
 ### Added — small-cell suppression (CRM-T145, CRM-R78)
 
-`CRM_MIN_CELL_SIZE`; `min_cell_size` and `suppressed` in a report's answer and audit entry; `rules::reports::suppress`.
+`CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE`; `min_cell_size` and `suppressed` in a report's answer and audit entry; `rules::reports::suppress`.
 
 ### Added — the inventory test (CRM-T141)
 
@@ -592,7 +601,7 @@ Migration `000050` (`link_tokens`); the `link_tokens` module; the signed confirm
 
 ### Added — bridges (CRM-T139, CRM-R72, CRM-R73)
 
-`/api/bridges/ppm/deals/{pid}` and `/api/bridges/wpm/teams-import`, admin only; migration `000049`; `CRM_PPM_SERVICE_URL`, `CRM_WORKER_SERVICE_URL`; `put_team` shared with the team routes.
+`/api/bridges/ppm/deals/{pid}` and `/api/bridges/wpm/teams-import`, admin only; migration `000049`; `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL`; `put_team` shared with the team routes.
 
 ### Added — clawbacks (CRM-T138, CRM-R71)
 
@@ -648,7 +657,7 @@ Migration `000041` (`email_events` accepts `opened` and `clicked`); the Brevo, M
 
 ### Added — a public help centre and a deflection report (CRM-T123, CRM-R57)
 
-`CRM_PUBLIC_KB` and `CRM_PUBLIC_KB_CLIENT_LIMIT`; `GET /kb/articles`, `GET /kb/articles/{pid}`, `POST /kb/articles/{pid}/feedback` (public paths, `404` while off); migration `000040` (`kb_daily`, counts only); `GET /api/insights/kb-deflection`.
+`CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB` and `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB_CLIENT_LIMIT`; `GET /kb/articles`, `GET /kb/articles/{pid}`, `POST /kb/articles/{pid}/feedback` (public paths, `404` while off); migration `000040` (`kb_daily`, counts only); `GET /api/insights/kb-deflection`.
 
 ### Added — time-decay and position-based attribution (CRM-T122, CRM-R56)
 
@@ -722,7 +731,7 @@ organization-service counterpart of `resolve_person`. `lead_imports::advise` is 
 ### Added — file attachments (CRM-T106, CRM-R42)
 
 `attachments` (migration `000032`); `/api/{contacts,accounts,leads,deals}/{pid}/attachments`, `/api/attachments/{pid}/content` and `DELETE /api/attachments/{pid}`.
-New settings `CRM_ATTACHMENT_DIR` (unset: attachments answer 503), `CRM_ATTACHMENT_MAX_BYTES` and `CRM_ATTACHMENT_SCAN_COMMAND`. The `tokio` features `fs`, `process` and `time` are now enabled.
+New settings `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR` (unset: attachments answer 503), `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_MAX_BYTES` and `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_SCAN_COMMAND`. The `tokio` features `fs`, `process` and `time` are now enabled.
 
 ### Added — typed custom fields (CRM-T105, CRM-R41)
 
@@ -793,10 +802,10 @@ assignee may read the record, and is checked again with the caller's own token e
 
 `POST /forms/{slug}` (public, outside `/api`) turns a website sign-up form into a contact, a `source=web` lead and a `pending`
 consent purpose, and mails one confirmation to the visitor; nothing else is sent until they press the button, and a nurture
-sequence the form names starts then. Forms are configured in `CRM_WEB_FORMS` (JSON: `slug`, `origins`, optional `purpose` and
-`sequence`). The request's `Origin` must be on the form's list; each form allows `CRM_WEB_FORM_CLIENT_LIMIT` (5) submissions per
-client per 10 minutes and `CRM_WEB_FORM_LIMIT` (300) per hour, answering `429`; a filled `website` honeypot creates nothing; every
-non-error answer is the same `202`. The address goes to the person service (`POST {CRM_PERSON_SERVICE_URL}/api/persons`) and is not
+sequence the form names starts then. Forms are configured in `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS` (JSON: `slug`, `origins`, optional `purpose` and
+`sequence`). The request's `Origin` must be on the form's list; each form allows `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_CLIENT_LIMIT` (5) submissions per
+client per 10 minutes and `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_LIMIT` (300) per hour, answering `429`; a filled `website` honeypot creates nothing; every
+non-error answer is the same `202`. The address goes to the person service (`POST {CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL}/api/persons`) and is not
 stored. New table `form_submissions` (migration `000022`), deleted on erasure. Counts are per process.
 
 ### Added — an MCP endpoint for AI agents (CRM-T97, CRM-R30)
@@ -805,9 +814,9 @@ stored. New table `form_submissions` (migration `000022`), deleted on erasure. C
 2025-06-18 for clients that open with `initialize`. Tools only. Each tool is one REST operation sent through the service's own
 router with the caller's own bearer token, so sign-in, the access policy, masking, rate limits and audit decide it as they decide
 the same request from any client. The tools are read-only lookups; a merge or an undo is offered only as a preview that changes
-nothing; `add_activity` appears only with `CRM_MCP_WRITES=on`; nothing erases. Every call is audited first with an `agent`
+nothing; `add_activity` appears only with `CONTACT_RELATIONSHIP_MANAGEMENT_MCP_WRITES=on`; nothing erases. Every call is audited first with an `agent`
 marker (and not refused only if the audit row can be written), results are marked as data, and browser origins must be listed in
-`CRM_MCP_ALLOWED_ORIGINS`. Behaviour change in code, not in the API: `tower` is now a regular dependency.
+`CONTACT_RELATIONSHIP_MANAGEMENT_MCP_ALLOWED_ORIGINS`. Behaviour change in code, not in the API: `tower` is now a regular dependency.
 
 ### Added — consent per purpose and double opt-in (CRM-T96, CRM-R29)
 
@@ -885,7 +894,7 @@ optional member may be left out). `cargo run --example openapi` prints the docum
 
 ### Changed — settings in one place (CRM-T78)
 
-- The `CRM_*` settings that were read lazily from the environment (authentication switches, key and policy sources,
+- The `CONTACT_RELATIONSHIP_MANAGEMENT_*` settings that were read lazily from the environment (authentication switches, key and policy sources,
   the event transport, the webhook and Mailgun secrets, the mail batch, the retention horizon, the Redis URL and
   others) are parsed once into `settings::Settings`. Values and defaults are unchanged. The webhook secret, Mailgun
   key, retention days and mail batch were read on every call and are now read once per process.
@@ -926,7 +935,7 @@ which a process started with `--worker` never reaches. A worker-only container t
 simulated sender: it marked every recipient sent and the campaign delivered, and no mail left.
 Found by the new image smoke test against the released v0.1.3 image (24 of 27 checks passed; the
 three failures were this). `init_sending` now runs from both `after_routes` and `connect_workers`.
-Affects v0.1.3 and earlier when `CRM_MAIL_MODE=smtp` runs the sending in a separate `--worker`
+Affects v0.1.3 and earlier when `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp` runs the sending in a separate `--worker`
 container (the arrangement the runbook describes). With `--server-and-worker` in one process, or the
 simulated default, nothing changes. A DB-backed test (`a_worker_only_process_sets_up_the_real_sender`) now
 calls the worker hook after resetting what `after_routes` set, and fails without the fix.
@@ -1075,29 +1084,29 @@ Last write wins; there is no version check.
 
 ### Added — real email send path (CRM-T39, 2026-10-11)
 
-`mail::Sender` (simulated by default, SMTP with `CRM_MAIL_MODE=smtp`), an
+`mail::Sender` (simulated by default, SMTP with `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp`), an
 `email_deliveries` table with one row per campaign and contact (atomic claim,
 retry, consent re-read before each send), campaign `subject` and `body`, and
 `GET /api/campaigns/{pid}/deliveries`. Production refuses `smtp` mode without
-`CRM_MAIL_ALLOW_PRODUCTION=1`. Not built: address-level suppression list,
+`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION=1`. Not built: address-level suppression list,
 bounce and complaint webhooks, nurture sends.
 
 ### Added — SES, Azure, Mailgun and SendGrid adapters (CRM-T39, 2026-10-13)
 
-`CRM_MAIL_MODE=ses|azure|mailgun|sendgrid` (`src/provider_cloud.rs`,
+`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=ses|azure|mailgun|sendgrid` (`src/provider_cloud.rs`,
 `src/provider_api.rs`) and `POST /webhooks/email/{ses,azure,mailgun,sendgrid}`.
 Migration `m20261013_000014` adds `email_deliveries.provider_id` for Azure,
 whose events name the message by the id returned at send. Mailgun callbacks are
-verified with `CRM_MAILGUN_SIGNING_KEY`. SNS and SendGrid signatures are not
+verified with `CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_SIGNING_KEY`. SNS and SendGrid signatures are not
 verified. Not run against live accounts.
 
 ### Added — Brevo and Mailjet adapters (CRM-T39, 2026-10-12)
 
-`CRM_MAIL_MODE=brevo` or `mailjet` sends through the vendor's HTTP API
+`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=brevo` or `mailjet` sends through the vendor's HTTP API
 (`src/provider.rs`), tagging each message with our id (Brevo `tags`, Mailjet
 `CustomID`) so the vendor's events can be matched. `POST
 /webhooks/email/{brevo,mailjet}` reads their callbacks (delivered, bounces,
-spam) into the generic outcomes, authenticated by `CRM_WEBHOOK_SECRET` as a
+spam) into the generic outcomes, authenticated by `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET` as a
 bearer token, basic-auth password or `X-CRM-Webhook-Token`. Checked against the
 vendors' documentation only; not run against a live account.
 
@@ -1125,7 +1134,7 @@ mailbox suppression. Both are audited; lifting does not restore consent.
 
 ### Added — outcome webhook and suppression list (CRM-T39, 2026-10-11)
 
-`POST /webhooks/email` (HMAC-signed, `CRM_WEBHOOK_SECRET`) records provider
+`POST /webhooks/email` (HMAC-signed, `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET`) records provider
 outcomes once per message and event. `delivered` counts on the campaign; a hard
 bounce or complaint suppresses the contact (`email_suppressions`, skipped by
 the send path), and a complaint withdraws consent. Migration
@@ -1138,7 +1147,7 @@ Every real message ends with a signed unsubscribe link and carries
 /unsubscribe/{token}` changes nothing; `POST` withdraws marketing consent
 through the ordinary audited consent change and is idempotent. Public (no
 bearer token), HMAC-SHA256 signed, no expiry. `smtp` mode needs
-`CRM_UNSUBSCRIBE_SECRET` and `CRM_PUBLIC_URL`. A local Stalwart server for
+`CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET` and `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL`. A local Stalwart server for
 development is in `compose.email.yaml` and `scripts/email-dev.sh`.
 
 ### Changed — RFC 9457 error bodies (CRM-T54, 2026-10-11)
@@ -1158,8 +1167,8 @@ real (including masked) responses against them.
 ### Added — field-level encryption (CRM-T41, 2026-10-10)
 
 AES-256-GCM on `contacts.preferred_channel` and `activities.summary` through
-an `EncryptedText` column type, keyring with rotation (`CRM_FIELD_KEYS`),
-`rotate_field_keys` task, and `CRM_REQUIRE_FIELD_ENCRYPTION` start-up check.
+an `EncryptedText` column type, keyring with rotation (`CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS`),
+`rotate_field_keys` task, and `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION` start-up check.
 
 ### Added — break-glass access (CRM-T44, 2026-10-10)
 
@@ -1176,14 +1185,14 @@ an idle session after 15 minutes.
 
 `mask` now covers the forecast, sales dashboard, campaign cost/funnel and the
 rows bundled into a contact read. Audit, event and retention reads are
-admin/service tier; `CRM_PROTECT_OPERATIONAL=1` also protects metrics and
+admin/service tier; `CONTACT_RELATIONSHIP_MANAGEMENT_PROTECT_OPERATIONAL=1` also protects metrics and
 OpenAPI. Personal-data reads (contacts, leads, tickets, activities) are
 audited into the hash chain.
 
 ### Added — production-readiness hardening (CRM-T30, T31, T33, T34, T35, 2026-10-10)
 
-Production boot refuses to start with `CRM_REQUIRE_AUTH` off
-(`CRM_ALLOW_INSECURE=1` overrides). `audit_logs` is now a tamper-evident hash
+Production boot refuses to start with `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` off
+(`CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE=1` overrides). `audit_logs` is now a tamper-evident hash
 chain with an append-only trigger and `GET /api/audits/verify`
 (migration `m20261010_000008_audit_chain`). `config/production.yaml` adds
 security headers, a closed CORS list and no `x-powered-by`, and its SMTP
@@ -1197,7 +1206,7 @@ credentials no longer break parsing when empty. `deny.toml`, a hardened
 `Authorization: Bearer <Keycloak access token>`, verified by
 `authentication-verifier`'s `keycloak` module and mapped onto the same
 `Claims`, so ABAC, masking and audit are unchanged. Configured by
-`CRM_KEYCLOAK_URL` / `_REALM` / `_AUDIENCES` / `_ROLE_MAP[_FILE]` /
+`CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_URL` / `_REALM` / `_AUDIENCES` / `_ROLE_MAP[_FILE]` /
 `_REQUIRE_VERIFIED_EMAIL`; unset URL => off; a malformed configuration logs
 an error and leaves Keycloak off (fail-closed, service still boots). A token
 beginning `v4.` is a PASETO; anything else is offered to Keycloak. An

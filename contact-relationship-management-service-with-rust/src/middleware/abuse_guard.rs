@@ -36,7 +36,7 @@ pub(crate) async fn abuse_guard_mw(
         req.extensions().get::<IpAddr>().copied(),
     );
     if let Some(shared) = &shared {
-        // Shared counters (CRM_REDIS_URL): one count across all replicas.
+        // Shared counters (CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL): one count across all replicas.
         // A Redis error falls through to the in-process counters below.
         match shared_verdict(&guard, shared, &key).await {
             Ok(Err(refused)) => return refused.refusal(),

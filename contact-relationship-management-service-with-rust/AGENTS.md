@@ -42,7 +42,7 @@ cross-cutting spec's [scope boundary](../spec/scope.md).
    (`src/controllers/`), `#![forbid(unsafe_code)]`, thiserror,
    tracing + OTLP, OpenAPI/Swagger, header API versioning
    (`Accepts-version`), Podman not Docker, PostgreSQL not SQLite,
-   `worker` (Postgres-backed) jobs, a Redis cache (`CRM_REDIS_URL`,
+   `worker` (Postgres-backed) jobs, a Redis cache (`CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`,
    required in production, in-process elsewhere). The family notes cited in comments as
    `agents/share/*.md` (for example `rust-loco-stack.md`, `jwt.md`,
    `event-bus.md`) live in the `main-x-service` repository, not here.
@@ -83,5 +83,5 @@ DB_URL=postgres://… cargo test --features keycloak -- --ignored --test-threads
 
 The request tests (`--ignored`) need PostgreSQL with the `uuid-ossp`,
 `citext` and `unaccent` extensions; the Redis ones also need
-`CRM_REDIS_URL`. From the repository root, `scripts/ci-check.sh
+`CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`. From the repository root, `scripts/ci-check.sh
 <fmt|clippy|test|test-db|…>` runs exactly what CI runs.

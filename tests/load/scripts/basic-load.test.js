@@ -2,7 +2,7 @@
  * Basic load test (k6): a steady number of virtual users on the mixed workload (lib/crm.js),
  * the load the service should carry on an ordinary day.
  *
- * Environment: TEST_URL, CRM_AUTH_TOKEN, and
+ * Environment: TEST_URL, CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN, and
  *   VUS       virtual users       default 10
  *   DURATION  steady duration     default 5m
  */

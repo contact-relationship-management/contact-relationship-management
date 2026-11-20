@@ -32,7 +32,7 @@ What happened instead, with the exact error text in a code block.
 
 ## Environment
 
-Operating system, Podman or Docker version, Rust and Node versions, the commit or release you are on, and any settings you changed (such as `CRM_REQUIRE_AUTH` or `CRM_MAIL_MODE`).
+Operating system, Podman or Docker version, Rust and Node versions, the commit or release you are on, and any settings you changed (such as `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` or `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE`).
 
 ## Minimal example
 

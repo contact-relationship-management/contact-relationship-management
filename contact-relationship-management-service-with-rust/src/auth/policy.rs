@@ -75,7 +75,7 @@ pub(super) fn is_privileged_read(path: &str) -> bool {
     })
 }
 
-/// Whether blanket `/api/*` enforcement is on (`CRM_REQUIRE_AUTH`, from
+/// Whether blanket `/api/*` enforcement is on (`CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH`, from
 /// [`crate::settings`]). Off by default — see the module docs and
 /// `agents/share/jwt-enforcement.md`.
 #[must_use]
@@ -121,7 +121,7 @@ pub(super) fn is_operational_path(path: &str) -> bool {
     path == "/api-docs/openapi.json" || path.starts_with("/swagger-ui") || path == "/metrics.prom"
 }
 
-/// Whether `CRM_PROTECT_OPERATIONAL` is on (CRM-T38): the operational
+/// Whether `CONTACT_RELATIONSHIP_MANAGEMENT_PROTECT_OPERATIONAL` is on (CRM-T38): the operational
 /// endpoints then require a bearer token like everything else, and a metrics
 /// scraper must present one. Off by default so a scraper inside a private
 /// network keeps working.
@@ -186,8 +186,8 @@ pub fn derive_action(method: &Method, path: &str) -> Action {
     }
 }
 
-/// Load the ABAC policy: `CRM_ABAC_POLICY` (inline JSON) wins, then
-/// `CRM_ABAC_POLICY_FILE` (path to a JSON file), else the built-in
+/// Load the ABAC policy: `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY` (inline JSON) wins, then
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE` (path to a JSON file), else the built-in
 /// default policy. A present-but-unparsable policy (bad JSON, unknown
 /// effect/action names, unreadable file) `tracing::warn!`s and falls
 /// back to the default — the service always boots, matching the
@@ -219,7 +219,7 @@ pub fn policy_from_env() -> Policy {
 }
 
 /// The process-wide **hot-reloadable** ABAC policy, initialised from
-/// `CRM_ABAC_POLICY` / `CRM_ABAC_POLICY_FILE` (else the built-in
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY` / `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE` (else the built-in
 /// default). Read the active snapshot with `policy().current()` per
 /// request; swap it at runtime with [`reload_policy`] (e.g. from the
 /// policy-file watcher in `app.rs`) — **no restart needed**.
@@ -229,8 +229,8 @@ pub fn policy() -> &'static ReloadablePolicy {
     POLICY.get_or_init(|| ReloadablePolicy::new(policy_from_env()))
 }
 
-/// Re-read the ABAC policy from the environment (`CRM_ABAC_POLICY` /
-/// `CRM_ABAC_POLICY_FILE`, same rules and default-fallback as
+/// Re-read the ABAC policy from the environment (`CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY` /
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE`, same rules and default-fallback as
 /// [`policy_from_env`]) and swap it into the live [`policy`] holder.
 /// Called by the policy-file watcher (`app.rs`) when the file changes;
 /// a malformed policy falls back to the built-in default (never leaves
@@ -245,13 +245,13 @@ pub fn reload_policy() {
 pub(super) const POLICY_WATCH_SECS: u64 = 15;
 
 /// Spawn a background task that hot-reloads the ABAC policy when the
-/// `CRM_ABAC_POLICY_FILE` changes on disk — so operators can edit the
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE` changes on disk — so operators can edit the
 /// policy file and have it take effect without a restart. It polls the
 /// file's mtime every [`POLICY_WATCH_SECS`] and calls [`reload_policy`]
 /// on a change (mtime-poll, not an OS notify, to stay dependency-light).
 ///
-/// A no-op when `CRM_ABAC_POLICY_FILE` is unset — an inline
-/// `CRM_ABAC_POLICY` (or the built-in default) has nothing to watch,
+/// A no-op when `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE` is unset — an inline
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY` (or the built-in default) has nothing to watch,
 /// and env vars do not change at runtime. Call once at boot
 /// (`app.rs::after_routes`).
 pub fn spawn_policy_watcher() {
@@ -275,7 +275,7 @@ pub fn spawn_policy_watcher() {
     });
     tracing::info!(
         secs = POLICY_WATCH_SECS,
-        "watching CRM_ABAC_POLICY_FILE for changes"
+        "watching CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE for changes"
     );
 }
 

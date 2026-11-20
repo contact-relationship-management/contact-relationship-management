@@ -139,7 +139,7 @@ pub(super) fn env_attrs_at(hour: u32) -> BTreeMap<String, Vec<String>> {
 /// decision with attributes of the *specific* record and the request
 /// context.
 ///
-/// Gated on the same `CRM_REQUIRE_AUTH` flag as the blanket guard:
+/// Gated on the same `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` flag as the blanket guard:
 /// when enforcement is **off** this is a no-op (behaviour-neutral, no
 /// authn/authz); when **on**, the blanket guard guarantees a token, so
 /// absent claims here are a `401` fail-safe.

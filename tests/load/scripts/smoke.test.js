@@ -2,7 +2,7 @@
  * Smoke test (k6): one virtual user makes each call once per iteration and every call must
  * succeed. Run it first; the other load tests assume what it checks.
  *
- * Environment: TEST_URL, CRM_AUTH_TOKEN (lib/crm.js), and
+ * Environment: TEST_URL, CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN (lib/crm.js), and
  *   ITERATIONS  iterations of the round   default 3
  */
 

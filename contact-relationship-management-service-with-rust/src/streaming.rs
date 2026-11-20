@@ -2,7 +2,7 @@
 //! transport seam (`agents/share/event-bus.md`).
 //!
 //! Every mutation emits one envelope. The transport is selected by
-//! `CRM_EVENT_TRANSPORT` (default `memory`):
+//! `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT` (default `memory`):
 //!
 //! - `memory` — an in-process ring buffer ([`InMemoryPublisher`]),
 //!   served by `GET /api/events/recent`. Lost on restart; Phase 1.
@@ -153,7 +153,7 @@ impl EventTransport {
     }
 }
 
-/// The process-wide transport, from `CRM_EVENT_TRANSPORT` (default `memory`;
+/// The process-wide transport, from `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT` (default `memory`;
 /// see [`crate::settings`]).
 #[must_use]
 pub fn transport() -> EventTransport {

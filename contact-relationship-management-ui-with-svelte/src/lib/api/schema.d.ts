@@ -2994,7 +2994,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Open a delivery idea in the project portfolio service (PPM) for a won deal (CRM-R72): once per deal, answering the idea already opened if asked again; 404 for an unknown deal, 422 when it is not won, 502 when PPM cannot be reached; audited. Without CRM_UPSTREAM_MODE=http it sends nothing and answers what it would have sent. Admin only */
+        /** Open a delivery idea in the project portfolio service (PPM) for a won deal (CRM-R72): once per deal, answering the idea already opened if asked again; 404 for an unknown deal, 422 when it is not won, 502 when PPM cannot be reached; audited. Without CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http it sends nothing and answers what it would have sent. Admin only */
         post: {
             parameters: {
                 query?: never;
@@ -3078,7 +3078,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ask the worker service (WPM-R208, POST {CRM_WORKER_SERVICE_URL}/api/bridges/overlap) which live contacts are its workers today, sending their person: references only, at most 500 a call, for CRM_WPM_ORGANIZATION_REF under CRM_WORKER_SERVICE_TOKEN (CRM-R94, CRM-D16); each yes marks the contacts employees of that organization as a hire event would (audited with via: wpm), unless the last event applied for them was a leave; a no changes nothing and never ends an employment. All answers are read before anything is written; 502 when WPM cannot be reached, refuses or answers badly, or the organization is unset. Without CRM_UPSTREAM_MODE=http nothing is sent and the answer says how many would be asked. Admin only */
+        /** Ask the worker service (WPM-R208, POST {CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL}/api/bridges/overlap) which live contacts are its workers today, sending their person: references only, at most 500 a call, for CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF under CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN (CRM-R94, CRM-D16); each yes marks the contacts employees of that organization as a hire event would (audited with via: wpm), unless the last event applied for them was a leave; a no changes nothing and never ends an employment. All answers are read before anything is written; 502 when WPM cannot be reached, refuses or answers badly, or the organization is unset. Without CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http nothing is sent and the answer says how many would be asked. Admin only */
         post: {
             parameters: {
                 query?: never;
@@ -3162,7 +3162,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** No session: signed by the worker service (x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256 of "<t>.<body>"> with CRM_WPM_WEBHOOK_SECRET; five minutes either way) (CRM-R92). worker_hired marks the contacts with that person_ref employees of organization_ref, which leaves them out of segments, campaigns and nurture steps; worker_terminated and worker_retired lift it, restoring no consent; each change audited with via: wpm. Other kinds, and a hire or leave without data, are 200 ignored; a repeated id is 200 duplicate and changes nothing; a hire or leave older (occurred_at, then effective_on) than the last applied for its person and organization is 200 stale and changes nothing (CRM-R93). 404 while the secret is unset, 401 bad, missing or stale signature, 400 not an event, 413 over 16 KiB, 422 malformed data or occurred_at */
+        /** No session: signed by the worker service (x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256 of "<t>.<body>"> with CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET; five minutes either way) (CRM-R92). worker_hired marks the contacts with that person_ref employees of organization_ref, which leaves them out of segments, campaigns and nurture steps; worker_terminated and worker_retired lift it, restoring no consent; each change audited with via: wpm. Other kinds, and a hire or leave without data, are 200 ignored; a repeated id is 200 duplicate and changes nothing; a hire or leave older (occurred_at, then effective_on) than the last applied for its person and organization is 200 stale and changes nothing (CRM-R93). 404 while the secret is unset, 401 bad, missing or stale signature, 400 not an event, 413 over 16 KiB, 422 malformed data or occurred_at */
         post: {
             parameters: {
                 query?: never;
@@ -3250,7 +3250,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Set a team per department from the active workers of the worker service (WPM) (CRM-R73): all together or none, each audited, teams it does not name left alone, nothing written to WPM; 502 when it cannot be read. Without CRM_UPSTREAM_MODE=http it reads nothing. Admin only */
+        /** Set a team per department from the active workers of the worker service (WPM) (CRM-R73): all together or none, each audited, teams it does not name left alone, nothing written to WPM; 502 when it cannot be read. Without CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http it reads nothing. Admin only */
         post: {
             parameters: {
                 query?: never;
@@ -3986,7 +3986,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Send the campaign: consent re-checked per contact at send time, one delivery row per contact so a re-run never mails twice, batched (CRM_MAIL_BATCH). The default sender is simulated (CRM_MAIL_MODE); smtp mode really sends */
+        /** Send the campaign: consent re-checked per contact at send time, one delivery row per contact so a re-run never mails twice, batched (CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH). The default sender is simulated (CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE); smtp mode really sends */
         post: {
             parameters: {
                 query?: never;
@@ -18122,7 +18122,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Public web form (CRM-R31, CRM_WEB_FORMS): creates a contact and a source=web lead for the person the person service returns and asks for the form's consent purpose by double opt-in. The request's Origin must be on the form's list. Answers 202 with the same body whether or not anything was created. 403 origin not allowed, 404 no such form, 422 name or email unusable, 429 over the rate limit (Retry-After), 503 person service unavailable. Every answer, these refusals too, is in the request's language (the body's language, else Accept-Language, else English; Content-Language): the problem document's title, detail and field details are translated, its error code is not (CRM-T182) */
+        /** Public web form (CRM-R31, CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS): creates a contact and a source=web lead for the person the person service returns and asks for the form's consent purpose by double opt-in. The request's Origin must be on the form's list. Answers 202 with the same body whether or not anything was created. 403 origin not allowed, 404 no such form, 422 name or email unusable, 429 over the rate limit (Retry-After), 503 person service unavailable. Every answer, these refusals too, is in the request's language (the body's language, else Accept-Language, else English; Content-Language): the problem document's title, detail and field details are translated, its error code is not (CRM-T182) */
         post: {
             parameters: {
                 query?: never;
@@ -18187,7 +18187,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Public (CRM_PUBLIC_KB, CRM-R57): the published knowledge-base articles, or those whose title, keywords or text contain ?q= (at most 50, by title; each with the start of its text). A search with words is counted, and one that found nothing is counted as such. 404 while the public knowledge base is off, 429 over the per-client rate limit (Retry-After) */
+        /** Public (CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB, CRM-R57): the published knowledge-base articles, or those whose title, keywords or text contain ?q= (at most 50, by title; each with the start of its text). A search with words is counted, and one that found nothing is counted as such. 404 while the public knowledge base is off, 429 over the per-client rate limit (Retry-After) */
         get: {
             parameters: {
                 query?: {
@@ -18225,7 +18225,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Public (CRM_PUBLIC_KB, CRM-R57): one published article, counted as a view. The text is plain: show it as text. 404 for a draft, an archived or a missing article, and while the public knowledge base is off */
+        /** Public (CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB, CRM-R57): one published article, counted as a view. The text is plain: show it as text. 404 for a draft, an archived or a missing article, and while the public knowledge base is off */
         get: {
             parameters: {
                 query?: never;
@@ -18265,7 +18265,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Public (CRM_PUBLIC_KB, CRM-R57): "this helped" or "this did not" for a published article; anonymous and counted only. Answers 202. 404 for an article that is not published, 422 for an unknown member */
+        /** Public (CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB, CRM-R57): "this helped" or "this did not" for a published article; anonymous and counted only. Answers 202. 404 for an article that is not published, 422 for an unknown member */
         post: {
             parameters: {
                 query?: never;
@@ -18494,7 +18494,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Public: a callback in the vendor's own format (provider is brevo, mailjet, ses, azure, mailgun or sendgrid). Authenticated by CRM_WEBHOOK_SECRET as a bearer token, basic-auth password or X-CRM-Webhook-Token; Mailgun by its own body signature (CRM_MAILGUN_SIGNING_KEY). Delivered, hard or soft bounce and complaints are applied as for /webhooks/email; other events are ignored */
+        /** Public: a callback in the vendor's own format (provider is brevo, mailjet, ses, azure, mailgun or sendgrid). Authenticated by CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET as a bearer token, basic-auth password or X-CRM-Webhook-Token; Mailgun by its own body signature (CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_SIGNING_KEY). Delivered, hard or soft bounce and complaints are applied as for /webhooks/email; other events are ignored */
         post: {
             parameters: {
                 query?: never;
@@ -20112,7 +20112,7 @@ export interface components {
             left_by_event: number;
             /** @description `stub` (nothing was sent) or `http`. */
             mode: string;
-            /** @description The organization asked about (`CRM_WPM_ORGANIZATION_REF`); `null` when it is unset. */
+            /** @description The organization asked about (`CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF`); `null` when it is unset. */
             organization_ref: string | null;
             /**
              * Format: uint
@@ -20531,7 +20531,7 @@ export interface components {
             floor_days: number;
             /** @description Whether the deployer set it (`false`: the default, or a value that could not be read). */
             set: boolean;
-            /** @description The environment setting, such as `CRM_RETENTION_DAYS`. */
+            /** @description The environment setting, such as `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`. */
             setting: string;
         };
         /** @description The deal a hygiene finding is about. */
@@ -21649,7 +21649,7 @@ export interface components {
             derivation: string;
             /**
              * Format: int64
-             * @description Days the event outbox and webhook deliveries are kept (`CRM_EVENT_RETENTION_DAYS`, CRM-R81).
+             * @description Days the event outbox and webhook deliveries are kept (`CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`, CRM-R81).
              */
             event_horizon_days: number;
             /**
@@ -21665,7 +21665,7 @@ export interface components {
             };
             /**
              * Format: int64
-             * @description Days email deliveries and events are kept (`CRM_MAIL_RETENTION_DAYS`, CRM-R81).
+             * @description Days email deliveries and events are kept (`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS`, CRM-R81).
              */
             mail_horizon_days: number;
             /** @description Rows past the horizon, by table (tables with none are left out). */

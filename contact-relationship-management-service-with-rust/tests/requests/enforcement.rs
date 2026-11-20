@@ -103,10 +103,10 @@ async fn enforcement_gates_the_real_stack() {
 
     // Break-glass grants outlive a run when Redis is configured (they last 30
     // minutes there); a leftover grant would lift this test's masks.
-    if let Ok(url) = std::env::var("CRM_REDIS_URL")
+    if let Ok(url) = std::env::var("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL")
         && !url.is_empty()
     {
-        let client = redis::Client::open(url).expect("CRM_REDIS_URL");
+        let client = redis::Client::open(url).expect("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL");
         let mut conn = client
             .get_multiplexed_async_connection()
             .await

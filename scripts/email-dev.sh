@@ -106,10 +106,10 @@ PY
   live)
     # Run the service's real-SMTP test against this server.
     (cd "$dir" && \
-      CRM_MAIL_MODE=smtp CRM_SMTP_HOST=127.0.0.1 CRM_SMTP_PORT="$submission_port" \
-      CRM_SMTP_USERNAME=crm@crm.test CRM_SMTP_PASSWORD=crm-dev-password \
-      CRM_MAIL_FROM='CRM <crm@crm.test>' CRM_SMTP_ACCEPT_INVALID_CERTS=1 \
-      CRM_TEST_JMAP_URL="http://127.0.0.1:$http_port" \
+      CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST=127.0.0.1 CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT="$submission_port" \
+      CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_USERNAME=crm@crm.test CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PASSWORD=crm-dev-password \
+      CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM='CRM <crm@crm.test>' CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_ACCEPT_INVALID_CERTS=1 \
+      CONTACT_RELATIONSHIP_MANAGEMENT_TEST_JMAP_URL="http://127.0.0.1:$http_port" \
       cargo test --test main smtp_live -- --ignored --nocapture)
     ;;
   down)

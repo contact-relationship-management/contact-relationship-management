@@ -1,6 +1,6 @@
 //! Which deployment a database belongs to (CRM-R105, CRM-T282).
 //!
-//! A hosted customer has its own database. `CRM_DEPLOYMENT_ID` names the deployment; the first
+//! A hosted customer has its own database. `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` names the deployment; the first
 //! start that has it writes it to the one-row `deployment` table, and every start after compares.
 //! A start whose name differs from the database's is refused, so a configuration mistake cannot
 //! point one customer's service at another customer's database. So is a start with no name
@@ -40,26 +40,26 @@ pub fn valid(name: &str) -> bool {
 pub fn decide(configured: Option<&str>, stored: Option<&str>) -> Result<Decision, String> {
     match (configured, stored) {
         (Some(name), _) if !valid(name) => Err(format!(
-            "CRM_DEPLOYMENT_ID must be 1 to {MAX_NAME} letters, digits, '.', '_' or '-'"
+            "CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID must be 1 to {MAX_NAME} letters, digits, '.', '_' or '-'"
         )),
         (None, None) => Ok(Decision::Unchecked),
         (Some(name), None) => Ok(Decision::Claim(name.to_string())),
         (Some(name), Some(held)) if name == held => Ok(Decision::Matches),
         (Some(name), Some(held)) => Err(format!(
             "refusing to start: this database belongs to deployment '{held}', and \
-             CRM_DEPLOYMENT_ID is '{name}' (CRM-R105). Check DB_URL before anything else."
+             CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID is '{name}' (CRM-R105). Check DB_URL before anything else."
         )),
         (None, Some(held)) => Err(format!(
             "refusing to start: this database belongs to deployment '{held}', and \
-             CRM_DEPLOYMENT_ID is not set (CRM-R105). Set it to '{held}' if this is that deployment."
+             CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID is not set (CRM-R105). Set it to '{held}' if this is that deployment."
         )),
     }
 }
 
-/// `CRM_DEPLOYMENT_ID`, trimmed; unset or blank is `None`.
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID`, trimmed; unset or blank is `None`.
 #[must_use]
 pub fn configured() -> Option<String> {
-    std::env::var("CRM_DEPLOYMENT_ID")
+    std::env::var("CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID")
         .ok()
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())
@@ -78,7 +78,7 @@ pub async fn check(
     let stored = held(pool).await?;
     match decide(configured, stored.as_deref())? {
         Decision::Unchecked => Ok(Some(
-            "CRM_DEPLOYMENT_ID is not set: nothing checks that this database belongs to this deployment",
+            "CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID is not set: nothing checks that this database belongs to this deployment",
         )),
         Decision::Matches => Ok(None),
         Decision::Claim(name) => {

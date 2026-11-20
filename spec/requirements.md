@@ -192,7 +192,7 @@ tickets.*
 
 ## CRM-R15 — AuthN/Z & masking
 
-- Family stack: offline PASETO verify, blanket `CRM_REQUIRE_AUTH`
+- Family stack: offline PASETO verify, blanket `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH`
   guard (default off), shared ABAC engine; record-level
   `resource.owner`/`status`/`tier` attrs with `$sub` ownership;
   `mask` obligation redacts amounts, forecasts, ROI, and contact
@@ -202,7 +202,7 @@ tickets.*
 ## CRM-R16 — Audit & events
 
 - Every mutation audited + evented (family envelope,
-  `CRM_EVENT_TRANSPORT` memory/outbox); consent history + sensitive
+  `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT` memory/outbox); consent history + sensitive
   reads audited; reasoned actions carry their reasons.
 - **Fail closed:** when a write's audit row cannot be written, the write is refused (the
   transaction rolls back and the caller gets a `500`); an audited read whose audit row cannot
@@ -275,15 +275,15 @@ data, and show that data past its retention horizon does not linger.*
   **not** `Contact::status`, which no endpoint ever transitions.
   Destructive-classified; audited with per-table counts.
 - `GET /api/retention` / `POST /api/retention/sweep`: the floored
-  horizon report (`CRM_RETENTION_DAYS`, default 365, floor 30) and the
+  horizon report (`CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`, default 365, floor 30) and the
   matching hard-delete sweep across every soft-deleting table, plus a
   read-only count of contacts whose consent has stood withdrawn since
   before the horizon (informational — never auto-scrubbed, since a
   contact always carries the erasure gate above). Destructive-classified;
   audited even when it deletes nothing.
 - **Whose value, whose right (CRM-T165).** The report's `horizon_basis` gives,
-  for each of the three horizons (`CRM_RETENTION_DAYS`,
-  `CRM_EVENT_RETENTION_DAYS`, `CRM_MAIL_RETENTION_DAYS`), the value in force,
+  for each of the three horizons (`CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`,
+  `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`, `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS`), the value in force,
   whether the deployer set it, its default and floor, and whose the default is
   (`default_from`: `regime`, `reference`, `status`, the shape of WPM-T384's):
   none is any jurisdiction's value, so each is `starting_point` with no regime.
@@ -595,7 +595,7 @@ see what it did.*
 - **Read-only by default.** The tools are lookups: contacts, accounts, leads, deals,
   pipelines, forecast, tickets, activities, campaigns, segments (with the consent purpose to
   gate on), knowledge-base search, follow-ups, stale deals, a contact's consent states, and
-  likely duplicates. Setting `CRM_MCP_WRITES=on` adds `add_activity`, which is still subject
+  likely duplicates. Setting `CONTACT_RELATIONSHIP_MANAGEMENT_MCP_WRITES=on` adds `add_activity`, which is still subject
   to the caller's write rights.
 - **Destructive operations are previews.** `preview_merge_contacts` and
   `preview_unmerge_contact` are the merge and undo-merge calls forced to `dry_run`: they
@@ -612,7 +612,7 @@ see what it did.*
   stored in a record steers an agent; the safeguard that matters is that no tool can do harm
   the caller could not already do.
 - **Transport hygiene.** `Origin` is checked: a request that carries one must be on
-  `CRM_MCP_ALLOWED_ORIGINS` (none by default, so browsers are refused and agents, which send
+  `CONTACT_RELATIONSHIP_MANAGEMENT_MCP_ALLOWED_ORIGINS` (none by default, so browsers are refused and agents, which send
   none, are not). For `2026-07-28` the `MCP-Protocol-Version`, `Mcp-Method` and `Mcp-Name`
   headers must match the body (`400`, code `-32020`). Tool arguments are validated against a
   closed schema before any request is made; ids must be UUIDs. An answer is cut at 200 KB.
@@ -625,7 +625,7 @@ see what it did.*
 the CRM, and I know nobody is mailed marketing until they have confirmed their own
 address, and that bots and strangers cannot fill the CRM or use it to spam someone.*
 
-- **The form is configured, not invented by the caller.** `CRM_WEB_FORMS` is a JSON
+- **The form is configured, not invented by the caller.** `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS` is a JSON
   list; each entry has a `slug`, the `origins` allowed to post it, an optional `purpose`
   (default `marketing`; any CRM-R29 purpose) and an optional `sequence` (a nurture
   sequence pid). A slug that is not configured is `404`, or, posted from a page on another
@@ -645,7 +645,7 @@ address, and that bots and strangers cannot fill the CRM or use it to spam someo
   browser; it does not stop a script that sets the header, which is what the next two
   items are for.
 - **Rate limits.** Each form allows 5 submissions per client in 10 minutes and 300 per
-  hour in all (`CRM_WEB_FORM_CLIENT_LIMIT`, `CRM_WEB_FORM_LIMIT`), answering `429` with
+  hour in all (`CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_CLIENT_LIMIT`, `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_LIMIT`), answering `429` with
   `Retry-After`. Counts are kept in the process, so with several replicas each allows its
   own; clients are told apart by the address `axa` resolves from the connection and
   `TRUSTED_PROXIES`, so behind an unlisted proxy they share that proxy's bucket.
@@ -653,7 +653,7 @@ address, and that bots and strangers cannot fill the CRM or use it to spam someo
   the answer is the normal one.
 - **The CRM stores no email.** The address goes to the person service, which finds or
   creates the person and returns its id; the CRM keeps the `person:` reference and the
-  name. `CRM_UPSTREAM_MODE=http` calls `POST {CRM_PERSON_SERVICE_URL}/api/persons` with
+  name. `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http` calls `POST {CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL}/api/persons` with
   `{ "name", "email" }` and expects `{ "pid" }` (or `{ "id" }`) back. In the default stub
   mode a process-local person is made (lost on restart, development only). If the person
   service cannot be reached the answer is `503` and nothing is created. The lead carries
@@ -953,9 +953,9 @@ recipient would get before anything is sent, and be certain every message carrie
 *As someone who keeps the documents that go with a relationship, I can attach a file to a contact, account, lead or deal, and trust that only safe kinds are accepted, that it is scanned, and that it goes when the person is erased.*
 
 - `POST /api/{contacts|accounts|leads|deals}/{pid}/attachments?name=` takes the file itself as the body. `GET` lists a record's files (metadata); `GET /api/attachments/{pid}/content` downloads one; `DELETE /api/attachments/{pid}` removes the row and the stored file.
-- **Accepted files:** an allow-list by extension (pdf, png, jpg, jpeg, gif, webp, txt, csv, md, docx, xlsx, pptx, odt, ods). Archives, scripts, executables, HTML and SVG are not on it. The stored content type comes from the list, never from the request. For formats with a recognisable start the first bytes must agree with the extension (a `.pdf` that starts with `<script>` is refused). The name is cleaned: no directory part, no control characters, no quotes, at most 120 characters. At most 20 files per record, and a size limit (`CRM_ATTACHMENT_MAX_BYTES`, default 10 MiB, at most 100 MiB). A file refused is `422` and leaves nothing behind.
-- **Scan hook:** with `CRM_ATTACHMENT_SCAN_COMMAND` set (a program and arguments, split on spaces, run without a shell, with the file's path last), each upload is written to `incoming/`, scanned, and moved into place only on exit 0. Exit 1 is an infected file (`422`, audited as `refused_infected`); any other result, a timeout or a failure to start is `503` and the file is not stored: an unscannable file is refused, not trusted.
-- **Storage:** a directory (`CRM_ATTACHMENT_DIR`); unset, attachments answer `503` and say why. A file is stored under a random id, never its name. Its SHA-256 is kept with it and checked on every download; a file that no longer matches is not served.
+- **Accepted files:** an allow-list by extension (pdf, png, jpg, jpeg, gif, webp, txt, csv, md, docx, xlsx, pptx, odt, ods). Archives, scripts, executables, HTML and SVG are not on it. The stored content type comes from the list, never from the request. For formats with a recognisable start the first bytes must agree with the extension (a `.pdf` that starts with `<script>` is refused). The name is cleaned: no directory part, no control characters, no quotes, at most 120 characters. At most 20 files per record, and a size limit (`CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_MAX_BYTES`, default 10 MiB, at most 100 MiB). A file refused is `422` and leaves nothing behind.
+- **Scan hook:** with `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_SCAN_COMMAND` set (a program and arguments, split on spaces, run without a shell, with the file's path last), each upload is written to `incoming/`, scanned, and moved into place only on exit 0. Exit 1 is an infected file (`422`, audited as `refused_infected`); any other result, a timeout or a failure to start is `503` and the file is not stored: an unscannable file is refused, not trusted.
+- **Storage:** a directory (`CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR`); unset, attachments answer `503` and say why. A file is stored under a random id, never its name. Its SHA-256 is kept with it and checked on every download; a file that no longer matches is not served.
 - **Downloads** are always `Content-Disposition: attachment` with `X-Content-Type-Options: nosniff`, and are audited as a disclosure.
 - **Access:** writing needs write access to the record; reading, listing and downloading need an unmasked read, so a masked reader sees no files.
 - **Audit:** `attachment` `uploaded` (type, size and digest, never the name: a name can be personal), `downloaded`, `deleted`, `refused_infected`.
@@ -1140,7 +1140,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a support lead, I can let customers read our published articles without signing in, and see how many questions they answered for themselves, so that fewer of them become tickets.*
 
-- **Off until asked for.** `CRM_PUBLIC_KB` (off by default) turns on three routes that need no token and answer `404` while it is off, so a deployment publishes nothing by accident: `GET /kb/articles`, `GET /kb/articles/{pid}` and `POST /kb/articles/{pid}/feedback`. They are public paths when `CRM_REQUIRE_AUTH` is on. Each client is limited to `CRM_PUBLIC_KB_CLIENT_LIMIT` requests a minute (default 120, `0` for no limit), counted as the web forms are (the address `axa` resolves from the connection and `TRUSTED_PROXIES`); over it is `429` with `Retry-After`.
+- **Off until asked for.** `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB` (off by default) turns on three routes that need no token and answer `404` while it is off, so a deployment publishes nothing by accident: `GET /kb/articles`, `GET /kb/articles/{pid}` and `POST /kb/articles/{pid}/feedback`. They are public paths when `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` is on. Each client is limited to `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB_CLIENT_LIMIT` requests a minute (default 120, `0` for no limit), counted as the web forms are (the address `axa` resolves from the connection and `TRUSTED_PROXIES`); over it is `429` with `Retry-After`.
 - **Published only.** A draft, an archived or a deleted article is `404`, the same answer as one that never existed, so nothing is given away. `GET /kb/articles?q=` lists published articles (at most 50, by title; each with the first 200 characters of its text), or those whose title, keywords or text contain `q` (case-insensitive; `%` and `_` are plain characters). `GET /kb/articles/{pid}` returns title, text, keywords, version and last update. The text is **plain**: a client shows it as text, never as markup.
 - **Feedback.** `POST /kb/articles/{pid}/feedback` takes `{"helpful": true|false}` and nothing else (an unknown member is `422`); it answers `202`. It is anonymous: nothing identifies who voted.
 - **What is kept.** Only counts, per day and per article (and for the portal as a whole): views, "this helped" and "this did not" votes, searches with words in them, and of those the searches that found nothing. **No address, no visitor and no text a visitor typed is stored**, because people type their own names and problems into a search box. The cost is that a search that finds nothing cannot say what was wanted; the count says only that the content has gaps.
@@ -1303,10 +1303,10 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a sales manager, I can hand a won deal to delivery, so that the project portfolio service has an idea for the work that was sold.*
 
-- `POST /api/bridges/ppm/deals/{pid}` (no body) sends **one idea** to the project portfolio service: `POST {CRM_PPM_SERVICE_URL}/api/ideas` with a `title` (`Deliver: <deal name>`, up to 200 characters), a `pitch` (the deal's pid, amount in minor units and currency) and the tags `crm` and `won-deal`. Nothing else about the deal, its account or its contacts is sent. PPM answers `{pid}`.
+- `POST /api/bridges/ppm/deals/{pid}` (no body) sends **one idea** to the project portfolio service: `POST {CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL}/api/ideas` with a `title` (`Deliver: <deal name>`, up to 200 characters), a `pitch` (the deal's pid, amount in minor units and currency) and the tags `crm` and `won-deal`. Nothing else about the deal, its account or its contacts is sent. PPM answers `{pid}`.
 - It is **once per deal**: the idea's id is kept, and asking again answers it with `already_opened: true` and sends nothing. An unknown or deleted deal is `404`; a deal that is not won is `422`; PPM unreachable, refusing or answering without an id is `502` and nothing is kept. Audited as `deal_delivery` / `opened`.
-- **Stub-first**, like the other upstream clients (CRM-D11): unless `CRM_UPSTREAM_MODE=http`, nothing is sent and nothing is kept; the answer is `mode: stub`, `sent: false` and the idea that would have gone. The routes under `/api/bridges` are **admin only**, since they send data out.
-- PPM's contract (`POST /api/ideas`) was read from its source and checked against it again on 2026-10-28 (`{title, pitch, tags}` in, `{pid}` out; a title of 1,024 bytes at most, ours is 200 characters; tags of 64 at most); it is exercised against a stand-in in the tests, not against a running PPM; the idea is PPM's to promote or drop. A bearer token is sent when `CRM_PPM_SERVICE_TOKEN` is set (CRM-R87); without one it reaches a PPM only while that has authentication off.
+- **Stub-first**, like the other upstream clients (CRM-D11): unless `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`, nothing is sent and nothing is kept; the answer is `mode: stub`, `sent: false` and the idea that would have gone. The routes under `/api/bridges` are **admin only**, since they send data out.
+- PPM's contract (`POST /api/ideas`) was read from its source and checked against it again on 2026-10-28 (`{title, pitch, tags}` in, `{pid}` out; a title of 1,024 bytes at most, ours is 200 characters; tags of 64 at most); it is exercised against a stand-in in the tests, not against a running PPM; the idea is PPM's to promote or drop. A bearer token is sent when `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN` is set (CRM-R87); without one it reaches a PPM only while that has authentication off.
 - A won deal's page has a button "Open a delivery idea in the project portfolio" and says what happened.
 - Not built: a project (PPM has plans and ideas, not projects); opening one automatically when a deal is won; following the idea's fate in PPM; sending line items or contacts.
 
@@ -1314,13 +1314,13 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a sales manager, I can have teams made from the worker service's departments, so that a team's roll-up (CRM-R67) follows who is employed where without my keeping both lists.*
 
-- `POST /api/bridges/wpm/teams-import` (no body) reads the **active** workers of the worker service (WPM) — `GET {CRM_WORKER_SERVICE_URL}/api/workers?status=active&fields=pid,department,person_ref&limit=200&offset=`, page by page, at most 51 pages (10,200 workers; WPM refuses an offset above 10,000) — and sets **a team per department**, named for it, holding that department's workers **by `person_ref`** (`person:<uuid>`, the family's name for a person, as contacts, employments and WPM's events and overlap check use; CRM-D17), as `PUT /api/quotas/teams` would (CRM-R67). **Only each worker's `pid` (to recognise a worker row; not kept), `department` and `person_ref` are asked for and read**: `fields=pid,department,person_ref` (WPM-R216) makes WPM answer those three fields of each row and no name, job or pay, and it is a list that WPM does not audit as a salary read. Anything else a row carries is dropped unread. **A WPM from before WPM-R216 answers `fields` with `422`**, so the import fails with `502` naming that status and changes no team; this is accepted, and the import never falls back to asking for the whole record.
+- `POST /api/bridges/wpm/teams-import` (no body) reads the **active** workers of the worker service (WPM) — `GET {CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL}/api/workers?status=active&fields=pid,department,person_ref&limit=200&offset=`, page by page, at most 51 pages (10,200 workers; WPM refuses an offset above 10,000) — and sets **a team per department**, named for it, holding that department's workers **by `person_ref`** (`person:<uuid>`, the family's name for a person, as contacts, employments and WPM's events and overlap check use; CRM-D17), as `PUT /api/quotas/teams` would (CRM-R67). **Only each worker's `pid` (to recognise a worker row; not kept), `department` and `person_ref` are asked for and read**: `fields=pid,department,person_ref` (WPM-R216) makes WPM answer those three fields of each row and no name, job or pay, and it is a list that WPM does not audit as a salary read. Anything else a row carries is dropped unread. **A WPM from before WPM-R216 answers `fields` with `422`**, so the import fails with `502` naming that status and changes no team; this is accepted, and the import never falls back to asking for the whole record.
 - **All the teams are set together or none**; each is audited with `via: wpm`. Teams the import does not name are left as they are; **nothing is written to the worker service**. Running it again replaces the same teams.
 - Left out and reported in `skipped`, with the reason: a department of **more than 50** workers (a team's limit); a department that differs from another only in case. A worker whose `person_ref` is missing or not a `person:` URN joins no team and is counted in `without_person_ref`; it **never falls back to a `worker:` reference**. Active workers with a person and no department are counted in `without_department`. A person in a department twice (two employments) is one member.
 - **Teams set by an earlier import hold `worker:<pid>` members** (WPM worker ids, not person ids); the next import replaces the members of every team it names (CRM-D17). Migration 54 leaves the members of a team whose latest set was the import alone and rewrites those of a team set by hand to `person:` (CRM-D18).
 - **A team's roll-up (CRM-R67) meets the quotas of the same people** (CRM-D18): quota and deal owners are `person:<sign-in subject>`, WPM matches a sign-in subject as `person:<sub>`, so an imported member and the quota of the person who signs in as them are the same reference. An imported team can be saved again through `PUT /api/quotas/teams` as it is.
-- `502` when the worker service cannot be reached or answers something that is not a list. **Stub-first** and admin only, as CRM-R72: without `CRM_UPSTREAM_MODE=http` nothing is read and the answer is `mode: stub` with no teams.
-- WPM's contract (`GET /api/workers`) was read from its source and checked against it again on 2026-10-28, and on 2026-10-30 for `person_ref` (a bare JSON array of worker records ordered by id, with `pid`, `department` and `person_ref` members; since WPM-R216, WPM commit `3991007`, `fields` limits each row to the named fields from a 20-name allowlist and an unknown name is `422`; `status=active` a real status, a page of at most 500, an offset of at most 10,000, so at most 51 pages of 200 are read); it is exercised against a stand-in, not a running WPM. A bearer token is sent when `CRM_WORKER_SERVICE_TOKEN` is set (CRM-R87); WPM filters the list by the caller's organizations when it has authentication on, so the import sees the workers that token may see, not necessarily all.
+- `502` when the worker service cannot be reached or answers something that is not a list. **Stub-first** and admin only, as CRM-R72: without `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http` nothing is read and the answer is `mode: stub` with no teams.
+- WPM's contract (`GET /api/workers`) was read from its source and checked against it again on 2026-10-28, and on 2026-10-30 for `person_ref` (a bare JSON array of worker records ordered by id, with `pid`, `department` and `person_ref` members; since WPM-R216, WPM commit `3991007`, `fields` limits each row to the named fields from a 20-name allowlist and an unknown name is `422`; `status=active` a real status, a page of at most 500, an offset of at most 10,000, so at most 51 pages of 200 are read); it is exercised against a stand-in, not a running WPM. A bearer token is sent when `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` is set (CRM-R87); WPM filters the list by the caller's organizations when it has authentication on, so the import sees the workers that token may see, not necessarily all.
 - The `/quotas` page has a button to run it and says how many teams were set.
 - Not built: teams by manager and reports; removing a team when its department disappears; importing on a schedule; any other worker fields. (A mapping from a person to a `worker:` reference is no longer needed: CRM-D18.)
 
@@ -1328,7 +1328,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a data protection officer at an adopting organization, I can see what personal data the service holds, how long, and what it does with it, so that I can complete the organization's own assessment and record.*
 
-- `spec/compliance/personal-data-inventory.md` lists **every table** with the personal data in it, whom it is about, its retention class and what erasure does to it. The classes are `swept` (hard-deleted by the retention sweep after `CRM_RETENTION_DAYS`), `evidence` (kept on purpose), `ttl` (expires by itself), `manual` (kept until a person removes it) and `gap` (personal data and no deletion path).
+- `spec/compliance/personal-data-inventory.md` lists **every table** with the personal data in it, whom it is about, its retention class and what erasure does to it. The classes are `swept` (hard-deleted by the retention sweep after `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`), `evidence` (kept on purpose), `ttl` (expires by itself), `manual` (kept until a person removes it) and `gap` (personal data and no deletion path).
 - A test fails if a table has no row, a row has no table, a class is unknown, or the `swept` tables are not exactly those the sweep deletes from. A new table cannot be added without being described.
 - `dpia.md` is the DPIA template filled in as far as the software goes: system facts, an engineering assessment of likelihood and severity as shipped, and the deployer's own decisions left open. `record-of-processing.md` is the Art. 30 record, started from ten processing activities, with the controller's details left open. Neither is a sign-off, legal advice or reviewed by anyone.
 - The gaps the inventory names are not hidden: email deliveries and events, the event outbox and webhook deliveries have no deletion path (CRM-T140).
@@ -1368,7 +1368,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a data protection officer, I want a report never to show a group so small that it describes one person or one deal, so that an aggregate cannot be used to read a record.*
 
-- A report (CRM-R48, saved or ad hoc) **leaves out every group with fewer than `CRM_MIN_CELL_SIZE` records behind it**: 5 by default, `0` for none, at most 1000. It is left out, not shown as a small number or as zero.
+- A report (CRM-R48, saved or ad hoc) **leaves out every group with fewer than `CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE` records behind it**: 5 by default, `0` for none, at most 1000. It is left out, not shown as a small number or as zero.
 - What counts as the group's size: for a count, the count; for a sum of amounts, the **number of deals summed** in that group and currency (a sum over one deal is that deal's amount, however large the figure); with `convert_to`, the deals in the group across all its currencies, since a conversion adds them up.
 - The answer carries `min_cell_size` (what was applied) and `suppressed` (how many cells, or with `convert_to` groups, were left out), so a short table is not mistaken for a complete one. A filter that narrows a group to a few records does not get round it. The audit entry for a run records the same two numbers.
 - Applies to every caller, administrators included: a data-protection measure is not a privilege. It applies to the report builder, where a caller can group person-level records; the fixed dashboards (win rate, pipeline by stage, SLA, activity) are totals over the whole book, not groupings by a person-level field, and are unchanged.
@@ -1406,7 +1406,7 @@ recipient would get before anything is sent, and be certain every message carrie
   - **email events**: received more than the horizon ago.
   - **the event outbox**: published more than the horizon ago **and** handed to the webhooks; an event not yet published or fanned out is still owed to a subscriber and stays.
   - **webhook deliveries**: no longer `pending`, last changed more than the horizon ago.
-- Two horizons, both settings: `CRM_EVENT_RETENTION_DAYS` for the outbox and webhook deliveries (30 by default, never below 7) and `CRM_MAIL_RETENTION_DAYS` for email deliveries and events (730 by default, **never below 400**, because attribution reads opens and clicks up to 365 days back from a deal's close). A value below its floor is raised to it.
+- Two horizons, both settings: `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS` for the outbox and webhook deliveries (30 by default, never below 7) and `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS` for email deliveries and events (730 by default, **never below 400**, because attribution reads opens and clicks up to 365 days back from a deal's close). A value below its floor is raised to it.
 - The report adds `event_horizon_days`, `mail_horizon_days` and `logs_past_horizon` (rows by table); the sweep adds `logs_deleted`, the two horizons and counts them in `rows_deleted`; the audit entry records them. The sweep stays an operator's act: nothing deletes on a timer.
 - The inventory marks these four tables `aged`, and its test requires `aged` to be exactly the tables the sweep prunes by age.
 - Not built: running the sweep on a schedule; separate horizons per table; archiving instead of deleting.
@@ -1470,7 +1470,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As an operator whose PPM and WPM have authentication on, I want the bridges to present a token, so that a won deal reaches PPM and the team import reaches WPM without switching their authentication off.*
 
-- `CRM_PPM_SERVICE_TOKEN` and `CRM_WORKER_SERVICE_TOKEN` are optional. When one is set, the call to that service carries it as `Authorization: Bearer <token>`; when it is not, nothing is attached, as before. Each service gets **only its own** token.
+- `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN` and `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` are optional. When one is set, the call to that service carries it as `Authorization: Bearer <token>`; when it is not, nothing is attached, as before. Each service gets **only its own** token.
 - A token is **sent only over `https`, or over `http` to this machine** (`localhost`, `127.0.0.1`, `::1`). To any other `http` address the call fails with a short reason, before anything is sent, and the bridge answers as for any upstream failure (`502`). The client follows no redirect, so the token goes to the address configured and nowhere else.
 - The token is **not logged, audited or returned**: the reason a call failed names neither it nor the address.
 - The token is the deployer's to obtain from their identity provider and to renew: it is read when the service starts, so a renewal is a restart. The service does not fetch, refresh or validate it.
@@ -1481,7 +1481,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a support agent, I want a customer's e-mailed answer to restart a waiting ticket by itself, so that I need not press "Customer replied" for every message.*
 
-- `POST /webhooks/inbound-email` (public, outside `/api`) takes `{"from", "subject"}` from a mail service the deployer has set to forward replies. It is **signed like `/webhooks/email`** (`X-CRM-Timestamp`, `X-CRM-Signature` over the body, `CRM_WEBHOOK_SECRET`): `401` when the signature is wrong or stale, `404` while no secret is set, `400` for a body that is not that shape. Any other member of the body (the text, the headers) is **not read and not kept**.
+- `POST /webhooks/inbound-email` (public, outside `/api`) takes `{"from", "subject"}` from a mail service the deployer has set to forward replies. It is **signed like `/webhooks/email`** (`X-CRM-Timestamp`, `X-CRM-Signature` over the body, `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET`): `401` when the signature is wrong or stale, `404` while no secret is set, `400` for a body that is not that shape. Any other member of the body (the text, the headers) is **not read and not kept**.
 - A ticket's **reference** is `T-` and the first eight hex digits of its pid (`T-0a1b2c3d`). It is given as `reference` by `GET /api/tickets/{pid}` and shown on the tickets page; a reply finds the ticket by the first `[T-xxxxxxxx]` in its subject, in any case and after any `Re:` or `Fwd:`.
 - The message resumes a ticket only if **all** hold: the subject names a reference; exactly one live ticket has it; the ticket has a contact; and the sender's mailbox (the part inside `<...>` when there is one, in lower case) **is the mailbox the person service gives for that contact** (CRM-R7), not an address the message names for itself. A ticket with no contact, or a contact with no known mailbox, is not resumed.
 - The answer is always `200` with a `result`, so a mail service does not retry what it was right to ignore: `resumed` (a `pending` ticket goes to `open` exactly as for CRM-R63, the clock running again; audited with `via: inbound_mail`, no address in it), `already_open`, `ignored` (a resolved or closed ticket: a reply does not reopen it), `no_reference`, `unknown_ticket`, `ambiguous_reference` or `unverified_sender`.
@@ -1523,7 +1523,7 @@ recipient would get before anything is sent, and be certain every message carrie
 *As a marketer, I want a contact who joins the organization to stop getting campaigns, and to be back where they were when they leave, so that we do not market to our own staff and do not lose a customer who once worked here.*
 
 - The worker service (WPM) posts its hire and leave events to `POST /api/bridges/wpm/events` (WPM-R151, WPM-R207). The body is `{id, kind, occurred_at, subject, data?}`; for `worker_hired`, `worker_terminated` and `worker_retired`, `data` holds `person_ref` (a `person:` URN), `organization_ref` (an `organization:` URN) and `effective_on` (a date), with `from` and `to` beside them for the endings, which are not read. Nothing else is read, and no name arrives.
-- **No session; a signature.** The route is outside the session check and is authenticated by `x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>`, with the secret in `CRM_WPM_WEBHOOK_SECRET` (32 characters or more, its own setting: the provider secret does not open it). The MAC is compared in constant time; a `t` more than five minutes from now either way is refused. Missing, wrong or stale: `401`. While the secret is unset the route answers `404`, as the other signed routes do. A body over 16 KiB is `413`; one that is not an event (no `id` or `kind`, or an `id` empty or over 100 characters) is `400`; a hire or leave whose `data` is there but malformed (a reference of the wrong kind, a date that is not `YYYY-MM-DD`) is `422`. WPM gives up on a `4xx`, so these are not retried.
+- **No session; a signature.** The route is outside the session check and is authenticated by `x-wpm-signature: t=<unix>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>`, with the secret in `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` (32 characters or more, its own setting: the provider secret does not open it). The MAC is compared in constant time; a `t` more than five minutes from now either way is refused. Missing, wrong or stale: `401`. While the secret is unset the route answers `404`, as the other signed routes do. A body over 16 KiB is `413`; one that is not an event (no `id` or `kind`, or an `id` empty or over 100 characters) is `400`; a hire or leave whose `data` is there but malformed (a reference of the wrong kind, a date that is not `YYYY-MM-DD`) is `422`. WPM gives up on a `4xx`, so these are not retried.
 - **Once per event.** The `id` is kept with the kind and what it did (`wpm_events`); the same `id` again answers `200` `duplicate` and changes nothing, however it is signed. WPM retries for at most about two days; the ids are pruned by the event-log horizon (30 days, never below 7; CRM-R81).
 - **What a hire does.** Every live contact whose `person_ref` is the event's is marked an employee of `organization_ref` (`contact_employments`: contact, person reference, organization reference, `since` = `effective_on`, the event id; nothing more). A second hire for the same contact and organization keeps the first record (`already_paused`). A person the CRM has no contact for is `no_contact` and **nothing is kept about them**.
 - **What it means.** While a contact has an employment, **no segment matches them** (the evaluator leaves them out, as it leaves out a contact without consent: CRM-D6), a campaign skips them with the reason "an employee, by the worker service: marketing paused", and a nurture enrolment is **held**, not exited: its step stays due and goes when the pause lifts. Their consent is not touched.
@@ -1552,14 +1552,14 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As an administrator, I want to ask the worker service which of our contacts work for us today, so that a contact who became a contact after their hire, or was hired before the events were wired, stops getting marketing too.*
 
-- `POST /api/bridges/wpm/employment-check` (no body; admin only, under `/api/bridges`) sends WPM's overlap check (WPM-R208) the **`person:` references of the live contacts**, each once, sorted, **at most 500 a call**: `POST {CRM_WORKER_SERVICE_URL}/api/bridges/overlap` with `{organization_ref, person_refs}`. **No name or other field is sent.** An erased contact's tombstone and anything that is not a `person:` URN are left out (WPM refuses a whole call for one).
-- The organization is **`CRM_WPM_ORGANIZATION_REF`** (an `organization:` URN; anything else is unset) and the credential **`CRM_WORKER_SERVICE_TOKEN`**, which the deployer obtains for an HR identity of that organization in WPM (CRM-R87's rules: `https` or this machine only, never logged). CRM-D16 says why not the caller's own token.
+- `POST /api/bridges/wpm/employment-check` (no body; admin only, under `/api/bridges`) sends WPM's overlap check (WPM-R208) the **`person:` references of the live contacts**, each once, sorted, **at most 500 a call**: `POST {CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL}/api/bridges/overlap` with `{organization_ref, person_refs}`. **No name or other field is sent.** An erased contact's tombstone and anything that is not a `person:` URN are left out (WPM refuses a whole call for one).
+- The organization is **`CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF`** (an `organization:` URN; anything else is unset) and the credential **`CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`**, which the deployer obtains for an HR identity of that organization in WPM (CRM-R87's rules: `https` or this machine only, never logged). CRM-D16 says why not the caller's own token.
 - WPM answers `{organization_ref, results: [{person_ref, worker}]}`. The answer is read strictly: another organization, an entry without a reference or a yes or no, a reference not asked about or answered twice is a bad answer. **Every call is answered before anything is written**; one failed call, refusal or bad answer is `502` and records nothing. An unset organization in `http` mode is `502` before anything is sent.
 - **A yes** marks every live contact carrying the reference an employee of the organization, the same row a hire event writes (CRM-R92), `since` the day of the check in the organization's time zone (CRM-T179), with the same effect (no segment, campaign or nurture step); audited on each contact as `employment_recorded` with `via: wpm`, `source: employment_check`, the organization and the check's id. A contact already marked is counted `already_paused`. A yes for a person whose **last applied event was a leave** (CRM-R93) is skipped and counted `left_by_event`.
 - **A no changes nothing.** In particular it **never ends an employment**, whether recorded from a hire event or by an earlier check; only a leave event does (CRM-D16).
 - The check writes no event order (`employment_last_events`); a later leave event ends an employment the check recorded, as it ends one from a hire.
 - The check itself is audited once (`employment_checked`, `via: wpm`) with the organization and the counts asked, batches, workers and recorded, never a reference. WPM audits each call by count too.
-- The answer: `{mode, organization_ref, asked, batches, workers, recorded, already_paused, left_by_event}`. **Stub-first**: without `CRM_UPSTREAM_MODE=http` nothing is sent and the answer says how many references would be asked in how many calls.
+- The answer: `{mode, organization_ref, asked, batches, workers, recorded, already_paused, left_by_event}`. **Stub-first**: without `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http` nothing is sent and the answer says how many references would be asked in how many calls.
 - The `/quotas` page, beside the teams import, has a button to run it and says how many contacts were marked (or, in the tour, how many would be asked about).
 - WPM's contract was read from its source on 2026-10-30 (`controllers/bridges.rs`, `rules/bridge.rs`); it is exercised against a stand-in that answers only an HR bearer token, **not a running WPM**.
 - Not built: running it on a schedule or after a contact is created; asking about one contact; ending an employment on a no; more than one organization. Not planned: the caller's own token (WPM-D135); one deployer-held HR token is the accepted design (CRM-D16, confirmed by the product owner 2026-10-31).
@@ -1712,7 +1712,7 @@ fields, inside the database, with keys we can hold.*
   employment marks) sealed with AES-256-GCM; audit snapshots and the event outbox no longer hold them in plain.
 - Keys can be held in the customer's or the cloud's key management service, so that destroying a key erases what it
   sealed (CRM-R109).
-- There today: two sealed columns with local keys and rotation (CRM-T41), `CRM_REQUIRE_FIELD_ENCRYPTION`. Not built: the
+- There today: two sealed columns with local keys and rotation (CRM-T41), `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION`. Not built: the
   Redis check; the other columns; snapshots and outbox; file attachments; a KMS; a TLS minimum version check on outgoing connections.
 
 ## CRM-R103 — Supervised, time-limited support access
@@ -1757,7 +1757,7 @@ exported which sensitive record, so that we can watch the system and investigate
   multi-customer mode, and the operations runbook says so.
 - The service refuses to start against a database that names another deployment (a deployment id written at first start
   and checked at each start), so a configuration mistake cannot join two customers.
-- Built 2026-11-20 (CRM-T282, design CRM-D26): `CRM_DEPLOYMENT_ID` and the one-row `deployment` table, which refuses an update or a
+- Built 2026-11-20 (CRM-T282, design CRM-D26): `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` and the one-row `deployment` table, which refuses an update or a
   delete. The first `start` with the setting writes it; a later `start` with another name is refused, and so is one
   with no name against a database that has one. With neither, the start goes ahead and logs a warning. The runbook
   says there is no shared mode.
@@ -1814,7 +1814,7 @@ copies erased, with a certificate, so that leaving does not depend on the suppli
   with a manifest of counts and hashes, decrypted for the customer and encrypted to a key the customer gives.
 - Erasure after export is by destroying the deployment's keys (CRM-R102) and its database, store and backups; the runbook
   gives the steps and a certificate template naming what was destroyed and when.
-- Retention rules can be set per class from the customer's schedule (CRM-R74), not only one `CRM_RETENTION_DAYS`.
+- Retention rules can be set per class from the customer's schedule (CRM-R74), not only one `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`.
 - There today: subject-access export for one contact; the retention sweep with one horizon. Not built: the whole export;
   key destruction; the certificate; retention per class.
 

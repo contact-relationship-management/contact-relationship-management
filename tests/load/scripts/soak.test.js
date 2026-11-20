@@ -4,7 +4,7 @@
  * also compares the first and last tenth and probes health on its own, use
  * tests/long-running/, which is built for that.
  *
- * Environment: TEST_URL, CRM_AUTH_TOKEN, and
+ * Environment: TEST_URL, CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN, and
  *   VUS       virtual users       default 10
  *   DURATION  steady duration     default 2h
  */

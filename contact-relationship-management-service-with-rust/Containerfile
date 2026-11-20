@@ -24,7 +24,7 @@ COPY --from=build /src/target/release/contact-relationship-management /app/crm-s
 COPY --from=build /src/config /app/config
 WORKDIR /app
 ENV APP_ENV=production \
-    CRM_REQUIRE_AUTH=1 \
+    CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1 \
     PORT=1241
 USER nonroot:nonroot
 EXPOSE 1241

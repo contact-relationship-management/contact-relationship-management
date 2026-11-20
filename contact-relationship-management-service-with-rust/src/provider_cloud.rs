@@ -340,9 +340,9 @@ pub fn azure_headers(
     body: &[u8],
     now: crate::time::Timestamp,
 ) -> Result<Vec<(String, String)>, String> {
-    let key = STANDARD
-        .decode(access_key)
-        .map_err(|_| "CRM_AZURE_ACCESS_KEY is not base64".to_string())?;
+    let key = STANDARD.decode(access_key).map_err(|_| {
+        "CONTACT_RELATIONSHIP_MANAGEMENT_AZURE_ACCESS_KEY is not base64".to_string()
+    })?;
     let date = now.strftime_utc("%a, %d %b %Y %H:%M:%S GMT").to_string();
     let content_hash = STANDARD.encode(Sha256::digest(body));
     let to_sign = format!("POST\n{path_and_query}\n{date};{host};{content_hash}");

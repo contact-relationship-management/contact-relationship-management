@@ -63,10 +63,10 @@ contact() { body "${ADMIN}" POST /api/contacts "{\"person_ref\":\"$(person)\",\"
 # DB_ALLOW_INSECURE: Postgres here is another container on a private test network, without TLS.
 common_env=(
   -e "DB_URL=postgres://loco:loco@${PG}:5432/crm" -e DB_ALLOW_INSECURE=true -e JWT_SECRET=smoke-test-secret-not-a-secret
-  -e "CRM_REDIS_URL=redis://${RD}:6379" -e CRM_REQUIRE_AUTH=1 -e "CRM_PASETO_KEYS=${KEYS_JSON}"
-  -e CRM_ABAC_POLICY_FILE=/app/config/abac-policy.reference.json -e CRM_EVENT_TRANSPORT=outbox
-  -e "CRM_FIELD_KEYS=k1:$(head -c 32 /dev/zero | tr '\0' 'a' | base64)" -e CRM_REQUIRE_FIELD_ENCRYPTION=1
-  -e "CRM_CURSOR_SECRET=$(head -c 32 /dev/zero | tr '\0' 'c')"
+  -e "CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL=redis://${RD}:6379" -e CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1 -e "CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS=${KEYS_JSON}"
+  -e CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE=/app/config/abac-policy.reference.json -e CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT=outbox
+  -e "CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS=k1:$(head -c 32 /dev/zero | tr '\0' 'a' | base64)" -e CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION=1
+  -e "CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET=$(head -c 32 /dev/zero | tr '\0' 'c')"
 )
 hardened=(--read-only --tmpfs /tmp --cap-drop all --security-opt no-new-privileges --memory 768m --cpus 2 --network "${NET}")
 run_image() { # NAME EXTRA-RUN-ARGS... -- IMAGE-ARGS...
@@ -128,9 +128,9 @@ check "and the service still answers" serves
 podman rm -f "${SVC}" "${WRK}" >/dev/null 2>&1
 
 say "phase 2: a campaign send needs the worker (development mode, Mailpit)"
-mail_env=(-e APP_ENV=development -e CRM_MAIL_MODE=smtp -e "CRM_SMTP_HOST=${MAIL}" -e CRM_SMTP_PORT=1025 -e CRM_SMTP_TLS=none
-  -e CRM_MAIL_FROM=crm@example.test -e CRM_MAIL_DEV_DOMAIN=example.test
-  -e CRM_UNSUBSCRIBE_SECRET=smoke-unsubscribe-secret-0123456789abcdef -e CRM_PUBLIC_URL=https://crm.example.test)
+mail_env=(-e APP_ENV=development -e CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp -e "CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST=${MAIL}" -e CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT=1025 -e CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS=none
+  -e CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM=crm@example.test -e CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_DEV_DOMAIN=example.test
+  -e CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET=smoke-unsubscribe-secret-0123456789abcdef -e CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL=https://crm.example.test)
 # development binds to localhost; the container needs every interface
 run_image "${SVC}" -p "${PORT}:1241" "${mail_env[@]}" -- --binding 0.0.0.0
 check "the service starts in development mode with SMTP" wait_for 60 serves

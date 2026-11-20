@@ -1,20 +1,28 @@
-// Pins the BFF proxy's upstream URL: the default `CRM_API_URL` reaches the
+// Pins the BFF proxy's upstream URL: the default `CONTACT_RELATIONSHIP_MANAGEMENT_API_URL` reaches the
 // service's `/api` routes, and a trailing slash does not double up.
 
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_CRM_API_URL,
+  DEFAULT_CONTACT_RELATIONSHIP_MANAGEMENT_API_URL,
   crmApiBase,
   upstreamUrl,
 } from "../../src/lib/server/api-url";
 
 describe("crmApiBase", () => {
   it("defaults to the service's /api path when unset or blank", () => {
-    expect(DEFAULT_CRM_API_URL).toBe("http://localhost:1241/api");
-    expect(crmApiBase(undefined)).toBe(DEFAULT_CRM_API_URL);
-    expect(crmApiBase("")).toBe(DEFAULT_CRM_API_URL);
-    expect(crmApiBase("  ")).toBe(DEFAULT_CRM_API_URL);
+    expect(DEFAULT_CONTACT_RELATIONSHIP_MANAGEMENT_API_URL).toBe(
+      "http://localhost:1241/api",
+    );
+    expect(crmApiBase(undefined)).toBe(
+      DEFAULT_CONTACT_RELATIONSHIP_MANAGEMENT_API_URL,
+    );
+    expect(crmApiBase("")).toBe(
+      DEFAULT_CONTACT_RELATIONSHIP_MANAGEMENT_API_URL,
+    );
+    expect(crmApiBase("  ")).toBe(
+      DEFAULT_CONTACT_RELATIONSHIP_MANAGEMENT_API_URL,
+    );
   });
 
   it("keeps a set value, dropping trailing slashes only", () => {

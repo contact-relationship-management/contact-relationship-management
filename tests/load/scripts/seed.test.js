@@ -4,7 +4,7 @@
  * table. Each iteration makes one contact with an activity and tags, and, in proportion, an
  * account, a lead, a deal and a ticket. It is a setup step with loose limits, not a test of speed.
  *
- * Environment: TEST_URL, CRM_AUTH_TOKEN, and
+ * Environment: TEST_URL, CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN, and
  *   SEED  contacts to make            default 1000
  *   VUS   users making them at once   default 5
  */

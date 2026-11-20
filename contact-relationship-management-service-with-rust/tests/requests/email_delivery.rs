@@ -955,11 +955,20 @@ async fn a_worker_only_process_sets_up_the_real_sender() {
     mail::set(Sender::Simulated);
     unsubscribe::install(None);
     let settings = [
-        ("CRM_MAIL_MODE", "smtp"),
-        ("CRM_SMTP_HOST", "mail.example.test"),
-        ("CRM_MAIL_FROM", "CRM <crm@example.test>"),
-        ("CRM_UNSUBSCRIBE_SECRET", SECRET),
-        ("CRM_PUBLIC_URL", "https://crm.example.org"),
+        ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "smtp"),
+        (
+            "CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST",
+            "mail.example.test",
+        ),
+        (
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM",
+            "CRM <crm@example.test>",
+        ),
+        ("CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET", SECRET),
+        (
+            "CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL",
+            "https://crm.example.org",
+        ),
     ];
     // SAFETY: `#[serial]` keeps every other test in this binary from reading the environment.
     for (k, v) in settings {

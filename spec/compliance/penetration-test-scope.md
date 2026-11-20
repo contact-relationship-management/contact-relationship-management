@@ -20,7 +20,7 @@ ISO 27001) and a formal risk analysis are separate work for the adopter; see
 ## Run against a copy, never production
 
 Use a disposable deployment with synthetic data. Start the service in
-production mode (`CRM_REQUIRE_AUTH=1`, which the service requires, and the
+production mode (`CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1`, which the service requires, and the
 `production.yaml` settings) so the tester sees what an adopter would. Mail
 stays simulated unless the adopter sets a vendor.
 

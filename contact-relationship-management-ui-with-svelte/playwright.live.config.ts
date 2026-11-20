@@ -3,7 +3,9 @@ import { defineConfig, devices } from "@playwright/test";
 // Live tests drive the UI against a RUNNING service (not the tour's fictitious
 // data). Start the service on port 5160 first, then `pnpm test:live`. They
 // create their own records and leave them behind; use a development database.
-const API = process.env.CRM_API_URL ?? "http://localhost:5160";
+const API =
+  process.env.CONTACT_RELATIONSHIP_MANAGEMENT_API_URL ??
+  "http://localhost:5160";
 export default defineConfig({
   testDir: "tests/live",
   timeout: 60_000,
@@ -16,6 +18,10 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 180_000,
     // The BFF proxy appends the client path (`/tickets`) to this base, so it ends in `/api`.
-    env: { CRM_API_URL: `${API}/api`, AUTH_API_URL: API, CRM_DEMO_TOUR: "off" },
+    env: {
+      CONTACT_RELATIONSHIP_MANAGEMENT_API_URL: `${API}/api`,
+      AUTH_API_URL: API,
+      CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR: "off",
+    },
   },
 });

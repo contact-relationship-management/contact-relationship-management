@@ -1,5 +1,5 @@
 //! A database belongs to one deployment (CRM-R105, CRM-T282): the first start with
-//! `CRM_DEPLOYMENT_ID` claims it, a start with another name or none is refused after, and the
+//! `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` claims it, a start with another name or none is refused after, and the
 //! claimed name cannot be changed or removed.
 
 use axa_test::prelude::*;

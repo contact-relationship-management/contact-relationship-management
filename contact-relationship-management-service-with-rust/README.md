@@ -94,24 +94,24 @@ input and is stored as `person:<id>`.
 
 ## Configuration
 
-- **Auth** enforcement is **off** by default. `CRM_REQUIRE_AUTH` is the
+- **Auth** enforcement is **off** by default. `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` is the
   family activation gate. The optional `keycloak` cargo feature also
-  accepts Keycloak access tokens, configured by `CRM_KEYCLOAK_URL`,
-  `CRM_KEYCLOAK_REALM`, `CRM_KEYCLOAK_AUDIENCES` and
-  `CRM_KEYCLOAK_ROLE_MAP` or `CRM_KEYCLOAK_ROLE_MAP_FILE`.
+  accepts Keycloak access tokens, configured by `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_URL`,
+  `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_REALM`, `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_AUDIENCES` and
+  `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_ROLE_MAP` or `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_ROLE_MAP_FILE`.
 - **Upstream** lookups and the outbound bridges are in **stub mode**
-  unless `CRM_UPSTREAM_MODE=http`.
+  unless `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`.
 - **Events** use the in-memory transport unless
-  `CRM_EVENT_TRANSPORT=outbox`.
-- **List cursors** are signed with `CRM_CURSOR_SECRET` (32 bytes or more,
+  `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT=outbox`.
+- **List cursors** are signed with `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET` (32 bytes or more,
   the same on every replica), which production requires. Elsewhere, unset,
   each process makes its own key.
-- **Deployment name:** `CRM_DEPLOYMENT_ID` (1 to 64 letters, digits, `.`, `_`, `-`). The first start
+- **Deployment name:** `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` (1 to 64 letters, digits, `.`, `_`, `-`). The first start
   with it writes it to the database; a later start with another name, or with none, is refused
   (CRM-R105). Unset against a database that has no name, the start goes ahead and logs a warning.
-- **Email** is simulated unless `CRM_MAIL_MODE` says otherwise; see
+- **Email** is simulated unless `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE` says otherwise; see
   [INSTALL.md](../INSTALL.md#sending-email).
-- **Bridges:** `CRM_PPM_SERVICE_URL`, `CRM_PPM_SERVICE_TOKEN`,
-  `CRM_WORKER_SERVICE_URL`, `CRM_WORKER_SERVICE_TOKEN`,
-  `CRM_WPM_ORGANIZATION_REF` and `CRM_WPM_WEBHOOK_SECRET`; see
+- **Bridges:** `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN`,
+  `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`,
+  `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` and `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET`; see
   [INSTALL.md](../INSTALL.md#family-bridges).

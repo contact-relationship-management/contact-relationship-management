@@ -11,27 +11,27 @@ Commands assume the container images from the repository's `Containerfile`s.
    do not expose either over plain HTTP.
 3. Put the service on a private network. Only the UI/BFF and operators reach
    it; browsers never do (the BFF keeps tokens out of JavaScript).
-4. Set `APP_ENV=production` and `CRM_REQUIRE_AUTH=1`. The service refuses to
-   start in production otherwise (`CRM_ALLOW_INSECURE=1` overrides and logs an
-   error; do not use it). Set `CRM_CURSOR_SECRET`, 32 bytes or more and the same
+4. Set `APP_ENV=production` and `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1`. The service refuses to
+   start in production otherwise (`CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE=1` overrides and logs an
+   error; do not use it). Set `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET`, 32 bytes or more and the same
    on every replica: it signs the list cursors, and production refuses to start
    without it. Changing it makes every `Link: rel="next"` already handed out
-   answer `422`, so a client starts its list again. Set `CRM_DEPLOYMENT_ID` to a
+   answer `422`, so a client starts its list again. Set `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` to a
    name for this customer's deployment, the same on every replica. The first start
    writes it to the database and every later start compares, so a `DB_URL` that
    points at another customer's database stops the start (CRM-R105). The name cannot
    be changed once written. The software has no shared multi-customer mode: give each
    customer its own database, file store, Redis and keys.
-5. Mount an ABAC policy (`CRM_ABAC_POLICY_FILE`) derived from
+5. Mount an ABAC policy (`CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE`) derived from
    `config/abac-policy.reference.json` and run
    `cargo test --test enforcement -- --ignored` against it in staging.
-6. Configure token verification (`CRM_PASETO_KEYS_URL` or Keycloak settings).
+6. Configure token verification (`CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL` or Keycloak settings).
    See "OAuth 2.0 in front of the service" below.
 7. Restrict `/metrics.prom` and `/api-docs/*` at the ingress to the monitoring
    network; both are public inside the service.
-8. Abuse limits are on by default in production (`CRM_RATE_LIMIT_PER_MIN`,
-   `CRM_AUTH_FAIL_LIMIT`, `CRM_AUTH_FAIL_WINDOW_SECS`; `0` disables). With
-   `CRM_REDIS_URL` set the counters are shared across replicas through Redis (a
+8. Abuse limits are on by default in production (`CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN`,
+   `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT`, `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_WINDOW_SECS`; `0` disables). With
+   `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL` set the counters are shared across replicas through Redis (a
    Redis error falls back to per-replica counters); production requires that
    variable because replicas share the response cache there, so also limit at the ingress anyway.
    A caller whose token verifies is counted by its subject, and any other by its address. Behind
@@ -40,13 +40,13 @@ Commands assume the container images from the repository's `Containerfile`s.
    Each listed proxy must append to `X-Forwarded-For`: the service believes the header from the
    right, and only as far as the proxies on this list. A bad entry trusts none. The UI's BFF does
    not append, so list it only if something in front of it does the appending for it.
-   `CRM_TRUST_FORWARDED_FOR` is no longer read, and a start with it set logs a warning.
+   `CONTACT_RELATIONSHIP_MANAGEMENT_TRUST_FORWARDED_FOR` is no longer read, and a start with it set logs a warning.
    `LOCKOUT_CLIENT_ADDRESS_AFTER_COUNT=N` adds axa's lockout by address (CRM-T224): after N
    `401`s from one address in the window above, that address answers `429` until the window ends,
    signed-in callers at it included. It is off unless set, counts in each replica on its own, and
    behind the BFF one address is every browser, so set it there only knowing a few made-up tokens
    would lock everyone out for the window. A value that is not a whole number stops the start.
-9. Set `CRM_CORS_ORIGIN` only if a browser must call the service directly.
+9. Set `CONTACT_RELATIONSHIP_MANAGEMENT_CORS_ORIGIN` only if a browser must call the service directly.
    Keep the hosts' clocks and the database's in sync (NTP). Record times follow the
    database's clock (CRM-T221), measured again every minute, and a host more than a second
    off logs `this host's clock is off from the database's`. Signed webhook and bridge
@@ -62,7 +62,7 @@ Commands assume the container images from the repository's `Containerfile`s.
     From the image: `podman run --rm --entrypoint /app/crm-service <env> <image> db migrate`
     (the image's entrypoint is `start`, so `db migrate` needs the override). The
     production config refuses to load without `DB_URL` and
-    `CRM_REDIS_URL`, and refuses a `DB_URL` that could go in the clear: set
+    `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`, and refuses a `DB_URL` that could go in the clear: set
     `sslmode` to `require`, `verify-ca` or `verify-full`, or `DB_ALLOW_INSECURE=true`
     on a network that encrypts its own traffic. A loopback address or a socket is
     exempt (images up to v0.1.5 also require `JWT_SECRET`, which
@@ -88,9 +88,9 @@ Commands assume the container images from the repository's `Containerfile`s.
   with DML only, a separate migration role.
 - **Encryption at rest:** use an encrypted volume or managed-database
   encryption with a customer-managed key. The application also encrypts the
-  contact channel and activity text (CRM-T41): set `CRM_FIELD_KEYS`
-  (`id:base64,...`, 32-byte keys, first is active) or `CRM_FIELD_KEYS_FILE`
-  from your secret manager, and `CRM_REQUIRE_FIELD_ENCRYPTION=1` so a missing
+  contact channel and activity text (CRM-T41): set `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS`
+  (`id:base64,...`, 32-byte keys, first is active) or `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE`
+  from your secret manager, and `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION=1` so a missing
   key stops the service instead of storing plaintext. Back up the keys
   separately from the database: losing them makes the data unreadable.
   Audit snapshots and the event outbox may hold copies and are not encrypted.
@@ -136,7 +136,7 @@ table owner, so keep the owner role out of day-to-day use.
 
 ### Rotating the field keys
 
-1. Add a new key **first** in `CRM_FIELD_KEYS`, keeping the old one after it.
+1. Add a new key **first** in `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS`, keeping the old one after it.
 2. Roll the service so every replica has both.
 3. Run `cargo run -- task rotate_field_keys` (idempotent; it also seals any
    legacy plaintext) and confirm it reports zero on a second run.
@@ -279,7 +279,7 @@ are public from v0.2.0, so a pull needs no login.
 The UI image has its own check, `scripts/ui-image-smoke.sh` (hardened flags, headers, tour off and on); it passed 23 of 23
 on the pulled v0.1.5 UI image, and 23 of 23 on the pulled v0.2.0 UI image (arm64, no login).
 Those releases predate CRM-T92's safer default; current source keeps the guided tour off unless the
-operator explicitly sets `CRM_DEMO_TOUR=on` (INSTALL.md).
+operator explicitly sets `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on` (INSTALL.md).
 
 ### Migrating a database that holds data
 
@@ -312,8 +312,8 @@ issuer, audience and expiry (`401` otherwise), then the scope and policy.
   client credentials (or token exchange to act for a user) and sends it as
   `Authorization: Bearer`.
 - **Which tokens:** Keycloak access tokens (the shipped image is built with the
-  `keycloak` feature; set `CRM_KEYCLOAK_*`) or PASETO v4.public tokens
-  (`CRM_PASETO_KEYS_URL`). Another OAuth 2.0 provider is not supported unless it
+  `keycloak` feature; set `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_*`) or PASETO v4.public tokens
+  (`CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL`). Another OAuth 2.0 provider is not supported unless it
   issues one of those.
 - **Lifetime:** the identity provider sets it. Keep access tokens short (minutes)
   and rotate signing keys; the PASETO key set is refreshed from its URL.
