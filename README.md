@@ -40,7 +40,7 @@ no service needed.
 
 [contact-relationship-management.github.io/](contact-relationship-management.github.io/README.md)
 is a static site of this README, INSTALL, the family-bridges tutorial, the
-specification index, the locale status and the role briefs in all 11 locales
+specification index, the locale status and the role briefs in all 16 locales
 (Arabic right to left), with a landing page, a tutorial and comparison pages,
 published at <https://contact-relationship-management.github.io/>. It is built and tested here
 (`scripts/ci-check.sh site`) and exported to the read-only repository

@@ -50,8 +50,8 @@ async function axe(page: Page): Promise<string[]> {
 
 test("every page is built and answers 200", async ({ request }) => {
   const all = [...docRoutes, ...indexRoutes, ...briefRoutes, ...productionRoutes, ...privacyRoutes];
-  expect(BRIEF_LOCALES.length).toBe(11);
-  expect(BRIEFS.length).toBe(11 * 11);
+  expect(BRIEF_LOCALES.length).toBe(16);
+  expect(BRIEFS.length).toBe(16 * 11);
   for (const route of all) {
     const res = await request.get(encodeURI(route));
     expect(res.status(), route).toBe(200);
@@ -293,7 +293,7 @@ test("the path to production shows each readiness estimate as a disabled Lily sl
   const percents = async () =>
     page.locator('[data-testid="readiness"] input[type="range"]').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
   const english = await percents();
-  expect(PRODUCTION_LOCALES.length).toBe(11);
+  expect(PRODUCTION_LOCALES.length).toBe(16);
   for (const locale of PRODUCTION_LOCALES) {
     await page.goto(`/${locale}/path-to-production/`);
     expect(await percents(), locale).toEqual(english);

@@ -2647,3 +2647,11 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       `init`'s warning that mail goes over SMTP, which reads the process environment.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
+- [x] CRM-T293 **The site's locale counts follow the five new locales.** `5039bb0` added `zh-th`, `hi-np`, `cy-ar`,
+      `ar-eg` and `ar-dz` (each with 11 briefs, a path-to-production page and a privacy notice) and left the site's
+      tests expecting 11 locales, so `site` failed on `main` from then on. Asked for by the product owner on 2026-11-20
+      ("update"). The tests now expect 16 locales and 16 × 11 briefs; the README, the site's README, the site spec and
+      CRM-R97 say 16. (S)
+      - **Ran:** `scripts/ci-check.sh site` (307 passed).
+      - **Not done / not verified:** the five new locales are sibling-copy drafts, as their commit says; none is
+      reviewed, and this change says nothing about their wording.
