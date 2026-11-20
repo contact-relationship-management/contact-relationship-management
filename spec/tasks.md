@@ -2491,3 +2491,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Ran:** `scripts/ci-check.sh fmt`, `clippy` and `test`, all passing.
       - **Not done / not verified:** `test-db` was not run, as the Podman VM would not start ("unknown machine state"),
       so the campaign-run tests in `tests/requests/marketing.rs` did not exercise the moved code here; CI runs them.
+- [x] CRM-T287 **lettre 0.11.24.** `cargo audit` failed `supply-chain` on `main` with six lettre 0.11.23 advisories
+      (RUSTSEC-2026-0560 to 0565: STARTTLS reply injection, SMTP command injection by a bare LF or CR, mail for a
+      quoted local part sent to another address, unbounded reply buffering, and two panics). 0.11.24 fixes all six; it
+      was published 2026-11-17, past the two-day minimum publish age, so no exception was needed. (S)
+      - **Ran:** `scripts/ci-check.sh supply-chain`, `clippy` and `test`, all passing.
+      - **Not done / not verified:** no mail was sent through a real SMTP server; `test-db` was not run (the Podman VM
+      would not start), nor the UI's unit tests, which vitest cannot find from a worktree under `.git/`.
