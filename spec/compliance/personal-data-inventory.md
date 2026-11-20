@@ -84,6 +84,7 @@ A database the `SeaORM` migrations built before CRM-T229 also keeps their `seaql
 | `deal_deliveries` | Deal pid, the idea's id in PPM, who opened it | Reps | `manual` | Not applicable |
 | `deal_splits` | The sellers' `person:` references (CRM-D18) and shares | Reps | `manual` | Not applicable |
 | `deals` | Name (may name a customer), amount, owner reference, primary contact pid, lost reason (free text) | Contacts, reps | `swept` | Kept: revenue records, keyed to a pid that no longer identifies anyone |
+| `deployment` | None: the deployment's name (`CRM_DEPLOYMENT_ID`) and when it was first written (CRM-R105) | — | `evidence` | Not applicable; the row cannot be changed or deleted, only a database owner's `TRUNCATE` removes it |
 | `email_deliveries` | Contact pid, message id, provider id, send state and error text, the basis the message was sent on (CRM-T166) | Contacts | `aged` | Kept |
 | `email_events` | Message id and the provider event (delivered, bounced, opened, clicked) | Contacts, through the message id | `aged` | Kept |
 | `email_suppressions` | Contact pid and the reason a mailbox is suppressed | Contacts | `manual` | Kept: a suppression must survive |

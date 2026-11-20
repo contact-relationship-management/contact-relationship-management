@@ -16,7 +16,12 @@ Commands assume the container images from the repository's `Containerfile`s.
    error; do not use it). Set `CRM_CURSOR_SECRET`, 32 bytes or more and the same
    on every replica: it signs the list cursors, and production refuses to start
    without it. Changing it makes every `Link: rel="next"` already handed out
-   answer `422`, so a client starts its list again.
+   answer `422`, so a client starts its list again. Set `CRM_DEPLOYMENT_ID` to a
+   name for this customer's deployment, the same on every replica. The first start
+   writes it to the database and every later start compares, so a `DB_URL` that
+   points at another customer's database stops the start (CRM-R105). The name cannot
+   be changed once written. The software has no shared multi-customer mode: give each
+   customer its own database, file store, Redis and keys.
 5. Mount an ABAC policy (`CRM_ABAC_POLICY_FILE`) derived from
    `config/abac-policy.reference.json` and run
    `cargo test --test enforcement -- --ignored` against it in staging.

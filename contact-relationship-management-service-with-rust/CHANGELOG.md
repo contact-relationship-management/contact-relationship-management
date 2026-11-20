@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a database belongs to one deployment (CRM-T282)
+
+- `CRM_DEPLOYMENT_ID` names the deployment. The first `start` with it writes it to a new one-row
+  `deployment` table (migration `20261120000000`), which refuses any change or delete; every later
+  `start` compares, and a different name, or none against a database that has one, stops the start.
+  With neither, the start goes ahead and logs a warning. Not required in production yet.
+
 ### Changed — send-time consent evidence (CRM-T166)
 
 - Campaign and nurture sends resolve the stored jurisdiction profile immediately before delivery and

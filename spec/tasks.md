@@ -2480,8 +2480,26 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
 - [ ] CRM-T281 **Read audit everywhere, and streaming to a SIEM (CRM-R104).** Read audit of deals, accounts, insights,
       reports and exports with source address; a stated JSON-lines schema over syslog/TLS or HTTPS with a cursor;
       retention of the trail by the customer's schedule. (L)
-- [ ] CRM-T282 **A deployment id checked at start (CRM-R105).** Written at first start, refused on mismatch; runbook text
+- [x] CRM-T282 **A deployment id checked at start (CRM-R105).** Written at first start, refused on mismatch; runbook text
       that there is no shared mode. (S)
+      - **Built (2026-11-20):** `src/deployment.rs` and migration `20261120000000_deployment.sql`: a one-row `deployment`
+      table (the name, checked by the same pattern as the code, and when it was written) whose trigger refuses an
+      update or a delete. `start` reads `CRM_DEPLOYMENT_ID` after migrating and refuses a different name, or no name
+      against a claimed database; two replicas claiming at once both compare against the row the first one wrote.
+      The runbook, the README, the control mapping and the assurance pack say so.
+      - **Changed:** `schema::a_database_the_history_built_takes_the_baseline_without_running_it` assumed the baseline
+      was the only migration (nothing ran, the catalog did not change). It now checks that the baseline is recorded and
+      not run, every later migration is run, and the adopted database ends with the same catalog as one built from
+      nothing, which is stricter than before.
+      - **Ran:** `fmt`, `clippy`; 7 unit tests of the decision; `tests/requests/deployment.rs` (2) and the inventory
+      census, with the rest of `test-db`, against PostgreSQL 18 and Redis 8 started with `podman run` (as
+      `podman compose` cannot find the machine connection here): all passed, but for one boot that failed to connect
+      ("unexpected response from SSLRequest") in `lead_assignment`, whose four tests then passed three runs out of three.
+      Through the built binary: `start` with `customer-a` claimed the database and served; `start` with `customer-b`,
+      and with no name, each exited 1 with its reason, and the row still held `customer-a`.
+      - **Not done / not verified:** the setting is not required in production (an owner's decision: it would stop every
+      deployment that has not set it); `db` commands and tasks do not check it; no way to rename a deployment but a
+      database owner's `TRUNCATE`; the image was not rebuilt and run.
 - [ ] CRM-T283 **Declared outside hosts and the residency read (CRM-R106).** Refuse and audit a call to an undeclared
       host; `GET /api/operations/residency`. (M)
 - [ ] CRM-T284 **Upstream patch targets with evidence (CRM-R107).** Extend SECURITY.md's targets to dependencies and base

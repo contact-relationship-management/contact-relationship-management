@@ -14,6 +14,7 @@ mod consent_profiles;
 mod consent_purposes;
 mod currencies;
 mod custom_fields;
+mod deployment;
 mod duplicates;
 mod email_delivery;
 mod email_templates;

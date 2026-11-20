@@ -341,6 +341,15 @@ impl App {
         }
         match cli.command {
             Command::Start { .. } => {
+                // CRM-R105: refuse a database that belongs to another deployment.
+                let configured = crate::deployment::configured();
+                if let Some(note) =
+                    crate::deployment::check(crate::db::pool(&ctx), configured.as_deref())
+                        .await
+                        .map_err(|e| Error::string(&e))?
+                {
+                    tracing::warn!("{note}");
+                }
                 queue::warn_if_unserved(&ctx, jobs);
                 let router = if serve {
                     Some(Self::router(&ctx).await?)
