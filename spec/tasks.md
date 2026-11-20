@@ -2502,6 +2502,9 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       tarpaulin to `cargo llvm-cov` and changed Woodpecker's install, but GitHub's job still installed
       `cargo-tarpaulin@0.37.6`, so `coverage` failed on `main` with "no such command: `llvm-cov`". It now adds
       `llvm-tools-preview` and installs `cargo-llvm-cov@0.9.1`, the version on this machine. (S)
-      - **Ran:** `scripts/ci-check.sh pins` and `lint`.
+      - **Found on the hosted run:** the matcher's half then failed with "failed to download `cc v1.11.2`": it runs
+      `cargo llvm-cov --offline` and nothing had fetched the matcher's own lockfile (the service's half is fetched by
+      its `db migrate` build). The stage now runs `cargo fetch --locked` in the matcher first.
+      - **Ran:** `scripts/ci-check.sh pins`, `lint` and `scripts`; the matcher's half of the stage on this machine.
       - **Not done / not verified:** the stage itself was not run here (it needs PostgreSQL and Redis, and the Podman VM
       would not start); whether the 95% floor holds in CI is seen only on the hosted run.

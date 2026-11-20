@@ -120,6 +120,7 @@ case "${stage}" in
     # CRM-T273: the independently versioned matcher has its own complete line census.
     (cd "${MATCHER}" \
       && export RUSTC_WRAPPER='' CARGO_BUILD_RUSTC_WRAPPER='' \
+      && cargo fetch --locked \
       && cargo llvm-cov clean --workspace \
       && cargo llvm-cov --offline --workspace --all-targets \
         --summary-only --fail-under-lines 95)
