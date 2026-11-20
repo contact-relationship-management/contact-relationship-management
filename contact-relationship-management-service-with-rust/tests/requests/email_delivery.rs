@@ -1292,3 +1292,68 @@ async fn a_nurture_send_is_sent_held_or_ended_by_what_it_meets() {
     })
     .await;
 }
+
+/// The generic mail-event webhook's refusals (CRM-T39): no secret configured, a body that is not an
+/// event, an event it does not know; an unknown provider; and engagement on a message that is not
+/// ours (reported as unknown) or whose contact is gone (ignored, so nobody gone is profiled).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_mail_event_is_refused_when_it_cannot_be_trusted_or_read() {
+    request::<App, _, _>(|request, ctx| async move {
+        let signed = |body: String| {
+            let request = &request;
+            async move {
+                let timestamp = jiff::Timestamp::now().as_second().to_string();
+                let signature = webhook::sign(WEBHOOK_SECRET, &timestamp, body.as_bytes());
+                request
+                    .post("/webhooks/email")
+                    .add_header("x-crm-timestamp", timestamp)
+                    .add_header("x-crm-signature", signature)
+                    .add_header("content-type", "application/json")
+                    .bytes(body.into())
+                    .await
+            }
+        };
+        // No secret: the webhook is not there.
+        settings::update(|s| s.webhook_secret = None);
+        assert_eq!(signed("{}".into()).await.status_code(), 404);
+
+        settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));
+        assert_eq!(signed("not json".into()).await.status_code(), 400);
+        let unknown_kind = json!({ "message_id": "<m@x>", "event": "exploded" }).to_string();
+        assert_eq!(signed(unknown_kind).await.status_code(), 400);
+        request
+            .post("/webhooks/email/carrier-pigeon")
+            .json(&json!({}))
+            .await
+            .assert_status_not_found();
+
+        // An open of a message we never sent is reported as unknown.
+        let stranger =
+            json!({ "message_id": "<never@crm.invalid>", "event": "opened" }).to_string();
+        let answer: Value = signed(stranger).await.json();
+        assert_eq!(answer["result"], "unknown_message");
+
+        // An open of a message to a contact who is gone is ignored.
+        let (recorder, _restore) = recording();
+        let gone = seed_contact!(&request, "Gone Person").await;
+        give_address!(&request, gone, "gone@example.test");
+        let campaign = scheduled_campaign!(&request, Some("Hello"));
+        request
+            .post(&format!("/api/campaigns/{campaign}/run"))
+            .await
+            .assert_status_ok();
+        let message_id = recorder.sent()[0].message_id.clone();
+        sqlx::query("UPDATE contacts SET deleted_at = now() WHERE pid = $1::uuid")
+            .bind(&gone)
+            .execute(contact_relationship_management::db::pool(&ctx))
+            .await
+            .unwrap();
+        let opened = json!({ "message_id": message_id, "event": "opened" }).to_string();
+        let answer: Value = signed(opened).await.json();
+        assert_eq!(answer["result"], "ignored");
+    })
+    .await;
+    settings::update(|s| s.webhook_secret = None);
+}

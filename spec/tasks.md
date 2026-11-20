@@ -2645,6 +2645,11 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       deferral (451) transient; an API sender's host and message id; implicit TLS; an unknown TLS mode, a port that
       is not a number and a user name without a password refused; the two headers reading back their text. Left:
       `init`'s warning that mail goes over SMTP, which reads the process environment.
+      - **Round 10:** `controllers/marketing/public.rs` (91.4%): the generic mail-event webhook absent with no secret,
+      refusing a body that is not an event and an event it does not know; an unknown provider's callback; an open of a
+      message never sent reported as unknown, and of a message to a contact who is gone ignored, so nobody gone is
+      profiled. The census was not re-measured this round: a run hung for over an hour on one web-form test that
+      then passed alone in 0.3 s, like the earlier connection drops through Podman's port forwarding here.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
 - [x] CRM-T293 **The site's locale counts follow the five new locales.** `5039bb0` added `zh-th`, `hi-np`, `cy-ar`,
