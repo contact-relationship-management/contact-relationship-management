@@ -2,7 +2,10 @@
   "generated": "by scripts/sync-content.mjs from the monorepo; do not edit by hand",
   "homes": [
     "ar-001",
+    "ar-dz",
+    "ar-eg",
     "cy-001",
+    "cy-ar",
     "cy-gb",
     "en-001",
     "en-gb",
@@ -10,12 +13,17 @@
     "en-us",
     "hi-001",
     "hi-in",
+    "hi-np",
     "zh-001",
-    "zh-cn"
+    "zh-cn",
+    "zh-th"
   ],
   "production": [
     "ar-001",
+    "ar-dz",
+    "ar-eg",
     "cy-001",
+    "cy-ar",
     "cy-gb",
     "en-001",
     "en-gb",
@@ -23,12 +31,17 @@
     "en-us",
     "hi-001",
     "hi-in",
+    "hi-np",
     "zh-001",
-    "zh-cn"
+    "zh-cn",
+    "zh-th"
   ],
   "privacy": [
     "ar-001",
+    "ar-dz",
+    "ar-eg",
     "cy-001",
+    "cy-ar",
     "cy-gb",
     "en-001",
     "en-gb",
@@ -36,8 +49,10 @@
     "en-us",
     "hi-001",
     "hi-in",
+    "hi-np",
     "zh-001",
-    "zh-cn"
+    "zh-cn",
+    "zh-th"
   ],
   "compare": [
     "espocrm",
@@ -106,6 +121,116 @@
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
     {
+      "locale": "ar-dz",
+      "slug": "الحوكمة-والمخاطر-والامتثال",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "الرئيس-التنفيذي",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "رئيس-الأمن",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "رئيس-الاستراتيجية",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "رئيس-التقنية",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "رئيس-الشؤون-القانونية",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "رئيس-العمليات",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "رئيس-المخاطر",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "رئيس-المعلومات",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "رئيس-الموارد-البشرية",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "ar-dz",
+      "slug": "مختبر-الأمن-المستقل",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "الحوكمة-والمخاطر-والامتثال",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "الرئيس-التنفيذي",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "رئيس-الأمن",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "رئيس-الاستراتيجية",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "رئيس-التقنية",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "رئيس-الشؤون-القانونية",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "رئيس-العمليات",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "رئيس-المخاطر",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "رئيس-المعلومات",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "رئيس-الموارد-البشرية",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "ar-eg",
+      "slug": "مختبر-الأمن-المستقل",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
       "locale": "cy-001",
       "slug": "llywodraethu-risg-cydymffurfiaeth",
       "peer": "1be05a7d51964cc5ad429ff70c078af6"
@@ -157,6 +282,61 @@
     },
     {
       "locale": "cy-001",
+      "slug": "profwr-diogelwch-annibynnol",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "llywodraethu-risg-cydymffurfiaeth",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "prif-swyddog-cyfreithiol",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "prif-swyddog-diogelwch",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "prif-swyddog-gweithrediadau",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "prif-swyddog-gweithredol",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "prif-swyddog-gwybodaeth",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "prif-swyddog-pobl",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "prif-swyddog-risg",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "prif-swyddog-strategaeth",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "cy-ar",
+      "slug": "prif-swyddog-technoleg",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "cy-ar",
       "slug": "profwr-diogelwch-annibynnol",
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
@@ -542,6 +722,61 @@
     },
     {
       "locale": "hi-in",
+      "slug": "स्वतंत्र-सुरक्षा-परीक्षक",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "मुख्य-कार्यकारी-अधिकारी",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "मुख्य-जोखिम-अधिकारी",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "मुख्य-परिचालन-अधिकारी",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "मुख्य-प्रौद्योगिकी-अधिकारी",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "मुख्य-मानव-संसाधन-अधिकारी",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "मुख्य-रणनीति-अधिकारी",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "मुख्य-विधि-अधिकारी",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "मुख्य-सुरक्षा-अधिकारी",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "मुख्य-सूचना-अधिकारी",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "hi-np",
+      "slug": "शासन-जोखिम-अनुपालन",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "hi-np",
       "slug": "स्वतंत्र-सुरक्षा-परीक्षक",
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
@@ -652,6 +887,61 @@
     },
     {
       "locale": "zh-cn",
+      "slug": "首席风险官",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "治理-风险-合规",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "独立安全测试员",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "首席人力资源官",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "首席信息官",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "首席安全官",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "首席战略官",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "首席执行官",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "首席技术官",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "首席法务官",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "zh-th",
+      "slug": "首席运营官",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "zh-th",
       "slug": "首席风险官",
       "peer": "10ea6fb8d8954b32a486ce26cf57883d"
     }
