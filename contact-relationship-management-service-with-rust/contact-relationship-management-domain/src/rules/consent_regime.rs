@@ -1730,4 +1730,98 @@ mod tests {
             "consent not granted at send time"
         );
     }
+
+    /// Eight links is the longest chain; a ninth is refused, even when every layer is the same width.
+    #[test]
+    fn a_chain_of_eight_is_the_longest_allowed() {
+        let links = |n: usize| -> Vec<Link> {
+            (0..n)
+                .map(|i| Link {
+                    code: format!("S{i}"),
+                    layer: Layer::Supranational,
+                    parent: (i + 1 < n).then(|| format!("S{}", i + 1)),
+                })
+                .collect()
+        };
+        assert_eq!(chain("S0", &links(MAX_CHAIN)).unwrap().len(), MAX_CHAIN);
+        assert_eq!(chain("S0", &links(MAX_CHAIN + 1)), Err(ChainError::TooLong));
+    }
+
+    /// The three kinds of parameter the registry is built from, and how each combines across layers.
+    #[test]
+    fn each_kind_of_parameter_has_its_shape_and_combination() {
+        let r = regime("email.regime");
+        assert_eq!(
+            (r.key, r.shape, r.combine),
+            ("email.regime", Shape::Token(REGIMES), Combine::Strictest)
+        );
+        let w = window("email.soft_opt_in_window_days");
+        assert_eq!((w.shape, w.combine), (Shape::Days, Combine::StrictestMax));
+        assert!(w.meaning.contains("soft opt-in"));
+        let e = expiry("email.implied_expiry_days.inquiry");
+        assert_eq!((e.shape, e.combine), (Shape::Days, Combine::StrictestMax));
+        assert!(e.meaning.contains("implied consent"));
+    }
+
+    /// A value read as the other kind is none, and a value of the wrong shape has no rank.
+    #[test]
+    fn a_value_of_another_kind_reads_as_none() {
+        let token = Value::Token("opt_in".into());
+        let days = Value::Days(30);
+        assert_eq!((token.as_token(), token.as_days()), (Some("opt_in"), None));
+        assert_eq!((days.as_token(), days.as_days()), (None, Some(30)));
+        let r = regime("x");
+        assert_eq!(rank(&r, &token), Some(0));
+        assert_eq!(
+            rank(&r, &days),
+            None,
+            "a number of days has no place in a token list"
+        );
+        assert_eq!(rank(&window("y"), &token), None);
+        assert_eq!(Resolution::Unknown.origin(), None);
+        assert_eq!(Resolution::Unknown.value(), None);
+    }
+
+    /// The stored name of every basis and the recorded reason for every refusal.
+    #[test]
+    fn every_basis_and_refusal_has_its_recorded_text() {
+        let at = Timestamp::from_second(1_800_000_000).unwrap();
+        assert_eq!(Basis::Granted.as_str(), "granted");
+        assert_eq!(
+            Basis::SoftOptIn {
+                evidence_pid: "d".into(),
+                expires_at: at
+            }
+            .as_str(),
+            "soft_opt_in"
+        );
+        assert_eq!(
+            Basis::Implied {
+                kind: "inquiry".into(),
+                evidence_pid: "f".into(),
+                expires_at: at
+            }
+            .as_str(),
+            "implied"
+        );
+        assert_eq!(Basis::OptOut.as_str(), "opt_out");
+        let reasons = [
+            Blocked::Withdrawn,
+            Blocked::NotGranted,
+            Blocked::PurposeNotEligible,
+            Blocked::NoEvidence,
+            Blocked::UnknownState,
+        ]
+        .map(Blocked::describe);
+        assert_eq!(
+            reasons,
+            [
+                "consent withdrawn",
+                "consent not granted at send time",
+                "the purpose is not eligible for a soft opt-in",
+                "no evidence in force for the regime",
+                "unknown consent state",
+            ]
+        );
+    }
 }

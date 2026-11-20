@@ -2630,5 +2630,9 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       errors, which run once per process behind a `OnceLock` the Keycloak guard test sets first.
       - **Floor:** the census was 96.17% after round 5 and 96.31% after round 6, so the coverage stage now fails
       below 96% (it was 95%). It is raised again as rounds land, never lowered to pass.
+      - **Round 7:** `rules/consent_regime.rs` (96.6%): a chain of eight links taken and a ninth refused; the three
+      parameter constructors, which only run when the registry is built at compile time; a value read as the other
+      kind, a value of the wrong shape having no rank, an unresolved origin; the stored name of every basis and the
+      recorded text of every refusal. Left: the `panic!` arm of an existing test, which runs only when it fails.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
