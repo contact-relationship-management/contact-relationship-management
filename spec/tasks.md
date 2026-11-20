@@ -2480,7 +2480,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
 - [ ] CRM-T281 **Read audit everywhere, and streaming to a SIEM (CRM-R104).** Read audit of deals, accounts, insights,
       reports and exports with source address; a stated JSON-lines schema over syslog/TLS or HTTPS with a cursor;
       retention of the trail by the customer's schedule. (L)
-- [x] CRM-T282 **A deployment id checked at start (CRM-R105).** Written at first start, refused on mismatch; runbook text
+- [x] CRM-T282 **A deployment id checked at start (CRM-R105, CRM-D26).** Written at first start, refused on mismatch; runbook text
       that there is no shared mode. (S)
       - **Built (2026-11-20):** `src/deployment.rs` and migration `20261120000000_deployment.sql`: a one-row `deployment`
       table (the name, checked by the same pattern as the code, and when it was written) whose trigger refuses an

@@ -502,3 +502,46 @@ The pure core of CRM-D3 to D5 is `contact-relationship-management-domain`, a cra
 - **Database text stays with the service.** `search_docs` (the searched columns and the n-gram function) describes storage, so only the script table it shares with the rules, `UNSPACED`, moved; the service re-exports it.
 
 Still open: publishing. The service is on crates.io, so publishing a new version of it needs the domain crate published first; neither is published by this change. A further split of the service itself (the models apart from the controllers) is not decided.
+
+## CRM-D26 — A database belongs to one named deployment
+
+*Written 2026-11-20 at the owner's request ("add to spec"); built by CRM-T282 for CRM-R105.* Whether production must have
+the name is not decided.
+
+**The problem.** When a supplier hosts the CRM for several customers, each customer has its own database. The only thing
+linking a running service to its database is `DB_URL`. A copied configuration or a typo in a deploy script could start
+customer B's service against customer A's database, and customer B's staff would then see, and could change, customer
+A's contacts, deals and consent records. Nothing stopped that before this decision.
+
+**How it works.**
+
+1. Each deployment is given a name in `CRM_DEPLOYMENT_ID`, for example `nhs-wales`: 1 to 64 ASCII letters, digits, `.`,
+   `_` or `-`.
+2. On the first start, the database has no name yet. The service writes `nhs-wales` into the one-row `deployment` table
+   (migration `20261120000000`), then starts normally.
+3. On every later start, the service compares its configured name with the one in the database:
+
+| Configured name | Name in the database | Result |
+| --- | --- | --- |
+| `nhs-wales` | none yet | writes `nhs-wales`, starts |
+| `nhs-wales` | `nhs-wales` | starts |
+| `customer-b` | `nhs-wales` | refuses to start, naming both, and says to check `DB_URL` |
+| not set | `nhs-wales` | refuses to start, and says to set it to `nhs-wales` if this is that deployment |
+| not set | none | starts, and logs a warning that nothing is checked |
+
+- **Why a refusal without a name.** A service with no name against a claimed database is the likeliest form of the
+  mistake this guards against, so it is refused rather than let through.
+- **Why the name is fixed.** A trigger refuses an update or a delete of the row, and the primary key allows one row. If
+  a start could rewrite the name, a misconfigured service would claim the other customer's database instead of being
+  stopped. Only a database owner's `TRUNCATE` clears it.
+- **Why in the database.** The name travels with the data, including into a restored backup, so a restore into the wrong
+  environment is caught too. A file beside the service would not be.
+- **Two replicas at once.** Both may find no name; the first insert wins, and each then compares against the row that is
+  there.
+- **Where it runs.** In `start` (the server and the background worker), after any migration. `db` commands and tasks do
+  not check it.
+
+Still open: making production refuse to start without `CRM_DEPLOYMENT_ID`, as it refuses without authentication or
+`CRM_CURSOR_SECRET`. That is the safer default, but every deployment that has not set the name would stop on its next
+upgrade until it does. It catches a service pointed at the wrong database; it does not separate file stores, Redis or
+keys, which the [operations runbook](compliance/operations-runbook.md) asks the supplier to give each customer.

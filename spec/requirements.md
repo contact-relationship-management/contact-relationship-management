@@ -1757,7 +1757,7 @@ exported which sensitive record, so that we can watch the system and investigate
   multi-customer mode, and the operations runbook says so.
 - The service refuses to start against a database that names another deployment (a deployment id written at first start
   and checked at each start), so a configuration mistake cannot join two customers.
-- Built 2026-11-20 (CRM-T282): `CRM_DEPLOYMENT_ID` and the one-row `deployment` table, which refuses an update or a
+- Built 2026-11-20 (CRM-T282, design CRM-D26): `CRM_DEPLOYMENT_ID` and the one-row `deployment` table, which refuses an update or a
   delete. The first `start` with the setting writes it; a later `start` with another name is refused, and so is one
   with no name against a database that has one. With neither, the start goes ahead and logs a warning. The runbook
   says there is no shared mode.
