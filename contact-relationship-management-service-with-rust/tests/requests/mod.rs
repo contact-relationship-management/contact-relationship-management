@@ -54,6 +54,7 @@ mod support;
 mod tags;
 mod ticket_pauses;
 mod unmerge;
+mod upstream;
 mod views;
 mod web_forms;
 mod webhooks;

@@ -706,4 +706,68 @@ mod tests {
             Some("Ada Lovelace")
         );
     }
+
+    /// Every shape the person record may carry its mailbox in (CRM-T39), and what is not one.
+    #[test]
+    fn a_mailbox_is_read_from_each_shape_the_person_record_may_use() {
+        use serde_json::json;
+        let read = |record: serde_json::Value| extract_email(&record);
+        assert_eq!(
+            read(json!({ "email": " ada@example.test " })),
+            Some("ada@example.test".into())
+        );
+        assert_eq!(
+            read(json!({ "emails": ["ada@example.test"] })),
+            Some("ada@example.test".into())
+        );
+        assert_eq!(
+            read(json!({ "emails": [
+                { "address": "work@example.test" },
+                { "email": "home@example.test", "primary": true },
+            ] })),
+            Some("home@example.test".into()),
+            "the primary one wins"
+        );
+        assert_eq!(
+            read(json!({ "emails": [{ "value": "v@example.test", "is_primary": true }] })),
+            Some("v@example.test".into())
+        );
+        assert_eq!(
+            read(
+                json!({ "email": "not an address", "emails": [42, { "address": "a b@c" }, "ok@example.test"] })
+            ),
+            Some("ok@example.test".into()),
+            "an unusable field is passed over"
+        );
+        for none in [
+            json!({}),
+            json!({ "emails": "x@y" }),
+            json!({ "emails": [] }),
+            json!({ "email": "no-at-sign" }),
+        ] {
+            assert_eq!(read(none.clone()), None, "{none}");
+        }
+    }
+
+    /// A full cache makes room by dropping the oldest name.
+    #[test]
+    fn a_full_name_cache_drops_the_oldest_entry() {
+        let mut cache = NameCache::new(NAME_TTL, 2);
+        let start = Instant::now();
+        cache.insert("person:a".into(), "A".into(), start);
+        cache.insert(
+            "person:b".into(),
+            "B".into(),
+            start + Duration::from_secs(1),
+        );
+        cache.insert(
+            "person:c".into(),
+            "C".into(),
+            start + Duration::from_secs(2),
+        );
+        let now = start + Duration::from_secs(3);
+        assert_eq!(cache.get("person:a", now), None, "the oldest went");
+        assert_eq!(cache.get("person:b", now), Some("B".into()));
+        assert_eq!(cache.get("person:c", now), Some("C".into()));
+    }
 }

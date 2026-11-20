@@ -2617,5 +2617,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       session token, Azure's HMAC) and how its answer is read (Azure's operation id kept); a refusal is permanent, an
       outage and an unreachable provider transient, with the address kept out of the error; an API URL that does not
       parse is refused before sending.
+      - **Round 5:** `clients.rs` (62.4%): finding or making a person and an organization over HTTP, with each failure
+      named (not set, unreachable, a non-2xx answer, not JSON, no id, an id that is not a reference); a display name
+      looked up once and then cached, a title serving as a name, a failed lookup giving none; a mailbox read from the
+      person service and a primed one winning; every shape `extract_email` reads; a full name cache dropping its oldest
+      entry. The HTTP cases are serial tests in `tests/requests/upstream.rs`, as the mode is process-wide.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
