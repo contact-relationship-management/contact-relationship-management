@@ -122,8 +122,8 @@ mod tests {
     #[test]
     fn a_name_against_an_unclaimed_database_claims_it() {
         assert_eq!(
-            decide(Some("nhs-wales"), None),
-            Ok(Decision::Claim("nhs-wales".into()))
+            decide(Some("acme-example"), None),
+            Ok(Decision::Claim("acme-example".into()))
         );
     }
 

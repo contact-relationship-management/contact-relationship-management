@@ -515,18 +515,18 @@ A's contacts, deals and consent records. Nothing stopped that before this decisi
 
 **How it works.**
 
-1. Each deployment is given a name in `CRM_DEPLOYMENT_ID`, for example `nhs-wales`: 1 to 64 ASCII letters, digits, `.`,
+1. Each deployment is given a name in `CRM_DEPLOYMENT_ID`, for example `acme-example`: 1 to 64 ASCII letters, digits, `.`,
    `_` or `-`.
-2. On the first start, the database has no name yet. The service writes `nhs-wales` into the one-row `deployment` table
+2. On the first start, the database has no name yet. The service writes `acme-example` into the one-row `deployment` table
    (migration `20261120000000`), then starts normally.
 3. On every later start, the service compares its configured name with the one in the database:
 
 | Configured name | Name in the database | Result |
 | --- | --- | --- |
-| `nhs-wales` | none yet | writes `nhs-wales`, starts |
-| `nhs-wales` | `nhs-wales` | starts |
-| `customer-b` | `nhs-wales` | refuses to start, naming both, and says to check `DB_URL` |
-| not set | `nhs-wales` | refuses to start, and says to set it to `nhs-wales` if this is that deployment |
+| `acme-example` | none yet | writes `acme-example`, starts |
+| `acme-example` | `acme-example` | starts |
+| `customer-b` | `acme-example` | refuses to start, naming both, and says to check `DB_URL` |
+| not set | `acme-example` | refuses to start, and says to set it to `acme-example` if this is that deployment |
 | not set | none | starts, and logs a warning that nothing is checked |
 
 - **Why a refusal without a name.** A service with no name against a claimed database is the likeliest form of the
