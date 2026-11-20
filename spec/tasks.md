@@ -2570,3 +2570,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       move off Loco and is not a use of it. The service has had no Loco dependency since CRM-T199.
       - **Not done / not verified:** a developer's own PostgreSQL with a `loco` role now needs `PG_USER` and
       `PG_PASSWORD` set; `scripts/chaos.sh`, `scripts/image-smoke.sh` and `scripts/migrate-with-data.sh` were not run.
+- [x] CRM-T291 **axa 0.20.1.** Asked for by the product owner on 2026-11-20 ("upgrade axa"). 0.20.1 was published
+      2026-11-18 22:45 UTC, 42 hours before, inside the two-day minimum publish age; the owner chose to take it now
+      with an exception, so `CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow` overrode it for this one
+      `cargo update -p axa`. (S)
+      - **What it changes:** only that axa's `mail` feature requires `axa-mail` 0.1.2 and lettre 0.11.24 (RUSTSEC-2026-0560
+      to 0565). The service does not use that feature and took lettre 0.11.24 directly in CRM-T287, so its behaviour does
+      not change; the lockfile moves axa alone. `axa-test` 0.11.0 is still the newest.
+      - **Ran:** `fmt`, `clippy`, `test`, `supply-chain` and `test-db` against PostgreSQL 18 and Redis 8 under
+      `podman run`.
+      - **Not done / not verified:** `scripts/ci-check.sh all` was not run, so there is no attestation.

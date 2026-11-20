@@ -24,7 +24,7 @@ include = ["src/**/*", "migrations/**/*", ".sqlx/**/*", ".cargo/config.toml", "s
 
 [workspace.dependencies]
 # The shared plumbing. `sqlx`: `AppContext::db` is the `PgPool` (CRM-D24); `queue` is the Postgres job queue.
-axa = { version = "0.20.0", features = ["postgres-sqlx", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
+axa = { version = "0.20.1", features = ["postgres-sqlx", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
 
 [dependencies]
 axa = { workspace = true }

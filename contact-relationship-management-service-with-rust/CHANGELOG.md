@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — axa 0.20.1 (CRM-T291)
+
+- axa 0.20.0 → 0.20.1. Its one change is that axa's `mail` feature requires `axa-mail` 0.1.2 and so lettre 0.11.24;
+  the service does not turn that feature on and already has lettre 0.11.24 (CRM-T287), so nothing changes in what it
+  does. `axa-test` stays at 0.11.0.
+
 ### Changed — breaking: every setting is `CONTACT_RELATIONSHIP_MANAGEMENT_*` (CRM-T289)
 
 - Each of the 101 settings named `CRM_<NAME>` is now `CONTACT_RELATIONSHIP_MANAGEMENT_<NAME>`, in the service,
