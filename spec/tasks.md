@@ -2562,8 +2562,11 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       the image smoke, chaos and migration rehearsals). The service's AGENTS.md, spec index and `compose.test.yaml` no
       longer cite the family's `rust-loco-stack.md`, and the comment on `seed_pipeline!` no longer says the test
       helper comes from Loco (it is `axa_test`'s, on the same `axum-test` as the crate's own).
-      - **Left as they are:** the family's repositories are named `*-service-with-loco`, so the links to them keep
-      those names; history (CRM-D23, released changelog entries, done tasks, `.gitleaksignore` reasons) records the
+      - **Then (same day, asked for by the product owner):** the links to the family's services name them
+      `*-service-with-axum` (`person`, `organization`, `worker`, `authentication`), not `*-service-with-loco`. Those
+      repositories are not checked out here, so the links resolved neither before nor after; renaming the
+      repositories themselves is theirs.
+      - **Left as they are:** history (CRM-D23, released changelog entries, done tasks, `.gitleaksignore` reasons) records the
       move off Loco and is not a use of it. The service has had no Loco dependency since CRM-T199.
       - **Not done / not verified:** a developer's own PostgreSQL with a `loco` role now needs `PG_USER` and
       `PG_PASSWORD` set; `scripts/chaos.sh`, `scripts/image-smoke.sh` and `scripts/migrate-with-data.sh` were not run.

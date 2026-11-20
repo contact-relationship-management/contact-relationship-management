@@ -28,12 +28,12 @@ renewal — organized as four modules:
 
 It is a **consumer application** (the case-folder / patient-flow /
 workforce-planning-management shape): it does not register identities
-itself. A contact is a [person-service](../../person/person-service-with-loco/)
+itself. A contact is a [person-service](../../person/person-service-with-axum/)
 record; an account is an
-[organization-service](../../organization/organization-service-with-loco/)
+[organization-service](../../organization/organization-service-with-axum/)
 record; a sales rep or support agent is a signed-in user, named by
 `person:` URN, the sign-in subject (CRM-D18), and the
-[worker service](../../worker/worker-service-with-loco/) supplies
+[worker service](../../worker/worker-service-with-axum/) supplies
 departments for teams and hire and leave events (CRM-R73, CRM-R92). CRM
 owns only the **relationship and its operational state**: leads,
 deals, activities, campaigns, consent, tickets, articles, SLAs —

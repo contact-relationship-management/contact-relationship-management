@@ -5,10 +5,10 @@ URNs** and never duplicates upstream records.
 
 | Service | Used for | How |
 |---|---|---|
-| [person-service](../../person/person-service-with-loco/) | contacts | required `person:` URN on Contact (and optional on Lead); display names resolved best-effort |
-| [organization-service](../../organization/organization-service-with-loco/) | accounts | required `organization:` URN on Account |
-| [worker-service](../../worker/worker-service-with-loco/) (WPM) | teams from departments; employment of contacts | the bridges below (CRM-R73, CRM-R92–R94). Reps and agents are **not** named by `worker:` URN: `owner_ref` / `assignee_ref` / `actor_ref` hold `person:<sign-in subject>`, and `worker:<id>` is read as `person:<id>` on input (CRM-D18) |
-| [authentication-service](../../authentication/authentication-service-with-loco/) | SSO + ABAC attrs | offline PASETO via `authentication-verifier`; persona attributes |
+| [person-service](../../person/person-service-with-axum/) | contacts | required `person:` URN on Contact (and optional on Lead); display names resolved best-effort |
+| [organization-service](../../organization/organization-service-with-axum/) | accounts | required `organization:` URN on Account |
+| [worker-service](../../worker/worker-service-with-axum/) (WPM) | teams from departments; employment of contacts | the bridges below (CRM-R73, CRM-R92–R94). Reps and agents are **not** named by `worker:` URN: `owner_ref` / `assignee_ref` / `actor_ref` hold `person:<sign-in subject>`, and `worker:<id>` is read as `person:<id>` on input (CRM-D18) |
+| [authentication-service](../../authentication/authentication-service-with-axum/) | SSO + ABAC attrs | offline PASETO via `authentication-verifier`; persona attributes |
 
 ## Contract the person service must meet for email
 
