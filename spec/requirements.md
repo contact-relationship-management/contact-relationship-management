@@ -1636,7 +1636,8 @@ text, and the employment marks of CRM-R92.
 As every requirement here, they are read as worldwide (CRM-R95): NHS Wales is the worked example, not the default. Where
 the brief names a UK scheme, a requirement names what the software must make possible for **any** buyer's scheme of that
 kind (a certification, a supplier assessment, a residency rule), and the scheme itself is the supplier's or the
-deployer's. **None of CRM-R99 to CRM-R110 is built.** Each lists what is there today and what is not.
+deployer's. **Only CRM-R99 and CRM-R110 are built (documents, CRM-T276).** Each lists what is there today and what is
+not.
 
 ## CRM-R99 — A supplier assurance pack
 
@@ -1658,7 +1659,13 @@ from a questionnaire.*
   assessment (the WIGTK in the example), certifications (Cyber Essentials Plus as the example's minimum, ISO/IEC 27001
   preferred), staff vetting and location (BPSS or DBS in the example), and a tested incident response plan.
 - A test fails if the matrix names a control area that has no requirement here or no row in the control mapping.
-- Not built: all of it. No certificate is held by the project, and the pack is not a sign-off or legal advice.
+- Built 2026-11-20 (CRM-T276): [spec/compliance/supplier-assurance/](compliance/supplier-assurance/index.md), and
+  `scripts/check-assurance-pack.py` in the `lint` stage, which fails when a matrix row names a requirement or a
+  control-mapping row that does not exist, or when one of CRM-R100 to CRM-R109 has no row. Two control-mapping rows
+  were added for it: tenant isolation and exit.
+- Not built: no certificate is held by the project, and the pack is not a sign-off or legal advice. The architecture
+  diagram is of the software, not of any cloud's layout. The matrix's supplier and customer cells are the usual division,
+  not a contract. No one outside the project has read it.
 
 ## CRM-R100 — Sign-in only through the customer's identity provider, with MFA
 
@@ -1815,4 +1822,6 @@ publish their configuration or data.*
   SBOM), says whether a hosted service must offer its changes' source, and says that configuration and data are never
   part of it.
 - A test fails if a dependency's licence is not in the allowed list (`deny.toml`), as today.
-- Not built: the statement. It is not legal advice.
+- Built 2026-11-20 (CRM-T276): [licence.md](compliance/supplier-assurance/licence.md). It found that the UI's npm
+  dependencies and the images' packages have no licence check.
+- Not built: a licence check for the UI's dependencies and the images. It is not legal advice, and no lawyer has read it.

@@ -192,6 +192,8 @@ case "${stage}" in
     zizmor --offline .github
     # Markdown (`.rumdl.toml`: line length and the links to sibling projects are not checked).
     rumdl check .
+    # The supplier assurance pack's matrix names real requirements and control-mapping rows (CRM-T276).
+    python3 scripts/check-assurance-pack.py
     ;;
   pins)
     # Every action and image is pinned, and every CI step goes through this file.

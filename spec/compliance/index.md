@@ -42,3 +42,4 @@ with the two UK drafts below. The rule is stated in the
 - [first-release-checklist.md](first-release-checklist.md) — the dry run that proves release signing and verification (CRM-T49).
 - [accessibility-audit-brief.md](accessibility-audit-brief.md) — the manual test plan for CRM-T48 (no audit has been done).
 - [penetration-test-scope.md](penetration-test-scope.md) — scope and rules for an independent tester, CRM-T42 (no test has been done).
+- [supplier-assurance/](supplier-assurance/index.md) — what a supplier hosting the CRM for a customer hands that customer's assessors: data flow, shared responsibility, a sub-processor template, exit and the licence (CRM-R99; not a sign-off).

@@ -40,6 +40,7 @@ Evidence paths are relative to the repository root.
 | Request size limits | NIST SC-5 | Implemented | `limit_payload` 2 MB |
 | Input validation | NIST SI-10 | Implemented | `src/validation.rs` |
 | Memory safety | NIST SA-15 | Implemented | `#![forbid(unsafe_code)]` |
+| Tenant isolation | NIST SC-4, SC-32; ISO A.8.22 | Partial (CRM-R105) | one deployment per database is the only way the service runs; no check that a database belongs to the deployment (CRM-T282) |
 | Unauthenticated operational endpoints | NIST AC-3 | Implemented (opt-in) | `CRM_PROTECT_OPERATIONAL=1` requires auth on metrics and OpenAPI; public by default |
 
 ## Supply chain and configuration
@@ -70,6 +71,7 @@ controls for every other region are in [By region](#by-region) below.
 | Records of processing, DPIA | GDPR 30, 35 | Deployer | [dpia-template.md](dpia-template.md) |
 | Breach notification | GDPR 33; HIPAA §164.404 | Deployer | [operations-runbook.md](operations-runbook.md) |
 | Data residency | GDPR Ch. V | Deployer | choose region; service makes no cross-border transfers itself |
+| Exit export and certified erasure | ISO A.5.23; GDPR 28(3)(g) | Gap (CRM-R109) | subject-access export per contact and table exports only; the supplier's steps are in [exit-and-retention.md](supplier-assurance/exit-and-retention.md) (CRM-T285) |
 
 ## By region
 

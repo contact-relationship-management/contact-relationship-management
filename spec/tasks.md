@@ -2451,9 +2451,20 @@ Why: the owner finds GitHub-hosted CI unreliable and costly. CRM is already furt
 Asked for by the product owner on 2026-11-20 ("add requirements", with a security audit preparation brief for a supplier
 hosting an open-source application for NHS Wales). None is started. Sizes are estimates.
 
-- [ ] CRM-T276 **The supplier assurance pack (CRM-R99, CRM-R110).** `spec/compliance/supplier-assurance/`: data-flow
+- [x] CRM-T276 **The supplier assurance pack (CRM-R99, CRM-R110).** `spec/compliance/supplier-assurance/`: data-flow
       diagram, shared responsibility matrix, sub-processor register template, exit statement, licence statement; a test
       that the matrix's control areas match the requirements and the control mapping. (M)
+      - **Built (2026-11-20):** six pages. The data-flow table lists 19 connections, each with the setting the code
+      reads (`settings.rs`, `mail.rs`, `provider.rs`, `unsubscribe.rs`, `redis_store.rs` and the UI's `env.ts`). The
+      matrix has 16 rows; `scripts/check-assurance-pack.py` (in `lint`) holds it to the requirements and the control
+      mapping, which gained "Tenant isolation" and "Exit export and certified erasure".
+      - **Found:** the UI's npm dependencies and the images' packages are not licence-checked (only Rust's are, by
+      `cargo deny`); there is no whole-deployment export, so the exit page gives the supplier `pg_dump` steps meanwhile.
+      - **Ran:** the check on the pack (passes), and on three broken copies (a control that is not a row, a requirement
+      that does not exist, a requirement with no row), each failing with its message; `scripts/ci-check.sh lint` and
+      `pins`.
+      - **Not done / not verified:** the connections were read from the code, not observed on a running deployment; the
+      NIST and ISO references on the two new control rows are not yet read; no one outside the project has read the pack.
 - [ ] CRM-T277 **Federated sign-in only, with MFA (CRM-R100).** A setting that turns magic links off and makes
       production refuse to start without federation; an MFA check on `amr`/`acr`; directory groups mapped to personas; a
       test that no migration, seed or image creates a principal outside the demo. SAML 2.0 is a separate decision. (L)
