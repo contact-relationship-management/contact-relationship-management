@@ -2445,3 +2445,39 @@ Why: the owner finds GitHub-hosted CI unreliable and costly. CRM is already furt
       - **Found, on the live site:** `/.well-known/security.txt` answered `404` after the site was published, though the site's own test passed. `actions/upload-pages-artifact` v5 leaves every path starting with a dot out of the artifact unless `include-hidden-files: true`, and the site's preview server, which the test runs against, serves `build/` whole. The deploy workflow now sets it.
       - **Found:** `cargo publish --workspace --dry-run` failed to build the service from its tarball: `include` left out `migrations/`, which `sqlx::migrate!()` embeds since CRM-T229, so every package since then would not have built. `migrations/**/*` is now included, and the dry run verifies both crates (the domain's 49 files, the service's 643).
 - [ ] CRM-T192 **Add a second remote** (Codeberg or GitLab) so a hosted outage on one host is not an outage of the project. (S, owner)
+
+## Supplier assurance for a hosted service (CRM-R99 to CRM-R110), proposed 2026-11-20
+
+Asked for by the product owner on 2026-11-20 ("add requirements", with a security audit preparation brief for a supplier
+hosting an open-source application for NHS Wales). None is started. Sizes are estimates.
+
+- [ ] CRM-T276 **The supplier assurance pack (CRM-R99, CRM-R110).** `spec/compliance/supplier-assurance/`: data-flow
+      diagram, shared responsibility matrix, sub-processor register template, exit statement, licence statement; a test
+      that the matrix's control areas match the requirements and the control mapping. (M)
+- [ ] CRM-T277 **Federated sign-in only, with MFA (CRM-R100).** A setting that turns magic links off and makes
+      production refuse to start without federation; an MFA check on `amr`/`acr`; directory groups mapped to personas; a
+      test that no migration, seed or image creates a principal outside the demo. SAML 2.0 is a separate decision. (L)
+- [ ] CRM-T278 **The persona matrix over every route (CRM-R101).** Expected answers per persona and sensitive field,
+      checked through reads, lists, search, exports, reports and the timeline; masking of ticket and activity text; a
+      support persona with no sensitive fields. (L)
+- [ ] CRM-T279 **Seal the remaining sensitive columns; KMS keys (CRM-R102).** Ticket text, employment marks, audit
+      snapshots and the outbox; file attachments at rest; keys from a KMS; a TLS minimum on outgoing connections and the
+      Redis check. (L)
+- [ ] CRM-T280 **Support grants approved by the customer (CRM-R103).** Request, approval by a named customer person,
+      time limit, early revoke, per-record second approval, a list and export of grants; built on break-glass (CRM-T44).
+      (M)
+- [ ] CRM-T281 **Read audit everywhere, and streaming to a SIEM (CRM-R104).** Read audit of deals, accounts, insights,
+      reports and exports with source address; a stated JSON-lines schema over syslog/TLS or HTTPS with a cursor;
+      retention of the trail by the customer's schedule. (L)
+- [ ] CRM-T282 **A deployment id checked at start (CRM-R105).** Written at first start, refused on mismatch; runbook text
+      that there is no shared mode. (S)
+- [ ] CRM-T283 **Declared outside hosts and the residency read (CRM-R106).** Refuse and audit a call to an undeclared
+      host; `GET /api/operations/residency`. (M)
+- [ ] CRM-T284 **Upstream patch targets with evidence (CRM-R107).** Extend SECURITY.md's targets to dependencies and base
+      images; scan the built images; open an issue with a deadline for a critical or high finding; vulnerability lines in
+      release notes. (M)
+- [ ] CRM-T285 **Exit export, key destruction and retention per class (CRM-R109).** The whole-deployment export with a
+      manifest, encrypted to the customer's key; erasure steps and a certificate template; retention horizons per class.
+      (L)
+- CRM-R108 (the annual independent test) is CRM-T42, whose scope gains the persona matrix, support grants, exports and
+  tenant separation when CRM-T278 and CRM-T280 land.

@@ -1621,3 +1621,198 @@ will not be met with legal action by the maintainer.*
   link to `SECURITY.md`, which has each of the policy's sections and the same contact.
 - Not built: there is no encryption key for reports; the policy has not been reviewed by a lawyer; the targets are
   one maintainer's and have not been tested by a real report.
+
+## Supplier assurance for a hosted service (CRM-R99 to CRM-R110)
+
+*Asked for by the product owner, 2026-11-20 ("add requirements", with a security audit preparation brief written for a
+supplier that hosts and supports an open-source application for NHS Wales).* The brief was written for an HR system and is
+**not yet read** against the sources it cites (UK GDPR Art. 28, the Welsh Information Governance Toolkit, WHC (2017) 025,
+the NHS Records Management Code of Practice). These requirements take from it what a CRM must do when an organization
+**hosts it for a customer and supports it**, which makes that organization the customer's processor and the party the
+customer assesses. The HR brief's sickness, disciplinary and pay fields become the CRM's high and medium tiers
+([auth.md](auth.md#sensitivity-map)): consent history, deal and forecast money, contact channel details, activity and ticket
+text, and the employment marks of CRM-R92.
+
+As every requirement here, they are read as worldwide (CRM-R95): NHS Wales is the worked example, not the default. Where
+the brief names a UK scheme, a requirement names what the software must make possible for **any** buyer's scheme of that
+kind (a certification, a supplier assessment, a residency rule), and the scheme itself is the supplier's or the
+deployer's. **None of CRM-R99 to CRM-R110 is built.** Each lists what is there today and what is not.
+
+## CRM-R99 — A supplier assurance pack
+
+*As a supplier bidding to host the CRM for a public-sector or health buyer, I can hand the buyer's information-governance
+and security teams one set of documents about the software, so that their assessment of us starts from evidence and not
+from a questionnaire.*
+
+- `spec/compliance/supplier-assurance/` holds, for the software as shipped: an architecture and data-flow diagram (what
+  holds personal data, what leaves the service and to whom, where each bridge and provider sits); a **shared
+  responsibility matrix** with three columns (the software, the hosting supplier, the customer) over the control areas of
+  CRM-R100 to CRM-R110; a sub-processor register template (cloud, mail provider, backup storage, each with its location
+  and its own attestations); a retention and exit statement (CRM-R109); and a licence statement (CRM-R110).
+- It links to the evidence that exists: [control-mapping.md](compliance/control-mapping.md),
+  [dpia.md](compliance/dpia.md), [record-of-processing.md](compliance/record-of-processing.md),
+  [personal-data-inventory.md](compliance/personal-data-inventory.md), [SECURITY.md](../SECURITY.md) and
+  [penetration-test-scope.md](compliance/penetration-test-scope.md). It does not copy them.
+- A row for each organizational duty the brief names, marked **Supplier** and not claimed by the software: a processor
+  agreement (UK GDPR Art. 28 in the example; breach notice to the customer within the contract's hours), a supplier
+  assessment (the WIGTK in the example), certifications (Cyber Essentials Plus as the example's minimum, ISO/IEC 27001
+  preferred), staff vetting and location (BPSS or DBS in the example), and a tested incident response plan.
+- A test fails if the matrix names a control area that has no requirement here or no row in the control mapping.
+- Not built: all of it. No certificate is held by the project, and the pack is not a sign-off or legal advice.
+
+## CRM-R100 — Sign-in only through the customer's identity provider, with MFA
+
+*As a customer's security team, I can require that every person signs in through our own identity provider with
+multi-factor authentication, so that a leaver loses access when we disable them and no account exists that we do not
+control.*
+
+- A deployment can be configured so the **only** human sign-in is federated: OpenID Connect today (Keycloak and the family
+  authentication service), with Microsoft Entra ID as the example's provider; SAML 2.0 where the buyer requires it. The
+  magic-link sign-in can be turned off, and production refuses to start when it is on and federation is required.
+- The service can refuse a session whose token does not show MFA (an `amr` or `acr` the deployer names).
+- **No built-in or vendor account** exists in any build: no default administrator, no shared support account, no
+  password. A test fails if a migration, seed or image creates a principal outside the demo.
+- Roles come from the customer's directory (group or role claims mapped to the CRM's personas), so the customer assigns
+  them.
+- There today: OIDC through Keycloak behind a feature; production refuses to start without authentication. Not built:
+  SAML 2.0; an MFA check on the claim; turning magic links off; mapping directory groups to personas; a test that no
+  principal is created.
+
+## CRM-R101 — Each role sees only the sensitive fields it needs
+
+*As a customer's data protection officer, I can show that a sales rep, a marketer, a support agent and the supplier's own
+staff each reach only the fields their work needs, so that an assessment can rely on the separation and not on trust.*
+
+- Every high and medium tier field ([auth.md](auth.md#sensitivity-map)) is reachable, in reads, lists, search, exports,
+  reports and the timeline, only by a persona whose policy grants it; everyone else gets it masked or not at all.
+- The persona matrix is a test: for each persona and each sensitive field, the expected answer is written down and
+  checked through every route that can return it, so a new route that leaks a field fails.
+- The supplier's support role (CRM-R103) sees no high or medium tier field by default.
+- There today: the `mask` obligation over deals, forecasts, campaign money and contact channels (CRM-T32), record checks on
+  contacts and deals. Not built: record checks on the other handlers; masking of ticket and activity text; the full matrix
+  over every route; a support persona.
+
+## CRM-R102 — Encryption in transit, at rest and of sensitive fields
+
+*As a customer's security team, I can see that personal data is encrypted on the wire, on disk and, for the most sensitive
+fields, inside the database, with keys we can hold.*
+
+- In transit: only TLS 1.2 and 1.3, at the ingress and on every connection the service makes (database, Redis, mail
+  provider, bridges, identity provider). Production refuses a `DB_URL` that could go in the clear unless the deployer names the
+  network as one that encrypts its own traffic, as it does today; the same for Redis.
+- At rest: AES-256 on the database volume, backups and file attachments (CRM-R42), the deployer's or the cloud's.
+- In the database: every high tier field and the medium tier free text (activity summaries, ticket text, contact channels,
+  employment marks) sealed with AES-256-GCM; audit snapshots and the event outbox no longer hold them in plain.
+- Keys can be held in the customer's or the cloud's key management service, so that destroying a key erases what it
+  sealed (CRM-R109).
+- There today: two sealed columns with local keys and rotation (CRM-T41), `CRM_REQUIRE_FIELD_ENCRYPTION`. Not built: the
+  Redis check; the other columns; snapshots and outbox; file attachments; a KMS; a TLS minimum version check on outgoing connections.
+
+## CRM-R103 — Supervised, time-limited support access
+
+*As a customer, I can let the supplier's support staff into our deployment only when we approve it, for a stated time and
+reason, with what they did recorded, so that no one at the supplier reads our records unwatched.*
+
+- Support access is a grant, not an account: asked for with a reason and a ticket, **approved by a named person at the
+  customer**, limited to a time (at most a working day by default), revoked early by either side, and audited from request
+  to end.
+- During a grant the support persona sees structure and counts, not sensitive fields (CRM-R101); seeing a record's content
+  needs the customer's administrator to share the screen or a second approval naming the record.
+- The customer can list every grant and everything done under it, and export them (CRM-R104).
+- Where the customer's rules require it, the supplier records that the person holding the grant is in an approved country
+  and vetted; the software records the claim and the approver, and does not check it.
+- There today: break-glass access, reasoned, time-limited, audited and reviewed by another person (CRM-T44), for the
+  customer's own staff. Not built: approval before use; a support persona; a per-record second approval; a list of grants
+  for the customer.
+
+## CRM-R104 — Every read and export of sensitive data is audited and can go to the customer's SIEM
+
+*As a customer's security operations team, I can receive the CRM's audit trail in our own SIEM, including who read or
+exported which sensitive record, so that we can watch the system and investigate without asking the supplier.*
+
+- Every read, list, search hit, export, report and change that returns or touches a high or medium tier field writes an
+  audit row: who, when, from where (address and user agent), what, which records, and the outcome. A read whose audit row
+  cannot be written is refused, as for contacts today.
+- The trail stays tamper-evident (CRM-T31), and its chain head can be anchored off the host.
+- The trail can be streamed to the customer: as JSON lines over syslog (RFC 5424 over TLS) or HTTPS, in a stated schema,
+  with at-least-once delivery and a cursor so nothing is lost when the SIEM is down.
+- Retention of the trail follows the customer's schedule (the NHS Records Management Code in the example), not a fixed
+  number.
+- There today: the hash-chained trail, its verification, audited single reads of contacts, leads and tickets (CRM-T40).
+  Not built: read audit of deals, accounts, insights, reports and exports; source address on every row; streaming to a
+  SIEM; anchoring by the software.
+
+## CRM-R105 — One customer, one database
+
+*As a customer, I can be sure that no other customer's users or records share our database, storage or keys.*
+
+- A hosted customer has its own database, file store, Redis, keys and sign-in settings. The software has no shared
+  multi-customer mode, and the operations runbook says so.
+- The service refuses to start against a database that names another deployment (a deployment id written at first start
+  and checked at each start), so a configuration mistake cannot join two customers.
+- There today: one deployment per database is the only way the service runs. Not built: the deployment id check; the
+  runbook text.
+
+## CRM-R106 — Data stays in the region the customer names
+
+*As a customer with a residency rule (UK-only in the example), I can name the region where our data may be, and see that
+the service sends nothing outside it that we have not listed.*
+
+- The deployer declares the region and every outside service the CRM may reach (mail provider, bridges, identity
+  provider, webhooks, SIEM). The service refuses, and audits, a call to a host that is not declared, so a new webhook or
+  provider cannot send data elsewhere unnoticed.
+- `GET /api/operations/residency` (admin) answers the declared region and the declared outside services, for the
+  assurance pack.
+- Where production, backups and recovery copies are hosted is the supplier's; the runbook lists what must be in region.
+- There today: the service makes no cross-border transfers itself; webhooks refuse private addresses. Not built: a
+  declared list of outside hosts; refusing undeclared ones; the residency read.
+
+## CRM-R107 — Known vulnerabilities are patched within a stated time
+
+*As a customer, I can rely on the supplier patching a critical vulnerability in the CRM or anything it depends on within
+14 days, and see the evidence.*
+
+- The targets of [SECURITY.md](../SECURITY.md) (CRM-R98) also cover vulnerabilities found upstream, in a dependency or a
+  base image: critical within 14 days of a fix being available, high within 30.
+- Dependencies and both images are scanned on every change and each night; a critical or high finding opens an issue
+  with its deadline.
+- A release note names every vulnerability it fixes.
+- There today: `cargo audit`, `pnpm audit`, `cargo deny`, SBOMs, images pinned by digest, the nightly run. Not built:
+  scanning the built images; an issue opened by a finding with its deadline; vulnerability lines in release notes.
+
+## CRM-R108 — An independent test each year, covering role separation
+
+*As a customer, I can see a penetration test report less than a year old, by an accredited tester (CREST or CHECK in the
+example), that tried to break the separation between roles and the supplier's own access, and that every critical and high
+finding was fixed.*
+
+- The test scope ([penetration-test-scope.md](compliance/penetration-test-scope.md)) includes the persona matrix
+  (CRM-R101), support grants (CRM-R103), export routes, tenant separation (CRM-R105) and the hosting.
+- Each finding becomes a task; the assurance pack records the report's date, the tester and each critical or high
+  finding's fix.
+- Not built: no test has been done (CRM-T42). Commissioning one is the supplier's.
+
+## CRM-R109 — Leaving: all the data out, then erased
+
+*As a customer at the end of a contract, I can take every record out in a standard format and then have the supplier's
+copies erased, with a certificate, so that leaving does not depend on the supplier's goodwill.*
+
+- `POST /api/operations/exit-export` (admin, audited, two approvals) writes every table the
+  [inventory](compliance/personal-data-inventory.md) lists, file attachments and the audit trail as JSON lines and CSV,
+  with a manifest of counts and hashes, decrypted for the customer and encrypted to a key the customer gives.
+- Erasure after export is by destroying the deployment's keys (CRM-R102) and its database, store and backups; the runbook
+  gives the steps and a certificate template naming what was destroyed and when.
+- Retention rules can be set per class from the customer's schedule (CRM-R74), not only one `CRM_RETENTION_DAYS`.
+- There today: subject-access export for one contact; the retention sweep with one horizon. Not built: the whole export;
+  key destruction; the certificate; retention per class.
+
+## CRM-R110 — The licence allows hosting, and says what must be shared
+
+*As a supplier, I can show a buyer that hosting the CRM for them is allowed, and that no change we make obliges us to
+publish their configuration or data.*
+
+- The licence statement in the assurance pack names the CRM's licence and each dependency's (from `cargo deny` and the
+  SBOM), says whether a hosted service must offer its changes' source, and says that configuration and data are never
+  part of it.
+- A test fails if a dependency's licence is not in the allowed list (`deny.toml`), as today.
+- Not built: the statement. It is not legal advice.
