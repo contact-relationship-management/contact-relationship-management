@@ -2634,5 +2634,11 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       parameter constructors, which only run when the registry is built at compile time; a value read as the other
       kind, a value of the wrong shape having no rank, an unresolved origin; the stored name of every basis and the
       recorded text of every refusal. Left: the `panic!` arm of an existing test, which runs only when it fails.
+      - **Round 8:** `workflows.rs` (91.6%): a workflow whose stored actions its trigger cannot use (as one written
+      before the checks, or by hand) has each such step skipped with the reason: a contact action on a lead, an empty
+      pool, `assign_owner` on a contact; `preferred_channel` and `status` set, a value already held left alone, a
+      condition on the account's tier, a lead already owned left with its owner. **Found:** each step compares with
+      the contact as the run first read it (so `set_field` says), so two steps setting one field in a run both report
+      "changed"; the second write is a no-op. Recorded, not changed.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.

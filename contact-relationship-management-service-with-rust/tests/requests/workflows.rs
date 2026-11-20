@@ -510,3 +510,154 @@ async fn a_failing_action_undoes_the_run_and_spares_the_write_that_triggered_it(
     })
     .await;
 }
+
+/// The steps of one run: `(result, detail)` each.
+fn steps(run: &Value) -> Vec<(String, String)> {
+    run["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| {
+            (
+                s["result"].as_str().unwrap().to_string(),
+                s["detail"].as_str().unwrap_or("").to_string(),
+            )
+        })
+        .collect()
+}
+
+/// A workflow stored before its checks, or written by hand, with an action its trigger cannot use:
+/// the engine skips that step with the reason instead of applying it to the wrong record.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn an_action_the_record_cannot_take_is_skipped_with_the_reason() {
+    request::<App, _, _>(|request, ctx| async move {
+        let pool = contact_relationship_management::db::pool(&ctx);
+        let rewrite = |wf: String, actions: Value| async move {
+            sqlx::query("UPDATE workflows SET actions = $2 WHERE pid = $1::uuid")
+                .bind(wf)
+                .bind(actions)
+                .execute(pool)
+                .await
+                .unwrap();
+        };
+        // A lead workflow given contact actions and an empty pool.
+        let on_leads = workflow!(
+            &request,
+            json!({ "name": "Leads", "trigger": "lead_created", "conditions": {},
+                    "actions": [{ "type": "assign_owner", "pool": [a_user()], "strategy": "round_robin" }] })
+        );
+        rewrite(
+            on_leads.clone(),
+            json!([
+                { "type": "set_field", "field": "job_title", "value": "x" },
+                { "type": "enrol_nurture", "sequence_pid": uuid::Uuid::new_v4() },
+                { "type": "assign_owner", "pool": [], "strategy": "round_robin", "notify": false },
+            ]),
+        )
+        .await;
+        request
+            .post("/api/leads")
+            .json(&json!({ "display_name": "Hand Written", "source": "web" }))
+            .await
+            .assert_status_ok();
+        let lead_steps = steps(&runs!(&request, on_leads)[0]);
+        assert_eq!(
+            lead_steps,
+            [
+                ("skipped".into(), "this action is about a contact, not a lead".into()),
+                ("skipped".into(), "this action is about a contact, not a lead".into()),
+                ("skipped".into(), "the pool is empty".into()),
+            ]
+        );
+
+        // A contact workflow given a lead's action.
+        let on_contacts = workflow!(
+            &request,
+            when_created("Contacts", json!({}), json!([{ "type": "notify", "recipient_ref": a_user() }]))
+        );
+        rewrite(
+            on_contacts.clone(),
+            json!([{ "type": "assign_owner", "pool": [a_user()], "strategy": "round_robin", "notify": false }]),
+        )
+        .await;
+        contact!(&request, json!({ "display_name": "Not A Lead" }));
+        assert_eq!(
+            steps(&runs!(&request, on_contacts)[0]),
+            [("skipped".into(), "assign_owner is about a lead".into())]
+        );
+    })
+    .await;
+}
+
+/// The other fields a workflow may set, a value already there, a lead that already has an owner,
+/// and a condition on the contact's account tier.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn channel_and_status_are_set_a_held_value_is_left_and_an_owned_lead_keeps_its_owner() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let account: Value = request
+            .post("/api/accounts")
+            .json(&json!({ "organization_ref": format!("organization:{}", uuid::Uuid::new_v4()),
+                           "display_name": "Partner Org", "tier": "partner" }))
+            .await
+            .json();
+        let wf = workflow!(
+            &request,
+            when_created(
+                "Partner accounts",
+                json!({ "account_tiers": ["partner"] }),
+                json!([
+                    { "type": "set_field", "field": "status", "value": "inactive" },
+                    { "type": "set_field", "field": "preferred_channel", "value": "phone" },
+                ])
+            )
+        );
+        // No account, so the tier condition is not met: no run.
+        contact!(&request, json!({ "display_name": "No Account" }));
+        assert!(runs!(&request, wf).is_empty());
+        let pid = contact!(
+            &request,
+            json!({ "display_name": "Partner Contact", "account_pid": account["pid"], "preferred_channel": "phone" })
+        );
+        let log = runs!(&request, wf);
+        assert_eq!(log.len(), 1);
+        let results: Vec<String> = steps(&log[0]).into_iter().map(|(r, _)| r).collect();
+        // The channel was already the one asked for, so that step changes nothing.
+        assert_eq!(results, ["done", "skipped"], "{log:?}");
+        assert_eq!(steps(&log[0])[1].1, "preferred_channel already has that value");
+        let detail: Value = request.get(&format!("/api/contacts/{pid}")).await.json();
+        assert_eq!(detail["contact"]["preferred_channel"], "phone");
+        assert_eq!(detail["contact"]["status"], "inactive");
+
+        // Two workflows give out new leads: the first gives this one an owner, and the second finds
+        // it owned and leaves it.
+        let (first_owner, second_pool) = (a_user(), a_user());
+        let first = workflow!(
+            &request,
+            json!({ "name": "First", "trigger": "lead_created", "conditions": {},
+                    "actions": [{ "type": "assign_owner", "pool": [first_owner], "strategy": "round_robin" }] })
+        );
+        let second = workflow!(
+            &request,
+            json!({ "name": "Second", "trigger": "lead_created", "conditions": {},
+                    "actions": [{ "type": "assign_owner", "pool": [second_pool], "strategy": "round_robin" }] })
+        );
+        let lead: Value = request
+            .post("/api/leads")
+            .json(&json!({ "display_name": "Owned Lead", "source": "web" }))
+            .await
+            .json();
+        let both = [steps(&runs!(&request, first)[0]), steps(&runs!(&request, second)[0])];
+        assert!(
+            both.contains(&vec![("skipped".into(), "the lead already has an owner".into())]),
+            "{both:?}"
+        );
+        let all: Vec<Value> = request.get("/api/leads").await.json();
+        let kept = all.iter().find(|l| l["pid"] == lead["pid"]).unwrap();
+        assert!(kept["owner_ref"] == json!(first_owner) || kept["owner_ref"] == json!(second_pool));
+    })
+    .await;
+}
