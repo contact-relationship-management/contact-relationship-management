@@ -79,6 +79,14 @@ controllers to the request tests.
 - **Equivalent mutants** (no test can tell them from the code) are listed with a reason in each
   crate's `.cargo/mutants.toml`; where the code had a redundant check, the check went instead.
 
+## Coverage (CRM-T266)
+
+`scripts/ci-check.sh coverage` measures the service's and the domain crate's unit tests with
+`cargo-tarpaulin`, on its LLVM engine, so a Mac and a Linux runner count lines alike. It is a
+report, not a gate: the database suite (`test-db`) is not in it, so the figure understates what the
+whole suite reaches, and no floor is set until the figures have been watched. It replaced
+`cargo-llvm-cov`.
+
 ## Performance (CRM-T242)
 
 Three kinds of measure, each with synthetic data only and each recorded in
@@ -90,7 +98,9 @@ Three kinds of measure, each with synthetic data only and each recorded in
   under each model, report currency conversion, report planning and small-cell suppression,
   search-query building, and (CRM-T262) business-calendar deadlines and sums, template rendering,
   webhook signing and address checks, and reading and writing times. No database, network or clock: a request's rule step, not its
-  latency.
+  latency. `scripts/ci-check.sh bench` runs both (CRM-T266); `CRM_BENCH_SAVE=<name>` keeps the run as
+  a criterion baseline and `CRM_BENCH_BASELINE=<name>` reports each case's change against one, so a
+  change to a rule can be read against the run before it on the same machine.
 - **The API under load** (k6, [`tests/load/`](../tests/load/README.md)): one module of real
   calls with real request bodies, a weighted mixed workload, and smoke, basic, stress, spike,
   soak and breakpoint runs; a seed that makes a volume of rows first; and an endpoint

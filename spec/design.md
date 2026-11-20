@@ -473,6 +473,8 @@ Loco calls a service through hooks, so an auditor has to read the framework as w
 
 SeaORM stays until a separate change moves the service to sqlx. What this conversion finds goes back into axa and its guide.
 
+- **Compression is gzip, Brotli and deflate, not Zstd** (CRM-T264). axa's `zstd` feature builds the C zstd library, and the service leaves it off: a request body sent as `Content-Encoding: zstd` is refused with a `415` problem, and a caller that accepts only Zstd is answered uncompressed. Browsers that accept Zstd also accept Brotli and gzip, and every `/api/*` answer is `no-store`, which axa never compresses (CRM-T228).
+
 ## CRM-D24 — Queries move from SeaORM to sqlx, one area at a time
 
 *Decided 2026-11-06 by the owner; started by CRM-T203; finished by CRM-T232 (2026-11-13), which removed `SeaORM`.*

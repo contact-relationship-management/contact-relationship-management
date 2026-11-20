@@ -10,4 +10,12 @@ profile = "mutants"
 # Equivalent mutants: no test can tell them from the code (CRM-T196).
 # - terms: a two-character word's one overlapping pair is the word itself.
 # - last_touch: when the activity and the stage move are the same instant, either one is that instant.
-exclude_re = ["replace < with <= in terms$", "replace > with >= in last_touch$"]
+# - stricter_consent: each known state has its own strictness and an unknown one is read as never,
+#   so two states equally strict are the same state, and > or >= returns the same text (CRM-T259).
+# - working_seconds_between: when a window's end equals its start, >= adds zero seconds.
+exclude_re = [
+  "replace < with <= in terms$",
+  "replace > with >= in last_touch$",
+  "replace > with >= in stricter_consent$",
+  "replace > with >= in Calendar::working_seconds_between$",
+]

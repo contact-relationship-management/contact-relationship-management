@@ -47,9 +47,9 @@ Out of scope:
 
 ## Reporting a vulnerability
 
-Report privately, by email to <joel@joelparkerhenderson.com>. When GitHub private vulnerability
-reporting is enabled for the repository, its "Report a vulnerability" form on the Security tab
-works too. Do not open a public issue, discussion or pull request for a vulnerability.
+Report privately, by email to <joel@joelparkerhenderson.com>, or through GitHub's private
+vulnerability reporting: the "Report a vulnerability" form on the repository's Security tab
+(<https://github.com/contact-relationship-management/contact-relationship-management/security/advisories/new>), which only the maintainer can read. Do not open a public issue, discussion or pull request for a vulnerability.
 
 Include:
 
@@ -107,8 +107,8 @@ whatever its score. These are the controls the project's
 ## Supported versions
 
 Only the latest commit on `main` is supported. A fix lands on `main` first and is released in the
-next tag; earlier releases are not patched. The latest release, v0.1.5, predates the move to axa
-(CRM-T228), so it differs from `main` in its configuration and probes.
+next tag; earlier releases are not patched. The latest release is v0.2.0 (2026-11-18), the first on axa; v0.1.5 and earlier differ from
+`main` in their configuration and probes.
 
 ## Safe harbour
 

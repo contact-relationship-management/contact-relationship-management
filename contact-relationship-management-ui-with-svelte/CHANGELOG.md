@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the locale's formatter can include its direction mark.
 - The FX form sends a one-billionth rate as `0.000000001`, which the service accepts.
 
+## [0.2.0] — 2026-11-18
+
+Released with service 0.2.0.
+
 ### Added — page load benchmark (CRM-T262)
 
 - `pnpm perf:pages` (`playwright.perf.config.ts`, `tests/perf/page-load.spec.ts`): eleven tour

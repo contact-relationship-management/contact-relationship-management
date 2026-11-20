@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   opt-in. Audience widening, profile administration and jurisdiction-specific message content remain
   unfinished and are recorded in `spec/tasks.md`.
 
+## [0.2.0] — 2026-11-18
+
+The first release on axa and sqlx in place of Loco and SeaORM (CRM-D23, CRM-D24), and the first
+with the domain rules as their own crate, `contact-relationship-management-domain` 0.2.0, published
+with it (CRM-D25). **Breaking for operators** since 0.1.5: the database URL is `DB_URL`; the probes
+are `/_health/live`, `/_health/ready` and `/_health/startup`; production needs `CRM_CURSOR_SECRET`;
+`JWT_SECRET` and `CRM_TRUST_FORWARDED_FOR` are gone; a Zstd request body is refused. Each entry
+below says what it changes.
+
 ### Changed — one integration-test binary (CRM-T263)
 
 - `tests/mod.rs` is `tests/main.rs`, and `command_line`, `keycloak_guard`, `outbox`, `rate_limit`,
@@ -23,6 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `main`). Their environment variables go through `tests/support/scoped_env.rs` and the outbox's
   transport through `scoped_auth`, which put them back when the test ends; the Keycloak and
   command-line tests are `#[serial]`. Run one with `cargo test --test main rate_limit -- --ignored`.
+
+### Changed — jiff 1.0.0 (CRM-T265)
+
+- `jiff` 1.0.0 in the service and the domain crate, from 0.2.43; `to_zoned` is `to_zoned_datetime`.
+  The build no longer compiles `jiff` 0.2 beside axa's 1.0. No change in behaviour.
+
+### Changed — axa 0.20.0 (CRM-T264)
+
+- axa 0.20.0 and `axa-test` 0.11.0. axa's Zstd support is now its `zstd` feature, which the service
+  leaves off: a `Content-Encoding: zstd` request body is a `415` problem
+  (`router_order::a_zstd_request_body_is_refused_as_unsupported`), and an `Accept-Encoding` of `zstd`
+  alone gets no compression. `zstd`, `zstd-safe` and `zstd-sys` leave the lockfile.
 
 ### Changed — axa 0.19.0 (CRM-T261)
 

@@ -288,6 +288,16 @@ pub fn account_key(name: &str) -> String {
 mod tests {
     use super::*;
 
+    // CRM-T259: each limit at its value is allowed and one more is refused.
+    #[test]
+    fn a_short_value_is_up_to_the_limit_with_no_control_characters() {
+        let at = |n: usize| short(Some("v".repeat(n)), "title");
+        assert_eq!(at(MAX_SHORT), Ok(Some("v".repeat(MAX_SHORT))));
+        assert!(at(MAX_SHORT + 1).is_err());
+        assert!(short(Some("a\tb".into()), "title").is_err());
+        assert_eq!(short(None, "title"), Ok(None));
+    }
+
     fn headers(names: &[&str]) -> Vec<String> {
         names.iter().map(ToString::to_string).collect()
     }

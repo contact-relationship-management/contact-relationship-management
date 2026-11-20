@@ -1,6 +1,6 @@
 [package]
 name = "contact-relationship-management-domain"
-version = "0.1.5"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.98"
 publish = true
@@ -28,7 +28,7 @@ base64 = { version = "0.23" }
 csv = "1.4"
 entity-ref = "0.2.1"
 hmac = "0.13"
-jiff = { version = "0.2.43", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
+jiff = { version = "1.0.0", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
 schemars = { version = "1.2", features = ["uuid1"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["float_roundtrip", "arbitrary_precision"] }

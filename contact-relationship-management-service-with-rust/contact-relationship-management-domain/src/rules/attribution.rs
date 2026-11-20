@@ -282,6 +282,52 @@ mod tests {
         .unwrap()
     }
 
+    // CRM-T259: the leftover minor units go by remainder, not by quotient; the decay is exact at
+    // the start, halfway and at one half-life; and the position model shares the middle among all
+    // the middle touches.
+    #[test]
+    fn leftovers_go_to_the_largest_remainders() {
+        // 3 x 5/7 is 2 rest 1, 3 x 2/7 is 0 rest 6: the one left goes to the second.
+        assert_eq!(apportion(3, &[5, 2]), vec![2, 1]);
+        // 4 x 5/7 is 2 rest 6, 4 x 2/7 is 1 rest 1: the one left goes to the first.
+        assert_eq!(apportion(4, &[5, 2]), vec![3, 1]);
+        assert_eq!(apportion(10, &[1, 1, 1]), vec![4, 3, 3]);
+        assert_eq!(apportion(7, &[0, 0]), vec![4, 3]);
+    }
+
+    #[test]
+    fn a_touch_weighs_less_as_it_ages() {
+        let full: i128 = 1 << 100;
+        assert_eq!(decay_weight(0, 1), full);
+        assert_eq!(decay_weight(43_200, 1), full / 4 * 3);
+        assert_eq!(decay_weight(86_400, 1), full / 2);
+        assert_eq!(
+            decay_weight(-5, 1),
+            full,
+            "a touch after the close counts as now"
+        );
+    }
+
+    #[test]
+    fn the_position_model_shares_the_middle_among_every_middle_touch() {
+        let touches: Vec<Touch> = (1..=5)
+            .map(|n| Touch {
+                campaign: id(n),
+                at: utc(2026, 1, u8::try_from(n).unwrap().try_into().unwrap(), 9),
+            })
+            .collect();
+        let shares = credit_tuned(
+            Model::Position,
+            1_000,
+            &touches,
+            utc(2026, 2, 1, 9),
+            HALF_LIFE_DAYS,
+            40,
+        );
+        let amounts: Vec<i64> = shares.iter().map(|(_, amount)| *amount).collect();
+        assert_eq!(amounts, vec![400, 67, 67, 66, 400]);
+    }
+
     fn id(n: u128) -> Uuid {
         Uuid::from_u128(n)
     }

@@ -261,6 +261,13 @@ fn weekday_index(date: Date) -> usize {
 mod tests {
     use super::*;
 
+    // CRM-T259: an hour with no digits is not midnight.
+    #[test]
+    fn a_window_time_needs_a_digit_before_the_colon() {
+        assert_eq!(time_of("  :00"), None);
+        assert_eq!(time_of(" 9:05"), Time::new(9, 5, 0, 0).ok());
+    }
+
     fn hours(start: &str, end: &str) -> Hours {
         Hours {
             start: start.to_string(),

@@ -98,6 +98,21 @@ test("security.txt names the contact, the policy, and an expiry that has not lap
   expect(text, "SECURITY.md reports to the same contact").toContain(fields.get("contact")![0]!.replace(/^mailto:/, ""));
 });
 
+// The preview server this suite runs against serves build/ whole, but the Pages artifact leaves out every path that
+// starts with a dot unless asked: security.txt passed above and answered 404 live (CRM-T267). So a site with a dot
+// path in static/ must deploy with include-hidden-files.
+test("the deploy keeps the dot paths static/ has, such as .well-known", () => {
+  const dotted = readdirSync("static").filter((f) => f.startsWith("."));
+  expect(dotted).toContain(".well-known");
+  // The upload step's own lines: from its `uses:` to the next step.
+  const lines = readFileSync(".github/workflows/deploy.yml", "utf8").split("\n");
+  const start = lines.findIndex((l) => l.includes("actions/upload-pages-artifact@"));
+  expect(start, "the deploy uploads a Pages artifact").toBeGreaterThan(-1);
+  const end = lines.findIndex((l, i) => i > start && /^\s*- /.test(l));
+  const step = lines.slice(start, end === -1 ? undefined : end).map((l) => l.trim());
+  expect(step, "the upload step sets include-hidden-files: true").toContain("include-hidden-files: true");
+});
+
 test("a brief's html carries its locale; a document is English", async ({ page }) => {
   await page.goto(briefRoute(ceo("cy-gb")));
   await expect(page.locator("html")).toHaveAttribute("lang", "cy-GB");

@@ -157,6 +157,56 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    // CRM-T259: each limit at its value is allowed and one more is refused.
+    #[test]
+    fn each_limit_allows_its_value_and_refuses_one_more() {
+        let label = |n: usize| {
+            check_def(
+                "contact",
+                "tier_note",
+                &"l".repeat(n),
+                "text",
+                &[],
+                "business",
+            )
+        };
+        assert!(label(MAX_LABEL).is_empty());
+        assert_eq!(label(MAX_LABEL + 1).len(), 1);
+        let choices = |n: usize| {
+            check_choices(
+                "choice",
+                &(0..n).map(|i| format!("c{i}")).collect::<Vec<_>>(),
+            )
+        };
+        assert!(choices(MAX_CHOICES).is_empty());
+        assert_eq!(choices(MAX_CHOICES + 1).len(), 1);
+        let choice = |text: String| check_choices("choice", &[text]);
+        assert!(choice("c".repeat(MAX_LABEL)).is_empty());
+        assert_eq!(choice("c".repeat(MAX_LABEL + 1)).len(), 1);
+        assert_eq!(choice("  ".to_string()).len(), 1);
+        assert!(check_value("text", &[], &json!("t".repeat(MAX_TEXT))).is_ok());
+        assert!(check_value("text", &[], &json!("t".repeat(MAX_TEXT + 1))).is_err());
+    }
+
+    #[test]
+    fn a_value_of_the_wrong_type_says_which_type() {
+        for kind in ["text", "date", "choice"] {
+            assert_eq!(
+                check_value(kind, &[], &json!(1)),
+                Err("must be a string".to_string()),
+                "{kind}"
+            );
+        }
+        assert_eq!(
+            check_value("number", &[], &json!("1")),
+            Err("must be a number".to_string())
+        );
+        assert_eq!(
+            check_value("colour", &[], &json!("red")),
+            Err("this field has an unknown kind".to_string())
+        );
+    }
+
     fn problems(kind: &str, choices: &[&str]) -> Vec<(String, String)> {
         let choices: Vec<String> = choices.iter().map(ToString::to_string).collect();
         check_def(

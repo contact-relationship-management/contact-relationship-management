@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | pins | secrets | mutants | mutants-diff | supply-chain | semver | api-types | coverage | all | pre-push
+#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | pins | secrets | mutants | mutants-diff | bench | supply-chain | semver | api-types | coverage | all | pre-push
 # scripts/check-ci-entry-point.py fails the build if a CI step checks anything outside this file.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -16,10 +16,11 @@ SITE=contact-relationship-management.github.io
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
 
-# What `all` runs, cheapest first. `mutants` is left out: it takes hours (spec/local-ci-cd.md).
+# What `all` runs, cheapest first. `mutants` is left out: it takes hours (spec/local-ci-cd.md);
+# `bench` too, as a reading of the machine rather than a check.
 ALL_STAGES=(fmt lint scripts pins secrets semver clippy test api-types coverage front-end e2e site supply-chain test-db)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|mutants-diff|supply-chain|semver|api-types|coverage|all|pre-push>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|mutants-diff|bench|supply-chain|semver|api-types|coverage|all|pre-push>}"
 
 case "${stage}" in
   fmt)
@@ -210,6 +211,19 @@ case "${stage}" in
       (cd "${MATCHER}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out")
     fi
     (cd "${DOMAIN}" && cargo mutants -j "${CRM_MUTANTS_JOBS:-2}" --no-shuffle --output "${PWD}/mutants-out" ${CRM_MUTANTS_SHARD:+--shard "${CRM_MUTANTS_SHARD}"} "${@:2}")
+    ;;
+  bench)
+    # CRM-T266: the criterion benchmarks, the matcher's and the domain rules'. A reading of this
+    # machine for BENCHMARKS.md, not a gate, so no hosted runner's noisy neighbours run it.
+    # CRM_BENCH_SAVE=<name> saves the run as a named baseline (in each crate's target/criterion);
+    # CRM_BENCH_BASELINE=<name> compares with one saved earlier, and criterion prints each change.
+    # Further arguments go to criterion, such as a filter: scripts/ci-check.sh bench '^calendar/'.
+    bench_args=()
+    if [[ -n "${CRM_BENCH_SAVE:-}" ]]; then bench_args+=(--save-baseline "${CRM_BENCH_SAVE}"); fi
+    if [[ -n "${CRM_BENCH_BASELINE:-}" ]]; then bench_args+=(--baseline-lenient "${CRM_BENCH_BASELINE}"); fi
+    bench_args+=("${@:2}")
+    (cd "${MATCHER}" && cargo bench --bench matching -- ${bench_args[@]+"${bench_args[@]}"})
+    (cd "${DOMAIN}" && cargo bench --bench rules -- ${bench_args[@]+"${bench_args[@]}"})
     ;;
   mutants-diff)
     # CRM-T259: only the mutants in lines changed since a base commit (CRM_MUTANTS_BASE, or the

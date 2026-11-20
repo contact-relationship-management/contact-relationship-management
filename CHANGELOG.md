@@ -14,6 +14,11 @@ subproject keeps a detailed changelog:
 - Deal and quota forms reject misplaced digit separators. The FX form preserves all nine
   supported decimal places when a reader enters a rate in the page's number format.
 
+## [0.2.0] — 2026-11-18
+
+Service, domain crate and UI 0.2.0: images on GitHub Container Registry, the service and the domain
+crate on crates.io. The matcher stays at 0.2.1, unchanged in behaviour and API.
+
 ### Changed — one integration-test binary (CRM-T263, 2026-11-17)
 
 - The service's integration tests are one binary, `tests/main.rs`, in place of seven, each of which
@@ -25,6 +30,25 @@ subproject keeps a detailed changelog:
 - Criterion benchmarks of business calendars, templates, webhooks and the time types, and
   `pnpm perf:pages`, which times eleven UI pages cold and warm, plain and throttled to a phone.
   Results in `BENCHMARKS.md`.
+
+### Changed — benchmarks in one stage, coverage by tarpaulin (CRM-T266, 2026-11-17)
+
+- `scripts/ci-check.sh bench` runs the criterion benchmarks of the matcher and the domain rules, and
+  can keep a run as a named baseline and compare a later one with it. `BENCHMARKS.md` has every case
+  rerun.
+- The coverage report uses `cargo-tarpaulin`. It leaves test code out, so it reads 30% where the old
+  tool read 45%: the same tests reach the same code, and the old figure counted the tests' own lines.
+
+### Changed — jiff 1.0.0 (CRM-T265, 2026-11-17)
+
+- The service and its domain rules use jiff 1.0.0, the version axa's job queue already uses, so one
+  version is compiled instead of two. No change in behaviour.
+
+### Changed — axa 0.20.0 (CRM-T264, 2026-11-17)
+
+- The service uses axa 0.20.0 and `axa-test` 0.11.0. A request body compressed with Zstd is now refused
+  with `415`, and a caller that accepts only Zstd is answered uncompressed; gzip, Brotli and deflate are
+  unchanged. The build no longer compiles the C zstd library.
 
 ### Changed — axa 0.19.0 (CRM-T261, 2026-11-17)
 
