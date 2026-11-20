@@ -29,6 +29,9 @@ mod insight_rollups;
 mod insights;
 mod inventory;
 mod kb;
+// The PASETO key set and its refresh exist only with the `paseto` feature (off in the Keycloak-only build).
+#[cfg(feature = "paseto")]
+mod key_refresh;
 mod lead_assignment;
 mod lead_imports;
 mod log_retention;
@@ -39,6 +42,7 @@ mod notifications;
 mod openapi_schemas;
 mod organization_settings;
 mod pagination;
+mod policy_file;
 mod privacy;
 mod quotas;
 mod record_imports;

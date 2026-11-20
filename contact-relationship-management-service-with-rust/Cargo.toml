@@ -137,6 +137,8 @@ tokio = { version = "1.54", default-features = false, features = [
   "rt-multi-thread",
   "macros",
   "net",
+  # A paused clock, so the policy watcher's 15-second poll can be tested without waiting (CRM-T292).
+  "test-util",
 ] }
 serial_test = { version = "4.0.1" }
 # Mint PASETO v4.public tokens + a matching Ed25519 key set in-process so

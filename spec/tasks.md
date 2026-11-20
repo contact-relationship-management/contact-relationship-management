@@ -2622,5 +2622,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       looked up once and then cached, a title serving as a name, a failed lookup giving none; a mailbox read from the
       person service and a primed one winning; every shape `extract_email` reads; a full name cache dropping its oldest
       entry. The HTTP cases are serial tests in `tests/requests/upstream.rs`, as the mode is process-wide.
+      - **Round 6:** `auth/policy.rs` (80.5% to 97.5%) and `auth/verifier.rs` (71.4% to 93.3%): the access policy from
+      a file, inline, and the default when the file cannot be read or does not parse; a reload swapping the live
+      policy; the watcher reloading on a change (a paused clock, so tokio's `test-util` is now a dev feature); the key
+      set fetched at start, from the settings when the fetch fails and empty when neither has a usable key; the
+      refresh loop picking up a rotation and keeping the keys through an outage. Left: Keycloak's configuration
+      errors, which run once per process behind a `OnceLock` the Keycloak guard test sets first.
+      - **Floor:** the census was 96.17% after round 5 and 96.31% after round 6, so the coverage stage now fails
+      below 96% (it was 95%). It is raised again as rounds land, never lowered to pass.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
