@@ -112,11 +112,18 @@ mod tests {
         ] {
             assert!(parse_hosts(bad).is_err(), "{bad:?}");
         }
-        let many = (0..=MAX_HOSTS)
-            .map(|i| format!("h{i}.example"))
-            .collect::<Vec<_>>()
-            .join(",");
-        assert!(parse_hosts(&many).is_err());
+        let hosts = |n: usize| {
+            (0..n)
+                .map(|i| format!("h{i}.example"))
+                .collect::<Vec<_>>()
+                .join(",")
+        };
+        assert_eq!(
+            parse_hosts(&hosts(MAX_HOSTS)).unwrap().len(),
+            MAX_HOSTS,
+            "the most allowed"
+        );
+        assert!(parse_hosts(&hosts(MAX_HOSTS + 1)).is_err());
     }
 
     #[test]
@@ -134,6 +141,14 @@ mod tests {
         let allowed = list("*.amazonaws.com");
         assert!(permits(&allowed, "email.eu-west-2.amazonaws.com"));
         assert!(!permits(&allowed, "amazonaws.com"));
+        assert!(
+            !permits(&allowed, ".amazonaws.com"),
+            "an empty label is not a name under it"
+        );
+        assert!(
+            permits(&allowed, "a.amazonaws.com"),
+            "a one-letter label is"
+        );
         assert!(!permits(&allowed, "evilamazonaws.com"));
         assert!(!permits(&allowed, "amazonaws.com.evil.example"));
     }

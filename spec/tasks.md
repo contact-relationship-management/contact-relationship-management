@@ -2607,5 +2607,5 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       with no keyring, and stops naming the row when a stored value is under a key the ring no longer has, in a sealed
       column and in a sensitive custom field. Left: a database error part-way through a rotation, which a test can only
       cause by breaking the connection.
-  - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be named
-    here with its reason rather than counted as covered.
+      - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
+      named here with its reason rather than counted as covered.
