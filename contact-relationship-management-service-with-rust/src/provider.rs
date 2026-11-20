@@ -953,3 +953,288 @@ mod tests {
         assert!(configure(Kind::SendGrid, &vars(vec![from]), false).is_err());
     }
 }
+
+/// Each provider's request, sent for real to a stand-in on this machine (CRM-T292): the path, the
+/// way it authenticates, the body it carries, and how the answer is read.
+#[cfg(test)]
+mod sent_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    /// One request the stand-in received.
+    #[derive(Debug, Clone)]
+    struct Seen {
+        method: String,
+        uri: String,
+        headers: Vec<(String, String)>,
+        body: String,
+    }
+
+    impl Seen {
+        fn header(&self, name: &str) -> Option<&str> {
+            self.headers
+                .iter()
+                .find(|(n, _)| n.eq_ignore_ascii_case(name))
+                .map(|(_, v)| v.as_str())
+        }
+    }
+
+    /// A server on a free local port that answers every request with `status` and `answer`.
+    async fn stand_in(status: u16, answer: &'static str) -> (String, Arc<Mutex<Vec<Seen>>>) {
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let kept = seen.clone();
+        let app = axum::Router::new().fallback(move |request: axum::extract::Request| {
+            let kept = kept.clone();
+            async move {
+                let (parts, body) = request.into_parts();
+                let bytes = axum::body::to_bytes(body, 1 << 20)
+                    .await
+                    .unwrap_or_default();
+                kept.lock().unwrap().push(Seen {
+                    method: parts.method.to_string(),
+                    uri: parts.uri.to_string(),
+                    headers: parts
+                        .headers
+                        .iter()
+                        .map(|(n, v)| (n.to_string(), v.to_str().unwrap_or("").to_string()))
+                        .collect(),
+                    body: String::from_utf8_lossy(&bytes).into_owned(),
+                });
+                (axum::http::StatusCode::from_u16(status).unwrap(), answer)
+            }
+        });
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        tokio::spawn(async move { axum::serve(listener, app).await });
+        (format!("http://{address}"), seen)
+    }
+
+    fn message() -> Message {
+        Message {
+            to: "ada@example.test".into(),
+            to_name: "Ada".into(),
+            subject: "Hello".into(),
+            text: "A note.".into(),
+            message_id: "<m1@example.test>".into(),
+            unsubscribe_url: Some("https://crm.example.test/unsubscribe/t".into()),
+        }
+    }
+
+    /// Configure `kind` with `settings`, posting to `url`.
+    fn sender(kind: Kind, url: &str, settings: &[(&str, &str)]) -> ApiSender {
+        crate::app::install_tls_provider();
+        let mut all: Vec<(String, String)> = settings
+            .iter()
+            .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
+            .collect();
+        all.push((
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM".into(),
+            "CRM <crm@example.test>".into(),
+        ));
+        all.push((
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_API_URL".into(),
+            url.into(),
+        ));
+        let get = move |name: &str| all.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone());
+        configure(kind, &get, false).unwrap()
+    }
+
+    async fn one(
+        kind: Kind,
+        path: &str,
+        settings: &[(&str, &str)],
+        status: u16,
+        answer: &'static str,
+    ) -> (Result<Option<String>, SendError>, Seen) {
+        let (base, seen) = stand_in(status, answer).await;
+        let result = sender(kind, &format!("{base}{path}"), settings)
+            .send(&message())
+            .await;
+        let request = seen.lock().unwrap().first().cloned().expect("one request");
+        (result, request)
+    }
+
+    #[tokio::test]
+    async fn each_keyed_provider_posts_its_own_request_and_reads_its_own_answer() {
+        let (sent, seen) = one(
+            Kind::Brevo,
+            "/v3/smtp/email",
+            &[("CONTACT_RELATIONSHIP_MANAGEMENT_BREVO_API_KEY", "brevo-key")],
+            201,
+            r#"{"messageId":"<m1>"}"#,
+        )
+        .await;
+        assert_eq!(sent.unwrap(), None);
+        assert_eq!(
+            (seen.method.as_str(), seen.uri.as_str()),
+            ("POST", "/v3/smtp/email")
+        );
+        assert_eq!(seen.header("api-key"), Some("brevo-key"));
+        assert!(seen.body.contains("ada@example.test"), "{}", seen.body);
+
+        let (sent, seen) = one(
+            Kind::Mailjet,
+            "/v3.1/send",
+            &[
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_MAILJET_API_KEY", "mj-key"),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_MAILJET_API_SECRET",
+                    "mj-secret",
+                ),
+            ],
+            200,
+            r#"{"Messages":[{"Status":"success"}]}"#,
+        )
+        .await;
+        assert_eq!(sent.unwrap(), None);
+        assert!(seen.header("authorization").unwrap().starts_with("Basic "));
+
+        let (sent, seen) = one(
+            Kind::SendGrid,
+            "/v3/mail/send",
+            &[("CONTACT_RELATIONSHIP_MANAGEMENT_SENDGRID_API_KEY", "sg-key")],
+            202,
+            "",
+        )
+        .await;
+        assert_eq!(sent.unwrap(), None);
+        assert_eq!(seen.header("authorization"), Some("Bearer sg-key"));
+
+        let (sent, seen) = one(
+            Kind::Mailgun,
+            "/v3/mg.example.test/messages",
+            &[
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_API_KEY", "mg-key"),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_DOMAIN",
+                    "mg.example.test",
+                ),
+            ],
+            200,
+            r#"{"id":"<x@mg>","message":"Queued."}"#,
+        )
+        .await;
+        assert_eq!(sent.unwrap(), None);
+        assert!(seen.header("authorization").unwrap().starts_with("Basic "));
+        assert!(
+            seen.header("content-type")
+                .unwrap()
+                .starts_with("application/x-www-form-urlencoded")
+        );
+        assert!(
+            seen.body.contains("to=ada%40example.test") || seen.body.contains("ada%40example.test"),
+            "{}",
+            seen.body
+        );
+    }
+
+    #[tokio::test]
+    async fn the_signed_providers_sign_each_request_and_keep_azure_s_id() {
+        let (sent, seen) = one(
+            Kind::Ses,
+            "/v2/email/outbound-emails",
+            &[
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_REGION", "eu-west-2"),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_SES_ACCESS_KEY_ID",
+                    "AKIDEXAMPLE",
+                ),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_SES_SECRET_ACCESS_KEY",
+                    "secret",
+                ),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_SES_SESSION_TOKEN",
+                    "session",
+                ),
+            ],
+            200,
+            r#"{"MessageId":"0100abc"}"#,
+        )
+        .await;
+        assert_eq!(sent.unwrap(), None);
+        let signed = seen.header("authorization").unwrap();
+        assert!(
+            signed.starts_with("AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/"),
+            "{signed}"
+        );
+        assert!(signed.contains("/eu-west-2/ses/aws4_request"), "{signed}");
+        assert_eq!(seen.header("x-amz-security-token"), Some("session"));
+        assert_eq!(seen.header("content-type"), Some("application/json"));
+
+        let (sent, seen) = one(
+            Kind::Azure,
+            "/emails:send?api-version=2023-03-31",
+            &[
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_AZURE_ENDPOINT",
+                    "https://x.communication.azure.com",
+                ),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_AZURE_ACCESS_KEY",
+                    "c2VjcmV0",
+                ),
+            ],
+            202,
+            r#"{"id":"op-1","status":"Running"}"#,
+        )
+        .await;
+        assert_eq!(
+            sent.unwrap(),
+            Some("op-1".to_string()),
+            "Azure's id is kept for its events"
+        );
+        assert_eq!(seen.uri, "/emails:send?api-version=2023-03-31");
+        assert!(
+            seen.header("authorization")
+                .unwrap()
+                .starts_with("HMAC-SHA256 ")
+        );
+    }
+
+    #[tokio::test]
+    async fn a_refusal_is_permanent_an_outage_is_transient_and_so_is_no_answer() {
+        let brevo = [("CONTACT_RELATIONSHIP_MANAGEMENT_BREVO_API_KEY", "k")];
+        let (refused, _) = one(
+            Kind::Brevo,
+            "/x",
+            &brevo,
+            400,
+            r#"{"code":"invalid_parameter","message":"bad to"}"#,
+        )
+        .await;
+        assert!(
+            matches!(refused, Err(SendError::Permanent(_))),
+            "{refused:?}"
+        );
+        let (outage, _) = one(Kind::Brevo, "/x", &brevo, 503, "{}").await;
+        assert!(matches!(outage, Err(SendError::Transient(_))), "{outage:?}");
+        // Nothing listening: transient, and the address is not in the text.
+        let closed = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = closed.local_addr().unwrap();
+        drop(closed);
+        let gone = sender(Kind::Brevo, &format!("http://{address}/x"), &brevo)
+            .send(&message())
+            .await;
+        match gone {
+            Err(SendError::Transient(why)) => assert!(!why.contains(&address.to_string()), "{why}"),
+            other => panic!("{other:?}"),
+        }
+        // An API URL that does not parse is refused before anything is sent, for a signed provider.
+        let mut bad = sender(
+            Kind::Ses,
+            "http://127.0.0.1/x",
+            &[
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_REGION", "eu-west-2"),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_ACCESS_KEY_ID", "a"),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SES_SECRET_ACCESS_KEY", "b"),
+            ],
+        );
+        bad.url = "not a url".into();
+        assert!(matches!(
+            bad.send(&message()).await,
+            Err(SendError::Permanent(_))
+        ));
+        assert_eq!(bad.url(), "not a url");
+    }
+}

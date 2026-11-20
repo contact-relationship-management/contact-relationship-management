@@ -2612,5 +2612,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       does not exist) and taken at 32; a real send that is sent from a template, held for no address or no body, or
       ended for a suppressed mailbox, a refused mailbox or a template that is gone, with each delivery and enrolment
       state checked. The test recorder gained `refuse`, a permanent failure, as only a temporary one existed.
+      - **Round 4:** `provider.rs` (82.5%): each of the six providers' requests is sent for real to a stand-in on this
+      machine, checking its path, how it authenticates (a key header, basic, bearer, an AWS Signature V4 with the
+      session token, Azure's HMAC) and how its answer is read (Azure's operation id kept); a refusal is permanent, an
+      outage and an unreachable provider transient, with the address kept out of the error; an API URL that does not
+      parse is refused before sending.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
