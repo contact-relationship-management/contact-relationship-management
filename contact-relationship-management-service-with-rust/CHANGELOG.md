@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — send-time consent evidence (CRM-T166)
+
+- Campaign and nurture sends resolve the stored jurisdiction profile immediately before delivery and
+  snapshot its code, regime, contributing row and basis (or blocked reason) in
+  `email_deliveries.basis`. Simulated nurture touches now have delivery rows too, so the audit evidence
+  is present in the demo path as well as a real sender. With no profile, the decision remains strict
+  opt-in. Audience widening, profile administration and jurisdiction-specific message content remain
+  unfinished and are recorded in `spec/tasks.md`.
+
 ### Changed — one integration-test binary (CRM-T263)
 
 - `tests/mod.rs` is `tests/main.rs`, and `command_line`, `keycloak_guard`, `outbox`, `rate_limit`,

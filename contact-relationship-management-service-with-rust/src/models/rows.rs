@@ -1596,7 +1596,7 @@ pub async fn all_deliveries_of_contact<'e>(
     sqlx::query_as!(
         email_deliveries::Model,
         "SELECT created_at, updated_at, id, pid, campaign_pid, contact_pid, state, attempts, \
-        message_id, provider_id, error, sent_at AS \"sent_at: DateTimeWithTimeZone\" \
+        message_id, provider_id, error, sent_at AS \"sent_at: DateTimeWithTimeZone\", basis \
         FROM email_deliveries WHERE contact_pid = $1 ORDER BY id",
         contact,
     )

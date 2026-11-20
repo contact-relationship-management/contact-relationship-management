@@ -228,11 +228,13 @@ pub(super) async fn send_step(
     sender: &mail::Sender,
     contact: &contacts::Model,
     step: &nurture_steps::Model,
+    basis: &serde_json::Value,
 ) -> Result<StepSend> {
     let (row_id, state, message_id) = deliveries::row_for(txn, step.pid, contact.pid).await?;
     if let (true, Some(id)) = (state == "sent", message_id) {
         return Ok(StepSend::Sent(id));
     }
+    deliveries::note_basis(&mut *txn, row_id, basis).await?;
     if deliveries::is_suppressed(&mut *txn, contact.pid).await? {
         deliveries::settle(
             &mut *txn,
@@ -383,8 +385,8 @@ enum Gate {
     /// An employee, by the worker service: the step waits, and goes on when the employment ends
     /// (CRM-R92), under the consent they still have.
     Hold,
-    /// Send it.
-    Go,
+    /// Send it, recording this immutable consent-decision snapshot.
+    Go(serde_json::Value),
 }
 
 /// The send-time checks for a step of `sequence_pid` to `contact`: consent for the sequence's
@@ -393,22 +395,41 @@ async fn send_gate(
     txn: &mut PgConnection,
     contact: &contacts::Model,
     sequence_pid: Uuid,
+    now: DateTimeWithTimeZone,
 ) -> Result<Gate> {
     // A deleted sequence keeps its purpose for an enrolment still under way, as before.
-    let purpose = sqlx::query!(
-        "SELECT purpose, deleted_at FROM nurture_sequences WHERE pid = $1",
+    let sequence = sqlx::query!(
+        "SELECT purpose, consent_jurisdiction, deleted_at FROM nurture_sequences WHERE pid = $1",
         sequence_pid,
     )
     .fetch_optional(&mut *txn)
-    .await?
-    .map_or_else(|| tokens::DEFAULT_PURPOSE.to_string(), |q| q.purpose);
-    if crate::consents::state_of(&mut *txn, contact, &purpose).await? != "granted" {
+    .await?;
+    let purpose = sequence
+        .as_ref()
+        .map_or(tokens::DEFAULT_PURPOSE, |q| q.purpose.as_str());
+    let send_code = sequence
+        .as_ref()
+        .and_then(|q| q.consent_jurisdiction.as_deref());
+    let profiles = crate::consent_profiles::load(txn).await?;
+    let as_of = super::super::organization::organization_today(&mut *txn).await?;
+    let decision = crate::consent_profiles::decide(
+        txn,
+        &profiles,
+        contact,
+        purpose,
+        crate::rules::consent_regime::SEND_CHANNEL,
+        send_code,
+        now,
+        as_of,
+    )
+    .await?;
+    if !decision.sends() {
         return Ok(Gate::Exit);
     }
     if crate::models::employments::is_employee(&mut *txn, contact.pid).await? {
         return Ok(Gate::Hold);
     }
-    Ok(Gate::Go)
+    Ok(Gate::Go(decision.record()))
 }
 
 /// `POST /api/nurture/advance` — the **idempotent advance sweep**
@@ -500,8 +521,8 @@ async fn advance_one(
     let contact = rows::contact(&mut *txn, row.contact_pid)
         .await?
         .ok_or(Error::NotFound)?;
-    match send_gate(&mut txn, &contact, row.sequence_pid).await? {
-        Gate::Go => {}
+    let basis = match send_gate(&mut txn, &contact, row.sequence_pid, now).await? {
+        Gate::Go(basis) => basis,
         Gate::Hold => {
             txn.commit().await?;
             return Ok(Step::Held);
@@ -511,7 +532,7 @@ async fn advance_one(
             txn.commit().await?;
             return Ok(Step::Skipped);
         }
-    }
+    };
     let steps = rows::steps_of(&mut *txn, row.sequence_pid).await?;
     let Some(step) = steps.get(usize::try_from(row.current_step).unwrap_or(usize::MAX)) else {
         sqlx::query!(
@@ -526,7 +547,7 @@ async fn advance_one(
     };
     // The real sender mails the step first; the simulated one does not.
     let message_id = if sender.needs_address() {
-        match send_step(&mut txn, sender, &contact, step).await? {
+        match send_step(&mut txn, sender, &contact, step, &basis).await? {
             StepSend::Sent(id) => Some(id),
             StepSend::Retry(why) => {
                 txn.commit().await?;
@@ -540,7 +561,16 @@ async fn advance_one(
             }
         }
     } else {
-        None
+        let (row_id, state, message_id) =
+            deliveries::row_for(&mut txn, step.pid, contact.pid).await?;
+        if state == "sent" {
+            message_id
+        } else {
+            let id = sender.new_message_id();
+            deliveries::note_basis(&mut *txn, row_id, &basis).await?;
+            deliveries::settle(&mut *txn, row_id, "sent", Some(&id), None).await?;
+            Some(id)
+        }
     };
     // The touch activity + event.
     record_step_touch(&mut txn, contact.pid, step, now).await?;

@@ -1943,8 +1943,18 @@ Each task traces to CRM-R95 and CRM-D19 (both confirmed by the product owner, 20
   **Step c done (2026-10-31):** migration `000059` (codes, append-only rows and acknowledgements, purposes, consent per
   channel with existing consent as `email`'s, `consent_jurisdiction` on contacts, campaigns and sequences, the sender
   fields, the delivery basis).
-  **Not done yet:** the send paths, API, UI and request/browser tests (steps d to f); the regime shapes are from
-  the register, every region *not yet read*; not legal advice.
+  **Backend send checkpoint (2026-11-20):** campaign and nurture sends now resolve the contact's code, else the send's
+  code, on the organization's local day immediately before delivery. No profile remains strict opt-in. The immutable
+  decision snapshot (code, regime, contributing profile row, basis or blocked reason) is written to
+  `email_deliveries.basis` for simulated and real sends; the subject-access export includes it. The existing end-to-end
+  marketing request test now proves both a campaign and a nurture touch record `granted` under `opt_in`; the focused
+  PostgreSQL test and the workspace all-target compile pass, and SQLx metadata was regenerated against the migrated
+  schema.
+  **Still in progress:** segment evaluation and nurture enrolment still admit only explicitly granted contacts, so a
+  configured soft-opt-in, implied-consent or opt-out profile cannot yet widen an audience. The administration API and UI,
+  profile/purpose editing, contact/campaign/sequence code fields, preview counts by basis, sender settings, required-setting
+  refusal, footer and advertising label remain steps d to f. The profile shapes come from a register whose regions are all
+  *not yet read*; this is not legal advice.
 - [x] CRM-T167 **Money uses the currency's own exponent.** (CRM-R95, CRM-D19; spec row 11; code rows 8 to 11) In the UI, one
       formatter and parser with the behaviour of the sibling apps' shared `src/lib/money.ts` (project portfolio commit `956d9ed`,
       workforce planning WPM-T373: the exponent from `Intl.NumberFormat#resolvedOptions().maximumFractionDigits`, `money`,

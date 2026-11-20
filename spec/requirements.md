@@ -100,7 +100,14 @@ decision 12; was "every marketing touch was consented to".)
   enrolments, and blocks all sends until an explicit re-grant. Consent is held
   per purpose (CRM-R29); `marketing_consent` is the original, default purpose.
 - The send path (campaign + nurture) re-checks consent **at send
-  time**; segments implicitly require `consent = granted`.
+  time**. It resolves the contact's jurisdiction code, else the campaign's or
+  sequence's code, for the `email` channel on the organization's local day;
+  no code remains strict opt-in. Every delivery row records the resolved
+  regime, profile row and lawful basis (or why the send was blocked), so a
+  later profile change cannot rewrite the evidence for an earlier decision.
+- Segments cannot express the consent gate away. Campaign audience preview
+  and delivery use the same profile decision; a looser configured regime may
+  admit a contact only when its required evidence is present and current.
 
 ## CRM-R7 — Segments
 

@@ -286,6 +286,8 @@ pub(super) async fn deliver_one(
     ctx: &AppContext,
     campaign: &campaigns::Model,
     sender: &mail::Sender,
+    profiles: &crate::consent_profiles::Loaded,
+    as_of: crate::time::Date,
     item: deliveries::Claimed,
     audience: &std::collections::HashSet<Uuid>,
     outcome: &mut RunOutcome,
@@ -295,22 +297,43 @@ pub(super) async fn deliver_one(
     // The audience was listed a moment ago and consent can change at any time,
     // so read the contact again immediately before sending (CRM-D6).
     let contact = rows::contact(&mut *conn, item.contact_pid).await?;
-    let granted = match &contact {
-        Some(c) => crate::consents::state_of(&mut *conn, c, &campaign.purpose).await? == "granted",
-        None => false,
-    };
-    let Some(contact) = contact.filter(|_| granted) else {
+    let Some(contact) = contact else {
         deliveries::settle(
             &mut *conn,
             item.id,
             "suppressed",
             None,
-            Some("consent not granted at send time"),
+            Some("contact is no longer available"),
         )
         .await?;
         outcome.suppressed += 1;
         return Ok(());
     };
+    let decision = crate::consent_profiles::decide(
+        &mut conn,
+        profiles,
+        &contact,
+        &campaign.purpose,
+        crate::rules::consent_regime::SEND_CHANNEL,
+        campaign.consent_jurisdiction.as_deref(),
+        crate::clock::now(),
+        as_of,
+    )
+    .await?;
+    let basis = decision.record();
+    deliveries::note_basis(&mut *conn, item.id, &basis).await?;
+    if !decision.sends() {
+        deliveries::settle(
+            &mut *conn,
+            item.id,
+            "suppressed",
+            None,
+            Some("consent profile blocked the send at send time"),
+        )
+        .await?;
+        outcome.suppressed += 1;
+        return Ok(());
+    }
     if let Some(reason) = skip_reason(&mut conn, contact.pid, audience).await? {
         deliveries::settle(&mut *conn, item.id, "suppressed", None, Some(reason)).await?;
         outcome.suppressed += 1;
@@ -515,6 +538,11 @@ pub(super) async fn run_batch(
     let audience_pids: std::collections::HashSet<Uuid> = audience.iter().map(|c| c.pid).collect();
     let pids: Vec<Uuid> = audience.iter().map(|c| c.pid).collect();
     deliveries::ensure_rows(&mut *pool.acquire().await?, campaign.pid, &pids).await?;
+    let mut profile_connection = pool.acquire().await?;
+    let profiles = crate::consent_profiles::load(&mut profile_connection).await?;
+    let as_of =
+        crate::controllers::organization::organization_today(&mut *profile_connection).await?;
+    drop(profile_connection);
 
     let campaign_pid = campaign.pid;
     let mut campaign = campaign;
@@ -539,7 +567,17 @@ pub(super) async fn run_batch(
     let claimed = deliveries::claim(pool, campaign_pid, limit).await?;
     let mut outcome = RunOutcome::default();
     for item in claimed {
-        deliver_one(ctx, &campaign, &sender, item, &audience_pids, &mut outcome).await?;
+        deliver_one(
+            ctx,
+            &campaign,
+            &sender,
+            &profiles,
+            as_of,
+            item,
+            &audience_pids,
+            &mut outcome,
+        )
+        .await?;
     }
 
     let remaining = deliveries::retriable(pool, campaign_pid).await?;

@@ -120,6 +120,27 @@ pub async fn settle<'e>(
     Ok(())
 }
 
+/// Record the consent decision made for this delivery. The value is a snapshot of the resolved
+/// profile and basis, so later profile edits do not rewrite why this attempt sent or stopped.
+///
+/// # Errors
+///
+/// When the statement fails.
+pub async fn note_basis<'e>(
+    db: impl PgExecutor<'e>,
+    id: i32,
+    basis: &serde_json::Value,
+) -> Result<()> {
+    sqlx::query!(
+        "UPDATE email_deliveries SET basis = $2, updated_at = now() WHERE id = $1",
+        id,
+        basis,
+    )
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
 /// Rows per state for a campaign.
 ///
 /// # Errors

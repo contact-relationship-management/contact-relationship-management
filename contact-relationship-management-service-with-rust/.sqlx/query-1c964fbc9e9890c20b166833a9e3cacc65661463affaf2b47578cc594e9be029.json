@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT purpose, deleted_at FROM nurture_sequences WHERE pid = $1",
+  "query": "SELECT purpose, consent_jurisdiction, deleted_at FROM nurture_sequences WHERE pid = $1",
   "describe": {
     "columns": [
       {
@@ -16,6 +16,17 @@
       },
       {
         "ordinal": 1,
+        "name": "consent_jurisdiction",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "nurture_sequences",
+            "name": "consent_jurisdiction"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
         "name": "deleted_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -33,8 +44,9 @@
     },
     "nullable": [
       false,
+      true,
       true
     ]
   },
-  "hash": "c21fa9fce3399fecf655d0624e244e8d4e31d792249ca253de7262a0102fe8cc"
+  "hash": "1c964fbc9e9890c20b166833a9e3cacc65661463affaf2b47578cc594e9be029"
 }

@@ -4,8 +4,10 @@
 
 use axa_test::prelude::*;
 use contact_relationship_management::app::App;
+use contact_relationship_management::db;
 use serde_json::{Value, json};
 use serial_test::serial;
+use uuid::Uuid;
 
 use super::{a_person, seed_contact};
 
@@ -16,7 +18,7 @@ use super::{a_person, seed_contact};
 // consented; withdrawal exits the nurture enrolment and the next
 // advance sends nothing.
 async fn consent_gates_campaign_and_nurture() {
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         let consented = seed_contact!(&request, "Consented Contact").await;
         // A second contact who never consented.
         let never: Value = request
@@ -66,6 +68,17 @@ async fn consent_gates_campaign_and_nurture() {
             .json();
         assert_eq!(ran["recipients"], 1);
         assert_eq!(ran["status"], "completed");
+        let campaign_basis = sqlx::query_scalar::<_, serde_json::Value>(
+            "SELECT basis FROM email_deliveries WHERE campaign_pid = $1 AND contact_pid = $2",
+        )
+        .bind(Uuid::parse_str(&campaign_pid).unwrap())
+        .bind(Uuid::parse_str(&consented).unwrap())
+        .fetch_one(db::pool(&ctx))
+        .await
+        .unwrap();
+        assert_eq!(campaign_basis["basis"], "granted", "{campaign_basis}");
+        assert_eq!(campaign_basis["regime"], "opt_in", "{campaign_basis}");
+        assert!(campaign_basis["profile"].is_null(), "{campaign_basis}");
         // Funnel/ROI: no attributed revenue yet ⇒ negative ROI with
         // honest parts.
         let funnel: Value = request
@@ -97,6 +110,15 @@ async fn consent_gates_campaign_and_nurture() {
         // First advance sends step 0.
         let advanced: Value = request.post("/api/nurture/advance").await.json();
         assert_eq!(advanced["sent"], 1);
+        let recorded = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM email_deliveries WHERE contact_pid = $1 \
+             AND state = 'sent' AND basis ->> 'basis' = 'granted'",
+        )
+        .bind(Uuid::parse_str(&consented).unwrap())
+        .fetch_one(db::pool(&ctx))
+        .await
+        .unwrap();
+        assert_eq!(recorded, 2, "campaign and nurture both record their basis");
         // Withdraw consent: the enrolment exits; the next advance
         // sends nothing (send-time re-check).
         request

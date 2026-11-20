@@ -21,4 +21,6 @@ pub struct Model {
     pub provider_id: Option<String>,
     pub error: Option<String>,
     pub sent_at: Option<DateTimeWithTimeZone>,
+    /// Snapshot of the consent profile decision made at send time (CRM-R6).
+    pub basis: Option<serde_json::Value>,
 }
