@@ -318,3 +318,86 @@ async fn sqlx_seals_and_opens_the_same_columns() {
     })
     .await;
 }
+
+/// The `rotate_field_keys` task (CRM-T41): listed, re-seals through the task runner, refuses with no
+/// keyring, and stops with the row named when a stored value is under a key the ring no longer has,
+/// in a sealed column and in a sensitive custom field.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn the_rotation_task_re_seals_and_stops_on_a_value_it_cannot_open() {
+    request::<App, _, _>(|request, ctx| async move {
+        let pool = db::pool(&ctx);
+        let mut tasks = axa::task::Tasks::default();
+        App::register_tasks(&mut tasks);
+        assert!(tasks.list().iter().any(|t| t.name == "rotate_field_keys"));
+        let vars = axa::task::Vars::default();
+
+        // No keyring: refused, by the function and the task.
+        crypto::install(None);
+        assert!(rotate(pool).await.unwrap_err().contains("no field keys"));
+        assert!(tasks.run("rotate_field_keys", &ctx, &vars).await.is_err());
+
+        // Sealed under k1, re-sealed under k2 by the task.
+        crypto::install(Some(keyring(&[("k1", 1)])));
+        let pid = seed_contact!(&request, "Rotated Subject").await;
+        request
+            .post("/api/activities")
+            .json(&json!({ "subject_kind": "contact", "subject_pid": pid,
+                           "kind": "note", "summary": "Re-sealed by the task" }))
+            .await
+            .assert_status_ok();
+        crypto::install(Some(keyring(&[("k2", 2), ("k1", 1)])));
+        tasks.run("rotate_field_keys", &ctx, &vars).await.unwrap();
+        let summary = stored(
+            pool,
+            &format!("SELECT summary AS v FROM activities WHERE subject_pid = '{pid}'"),
+        )
+        .await;
+        assert!(summary[0].starts_with("enc:v1:k2:"), "{}", summary[0]);
+
+        // A sensitive custom value under a key that is gone: the rotation names its row and stops.
+        let field = request
+            .post("/api/custom-fields")
+            .json(
+                &json!({ "entity": "contact", "key": "diagnosis", "label": "Diagnosis",
+                           "kind": "text", "sensitivity": "sensitive", "choices": [] }),
+            )
+            .await;
+        field.assert_status_ok();
+        request
+            .put(&format!("/api/contacts/{pid}/custom-fields"))
+            .json(&json!({ "values": { "diagnosis": "private words" } }))
+            .await
+            .assert_status_ok();
+        let gone = keyring(&[("k9", 9)]).seal("private words");
+        sqlx::query("UPDATE custom_field_values SET value = $1")
+            .bind(&gone)
+            .execute(pool)
+            .await
+            .unwrap();
+        let stopped = rotate(pool).await.unwrap_err();
+        assert!(stopped.starts_with("custom_field_values row "), "{stopped}");
+
+        // A sealed column under a key that is gone: the same, naming the column.
+        sqlx::query("UPDATE activities SET summary = $1 WHERE subject_pid = $2::uuid")
+            .bind(keyring(&[("k9", 9)]).seal("lost words"))
+            .bind(&pid)
+            .execute(pool)
+            .await
+            .unwrap();
+        let stopped = rotate(pool).await.unwrap_err();
+        assert!(stopped.starts_with("activities.summary row "), "{stopped}");
+
+        // Put the world back for the other tests in this process.
+        sqlx::raw_sql(
+            "UPDATE activities SET summary = 'x' WHERE summary LIKE 'enc:v1:%'; \
+                       DELETE FROM custom_field_values",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        crypto::install(None);
+    })
+    .await;
+}

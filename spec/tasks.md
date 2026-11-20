@@ -2603,5 +2603,9 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       name, an invalid body and a calendar that is not there. `controllers/insights/support.rs` (67%): the SLA register
       with late tickets worst first, the worst of two deadlines, a paused ticket late only by the time before it paused,
       and at-risk counts.
-      - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be named
-      here with its reason rather than counted as covered.
+      - **Round 2:** `tasks/rotate_field_keys.rs` (69%): the task is listed and re-seals through the task runner, refuses
+      with no keyring, and stops naming the row when a stored value is under a key the ring no longer has, in a sealed
+      column and in a sensitive custom field. Left: a database error part-way through a rotation, which a test can only
+      cause by breaking the connection.
+  - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be named
+    here with its reason rather than counted as covered.
