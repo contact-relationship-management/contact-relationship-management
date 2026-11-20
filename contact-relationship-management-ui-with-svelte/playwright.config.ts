@@ -17,6 +17,8 @@ export default defineConfig({
   webServer: {
     command: "npm run build && npm run preview -- --port 4373 --strictPort",
     url: "http://localhost:4373",
+    // The production default is off (CRM-T92); the tour and accessibility suites opt in.
+    env: { CRM_DEMO_TOUR: "on" },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

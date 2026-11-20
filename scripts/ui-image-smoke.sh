@@ -3,9 +3,9 @@
 #   scripts/ui-image-smoke.sh [IMAGE]       default: the v0.1.5 multi-arch image by digest
 #
 # Phase 1, hardened (read-only root, no capabilities, no new privileges, non-root) with the
-# guided tour OFF (CRM_DEMO_TOUR=off): the page and its static files are served, every security header is set,
+# guided tour OFF by default (CRM_DEMO_TOUR unset): the page and its static files are served, every security header is set,
 # an unknown path is a 404, and the demo sign-in does not create a demo session (so the demo
-# data is not reachable). Phase 2, the shipped default, which has the tour ON: signing in with the demo address
+# data is not reachable). Phase 2 explicitly opts in with CRM_DEMO_TOUR=on: signing in with the demo address
 # gives a session that the same-origin proxy answers from fictitious data, a write sticks,
 # and a record page renders. The UI never talks to the service here (CRM-T72 covers that).
 #
@@ -37,9 +37,9 @@ signin() { # PORT -> posts the demo address with the origin the server expects
     --data-urlencode 'email=example@example.com' "http://localhost:$1/signin"
 }
 
-say "phase 1: hardened, tour off"
+say "phase 1: hardened, shipped default (tour off)"
 podman rm -f "${A}" "${B}" >/dev/null 2>&1
-podman run -d --name "${A}" "${hardened[@]}" -p "${PA}:3000" -e CRM_DEMO_TOUR=off "${IMAGE}" >/dev/null
+podman run -d --name "${A}" "${hardened[@]}" -p "${PA}:3000" "${IMAGE}" >/dev/null
 check "the container starts and /signin answers" wait_up "${PA}"
 version="$(podman inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE}")"
 check "the image carries a version label (${version})" test -n "${version}"
@@ -56,9 +56,9 @@ signin "${PA}"
 check "with the tour off the demo address gives no demo data" bash -c "! curl -s -b '${JAR}' --max-time 20 http://localhost:${PA}/api/proxy/contacts | grep -q person-demo"
 check "the server is still running" test "$(podman inspect --format '{{.State.Running}}' "${A}")" = true
 
-say "phase 2: hardened, the shipped default (tour on)"
+say "phase 2: hardened, tour explicitly on"
 : >"${JAR}"
-podman run -d --name "${B}" "${hardened[@]}" -p "${PB}:3000" "${IMAGE}" >/dev/null
+podman run -d --name "${B}" "${hardened[@]}" -p "${PB}:3000" -e CRM_DEMO_TOUR=on "${IMAGE}" >/dev/null
 check "the container starts" wait_up "${PB}"
 signin "${PB}"
 check "no session, no demo data" bash -c "! curl -s --max-time 20 http://localhost:${PB}/api/proxy/contacts | grep -q person-demo"

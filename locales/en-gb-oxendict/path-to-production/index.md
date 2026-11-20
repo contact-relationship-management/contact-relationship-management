@@ -52,8 +52,8 @@ Each percentage is an estimate made on 2026-11-13 from the task list, not a meas
   release image has not been checked, and there is no second code host yet (CRM-T192).
 - **Continuous integration** (60%): One script runs every check, on GitHub Actions and Woodpecker. Coverage floors,
   scheduled mutation testing and other gates are still open (CRM-T94).
-- **Demo safeguards** (60%): Each tour visitor gets a separate copy of the demo data, capped at 200 copies. The tour
-  is still on unless `CRM_DEMO_TOUR=off` is set (CRM-T92).
+- **Demo safeguards** (100%): Each tour visitor gets a separate copy of the demo data, capped at 200 copies. The tour
+  is off by default; set `CRM_DEMO_TOUR=on` to offer it (CRM-T92).
 
 ## How this page is kept
 

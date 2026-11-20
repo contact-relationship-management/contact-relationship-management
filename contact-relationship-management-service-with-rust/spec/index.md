@@ -95,7 +95,7 @@ The queue is [../../spec/tasks.md](../../spec/tasks.md). As of
 tasks.md marks open: CRM-T39 (a real email provider: built in code, the
 legal and vendor review open), CRM-T42 (independent assurance), CRM-T48
 (manual accessibility audit) and CRM-T49 (GDS API review and build
-signing) not started; CRM-T92 (opt-in demo tour) and CRM-T94 (CI gates)
+signing) not started; CRM-T94 (CI gates)
 in progress. Production gates CRM-G1/CRM-G2 remain partially open — see
 tasks.md for what each gate's code side did and did not land. The most
 recent service work is the WPM bridges (CRM-T158–T161: hire and leave

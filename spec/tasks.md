@@ -1252,7 +1252,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
       **Environment:** the variables in `src/env.ts` keep the `""` fallback on purpose. `server/config.ts` turns `""` into the localhost defaults, and the tour needs the UI to start with nothing set. The `@migration-task` comment now says so. Making them throw would break that.
 
       **Done:** `MIGRATION_TASKS.md` deleted. Checks: `svelte-check` 0 errors and 0 warnings, vitest 114, build, prettier, Playwright 105.
-- [~] CRM-T92 **Make the demo tour opt-in and per visitor.** `CRM_DEMO_TOUR=on` turns it on (it is on today unless set to `off`). Use a random demo session per sign-in in place of the constant `DEMO_SESSION`, and cap the demo state. Update the image smoke test (it checks the tour off and on) and the runbook. This is a behaviour change, so record it in the changelog. (Q18, S)
+- [x] CRM-T92 **Make the demo tour opt-in and per visitor.** (completed 2026-11-20) `CRM_DEMO_TOUR=on` turns it on; it is off while unset. Use a random demo session per sign-in in place of the constant `DEMO_SESSION`, and cap the demo state. Update the image smoke test (it checks the tour off and on) and the runbook. This is a behaviour change, so record it in the changelog. (Q18, S)
   **Per visitor, done 2026-10-21 (not released):**
       - **Sessions:** each tour sign-in gets `demo-tour-<random uuid>` and its own copy of the data (`startDemoSession`, `demoHandleFor` in `src/lib/server/demo.ts`). At most `MAX_DEMO_SESSIONS` (200) copies are kept; the least recently used goes first. Sign-out forgets the copy.
       - **Tests:** 4 vitest tests (ids differ, one visitor's write does not reach another, the cap, sign-out).
@@ -1260,7 +1260,7 @@ Source: [the DTAC assessment](../docs/united-kingdom/national-health-service/dig
 
       **Found on the way and fixed:** with the authentication service unreachable, `requestMagicLink` threw and the sign-in page went blank instead of saying it failed; `signout` threw the same way. Both now fail softly (3 vitest tests in `tests/unit/auth.test.ts`). The existing e2e test `another address is not the tour` caught this locally; it had not been caught before because Playwright does not run in CI (CRM-T94). vitest 114 of 114; Playwright 105 of 105.
 
-      **Not done, left to the maintainer:** making the tour opt-in. The code says on purpose that it is on unless `CRM_DEMO_TOUR=off`, so changing the default is a product decision. A fixed session id was not a security hole: anyone can get a demo session by signing in as `example@example.com`, and demo sessions never reach the service.
+      **Opt-in, done 2026-11-20:** only the case-insensitive value `on` enables the tour; unset, blank, `off` and unknown values keep it off. Unit tests pin that closed default. Playwright opts in explicitly. The image smoke's first phase now exercises an unconfigured image and proves the demo address gets no demo data; its second phase sets `CRM_DEMO_TOUR=on` and exercises the complete edit flow. README, `.env.example`, INSTALL, the operations runbook, path-to-production pages and changelog state the new default. `svelte-check`, the complete Vitest coverage run, production build, lint and the complete Chromium suite pass. The image smoke was updated but not run against an image built from this change.
 
       **Limits:** copies live in one process's memory, so several UI replicas each keep their own and a visitor moved to another replica starts again; a visitor can create copies up to the cap by signing in repeatedly, which evicts other visitors' copies.
 - [x] CRM-T93 **UI component tests and a generated API client.** Add `@testing-library/svelte` tests for `DataTable`, `Board` and `LinksPanel`. Generate types from the service's OpenAPI with `openapi-typescript`, and check them against the 911-line `api/crm.ts`. Fix or remove the vitest `deps.inline` regex that matches nothing. (Q19, M; types after T83)
@@ -1907,13 +1907,13 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   stage now fails it below 95%. The matcher change still awaits a release before the service image
   uses it; real reliability calibration needs locally reviewed pairs.
 - [x] CRM-T274 **Gate the client at 95% line coverage.** (2026-11-19)
-  Vitest's V8 census now covers 2,676 of 2,816 executable UI lines (95.02%), up from 1,648
+  Vitest's V8 census now covers 2,677 of 2,817 executable UI lines (95.03%), up from 1,648
   (58.52%) at the start of this task. The new tests exercise the complete demo workflows and their
   validation boundaries, exact-money paths, the typed API surface, session cookies, conditional
   reads, uploads, component persistence failures, localized formatting and server-side sign-in.
   `vite.config.ts` makes 95% a failing line threshold, and generated `coverage/` output is ignored.
-  The measured run passed 369 tests in 37 files. Statements (93.89%), branches (84.68%) and
-  functions (92.59%) remain reported but are not misrepresented as having reached 95%.
+  The measured run passed 371 tests in 38 files. Statements (93.89%), branches (84.64%) and
+  functions (92.60%) remain reported but are not misrepresented as having reached 95%.
 - [x] CRM-T275 **Measure and raise whole-service Rust line coverage to 95%.** (2026-11-19)
   A clean merged census now covers 31,767 of 33,424 executable Rust lines (95.04%),
   3,860/4,109 functions (93.94%) and 38,566/42,163 regions (91.47%). The coverage stage

@@ -270,7 +270,8 @@ v0.1.5 image no longer passes: it predates the move to axa (CRM-T228), reads `DA
 `DB_URL` and serves `/_ping`, so the default run fails until a release after the move. Until then, pass
 an image built from the tree.
 The UI image has its own check, `scripts/ui-image-smoke.sh` (hardened flags, headers, tour off and on); it passed 23 of 23
-on the pulled v0.1.5 UI image. The guided tour is on in the shipped image unless `CRM_DEMO_TOUR=off` (INSTALL.md).
+on the pulled v0.1.5 UI image. Current images keep the guided tour off unless the operator explicitly sets
+`CRM_DEMO_TOUR=on` (INSTALL.md); v0.1.5 predates that safer default.
 
 ### Migrating a database that holds data
 

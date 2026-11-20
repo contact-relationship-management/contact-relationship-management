@@ -57,8 +57,8 @@ Amcangyfrif a wnaed ar 2026-11-13 o'r rhestr dasgau yw pob canran, nid mesuriad.
   (CRM-T192).
 - **Integreiddio parhaus** (60%): Mae un sgript yn rhedeg pob gwiriad, ar GitHub Actions a Woodpecker. Mae lloriau
   cwmpas, profi mwtaniadau wedi'i amserlennu a gatiau eraill ar agor o hyd (CRM-T94).
-- **Mesurau diogelu'r arddangosiad** (60%): Mae pob ymwelydd â'r daith yn cael copi ar wahân o'r data arddangos, hyd
-  at uchafswm o 200 copi. Mae'r daith ymlaen o hyd oni bai bod `CRM_DEMO_TOUR=off` wedi'i osod (CRM-T92).
+- **Mesurau diogelu'r arddangosiad** (100%): Mae pob ymwelydd â'r daith yn cael copi ar wahân o'r data arddangos, hyd
+  at uchafswm o 200 copi. Mae'r daith i ffwrdd yn ddiofyn; gosodwch `CRM_DEMO_TOUR=on` i'w chynnig (CRM-T92).
 
 ## Sut y cedwir y dudalen hon
 

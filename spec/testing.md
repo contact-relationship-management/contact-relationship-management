@@ -47,8 +47,8 @@
   `page.route`-stubbed API (contract-mirroring, unstubbed =
   404-loud).
 - **Coverage** (CRM-T273–CRM-T275): every Vitest coverage run fails below 95% executable lines. The
-  2026-11-19 census is 2,676/2,816 lines (95.02%), 3,152/3,357 statements (93.89%),
-  2,522/2,978 branches (84.68%) and 838/905 functions (92.59%), across 369 tests in 37 files.
+  2026-11-20 census is 2,677/2,817 lines (95.03%), 3,153/3,358 statements (93.89%),
+  2,519/2,976 branches (84.64%) and 839/906 functions (92.60%), across 371 tests in 38 files.
   The independently versioned matcher's 2026-11-20 census covers 900/914 lines (98.47%), all
   126 functions and 1,240/1,261 regions (98.33%); its unit, integration, tuning and benchmark
   targets run together and CI fails below 95% lines. The service Rust coverage stage starts from a

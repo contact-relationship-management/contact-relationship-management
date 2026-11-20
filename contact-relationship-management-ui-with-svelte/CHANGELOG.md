@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the guided tour is opt-in (CRM-T92)
+
+- The in-memory tour is disabled unless `CRM_DEMO_TOUR=on`. Each visitor still gets an isolated,
+  random session and the least-recently-used copy is removed above the 200-session cap.
+- Playwright opts in explicitly. The image smoke checks both the unconfigured, off-by-default image
+  and an explicitly enabled tour.
+
 ### Fixed — localized numeric input (CRM-T268)
 
 - A German deal edit of `12.50` now shows the existing format error. Correctly grouped inputs
@@ -361,7 +368,7 @@ Signing in as `example@example.com` now starts a new demo session with a random 
 fictitious data, so one visitor no longer sees what another typed or moved. Before, every visitor shared one copy
 under one fixed session id, and each new sign-in reset it for everyone. At most 200 copies are kept in memory; the
 least recently used goes first, and that visitor starts again from the original data. Sign-out forgets the copy.
-The tour is still on unless `CRM_DEMO_TOUR=off`.
+The tour remained on unless `CRM_DEMO_TOUR=off`; CRM-T92's later opt-in change closes that gap.
 
 ### Fixed — sign-in when the authentication service is down
 
