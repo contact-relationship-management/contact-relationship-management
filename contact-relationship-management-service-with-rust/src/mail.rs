@@ -721,4 +721,186 @@ mod tests {
         assert_eq!(domain_of("CRM <crm@example.test>"), "example.test");
         assert_eq!(domain_of("crm@example.test"), "example.test");
     }
+
+    /// A scripted SMTP server on a free local port: it answers `rcpt` to `RCPT TO` and keeps the
+    /// message text it is given. Plain text, so the sender is configured with `SMTP_TLS=none`.
+    async fn smtp_server(rcpt: &'static str) -> (u16, Arc<Mutex<String>>) {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let kept = Arc::new(Mutex::new(String::new()));
+        let data = kept.clone();
+        tokio::spawn(async move {
+            while let Ok((socket, _)) = listener.accept().await {
+                let data = data.clone();
+                tokio::spawn(async move {
+                    let (read, mut write) = socket.into_split();
+                    let mut lines = BufReader::new(read).lines();
+                    write.write_all(b"220 test ESMTP\r\n").await.unwrap();
+                    let mut in_data = false;
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        if in_data {
+                            if line == "." {
+                                in_data = false;
+                                write.write_all(b"250 queued\r\n").await.unwrap();
+                            } else {
+                                lock(&data).push_str(&line);
+                                lock(&data).push('\n');
+                            }
+                            continue;
+                        }
+                        let verb = line
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or("")
+                            .to_ascii_uppercase();
+                        let answer: &[u8] = match verb.as_str() {
+                            "EHLO" | "HELO" => b"250 test\r\n",
+                            "RCPT" => rcpt.as_bytes(),
+                            "DATA" => {
+                                in_data = true;
+                                b"354 go on\r\n"
+                            }
+                            "QUIT" => {
+                                write.write_all(b"221 bye\r\n").await.unwrap();
+                                break;
+                            }
+                            _ => b"250 ok\r\n",
+                        };
+                        write.write_all(answer).await.unwrap();
+                    }
+                });
+            }
+        });
+        (port, kept)
+    }
+
+    fn plain_smtp(port: u16) -> Sender {
+        crate::app::install_tls_provider();
+        let port = port.to_string();
+        from_settings(
+            &settings(&[
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "smtp"),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST", "127.0.0.1"),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT", &port),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS", "none"),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM",
+                    "CRM <crm@example.test>",
+                ),
+            ]),
+            false,
+        )
+        .unwrap()
+    }
+
+    fn a_message(sender: &Sender) -> Message {
+        Message {
+            to: "ada@example.test".into(),
+            to_name: "Ada".into(),
+            subject: "Hello".into(),
+            text: "A note.".into(),
+            unsubscribe_url: Some("https://crm.example.test/u/t".into()),
+            message_id: sender.new_message_id(),
+        }
+    }
+
+    /// A message goes over SMTP with its unsubscribe headers, under the sender's own domain.
+    #[tokio::test]
+    async fn a_message_is_sent_over_smtp_with_its_unsubscribe_headers() {
+        let (port, received) = smtp_server("250 ok\r\n").await;
+        let sender = plain_smtp(port);
+        assert_eq!(sender.outside_host().as_deref(), Some("127.0.0.1"));
+        let message = a_message(&sender);
+        assert!(
+            message.message_id.ends_with("@example.test>"),
+            "{}",
+            message.message_id
+        );
+        assert_eq!(sender.send(&message).await, Ok(None));
+        let text = lock(&received).clone();
+        assert!(text.contains("Subject: Hello"), "{text}");
+        assert!(
+            text.contains("List-Unsubscribe: <https://crm.example.test/u/t>"),
+            "{text}"
+        );
+        assert!(
+            text.contains("List-Unsubscribe-Post: List-Unsubscribe=One-Click"),
+            "{text}"
+        );
+        assert!(text.contains("A note."), "{text}");
+    }
+
+    /// A refused mailbox is a permanent failure; a server asking to try later is a transient one.
+    #[tokio::test]
+    async fn a_refused_mailbox_is_permanent_and_a_deferral_transient() {
+        let (port, _) = smtp_server("550 no such mailbox\r\n").await;
+        let sender = plain_smtp(port);
+        assert!(matches!(
+            sender.send(&a_message(&sender)).await,
+            Err(SendError::Permanent(_))
+        ));
+        let (port, _) = smtp_server("451 try again later\r\n").await;
+        let sender = plain_smtp(port);
+        assert!(matches!(
+            sender.send(&a_message(&sender)).await,
+            Err(SendError::Transient(_))
+        ));
+    }
+
+    /// A provider's API sender, implicit TLS on its own port, and the settings that are refused.
+    #[test]
+    fn an_api_sender_implicit_tls_and_bad_smtp_settings() {
+        crate::app::install_tls_provider();
+        let api = from_settings(
+            &settings(&[
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "Brevo"),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_BREVO_API_KEY", "k"),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM",
+                    "CRM <crm@example.test>",
+                ),
+            ]),
+            false,
+        )
+        .unwrap();
+        assert_eq!(api.outside_host().as_deref(), Some("api.brevo.com"));
+        assert!(api.new_message_id().ends_with("@example.test>"));
+        assert_eq!(Sender::Simulated.outside_host(), None);
+
+        let with = |extra: &[(&'static str, &'static str)]| {
+            let mut all = SMTP.to_vec();
+            all.extend_from_slice(extra);
+            from_settings(&settings(&all), false)
+        };
+        assert!(with(&[("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS", "implicit")]).is_ok());
+        for (bad, says) in [
+            (
+                [("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS", "ssl")],
+                "must be starttls, implicit or none",
+            ),
+            (
+                [("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT", "smtp")],
+                "is not a port",
+            ),
+            (
+                [("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_USERNAME", "u")],
+                "must be set together",
+            ),
+        ] {
+            let why = with(&bad).unwrap_err();
+            assert!(why.contains(says), "{why}");
+        }
+    }
+
+    /// The two unsubscribe headers read back what they hold.
+    #[test]
+    fn the_unsubscribe_headers_parse_their_own_text() {
+        let header = ListUnsubscribe::parse("<https://x/u>").unwrap();
+        assert_eq!(header.0, "<https://x/u>");
+        let _ = header.display();
+        let post = ListUnsubscribePost::parse("List-Unsubscribe=One-Click").unwrap();
+        assert_eq!(post.0, "List-Unsubscribe=One-Click");
+        let _ = post.display();
+    }
 }

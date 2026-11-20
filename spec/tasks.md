@@ -2640,5 +2640,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       condition on the account's tier, a lead already owned left with its owner. **Found:** each step compares with
       the contact as the run first read it (so `set_field` says), so two steps setting one field in a run both report
       "changed"; the second write is a no-op. Recorded, not changed.
+      - **Round 9:** `mail.rs` (92%): a message sent over SMTP to a scripted server on this machine, checked at the
+      server's end for its subject, body and both unsubscribe headers; a refused mailbox (550) permanent and a
+      deferral (451) transient; an API sender's host and message id; implicit TLS; an unknown TLS mode, a port that
+      is not a number and a user name without a password refused; the two headers reading back their text. Left:
+      `init`'s warning that mail goes over SMTP, which reads the process environment.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
