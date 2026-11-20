@@ -19993,6 +19993,8 @@ export interface components {
         EmailDelivery: {
             /** Format: int32 */
             attempts: number;
+            /** @description Snapshot of the consent profile decision made at send time (CRM-R6). */
+            basis: unknown;
             /** Format: uuid */
             campaign_pid: string;
             /** Format: uuid */
