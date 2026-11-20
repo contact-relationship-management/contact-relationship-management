@@ -336,14 +336,33 @@ pub(crate) fn phone(raw: &str, default_code: Option<&str>) -> Option<Phone> {
     })
 }
 
-/// Whether two reduced phone numbers are the same line.
-pub(crate) fn same_phone(a: &Phone, b: &Phone) -> bool {
+/// Strength of the evidence that two reduced phone numbers describe the same line.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum PhoneMatch {
+    /// The numbers differ.
+    None,
+    /// A national number is the suffix of an international one, but its calling code is unknown.
+    Suffix,
+    /// The numbers are exactly equal in the same national or international scope.
+    Exact,
+}
+
+/// Compare two reduced phone numbers.
+pub(crate) fn phone_match(a: &Phone, b: &Phone) -> PhoneMatch {
     if a.international == b.international {
-        return a.digits == b.digits;
+        return if a.digits == b.digits {
+            PhoneMatch::Exact
+        } else {
+            PhoneMatch::None
+        };
     }
     let (international, national) = if a.international { (a, b) } else { (b, a) };
     let national = national.digits.trim_start_matches('0');
-    national.len() >= MIN_PHONE_DIGITS && international.digits.ends_with(national)
+    if national.len() >= MIN_PHONE_DIGITS && international.digits.ends_with(national) {
+        PhoneMatch::Suffix
+    } else {
+        PhoneMatch::None
+    }
 }
 
 /// An organisation name without punctuation or legal-form words, in any of the languages of
@@ -531,10 +550,13 @@ mod tests {
             "superscripts are not digits"
         );
         // The same line typed in two scripts is one line.
-        assert!(same_phone(
-            &phone("+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧", None).unwrap(),
-            &phone("+966 50 123 4567", None).unwrap()
-        ));
+        assert_eq!(
+            phone_match(
+                &phone("+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧", None).unwrap(),
+                &phone("+966 50 123 4567", None).unwrap()
+            ),
+            PhoneMatch::Exact
+        );
     }
 
     #[test]
@@ -574,10 +596,13 @@ mod tests {
         // A plan not in the table drops nothing.
         assert_eq!(national("0 123 4567", "999"), "99901234567");
         // A national Italian number matches the same number written internationally.
-        assert!(same_phone(
-            &phone("06 1234 5678", Some("39")).unwrap(),
-            &phone("+39 06 1234 5678", None).unwrap()
-        ));
+        assert_eq!(
+            phone_match(
+                &phone("06 1234 5678", Some("39")).unwrap(),
+                &phone("+39 06 1234 5678", None).unwrap()
+            ),
+            PhoneMatch::Exact
+        );
         // The table is sorted (as text), holds digits only, and names each code once.
         let codes: Vec<&str> = TRUNK_PREFIXES.iter().map(|(c, _)| *c).collect();
         let mut sorted = codes.clone();
@@ -590,12 +615,25 @@ mod tests {
     #[test]
     fn phones_compare_across_formats() {
         let p = |s| phone(s, None).unwrap();
-        assert!(same_phone(&p("+44 20 7946 0958"), &p("0044 2079 460958")));
-        // National against international: the national digits end the other.
-        assert!(same_phone(&p("+44 20 7946 0958"), &p("020 7946 0958")));
-        assert!(!same_phone(&p("+44 20 7946 0958"), &p("020 7946 0959")));
+        assert_eq!(
+            phone_match(&p("+44 20 7946 0958"), &p("0044 2079 460958")),
+            PhoneMatch::Exact
+        );
+        // National against international: the national digits end the other, but the national
+        // number's plan is unknown.
+        assert_eq!(
+            phone_match(&p("+44 20 7946 0958"), &p("020 7946 0958")),
+            PhoneMatch::Suffix
+        );
+        assert_eq!(
+            phone_match(&p("+44 20 7946 0958"), &p("020 7946 0959")),
+            PhoneMatch::None
+        );
         // Two different countries with overlapping digits do not collide.
-        assert!(!same_phone(&p("+44 20 7946 0958"), &p("+49 20 7946 0958")));
+        assert_eq!(
+            phone_match(&p("+44 20 7946 0958"), &p("+49 20 7946 0958")),
+            PhoneMatch::None
+        );
     }
 
     #[test]

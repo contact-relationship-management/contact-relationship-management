@@ -1892,11 +1892,20 @@ Each task first writes its requirement (proposed CRM-R28 onward) and design note
   Normalized national numbers now compare digit for digit. The public matcher test checks both
   argument orders and an equivalent Arabic-Indic number. Existing calling-code tests cover
   normalization under differently shaped national plans. The change awaits a matcher release.
-- [ ] CRM-T273 **Measure the reliability of national-to-international suffix matches.** (CRM-R23, CRM-R95, CRM-D19)
-  The matcher accepts the last seven or more digits when only one side has a calling code.
-  Include labelled same-line and different-line pairs with overlapping suffixes across multiple
-  numbering plans. Report their phone-field outcomes and effects on the verdict before deciding
-  whether this evidence warrants full or partial agreement.
+- [x] CRM-T273 **Measure the reliability of national-to-international suffix matches.** (2026-11-20, CRM-R23, CRM-R95, CRM-D19)
+  A labelled corpus has six same-line and six different-line pairs with identical national
+  suffixes across six calling-code plans. Both truths produced the same evidence: the deliberately
+  balanced suffix-only sample has 50% precision by construction, so it measures ambiguity rather
+  than real-world prevalence. Full phone agreement would promote all twelve phone-only pairs from
+  `NonMatch` to `Review`, and all twelve same-name pairs from `Review` to `Match`. An unconfigured
+  suffix is therefore now partial evidence at the midpoint of the configured similarity bands;
+  phone-only pairs remain `NonMatch` and same-name pairs require `Review`. Exact numbers in the
+  same scope and numbers made exact through `default_calling_code` still fully agree. The report
+  pins every phone-field outcome, both verdict effects, truth balance, plan labels and symmetry.
+  The full matcher, tuning floors, strict Clippy and formatting pass. Its complete target census is
+  900/914 lines (98.47%), 126/126 functions and 1,240/1,261 regions (98.33%); the shared coverage
+  stage now fails it below 95%. The matcher change still awaits a release before the service image
+  uses it; real reliability calibration needs locally reviewed pairs.
 - [x] CRM-T274 **Gate the client at 95% line coverage.** (2026-11-19)
   Vitest's V8 census now covers 2,676 of 2,816 executable UI lines (95.02%), up from 1,648
   (58.52%) at the start of this task. The new tests exercise the complete demo workflows and their

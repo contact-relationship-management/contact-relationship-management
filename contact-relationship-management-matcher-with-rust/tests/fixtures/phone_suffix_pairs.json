@@ -1,0 +1,98 @@
+[
+  {
+    "label": "same-44",
+    "same": true,
+    "national_calling_code": "44",
+    "international_calling_code": "44",
+    "national": "020 7946 0958",
+    "international": "+44 20 7946 0958"
+  },
+  {
+    "label": "same-49",
+    "same": true,
+    "national_calling_code": "49",
+    "international_calling_code": "49",
+    "national": "030 901820",
+    "international": "+49 30 901820"
+  },
+  {
+    "label": "same-81",
+    "same": true,
+    "national_calling_code": "81",
+    "international_calling_code": "81",
+    "national": "03 1234 5678",
+    "international": "+81 3 1234 5678"
+  },
+  {
+    "label": "same-91",
+    "same": true,
+    "national_calling_code": "91",
+    "international_calling_code": "91",
+    "national": "098765 43210",
+    "international": "+91 98765 43210"
+  },
+  {
+    "label": "same-34",
+    "same": true,
+    "national_calling_code": "34",
+    "international_calling_code": "34",
+    "national": "612 345 678",
+    "international": "+34 612 345 678"
+  },
+  {
+    "label": "same-234",
+    "same": true,
+    "national_calling_code": "234",
+    "international_calling_code": "234",
+    "national": "0803 123 4567",
+    "international": "+234 803 123 4567"
+  },
+  {
+    "label": "different-44-49",
+    "same": false,
+    "national_calling_code": "44",
+    "international_calling_code": "49",
+    "national": "020 7946 0958",
+    "international": "+49 20 7946 0958"
+  },
+  {
+    "label": "different-49-81",
+    "same": false,
+    "national_calling_code": "49",
+    "international_calling_code": "81",
+    "national": "030 901820",
+    "international": "+81 30 901820"
+  },
+  {
+    "label": "different-81-91",
+    "same": false,
+    "national_calling_code": "81",
+    "international_calling_code": "91",
+    "national": "03 1234 5678",
+    "international": "+91 3 1234 5678"
+  },
+  {
+    "label": "different-91-34",
+    "same": false,
+    "national_calling_code": "91",
+    "international_calling_code": "34",
+    "national": "098765 43210",
+    "international": "+34 98765 43210"
+  },
+  {
+    "label": "different-34-234",
+    "same": false,
+    "national_calling_code": "34",
+    "international_calling_code": "234",
+    "national": "612 345 678",
+    "international": "+234 612 345 678"
+  },
+  {
+    "label": "different-234-44",
+    "same": false,
+    "national_calling_code": "234",
+    "international_calling_code": "44",
+    "national": "0803 123 4567",
+    "international": "+44 803 123 4567"
+  }
+]

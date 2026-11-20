@@ -64,6 +64,25 @@ editors display, compare and submit that text without a JavaScript number conver
 field remains during compatibility migration. The exact field is `null` whenever the amount is
 masked. CRM-T269 covers JPY, EUR and KWD at the service maximum and a name-only save.
 
+## National-to-international phone suffixes (CRM-R23, CRM-R95, CRM-D19)
+
+When no default calling code is configured, a national number that is the suffix of an explicitly
+international number is ambiguous: the records may describe the same line, or the national number
+may belong to a different numbering plan that happens to use the same subscriber digits. It is
+therefore **partial phone evidence**, midway between the configured similarity bands, rather than
+full agreement. Exact national-to-national and international-to-international numbers remain full
+agreement. Supplying `default_calling_code` turns the national number into an international one
+using that plan's trunk rule, so an exact result after that explicit configuration is also full
+agreement.
+
+CRM-T273 measures this decision with six labelled same-line and six labelled different-line suffix
+pairs across six calling-code plans. The deliberately balanced synthetic corpus is evidence about
+the ambiguity, not an estimate of prevalence: the suffix alone has 50% precision by construction
+and cannot distinguish either truth. Treating every suffix as full agreement moved every phone-only
+pair from `NonMatch` to `Review`, and every pair with the same name from `Review` to `Match`, for
+both labels. Partial evidence instead leaves phone-only pairs as `NonMatch` and same-name pairs for
+human `Review`. Real deployment calibration still requires locally reviewed pairs.
+
 ## Tasks
 
 - [x] (2026-10-30) CRM-T164 **Worldwide equity audit.** *(CRM-R95, CRM-D19)* Done: the spec audit (19 rows) and the code and UI check

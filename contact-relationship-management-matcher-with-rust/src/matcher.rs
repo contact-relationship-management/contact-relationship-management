@@ -6,7 +6,7 @@ use strsim::jaro_winkler;
 use crate::config::{ConfigError, FieldParameters, MatchConfig};
 use crate::contact::Contact;
 use crate::nicknames::Nicknames;
-use crate::normalize::{self, Name, Phone};
+use crate::normalize::{self, Name, Phone, PhoneMatch};
 
 /// Log-odds are clamped here so a result always serialises (JSON has no
 /// infinity) and the probability never rounds to exactly 0 or 1 by accident.
@@ -236,11 +236,17 @@ impl Matcher {
         let email = (!a.emails.is_empty() && !b.emails.is_empty())
             .then(|| f64::from(u8::from(shared(&a.emails, &b.emails))));
         let phone = (!a.phones.is_empty() && !b.phones.is_empty()).then(|| {
-            let any = a
+            let best = a
                 .phones
                 .iter()
-                .any(|p| b.phones.iter().any(|q| normalize::same_phone(p, q)));
-            f64::from(u8::from(any))
+                .flat_map(|p| b.phones.iter().map(|q| normalize::phone_match(p, q)))
+                .max()
+                .unwrap_or(PhoneMatch::None);
+            match best {
+                PhoneMatch::Exact => 1.0,
+                PhoneMatch::Suffix => f64::midpoint(cfg.agree_at, cfg.disagree_at),
+                PhoneMatch::None => 0.0,
+            }
         });
         let organization = (!a.organization.is_empty() && !b.organization.is_empty())
             .then(|| text_similarity(&a.organization, &b.organization));

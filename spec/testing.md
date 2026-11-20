@@ -46,10 +46,13 @@
   score-breakdown + SLA-countdown components; Playwright over a
   `page.route`-stubbed API (contract-mirroring, unstubbed =
   404-loud).
-- **Coverage** (CRM-T274, CRM-T275): every Vitest coverage run fails below 95% executable lines. The
+- **Coverage** (CRM-T273–CRM-T275): every Vitest coverage run fails below 95% executable lines. The
   2026-11-19 census is 2,676/2,816 lines (95.02%), 3,152/3,357 statements (93.89%),
   2,522/2,978 branches (84.68%) and 838/905 functions (92.59%), across 369 tests in 37 files.
-  The Rust coverage stage starts from a clean profile and merges the workspace library tests, the
+  The independently versioned matcher's 2026-11-20 census covers 900/914 lines (98.47%), all
+  126 functions and 1,240/1,261 regions (98.33%); its unit, integration, tuning and benchmark
+  targets run together and CI fails below 95% lines. The service Rust coverage stage starts from a
+  clean profile and merges the workspace library tests, the
   normal integration tests, all ignored PostgreSQL request tests and the ignored Redis adapter
   tests. Its 2026-11-19 census covers 31,767/33,424 executable lines (95.04%),
   3,860/4,109 functions (93.94%) and 38,566/42,163 regions (91.47%); CI fails below 95% lines.

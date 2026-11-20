@@ -34,7 +34,7 @@ from a `prior` and become the probability. Two thresholds turn that into a
 | Given name | equal, a known nickname (`Bob`/`Robert`), or close by Jaro–Winkler; an initial is a partial agreement. Only the first word counts. |
 | Family name | equal or close, ignoring case, accents and apostrophes. |
 | Email | any shared address; Gmail dots and `+tags` ignored. |
-| Phone | any shared number across `+44…`, `0044…` and national formats. |
+| Phone | any shared number; an unconfigured national-to-international suffix is partial evidence. |
 | Organisation | equal after dropping `Inc`, `Ltd`, `GmbH` and the like. |
 | Job title | close, or the same words in any order, with `VP`, `CTO`, `Sr` spelled out. |
 
@@ -103,6 +103,13 @@ What this changed and what it did not:
 - **Without email and phone** (what the service has before it fetches an
   address), recall at `Review` falls from 0.98 to 0.89 and changed surnames and
   job changes are the misses.
+- **An unconfigured national-to-international suffix is ambiguous.** Six
+  labelled same-line and six different-line suffix pairs across six calling-code
+  plans gave the suffix alone 50% precision by construction: both labels had
+  exactly the same phone evidence. Full phone agreement would move every
+  phone-only pair to `Review` and every same-name pair to `Match`; partial
+  evidence leaves those groups at `NonMatch` and `Review`. The corpus measures
+  the ambiguity, not real-world prevalence; see `tests/phone_suffix.rs`.
 
 **Limits of this evidence.** The pairs are synthetic and were written by the
 people who wrote the matcher, which flatters it even with the hard cases in. They
@@ -121,7 +128,11 @@ own data, under the same data-protection rules as that data.
   each language checking them. The name particles are still European. A name
   written without spaces (Chinese, Japanese, Korean) is not split into given and
   family names, and Jaro–Winkler suits Latin scripts best.
-- Phones are compared as digits (typed in any Unicode decimal digit set or in full width); there is no country-code database beyond a table of which calling codes' plans have a trunk prefix (`0`, `8` or `06`) to drop from a national number, and a code not in it drops nothing.
+- Phones are compared as digits (typed in any Unicode decimal digit set or in full width). Exact
+  numbers in the same scope agree. With no configured calling code, a national number that is the
+  suffix of an international one is only partial evidence because its numbering plan is unknown.
+  There is no country-code database beyond a table of which calling codes' plans have a trunk
+  prefix (`0`, `8` or `06`) to drop from a national number, and a code not in it drops nothing.
 - No date of birth or address.
 - It is advice. It merges and deletes nothing.
 

@@ -4,6 +4,9 @@
 
 - Phone comparisons preserve all 770 Unicode 18.0 decimal digits, including Adlam and mixed-script numbers (CRM-T270).
 - Two national phone numbers compared without a default calling code must agree on every digit, including a leading zero (CRM-T271).
+- A national number matching only the suffix of an international number is partial evidence, not
+  full agreement, unless a configured calling code normalizes both into the same international
+  number. A labelled twelve-pair corpus records why and the effect on verdicts (CRM-T273).
 - Mutation testing (CRM-T259): `.cargo/mutants.toml`, with one equivalent mutant named and why.
   New unit tests pin the probability as the prior plus the weights, a partial field's weight, a field
   on one side only, the single-letter initial, a tie that is not a swap, a title's word overlap, the

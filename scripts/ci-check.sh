@@ -116,9 +116,15 @@ case "${stage}" in
     pnpm run check
     ;;
   coverage)
-    # CRM-T275: one clean profile merges DB-free workspace tests, the normal integration tests,
-    # PostgreSQL request tests and the Redis adapter tests before enforcing the executable-line
-    # floor. This stage therefore needs the same services as test-db.
+    # CRM-T273: the independently versioned matcher has its own complete line census.
+    (cd "${MATCHER}" \
+      && export RUSTC_WRAPPER='' CARGO_BUILD_RUSTC_WRAPPER='' \
+      && cargo llvm-cov clean --workspace \
+      && cargo llvm-cov --offline --workspace --all-targets \
+        --summary-only --fail-under-lines 95)
+    # CRM-T275: one clean profile merges DB-free service-workspace tests, the normal integration
+    # tests, PostgreSQL request tests and the Redis adapter tests before enforcing the executable-
+    # line floor. This part therefore needs the same services as test-db.
     : "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=loco}" "${PG_PASSWORD:=loco}"
     db=ci_contact_relationship_management_coverage
     export PGPASSWORD="${PG_PASSWORD}"
