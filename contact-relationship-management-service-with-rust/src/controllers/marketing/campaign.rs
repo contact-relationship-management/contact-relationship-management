@@ -280,18 +280,32 @@ pub(super) async fn skip_reason(
     Ok(None)
 }
 
+/// What every delivery of one batch shares: the campaign, how it is sent, the
+/// consent profiles and the organization's date it is checked against, and
+/// the audience listed at the start of the batch.
+pub(super) struct Run<'a> {
+    pub(super) campaign: &'a campaigns::Model,
+    pub(super) sender: &'a mail::Sender,
+    pub(super) profiles: &'a crate::consent_profiles::Loaded,
+    pub(super) as_of: crate::time::Date,
+    pub(super) audience: &'a std::collections::HashSet<Uuid>,
+}
+
 /// Settle one claimed delivery: re-check consent against the live row,
 /// resolve the address, hand the message to the sender, and record the result.
 pub(super) async fn deliver_one(
     ctx: &AppContext,
-    campaign: &campaigns::Model,
-    sender: &mail::Sender,
-    profiles: &crate::consent_profiles::Loaded,
-    as_of: crate::time::Date,
+    run: &Run<'_>,
     item: deliveries::Claimed,
-    audience: &std::collections::HashSet<Uuid>,
     outcome: &mut RunOutcome,
 ) -> Result<()> {
+    let Run {
+        campaign,
+        sender,
+        profiles,
+        as_of,
+        audience,
+    } = *run;
     let pool = db::pool(ctx);
     let mut conn = pool.acquire().await?;
     // The audience was listed a moment ago and consent can change at any time,
@@ -340,51 +354,9 @@ pub(super) async fn deliver_one(
         return Ok(());
     }
     let (message_id, provider_id) = if sender.needs_address() {
-        let Some(address) = clients::email_address(&contact.person_ref).await else {
-            deliveries::settle(
-                &mut *conn,
-                item.id,
-                "no_address",
-                None,
-                Some("no address on file"),
-            )
-            .await?;
-            outcome.no_address += 1;
-            return Ok(());
-        };
-        let unsubscribe_url =
-            crate::unsubscribe::current().map(|u| u.url(contact.pid, campaign.pid));
-        let Some((subject, text)) =
-            // On the connection this send holds: a second one from the pool would wait on it.
-            campaign_content(
-                &mut conn,
-                campaign,
-                &contact,
-                unsubscribe_url.as_deref(),
-            )
-            .await?
-        else {
-            let why = "permanent: the email template is gone";
-            deliveries::settle(&mut *conn, item.id, "failed", None, Some(why)).await?;
-            outcome.failed += 1;
-            return Ok(());
-        };
-        let message = mail::Message {
-            to: address,
-            to_name: contact.display_name.clone(),
-            subject,
-            text,
-            unsubscribe_url,
-            message_id: sender.new_message_id(),
-        };
-        match sender.send(&message).await {
-            Ok(provider_id) => (message.message_id, provider_id),
-            Err(error) => {
-                deliveries::settle(&mut *conn, item.id, "failed", None, Some(&error.describe()))
-                    .await?;
-                outcome.failed += 1;
-                return Ok(());
-            }
+        match send_mail(&mut conn, campaign, sender, &contact, item.id, outcome).await? {
+            Some(sent) => sent,
+            None => return Ok(()),
         }
     } else {
         (sender.new_message_id(), None)
@@ -411,6 +383,70 @@ pub(super) async fn deliver_one(
     txn.commit().await?;
     outcome.sent += 1;
     Ok(())
+}
+
+/// Address, render and hand one message to the sender. `None` when the
+/// delivery was settled as not sent (no address, no template, a send error);
+/// otherwise the message id and the provider's id for it.
+async fn send_mail(
+    conn: &mut PgConnection,
+    campaign: &campaigns::Model,
+    sender: &mail::Sender,
+    contact: &contacts::Model,
+    delivery_id: i32,
+    outcome: &mut RunOutcome,
+) -> Result<Option<(String, Option<String>)>> {
+    let Some(address) = clients::email_address(&contact.person_ref).await else {
+        deliveries::settle(
+            &mut *conn,
+            delivery_id,
+            "no_address",
+            None,
+            Some("no address on file"),
+        )
+        .await?;
+        outcome.no_address += 1;
+        return Ok(None);
+    };
+    let unsubscribe_url = crate::unsubscribe::current().map(|u| u.url(contact.pid, campaign.pid));
+    let Some((subject, text)) =
+        // On the connection this send holds: a second one from the pool would wait on it.
+        campaign_content(
+            &mut *conn,
+            campaign,
+            contact,
+            unsubscribe_url.as_deref(),
+        )
+        .await?
+    else {
+        let why = "permanent: the email template is gone";
+        deliveries::settle(&mut *conn, delivery_id, "failed", None, Some(why)).await?;
+        outcome.failed += 1;
+        return Ok(None);
+    };
+    let message = mail::Message {
+        to: address,
+        to_name: contact.display_name.clone(),
+        subject,
+        text,
+        unsubscribe_url,
+        message_id: sender.new_message_id(),
+    };
+    match sender.send(&message).await {
+        Ok(provider_id) => Ok(Some((message.message_id, provider_id))),
+        Err(error) => {
+            deliveries::settle(
+                &mut *conn,
+                delivery_id,
+                "failed",
+                None,
+                Some(&error.describe()),
+            )
+            .await?;
+            outcome.failed += 1;
+            Ok(None)
+        }
+    }
 }
 
 /// Why a campaign cannot be run now, if so.
@@ -566,18 +602,15 @@ pub(super) async fn run_batch(
     };
     let claimed = deliveries::claim(pool, campaign_pid, limit).await?;
     let mut outcome = RunOutcome::default();
+    let run = Run {
+        campaign: &campaign,
+        sender: &sender,
+        profiles: &profiles,
+        as_of,
+        audience: &audience_pids,
+    };
     for item in claimed {
-        deliver_one(
-            ctx,
-            &campaign,
-            &sender,
-            &profiles,
-            as_of,
-            item,
-            &audience_pids,
-            &mut outcome,
-        )
-        .await?;
+        deliver_one(ctx, &run, item, &mut outcome).await?;
     }
 
     let remaining = deliveries::retriable(pool, campaign_pid).await?;

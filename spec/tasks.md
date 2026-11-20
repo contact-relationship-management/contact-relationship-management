@@ -2481,3 +2481,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       (L)
 - CRM-R108 (the annual independent test) is CRM-T42, whose scope gains the persona matrix, support grants, exports and
   tenant separation when CRM-T278 and CRM-T280 land.
+
+## Upkeep
+
+- [x] CRM-T286 **`deliver_one` back under clippy's limits.** 067bace (CRM-T166's send-time consent record) gave
+      `controllers/marketing/campaign.rs::deliver_one` 8 arguments and 116 lines, so `clippy -D warnings` failed on
+      `main`. The five values a batch shares are now one `Run`, and addressing, rendering and sending one message is
+      `send_mail`. No behaviour changes. (S)
+      - **Ran:** `scripts/ci-check.sh fmt`, `clippy` and `test`, all passing.
+      - **Not done / not verified:** `test-db` was not run, as the Podman VM would not start ("unknown machine state"),
+      so the campaign-run tests in `tests/requests/marketing.rs` did not exercise the moved code here; CI runs them.
