@@ -377,3 +377,68 @@ async fn every_call_is_audited_with_the_agent_marker_and_not_the_text_passed() {
     })
     .await;
 }
+
+/// What a client that frames its messages badly is told, and the one legacy answers the modern
+/// transport does not have, none of which reaches a tool or the database (CRM-T292, round 15).
+#[tokio::test]
+#[serial]
+async fn a_request_that_is_too_large_or_not_a_request_is_refused_and_a_legacy_client_can_ping() {
+    request::<App, _, _>(|request, _ctx| async move {
+        // Over 256 KiB is refused before it is read as JSON.
+        let big = format!(
+            "{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\",\"padding\":\"{}\"}}",
+            "x".repeat(256 * 1024)
+        );
+        let r = request.post("/mcp").text(big).await;
+        r.assert_status(StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(r.json::<Value>()["error"]["message"], "request too large");
+
+        // A well-formed JSON-RPC message with no method is a response or garbage, not a request.
+        let r = request
+            .post("/mcp")
+            .json(&json!({ "jsonrpc": "2.0", "id": 1, "result": {} }))
+            .await;
+        r.assert_status(StatusCode::BAD_REQUEST);
+        assert_eq!(
+            r.json::<Value>()["error"]["message"],
+            "a request or notification is required"
+        );
+
+        // A client with no version header is treated as legacy: it can ping, and a method this
+        // endpoint lacks is a JSON-RPC error in a 200, not the modern 404.
+        let ping: Value = request
+            .post("/mcp")
+            .json(&json!({ "jsonrpc": "2.0", "id": 7, "method": "ping" }))
+            .await
+            .json();
+        assert_eq!(ping["id"], 7);
+        assert_eq!(ping["result"], json!({}));
+        let r = request
+            .post("/mcp")
+            .json(&json!({ "jsonrpc": "2.0", "id": 8, "method": "resources/list" }))
+            .await;
+        r.assert_status_ok();
+        assert_eq!(r.json::<Value>()["error"]["code"], -32601);
+
+        // A tool call must name its tool, and the tool must exist.
+        for (params, message) in [
+            (json!({}), "name is required"),
+            (
+                json!({ "name": "drop_everything" }),
+                "Unknown tool: drop_everything",
+            ),
+        ] {
+            let r = request
+                .post("/mcp")
+                .json(
+                    &json!({ "jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": params }),
+                )
+                .await;
+            r.assert_status_ok();
+            let body: Value = r.json();
+            assert_eq!(body["error"]["code"], -32602, "{body}");
+            assert_eq!(body["error"]["message"], message, "{body}");
+        }
+    })
+    .await;
+}
