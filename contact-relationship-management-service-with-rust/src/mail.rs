@@ -776,7 +776,7 @@ mod tests {
     }
 
     fn plain_smtp(port: u16) -> Sender {
-        crate::app::install_tls_provider();
+        axa::tls::install_provider();
         let port = port.to_string();
         from_settings(
             &settings(&[
@@ -851,7 +851,7 @@ mod tests {
     /// A provider's API sender, implicit TLS on its own port, and the settings that are refused.
     #[test]
     fn an_api_sender_implicit_tls_and_bad_smtp_settings() {
-        crate::app::install_tls_provider();
+        axa::tls::install_provider();
         let api = from_settings(
             &settings(&[
                 ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "Brevo"),

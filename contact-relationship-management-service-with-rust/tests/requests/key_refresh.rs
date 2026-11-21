@@ -56,7 +56,7 @@ fn count() -> usize {
 #[tokio::test]
 #[serial]
 async fn the_key_set_is_fetched_at_start_and_falls_back_to_the_settings_then_to_none() {
-    contact_relationship_management::app::install_tls_provider();
+    axa::tls::install_provider();
     let url = key_server(keys(7), Arc::default()).await;
     {
         let _scope = scoped(|s| s.paseto_keys_url = Some(url.clone()));
@@ -89,7 +89,7 @@ async fn the_key_set_is_fetched_at_start_and_falls_back_to_the_settings_then_to_
 #[tokio::test]
 #[serial]
 async fn the_refresh_loop_picks_up_a_rotation_and_keeps_the_keys_through_an_outage() {
-    contact_relationship_management::app::install_tls_provider();
+    axa::tls::install_provider();
     let down = Arc::new(AtomicBool::new(false));
     let url = key_server(
         json!({ "keys": [keys(3)["keys"][0], keys(4)["keys"][0]] }),

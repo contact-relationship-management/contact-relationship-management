@@ -569,7 +569,7 @@ async fn an_imported_teams_roll_up_meets_the_quotas_set_for_the_same_people() {
 #[tokio::test]
 #[serial]
 async fn each_bridge_sends_its_own_token_when_it_has_one_and_none_when_it_has_not() {
-    contact_relationship_management::app::install_tls_provider();
+    axa::tls::install_provider();
     let _restore = Restore;
     let (base, seen) = fake_that_records_credentials().await;
     settings::update(|s| {

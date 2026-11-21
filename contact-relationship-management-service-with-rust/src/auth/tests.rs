@@ -778,7 +778,7 @@ async fn serve_keys(keys: serde_json::Value) -> String {
 /// fallback verifier has no keys (the fetched key set wins).
 #[tokio::test]
 async fn fetch_or_fetched_key_set_wins() {
-    crate::app::install_tls_provider();
+    axa::tls::install_provider();
     let (keys, kid) = test_keys_and_kid();
     let url = serve_keys(keys).await;
     let verifier = fetch_or(&url, ISSUER, AUDIENCE, empty_verifier(ISSUER, AUDIENCE)).await;
@@ -794,7 +794,7 @@ async fn fetch_or_fetched_key_set_wins() {
 /// so the service always boots.
 #[tokio::test]
 async fn fetch_or_unreachable_url_falls_back() {
-    crate::app::install_tls_provider();
+    axa::tls::install_provider();
     let (keys, kid) = test_keys_and_kid();
     let fallback = Verifier::from_paseto_keys_value(&keys, ISSUER, AUDIENCE).unwrap();
     let verifier = fetch_or("http://127.0.0.1:1/", ISSUER, AUDIENCE, fallback).await;

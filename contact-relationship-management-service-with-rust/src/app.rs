@@ -63,11 +63,11 @@ fn cors_origins(
     }
 }
 
-/// The paths `axa`'s cross-site write guard (axa 0.13) leaves to the service, because each
+/// The paths `axa`'s cross-site write guard leaves to the service, because each
 /// checks the browser's origin itself against a list of its own: the MCP endpoint
 /// (`CONTACT_RELATIONSHIP_MANAGEMENT_MCP_ALLOWED_ORIGINS`, CRM-R30) and each web form (its `origins` in `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS`,
 /// CRM-R31), which a page on another site posts by design. `axa` matches them exactly, so a form
-/// is listed by its slug; forms are read when the service starts, as these are (CRM-T237).
+/// is listed by its slug, not by `/forms/*` (axa 0.21), so a cross-site post to an unknown slug still gets the guard's `403` and cannot learn which slugs exist; forms are read when the service starts, as these are (CRM-T237).
 fn cross_site_paths(settings: &crate::settings::Settings) -> Vec<String> {
     std::iter::once("/mcp".to_string())
         .chain(
@@ -141,12 +141,6 @@ pub fn app_routes() -> AppRoutes {
 
 /// The `contact-relationship-management` application.
 pub struct App;
-
-/// Choose `ring` as rustls's process-wide crypto provider. reqwest is built with `rustls-no-provider`, so nothing else
-/// installs one. An already-installed provider is left alone, so this is safe to call more than once.
-pub fn install_tls_provider() {
-    let _ = rustls::crypto::ring::default_provider().install_default();
-}
 
 /// Everything a process needs before it can send campaign mail: the field-encryption check,
 /// the mail sender chosen by `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE` and the signed unsubscribe links. Called by the
@@ -260,7 +254,6 @@ impl App {
         config: ServiceConfig,
         run_jobs: bool,
     ) -> Result<AppContext> {
-        install_tls_provider();
         let db = axa::db::connect(&config.database).await?;
         let mut ctx = AppContext::new(environment, db, config);
         // Tests never share a Redis, whatever the environment says.

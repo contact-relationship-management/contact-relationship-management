@@ -597,7 +597,7 @@ async fn reqwest_get_json(url: &str) -> Option<serde_json::Value> {
 mod tests {
     #[test]
     fn a_credential_goes_only_over_https_or_to_this_machine() {
-        crate::app::install_tls_provider();
+        axa::tls::install_provider();
         let client = reqwest::Client::new();
         let sent = |base: &str, token: Option<&str>| {
             super::with_credential(client.get("http://example.invalid/"), base, token).map(|r| {

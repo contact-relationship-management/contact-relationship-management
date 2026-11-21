@@ -25,7 +25,7 @@ impl Drop for Restore {
 }
 
 fn over_http() -> Restore {
-    contact_relationship_management::app::install_tls_provider();
+    axa::tls::install_provider();
     settings::update(|s| s.upstream_mode = Mode::Http);
     Restore
 }

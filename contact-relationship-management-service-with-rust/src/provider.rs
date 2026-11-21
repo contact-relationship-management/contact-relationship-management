@@ -837,7 +837,7 @@ mod tests {
 
     #[test]
     fn configuration_is_checked() {
-        crate::app::install_tls_provider();
+        axa::tls::install_provider();
         let all = |name: &str| match name {
             "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM" => {
                 Some("CRM <crm@example.test>".to_string())
@@ -880,7 +880,7 @@ mod tests {
 
     #[test]
     fn every_provider_is_configured_from_its_own_settings() {
-        crate::app::install_tls_provider();
+        axa::tls::install_provider();
         let vars = |pairs: Vec<(&'static str, &'static str)>| {
             move |name: &str| {
                 pairs
@@ -1022,7 +1022,7 @@ mod sent_tests {
 
     /// Configure `kind` with `settings`, posting to `url`.
     fn sender(kind: Kind, url: &str, settings: &[(&str, &str)]) -> ApiSender {
-        crate::app::install_tls_provider();
+        axa::tls::install_provider();
         let mut all: Vec<(String, String)> = settings
             .iter()
             .map(|(k, v)| ((*k).to_string(), (*v).to_string()))

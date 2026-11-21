@@ -2670,3 +2670,19 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Not done / not verified:** `scripts/image-smoke.sh` was not run, so the image was not started with the new
       setting; `db` commands and tasks still do not check it. **Breaking for operators:** a production deployment that has
       not set the name stops on upgrade until it does.
+- [x] CRM-T295 **axa 0.21.0 and axa-test 0.12.0.** Asked for by the product owner on 2026-11-21 ("update axa"). Both were
+      published about 13 hours before, inside the two-day minimum publish age; the owner permitted the exception, so
+      `CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow` overrode it for one `cargo update -p axa -p axa-test`. (S)
+      - **What it changes:** the service's own `app::install_tls_provider` and its direct `rustls` dependency go, for
+      `axa::tls::install_provider()`, which `AppContext::new` and `axa-test` already call. The lockfile also moves
+      `axa-redis-cache` to 0.2.1 (a Redis that is down at boot no longer stops the service).
+      - **Tried and not taken:** `Http::cross_site_paths = ["/mcp", "/forms/*"]`. `the_origin_the_form_the_honeypot_and_the_input_are_checked`
+      failed: with the wildcard a cross-site post to an unknown slug is `404`, not the guard's `403 origin_mismatch`,
+      so another site could learn which form slugs exist (CRM-T237). The per-slug list stays.
+      - **Ran:** `fmt`, `clippy`, `test` and `test-db` (PostgreSQL 18, Redis 8 under `podman run`, as `podman compose`
+      cannot read the machine state here).
+      - **Not done / not verified:** the tests that set process environment variables (`ScopedEnv`, `#[serial]`) stay,
+      because the service reads about fifteen settings with `std::env::var` rather than through axa's `Lookup`, so
+      `TestApp::boot_test_with` has nothing to feed; moving them is its own task. `axa_mail`, `Problems`, `SafeInt`
+      and `watch_file` were not adopted: the service sends through lettre directly, its `422`s are one message each,
+      and its ABAC watcher is its own. `scripts/ci-check.sh all` was not run, so there is no attestation.

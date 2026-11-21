@@ -9,7 +9,7 @@ use contact_relationship_management::mail::{self, Message, Sender};
 #[tokio::test]
 #[ignore = "needs a mail server; run with scripts/email-dev.sh live"]
 async fn the_smtp_sender_delivers_to_a_real_server() {
-    contact_relationship_management::app::install_tls_provider();
+    axa::tls::install_provider();
     let sender = mail::from_settings(&|name| std::env::var(name).ok(), false).unwrap();
     if !matches!(sender, Sender::Smtp(_)) {
         eprintln!("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE is not smtp; skipping");
