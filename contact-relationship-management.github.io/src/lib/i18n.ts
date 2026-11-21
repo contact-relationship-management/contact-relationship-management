@@ -402,8 +402,57 @@ const ru: Record<Key, string> = {
   "footer.after": "Этот сайт экспортируется из каталога самого репозитория с помощью git subtree.",
 };
 
+const bn: Record<Key, string> = {
+  "nav.overview": "সংক্ষিপ্ত বিবরণ",
+  "nav.tutorial": "টিউটোরিয়াল",
+  "nav.comparisons": "তুলনা",
+  "cta.tutorial": "টিউটোরিয়াল শুরু করুন",
+  "cta.source": "সোর্স দেখুন",
+  brand: "কন্টাক্ট রিলেশনশিপ ম্যানেজমেন্ট",
+  translations: "অনুবাদ:",
+  skip: "বিষয়বস্তুতে যান",
+  site: "সাইট",
+  "nav.home": "প্রথম পাতা",
+  "nav.install": "ইনস্টল",
+  "nav.bridges": "পরিবারের সেতু",
+  "nav.spec": "স্পেসিফিকেশন",
+  "nav.locales": "লোকেল",
+  "nav.briefs": "ভূমিকা-সংক্ষেপ",
+  theme: "থিম",
+  themeSystem: "এই ডিভাইস অনুসরণ করুন",
+  "nav.privacy": "গোপনীয়তা বিজ্ঞপ্তি",
+  textSize: "লেখার আকার",
+  briefLanguage: "এই সংক্ষেপের ভাষা",
+  language: "ভাষা",
+  pages: "পাতা",
+  repository: "সোর্স রিপোজিটরি",
+  search: "অনুসন্ধান",
+  "search.input": "অনুসন্ধানের শব্দ",
+  "search.submit": "অনুসন্ধান",
+  "search.placeholder": "ডকুমেন্টেশনে অনুসন্ধান করুন",
+  timeZone: "সময় অঞ্চল",
+  share: "শেয়ার",
+  "share.email": "ইমেইল",
+  "share.copy": "লিংক কপি করুন",
+  "share.copied": "কপি হয়েছে",
+  "share.copyFailed": "লিংক কপি করা যায়নি",
+  "search.prompt": "একটি শব্দ লিখতে শিরোনামের অনুসন্ধান বোতাম ব্যবহার করুন।",
+  "search.none": "কোনো পাতা মেলেনি।",
+  "search.count": "পাওয়া পাতা: {n}",
+  "search.failed": "অনুসন্ধান সূচি লোড করা যায়নি।",
+  allBriefs: "সব ভূমিকা-সংক্ষেপ",
+  "briefs.lede":
+    "প্রতিটি জ্যেষ্ঠ ভূমিকার জন্য একটি পাতা: সফটওয়্যারটি কী, এটি আপনাকে কী দেয়, কী দেয় না, এবং কোন সিদ্ধান্তগুলো আপনার। একই সংক্ষেপ অন্য লোকেলে দেখতে শিরোনামের ভাষা বোতাম ব্যবহার করুন।",
+  locale: "লোকেল:",
+  source: "উৎস:",
+  "readiness.estimate": "আনুমানিক প্রস্তুতি",
+  "footer.before": "যে নথি থেকে তৈরি:",
+  "footer.link": "কন্টাক্ট রিলেশনশিপ ম্যানেজমেন্ট রিপোজিটরি",
+  "footer.after": "এই সাইট রিপোজিটরির একটি ডিরেক্টরি থেকে git subtree দিয়ে রপ্তানি করা।",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, cy, es, fr, hi, ru, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, ru, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -426,6 +475,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Pequeño",
     smaller: "Muy pequeño",
     smallest: "Muy muy pequeño",
+  },
+  bn: {
+    largest: "বিশাল",
+    larger: "অনেক বড়",
+    large: "বড়",
+    normal: "স্বাভাবিক",
+    small: "ছোট",
+    smaller: "অনেক ছোট",
+    smallest: "ক্ষুদ্র",
   },
   ru: {
     largest: "Огромный",

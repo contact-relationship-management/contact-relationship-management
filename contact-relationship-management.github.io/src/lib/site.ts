@@ -75,6 +75,7 @@ export const TRANSLATIONS: readonly string[] = LOCALE_HOMES.filter((l) => l.ends
 /** A language's own name, from spec/locales-for-global-sharing-with-svelte/locales.tsv. */
 export const ENDONYMS: Readonly<Record<string, string>> = {
   ar: "العربية",
+  bn: "বাংলা",
   cy: "Cymraeg",
   en: "English",
   es: "Español",
@@ -101,6 +102,9 @@ export const LOCALE_LABELS: Readonly<Record<string, string>> = {
   "fr-fr": "Français (France)",
   "hi-001": "हिन्दी (विश्व)",
   "hi-in": "हिन्दी (भारत)",
+  "bn-001": "বাংলা (বিশ্ব)",
+  "bn-bd": "বাংলা (বাংলাদেশ)",
+  "bn-in": "বাংলা (ভারত)",
   "ru-001": "Русский (Мир)",
   "ru-by": "Русский (Беларусь)",
   "ru-ru": "Русский (Россия)",

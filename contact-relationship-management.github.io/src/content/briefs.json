@@ -4,6 +4,9 @@
     "ar-001",
     "ar-dz",
     "ar-eg",
+    "bn-001",
+    "bn-bd",
+    "bn-in",
     "cy-001",
     "cy-ar",
     "cy-gb",
@@ -31,6 +34,9 @@
     "ar-001",
     "ar-dz",
     "ar-eg",
+    "bn-001",
+    "bn-bd",
+    "bn-in",
     "cy-001",
     "cy-ar",
     "cy-gb",
@@ -58,6 +64,9 @@
     "ar-001",
     "ar-dz",
     "ar-eg",
+    "bn-001",
+    "bn-bd",
+    "bn-in",
     "cy-001",
     "cy-ar",
     "cy-gb",
@@ -82,6 +91,9 @@
     "zh-th"
   ],
   "evaluate": [
+    "bn-001",
+    "bn-bd",
+    "bn-in",
     "en-001",
     "es-001",
     "es-es",
@@ -267,6 +279,171 @@
     {
       "locale": "ar-eg",
       "slug": "مختبر-الأمن-المستقل",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "প্রধান-আইনি-কর্মকর্তা",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "প্রধান-কৌশল-কর্মকর্তা",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "প্রধান-জনসম্পদ-কর্মকর্তা",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "প্রধান-ঝুঁকি-কর্মকর্তা",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "প্রধান-তথ্য-কর্মকর্তা",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "প্রধান-নিরাপত্তা-কর্মকর্তা",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "প্রধান-নির্বাহী-কর্মকর্তা",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "প্রধান-পরিচালন-কর্মকর্তা",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "প্রধান-প্রযুক্তি-কর্মকর্তা",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "শাসন-ঝুঁকি-সম্মতি",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "bn-001",
+      "slug": "স্বাধীন-নিরাপত্তা-পরীক্ষক",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "প্রধান-আইনি-কর্মকর্তা",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "প্রধান-কৌশল-কর্মকর্তা",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "প্রধান-জনসম্পদ-কর্মকর্তা",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "প্রধান-ঝুঁকি-কর্মকর্তা",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "প্রধান-তথ্য-কর্মকর্তা",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "প্রধান-নিরাপত্তা-কর্মকর্তা",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "প্রধান-নির্বাহী-কর্মকর্তা",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "প্রধান-পরিচালন-কর্মকর্তা",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "প্রধান-প্রযুক্তি-কর্মকর্তা",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "শাসন-ঝুঁকি-সম্মতি",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "bn-bd",
+      "slug": "স্বাধীন-নিরাপত্তা-পরীক্ষক",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "প্রধান-আইনি-কর্মকর্তা",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "প্রধান-কৌশল-কর্মকর্তা",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "প্রধান-জনসম্পদ-কর্মকর্তা",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "প্রধান-ঝুঁকি-কর্মকর্তা",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "প্রধান-তথ্য-কর্মকর্তা",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "প্রধান-নিরাপত্তা-কর্মকর্তা",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "প্রধান-নির্বাহী-কর্মকর্তা",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "প্রধান-পরিচালন-কর্মকর্তা",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "প্রধান-প্রযুক্তি-কর্মকর্তা",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "শাসন-ঝুঁকি-সম্মতি",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "bn-in",
+      "slug": "স্বাধীন-নিরাপত্তা-পরীক্ষক",
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
     {
