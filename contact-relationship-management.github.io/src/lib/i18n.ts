@@ -549,8 +549,57 @@ const ja: Record<Key, string> = {
   "footer.after": "このサイトは、git subtree を使って、そのリポジトリ内のディレクトリからエクスポートされています。",
 };
 
+const ko: Record<Key, string> = {
+  "nav.overview": "개요",
+  "nav.tutorial": "튜토리얼",
+  "nav.comparisons": "비교",
+  "cta.tutorial": "튜토리얼 시작하기",
+  "cta.source": "소스 보기",
+  brand: "Contact Relationship Management",
+  translations: "번역:",
+  skip: "본문으로 건너뛰기",
+  site: "사이트",
+  "nav.home": "홈",
+  "nav.install": "설치",
+  "nav.bridges": "패밀리 브리지",
+  "nav.spec": "명세",
+  "nav.locales": "로캘",
+  "nav.briefs": "직책별 개요",
+  theme: "테마",
+  themeSystem: "이 기기를 따름",
+  "nav.privacy": "개인정보 처리 안내",
+  textSize: "글자 크기",
+  briefLanguage: "이 개요의 언어",
+  language: "언어",
+  pages: "페이지",
+  repository: "소스 저장소",
+  search: "검색",
+  "search.input": "검색어",
+  "search.submit": "검색",
+  "search.placeholder": "문서 검색",
+  timeZone: "시간대",
+  share: "공유",
+  "share.email": "이메일",
+  "share.copy": "링크 복사",
+  "share.copied": "복사됨",
+  "share.copyFailed": "링크를 복사할 수 없었습니다",
+  "search.prompt": "헤더의 검색 버튼을 사용해 검색어를 입력하세요.",
+  "search.none": "일치하는 페이지가 없습니다.",
+  "search.count": "일치하는 페이지: {n}",
+  "search.failed": "검색 색인을 불러올 수 없었습니다.",
+  allBriefs: "모든 직책별 개요",
+  "briefs.lede":
+    "고위 직책마다 한 페이지: 이 소프트웨어가 무엇인지, 무엇을 제공하는지, 무엇을 제공하지 않는지, 그리고 어떤 결정이 귀하의 몫인지. 헤더의 언어 버튼으로 같은 개요를 다른 로캘로 읽을 수 있습니다.",
+  locale: "로캘:",
+  source: "소스:",
+  "readiness.estimate": "준비 상태 추정",
+  "footer.before": "이 사이트는 다음 문서로 구축되었습니다: ",
+  "footer.link": "Contact Relationship Management 저장소",
+  "footer.after": "이 사이트는 git subtree를 사용해 해당 저장소 안의 디렉터리에서 내보낸 것입니다.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ru, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ko, ru, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -600,6 +649,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "小さい",
     smaller: "より小さい",
     smallest: "最小",
+  },
+  ko: {
+    largest: "가장 큼",
+    larger: "더 큼",
+    large: "큼",
+    normal: "표준",
+    small: "작음",
+    smaller: "더 작음",
+    smallest: "가장 작음",
   },
   ru: {
     largest: "Огромный",

@@ -28,6 +28,8 @@
     "id-my",
     "ja-001",
     "ja-jp",
+    "ko-001",
+    "ko-kr",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -63,6 +65,8 @@
     "id-my",
     "ja-001",
     "ja-jp",
+    "ko-001",
+    "ko-kr",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -98,6 +102,8 @@
     "id-my",
     "ja-001",
     "ja-jp",
+    "ko-001",
+    "ko-kr",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -121,6 +127,8 @@
     "id-my",
     "ja-001",
     "ja-jp",
+    "ko-001",
+    "ko-kr",
     "ru-001",
     "ru-by",
     "ru-ru"
@@ -1620,6 +1628,116 @@
       "locale": "ja-jp",
       "slug": "独立セキュリティテスター",
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "거버넌스-위험-규정준수",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "독립-보안-테스터",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "최고경영자",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "최고기술책임자",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "최고법무책임자",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "최고보안책임자",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "최고운영책임자",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "최고위험책임자",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "최고인사책임자",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "최고전략책임자",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "ko-001",
+      "slug": "최고정보책임자",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "거버넌스-위험-규정준수",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "독립-보안-테스터",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "최고경영자",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "최고기술책임자",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "최고법무책임자",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "최고보안책임자",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "최고운영책임자",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "최고위험책임자",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "최고인사책임자",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "최고전략책임자",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "ko-kr",
+      "slug": "최고정보책임자",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
     },
     {
       "locale": "ru-001",
