@@ -379,9 +379,10 @@ async fn every_call_is_audited_with_the_agent_marker_and_not_the_text_passed() {
 }
 
 /// What a client that frames its messages badly is told, and the one legacy answers the modern
-/// transport does not have, none of which reaches a tool or the database (CRM-T292, round 15).
+/// transport does not have, none of which reaches a tool (CRM-T292, round 15). The service boots against the database, so it is gated like the rest.
 #[tokio::test]
 #[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_request_that_is_too_large_or_not_a_request_is_refused_and_a_legacy_client_can_ping() {
     request::<App, _, _>(|request, _ctx| async move {
         // Over 256 KiB is refused before it is read as JSON.

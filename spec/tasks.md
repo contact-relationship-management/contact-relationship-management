@@ -2687,8 +2687,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       answered `404` while no webhook secret is set. **Left on purpose:** the `500` pages for a database failure
       (unsubscribe, confirm, preferences), which a test can only cause by breaking the connection; the SNS
       subscription confirmation, which fetches the vendor's own address; and the unreachable `Content-Language` error.
-      - **Round 15:** `mcp/mod.rs` (91.7%; 23 of 391 lines left, measured on the MCP tests alone, no database needed for
-      the new one): a request over 256 KiB refused `413` before it is read as JSON; a JSON-RPC 2.0 message with no method
+      - **Round 15:** `mcp/mod.rs` (91.7%; 23 of 391 lines left, measured on the MCP tests alone): a request over 256 KiB refused `413` before it is read as JSON; a JSON-RPC 2.0 message with no method
       (a response) refused `400` as "a request or notification is required"; a client with no version header treated as
       legacy, able to ping, and told of a missing method as a JSON-RPC error in a `200` and not the modern `404`; a tool
       call with no name, and one naming a tool that does not exist, each `-32602` with its reason. **Left:** the audit
