@@ -843,8 +843,57 @@ const de: Record<Key, string> = {
   "footer.after": "Diese Website wird per git subtree aus einem Verzeichnis im Repository selbst exportiert.",
 };
 
+const pt: Record<Key, string> = {
+  "nav.overview": "Visão geral",
+  "nav.tutorial": "Tutorial",
+  "nav.comparisons": "Comparações",
+  "cta.tutorial": "Começar o tutorial",
+  "cta.source": "Ver o código-fonte",
+  brand: "Contact Relationship Management",
+  translations: "Traduções:",
+  skip: "Ir para o conteúdo",
+  site: "Site",
+  "nav.home": "Início",
+  "nav.install": "Instalação",
+  "nav.bridges": "Pontes para projetos da família",
+  "nav.spec": "Especificação",
+  "nav.locales": "Localidades",
+  "nav.briefs": "Resumos por papel",
+  theme: "Tema",
+  themeSystem: "Seguir este dispositivo",
+  "nav.privacy": "Aviso de privacidade",
+  textSize: "Tamanho do texto",
+  briefLanguage: "Idioma deste resumo",
+  language: "Idioma",
+  pages: "Páginas",
+  repository: "Repositório",
+  search: "Buscar",
+  "search.input": "Termos de busca",
+  "search.submit": "Buscar",
+  "search.placeholder": "Buscar na documentação",
+  timeZone: "Fuso horário",
+  share: "Compartilhar",
+  "share.email": "E-mail",
+  "share.copy": "Copiar link",
+  "share.copied": "Copiado",
+  "share.copyFailed": "Não foi possível copiar o link",
+  "search.prompt": "Use o botão de busca no alto da página para digitar um termo.",
+  "search.none": "Nenhuma página corresponde.",
+  "search.count": "Páginas encontradas: {n}",
+  "search.failed": "Não foi possível carregar o índice de busca.",
+  allBriefs: "Todos os resumos por papel",
+  "briefs.lede":
+    "Uma página para cada cargo sênior: o que o software é, o que ele oferece, o que não oferece e quais decisões cabem a você. Use o botão de idioma no alto da página para ver o mesmo resumo em outra localidade.",
+  locale: "Localidade:",
+  source: "Fonte:",
+  "readiness.estimate": "prontidão estimada",
+  "footer.before": "Construído a partir dos documentos do",
+  "footer.link": "repositório do Contact Relationship Management",
+  "footer.after": "Este site é exportado de um diretório do próprio repositório com git subtree.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, de, es, fr, hi, id, ja, ko, nl, ru, sv, sw, vi, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, de, es, fr, hi, id, ja, ko, nl, pt, ru, sv, sw, vi, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -948,6 +997,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Klein",
     smaller: "Kleiner",
     smallest: "Am kleinsten",
+  },
+  pt: {
+    largest: "Máximo",
+    larger: "Muito grande",
+    large: "Grande",
+    normal: "Normal",
+    small: "Pequeno",
+    smaller: "Muito pequeno",
+    smallest: "Mínimo",
   },
   ru: {
     largest: "Огромный",

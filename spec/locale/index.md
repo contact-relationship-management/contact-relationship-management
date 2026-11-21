@@ -79,7 +79,7 @@ The repository has two sets of locales, for two different things, and they are n
 
 ## Known limits
 
-- Translations into Arabic, Bengali, Chinese, Dutch, French, German, Hindi, Indonesian, Japanese, Korean, Russian, Spanish, Swahili, Swedish, Vietnamese and Welsh are machine-produced and
+- Translations into Arabic, Bengali, Chinese, Dutch, French, German, Hindi, Indonesian, Japanese, Korean, Portuguese, Russian, Spanish, Swahili, Swedish, Vietnamese and Welsh are machine-produced and
   **unreviewed**. Legal, risk and compliance wording in particular needs a
   qualified native-speaking reviewer before anyone relies on it.
 - On 2026-11-21 `es-mx` (home, path to production, privacy notice, evaluation checklist, the eleven role briefs and the
@@ -132,6 +132,11 @@ The repository has two sets of locales, for two different things, and they are n
   `de-001` is a copy of it with no wording changed, and `de-at` is a copy with only the locale code in the privacy
   example changed. All three are **unreviewed** by a German speaker. Their directory names are in German (`für`,
   `datenschutz`, `bewertung`, `weg-in-den-produktivbetrieb`, and the role names) and are found by `.locale-peer-id`.
+- On 2026-11-21 `pt-br` (same pages as `de-de`, and the site's own strings) was translated into Brazilian Portuguese by
+  Claude. `pt-001` is a copy of it with only the locale code in the privacy example changed, and `pt-pt` is a copy with
+  that change and light European Portuguese wording edits (for example `utilizador`, `ecrã`, `equipa`, `registo`,
+  `contacto`). All three are **unreviewed** by a Portuguese speaker. Their directory names are in Portuguese (`para`,
+  `privacidade`, `avaliação`, `caminho-para-produção`, and the role names) and are found by `.locale-peer-id`.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
 - On 2026-11-13 the "demo software" sentences on the locale home pages and in

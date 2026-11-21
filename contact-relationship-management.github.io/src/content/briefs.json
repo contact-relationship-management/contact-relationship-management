@@ -35,6 +35,9 @@
     "ko-kr",
     "nl-001",
     "nl-nl",
+    "pt-001",
+    "pt-br",
+    "pt-pt",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -83,6 +86,9 @@
     "ko-kr",
     "nl-001",
     "nl-nl",
+    "pt-001",
+    "pt-br",
+    "pt-pt",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -131,6 +137,9 @@
     "ko-kr",
     "nl-001",
     "nl-nl",
+    "pt-001",
+    "pt-br",
+    "pt-pt",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -167,6 +176,9 @@
     "ko-kr",
     "nl-001",
     "nl-nl",
+    "pt-001",
+    "pt-br",
+    "pt-pt",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -2057,6 +2069,171 @@
       "locale": "nl-nl",
       "slug": "technologiedirecteur",
       "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "diretor-de-estratégia",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "diretor-de-informação",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "diretor-de-operações",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "diretor-de-pessoas",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "diretor-de-riscos",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "diretor-de-segurança",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "diretor-de-tecnologia",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "diretor-executivo",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "diretor-jurídico",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "governança-risco-conformidade",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "pt-001",
+      "slug": "testador-de-segurança-independente",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "diretor-de-estratégia",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "diretor-de-informação",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "diretor-de-operações",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "diretor-de-pessoas",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "diretor-de-riscos",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "diretor-de-segurança",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "diretor-de-tecnologia",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "diretor-executivo",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "diretor-jurídico",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "governança-risco-conformidade",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "pt-br",
+      "slug": "testador-de-segurança-independente",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "diretor-de-estratégia",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "diretor-de-informação",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "diretor-de-operações",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "diretor-de-pessoas",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "diretor-de-riscos",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "diretor-de-segurança",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "diretor-de-tecnologia",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "diretor-executivo",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "diretor-jurídico",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "governança-risco-conformidade",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "pt-pt",
+      "slug": "testador-de-segurança-independente",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
     {
       "locale": "ru-001",
