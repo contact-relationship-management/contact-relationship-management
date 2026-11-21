@@ -696,8 +696,57 @@ const sv: Record<Key, string> = {
   "footer.after": "Den här webbplatsen exporteras från en katalog i själva arkivet med git subtree.",
 };
 
+const nl: Record<Key, string> = {
+  "nav.overview": "Overzicht",
+  "nav.tutorial": "Handleiding",
+  "nav.comparisons": "Vergelijken",
+  "cta.tutorial": "Start de handleiding",
+  "cta.source": "Bekijk de broncode",
+  brand: "Contact Relationship Management",
+  translations: "Vertalingen:",
+  skip: "Ga naar de inhoud",
+  site: "Website",
+  "nav.home": "Home",
+  "nav.install": "Installeren",
+  "nav.bridges": "Familiebruggen",
+  "nav.spec": "Specificatie",
+  "nav.locales": "Regio's",
+  "nav.briefs": "Rolbeschrijvingen",
+  theme: "Thema",
+  themeSystem: "Volg dit apparaat",
+  "nav.privacy": "Privacyverklaring",
+  textSize: "Tekstgrootte",
+  briefLanguage: "Taal van deze beschrijving",
+  language: "Taal",
+  pages: "Pagina's",
+  repository: "Repository",
+  search: "Zoeken",
+  "search.input": "Zoekterm",
+  "search.submit": "Zoeken",
+  "search.placeholder": "Doorzoek de documentatie",
+  timeZone: "Tijdzone",
+  share: "Delen",
+  "share.email": "E-mail",
+  "share.copy": "Link kopiëren",
+  "share.copied": "Gekopieerd",
+  "share.copyFailed": "De link kon niet worden gekopieerd",
+  "search.prompt": "Gebruik de zoekknop in de kop om een term in te voeren.",
+  "search.none": "Geen enkele pagina komt overeen.",
+  "search.count": "Gevonden pagina's: {n}",
+  "search.failed": "De zoekindex kon niet worden geladen.",
+  allBriefs: "Alle rolbeschrijvingen",
+  "briefs.lede":
+    "Eén pagina voor elke leidinggevende rol: wat de software is, wat ze u biedt, wat ze u niet biedt en welke beslissingen bij u liggen. Gebruik de taalknop in de kop voor dezelfde beschrijving in een andere regio.",
+  locale: "Regio:",
+  source: "Bron:",
+  "readiness.estimate": "geschatte gereedheid",
+  "footer.before": "Gebouwd uit de documenten in de",
+  "footer.link": "repository van Contact Relationship Management",
+  "footer.after": "Deze website wordt met git subtree geëxporteerd uit een map in de repository zelf.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ko, ru, sv, sw, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ko, nl, ru, sv, sw, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -774,6 +823,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Liten",
     smaller: "Mindre",
     smallest: "Minst",
+  },
+  nl: {
+    largest: "Grootst",
+    larger: "Groter",
+    large: "Groot",
+    normal: "Normaal",
+    small: "Klein",
+    smaller: "Kleiner",
+    smallest: "Kleinst",
   },
   ru: {
     largest: "Огромный",

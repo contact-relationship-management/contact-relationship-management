@@ -30,6 +30,8 @@
     "ja-jp",
     "ko-001",
     "ko-kr",
+    "nl-001",
+    "nl-nl",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -71,6 +73,8 @@
     "ja-jp",
     "ko-001",
     "ko-kr",
+    "nl-001",
+    "nl-nl",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -112,6 +116,8 @@
     "ja-jp",
     "ko-001",
     "ko-kr",
+    "nl-001",
+    "nl-nl",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -141,6 +147,8 @@
     "ja-jp",
     "ko-001",
     "ko-kr",
+    "nl-001",
+    "nl-nl",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -1754,6 +1762,116 @@
       "locale": "ko-kr",
       "slug": "최고정보책임자",
       "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "algemeen-directeur",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "beveiligingsdirecteur",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "governance-risico-compliance",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "informatiedirecteur",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "juridisch-directeur",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "onafhankelijke-beveiligingstester",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "operationeel-directeur",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "personeelsdirecteur",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "risicodirecteur",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "strategiedirecteur",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "nl-001",
+      "slug": "technologiedirecteur",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "algemeen-directeur",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "beveiligingsdirecteur",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "governance-risico-compliance",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "informatiedirecteur",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "juridisch-directeur",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "onafhankelijke-beveiligingstester",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "operationeel-directeur",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "personeelsdirecteur",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "risicodirecteur",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "strategiedirecteur",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "nl-nl",
+      "slug": "technologiedirecteur",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
     },
     {
       "locale": "ru-001",
