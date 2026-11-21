@@ -76,6 +76,7 @@ export const TRANSLATIONS: readonly string[] = LOCALE_HOMES.filter((l) => l.ends
 export const ENDONYMS: Readonly<Record<string, string>> = {
   ar: "العربية",
   bn: "বাংলা",
+  id: "Bahasa Indonesia",
   cy: "Cymraeg",
   en: "English",
   es: "Español",
@@ -105,6 +106,9 @@ export const LOCALE_LABELS: Readonly<Record<string, string>> = {
   "bn-001": "বাংলা (বিশ্ব)",
   "bn-bd": "বাংলা (বাংলাদেশ)",
   "bn-in": "বাংলা (ভারত)",
+  "id-001": "Bahasa Indonesia (Dunia)",
+  "id-id": "Bahasa Indonesia (Indonesia)",
+  "id-my": "Bahasa Indonesia (Malaysia)",
   "ru-001": "Русский (Мир)",
   "ru-by": "Русский (Беларусь)",
   "ru-ru": "Русский (Россия)",

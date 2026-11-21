@@ -79,7 +79,7 @@ The repository has two sets of locales, for two different things, and they are n
 
 ## Known limits
 
-- Translations into Arabic, Bengali, Chinese, French, Hindi, Russian, Spanish and Welsh are machine-produced and
+- Translations into Arabic, Bengali, Chinese, French, Hindi, Indonesian, Russian, Spanish and Welsh are machine-produced and
   **unreviewed**. Legal, risk and compliance wording in particular needs a
   qualified native-speaking reviewer before anyone relies on it.
 - On 2026-11-21 `es-mx` (home, path to production, privacy notice, evaluation checklist, the eleven role briefs and the
@@ -103,6 +103,11 @@ The repository has two sets of locales, for two different things, and they are n
   "সফটওয়্যার" to "সফ্টওয়্যার". All three are **unreviewed** by a Bengali speaker; `bn-in` has had no check for West Bengal
   usage beyond those edits. Their section directories are in Bengali script (`জন্য`, `উৎপাদনের-পথ`, `গোপনীয়তা`,
   `মূল্যায়ন`) and are found by `.locale-peer-id`.
+- On 2026-11-21 `id-id` (same pages as `ru-ru`, and the site's own strings) was translated into Indonesian by Claude.
+  `id-001` was made from it with "email" changed to "e-mail", and `id-my` with "email" changed to "e-mel" and
+  "basis data" to "pangkalan data". All three are **unreviewed** by an Indonesian speaker; `id-my` has had no check for
+  Malaysian usage beyond those edits. Their section directories are in Indonesian (`untuk`, `jalur-ke-produksi`,
+  `privasi`, `evaluasi`) and are found by `.locale-peer-id`.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
 - On 2026-11-13 the "demo software" sentences on the locale home pages and in

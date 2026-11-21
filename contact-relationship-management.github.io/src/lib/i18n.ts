@@ -451,8 +451,57 @@ const bn: Record<Key, string> = {
   "footer.after": "এই সাইট রিপোজিটরির একটি ডিরেক্টরি থেকে git subtree দিয়ে রপ্তানি করা।",
 };
 
+const id: Record<Key, string> = {
+  "nav.overview": "Ikhtisar",
+  "nav.tutorial": "Tutorial",
+  "nav.comparisons": "Perbandingan",
+  "cta.tutorial": "Mulai tutorial",
+  "cta.source": "Lihat sumber",
+  brand: "Contact Relationship Management",
+  translations: "Terjemahan:",
+  skip: "Lompat ke konten",
+  site: "Situs",
+  "nav.home": "Beranda",
+  "nav.install": "Pasang",
+  "nav.bridges": "Jembatan keluarga",
+  "nav.spec": "Spesifikasi",
+  "nav.locales": "Lokal",
+  "nav.briefs": "Ringkasan peran",
+  theme: "Tema",
+  themeSystem: "Ikuti perangkat ini",
+  "nav.privacy": "Pemberitahuan privasi",
+  textSize: "Ukuran teks",
+  briefLanguage: "Bahasa ringkasan ini",
+  language: "Bahasa",
+  pages: "Halaman",
+  repository: "Repositori sumber",
+  search: "Cari",
+  "search.input": "Istilah pencarian",
+  "search.submit": "Cari",
+  "search.placeholder": "Cari di dokumentasi",
+  timeZone: "Zona waktu",
+  share: "Bagikan",
+  "share.email": "Email",
+  "share.copy": "Salin tautan",
+  "share.copied": "Disalin",
+  "share.copyFailed": "Tautan tidak dapat disalin",
+  "search.prompt": "Gunakan tombol cari di header untuk memasukkan istilah.",
+  "search.none": "Tidak ada halaman yang cocok.",
+  "search.count": "Halaman yang cocok: {n}",
+  "search.failed": "Indeks pencarian tidak dapat dimuat.",
+  allBriefs: "Semua ringkasan peran",
+  "briefs.lede":
+    "Satu halaman untuk setiap peran senior: apa perangkat lunak ini, apa yang diberikannya kepada Anda, apa yang tidak, dan keputusan mana yang menjadi milik Anda. Gunakan tombol bahasa di header untuk membaca ringkasan yang sama dalam lokal lain.",
+  locale: "Lokal:",
+  source: "Sumber:",
+  "readiness.estimate": "Perkiraan kesiapan",
+  "footer.before": "Dibangun dari dokumen di",
+  "footer.link": "repositori Contact Relationship Management",
+  "footer.after": "Situs ini diekspor dari sebuah direktori di repositori itu dengan git subtree.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, ru, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ru, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -484,6 +533,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "ছোট",
     smaller: "অনেক ছোট",
     smallest: "ক্ষুদ্র",
+  },
+  id: {
+    largest: "Sangat besar",
+    larger: "Lebih besar",
+    large: "Besar",
+    normal: "Normal",
+    small: "Kecil",
+    smaller: "Lebih kecil",
+    smallest: "Terkecil",
   },
   ru: {
     largest: "Огромный",

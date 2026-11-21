@@ -23,6 +23,9 @@
     "hi-001",
     "hi-in",
     "hi-np",
+    "id-001",
+    "id-id",
+    "id-my",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -53,6 +56,9 @@
     "hi-001",
     "hi-in",
     "hi-np",
+    "id-001",
+    "id-id",
+    "id-my",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -83,6 +89,9 @@
     "hi-001",
     "hi-in",
     "hi-np",
+    "id-001",
+    "id-id",
+    "id-my",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -101,6 +110,9 @@
     "fr-001",
     "fr-ca",
     "fr-fr",
+    "id-001",
+    "id-id",
+    "id-my",
     "ru-001",
     "ru-by",
     "ru-ru"
@@ -1325,6 +1337,171 @@
       "locale": "hi-np",
       "slug": "स्वतंत्र-सुरक्षा-परीक्षक",
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "id-001",
+      "slug": "direktur-hukum",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "id-001",
+      "slug": "direktur-informasi",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "id-001",
+      "slug": "direktur-keamanan",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "id-001",
+      "slug": "direktur-operasional",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "id-001",
+      "slug": "direktur-risiko",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "id-001",
+      "slug": "direktur-sdm",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "id-001",
+      "slug": "direktur-strategi",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "id-001",
+      "slug": "direktur-teknologi",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "id-001",
+      "slug": "direktur-utama",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "id-001",
+      "slug": "penguji-keamanan-independen",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "id-001",
+      "slug": "tata-kelola-risiko-kepatuhan",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "id-id",
+      "slug": "direktur-hukum",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "id-id",
+      "slug": "direktur-informasi",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "id-id",
+      "slug": "direktur-keamanan",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "id-id",
+      "slug": "direktur-operasional",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "id-id",
+      "slug": "direktur-risiko",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "id-id",
+      "slug": "direktur-sdm",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "id-id",
+      "slug": "direktur-strategi",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "id-id",
+      "slug": "direktur-teknologi",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "id-id",
+      "slug": "direktur-utama",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "id-id",
+      "slug": "penguji-keamanan-independen",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "id-id",
+      "slug": "tata-kelola-risiko-kepatuhan",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "id-my",
+      "slug": "direktur-hukum",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "id-my",
+      "slug": "direktur-informasi",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "id-my",
+      "slug": "direktur-keamanan",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "id-my",
+      "slug": "direktur-operasional",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "id-my",
+      "slug": "direktur-risiko",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "id-my",
+      "slug": "direktur-sdm",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "id-my",
+      "slug": "direktur-strategi",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "id-my",
+      "slug": "direktur-teknologi",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "id-my",
+      "slug": "direktur-utama",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "id-my",
+      "slug": "penguji-keamanan-independen",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "id-my",
+      "slug": "tata-kelola-risiko-kepatuhan",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
     },
     {
       "locale": "ru-001",
