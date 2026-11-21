@@ -107,6 +107,19 @@ async fn create(
     {
         problems.push_field("url", why.clone());
     }
+    // CRM-R106: with a declared list, only a host on it.
+    if let Ok(checked) = &address
+        && let Some(host) = crate::rules::residency::host_of(checked)
+        && !crate::residency::permits(&host)
+    {
+        problems.push_field(
+            "url",
+            format!(
+                "{host} is not in CONTACT_RELATIONSHIP_MANAGEMENT_OUTBOUND_HOSTS, the outside \
+                 hosts this deployment may call"
+            ),
+        );
+    }
     let events = rules::check_patterns(&payload.events);
     if let Err(why) = &events {
         problems.push_field("events", why.clone());

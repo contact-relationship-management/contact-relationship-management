@@ -45,7 +45,7 @@ fn arrange(forms: Vec<WebForm>) -> (Recorder, Restore) {
 }
 
 /// Names the forms before the app boots: the service lists each form's path for `axa`'s
-/// cross-site write guard when it starts, as it reads `CRM_WEB_FORMS` then (CRM-T237). `arrange`
+/// cross-site write guard when it starts, as it reads `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS` then (CRM-T237). `arrange`
 /// gives the full entries, with the same slugs, once the test has what they need.
 fn forms_before_boot(slugs: &[&str]) -> Restore {
     let forms = slugs

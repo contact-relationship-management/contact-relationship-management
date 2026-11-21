@@ -3,7 +3,7 @@
  * with less pause between calls, to find where latency and errors start to climb. The
  * limits are looser than the basic test's; the summary per step is the result.
  *
- * Environment: TEST_URL, CRM_AUTH_TOKEN, and
+ * Environment: TEST_URL, CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN, and
  *   VUS       virtual users at the first step   default 10
  *   DURATION  length of each step               default 2m
  */

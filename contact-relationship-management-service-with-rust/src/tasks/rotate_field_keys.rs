@@ -1,6 +1,6 @@
 //! `cargo run -- task rotate_field_keys` — re-seal every encrypted column under
 //! the active key (CRM-T41). Run it after adding a new first key to
-//! `CRM_FIELD_KEYS`, and before retiring an old one; it also seals any legacy
+//! `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS`, and before retiring an old one; it also seals any legacy
 //! plaintext. It is idempotent: values already under the active key are left
 //! alone, and it reports the counts.
 
@@ -26,7 +26,8 @@ pub const ENCRYPTED_COLUMNS: [(&str, &str); 2] =
 /// example its key was already retired), or a statement fails. Nothing is
 /// written for a column after the first failure in it.
 pub async fn rotate(pool: &PgPool) -> std::result::Result<Vec<(String, u64)>, String> {
-    let ring = crypto::current().ok_or("no field keys are configured (CRM_FIELD_KEYS)")?;
+    let ring = crypto::current()
+        .ok_or("no field keys are configured (CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS)")?;
     let mut report = Vec::new();
     for (table, column) in ENCRYPTED_COLUMNS {
         // Both names come from the constant above, never from a caller.
@@ -102,7 +103,7 @@ impl Task for RotateFieldKeys {
     fn task(&self) -> TaskInfo {
         TaskInfo {
             name: "rotate_field_keys".to_string(),
-            detail: "Re-seal encrypted columns under the active CRM_FIELD_KEYS key".to_string(),
+            detail: "Re-seal encrypted columns under the active CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS key".to_string(),
         }
     }
 

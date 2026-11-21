@@ -68,10 +68,10 @@ refuses "a core count that cannot be read" "could not read"
 stub "${ac}" "{ 1.00 1.00 1.00 }" 1
 refuses "one core gives a limit of nought" "could not read"
 stub "${ac}" "{ 1.00 9.00 1.00 }"
-if CRM_NIGHTLY_MAX_LOAD=10 "${here}/machine-idle.sh" >/dev/null; then
-  pass "CRM_NIGHTLY_MAX_LOAD raises the limit"
+if CONTACT_RELATIONSHIP_MANAGEMENT_NIGHTLY_MAX_LOAD=10 "${here}/machine-idle.sh" >/dev/null; then
+  pass "CONTACT_RELATIONSHIP_MANAGEMENT_NIGHTLY_MAX_LOAD raises the limit"
 else
-  fail "CRM_NIGHTLY_MAX_LOAD raises the limit"
+  fail "CONTACT_RELATIONSHIP_MANAGEMENT_NIGHTLY_MAX_LOAD raises the limit"
 fi
 
 git init -q -b main "${base}/clone"

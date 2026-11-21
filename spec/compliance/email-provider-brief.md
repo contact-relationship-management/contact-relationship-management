@@ -11,8 +11,8 @@ brief, not legal advice, and it picks no vendor.
   /api/campaigns/{pid}/run` sends through `mail::Sender`. The default is
   **simulated**: nothing leaves the process, a touch activity is written per
   contact, and the engagement counters are fixed demo fractions. With
-  `CRM_MAIL_MODE=smtp` it submits each message to the SMTP server named by
-  `CRM_SMTP_*`. `POST /api/nurture/advance` sends nurture steps through the same sender (see below).
+  `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp` it submits each message to the SMTP server named by
+  `CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_*`. `POST /api/nurture/advance` sends nurture steps through the same sender (see below).
 - **One delivery row per (campaign, contact).** It is claimed atomically, so a
   re-run or a concurrent run never mails a contact twice. States: pending,
   sending, sent, failed, no_address, suppressed. A transient failure is retried
@@ -28,7 +28,7 @@ brief, not legal advice, and it picks no vendor.
 - **Progress.** `GET /api/campaigns/{pid}/deliveries` gives counts per state.
   Subject access lists a contact's deliveries (state, time, message id).
 - **Production guard.** `smtp` mode refuses to start in production unless
-  `CRM_MAIL_ALLOW_PRODUCTION=1` (the same for `brevo` and `mailjet`), because the
+  `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION=1` (the same for `brevo` and `mailjet`), because the
   vendor, agreement and legal review is open.
 - **Unsubscribe.** Every real message ends with a signed link and carries
   `List-Unsubscribe` and `List-Unsubscribe-Post` headers (RFC 8058).
@@ -37,7 +37,7 @@ brief, not legal advice, and it picks no vendor.
   consent change (append-only history, enrolments exited, audited, source
   `unsubscribe-link`) and is idempotent. The token is the contact and campaign
   identifiers plus an HMAC-SHA256 tag, with no expiry. It needs
-  `CRM_UNSUBSCRIBE_SECRET` (32+ characters) and `CRM_PUBLIC_URL` (https in
+  `CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET` (32+ characters) and `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL` (https in
   production); `smtp` mode will not start without them. A withdrawn contact is
   suppressed at the next send, because consent is re-read before each message.
 - **Nurture.** With a real sender each nurture step is mailed by
@@ -54,7 +54,7 @@ brief, not legal advice, and it picks no vendor.
   `Message-ID`, applied once per message and event. A hard bounce or complaint
   suppresses the contact (the send skips them); a complaint also withdraws
   consent. Suppression is per contact because the CRM holds no addresses.
-- **Brevo and Mailjet adapters.** `CRM_MAIL_MODE=brevo` or `mailjet` sends
+- **Brevo and Mailjet adapters.** `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=brevo` or `mailjet` sends
   through the vendor's HTTP API (not its SMTP relay, because the vendor's events
   name the message by its own id, not ours; the API lets us attach ours as a
   Brevo tag or a Mailjet `CustomID`, which comes back on every event).
@@ -63,7 +63,7 @@ brief, not legal advice, and it picks no vendor.
   and `spam`; Mailjet `sent` (counted as delivered), `bounce` (split on
   `hard_bounce`), `blocked` (a soft bounce, so no suppression) and `spam`.
   Other events are ignored. The vendors do not sign with our scheme, so the
-  request must carry `CRM_WEBHOOK_SECRET` as a bearer token (Brevo), a
+  request must carry `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET` as a bearer token (Brevo), a
   basic-auth password in the callback URL (Mailjet) or `X-CRM-Webhook-Token`;
   there is no timestamp, so a replay is possible but changes nothing.
   **Unverified:** the formats follow the vendors' documentation and are

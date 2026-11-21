@@ -36,31 +36,31 @@ for the quick start, configuration, and endpoints.
 ## Sending email
 
 By default the service sends nothing: campaign sends are simulated. To send
-real mail, set `CRM_MAIL_MODE=smtp` and the `CRM_SMTP_*` variables. The
+real mail, set `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp` and the `CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_*` variables. The
 service refuses to start with a bad combination.
 
 | Variable | Meaning |
 |---|---|
-| `CRM_MAIL_MODE` | `simulated` (default), `smtp`, `brevo`, `mailjet`, `ses`, `azure`, `mailgun` or `sendgrid` |
-| `CRM_BREVO_API_KEY` | `brevo` mode: the API key (sent as `api-key`) |
-| `CRM_MAILJET_API_KEY`, `CRM_MAILJET_API_SECRET` | `mailjet` mode: the API key pair (basic auth) |
-| `CRM_SES_REGION`, `CRM_SES_ACCESS_KEY_ID`, `CRM_SES_SECRET_ACCESS_KEY` | `ses` mode (optional `CRM_SES_SESSION_TOKEN`, and `CRM_SES_CONFIGURATION_SET`, which SES events need). Static keys only; no instance-role lookup |
-| `CRM_AZURE_ENDPOINT`, `CRM_AZURE_ACCESS_KEY` | `azure` mode: the Communication Services endpoint and its base64 access key; `CRM_MAIL_FROM` must be a verified sender address |
-| `CRM_MAILGUN_API_KEY`, `CRM_MAILGUN_DOMAIN` | `mailgun` mode (`CRM_MAILGUN_API_BASE=https://api.eu.mailgun.net` for the EU region) |
-| `CRM_MAILGUN_SIGNING_KEY` | Mailgun's webhook signing key; Mailgun callbacks are verified with it (not with `CRM_WEBHOOK_SECRET`) |
-| `CRM_SENDGRID_API_KEY` | `sendgrid` mode |
-| `CRM_MAIL_API_URL` | Override the vendor endpoint (a test double); `https` in production |
-| `CRM_SMTP_HOST`, `CRM_SMTP_PORT` | The server; port defaults to 587 (465 with `implicit`) |
-| `CRM_SMTP_TLS` | `starttls` (default), `implicit` or `none` |
-| `CRM_SMTP_USERNAME`, `CRM_SMTP_PASSWORD` | Set together, or neither |
-| `CRM_MAIL_FROM` | The `From` mailbox, for example `CRM <crm@example.org>` |
-| `CRM_MAIL_BATCH` | Contacts sent per batch (default 200); the job runs batches until done |
-| `CRM_SMTP_ACCEPT_INVALID_CERTS` | Development only; refused in production |
-| `CRM_UNSUBSCRIBE_SECRET` | 32+ characters; signs the unsubscribe link in every message. Required with `smtp` |
-| `CRM_PUBLIC_URL` | The address recipients reach this service at, for the link (`https` in production). Required with `smtp` |
-| `CRM_WEBHOOK_SECRET` | 32+ characters; enables `POST /webhooks/email` for provider outcomes (delivered, hard or soft bounce, complaint). Requests carry `X-CRM-Timestamp` and `X-CRM-Signature: sha256=` (HMAC-SHA256 of `timestamp.body`); five-minute window |
-| `CRM_MAIL_ALLOW_PRODUCTION` | Required to use any real mode in production, because the vendor, agreement and legal review is open (CRM-T39) |
-| `CRM_MAIL_DEV_DOMAIN` | Development only: in `stub` upstream mode, mail goes to `<person id>@<domain>` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE` | `simulated` (default), `smtp`, `brevo`, `mailjet`, `ses`, `azure`, `mailgun` or `sendgrid` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_BREVO_API_KEY` | `brevo` mode: the API key (sent as `api-key`) |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_MAILJET_API_KEY`, `CONTACT_RELATIONSHIP_MANAGEMENT_MAILJET_API_SECRET` | `mailjet` mode: the API key pair (basic auth) |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_SES_REGION`, `CONTACT_RELATIONSHIP_MANAGEMENT_SES_ACCESS_KEY_ID`, `CONTACT_RELATIONSHIP_MANAGEMENT_SES_SECRET_ACCESS_KEY` | `ses` mode (optional `CONTACT_RELATIONSHIP_MANAGEMENT_SES_SESSION_TOKEN`, and `CONTACT_RELATIONSHIP_MANAGEMENT_SES_CONFIGURATION_SET`, which SES events need). Static keys only; no instance-role lookup |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_AZURE_ENDPOINT`, `CONTACT_RELATIONSHIP_MANAGEMENT_AZURE_ACCESS_KEY` | `azure` mode: the Communication Services endpoint and its base64 access key; `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM` must be a verified sender address |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_API_KEY`, `CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_DOMAIN` | `mailgun` mode (`CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_API_BASE=https://api.eu.mailgun.net` for the EU region) |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_SIGNING_KEY` | Mailgun's webhook signing key; Mailgun callbacks are verified with it (not with `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET`) |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_SENDGRID_API_KEY` | `sendgrid` mode |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_API_URL` | Override the vendor endpoint (a test double); `https` in production |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST`, `CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT` | The server; port defaults to 587 (465 with `implicit`) |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS` | `starttls` (default), `implicit` or `none` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_USERNAME`, `CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PASSWORD` | Set together, or neither |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM` | The `From` mailbox, for example `CRM <crm@example.org>` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH` | Contacts sent per batch (default 200); the job runs batches until done |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_ACCEPT_INVALID_CERTS` | Development only; refused in production |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET` | 32+ characters; signs the unsubscribe link in every message. Required with `smtp` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL` | The address recipients reach this service at, for the link (`https` in production). Required with `smtp` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET` | 32+ characters; enables `POST /webhooks/email` for provider outcomes (delivered, hard or soft bounce, complaint). Requests carry `X-CRM-Timestamp` and `X-CRM-Signature: sha256=` (HMAC-SHA256 of `timestamp.body`); five-minute window |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION` | Required to use any real mode in production, because the vendor, agreement and legal review is open (CRM-T39) |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_DEV_DOMAIN` | Development only: in `stub` upstream mode, mail goes to `<person id>@<domain>` |
 
 With a real sender, `POST /api/campaigns/{pid}/run` checks the campaign and
 hands the sending to a background job, answering `202` while it runs (`200`
@@ -73,11 +73,11 @@ Simulated mode, and the test configuration, still finish inside the request.
 `POST /api/nurture/advance` mails due nurture steps through the same sender;
 each step then needs a `body`.
 
-`brevo` and `mailjet` send through the vendor's HTTP API with `CRM_MAIL_FROM`
+`brevo` and `mailjet` send through the vendor's HTTP API with `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM`
 and the same unsubscribe and webhook settings. Point the vendor's callback at
-`POST {CRM_PUBLIC_URL}/webhooks/email/brevo` (bearer token, or a custom header
+`POST {CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL}/webhooks/email/brevo` (bearer token, or a custom header
 `X-CRM-Webhook-Token`) or `/webhooks/email/mailjet` (`https://crm:SECRET@host/…`
-basic auth), with `CRM_WEBHOOK_SECRET` as the secret. For the clouds:
+basic auth), with `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET` as the secret. For the clouds:
 SES publishes events to an SNS topic (add an HTTPS subscription to
 `/webhooks/email/ses` with `https://crm:SECRET@host/…`; the service confirms the
 subscription itself, for AWS hosts only; SNS message signatures are not
@@ -87,10 +87,10 @@ delivery property). Mailgun callbacks go to `/webhooks/email/mailgun` and
 SendGrid's Event Webhook to `/webhooks/email/sendgrid` (basic auth in the URL;
 SendGrid's ECDSA signature is not verified). Google Cloud has no email-sending
 service of its own: use SendGrid or Mailgun, or its SMTP relay with
-`CRM_MAIL_MODE=smtp` (no outcome callbacks). These adapters follow the vendors'
+`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp` (no outcome callbacks). These adapters follow the vendors'
 documentation and have not been run against live accounts.
 
-The CRM holds no email addresses. In `CRM_UPSTREAM_MODE=http` it asks the
+The CRM holds no email addresses. In `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http` it asks the
 person service for an `email` field at send time and stores nothing.
 
 ### Local mail server
@@ -109,12 +109,12 @@ scripts/email-dev.sh reset   # stop and delete all mail
 To send a campaign through it from the service:
 
 ```bash
-CRM_MAIL_MODE=smtp CRM_SMTP_HOST=127.0.0.1 CRM_SMTP_PORT=2587 \
-CRM_SMTP_USERNAME=crm@crm.test CRM_SMTP_PASSWORD=crm-dev-password \
-CRM_MAIL_FROM='CRM <crm@crm.test>' CRM_SMTP_ACCEPT_INVALID_CERTS=1 \
-CRM_MAIL_DEV_DOMAIN=crm.test \
-CRM_UNSUBSCRIBE_SECRET=dev-only-unsubscribe-secret-0123456789 \
-CRM_PUBLIC_URL=http://localhost:1241 cargo run -- start
+CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST=127.0.0.1 CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT=2587 \
+CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_USERNAME=crm@crm.test CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PASSWORD=crm-dev-password \
+CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM='CRM <crm@crm.test>' CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_ACCEPT_INVALID_CERTS=1 \
+CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_DEV_DOMAIN=crm.test \
+CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET=dev-only-unsubscribe-secret-0123456789 \
+CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL=http://localhost:1241 cargo run -- start
 ```
 
 Mail lands in the `crm@crm.test` mailbox; read it over JMAP at
@@ -137,15 +137,15 @@ admin only, except the events route, which is authenticated by its signature:
 - the employment check asks WPM which contacts are its workers today.
 
 The outbound bridges are stub-first: nothing leaves the process unless
-`CRM_UPSTREAM_MODE=http` is set.
+`CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http` is set.
 
 | Variable | Meaning |
 |---|---|
-| `CRM_UPSTREAM_MODE` | `http` sends the outbound calls; unset (or anything else) is stub mode |
-| `CRM_PPM_SERVICE_URL`, `CRM_PPM_SERVICE_TOKEN` | PPM's base URL and an optional bearer token |
-| `CRM_WORKER_SERVICE_URL`, `CRM_WORKER_SERVICE_TOKEN` | WPM's base URL and a bearer token. A token is sent only over `https` or to this machine |
-| `CRM_WPM_ORGANIZATION_REF` | The `organization:` URN the employment check asks about (CRM-R94). `CRM_WORKER_SERVICE_TOKEN` must belong to an HR identity of that organization in WPM. A value that is not an `organization:` URN counts as unset; unset, the check answers `502` in `http` mode |
-| `CRM_WPM_WEBHOOK_SECRET` | 32+ characters; enables `POST /api/bridges/wpm/events` (CRM-R92). Set the same value as WPM's `WPM_WEBHOOK_SECRET_<NAME>` for the subscription. Requests carry `x-wpm-signature: t=<unix>,v1=<hex>` (HMAC-SHA256 of `t.body`), with a five-minute window. Unset, the route is `404` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE` | `http` sends the outbound calls; unset (or anything else) is stub mode |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN` | PPM's base URL and an optional bearer token |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` | WPM's base URL and a bearer token. A token is sent only over `https` or to this machine |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` | The `organization:` URN the employment check asks about (CRM-R94). `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` must belong to an HR identity of that organization in WPM. A value that is not an `organization:` URN counts as unset; unset, the check answers `502` in `http` mode |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` | 32+ characters; enables `POST /api/bridges/wpm/events` (CRM-R92). Set the same value as WPM's `WPM_WEBHOOK_SECRET_<NAME>` for the subscription. Requests carry `x-wpm-signature: t=<unix>,v1=<hex>` (HMAC-SHA256 of `t.body`), with a five-minute window. Unset, the route is `404` |
 
 The [family bridges tutorial](docs/tutorial-family-bridges.md) walks through a
 signed hire and leave with `openssl` and `curl`, and through the employment
@@ -153,7 +153,7 @@ check. None of the bridges has been run against a running WPM or PPM.
 
 ## Svelte front end
 
-**Guided tour:** set `CRM_DEMO_TOUR=on`, start the UI and press **Start the
+**Guided tour:** set `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on`, start the UI and press **Start the
 tour** on `/tour`, or sign in as `example@example.com`. The tour is off when
 the setting is absent. No email is sent and no service is needed; every screen shows fictitious data. Each sign-in gets its own copy of the
 data, held in memory (at most 200 at a time).
@@ -165,7 +165,7 @@ pnpm dev
 ```
 
 To use a running service instead of the tour, the UI needs the service's
-`/api` base in `CRM_API_URL`. The proxy appends the path after `/api/proxy/`
+`/api` base in `CONTACT_RELATIONSHIP_MANAGEMENT_API_URL`. The proxy appends the path after `/api/proxy/`
 to this value, and the default, `http://localhost:1241/api`, is a service
 started as above, so only the authentication service needs setting:
 
@@ -174,7 +174,7 @@ AUTH_API_URL=http://localhost:<auth port> pnpm dev
 ```
 
 A service elsewhere sets the whole base, `/api` included, for example
-`CRM_API_URL=https://crm.example.org/api`; a trailing slash is dropped.
+`CONTACT_RELATIONSHIP_MANAGEMENT_API_URL=https://crm.example.org/api`; a trailing slash is dropped.
 
 Signing in that way needs the family authentication service at `AUTH_API_URL`
 (the UI calls its `/api/auth/magic-link` and `/api/auth/token`). The CRM

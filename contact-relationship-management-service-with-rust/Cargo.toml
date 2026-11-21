@@ -24,7 +24,7 @@ include = ["src/**/*", "migrations/**/*", ".sqlx/**/*", ".cargo/config.toml", "s
 
 [workspace.dependencies]
 # The shared plumbing. `sqlx`: `AppContext::db` is the `PgPool` (CRM-D24); `queue` is the Postgres job queue.
-axa = { version = "0.20.0", features = ["postgres-sqlx", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
+axa = { version = "0.20.1", features = ["postgres-sqlx", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
 
 [dependencies]
 axa = { workspace = true }
@@ -113,7 +113,7 @@ redis = { version = "1.8.1", default-features = false, features = ["tokio-comp",
 default = ["paseto"]
 paseto = ["authentication-verifier/paseto", "authentication-verifier/fetch"]
 # Also accept Keycloak (OIDC) access tokens, configured by
-# `CRM_KEYCLOAK_*` (see src/auth/). Off by default.
+# `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_*` (see src/auth/). Off by default.
 keycloak = ["authentication-verifier/keycloak"]
 
 [[test]]
@@ -137,6 +137,8 @@ tokio = { version = "1.54", default-features = false, features = [
   "rt-multi-thread",
   "macros",
   "net",
+  # A paused clock, so the policy watcher's 15-second poll can be tested without waiting (CRM-T292).
+  "test-util",
 ] }
 serial_test = { version = "4.0.1" }
 # Mint PASETO v4.public tokens + a matching Ed25519 key set in-process so

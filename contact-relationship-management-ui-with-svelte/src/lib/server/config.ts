@@ -6,7 +6,9 @@ import { demoTourEnabled } from "./demo-config.js";
 
 /** API base of the contact-relationship-management service the BFF proxies
  *  to, ending in `/api` (default `http://localhost:1241/api`). */
-export const CRM_API_URL: string = crmApiBase(env.CRM_API_URL);
+export const CONTACT_RELATIONSHIP_MANAGEMENT_API_URL: string = crmApiBase(
+  env.CONTACT_RELATIONSHIP_MANAGEMENT_API_URL,
+);
 
 /** Authentication service base URL — for the session→PASETO exchange
  *  and the magic-link login flow (PF-T18). */
@@ -14,7 +16,9 @@ export const AUTH_API_URL: string = env.AUTH_API_URL || "http://localhost:1241";
 
 /**
  * The guided tour (sign in as example@example.com, explore fictitious data).
- * Off unless `CRM_DEMO_TOUR=on`; offering a public demo is an explicit choice.
+ * Off unless `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on`; offering a public demo is an explicit choice.
  * Demo sessions never reach the service, whatever this is set to.
  */
-export const DEMO_TOUR_ENABLED: boolean = demoTourEnabled(env.CRM_DEMO_TOUR);
+export const DEMO_TOUR_ENABLED: boolean = demoTourEnabled(
+  env.CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR,
+);

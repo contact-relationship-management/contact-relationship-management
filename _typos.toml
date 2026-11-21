@@ -21,6 +21,8 @@ extend-exclude = [
 ]
 
 [default.extend-words]
+# The SMTP greeting command (RFC 5321), answered by the scripted server in `src/mail.rs`'s tests.
+HELO = "HELO"
 # A deliberately misspelt request member (tests/requests/api_standards.rs, src/json.rs).
 dispaly = "dispaly"
 # `ANDed` (consent is ANDed), `-yse` British verb endings, nickname tables, test fixtures.

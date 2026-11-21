@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Records a passing `scripts/ci-check.sh all` (CRM-T189): a note on refs/notes/ci, and a `local-ci`
-# commit status on each remote in CRM_ATTEST_REMOTES (default origin). Called by `all`.
+# commit status on each remote in CONTACT_RELATIONSHIP_MANAGEMENT_ATTEST_REMOTES (default origin). Called by `all`.
 #
 #   scripts/attest.sh start                      # print HEAD when the tree is clean; nothing if not
 #   scripts/attest.sh write <commit> <stages>    # <stages> holds "<stage> <exit code> <seconds>" lines
@@ -10,7 +10,7 @@
 # This says that this machine ran the stages. It is not independent evidence (spec/local-ci-cd.md).
 # A note stays in this clone until refs/notes/ci is pushed, which this script does not do.
 #
-# The token comes from CRM_LOCAL_CI_TOKEN, or from the macOS Keychain item crm-local-ci-status:
+# The token comes from CONTACT_RELATIONSHIP_MANAGEMENT_LOCAL_CI_TOKEN, or from the macOS Keychain item crm-local-ci-status:
 #   security add-generic-password -a "${USER}" -s crm-local-ci-status -w
 # Make it a fine-grained token for this repository with "Commit statuses: read and write" and
 # nothing else. With no token the note is still written and the run says no status was posted.
@@ -24,8 +24,8 @@ compose_file=contact-relationship-management-service-with-rust/compose.test.yaml
 tree_changes() { git status --porcelain; }
 
 status_token() {
-  if [[ -n "${CRM_LOCAL_CI_TOKEN:-}" ]]; then
-    printf '%s' "${CRM_LOCAL_CI_TOKEN}"
+  if [[ -n "${CONTACT_RELATIONSHIP_MANAGEMENT_LOCAL_CI_TOKEN:-}" ]]; then
+    printf '%s' "${CONTACT_RELATIONSHIP_MANAGEMENT_LOCAL_CI_TOKEN}"
   elif command -v security >/dev/null; then
     security find-generic-password -s "${keychain_item}" -w 2>/dev/null || true
   fi
@@ -67,7 +67,7 @@ post_statuses() {
     echo "attest: no token, so no ${context} status posted (see the top of scripts/attest.sh)"
     return
   fi
-  for remote in ${CRM_ATTEST_REMOTES:-origin}; do
+  for remote in ${CONTACT_RELATIONSHIP_MANAGEMENT_ATTEST_REMOTES:-origin}; do
     repo="$(github_repo "${remote}")"
     if [[ -z "${repo}" ]]; then
       echo "attest: ${remote} is not a GitHub remote; no status posted" >&2

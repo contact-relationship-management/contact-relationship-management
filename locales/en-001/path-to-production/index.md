@@ -54,7 +54,7 @@ Each percentage is an estimate made on 2026-11-13 from the task list, not a meas
   codebases and the UI have 95% line floors; browser, lint, supply-chain, changed-line mutation and weekly full
   mutation gates are in place (CRM-T94).
 - **Demo safeguards** (100%): Each tour visitor gets a separate copy of the demo data, capped at 200 copies. The tour
-  is off by default; set `CRM_DEMO_TOUR=on` to offer it (CRM-T92).
+  is off by default; set `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on` to offer it (CRM-T92).
 
 ## How this page is kept
 

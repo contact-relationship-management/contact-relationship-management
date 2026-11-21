@@ -26,7 +26,7 @@ use sha2::{Digest, Sha256};
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_limit_answers_429_with_the_budget_and_spares_probes() {
     let mut env = ScopedEnv::default();
-    env.set("CRM_RATE_LIMIT_PER_MIN", "3");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN", "3");
     request::<App, _, _>(|request, _ctx| async move {
         for remaining in ["2", "1", "0"] {
             let ok = request.get("/api/contacts").await;
@@ -48,16 +48,16 @@ async fn the_limit_answers_429_with_the_budget_and_spares_probes() {
 
 /// A client that writes a new first `X-Forwarded-For` entry, and a new made-up token, on every
 /// request. `TRUSTED_PROXIES` names the test client as the proxy, so the last entry is what the
-/// proxy saw: the real client. The retired `CRM_TRUST_FORWARDED_FOR` is set to show the header is
+/// proxy saw: the real client. The retired `CONTACT_RELATIONSHIP_MANAGEMENT_TRUST_FORWARDED_FOR` is set to show the header is
 /// not believed either way; with it, the service used to count each request under its own key.
 #[tokio::test]
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_forged_address_or_token_does_not_buy_a_fresh_limit() {
     let mut env = ScopedEnv::default();
-    env.set("CRM_RATE_LIMIT_PER_MIN", "3");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN", "3");
     env.set("TRUSTED_PROXIES", "127.0.0.1");
-    env.set("CRM_TRUST_FORWARDED_FOR", "1");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_TRUST_FORWARDED_FOR", "1");
     request::<App, _, _>(|request, _ctx| async move {
         let mut answers = Vec::new();
         for attempt in 0..5 {
@@ -155,8 +155,8 @@ fn sign_in_required() -> (String, SignInRequired) {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_verified_subject_has_one_budget_of_its_own() {
     let mut env = ScopedEnv::default();
-    env.set("CRM_RATE_LIMIT_PER_MIN", "2");
-    env.set("CRM_AUTH_FAIL_LIMIT", "0");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN", "2");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT", "0");
     let (kid, _sign_in) = sign_in_required();
     request::<App, _, _>(|request, _ctx| async move {
         for session in ["one", "two"] {
@@ -188,8 +188,8 @@ async fn a_verified_subject_has_one_budget_of_its_own() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn made_up_tokens_lock_out_their_address_and_not_the_signed_in() {
     let mut env = ScopedEnv::default();
-    env.set("CRM_RATE_LIMIT_PER_MIN", "0");
-    env.set("CRM_AUTH_FAIL_LIMIT", "2");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN", "0");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT", "2");
     env.set(rate_limit::ADDRESS_LOCKOUT_VAR, "0");
     let (kid, _sign_in) = sign_in_required();
     request::<App, _, _>(|request, _ctx| async move {
@@ -226,8 +226,8 @@ async fn made_up_tokens_lock_out_their_address_and_not_the_signed_in() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn the_address_lockout_refuses_the_address_after_the_count() {
     let mut env = ScopedEnv::default();
-    env.set("CRM_RATE_LIMIT_PER_MIN", "0");
-    env.set("CRM_AUTH_FAIL_LIMIT", "0");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN", "0");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT", "0");
     env.set(rate_limit::ADDRESS_LOCKOUT_VAR, "2");
     let (kid, _sign_in) = sign_in_required();
     request::<App, _, _>(|request, _ctx| async move {
@@ -287,8 +287,8 @@ async fn a_mistyped_address_lockout_stops_the_start() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn a_tool_call_is_counted_against_the_client_that_made_it() {
     let mut env = ScopedEnv::default();
-    env.set("CRM_RATE_LIMIT_PER_MIN", "1");
-    env.set("CRM_AUTH_FAIL_LIMIT", "0");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN", "1");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT", "0");
     env.set("TRUSTED_PROXIES", "127.0.0.1");
     request::<App, _, _>(|request, _ctx| async move {
         let call = |client: &'static str| {
@@ -320,8 +320,8 @@ async fn a_tool_call_is_counted_against_the_client_that_made_it() {
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn with_sign_in_on_a_trailing_slash_is_refused_before_it_is_redirected() {
     let mut env = ScopedEnv::default();
-    env.set("CRM_RATE_LIMIT_PER_MIN", "0");
-    env.set("CRM_AUTH_FAIL_LIMIT", "0");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN", "0");
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT", "0");
     env.set(rate_limit::ADDRESS_LOCKOUT_VAR, "0");
     let (kid, _sign_in) = sign_in_required();
     request::<App, _, _>(|request, _ctx| async move {

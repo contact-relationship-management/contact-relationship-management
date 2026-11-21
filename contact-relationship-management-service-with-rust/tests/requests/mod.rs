@@ -14,6 +14,7 @@ mod consent_profiles;
 mod consent_purposes;
 mod currencies;
 mod custom_fields;
+mod deployment;
 mod duplicates;
 mod email_delivery;
 mod email_templates;
@@ -28,6 +29,9 @@ mod insight_rollups;
 mod insights;
 mod inventory;
 mod kb;
+// The PASETO key set and its refresh exist only with the `paseto` feature (off in the Keycloak-only build).
+#[cfg(feature = "paseto")]
+mod key_refresh;
 mod lead_assignment;
 mod lead_imports;
 mod log_retention;
@@ -38,11 +42,13 @@ mod notifications;
 mod openapi_schemas;
 mod organization_settings;
 mod pagination;
+mod policy_file;
 mod privacy;
 mod quotas;
 mod record_imports;
 mod relationships;
 mod reports;
+mod residency;
 mod sales;
 mod schema;
 mod search;
@@ -52,6 +58,7 @@ mod support;
 mod tags;
 mod ticket_pauses;
 mod unmerge;
+mod upstream;
 mod views;
 mod web_forms;
 mod webhooks;
@@ -94,13 +101,11 @@ pub fn a_user() -> String {
 /// Create the demo pipeline (3 open stages + Won + Lost). Expands to
 /// `(pipeline_pid, stage_pids)`, await it like a function call.
 ///
-/// A macro, not a function: the `request` handed to each test by
-/// loco's `request()` helper is a `loco_rs`-internal-pinned
-/// `axum_test::TestServer` — a type this crate cannot name directly
-/// without pulling in that exact same `axum-test` version as a direct
-/// dependency (defeating the point of tracking a newer one for the
-/// dev-dependency's own sake). Expanding inline sidesteps naming the
-/// type at all; the actual value's type is inferred at each call site.
+/// A macro, not a function: it was written when the `request` handed to
+/// each test came from another framework's helper, whose pinned
+/// `axum_test::TestServer` this crate could not name. It now comes from
+/// `axa_test`'s `request()`, on the same `axum-test` as this crate's
+/// own, so a function would work too; the macro is kept as it is.
 macro_rules! seed_pipeline {
     ($request:expr) => {
         async {

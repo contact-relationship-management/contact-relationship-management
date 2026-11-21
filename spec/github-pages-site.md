@@ -37,8 +37,8 @@ sibling repository, published by `make publish-github-pages`.
   (`/install/`), `README.md` (`/overview/`), `docs/tutorial-family-bridges.md` (`/family-bridges/`), `spec/index.md`
   (`/spec/`), the locale status `spec/locale/index.md` (`/locales/`), `docs/privacy-notice.md` (`/privacy/`) and `locales/<locale>/privacy/index.md` (`/<locale>/privacy/`), linked from the footer in the page's locale (the language button on a notice opens the notice in the other locale), and every role brief
   `locales/<locale>/for/<slug>/index.md` at `/<locale>/for/<slug>/`, with a list per locale at `/<locale>/for/`
-  (11 locales, 11 roles each), and `locales/<locale>/path-to-production/index.md` at `/<locale>/path-to-production/`
-  where a locale has one (all 11 today; English the source, the others machine-written and unreviewed).
+  (16 locales, 11 roles each), and `locales/<locale>/path-to-production/index.md` at `/<locale>/path-to-production/`
+  where a locale has one (all 16 today; English the source, the others machine-written and unreviewed).
 - **Path to production.** What production means, then a readiness section: the first `##` section, under a heading in
   the page's language, whose list items read `- **Name** (NN%): evidence`. The page shows each percentage as a
   disabled Lily `Slider` (0 to 100), labelled in the page's language, with the number beside it. An item in another

@@ -37,7 +37,7 @@
 
 ## 部署方必须做的事
 
-1. 保持认证开启；提供生产密钥和 `CRM_REDIS_URL`。
+1. 保持认证开启；提供生产密钥和 `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`。
 2. 对 `break_glass_granted` 设置告警，并及时审查授权。
 3. 在数据库之外锚定审计链头，并按计划验证（`GET /api/audits/verify`）。
 4. 保护 PostgreSQL 和 Redis（网络、TLS、凭据、备份、静态加密）；使用提供的任务轮换字段密钥。

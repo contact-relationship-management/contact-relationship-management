@@ -5,6 +5,8 @@
 b1b5e6dad49096d56a8f8526daf1723ace537cf2:contact-relationship-management-service-with-rust/src/rules/webhooks.rs:generic-api-key:369
 # a throwaway value for a disposable smoke-test container
 b6103621f8c9945bce67353a878e874c5f401ffc:scripts/image-smoke.sh:generic-api-key:116
+# the same throwaway value, flagged again once the setting it is passed in was renamed (CRM-T289)
+ae1503a173328936f78fc2014e886ff91413b991:scripts/image-smoke.sh:generic-api-key:133
 # the scaffold's generated development-profile JWT secret from the since-removed loco template; production reads its secret from the environment
 575312eb0602dc04c5a8ef37fb4ee07e3c69bfcd:contact-relationship-management-service-with-rust/config/development.yaml:generic-api-key:96
 # the scaffold's generated test-profile JWT secret from the since-removed loco template; production reads its secret from the environment

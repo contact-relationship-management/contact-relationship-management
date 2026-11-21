@@ -5,12 +5,12 @@
 # that nothing was lost or changed, that every old event is a `marketing` event, and that the
 # migration rolls back and forward again.
 # Usage: N=500 scripts/migrate-consent-purposes.sh   (needs psql and the debug binary; a Postgres
-# reachable with PG_HOST, PG_PORT, PG_USER and PG_PASSWORD, defaulting to localhost:5432 loco/loco)
+# reachable with PG_HOST, PG_PORT, PG_USER and PG_PASSWORD, defaulting to localhost:5432 postgres/postgres)
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 SVC="$(pwd)/contact-relationship-management-service-with-rust"
 BIN=$SVC/target/debug/contact-relationship-management
-: "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=loco}" "${PG_PASSWORD:=loco}"
+: "${PG_HOST:=localhost}" "${PG_PORT:=5432}" "${PG_USER:=postgres}" "${PG_PASSWORD:=postgres}"
 export PGPASSWORD="$PG_PASSWORD"
 DB=crm_mig_consent
 export DB_URL="postgres://$PG_USER:$PG_PASSWORD@$PG_HOST:$PG_PORT/$DB"

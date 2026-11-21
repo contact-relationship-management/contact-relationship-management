@@ -22,7 +22,7 @@ pub fn erasable(has_open_deal: bool, has_open_ticket: bool, has_active_nurture: 
     !has_open_deal && !has_open_ticket && !has_active_nurture
 }
 
-/// Default retention horizon (days) when `CRM_RETENTION_DAYS` is unset.
+/// Default retention horizon (days) when `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS` is unset.
 pub const RETENTION_DEFAULT_DAYS: i64 = 365;
 
 /// Horizon floor: a sweep that could run at 0 days would silently turn
@@ -38,14 +38,14 @@ pub fn retention_days(raw: Option<&str>) -> i64 {
         .max(RETENTION_FLOOR_DAYS)
 }
 
-/// Default horizon (days) for the event outbox and webhook deliveries, when `CRM_EVENT_RETENTION_DAYS`
+/// Default horizon (days) for the event outbox and webhook deliveries, when `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`
 /// is unset (CRM-R81). They are working records of delivery, not evidence.
 pub const EVENT_DEFAULT_DAYS: i64 = 30;
 /// Floor for it: a week, so a receiver that was down for a few days can still be retried and
 /// investigated before the record of the attempt is gone.
 pub const EVENT_FLOOR_DAYS: i64 = 7;
 
-/// Default horizon (days) for email deliveries and events, when `CRM_MAIL_RETENTION_DAYS` is unset.
+/// Default horizon (days) for email deliveries and events, when `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS` is unset.
 pub const MAIL_DEFAULT_DAYS: i64 = 730;
 /// Floor for it. An open or click is a touch for attribution, which looks back at most 365 days
 /// from a deal's close, so events must outlive that window with room to spare.
@@ -103,7 +103,7 @@ pub struct RetentionDefault {
 /// the law that applies to it (`spec/regulatory.md`, the register by region).
 pub const RETENTION_DEFAULTS: [RetentionDefault; 3] = [
     RetentionDefault {
-        setting: "CRM_RETENTION_DAYS",
+        setting: "CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS",
         default_days: RETENTION_DEFAULT_DAYS,
         floor_days: RETENTION_FLOOR_DAYS,
         default_from: DefaultFrom {
@@ -115,7 +115,7 @@ pub const RETENTION_DEFAULTS: [RetentionDefault; 3] = [
         },
     },
     RetentionDefault {
-        setting: "CRM_EVENT_RETENTION_DAYS",
+        setting: "CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS",
         default_days: EVENT_DEFAULT_DAYS,
         floor_days: EVENT_FLOOR_DAYS,
         default_from: DefaultFrom {
@@ -126,7 +126,7 @@ pub const RETENTION_DEFAULTS: [RetentionDefault; 3] = [
         },
     },
     RetentionDefault {
-        setting: "CRM_MAIL_RETENTION_DAYS",
+        setting: "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS",
         default_days: MAIL_DEFAULT_DAYS,
         floor_days: MAIL_FLOOR_DAYS,
         default_from: DefaultFrom {
@@ -141,9 +141,9 @@ pub const RETENTION_DEFAULTS: [RetentionDefault; 3] = [
 /// Which of the two horizons a log table is held to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Horizon {
-    /// `CRM_EVENT_RETENTION_DAYS`.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`.
     Event,
-    /// `CRM_MAIL_RETENTION_DAYS`.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS`.
     Mail,
 }
 
@@ -298,7 +298,7 @@ mod tests {
                 soft_deleted.floor_days
             ),
             (
-                "CRM_RETENTION_DAYS",
+                "CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS",
                 retention_days(None),
                 retention_days(Some("0"))
             )
@@ -306,7 +306,7 @@ mod tests {
         assert_eq!(
             (event.setting, event.default_days, event.floor_days),
             (
-                "CRM_EVENT_RETENTION_DAYS",
+                "CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS",
                 event_retention_days(None),
                 event_retention_days(Some("0"))
             )
@@ -314,7 +314,7 @@ mod tests {
         assert_eq!(
             (mail.setting, mail.default_days, mail.floor_days),
             (
-                "CRM_MAIL_RETENTION_DAYS",
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS",
                 mail_retention_days(None),
                 mail_retention_days(Some("0"))
             )

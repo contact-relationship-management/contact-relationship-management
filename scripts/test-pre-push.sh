@@ -66,13 +66,13 @@ else
 fi
 [[ ! -d .git/ci-gate.lock ]] && pass "a refused push releases the lock" || fail "a refused push releases the lock"
 
-if CRM_SKIP_PRE_PUSH="" git push -q origin main >/dev/null 2>&1; then
+if CONTACT_RELATIONSHIP_MANAGEMENT_SKIP_PRE_PUSH="" git push -q origin main >/dev/null 2>&1; then
   fail "an empty skip variable does not skip"
 else
   pass "an empty skip variable does not skip"
 fi
 
-if CRM_SKIP_PRE_PUSH="test reason" git push -q origin main >/dev/null 2>&1 && remote_has main; then
+if CONTACT_RELATIONSHIP_MANAGEMENT_SKIP_PRE_PUSH="test reason" git push -q origin main >/dev/null 2>&1 && remote_has main; then
   pass "a skip with a reason pushes"
 else
   fail "a skip with a reason pushes"

@@ -10,8 +10,7 @@ adds its spec detail here in the same PR as the code.
 
 ## Stack
 
-Per [architecture](../../spec/architecture.md) and the family
-[rust-loco-stack](../../../agents/share/rust-loco-stack.md):
+Per [architecture](../../spec/architecture.md):
 Rust 2024, Axum, axa, and sqlx, PostgreSQL 18, crate-root
 `migrations/` (sqlx), conventional `src/controllers/` layout, pure
 `src/rules/` core, Postgres-queue background jobs (campaign send,
@@ -23,15 +22,15 @@ OTLP, Podman.
 
 - **Config**: `config/{development,test,production}.yaml`;
   development and test default upstream clients to `stub` and
-  `CRM_EVENT_TRANSPORT=memory`.
-- **Env vars**: `CRM_REQUIRE_AUTH`, `CRM_PASETO_KEYS[_URL]`,
-  `CRM_ABAC_POLICY[_FILE]`, `CRM_EVENT_TRANSPORT`, upstream base
-  URLs (`CRM_PERSON_SERVICE_URL`, `CRM_ORGANIZATION_SERVICE_URL`,
-  `CRM_WORKER_SERVICE_URL`, `CRM_PPM_SERVICE_URL` for the bridges of
-  CRM-R72 and CRM-R73; `CRM_PPM_SERVICE_TOKEN` and `CRM_WORKER_SERVICE_TOKEN`
-  are the bearer tokens sent to them, CRM-R87; `CRM_WPM_WEBHOOK_SECRET`
+  `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT=memory`.
+- **Env vars**: `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH`, `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS[_URL]`,
+  `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY[_FILE]`, `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT`, upstream base
+  URLs (`CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_ORGANIZATION_SERVICE_URL`,
+  `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL` for the bridges of
+  CRM-R72 and CRM-R73; `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN` and `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`
+  are the bearer tokens sent to them, CRM-R87; `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET`
   is the secret WPM signs its hire and leave events with, CRM-R92;
-  `CRM_WPM_ORGANIZATION_REF` the organization the employment check asks WPM about, CRM-R94), `CRM_UPSTREAM_MODE` (default `stub`), `CRM_MIN_CELL_SIZE` (smallest group a
+  `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` the organization the employment check asks WPM about, CRM-R94), `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE` (default `stub`), `CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE` (smallest group a
   report shows, default 5). These are a selection: every setting is read
   in `src/settings.rs` (or at start-up by the module that uses it) and
   listed in the repository's `INSTALL.md`. There is no setting for a

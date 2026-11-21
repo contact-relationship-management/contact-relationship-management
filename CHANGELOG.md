@@ -238,7 +238,7 @@ crate on crates.io. The matcher stays at 0.2.1, unchanged in behaviour and API.
 
 - A list's next-page link can no longer be made up or reused for another list or filter. A link
   handed out before this change answers `422`, so start the list again. Production needs
-  `CRM_CURSOR_SECRET`.
+  `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET`.
 
 ### Changed — axa 0.7.0 (CRM-T222, 2026-11-07)
 
@@ -270,7 +270,7 @@ crate on crates.io. The matcher stays at 0.2.1, unchanged in behaviour and API.
   readable problem document.
 - The rate limit, the lockout and the web-form and knowledge-base limits no longer believe what a
   caller writes. **Operators behind a proxy must set `TRUSTED_PROXIES`**;
-  `CRM_TRUST_FORWARDED_FOR` is no longer read.
+  `CONTACT_RELATIONSHIP_MANAGEMENT_TRUST_FORWARDED_FOR` is no longer read.
 
 ### Changed — sqlx begins (CRM-T203, 2026-11-06)
 
@@ -332,7 +332,7 @@ crate on crates.io. The matcher stays at 0.2.1, unchanged in behaviour and API.
   weekly, on `origin/main` in a worktree of its own, and writes a last-run page. `scripts/install-nightly.sh` schedules
   them with launchd. A job starts only on wall power with a low load average (`scripts/machine-idle.sh`), and a skip
   is recorded. The nightly job ran once for real, before the gate; the weekly smokes have not run.
-- The mutants stage takes `CRM_MUTANTS_JOBS`, default 2.
+- The mutants stage takes `CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_JOBS`, default 2.
 
 ### Added — a helper for the test services (CRM-T186, 2026-11-05)
 
@@ -342,7 +342,7 @@ system chooses, under Podman or docker, and always stops them.
 ### Added — a pre-push gate (CRM-T187, 2026-11-05)
 
 `scripts/install-pre-push.sh` installs a hook that runs the new `pre-push` stage on the commit being pushed, not the
-working tree, in about 20 seconds when warm. `CRM_SKIP_PRE_PUSH="why"` skips it and records the reason. Nothing installs
+working tree, in about 20 seconds when warm. `CONTACT_RELATIONSHIP_MANAGEMENT_SKIP_PRE_PUSH="why"` skips it and records the reason. Nothing installs
 it for you.
 
 ### Changed — every CI check goes through one script (CRM-T185, 2026-11-05)
@@ -415,7 +415,7 @@ The maintainer published `contact-relationship-management-matcher` 0.2.0 to crat
 
 ### Changed — two decisions confirmed by the product owner (CRM-D19, CRM-D16, 2026-10-31)
 
-CRM-D19 (jurisdiction is data, never code; a standard is a profile) is confirmed as written, in [design](spec/design.md) and [worldwide](spec/worldwide.md). CRM-D16 (the employment check asks under one deployer-held HR token, `CRM_WORKER_SERVICE_TOKEN`, rather than the caller's own as WPM-D135 asks) is confirmed as the accepted design; the design, the integrations table, CRM-R94, CRM-T160's notes and the bridges tutorial no longer read it as open. **Not done or verified:** no behaviour changed; the requirement CRM-R95 is still proposed (only the decision was confirmed); WPM's own spec still mentions the gap and was not edited here; the GitHub Pages site's copy of the two documents it shows (`docs.json`) was regenerated, not published; earlier changelog entries that say "proposed" were left as the history they are.
+CRM-D19 (jurisdiction is data, never code; a standard is a profile) is confirmed as written, in [design](spec/design.md) and [worldwide](spec/worldwide.md). CRM-D16 (the employment check asks under one deployer-held HR token, `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`, rather than the caller's own as WPM-D135 asks) is confirmed as the accepted design; the design, the integrations table, CRM-R94, CRM-T160's notes and the bridges tutorial no longer read it as open. **Not done or verified:** no behaviour changed; the requirement CRM-R95 is still proposed (only the decision was confirmed); WPM's own spec still mentions the gap and was not edited here; the GitHub Pages site's copy of the two documents it shows (`docs.json`) was regenerated, not published; earlier changelog entries that say "proposed" were left as the history they are.
 
 ### Changed — the web form's refusals in the language of the request (CRM-T182, 2026-10-31)
 
@@ -489,7 +489,7 @@ Exchange-rate conversion assumed every currency had two decimals, so USD 1.00 at
 
 The file and `scripts/ci-check.sh` pointed at a `scripts/test-db.sh` that was never added. They now give `podman compose -f compose.test.yaml up -d --wait`, `scripts/ci-check.sh test-db` and `down`, and say that a local PostgreSQL without the `loco` role works with `PG_USER=postgres` (the stage already reads `PG_*` and makes its own `ci_*` database). No script was added: only these comments named it, the README and INSTALL.md already use `podman compose`, and the stage already does what the script would. Checked: `up -d --wait` on ports 5433 and 6380, then `PG_PORT=5433 REDIS_PORT=6380 scripts/ci-check.sh test-db` (208 passed, 3 webhook tests failed; those 8 webhook tests pass against a local PostgreSQL, so likely the podman VM's clock, not investigated further), and `PG_USER=postgres REDIS_PORT=6380 scripts/ci-check.sh test-db` on a local PostgreSQL 18.4 (all 218 passed). **Not done:** the stage leaves its `ci_*` database behind, as before; nothing was run on Linux or with Docker.
 
-### Fixed — the UI's default `CRM_API_URL` reaches the service (maintenance, 2026-10-30)
+### Fixed — the UI's default `CONTACT_RELATIONSHIP_MANAGEMENT_API_URL` reaches the service (maintenance, 2026-10-30)
 
 The default and `.env.example` are now `http://localhost:1241/api`, the base the BFF proxy needs, so a default local setup reaches the service; a trailing slash is dropped and no `/api` is added to a value without it. A unit test pins the default and the upstream URL; INSTALL.md and the UI README say so. **Not verified:** the proxy against a running service.
 
@@ -507,7 +507,7 @@ WPM's worker list takes `fields` since WPM-R216, so `POST /api/bridges/wpm/teams
 
 `docs/tutorial-family-bridges.md`: the four bridges, their environment variables, a signed WPM hire and leave sent with `openssl` and `curl`, the ordering of events, and the employment check. INSTALL.md has a "Family bridges" section (the two WPM settings were in the email table), the service README's route list is rebuilt from `app.rs` and the controllers and its quick start creates the database first, and the UI README's views, environment and test tables match `src/routes`, the config and the scripts; stale test counts were removed rather than recounted.
 
-**Not done or not verified:** the tutorial's `curl` calls were not run, and nothing was run against a running WPM or PPM (the `openssl` signature was checked against the RFC 4231 vector the unit tests use). Found and not fixed: the UI's `CRM_API_URL` default (`http://localhost:1241`, also in `.env.example`) lacks the `/api` the proxy needs, so the docs say to set it; `compose.test.yaml` mentions a `scripts/test-db.sh` that does not exist.
+**Not done or not verified:** the tutorial's `curl` calls were not run, and nothing was run against a running WPM or PPM (the `openssl` signature was checked against the RFC 4231 vector the unit tests use). Found and not fixed: the UI's `CONTACT_RELATIONSHIP_MANAGEMENT_API_URL` default (`http://localhost:1241`, also in `.env.example`) lacks the `/api` the proxy needs, so the docs say to set it; `compose.test.yaml` mentions a `scripts/test-db.sh` that does not exist.
 
 ### Fixed — the agent guides match the code (maintenance, 2026-10-30)
 
@@ -539,7 +539,7 @@ The family's sign-in subject is a person id: WPM matches it as `person:<sub>` an
 
 ### Added — the worker service is asked which contacts are its employees (CRM-T160, CRM-R94)
 
-`POST /api/bridges/wpm/employment-check` (admin only, stub-first) sends WPM's overlap check (WPM-R208) the `person:` references of the live contacts, at most 500 a call and never a name, for `CRM_WPM_ORGANIZATION_REF` under `CRM_WORKER_SERVICE_TOKEN`; each yes marks the contacts employees as a hire event would (audited with `via: wpm`), unless the last event applied was a leave; a no changes nothing. A button on `/quotas`. CRM-D16 records why one HR token and one configured organization.
+`POST /api/bridges/wpm/employment-check` (admin only, stub-first) sends WPM's overlap check (WPM-R208) the `person:` references of the live contacts, at most 500 a call and never a name, for `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` under `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`; each yes marks the contacts employees as a hire event would (audited with `via: wpm`), unless the last event applied was a leave; a no changes nothing. A button on `/quotas`. CRM-D16 records why one HR token and one configured organization.
 
 **Not done or not verified:** not run against a running WPM (tested against a stand-in); the token is not the caller's own, as WPM-D135 asks; no schedule; one organization; a no never ends a pause, by design.
 
@@ -551,7 +551,7 @@ A hire or leave from WPM that is older (by `occurred_at`, then `effective_on`) t
 
 ### Added — the worker service's hire and leave events pause marketing (CRM-T158, CRM-R92)
 
-`POST /api/bridges/wpm/events` takes WPM's signed `worker_hired`, `worker_terminated` and `worker_retired` events (`CRM_WPM_WEBHOOK_SECRET`; `404` while unset). A hire marks the contacts with that `person_ref` employees of the organization, which leaves them out of segments, campaigns and nurture steps; a leave lifts it under the consent they already had. Applied once per event id, audited with `via: wpm`, shown on the contact's page. The spec has a "Family bridges" table in integrations.md, CRM-D15, and the DPIA, inventory and record of processing cover the new data.
+`POST /api/bridges/wpm/events` takes WPM's signed `worker_hired`, `worker_terminated` and `worker_retired` events (`CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET`; `404` while unset). A hire marks the contacts with that `person_ref` employees of the organization, which leaves them out of segments, campaigns and nurture steps; a leave lifts it under the consent they already had. Applied once per event id, audited with `via: wpm`, shown on the contact's page. The spec has a "Family bridges" table in integrations.md, CRM-D15, and the DPIA, inventory and record of processing cover the new data.
 
 **Not done or not verified:** no delivery from a running WPM was received (the tests sign requests with the same algorithm, and WPM was adding `data` in parallel); a future `effective_on` takes effect at once rather than when due; events are not ordered (a retried hire after a leave re-pauses); contacts created after their hire are not marked, and the client for WPM's overlap check (WPM-R208) that would find them is not built; the `worker:` versus `person:` reference mismatch in the teams import is unresolved.
 
@@ -573,7 +573,7 @@ A hire or leave from WPM that is older (by `occurred_at`, then `effective_on`) t
 
 ### Added — a credential for the bridges (CRM-T153, CRM-R87)
 
-`CRM_PPM_SERVICE_TOKEN` and `CRM_WORKER_SERVICE_TOKEN`: sent as a bearer token to PPM and WPM, only over https or to this machine.
+`CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN` and `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`: sent as a bearer token to PPM and WPM, only over https or to this machine.
 
 ### Added — close-day rates in a campaign's ROI (CRM-T152, CRM-R86)
 
@@ -601,7 +601,7 @@ An SLA policy may set `auto_close_days` (1 to 365); the sweep then closes a tick
 
 ### Added — retention for delivery and event logs (CRM-T140, CRM-R81)
 
-The retention sweep also prunes email deliveries and events (`CRM_MAIL_RETENTION_DAYS`, 730 days, never below 400) and the event outbox and webhook deliveries (`CRM_EVENT_RETENTION_DAYS`, 30 days, never below 7), only rows that are finished with.
+The retention sweep also prunes email deliveries and events (`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS`, 730 days, never below 400) and the event outbox and webhook deliveries (`CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`, 30 days, never below 7), only rows that are finished with.
 
 ### Added — ESLint and Prettier as tests (CRM-T147, CRM-R80)
 
@@ -613,7 +613,7 @@ They are random tokens kept only as a hash, spent in the transaction of the act 
 
 ### Added — small groups are left out of reports (CRM-T145, CRM-R78)
 
-A report leaves out any group with fewer than `CRM_MIN_CELL_SIZE` records behind it (5 by default, 0 for none) and says how many it left out. Primary suppression only.
+A report leaves out any group with fewer than `CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE` records behind it (5 by default, 0 for none) and says how many it left out. Primary suppression only.
 
 ### Changed — every page is scanned for accessibility (CRM-T144, CRM-R77)
 
@@ -633,7 +633,7 @@ Which locales are drafts and which a native speaker has reviewed (none yet), wit
 
 ### Added — bridges to PPM and WPM (CRM-T139, CRM-R72, CRM-R73)
 
-`POST /api/bridges/ppm/deals/{pid}` opens one delivery idea in the project portfolio service for a won deal; `POST /api/bridges/wpm/teams-import` sets a team per department from the worker service. Admin only and stub-first: nothing leaves the process unless `CRM_UPSTREAM_MODE=http`; set `CRM_PPM_SERVICE_URL` and `CRM_WORKER_SERVICE_URL`. Checked against stand-ins, not the running services.
+`POST /api/bridges/ppm/deals/{pid}` opens one delivery idea in the project portfolio service for a won deal; `POST /api/bridges/wpm/teams-import` sets a team per department from the worker service. Admin only and stub-first: nothing leaves the process unless `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`; set `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL` and `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL`. Checked against stand-ins, not the running services.
 
 ### Added — clawing credit back from a worker (CRM-T138, CRM-R71)
 
@@ -693,7 +693,7 @@ Mail-provider open and click events are recorded once per message, only while th
 
 ### Added — a public help centre and a deflection report (CRM-T123, CRM-R57)
 
-Published knowledge-base articles open to anyone under `/kb/` (off until `CRM_PUBLIC_KB` is set, rate limited, plain text, counted without identifying anyone), the `/help` pages, and `GET /api/insights/kb-deflection` with a Public help centre panel on the Articles page.
+Published knowledge-base articles open to anyone under `/kb/` (off until `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB` is set, rate limited, plain text, counted without identifying anyone), the `/help` pages, and `GET /api/insights/kb-deflection` with a Public help centre panel on the Articles page.
 
 ### Added — time-decay and position-based attribution (CRM-T122, CRM-R56)
 

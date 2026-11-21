@@ -1,7 +1,7 @@
 //! The public knowledge base and its deflection report (CRM-R57).
 //!
 //! `GET /kb/articles`, `GET /kb/articles/{pid}` and `POST /kb/articles/{pid}/feedback` need no
-//! token and show **published** articles only. They answer `404` unless `CRM_PUBLIC_KB` is on, so
+//! token and show **published** articles only. They answer `404` unless `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB` is on, so
 //! nothing is public until it is asked for, and they are rate limited per client. What a visit
 //! leaves behind is a count per day (views, "this helped" votes, searches, searches that found
 //! nothing); no address, no visitor and no text a visitor typed is kept.

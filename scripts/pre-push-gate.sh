@@ -5,7 +5,7 @@
 # It checks the commit, not the working tree, so uncommitted work neither blocks a push nor passes
 # for what was pushed. The checkout lives in <git dir>/ci-gate and keeps its build output.
 #
-#   CRM_SKIP_PRE_PUSH="why" git push    # skip it; the reason goes in <git dir>/ci-gate-skips.log
+#   CONTACT_RELATIONSHIP_MANAGEMENT_SKIP_PRE_PUSH="why" git push    # skip it; the reason goes in <git dir>/ci-gate-skips.log
 set -euo pipefail
 
 common="$(cd "$(git rev-parse --git-common-dir)" && pwd)"
@@ -23,12 +23,12 @@ done
 
 ((${#commits[@]} > 0)) || exit 0
 
-if [[ -n "${CRM_SKIP_PRE_PUSH:-}" ]]; then
+if [[ -n "${CONTACT_RELATIONSHIP_MANAGEMENT_SKIP_PRE_PUSH:-}" ]]; then
   for commit in "${commits[@]}"; do
-    printf '%s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${commit}" "${CRM_SKIP_PRE_PUSH}" \
+    printf '%s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${commit}" "${CONTACT_RELATIONSHIP_MANAGEMENT_SKIP_PRE_PUSH}" \
       >> "${common}/ci-gate-skips.log"
   done
-  echo "pre-push gate skipped: ${CRM_SKIP_PRE_PUSH}" >&2
+  echo "pre-push gate skipped: ${CONTACT_RELATIONSHIP_MANAGEMENT_SKIP_PRE_PUSH}" >&2
   exit 0
 fi
 

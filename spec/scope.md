@@ -41,7 +41,7 @@ default that the rest are adapted to. In practice:
   knowledge-base articles (draft → published, versioned).
 - Dashboards: win rate, pipeline by stage, forecast, campaign ROI,
   SLA health, CLV per account; activity feeds. ETag conditional.
-- Family fixtures: auth (PASETO + ABAC + `CRM_REQUIRE_AUTH`), audit,
+- Family fixtures: auth (PASETO + ABAC + `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH`), audit,
   events (memory/outbox), OpenAPI, `Accepts-version`, OTLP, Podman.
 
 ## Out of scope (v1)

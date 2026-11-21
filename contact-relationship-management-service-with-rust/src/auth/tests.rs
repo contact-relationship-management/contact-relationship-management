@@ -200,7 +200,7 @@ fn enforce_off_allows_without_token() {
     }
 }
 
-/// SEC-G8 — the default-off **exposure pin**. With `CRM_REQUIRE_AUTH`
+/// SEC-G8 — the default-off **exposure pin**. With `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH`
 /// off (the shipped default), the most sensitive reads — the audit
 /// trail, patient locate, and a single stay's PII — are **open without
 /// a token**. This is by design
@@ -487,6 +487,9 @@ fn derive_action_matrix() {
             "/api/webhook-subscriptions/relay",
             "/api/webhook-subscriptions/abc/deliveries",
             "/api/webhook-subscriptions/abc/rotate-secret",
+            // CRM-R106: what the deployment may call is for an administrator to read.
+            "/api/operations/residency",
+            "/api/operations/residency/",
         ] {
             assert_eq!(
                 derive_action(&method, path),
@@ -495,6 +498,10 @@ fn derive_action_matrix() {
             );
         }
     }
+    assert_eq!(
+        derive_action(&Method::GET, "/api/operationsx/residency"),
+        Action::Read
+    );
     assert_eq!(
         derive_action(&Method::POST, "/api/webhook-subscriptionsfoo"),
         Action::Write

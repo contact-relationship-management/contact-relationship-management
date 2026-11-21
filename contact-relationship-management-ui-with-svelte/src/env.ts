@@ -6,7 +6,7 @@ import { defineEnvVars } from "@sveltejs/kit/env";
 // tour needs.
 export const variables = defineEnvVars({
   PUBLIC_OIDC_SIGNIN_ENABLED: { public: true, schema: (input) => input ?? "" },
-  CRM_API_URL: { schema: (input) => input ?? "" },
+  CONTACT_RELATIONSHIP_MANAGEMENT_API_URL: { schema: (input) => input ?? "" },
   AUTH_API_URL: { schema: (input) => input ?? "" },
-  CRM_DEMO_TOUR: { schema: (input) => input ?? "" },
+  CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR: { schema: (input) => input ?? "" },
 });

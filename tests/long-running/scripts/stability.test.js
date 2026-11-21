@@ -13,7 +13,7 @@
  *
  * Environment (k6 `--env` or `-e`):
  *   TEST_URL        service base URL        default http://localhost:1241
- *   CRM_AUTH_TOKEN  bearer token            default none (demo has auth off)
+ *   CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN  bearer token            default none (demo has auth off)
  *   VUS             steady virtual users    default 5
  *   DURATION        steady-state duration   default 6h
  *   RAMP            ramp-up and ramp-down   default 5m
@@ -25,7 +25,7 @@ import { check, sleep } from 'k6';
 import { Counter } from 'k6/metrics';
 
 const BASE = (__ENV.TEST_URL || 'http://localhost:1241').replace(/\/+$/, '');
-const TOKEN = __ENV.CRM_AUTH_TOKEN || '';
+const TOKEN = __ENV.CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN || '';
 const VUS = parseInt(__ENV.VUS || '5', 10);
 const DURATION = __ENV.DURATION || '6h';
 const RAMP = __ENV.RAMP || '5m';

@@ -1,6 +1,6 @@
 //! Abuse resistance (CRM-T43): a fixed-window request limit and a failed-authentication
 //! lockout, counted by `axa::ratelimit::Limiter` in each process (CRM-T219), or in Redis when
-//! `CRM_REDIS_URL` is set ([`crate::redis_store`]).
+//! `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL` is set ([`crate::redis_store`]).
 //!
 //! What stays here is the service's own: the settings, and [`client_key`], which counts a
 //! signed-in caller by its verified subject rather than by address (CRM-T217). axa's
@@ -62,8 +62,8 @@ impl Guard {
 
     /// Defaults: on in production (600 requests a minute, lockout after 10
     /// failures in 5 minutes), off elsewhere so local runs and test suites
-    /// are not throttled. `CRM_RATE_LIMIT_PER_MIN`, `CRM_AUTH_FAIL_LIMIT`,
-    /// and `CRM_AUTH_FAIL_WINDOW_SECS` override; 0 disables.
+    /// are not throttled. `CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN`, `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT`,
+    /// and `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_WINDOW_SECS` override; 0 disables.
     #[must_use]
     pub fn from_env(production: bool) -> Self {
         let number = |name: &str, default: u64| {
@@ -74,9 +74,17 @@ impl Guard {
         };
         let on = u64::from(production);
         Self::new(
-            u32::try_from(number("CRM_RATE_LIMIT_PER_MIN", 600 * on)).unwrap_or(u32::MAX),
-            u32::try_from(number("CRM_AUTH_FAIL_LIMIT", 10 * on)).unwrap_or(u32::MAX),
-            number("CRM_AUTH_FAIL_WINDOW_SECS", 300),
+            u32::try_from(number(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN",
+                600 * on,
+            ))
+            .unwrap_or(u32::MAX),
+            u32::try_from(number(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT",
+                10 * on,
+            ))
+            .unwrap_or(u32::MAX),
+            number("CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_WINDOW_SECS", 300),
         )
     }
 }

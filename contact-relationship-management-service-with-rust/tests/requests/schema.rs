@@ -151,15 +151,40 @@ async fn a_database_the_history_built_takes_the_baseline_without_running_it() {
         .execute(&pool)
         .await
         .unwrap();
-    let before = catalog(&pool).await;
+    // A database migrated from nothing: where the adopted one must end up.
+    let fresh = Scratch::new().await;
+    let fresh_pool = fresh.pool().await;
+    schema::migrate(&fresh_pool).await.unwrap();
+    let wanted = catalog(&fresh_pool).await;
+    fresh_pool.close().await;
+    fresh.drop_now().await;
 
     schema::migrate(&pool).await.unwrap();
+    let after = recorded(&pool).await;
     assert_eq!(
-        recorded(&pool).await,
-        vec![(BASELINE, -1)],
-        "recorded, not run"
+        after.first(),
+        Some(&(BASELINE, -1)),
+        "the baseline is recorded, not run"
     );
-    assert_eq!(catalog(&pool).await, before);
+    let later: Vec<i64> = schema::MIGRATOR
+        .iter()
+        .map(|m| m.version)
+        .filter(|v| *v != BASELINE)
+        .collect();
+    assert_eq!(
+        after[1..].iter().map(|(v, _)| *v).collect::<Vec<_>>(),
+        later,
+        "every migration after the baseline runs"
+    );
+    assert!(
+        after[1..].iter().all(|(_, took)| *took >= 0),
+        "and is run, not skipped"
+    );
+    assert_eq!(
+        catalog(&pool).await,
+        wanted,
+        "the same schema as a database built from nothing"
+    );
     let kept: i64 = sqlx::query_scalar("SELECT count(*) FROM pipelines WHERE name = 'kept'")
         .fetch_one(&pool)
         .await
@@ -173,7 +198,7 @@ async fn a_database_the_history_built_takes_the_baseline_without_running_it() {
 
     // A second start, or a second replica, finds the baseline recorded and does nothing.
     schema::migrate(&pool).await.unwrap();
-    assert_eq!(recorded(&pool).await, vec![(BASELINE, -1)]);
+    assert_eq!(recorded(&pool).await, after);
     pool.close().await;
     deployed.drop_now().await;
 }

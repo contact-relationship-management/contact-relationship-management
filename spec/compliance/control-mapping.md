@@ -8,7 +8,7 @@ Evidence paths are relative to the repository root.
 
 | Control | Reference | Status | Evidence / note |
 |---|---|---|---|
-| Authenticated access to every non-public route | NIST AC-3, IA-2; HIPAA §164.312(d); ISO A.5.15, A.8.5; GDPR 32 | Implemented when `CRM_REQUIRE_AUTH=1`; production refuses to start without it | `src/auth.rs`, `src/hardening.rs` (CRM-T30), `tests/enforcement.rs` |
+| Authenticated access to every non-public route | NIST AC-3, IA-2; HIPAA §164.312(d); ISO A.5.15, A.8.5; GDPR 32 | Implemented when `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1`; production refuses to start without it | `src/auth.rs`, `src/hardening.rs` (CRM-T30), `tests/enforcement.rs` |
 | Fail-safe default | NIST SA-8, CM-6 | Implemented | production boot check, T30 |
 | Attribute-based authorization, least privilege | NIST AC-6; HIPAA §164.312(a)(1); ISO A.8.2 | Partial | contact and deal reads/writes are record-checked; other handlers use the coarse gate (auth.md known limits) |
 | Data masking by role | NIST AC-3(7) | Partial (CRM-T32) | contacts, deals, forecast and snapshots, sales dashboard, insights money views, campaign cost/ROI, bundled contact rows; persona matrix pinned over the reference policy |
@@ -40,8 +40,8 @@ Evidence paths are relative to the repository root.
 | Request size limits | NIST SC-5 | Implemented | `limit_payload` 2 MB |
 | Input validation | NIST SI-10 | Implemented | `src/validation.rs` |
 | Memory safety | NIST SA-15 | Implemented | `#![forbid(unsafe_code)]` |
-| Tenant isolation | NIST SC-4, SC-32; ISO A.8.22 | Partial (CRM-R105) | one deployment per database is the only way the service runs; no check that a database belongs to the deployment (CRM-T282) |
-| Unauthenticated operational endpoints | NIST AC-3 | Implemented (opt-in) | `CRM_PROTECT_OPERATIONAL=1` requires auth on metrics and OpenAPI; public by default |
+| Tenant isolation | NIST SC-4, SC-32; ISO A.8.22 | Implemented (CRM-R105) | one deployment per database is the only way the service runs; a start against a database claimed by another deployment is refused (CRM-T282, `src/deployment.rs`, `tests/requests/deployment.rs`); production refuses to start without `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` (CRM-T294) |
+| Unauthenticated operational endpoints | NIST AC-3 | Implemented (opt-in) | `CONTACT_RELATIONSHIP_MANAGEMENT_PROTECT_OPERATIONAL=1` requires auth on metrics and OpenAPI; public by default |
 
 ## Supply chain and configuration
 
@@ -66,11 +66,11 @@ controls for every other region are in [By region](#by-region) below.
 | Data minimisation | GDPR 5(1)(c) | Implemented | contacts are URN wrappers; identity data stays upstream |
 | Right of access | GDPR 15 | Implemented | `GET /api/contacts/{pid}/subject-access` (described as the right of access under the law that applies to the deployer, CRM-T165) |
 | Right to erasure | GDPR 17 | Implemented (anonymise, gated) | `POST /api/contacts/{pid}/erase`; coordination with identity services is Deployer |
-| Storage limitation | GDPR 5(1)(e) | Implemented | `CRM_RETENTION_DAYS`, sweep; the defaults are no jurisdiction's (`horizon_basis` in `GET /api/retention`, CRM-T165) |
+| Storage limitation | GDPR 5(1)(e) | Implemented | `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`, sweep; the defaults are no jurisdiction's (`horizon_basis` in `GET /api/retention`, CRM-T165) |
 | Processor agreements, ESP | GDPR 28 | Gap | T39 |
 | Records of processing, DPIA | GDPR 30, 35 | Deployer | [dpia-template.md](dpia-template.md) |
 | Breach notification | GDPR 33; HIPAA §164.404 | Deployer | [operations-runbook.md](operations-runbook.md) |
-| Data residency | GDPR Ch. V | Deployer | choose region; service makes no cross-border transfers itself |
+| Data residency | GDPR Ch. V | Partial (CRM-R106) | the service makes no cross-border transfer itself; with `CONTACT_RELATIONSHIP_MANAGEMENT_OUTBOUND_HOSTS` it refuses to start against an undeclared outside service and refuses webhooks to undeclared hosts (CRM-T283, `src/residency.rs`, `tests/requests/residency.rs`); where the deployment and its sub-processors are hosted is the deployer's |
 | Exit export and certified erasure | ISO A.5.23; GDPR 28(3)(g) | Gap (CRM-R109) | subject-access export per contact and table exports only; the supplier's steps are in [exit-and-retention.md](supplier-assurance/exit-and-retention.md) (CRM-T285) |
 
 ## By region

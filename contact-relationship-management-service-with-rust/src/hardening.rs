@@ -1,15 +1,15 @@
 //! Start-up safety checks for regulated deployments (CRM-T30).
 //!
-//! The family default is `CRM_REQUIRE_AUTH` off so a developer can run the
+//! The family default is `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` off so a developer can run the
 //! service with no identity provider. That default must never reach
 //! production unnoticed, so in the `production` environment the service
 //! refuses to boot with enforcement off unless the operator says so
 //! explicitly.
 
 /// Why a production start was refused.
-pub const INSECURE_REFUSAL: &str = "refusing to start in production with CRM_REQUIRE_AUTH off; \
-    set CRM_REQUIRE_AUTH=1 (see spec/auth.md, activation runbook) or, to accept the risk \
-    knowingly, CRM_ALLOW_INSECURE=1";
+pub const INSECURE_REFUSAL: &str = "refusing to start in production with CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH off; \
+    set CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1 (see spec/auth.md, activation runbook) or, to accept the risk \
+    knowingly, CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE=1";
 
 /// Decide whether a start is allowed. `Ok(Some(warning))` means allowed but
 /// the operator overrode the safe default; `Ok(None)` means fully safe.
@@ -28,7 +28,7 @@ pub fn production_start_check(
     }
     if allow_insecure {
         return Ok(Some(
-            "CRM_ALLOW_INSECURE is set: serving production traffic with authentication OFF",
+            "CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE is set: serving production traffic with authentication OFF",
         ));
     }
     Err(INSECURE_REFUSAL)
@@ -47,7 +47,7 @@ pub fn check_process(production: bool) -> Result<(), &'static str> {
     Ok(())
 }
 
-/// Whether `CRM_REQUIRE_FIELD_ENCRYPTION` demands keys that are missing
+/// Whether `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION` demands keys that are missing
 /// (CRM-T41): with it on, the service refuses to start without a keyring, so a
 /// misconfigured deployment cannot quietly store plaintext.
 ///
@@ -57,7 +57,7 @@ pub fn check_process(production: bool) -> Result<(), &'static str> {
 pub fn field_encryption_check(required: bool, configured: bool) -> Result<(), &'static str> {
     if required && !configured {
         Err(
-            "CRM_REQUIRE_FIELD_ENCRYPTION is on but no valid CRM_FIELD_KEYS / CRM_FIELD_KEYS_FILE is configured",
+            "CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION is on but no valid CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS / CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE is configured",
         )
     } else {
         Ok(())

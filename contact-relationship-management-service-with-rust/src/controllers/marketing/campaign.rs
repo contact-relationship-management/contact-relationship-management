@@ -217,7 +217,7 @@ pub(super) async fn campaign_status(
 }
 
 /// Contacts handled per `run` call when mail really leaves
-/// (`CRM_MAIL_BATCH`, default 200): a send is network I/O inside a request, so
+/// (`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH`, default 200): a send is network I/O inside a request, so
 /// a long audience is walked in several calls, each resuming where the last
 /// stopped.
 pub(super) fn batch_size() -> i64 {
@@ -476,7 +476,7 @@ pub(super) fn check_runnable(campaign: &campaigns::Model, sender: &mail::Sender)
 ///
 /// The default sender is **simulated**: the whole audience is handled inside
 /// the request and the engagement counters are the deterministic demo values.
-/// With a real sender (`CRM_MAIL_MODE=smtp`) the call checks the campaign,
+/// With a real sender (`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp`) the call checks the campaign,
 /// marks it `running`, and hands the sending to [`CampaignSendWorker`] (a
 /// background job when `workers.mode` is `BackgroundQueue`, inline otherwise),
 /// answering `202` while it is still running. A re-run sends only what is not

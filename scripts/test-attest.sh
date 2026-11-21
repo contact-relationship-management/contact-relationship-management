@@ -7,7 +7,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 # Run from inside a hook, git's variables would point the fixture at the real repository.
 # shellcheck disable=SC2046 # one variable name per word
 unset $(git rev-parse --local-env-vars)
-unset CRM_LOCAL_CI_TOKEN CRM_ATTEST_REMOTES
+unset CONTACT_RELATIONSHIP_MANAGEMENT_LOCAL_CI_TOKEN CONTACT_RELATIONSHIP_MANAGEMENT_ATTEST_REMOTES
 
 base="$(mktemp -d)"
 trap 'rm -rf "${base}"' EXIT
@@ -116,7 +116,7 @@ check "a second run replaces the note" test "$(note | grep -c '^commit:')" = 1
 
 # token from the environment
 new_repo
-CRM_LOCAL_CI_TOKEN=env-token attest write "${commit}" "${base}/stages" >"${base}/stdout"
+CONTACT_RELATIONSHIP_MANAGEMENT_LOCAL_CI_TOKEN=env-token attest write "${commit}" "${base}/stages" >"${base}/stdout"
 check "posts to the commit on origin" grep -q "repos/example-owner/example-repo/statuses/${commit}" "${base}/curl-args"
 check "the status is local-ci success" grep -q '"state":"success","context":"local-ci"' "${base}/curl-args"
 check "the status calls itself self-reported" grep -q '2 stages passed on a clean tree; self-reported' "${base}/curl-args"
@@ -131,18 +131,18 @@ check "the Keychain supplies the token" grep -q 'Bearer keychain-token' "${base}
 
 # remotes
 new_repo
-CRM_LOCAL_CI_TOKEN=t CRM_ATTEST_REMOTES='site other' attest write "${commit}" "${base}/stages" >/dev/null
+CONTACT_RELATIONSHIP_MANAGEMENT_LOCAL_CI_TOKEN=t CONTACT_RELATIONSHIP_MANAGEMENT_ATTEST_REMOTES='site other' attest write "${commit}" "${base}/stages" >/dev/null
 check "an ssh GitHub remote is parsed" grep -q 'repos/example-owner/example-site/statuses' "${base}/curl-args"
 check "a non-GitHub remote is not posted to" test "$(grep -c codeberg "${base}/curl-args")" = 0
 check "a non-GitHub remote is reported" said 'other is not a GitHub remote'
 
 # a refused status does not undo the note
 new_repo
-if CURL_CODE=422 CRM_LOCAL_CI_TOKEN=t attest write "${commit}" "${base}/stages" >/dev/null; then pass "a refused status does not fail the run"; else fail "a refused status does not fail the run"; fi
+if CURL_CODE=422 CONTACT_RELATIONSHIP_MANAGEMENT_LOCAL_CI_TOKEN=t attest write "${commit}" "${base}/stages" >/dev/null; then pass "a refused status does not fail the run"; else fail "a refused status does not fail the run"; fi
 check "a refused status is reported" said 'answered 422'
 check "a refused status keeps the note" grep -q '^commit: ' <(note)
 new_repo
-if CURL_CODE=down CRM_LOCAL_CI_TOKEN=t attest write "${commit}" "${base}/stages" >/dev/null; then pass "an unreachable host does not fail the run"; else fail "an unreachable host does not fail the run"; fi
+if CURL_CODE=down CONTACT_RELATIONSHIP_MANAGEMENT_LOCAL_CI_TOKEN=t attest write "${commit}" "${base}/stages" >/dev/null; then pass "an unreachable host does not fail the run"; else fail "an unreachable host does not fail the run"; fi
 check "an unreachable host is reported" said 'could not reach GitHub'
 
 # through `all`

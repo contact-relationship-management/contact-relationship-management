@@ -3,7 +3,7 @@
  * DURATION, then back to VUS. It passes if the service keeps answering through the spike
  * and recovers after it; the summary shows what the spike cost.
  *
- * Environment: TEST_URL, CRM_AUTH_TOKEN, and
+ * Environment: TEST_URL, CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN, and
  *   VUS       virtual users before and after the spike   default 5
  *   DURATION  length of the spike                         default 1m
  */

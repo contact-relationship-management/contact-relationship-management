@@ -189,7 +189,7 @@ async fn subject_rights_round_trip() {
         let report: Value = request.get("/api/retention").await.json();
         assert_eq!(
             report["horizon_days"], 365,
-            "CRM_RETENTION_DAYS unset in tests ⇒ default"
+            "CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS unset in tests ⇒ default"
         );
         // Each horizon says whose its default is: none is any jurisdiction's (CRM-T165).
         let basis = report["horizon_basis"].as_array().expect("horizon_basis");
@@ -197,9 +197,9 @@ async fn subject_rights_round_trip() {
         assert_eq!(
             settings,
             [
-                "CRM_RETENTION_DAYS",
-                "CRM_EVENT_RETENTION_DAYS",
-                "CRM_MAIL_RETENTION_DAYS"
+                "CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS",
+                "CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS",
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS"
             ]
         );
         assert_eq!(basis[0]["days"], 365);

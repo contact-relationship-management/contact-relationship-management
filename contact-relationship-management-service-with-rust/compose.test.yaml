@@ -4,18 +4,18 @@
 #   scripts/ci-check.sh test-db                         # from the repository root
 #   podman compose -f compose.test.yaml down
 #
-# Podman, not Docker (agents/share/rust-loco-stack.md). There is no wrapper
+# Podman, not Docker. There is no wrapper
 # script: the file is plain Compose spec, and `--wait` waits on the health
 # checks below. A local PostgreSQL instead of this file works too:
 # `scripts/ci-check.sh test-db` reads PG_HOST, PG_PORT, PG_USER and
-# PG_PASSWORD, so a server without the `loco` role takes
-# `PG_USER=postgres PG_PASSWORD=<its password>` (a superuser, for the
-# extensions). The stage drops and recreates its own `ci_*` database each run.
+# PG_PASSWORD (`postgres`/`postgres` by default), so a server with another
+# superuser takes `PG_USER=<it> PG_PASSWORD=<its password>` (a superuser, for
+# the extensions). The stage drops and recreates its own `ci_*` database each run.
 # On macOS the container's clock runs ahead of the host's: 9 ms under Podman
 # and under colima (CRM-T198). Compare two times from the same clock.
 #
 # The connection details deliberately match what CI provides
-# (.github/workflows/ci.yml `test-db`): superuser `loco`/`loco` on 5432.
+# (.github/workflows/ci.yml `test-db`): superuser `postgres`/`postgres` on 5432.
 # A database a test passes against locally but CI cannot reproduce is
 # worse than no local database.
 services:
@@ -25,8 +25,8 @@ services:
     image: docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
     container_name: mxi-contact-relationship-management-test-db
     environment:
-      POSTGRES_USER: loco
-      POSTGRES_PASSWORD: loco
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       # Matches the test `DB_URL`, so a bare `cargo test -- --ignored`
       # finds its database. `scripts/ci-check.sh test-db` ignores this and
       # creates its own `ci_*` database per crate instead.
@@ -51,7 +51,7 @@ services:
     healthcheck:
       # `up --wait` waits on this, so a test run cannot start
       # against a database that is still initialising.
-      test: ["CMD-SHELL", "pg_isready -U loco -d contact_relationship_management_test"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d contact_relationship_management_test"]
       interval: 2s
       timeout: 3s
       retries: 30

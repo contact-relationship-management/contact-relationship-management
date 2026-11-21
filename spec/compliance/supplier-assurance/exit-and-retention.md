@@ -10,7 +10,7 @@ supplier must do by other means.
 - **A table as a file:** each data table in the UI exports its rows as CSV, TSV or Excel, in the browser, from what the
   person can already see (CRM-R21). It is not a whole-deployment export.
 - **Retention:** soft-deleted rows of the `swept` tables are hard-deleted by an operator-run sweep after
-  `CRM_RETENTION_DAYS`. Which tables are swept, kept as evidence or have no deletion path is in the
+  `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`. Which tables are swept, kept as evidence or have no deletion path is in the
   [personal-data inventory](../personal-data-inventory.md).
 - **Erasure of one contact:** `POST /api/contacts/{pid}/erase` anonymises the contact (CRM-R20).
 

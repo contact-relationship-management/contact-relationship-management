@@ -18,7 +18,7 @@ const ORIGIN: &str = "https://crm.example.org";
 /// What these tests vary, until the guard is dropped. Set before the app boots, in `#[serial]` tests.
 fn boot_with(limit: &str, compression: &str) -> ScopedEnv {
     let mut env = ScopedEnv::default();
-    env.set("CRM_RATE_LIMIT_PER_MIN", limit);
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN", limit);
     env.set("HTTP_COMPRESSION", compression);
     env.set("CORS_ALLOWED_ORIGINS", ORIGIN);
     env

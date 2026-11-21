@@ -40,7 +40,10 @@ fn production_refuses_a_database_address_that_could_go_in_the_clear() {
     let production = [
         ("APP_ENV", "production"),
         ("DB_URL", "postgres://crm:crm@db.example.com:5432/crm"),
-        ("CRM_REDIS_URL", "redis://redis.example.com:6379"),
+        (
+            "CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL",
+            "redis://redis.example.com:6379",
+        ),
     ];
     let refused = run(&["check"], &production);
     let text = String::from_utf8_lossy(&refused.stderr);

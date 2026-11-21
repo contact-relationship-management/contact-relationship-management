@@ -9,7 +9,7 @@
  *
  * Environment (k6 `-e NAME=value`; k6 has no `process.env`):
  *   TEST_URL        service base URL   default http://localhost:1241
- *   CRM_AUTH_TOKEN  bearer token       default none (the demo has sign-in off)
+ *   CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN  bearer token       default none (the demo has sign-in off)
  */
 
 import http from 'k6/http';
@@ -17,7 +17,7 @@ import exec from 'k6/execution';
 import { check, sleep } from 'k6';
 
 export const BASE = (__ENV.TEST_URL || 'http://localhost:1241').replace(/\/+$/, '');
-const TOKEN = __ENV.CRM_AUTH_TOKEN || '';
+const TOKEN = __ENV.CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN || '';
 
 /** A whole number from the environment, or the default. */
 export function envInt(name, fallback) {

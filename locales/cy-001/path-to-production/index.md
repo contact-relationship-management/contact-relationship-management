@@ -59,7 +59,7 @@ Amcangyfrif a wnaed ar 2026-11-13 o'r rhestr dasgau yw pob canran, nid mesuriad.
   god Rust a'r UI loriau llinell 95%; mae gatiau porwr, lint, cadwyn gyflenwi, mwtaniad llinellau wedi'u newid a
   mwtaniad llawn wythnosol ar waith (CRM-T94).
 - **Mesurau diogelu'r arddangosiad** (100%): Mae pob ymwelydd â'r daith yn cael copi ar wahân o'r data arddangos, hyd
-  at uchafswm o 200 copi. Mae'r daith i ffwrdd yn ddiofyn; gosodwch `CRM_DEMO_TOUR=on` i'w chynnig (CRM-T92).
+  at uchafswm o 200 copi. Mae'r daith i ffwrdd yn ddiofyn; gosodwch `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on` i'w chynnig (CRM-T92).
 
 ## Sut y cedwir y dudalen hon
 

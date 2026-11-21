@@ -38,7 +38,7 @@ Out of scope:
 - A deployment run by someone else. Report it to whoever runs it.
 - A vulnerability in a dependency that this project does not make worse. Report it upstream; a
   report here is still welcome when this project uses the dependency in an exposed way.
-- The demo settings (`CRM_REQUIRE_AUTH=0`), which are for synthetic data only and are documented as
+- The demo settings (`CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=0`), which are for synthetic data only and are documented as
   open, unless they can be turned on by accident or reached from a production configuration.
 - Volume denial of service, social engineering, physical access, and findings that need a
   compromised maintainer account or machine.
@@ -135,12 +135,12 @@ deployment you do not run.
 
 ## Inbound requests that are not signed in
 
-These routes are public even with `CRM_REQUIRE_AUTH` on, and each checks a secret of its own:
+These routes are public even with `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` on, and each checks a secret of its own:
 
-- `POST /webhooks/email` (`CRM_WEBHOOK_SECRET`; `X-CRM-Timestamp` and `X-CRM-Signature`), and the
+- `POST /webhooks/email` (`CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET`; `X-CRM-Timestamp` and `X-CRM-Signature`), and the
   provider callbacks under `/webhooks/email/` (see [INSTALL.md](INSTALL.md#sending-email) for how
   each is checked);
-- `POST /api/bridges/wpm/events` (`CRM_WPM_WEBHOOK_SECRET`; `x-wpm-signature`, HMAC-SHA256 over
+- `POST /api/bridges/wpm/events` (`CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET`; `x-wpm-signature`, HMAC-SHA256 over
   `<t>.<body>`, five-minute window), see the [family bridges tutorial](docs/tutorial-family-bridges.md).
 
 `POST /webhooks/email` and `POST /api/bridges/wpm/events` answer `404` while their secret is unset.

@@ -40,14 +40,14 @@ pub fn reload_from_settings() {
 }
 
 /// Seed the process-wide [`verifier`] before the app serves traffic
-/// (called from `App::after_routes`). When `CRM_PASETO_KEYS_URL` is set
+/// (called from `App::after_routes`). When `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL` is set
 /// (non-blank) the published key set is fetched over HTTP **once at boot**
 /// and, on success, swapped in over the env-built one; on fetch failure,
 /// or with the URL unset/blank, the env-built verifier stands, so the
 /// service always boots. Idempotent enough to call once at boot.
 ///
 /// With the `keycloak` feature it also builds the Keycloak verifier from
-/// `CRM_KEYCLOAK_*` (see [`keycloak_verifier`]).
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_*` (see [`keycloak_verifier`]).
 // `async` in every feature shape so `app.rs` has one call site; only the
 // `paseto` half awaits (the key fetch).
 #[allow(clippy::unused_async)]
@@ -73,7 +73,7 @@ pub(super) async fn init_paseto() {
 }
 
 /// The process-wide Keycloak verifier, present only when
-/// `CRM_KEYCLOAK_URL` is set and valid.
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_URL` is set and valid.
 #[cfg(feature = "keycloak")]
 pub(super) static KEYCLOAK: OnceLock<authentication_verifier::keycloak::KeycloakVerifier> =
     OnceLock::new();
@@ -86,7 +86,7 @@ pub fn keycloak_verifier() -> Option<&'static authentication_verifier::keycloak:
     KEYCLOAK.get()
 }
 
-/// Build the Keycloak verifier from `CRM_KEYCLOAK_*`. Fail-closed and
+/// Build the Keycloak verifier from `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_*`. Fail-closed and
 /// non-fatal, like the PASETO key loaders: a missing URL leaves Keycloak
 /// off; a malformed configuration logs an error and leaves it off
 /// (Keycloak tokens are then rejected), and the service still boots.
@@ -97,7 +97,7 @@ pub(super) fn init_keycloak() {
     if KEYCLOAK.get().is_some() {
         return;
     }
-    match KeycloakSettings::from_env("CRM") {
+    match KeycloakSettings::from_env("CONTACT_RELATIONSHIP_MANAGEMENT") {
         Ok(None) => {}
         Ok(Some(settings)) => {
             let issuer = settings.expected_issuer();
@@ -112,26 +112,26 @@ pub(super) fn init_keycloak() {
             }
         }
         Err(error) => {
-            tracing::error!(%error, "auth: CRM_KEYCLOAK_* is invalid; Keycloak tokens will be refused");
+            tracing::error!(%error, "auth: CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_* is invalid; Keycloak tokens will be refused");
         }
     }
 }
 
 /// Default key-set refresh interval (seconds) when
-/// `CRM_PASETO_KEYS_REFRESH_SECS` is unset. One hour — key rotation is
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS` is unset. One hour — key rotation is
 /// infrequent, so a slow poll suffices.
 #[cfg(feature = "paseto")]
 pub(super) const KEY_REFRESH_DEFAULT_SECS: u64 = 3600;
 
 /// Spawn a background task that periodically re-fetches the published
-/// key set from `CRM_PASETO_KEYS_URL` and swaps it into the live
+/// key set from `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL` and swaps it into the live
 /// [`verifier`], so a **key rotation** at the auth-service is picked up
 /// **without restarting** this service. On a failed fetch it keeps the
 /// current key set (a transient auth-service outage never locks callers
-/// out). Interval from `CRM_PASETO_KEYS_REFRESH_SECS` (default
+/// out). Interval from `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS` (default
 /// [`KEY_REFRESH_DEFAULT_SECS`]); **`0` disables** the loop.
 ///
-/// A no-op when `CRM_PASETO_KEYS_URL` is unset (env-supplied keys have
+/// A no-op when `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL` is unset (env-supplied keys have
 /// nothing to re-fetch). Call once at boot (`app.rs::after_routes`).
 pub fn spawn_key_refresh() {
     #[cfg(feature = "paseto")]
@@ -169,7 +169,10 @@ pub(super) fn spawn_paseto_key_refresh() {
             }
         }
     });
-    tracing::info!(secs, "polling CRM_PASETO_KEYS_URL for key rotation");
+    tracing::info!(
+        secs,
+        "polling CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL for key rotation"
+    );
 }
 
 /// Build a verifier by fetching the published key set from `url`
@@ -201,7 +204,7 @@ pub async fn fetch_or(url: &str, issuer: &str, audience: &str, fallback: Verifie
     }
 }
 
-/// The token issuer: `CRM_TOKEN_ISSUER`, or the default when unset or blank.
+/// The token issuer: `CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_ISSUER`, or the default when unset or blank.
 #[cfg(feature = "paseto")]
 pub(super) fn issuer(settings: &crate::settings::Settings) -> String {
     settings
@@ -210,7 +213,7 @@ pub(super) fn issuer(settings: &crate::settings::Settings) -> String {
         .unwrap_or_else(|| DEFAULT_ISSUER.to_string())
 }
 
-/// The token audience: `CRM_TOKEN_AUDIENCE`, or the default when unset or blank.
+/// The token audience: `CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_AUDIENCE`, or the default when unset or blank.
 #[cfg(feature = "paseto")]
 pub(super) fn audience(settings: &crate::settings::Settings) -> String {
     settings

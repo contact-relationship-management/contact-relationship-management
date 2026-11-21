@@ -11,7 +11,7 @@
 //! context carries the environment attribute `env.break_glass=true`, which a
 //! policy rule can match (the reference policy lifts the mask for reads). The
 //! live set is cached per process. The database is the record and is re-read
-//! every 10 seconds; with `CRM_REDIS_URL` set, grants are also published to
+//! every 10 seconds; with `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL` set, grants are also published to
 //! Redis and polled every second, so they reach other replicas in about a
 //! second. The live set is the union of both.
 

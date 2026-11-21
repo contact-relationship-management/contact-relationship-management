@@ -2,7 +2,7 @@
 //!
 //! Ignored by default: it needs a mail server. Run it with
 //! `scripts/email-dev.sh live`, which starts the local Stalwart server and sets
-//! the `CRM_SMTP_*` variables. Without `CRM_MAIL_MODE=smtp` it does nothing.
+//! the `CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_*` variables. Without `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp` it does nothing.
 
 use contact_relationship_management::mail::{self, Message, Sender};
 
@@ -12,14 +12,15 @@ async fn the_smtp_sender_delivers_to_a_real_server() {
     contact_relationship_management::app::install_tls_provider();
     let sender = mail::from_settings(&|name| std::env::var(name).ok(), false).unwrap();
     if !matches!(sender, Sender::Smtp(_)) {
-        eprintln!("CRM_MAIL_MODE is not smtp; skipping");
+        eprintln!("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE is not smtp; skipping");
         return;
     }
-    let jmap =
-        std::env::var("CRM_TEST_JMAP_URL").unwrap_or_else(|_| "http://127.0.0.1:8081".into());
-    let user = std::env::var("CRM_TEST_MAILBOX_USER").unwrap_or_else(|_| "crm@crm.test".into());
-    let password =
-        std::env::var("CRM_TEST_MAILBOX_PASSWORD").unwrap_or_else(|_| "crm-dev-password".into());
+    let jmap = std::env::var("CONTACT_RELATIONSHIP_MANAGEMENT_TEST_JMAP_URL")
+        .unwrap_or_else(|_| "http://127.0.0.1:8081".into());
+    let user = std::env::var("CONTACT_RELATIONSHIP_MANAGEMENT_TEST_MAILBOX_USER")
+        .unwrap_or_else(|_| "crm@crm.test".into());
+    let password = std::env::var("CONTACT_RELATIONSHIP_MANAGEMENT_TEST_MAILBOX_PASSWORD")
+        .unwrap_or_else(|_| "crm-dev-password".into());
 
     let subject = format!("live check {}", uuid::Uuid::new_v4());
     let message = Message {

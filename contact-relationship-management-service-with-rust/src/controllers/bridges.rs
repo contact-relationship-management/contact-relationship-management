@@ -3,7 +3,7 @@
 //!
 //! Both sit under the admin-only `/api/bridges` prefix, since they send deal data out and read
 //! people in. Both are **stub-first** like the other upstream clients: unless
-//! `CRM_UPSTREAM_MODE=http`, nothing leaves the process and the answer says what would have.
+//! `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http`, nothing leaves the process and the answer says what would have.
 //!
 //! The third bridge runs the other way (CRM-R92): WPM posts its hire and leave events to
 //! `/api/bridges/wpm/events`, which is public to the session check and authenticated by the
@@ -283,7 +283,7 @@ pub(crate) struct WpmEventPayload {
 }
 
 /// `POST /api/bridges/wpm/events` — a hire or leave event from the worker service (CRM-R92).
-/// `404` while `CRM_WPM_WEBHOOK_SECRET` is unset; `401` for a missing, wrong or stale
+/// `404` while `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` is unset; `401` for a missing, wrong or stale
 /// `x-wpm-signature`; `400` for a body that is not an event; `413` past 16 KiB; `422` for a hire or
 /// leave whose `data` or `occurred_at` is malformed. A hire or leave older than the last one applied
 /// for its person and organization is `stale` and changes nothing (CRM-R93). Every other event answers `200` with what it did, so WPM does
@@ -428,7 +428,7 @@ async fn apply_handoff(
 pub(crate) struct EmploymentCheckView {
     /// `stub` (nothing was sent) or `http`.
     mode: &'static str,
-    /// The organization asked about (`CRM_WPM_ORGANIZATION_REF`); `null` when it is unset.
+    /// The organization asked about (`CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF`); `null` when it is unset.
     organization_ref: Option<String>,
     /// The distinct person references of live contacts asked about (in `stub` mode, that would be).
     asked: usize,
@@ -447,7 +447,7 @@ pub(crate) struct EmploymentCheckView {
 /// `POST /api/bridges/wpm/employment-check` — ask the worker service which live contacts are its
 /// workers today, and mark them employees of the organization as a hire event would (CRM-R94,
 /// WPM-R208). Sends the contacts' `person:` references, never a name, at most 500 a call, for
-/// `CRM_WPM_ORGANIZATION_REF`, under `CRM_WORKER_SERVICE_TOKEN` (CRM-D16). A "no" changes nothing;
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF`, under `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` (CRM-D16). A "no" changes nothing;
 /// in particular it never ends an employment. All the answers are read before anything is written;
 /// one bad answer or failed call is `502` and records nothing. Admin only; stub-first.
 #[debug_handler]
@@ -480,7 +480,7 @@ async fn employment_check(
     }
     view.mode = "http";
     let organization_ref = organization_ref.ok_or_else(|| {
-        unavailable("CRM_WPM_ORGANIZATION_REF is not set to an organization: reference")
+        unavailable("CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF is not set to an organization: reference")
     })?;
     let mut workers = std::collections::BTreeSet::new();
     for batch in &batches {

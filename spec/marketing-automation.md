@@ -17,7 +17,7 @@ in **demo mode simulates delivery**: the send job enumerates the
 segment, writes per-contact touch activities, and advances
 engagement counters via a deterministic stub (a real ESP adapter is
 roadmap — the send goes through `mail::Sender`: simulated by default, SMTP
-when `CRM_MAIL_MODE=smtp`, with one delivery row per contact so a re-run never
+when `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp`, with one delivery row per contact so a re-run never
 mails twice; see CRM-T39). Engagement feeds lead
 scoring (campaign click) and attribution.
 

@@ -1,6 +1,6 @@
 //! Web form lead capture (CRM-R31): `POST /forms/{slug}`.
 //!
-//! The form is configured (`CRM_WEB_FORMS`), the caller's `Origin` must be on its list, and
+//! The form is configured (`CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS`), the caller's `Origin` must be on its list, and
 //! each form is rate limited per client and in all. The address goes to the person service
 //! (the CRM stores none); the CRM keeps a contact for the returned person, a `source=web`
 //! lead, and the consent purpose as `pending` until the visitor confirms by the link in the

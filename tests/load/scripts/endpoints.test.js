@@ -5,7 +5,7 @@
  * failure rate per group, with each group's limit. Seed first (`make seed`), or the lists and
  * rollups run over nearly empty tables.
  *
- * Environment: TEST_URL, CRM_AUTH_TOKEN, and
+ * Environment: TEST_URL, CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN, and
  *   RATE      requests per second in each group   default 20
  *   DURATION  length of each group                default 30s
  */

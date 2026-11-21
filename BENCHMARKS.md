@@ -180,8 +180,8 @@ as a regression from the dependency moves.
 - **Commit:** `f30de40` (jiff 1.0.0) plus the `bench` stage; criterion 0.8.2.
 - **Hardware:** Apple M4 Max, macOS 27.2.1, rustc 1.100.0, the bench profile, one run, load average
   31 to 37.
-- **Command:** `CRM_BENCH_SAVE=crm-t266 scripts/ci-check.sh bench` (615 s). A later run compares with
-  it by `CRM_BENCH_BASELINE=crm-t266 scripts/ci-check.sh bench`, on this machine only: the baseline
+- **Command:** `CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_SAVE=crm-t266 scripts/ci-check.sh bench` (615 s). A later run compares with
+  it by `CONTACT_RELATIONSHIP_MANAGEMENT_BENCH_BASELINE=crm-t266 scripts/ci-check.sh bench`, on this machine only: the baseline
   is in each crate's `target/criterion`, which is not committed.
 - **Limits:** one run on a loaded machine; the earlier figures came from different commits and loads,
   so a difference under about 30% is not a finding.

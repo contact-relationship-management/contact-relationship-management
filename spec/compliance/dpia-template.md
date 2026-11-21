@@ -23,7 +23,7 @@ describe this software and can be reused as written.
   or treat the system as holding it.
 - **Recipients:** [ESP, hosting provider, identity provider]. No real email is
   sent by default.
-- **Retention:** `CRM_RETENTION_DAYS` (default 365, floor 30; a starting point,
+- **Retention:** `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS` (default 365, floor 30; a starting point,
   no jurisdiction's period) for soft-deleted rows; consent history is retained as compliance evidence. *(system fact)*
 - **Transfers outside the deployer's jurisdiction** (for a UK or EU controller, outside the UK/EEA): [none / safeguards].
 

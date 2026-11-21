@@ -1,12 +1,12 @@
 //! Outbound email (CRM-T39): the sender seam and its implementations.
 //!
 //! A campaign send goes through [`Sender`], chosen once per process by
-//! `CRM_MAIL_MODE`:
+//! `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE`:
 //!
 //! - `simulated` (the default): nothing leaves the process. The send is
 //!   recorded as done and the campaign's engagement counters are the
 //!   deterministic demo values. This is what the demo and the test suite use.
-//! - `smtp`: real submission to an SMTP server (`CRM_SMTP_*`), for example the
+//! - `smtp`: real submission to an SMTP server (`CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_*`), for example the
 //!   local Stalwart server from `scripts/email-dev.sh`.
 //!
 //! It is an enum rather than a trait object so a test can swap in
@@ -16,7 +16,7 @@
 //!   [`crate::provider`]), which can match events to messages.
 //!
 //! Until a provider is chosen and reviewed, every real mode refuses to start in
-//! production unless `CRM_MAIL_ALLOW_PRODUCTION=1` acknowledges that.
+//! production unless `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION=1` acknowledges that.
 
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
@@ -129,6 +129,8 @@ pub enum Security {
 pub struct SmtpSender {
     transport: AsyncSmtpTransport<Tokio1Executor>,
     from: Mailbox,
+    /// The server's host name, for the residency check (CRM-R106).
+    host: String,
 }
 
 /// A sender that records instead of sending, for tests.
@@ -136,6 +138,7 @@ pub struct SmtpSender {
 pub struct Recorder {
     sent: Arc<Mutex<Vec<Message>>>,
     fail: Arc<Mutex<HashSet<String>>>,
+    refuse: Arc<Mutex<HashSet<String>>>,
 }
 
 impl Recorder {
@@ -160,6 +163,11 @@ impl Recorder {
     pub fn heal(&self, address: &str) {
         lock(&self.fail).remove(address);
     }
+
+    /// Make every send to `address` fail permanently, as a server refusing the mailbox would.
+    pub fn refuse(&self, address: &str) {
+        lock(&self.refuse).insert(address.to_string());
+    }
 }
 
 /// Lock a mutex, ignoring poisoning (a test panic must not hide later ones).
@@ -183,6 +191,16 @@ pub enum Sender {
 }
 
 impl Sender {
+    /// The outside host this sender hands mail to, if it sends any (CRM-R106).
+    #[must_use]
+    pub fn outside_host(&self) -> Option<String> {
+        match self {
+            Self::Smtp(smtp) => crate::rules::residency::host_of(&smtp.host),
+            Self::Api(api) => crate::rules::residency::host_of(api.url()),
+            Self::Simulated | Self::Recording(_) => None,
+        }
+    }
+
     /// Whether a send needs a real recipient address.
     #[must_use]
     pub fn needs_address(&self) -> bool {
@@ -218,6 +236,9 @@ impl Sender {
                 if lock(&recorder.fail).contains(&message.to) {
                     return Err(SendError::Transient("simulated outage".to_string()));
                 }
+                if lock(&recorder.refuse).contains(&message.to) {
+                    return Err(SendError::Permanent("simulated refusal".to_string()));
+                }
                 lock(&recorder.sent).push(message.clone());
                 Ok(None)
             }
@@ -241,9 +262,9 @@ impl SmtpSender {
         from: &str,
         accept_invalid_certs: bool,
     ) -> Result<Self, String> {
-        let from: Mailbox = from
-            .parse()
-            .map_err(|e| format!("CRM_MAIL_FROM is not a valid mailbox: {e}"))?;
+        let from: Mailbox = from.parse().map_err(|e| {
+            format!("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM is not a valid mailbox: {e}")
+        })?;
         let tls_params = || {
             TlsParameters::builder(host.to_string())
                 .dangerous_accept_invalid_certs(accept_invalid_certs)
@@ -265,6 +286,7 @@ impl SmtpSender {
         Ok(Self {
             transport: builder.build(),
             from,
+            host: host.to_string(),
         })
     }
 
@@ -345,7 +367,7 @@ pub fn from_settings(
             Some("1" | "true" | "yes" | "on")
         )
     };
-    match get("CRM_MAIL_MODE")
+    match get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE")
         .map(|v| v.to_ascii_lowercase())
         .as_deref()
     {
@@ -358,24 +380,26 @@ pub fn from_settings(
             )?)))
         }
         Some("smtp") => {
-            let accept_invalid = flag("CRM_SMTP_ACCEPT_INVALID_CERTS");
+            let accept_invalid = flag("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_ACCEPT_INVALID_CERTS");
             if production {
                 if accept_invalid {
                     return Err(
-                        "CRM_SMTP_ACCEPT_INVALID_CERTS must not be set in production".to_string(),
+                        "CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_ACCEPT_INVALID_CERTS must not be set in production".to_string(),
                     );
                 }
-                if !flag("CRM_MAIL_ALLOW_PRODUCTION") {
+                if !flag("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION") {
                     return Err(
-                        "CRM_MAIL_MODE=smtp in production needs CRM_MAIL_ALLOW_PRODUCTION=1: \
+                        "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp in production needs CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION=1: \
                          the vendor, agreement and legal review is open (CRM-T39)"
                             .to_string(),
                     );
                 }
             }
-            let host = get("CRM_SMTP_HOST").ok_or("CRM_SMTP_HOST is required in smtp mode")?;
-            let from = get("CRM_MAIL_FROM").ok_or("CRM_MAIL_FROM is required in smtp mode")?;
-            let security = match get("CRM_SMTP_TLS")
+            let host = get("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST")
+                .ok_or("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST is required in smtp mode")?;
+            let from = get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM")
+                .ok_or("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM is required in smtp mode")?;
+            let security = match get("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS")
                 .map(|v| v.to_ascii_lowercase())
                 .as_deref()
             {
@@ -384,28 +408,34 @@ pub fn from_settings(
                 Some("none") => Security::None,
                 Some(other) => {
                     return Err(format!(
-                        "CRM_SMTP_TLS must be starttls, implicit or none, not {other:?}"
+                        "CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS must be starttls, implicit or none, not {other:?}"
                     ));
                 }
             };
             if production && security == Security::None {
-                return Err("CRM_SMTP_TLS=none is not allowed in production".to_string());
+                return Err(
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS=none is not allowed in production"
+                        .to_string(),
+                );
             }
-            let port = match get("CRM_SMTP_PORT") {
-                Some(text) => text
-                    .parse::<u16>()
-                    .map_err(|_| format!("CRM_SMTP_PORT is not a port: {text:?}"))?,
+            let port = match get("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT") {
+                Some(text) => text.parse::<u16>().map_err(|_| {
+                    format!("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT is not a port: {text:?}")
+                })?,
                 None => match security {
                     Security::Implicit => 465,
                     _ => 587,
                 },
             };
-            let credentials = match (get("CRM_SMTP_USERNAME"), get("CRM_SMTP_PASSWORD")) {
+            let credentials = match (
+                get("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_USERNAME"),
+                get("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PASSWORD"),
+            ) {
                 (Some(user), Some(password)) => Some(Credentials::new(user, password)),
                 (None, None) => None,
                 _ => {
                     return Err(
-                        "CRM_SMTP_USERNAME and CRM_SMTP_PASSWORD must be set together".to_string(),
+                        "CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_USERNAME and CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PASSWORD must be set together".to_string(),
                     );
                 }
             };
@@ -419,7 +449,7 @@ pub fn from_settings(
             )?)))
         }
         Some(other) => Err(format!(
-            "CRM_MAIL_MODE must be simulated, smtp, brevo or mailjet, not {other:?}"
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE must be simulated, smtp, brevo or mailjet, not {other:?}"
         )),
     }
 }
@@ -454,7 +484,9 @@ pub fn set(sender: Sender) {
 pub fn init(production: bool) -> Result<(), String> {
     let sender = from_settings(&|name| std::env::var(name).ok(), production)?;
     if matches!(sender, Sender::Smtp(_)) {
-        tracing::warn!("campaign mail is sent over SMTP (CRM_MAIL_MODE=smtp)");
+        tracing::warn!(
+            "campaign mail is sent over SMTP (CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp)"
+        );
     }
     set(sender);
     Ok(())
@@ -474,9 +506,15 @@ mod tests {
     }
 
     const SMTP: &[(&str, &str)] = &[
-        ("CRM_MAIL_MODE", "smtp"),
-        ("CRM_SMTP_HOST", "mail.example.test"),
-        ("CRM_MAIL_FROM", "CRM <crm@example.test>"),
+        ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "smtp"),
+        (
+            "CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST",
+            "mail.example.test",
+        ),
+        (
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM",
+            "CRM <crm@example.test>",
+        ),
     ];
 
     #[test]
@@ -488,14 +526,23 @@ mod tests {
 
     #[test]
     fn smtp_mode_needs_a_host_and_a_from_address() {
-        let no_host = [("CRM_MAIL_MODE", "smtp"), ("CRM_MAIL_FROM", "a@b.test")];
+        let no_host = [
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "smtp"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM", "a@b.test"),
+        ];
         assert!(from_settings(&settings(&no_host), false).is_err());
-        let no_from = [("CRM_MAIL_MODE", "smtp"), ("CRM_SMTP_HOST", "h.test")];
+        let no_from = [
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "smtp"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST", "h.test"),
+        ];
         assert!(from_settings(&settings(&no_from), false).is_err());
         let bad_from = [
-            ("CRM_MAIL_MODE", "smtp"),
-            ("CRM_SMTP_HOST", "h.test"),
-            ("CRM_MAIL_FROM", "not an address"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "smtp"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST", "h.test"),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM",
+                "not an address",
+            ),
         ];
         assert!(from_settings(&settings(&bad_from), false).is_err());
         assert!(
@@ -508,35 +555,44 @@ mod tests {
     #[test]
     fn smtp_in_production_needs_the_acknowledgement() {
         let refused = from_settings(&settings(SMTP), true).unwrap_err();
-        assert!(refused.contains("CRM_MAIL_ALLOW_PRODUCTION"), "{refused}");
+        assert!(
+            refused.contains("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION"),
+            "{refused}"
+        );
         let mut acknowledged = SMTP.to_vec();
-        acknowledged.push(("CRM_MAIL_ALLOW_PRODUCTION", "1"));
+        acknowledged.push(("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION", "1"));
         assert!(from_settings(&settings(&acknowledged), true).is_ok());
     }
 
     #[test]
     fn production_refuses_an_unchecked_certificate_or_no_tls() {
         let mut insecure = SMTP.to_vec();
-        insecure.push(("CRM_MAIL_ALLOW_PRODUCTION", "1"));
-        insecure.push(("CRM_SMTP_ACCEPT_INVALID_CERTS", "1"));
+        insecure.push(("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION", "1"));
+        insecure.push((
+            "CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_ACCEPT_INVALID_CERTS",
+            "1",
+        ));
         assert!(from_settings(&settings(&insecure), true).is_err());
         // Allowed outside production, where the dev server is self-signed.
         assert!(from_settings(&settings(&insecure), false).is_ok());
         let mut plain = SMTP.to_vec();
-        plain.push(("CRM_MAIL_ALLOW_PRODUCTION", "1"));
-        plain.push(("CRM_SMTP_TLS", "none"));
+        plain.push(("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION", "1"));
+        plain.push(("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS", "none"));
         assert!(from_settings(&settings(&plain), true).is_err());
     }
 
     #[test]
     fn credentials_come_as_a_pair_and_the_port_is_checked() {
         let mut half = SMTP.to_vec();
-        half.push(("CRM_SMTP_USERNAME", "u"));
+        half.push(("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_USERNAME", "u"));
         assert!(from_settings(&settings(&half), false).is_err());
         let mut port = SMTP.to_vec();
-        port.push(("CRM_SMTP_PORT", "ninety"));
+        port.push(("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT", "ninety"));
         assert!(from_settings(&settings(&port), false).is_err());
-        let unknown = [("CRM_MAIL_MODE", "carrier-pigeon")];
+        let unknown = [(
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE",
+            "carrier-pigeon",
+        )];
         assert!(from_settings(&settings(&unknown), false).is_err());
     }
 
@@ -664,5 +720,187 @@ mod tests {
         assert!(new_message_id("a.test").ends_with("@a.test>"));
         assert_eq!(domain_of("CRM <crm@example.test>"), "example.test");
         assert_eq!(domain_of("crm@example.test"), "example.test");
+    }
+
+    /// A scripted SMTP server on a free local port: it answers `rcpt` to `RCPT TO` and keeps the
+    /// message text it is given. Plain text, so the sender is configured with `SMTP_TLS=none`.
+    async fn smtp_server(rcpt: &'static str) -> (u16, Arc<Mutex<String>>) {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let kept = Arc::new(Mutex::new(String::new()));
+        let data = kept.clone();
+        tokio::spawn(async move {
+            while let Ok((socket, _)) = listener.accept().await {
+                let data = data.clone();
+                tokio::spawn(async move {
+                    let (read, mut write) = socket.into_split();
+                    let mut lines = BufReader::new(read).lines();
+                    write.write_all(b"220 test ESMTP\r\n").await.unwrap();
+                    let mut in_data = false;
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        if in_data {
+                            if line == "." {
+                                in_data = false;
+                                write.write_all(b"250 queued\r\n").await.unwrap();
+                            } else {
+                                lock(&data).push_str(&line);
+                                lock(&data).push('\n');
+                            }
+                            continue;
+                        }
+                        let verb = line
+                            .split_whitespace()
+                            .next()
+                            .unwrap_or("")
+                            .to_ascii_uppercase();
+                        let answer: &[u8] = match verb.as_str() {
+                            "EHLO" | "HELO" => b"250 test\r\n",
+                            "RCPT" => rcpt.as_bytes(),
+                            "DATA" => {
+                                in_data = true;
+                                b"354 go on\r\n"
+                            }
+                            "QUIT" => {
+                                write.write_all(b"221 bye\r\n").await.unwrap();
+                                break;
+                            }
+                            _ => b"250 ok\r\n",
+                        };
+                        write.write_all(answer).await.unwrap();
+                    }
+                });
+            }
+        });
+        (port, kept)
+    }
+
+    fn plain_smtp(port: u16) -> Sender {
+        crate::app::install_tls_provider();
+        let port = port.to_string();
+        from_settings(
+            &settings(&[
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "smtp"),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST", "127.0.0.1"),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT", &port),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS", "none"),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM",
+                    "CRM <crm@example.test>",
+                ),
+            ]),
+            false,
+        )
+        .unwrap()
+    }
+
+    fn a_message(sender: &Sender) -> Message {
+        Message {
+            to: "ada@example.test".into(),
+            to_name: "Ada".into(),
+            subject: "Hello".into(),
+            text: "A note.".into(),
+            unsubscribe_url: Some("https://crm.example.test/u/t".into()),
+            message_id: sender.new_message_id(),
+        }
+    }
+
+    /// A message goes over SMTP with its unsubscribe headers, under the sender's own domain.
+    #[tokio::test]
+    async fn a_message_is_sent_over_smtp_with_its_unsubscribe_headers() {
+        let (port, received) = smtp_server("250 ok\r\n").await;
+        let sender = plain_smtp(port);
+        assert_eq!(sender.outside_host().as_deref(), Some("127.0.0.1"));
+        let message = a_message(&sender);
+        assert!(
+            message.message_id.ends_with("@example.test>"),
+            "{}",
+            message.message_id
+        );
+        assert_eq!(sender.send(&message).await, Ok(None));
+        let text = lock(&received).clone();
+        assert!(text.contains("Subject: Hello"), "{text}");
+        assert!(
+            text.contains("List-Unsubscribe: <https://crm.example.test/u/t>"),
+            "{text}"
+        );
+        assert!(
+            text.contains("List-Unsubscribe-Post: List-Unsubscribe=One-Click"),
+            "{text}"
+        );
+        assert!(text.contains("A note."), "{text}");
+    }
+
+    /// A refused mailbox is a permanent failure; a server asking to try later is a transient one.
+    #[tokio::test]
+    async fn a_refused_mailbox_is_permanent_and_a_deferral_transient() {
+        let (port, _) = smtp_server("550 no such mailbox\r\n").await;
+        let sender = plain_smtp(port);
+        assert!(matches!(
+            sender.send(&a_message(&sender)).await,
+            Err(SendError::Permanent(_))
+        ));
+        let (port, _) = smtp_server("451 try again later\r\n").await;
+        let sender = plain_smtp(port);
+        assert!(matches!(
+            sender.send(&a_message(&sender)).await,
+            Err(SendError::Transient(_))
+        ));
+    }
+
+    /// A provider's API sender, implicit TLS on its own port, and the settings that are refused.
+    #[test]
+    fn an_api_sender_implicit_tls_and_bad_smtp_settings() {
+        crate::app::install_tls_provider();
+        let api = from_settings(
+            &settings(&[
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE", "Brevo"),
+                ("CONTACT_RELATIONSHIP_MANAGEMENT_BREVO_API_KEY", "k"),
+                (
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM",
+                    "CRM <crm@example.test>",
+                ),
+            ]),
+            false,
+        )
+        .unwrap();
+        assert_eq!(api.outside_host().as_deref(), Some("api.brevo.com"));
+        assert!(api.new_message_id().ends_with("@example.test>"));
+        assert_eq!(Sender::Simulated.outside_host(), None);
+
+        let with = |extra: &[(&'static str, &'static str)]| {
+            let mut all = SMTP.to_vec();
+            all.extend_from_slice(extra);
+            from_settings(&settings(&all), false)
+        };
+        assert!(with(&[("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS", "implicit")]).is_ok());
+        for (bad, says) in [
+            (
+                [("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS", "ssl")],
+                "must be starttls, implicit or none",
+            ),
+            (
+                [("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT", "smtp")],
+                "is not a port",
+            ),
+            (
+                [("CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_USERNAME", "u")],
+                "must be set together",
+            ),
+        ] {
+            let why = with(&bad).unwrap_err();
+            assert!(why.contains(says), "{why}");
+        }
+    }
+
+    /// The two unsubscribe headers read back what they hold.
+    #[test]
+    fn the_unsubscribe_headers_parse_their_own_text() {
+        let header = ListUnsubscribe::parse("<https://x/u>").unwrap();
+        assert_eq!(header.0, "<https://x/u>");
+        let _ = header.display();
+        let post = ListUnsubscribePost::parse("List-Unsubscribe=One-Click").unwrap();
+        assert_eq!(post.0, "List-Unsubscribe=One-Click");
+        let _ = post.display();
     }
 }

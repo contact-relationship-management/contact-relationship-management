@@ -33,7 +33,7 @@ A contact (CRM-R37) may carry an optional `family_name`, set when the contact is
 merge when the survivor has none (and cleared again by an unmerge), and is erased with the contact. The same holds for the optional `given_name` (CRM-R38); a
 contact's own fields can be changed after creation with `PUT /api/contacts/{pid}`.
 An import of contacts or accounts (CRM-R43) is a row of `record_imports` (kind, source, obtained date, counts, and the pid of every record it made), like a lead import (CRM-R34).
-An attachment (CRM-R42) is a row of `attachments` (record kind and pid, cleaned name, content type, size, SHA-256, uploader); the bytes are a file in `CRM_ATTACHMENT_DIR` named by the row's pid.
+An attachment (CRM-R42) is a row of `attachments` (record kind and pid, cleaned name, content type, size, SHA-256, uploader); the bytes are a file in `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR` named by the row's pid.
 A custom field (CRM-R41) is a row of `custom_field_defs` (entity, key, label, kind, choices, sensitivity); its values are rows of `custom_field_values` keyed by field and record pid, as text, sealed when the field is `sensitive`.
 An exchange rate (CRM-R50) is a row of `fx_rates`: a pair of currencies, a rate held as an integer number of billionths (no floating point), the day it takes effect, its source in words and who set it; one per pair and day. A report may use them to show deal sums in one currency; a rate holds no personal data.
 A report (CRM-R48) is a row of `reports`: a name and a specification (kind, grouping, measure, filters, dates), owned by one user (a `person:` URN, CRM-D18) and optionally shared; it holds no record data.
@@ -199,7 +199,7 @@ a salary field needs clearing) and is refused while the contact holds
 an open deal, an open ticket, or an active nurture enrolment (its
 `status` field is not the gate — see CRM-D14); the **retention sweep**
 hard-deletes soft-deleted rows past the floored horizon
-(`CRM_RETENTION_DAYS`, default 365, floor 30) across the 19-table
+(`CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`, default 365, floor 30) across the 19-table
 list, and the report separately discloses (never auto-scrubs) contacts
 whose consent has stood withdrawn since before the horizon.
 

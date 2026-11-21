@@ -257,3 +257,120 @@ async fn a_view_of_a_missing_record_is_not_found() {
     })
     .await;
 }
+
+/// The SLA register (CRM-R14, CRM-R55): late tickets most-overdue first, each under its worst
+/// deadline; at-risk counts for what falls due within four hours; a paused ticket's clock stopped
+/// when it paused, so it is not at risk but stays late if it was already late.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn the_sla_register_lists_late_tickets_worst_first_and_counts_what_is_at_risk() {
+    request::<App, _, _>(|request, ctx| async move {
+        let pool = contact_relationship_management::db::pool(&ctx);
+        let agent = a_user();
+        let ticket = |title: &'static str, assignee: Option<String>| {
+            let request = &request;
+            async move {
+                let made: Value = request
+                    .post("/api/tickets")
+                    .json(&json!({ "title": title, "assignee_ref": assignee }))
+                    .await
+                    .json();
+                made["pid"].as_str().unwrap().to_string()
+            }
+        };
+        let set = |pid: String, sql: &'static str| async move {
+            sqlx::query(sqlx::AssertSqlSafe(format!(
+                "UPDATE tickets SET {sql} WHERE pid = '{pid}'::uuid"
+            )))
+            .execute(pool)
+            .await
+            .unwrap();
+        };
+        let both_late = ticket("Both late", Some(agent.clone())).await;
+        set(
+            both_late.clone(),
+            "first_response_due_at = now() - interval '3 hours', \
+             resolution_due_at = now() - interval '10 hours'",
+        )
+        .await;
+        let at_risk = ticket("Due soon", Some(agent.clone())).await;
+        set(
+            at_risk.clone(),
+            "first_response_due_at = now() + interval '2 hours', \
+             resolution_due_at = now() + interval '2 days'",
+        )
+        .await;
+        let paused_soon = ticket("Paused, due soon", Some(agent.clone())).await;
+        set(
+            paused_soon.clone(),
+            "paused_at = now(), first_response_due_at = now() + interval '1 hour', \
+             resolution_due_at = NULL",
+        )
+        .await;
+        let paused_late = ticket("Paused after it was late", None).await;
+        set(
+            paused_late.clone(),
+            "paused_at = now() - interval '5 hours', \
+             first_response_due_at = now() - interval '7 hours', resolution_due_at = NULL",
+        )
+        .await;
+        let no_deadline = ticket("No deadline", None).await;
+        set(
+            no_deadline,
+            "first_response_due_at = NULL, resolution_due_at = NULL",
+        )
+        .await;
+
+        let sla: Value = request.get("/api/insights/sla").await.json();
+        let breaches = sla["breaches"].as_array().unwrap();
+        let listed: Vec<(&str, &str, i64)> = breaches
+            .iter()
+            .map(|b| {
+                (
+                    b["pid"].as_str().unwrap(),
+                    b["breached"].as_str().unwrap(),
+                    b["overdue_hours"].as_i64().unwrap(),
+                )
+            })
+            .collect();
+        // Worst first; the paused one is late by the 2 hours before it paused, not 7.
+        assert_eq!(
+            listed,
+            [
+                (both_late.as_str(), "resolution", 10),
+                (paused_late.as_str(), "first_response", 2)
+            ],
+            "{sla}"
+        );
+        let workload = sla["workload"].as_array().unwrap();
+        let of = |who: &str| {
+            workload
+                .iter()
+                .find(|w| w["assignee_ref"] == who)
+                .cloned()
+                .unwrap()
+        };
+        let theirs = of(&agent);
+        assert_eq!(
+            (
+                theirs["open"].as_i64(),
+                theirs["breached"].as_i64(),
+                theirs["at_risk_4h"].as_i64()
+            ),
+            (Some(3), Some(1), Some(1)),
+            "{theirs}"
+        );
+        let unassigned = of("unassigned");
+        assert_eq!(
+            (
+                unassigned["open"].as_i64(),
+                unassigned["breached"].as_i64(),
+                unassigned["at_risk_4h"].as_i64()
+            ),
+            (Some(2), Some(1), Some(0)),
+            "{unassigned}"
+        );
+    })
+    .await;
+}

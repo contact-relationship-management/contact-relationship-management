@@ -20,11 +20,11 @@ address a web form or import gave it).
 
 | Class | What happens | Period |
 |---|---|---|
-| `swept` | A row is kept while it is live. Once soft-deleted it is **hard-deleted** by `POST /api/retention/sweep` (an operator runs it; `GET /api/retention` shows what it would delete). | `CRM_RETENTION_DAYS` after the soft-delete: **365 by default, never below 30** (a starting point, no jurisdiction's period) |
+| `swept` | A row is kept while it is live. Once soft-deleted it is **hard-deleted** by `POST /api/retention/sweep` (an operator runs it; `GET /api/retention` shows what it would delete). | `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS` after the soft-delete: **365 by default, never below 30** (a starting point, no jurisdiction's period) |
 | `evidence` | Append-only compliance evidence, kept on purpose and never altered. | Until the deployer's own archive rule |
 | `ttl` | Deleted automatically when it is old enough. | 24 hours for `idempotency_keys`; a week after it expires or is spent for `link_tokens` |
 | `manual` | Kept until a person removes it through the API, or until its contact is erased (the last column). Most of these are configuration or hold no personal data. | No automatic period |
-| `aged` | A delivery or event log. Rows that are **finished with** are hard-deleted by the same sweep once they are older than their own horizon; a row something may still act on is never touched (see below). | `CRM_EVENT_RETENTION_DAYS` for the event outbox, webhook deliveries, the worker service's event ids and the last hire or leave per person (**30 by default, never below 7**); `CRM_MAIL_RETENTION_DAYS` for email deliveries and events (**730 by default, never below 400**: attribution looks back 365 days) |
+| `aged` | A delivery or event log. Rows that are **finished with** are hard-deleted by the same sweep once they are older than their own horizon; a row something may still act on is never touched (see below). | `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS` for the event outbox, webhook deliveries, the worker service's event ids and the last hire or leave per person (**30 by default, never below 7**); `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS` for email deliveries and events (**730 by default, never below 400**: attribution looks back 365 days) |
 | `gap` | Holds personal data or identifiers and **has no deletion path today**. | None: a deployer must archive or delete these by its own means until a task closes the gap |
 
 **What `aged` deletes, and what it never does** (CRM-R81). Email deliveries: only a delivery
@@ -84,6 +84,7 @@ A database the `SeaORM` migrations built before CRM-T229 also keeps their `seaql
 | `deal_deliveries` | Deal pid, the idea's id in PPM, who opened it | Reps | `manual` | Not applicable |
 | `deal_splits` | The sellers' `person:` references (CRM-D18) and shares | Reps | `manual` | Not applicable |
 | `deals` | Name (may name a customer), amount, owner reference, primary contact pid, lost reason (free text) | Contacts, reps | `swept` | Kept: revenue records, keyed to a pid that no longer identifies anyone |
+| `deployment` | None: the deployment's name (`CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID`) and when it was first written (CRM-R105) | — | `evidence` | Not applicable; the row cannot be changed or deleted, only a database owner's `TRUNCATE` removes it |
 | `email_deliveries` | Contact pid, message id, provider id, send state and error text, the basis the message was sent on (CRM-T166) | Contacts | `aged` | Kept |
 | `email_events` | Message id and the provider event (delivered, bounced, opened, clicked) | Contacts, through the message id | `aged` | Kept |
 | `email_suppressions` | Contact pid and the reason a mailbox is suppressed | Contacts | `manual` | Kept: a suppression must survive |

@@ -4,7 +4,7 @@
 #
 #   scripts/nightly.sh nightly   # gitleaks, advisories and licences, one seventh of the mutants
 #   scripts/nightly.sh weekly    # the image smokes; needs Podman
-#   CRM_NIGHTLY_REF=HEAD scripts/nightly.sh nightly   # a commit not yet pushed
+#   CONTACT_RELATIONSHIP_MANAGEMENT_NIGHTLY_REF=HEAD scripts/nightly.sh nightly   # a commit not yet pushed
 #
 # A job that fails does not stop the next. The result of each is written to
 # <git dir>/ci-<kind>-last-run.md, with its log in <git dir>/ci-nightly-logs. A mutant lost to a
@@ -71,7 +71,7 @@ git fetch --quiet origin main || {
   echo "nightly: could not fetch origin main" >&2
   exit 1
 }
-commit="$(git rev-parse "${CRM_NIGHTLY_REF:-FETCH_HEAD}")"
+commit="$(git rev-parse "${CONTACT_RELATIONSHIP_MANAGEMENT_NIGHTLY_REF:-FETCH_HEAD}")"
 git worktree prune
 if [[ -d "${checkout}" ]]; then
   git -C "${checkout}" checkout --quiet --force --detach "${commit}"
@@ -101,7 +101,7 @@ if [[ "${kind}" == nightly ]]; then
   # land in its own directory, on the night that takes shard 0.
   rm -rf "${checkout:?}/${service}/contact-relationship-management-domain/mutants-out" "${checkout:?}/contact-relationship-management-matcher-with-rust/mutants-out"
   started="${SECONDS}"
-  export CRM_MUTANTS_JOBS="${CRM_MUTANTS_JOBS:-8}"
+  export CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_JOBS="${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_JOBS:-8}"
   run_job mutants --shard "${shard}/7"
   mutants_dir="${checkout}/${service}/contact-relationship-management-domain/mutants-out/mutants.out"
   missed=0
@@ -124,7 +124,7 @@ if [[ "${kind}" == nightly ]]; then
   if ((lost > 0)); then
     outcome="${outcome}, ${lost} lost to kache and not tested"
   fi
-  record "mutants shard ${shard}/7 at -j ${CRM_MUTANTS_JOBS}" "${outcome}" "$((SECONDS - started))" "${kind}-mutants.log"
+  record "mutants shard ${shard}/7 at -j ${CONTACT_RELATIONSHIP_MANAGEMENT_MUTANTS_JOBS}" "${outcome}" "$((SECONDS - started))" "${kind}-mutants.log"
 else
   for smoke in image-smoke ui-image-smoke; do
     if ! podman info >/dev/null 2>&1; then

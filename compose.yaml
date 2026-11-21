@@ -4,11 +4,11 @@
 #   curl http://localhost:1241/_health/live
 #
 # DEMO ONLY. The demo has no identity service, so sign-in enforcement is OFF
-# (`CRM_REQUIRE_AUTH=0`, stated here on purpose): anyone who can reach the port
+# (`CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=0`, stated here on purpose): anyone who can reach the port
 # can read and write everything. Use synthetic data only. The port is published
 # on this machine's loopback address only, and the `production` environment
 # refuses to start without authentication. For anything else, set
-# CRM_PASETO_KEYS (or CRM_PASETO_KEYS_URL), CRM_REQUIRE_AUTH=1 and
+# CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS (or CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL), CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1 and
 # APP_ENV=production (see INSTALL.md and spec/auth.md).
 #
 # Email is simulated: nothing is sent. The family bridges (PPM, WPM) are off
@@ -18,11 +18,11 @@ services:
   postgres:
     image: docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
     environment:
-      POSTGRES_USER: loco
-      POSTGRES_PASSWORD: loco
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: contact_relationship_management_demo
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U loco -d contact_relationship_management_demo"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d contact_relationship_management_demo"]
       interval: 3s
       timeout: 3s
       retries: 30
@@ -51,9 +51,9 @@ services:
         condition: service_healthy
     environment:
       APP_ENV: development            # applies the migrations on start
-      DB_URL: postgres://loco:loco@postgres:5432/contact_relationship_management_demo
-      CRM_REDIS_URL: redis://redis:6379
+      DB_URL: postgres://postgres:postgres@postgres:5432/contact_relationship_management_demo
+      CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL: redis://redis:6379
       JWT_SECRET: demo-only-not-a-secret
-      CRM_REQUIRE_AUTH: "0"            # explicit, demo only: see the header of this file
+      CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH: "0"            # explicit, demo only: see the header of this file
     ports:
       - "127.0.0.1:1241:1241"

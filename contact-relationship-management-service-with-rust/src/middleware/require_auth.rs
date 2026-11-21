@@ -8,7 +8,7 @@ use axum::{
 
 use crate::auth;
 
-/// Blanket auth-enforcement middleware: reads `CRM_REQUIRE_AUTH` per
+/// Blanket auth-enforcement middleware: reads `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` per
 /// request and delegates to [`auth::enforce_request`]. Off by
 /// default — see `auth/` and `agents/share/security.md` §4.
 pub(crate) async fn require_auth_mw(req: Request, next: Next) -> Response {

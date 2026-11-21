@@ -334,6 +334,26 @@ async fn send_one(
         }
         Loaded::Send(prepared) => prepared,
     };
+    // CRM-R106: a subscription made before the list, or a list changed since, is not sent to an
+    // undeclared host. The delivery is dead (a retry would meet the same list) and audited.
+    if let Some(host) = crate::rules::residency::host_of(&prepared.url)
+        && !crate::residency::permits(&host)
+    {
+        report.dead += 1;
+        let why = format!("{host} is not a declared outside host (CRM-R106)");
+        finish(pool, id, "dead", prepared.attempts, None, Some(&why)).await?;
+        let mut txn = pool.begin().await?;
+        Audit::record_on(
+            &mut txn,
+            "webhook_subscription",
+            prepared.subscription_pid,
+            "webhook_refused_undeclared_host",
+            None,
+            Some(serde_json::json!({ "host": host })),
+        )
+        .await?;
+        return txn.commit().await;
+    }
     report.attempted += 1;
     let attempts = prepared.attempts + 1;
     let outcome = sender

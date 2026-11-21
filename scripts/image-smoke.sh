@@ -35,7 +35,7 @@ cleanup() { [[ -n "${KEEP:-}" ]] && return; podman rm -f "${SVC}" "${WRK}" "${PG
 trap cleanup EXIT
 
 command -v podman >/dev/null && command -v cargo >/dev/null || { echo "podman and cargo are required"; exit 2; }
-sql() { podman exec "${PG}" psql -U loco -d crm -Atc "$1"; }
+sql() { podman exec "${PG}" psql -U postgres -d crm -Atc "$1"; }
 wait_for() { local n="$1"; shift; for _ in $(seq 1 "$((n * 2))"); do "$@" >/dev/null 2>&1 && return 0; sleep 0.5; done; return 1; }
 
 # Tokens: admin may do everything; rep may write but not destructive actions; reader is masked.
@@ -62,11 +62,12 @@ contact() { body "${ADMIN}" POST /api/contacts "{\"person_ref\":\"$(person)\",\"
 # config without it, so it stays while those images are smoke-tested.
 # DB_ALLOW_INSECURE: Postgres here is another container on a private test network, without TLS.
 common_env=(
-  -e "DB_URL=postgres://loco:loco@${PG}:5432/crm" -e DB_ALLOW_INSECURE=true -e JWT_SECRET=smoke-test-secret-not-a-secret
-  -e "CRM_REDIS_URL=redis://${RD}:6379" -e CRM_REQUIRE_AUTH=1 -e "CRM_PASETO_KEYS=${KEYS_JSON}"
-  -e CRM_ABAC_POLICY_FILE=/app/config/abac-policy.reference.json -e CRM_EVENT_TRANSPORT=outbox
-  -e "CRM_FIELD_KEYS=k1:$(head -c 32 /dev/zero | tr '\0' 'a' | base64)" -e CRM_REQUIRE_FIELD_ENCRYPTION=1
-  -e "CRM_CURSOR_SECRET=$(head -c 32 /dev/zero | tr '\0' 'c')"
+  -e "DB_URL=postgres://postgres:postgres@${PG}:5432/crm" -e DB_ALLOW_INSECURE=true -e JWT_SECRET=smoke-test-secret-not-a-secret
+  -e "CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL=redis://${RD}:6379" -e CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=1 -e "CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS=${KEYS_JSON}"
+  -e CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE=/app/config/abac-policy.reference.json -e CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT=outbox
+  -e "CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS=k1:$(head -c 32 /dev/zero | tr '\0' 'a' | base64)" -e CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION=1
+  -e "CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET=$(head -c 32 /dev/zero | tr '\0' 'c')"
+  -e CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID=smoke-test
 )
 hardened=(--read-only --tmpfs /tmp --cap-drop all --security-opt no-new-privileges --memory 768m --cpus 2 --network "${NET}")
 run_image() { # NAME EXTRA-RUN-ARGS... -- IMAGE-ARGS...
@@ -79,16 +80,16 @@ serves() { [[ "$(status '' GET /_health/live)" == 200 ]]; }
 say "setup"
 podman rm -f "${SVC}" "${WRK}" "${PG}" "${RD}" "${MAIL}" >/dev/null 2>&1; podman network rm "${NET}" >/dev/null 2>&1
 podman network create "${NET}" >/dev/null
-podman run -d --name "${PG}" --network "${NET}" -e POSTGRES_USER=loco -e POSTGRES_PASSWORD=loco -e POSTGRES_DB=crm docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5 >/dev/null
+podman run -d --name "${PG}" --network "${NET}" -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=crm docker.io/library/postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5 >/dev/null
 podman run -d --name "${RD}" --network "${NET}" docker.io/library/redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537 >/dev/null
 podman run -d --name "${MAIL}" --network "${NET}" -p "${MAIL_API}:8025" docker.io/axllent/mailpit:latest@sha256:9b3a463be15354c0f0eba91697d80e3e0d8a5623ef0e627cacc836bc17fd5231 >/dev/null
-wait_for 60 podman exec "${PG}" pg_isready -U loco -d crm || { echo "postgres did not start"; exit 2; }
+wait_for 60 podman exec "${PG}" pg_isready -U postgres -d crm || { echo "postgres did not start"; exit 2; }
 sleep 2
 printf '  image: %s\n' "${IMAGE}"
 podman image exists "${IMAGE}" || podman pull -q "${IMAGE}" >/dev/null \
   || { echo "cannot pull the image (a private package needs: gh auth token | podman login ghcr.io -u <user> --password-stdin)"; exit 2; }
 out="$(podman run --rm --network "${NET}" --entrypoint /app/crm-service "${common_env[@]}" "${IMAGE}" db migrate 2>&1)"
-check "the image's own 'db migrate' applies every migration" bash -c "[[ \"\$(podman exec ${PG} psql -U loco -d crm -Atc 'select count(*) from _sqlx_migrations where success')\" -ge 1 ]]"
+check "the image's own 'db migrate' applies every migration" bash -c "[[ \"\$(podman exec ${PG} psql -U postgres -d crm -Atc 'select count(*) from _sqlx_migrations where success')\" -ge 1 ]]"
 [[ $? -ne 0 ]] && echo "${out}" | tail -5
 
 say "phase 1: production mode, hardened, authentication on"
@@ -128,9 +129,9 @@ check "and the service still answers" serves
 podman rm -f "${SVC}" "${WRK}" >/dev/null 2>&1
 
 say "phase 2: a campaign send needs the worker (development mode, Mailpit)"
-mail_env=(-e APP_ENV=development -e CRM_MAIL_MODE=smtp -e "CRM_SMTP_HOST=${MAIL}" -e CRM_SMTP_PORT=1025 -e CRM_SMTP_TLS=none
-  -e CRM_MAIL_FROM=crm@example.test -e CRM_MAIL_DEV_DOMAIN=example.test
-  -e CRM_UNSUBSCRIBE_SECRET=smoke-unsubscribe-secret-0123456789abcdef -e CRM_PUBLIC_URL=https://crm.example.test)
+mail_env=(-e APP_ENV=development -e CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp -e "CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_HOST=${MAIL}" -e CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_PORT=1025 -e CONTACT_RELATIONSHIP_MANAGEMENT_SMTP_TLS=none
+  -e CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_FROM=crm@example.test -e CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_DEV_DOMAIN=example.test
+  -e CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET=smoke-unsubscribe-secret-0123456789abcdef -e CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL=https://crm.example.test)
 # development binds to localhost; the container needs every interface
 run_image "${SVC}" -p "${PORT}:1241" "${mail_env[@]}" -- --binding 0.0.0.0
 check "the service starts in development mode with SMTP" wait_for 60 serves

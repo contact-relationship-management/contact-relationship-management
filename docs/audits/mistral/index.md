@@ -609,8 +609,8 @@ make quick           # Quick versions for development
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `CRM_REQUIRE_AUTH` | Require authentication | `1` |
-| `CRM_AUTH_TOKEN` | Authentication token | - |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` | Require authentication | `1` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_TOKEN` | Authentication token | - |
 | `DATABASE_URL` | PostgreSQL connection URL | - |
 | `REDIS_URL` | Redis connection URL | - |
 | `TEST_URL` | Base URL for tests | `http://localhost:1241` |

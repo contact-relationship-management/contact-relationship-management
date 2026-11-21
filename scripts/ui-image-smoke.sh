@@ -3,9 +3,9 @@
 #   scripts/ui-image-smoke.sh [IMAGE]       default: the v0.2.0 multi-arch image by digest
 #
 # Phase 1, hardened (read-only root, no capabilities, no new privileges, non-root) with the
-# guided tour OFF by default (CRM_DEMO_TOUR unset): the page and its static files are served, every security header is set,
+# guided tour OFF by default (CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR unset): the page and its static files are served, every security header is set,
 # an unknown path is a 404, and the demo sign-in does not create a demo session (so the demo
-# data is not reachable). Phase 2 explicitly opts in with CRM_DEMO_TOUR=on: signing in with the demo address
+# data is not reachable). Phase 2 explicitly opts in with CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on: signing in with the demo address
 # gives a session that the same-origin proxy answers from fictitious data, a write sticks,
 # and a record page renders. The UI never talks to the service here (CRM-T72 covers that).
 #
@@ -58,7 +58,7 @@ check "the server is still running" test "$(podman inspect --format '{{.State.Ru
 
 say "phase 2: hardened, tour explicitly on"
 : >"${JAR}"
-podman run -d --name "${B}" "${hardened[@]}" -p "${PB}:3000" -e CRM_DEMO_TOUR=on "${IMAGE}" >/dev/null
+podman run -d --name "${B}" "${hardened[@]}" -p "${PB}:3000" -e CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on "${IMAGE}" >/dev/null
 check "the container starts" wait_up "${PB}"
 signin "${PB}"
 check "no session, no demo data" bash -c "! curl -s --max-time 20 http://localhost:${PB}/api/proxy/contacts | grep -q person-demo"

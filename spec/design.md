@@ -62,7 +62,7 @@ Nurture advancement (idempotent per enrolment+step), the SLA breach
 sweep (one `sla_breached` per breach fact), and simulated campaign
 sends run inline in the request handler (no job queue, no external broker),
 in batches, through `mail::Sender` (simulated by default; SMTP with
-`CRM_MAIL_MODE=smtp`, CRM-T39). A background job is still future work.
+`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp`, CRM-T39). A background job is still future work.
 
 ## CRM-D9 — Transactional integrity
 
@@ -124,7 +124,7 @@ text, soft-deleted row) rather than deletes, mirroring WPM-D22's
 "neither pretends" framing: deals/tickets/consent history remain for
 reporting and compliance-evidence continuity, keyed to a pid that no
 longer identifies anyone, and the retention sweep (floored horizon,
-`CRM_RETENTION_DAYS`) is the separate, generic hard-delete path for
+`CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`) is the separate, generic hard-delete path for
 soft-deleted rows past that horizon — it never bulk-anonymises a
 contact, because a contact carries the erasure gate above and the
 sweep has no way to evaluate it per row.
@@ -163,20 +163,20 @@ leave was recorded), and keeping the ended employment row with an end date (ever
 ## CRM-D16 — The employment check asks under one HR token, for one configured organization
 
 *Confirmed by the product owner, 2026-10-31, as the accepted design.* The difference from WPM-D135 named below is
-accepted, not open: the CRM keeps one deployer-held HR token (`CRM_WORKER_SERVICE_TOKEN`) and does not forward the
+accepted, not open: the CRM keeps one deployer-held HR token (`CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`) and does not forward the
 caller's own. WPM's own spec still mentions the gap; it was not edited from this repository.
 
 The employment check (CRM-R94) calls WPM's overlap check (WPM-R208), which answers only a privileged
 caller of the organization (HR), and WPM-D135 says an inbound call acts under **the caller's own
 token**. The CRM does not forward its caller's token: that token is issued for the CRM's audience
-(`CRM_TOKEN_AUDIENCE`), so WPM's verifier would refuse it, and a token good for both would let any
+(`CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_AUDIENCE`), so WPM's verifier would refuse it, and a token good for both would let any
 CRM caller act in WPM. Like the teams import (CRM-R73, CRM-R87), the check sends
-**`CRM_WORKER_SERVICE_TOKEN`**, which the deployer obtains for an **HR identity of the organization
+**`CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`**, which the deployer obtains for an **HR identity of the organization
 in WPM**; WPM's own policy then decides, and the CRM's side is admin only and audited. This is
 closer to WPM-D135 than a shared key and **not the same as it**; the difference is named in the
 integrations table and in WPM's spec, and is accepted (confirmed 2026-10-31, above).
 
-**The organization is a setting, `CRM_WPM_ORGANIZATION_REF`**, not a field of the request, because
+**The organization is a setting, `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF`**, not a field of the request, because
 the token belongs to HR of one organization: asking about another would be refused by WPM, and a
 field would invite asking anyway. It is the CRM operator's own employer, whose staff are not to be
 marketed to.
@@ -303,7 +303,7 @@ not calendar days in a zone, so the answer is the same wherever the reader is an
   `occurred_at` (a planned call) is not a touch until it has happened.
 - **N lives in `organization_settings`** (CRM-T171's one row), as `stalled_after_days`, a whole number from 1 to 365, default 14,
   read and set with the calendar at `/api/settings/organization` (an administrator sets it; a `PUT` without it keeps the stored
-  value). Rejected: a `CRM_*` environment setting, because N is a sales-process choice an administrator makes and changes, not a
+  value). Rejected: a `CONTACT_RELATIONSHIP_MANAGEMENT_*` environment setting, because N is a sales-process choice an administrator makes and changes, not a
   deployment fact, and the organization's other process settings already live in that row.
 - **Where it shows:** `GET /api/deals` gives each deal `stalled` and `last_touched_at`; the UI's Kanban board marks a stalled card
   with the board's non-colour flag and the deal page says since when. Nothing is stored: the flag is derived on every read (CRM-D4).
@@ -405,7 +405,7 @@ naming the setting), before anything is queued. With no profile, nothing is refu
   rows, every decision equals today's, for every state, purpose and contact; a test holds that exhaustively over the states.
 - Existing consent becomes the `email` channel's (the only one ever sent); `sms`, `phone` and `post` start `never`. Existing events
   become `email` events. `marketing_consent` keeps meaning `marketing` on `email`.
-- No deployment-wide setting (`CRM_*`) chooses a regime: that would make one jurisdiction the deployment's.
+- No deployment-wide setting (`CONTACT_RELATIONSHIP_MANAGEMENT_*`) chooses a regime: that would make one jurisdiction the deployment's.
 - Loosening is explicit: an administrator sets a contact's or a send's code and loads the rows; a campaign's preview shows how many
   recipients would be sent to on each basis and under which profile and status before it runs.
 
@@ -502,3 +502,66 @@ The pure core of CRM-D3 to D5 is `contact-relationship-management-domain`, a cra
 - **Database text stays with the service.** `search_docs` (the searched columns and the n-gram function) describes storage, so only the script table it shares with the rules, `UNSPACED`, moved; the service re-exports it.
 
 Still open: publishing. The service is on crates.io, so publishing a new version of it needs the domain crate published first; neither is published by this change. A further split of the service itself (the models apart from the controllers) is not decided.
+
+## CRM-D26 — A database belongs to one named deployment
+
+*Written 2026-11-20 at the owner's request ("add to spec"); built by CRM-T282 for CRM-R105.* Production must have the
+name (the owner, 2026-11-20; CRM-T294).
+
+**The problem.** When a supplier hosts the CRM for several customers, each customer has its own database. The only thing
+linking a running service to its database is `DB_URL`. A copied configuration or a typo in a deploy script could start
+customer B's service against customer A's database, and customer B's staff would then see, and could change, customer
+A's contacts, deals and consent records. Nothing stopped that before this decision.
+
+**How it works.**
+
+1. Each deployment is given a name in `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID`, for example `acme-example`: 1 to 64 ASCII letters, digits, `.`,
+   `_` or `-`.
+2. On the first start, the database has no name yet. The service writes `acme-example` into the one-row `deployment` table
+   (migration `20261120000000`), then starts normally.
+3. On every later start, the service compares its configured name with the one in the database:
+
+| Configured name | Name in the database | Result |
+| --- | --- | --- |
+| `acme-example` | none yet | writes `acme-example`, starts |
+| `acme-example` | `acme-example` | starts |
+| `customer-b` | `acme-example` | refuses to start, naming both, and says to check `DB_URL` |
+| not set | `acme-example` | refuses to start, and says to set it to `acme-example` if this is that deployment |
+| not set | none | in production, refuses to start; elsewhere starts, and logs a warning that nothing is checked |
+
+- **Why a refusal without a name.** A service with no name against a claimed database is the likeliest form of the
+  mistake this guards against, so it is refused rather than let through.
+- **Why the name is fixed.** A trigger refuses an update or a delete of the row, and the primary key allows one row. If
+  a start could rewrite the name, a misconfigured service would claim the other customer's database instead of being
+  stopped. Only a database owner's `TRUNCATE` clears it.
+- **Why in the database.** The name travels with the data, including into a restored backup, so a restore into the wrong
+  environment is caught too. A file beside the service would not be.
+- **Two replicas at once.** Both may find no name; the first insert wins, and each then compares against the row that is
+  there.
+- **Where it runs.** In `start` (the server and the background worker), after any migration. `db` commands and tasks do
+  not check it.
+
+**Production requires the name** (decided by the product owner, 2026-11-20; built by CRM-T294). A production start
+without `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` is refused before the database is read, as one without
+authentication or `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET` is: otherwise the guard is only as good as the operator
+who remembers to turn it on. A deployment upgrading from before this stops until it sets the name; the first start with
+it then claims the database. The check catches a service pointed at the wrong database; it does not separate file stores, Redis or
+keys, which the [operations runbook](compliance/operations-runbook.md) asks the supplier to give each customer.
+
+## CRM-D27 — Sign-in is OIDC only; SAML 2.0 waits for a customer who needs it
+
+*Decided 2026-11-20 by the owner ("stay OIDC-only, not SAML, until a customer needs it"), for CRM-R100.*
+
+A federated sign-in uses OpenID Connect and nothing else. SAML 2.0 is not built, and is not planned until a customer
+needs it.
+
+- **Why OIDC is enough today.** The identity providers buyers use offer it, Microsoft Entra ID among them, so a buyer
+  on Entra (NHS Wales's provider in the worked example) can connect over OIDC. The CRM already accepts OIDC tokens
+  through Keycloak.
+- **Why not SAML now.** SAML means parsing and verifying signed XML, a long-standing source of authentication bugs
+  (signature wrapping, canonicalisation, entity expansion), and a new dependency to review and keep patched. Building it
+  before anyone needs it adds that attack surface for no user.
+- **What would change it.** A customer, or a buyer's tender, that requires SAML, or uses an identity provider without
+  OIDC. Then SAML is a task of its own, with its own threat model and tests, and this decision is revised.
+- **What the supplier says meanwhile.** The assurance pack and CRM-R100 say sign-in is OIDC only, so a buyer that
+  needs SAML learns it at the start of an assessment, not at go-live.

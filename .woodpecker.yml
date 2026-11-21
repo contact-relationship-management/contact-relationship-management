@@ -10,8 +10,8 @@ services:
   - name: postgres
     image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4
     environment:
-      POSTGRES_USER: loco
-      POSTGRES_PASSWORD: loco
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
   - name: redis
     image: redis:8-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537

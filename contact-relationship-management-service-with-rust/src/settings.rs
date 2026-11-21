@@ -1,4 +1,4 @@
-//! The service's settings (CRM-T78): every `CRM_*` environment variable that
+//! The service's settings (CRM-T78): every `CONTACT_RELATIONSHIP_MANAGEMENT_*` environment variable that
 //! was read lazily, in one typed struct.
 //!
 //! [`Settings::from_lookup`] parses them from any `name -> value` function, so
@@ -11,8 +11,8 @@
 //! - the startup-only settings that already take a lookup function: mail
 //!   (`mail::from_settings`), unsubscribe links, and the rate limit
 //!   (`rate_limit::Guard::from_env`);
-//! - `CRM_KEYCLOAK_*`, which the `authentication-verifier` library reads itself;
-//! - the per-service base URLs (`CRM_PERSON_SERVICE_URL` and its siblings),
+//! - `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_*`, which the `authentication-verifier` library reads itself;
+//! - the per-service base URLs (`CONTACT_RELATIONSHIP_MANAGEMENT_PERSON_SERVICE_URL` and its siblings),
 //!   whose variable name depends on the kind of record asked about.
 
 use std::sync::{Arc, PoisonError, RwLock};
@@ -30,97 +30,97 @@ pub const MIN_WEBHOOK_SECRET: usize = 32;
     reason = "each flag is its own environment variable"
 )]
 pub struct Settings {
-    /// `CRM_REQUIRE_AUTH`: blanket `/api/*` enforcement.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH`: blanket `/api/*` enforcement.
     pub require_auth: bool,
-    /// `CRM_PROTECT_OPERATIONAL`: the metrics and `OpenAPI` endpoints need a token.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_PROTECT_OPERATIONAL`: the metrics and `OpenAPI` endpoints need a token.
     pub protect_operational: bool,
-    /// `CRM_ALLOW_INSECURE`: production may start with authentication off.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE`: production may start with authentication off.
     pub allow_insecure: bool,
-    /// `CRM_REQUIRE_FIELD_ENCRYPTION`: refuse to start without field keys.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION`: refuse to start without field keys.
     pub require_field_encryption: bool,
-    /// `CRM_UPSTREAM_MODE`: `http` looks names up; anything else is the stub.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE`: `http` looks names up; anything else is the stub.
     pub upstream_mode: Mode,
-    /// `CRM_EVENT_RETENTION_DAYS`, raw: how long the event outbox and webhook deliveries are kept
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`, raw: how long the event outbox and webhook deliveries are kept
     /// (parsed and floored by the retention rules; CRM-R81).
     pub event_retention_days: Option<String>,
-    /// `CRM_MAIL_RETENTION_DAYS`, raw: how long email deliveries and events are kept (CRM-R81).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS`, raw: how long email deliveries and events are kept (CRM-R81).
     pub mail_retention_days: Option<String>,
-    /// `CRM_MIN_CELL_SIZE`: a report leaves out a group with fewer records than this (CRM-R78):
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE`: a report leaves out a group with fewer records than this (CRM-R78):
     /// 5 by default, 0 for none, at most 1000.
     pub min_cell_size: i64,
-    /// `CRM_PPM_SERVICE_URL`: the project portfolio service the bridge sends delivery ideas to.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL`: the project portfolio service the bridge sends delivery ideas to.
     pub ppm_service_url: Option<String>,
-    /// `CRM_WORKER_SERVICE_URL`: the worker service (WPM) the team import reads workers from.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL`: the worker service (WPM) the team import reads workers from.
     pub worker_service_url: Option<String>,
-    /// `CRM_PPM_SERVICE_TOKEN`: a bearer token sent to the project portfolio service, when that has
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN`: a bearer token sent to the project portfolio service, when that has
     /// authentication on (CRM-R87). Issued by the deployer's identity provider; never logged.
     pub ppm_service_token: Option<String>,
-    /// `CRM_WORKER_SERVICE_TOKEN`: the same for the worker service (CRM-R87).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`: the same for the worker service (CRM-R87).
     pub worker_service_token: Option<String>,
-    /// `CRM_WPM_ORGANIZATION_REF`: the organization the employment check asks the worker service
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF`: the organization the employment check asks the worker service
     /// about (CRM-R94), an `organization:` URN; anything else is taken as unset. It is the
-    /// organization whose HR identity holds `CRM_WORKER_SERVICE_TOKEN` (CRM-D16).
+    /// organization whose HR identity holds `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` (CRM-D16).
     pub wpm_organization_ref: Option<String>,
-    /// `CRM_EVENT_TRANSPORT`: `memory` (default) or `outbox`.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT`: `memory` (default) or `outbox`.
     pub event_transport: EventTransport,
-    /// `CRM_RETENTION_DAYS`, raw (parsed and clamped by the retention rules).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`, raw (parsed and clamped by the retention rules).
     pub retention_days: Option<String>,
-    /// `CRM_MAIL_BATCH`: contacts handled per send call, 1 to 5000 (default 200).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH`: contacts handled per send call, 1 to 5000 (default 200).
     pub mail_batch: i64,
-    /// `CRM_WEBHOOK_SECRET`, only when long enough ([`MIN_WEBHOOK_SECRET`]).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET`, only when long enough ([`MIN_WEBHOOK_SECRET`]).
     pub webhook_secret: Option<String>,
-    /// `CRM_WPM_WEBHOOK_SECRET`: the secret the worker service signs its events with (CRM-R92),
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET`: the secret the worker service signs its events with (CRM-R92),
     /// only when long enough ([`MIN_WEBHOOK_SECRET`]). Unset, `POST /api/bridges/wpm/events` is `404`.
     pub wpm_webhook_secret: Option<String>,
-    /// `CRM_MAILGUN_SIGNING_KEY`, when not blank.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_SIGNING_KEY`, when not blank.
     pub mailgun_signing_key: Option<String>,
-    /// `CRM_MAIL_DEV_DOMAIN`: development catch-all domain for stub-mode addresses.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_DEV_DOMAIN`: development catch-all domain for stub-mode addresses.
     pub mail_dev_domain: Option<String>,
-    /// `CRM_PASETO_KEYS`: the published key set, as JSON.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS`: the published key set, as JSON.
     pub paseto_keys: Option<String>,
-    /// `CRM_PASETO_KEYS_URL`: where to fetch the key set.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL`: where to fetch the key set.
     pub paseto_keys_url: Option<String>,
-    /// `CRM_PASETO_KEYS_REFRESH_SECS`: key re-fetch interval; `0` disables.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS`: key re-fetch interval; `0` disables.
     pub paseto_keys_refresh_secs: Option<u64>,
-    /// `CRM_TOKEN_ISSUER`.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_ISSUER`.
     pub token_issuer: Option<String>,
-    /// `CRM_TOKEN_AUDIENCE`.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_AUDIENCE`.
     pub token_audience: Option<String>,
-    /// `CRM_ABAC_POLICY`: the policy, inline as JSON.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY`: the policy, inline as JSON.
     pub abac_policy: Option<String>,
-    /// `CRM_ABAC_POLICY_FILE`: the policy file (watched for changes).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE`: the policy file (watched for changes).
     pub abac_policy_file: Option<String>,
-    /// `CRM_FIELD_KEYS`: field-encryption keys.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS`: field-encryption keys.
     pub field_keys: Option<String>,
-    /// `CRM_FIELD_KEYS_FILE`: a file holding them.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE`: a file holding them.
     pub field_keys_file: Option<String>,
-    /// `CRM_CORS_ORIGIN`: the one browser origin allowed to call the service directly.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_CORS_ORIGIN`: the one browser origin allowed to call the service directly.
     pub cors_origin: Option<String>,
-    /// `CRM_REDIS_URL`.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`.
     pub redis_url: Option<String>,
-    /// `CRM_MCP_WRITES`: offer the MCP write tools (off: the MCP endpoint is read-only).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_MCP_WRITES`: offer the MCP write tools (off: the MCP endpoint is read-only).
     pub mcp_writes: bool,
-    /// `CRM_MCP_ALLOWED_ORIGINS`: browser origins the MCP endpoint answers (comma-separated;
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_MCP_ALLOWED_ORIGINS`: browser origins the MCP endpoint answers (comma-separated;
     /// none by default, so only clients that send no `Origin` header, such as agents, connect).
     pub mcp_allowed_origins: Vec<String>,
-    /// `CRM_WEB_FORMS`: the web forms (CRM-R31), a JSON list; entries that do not parse or fail
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS`: the web forms (CRM-R31), a JSON list; entries that do not parse or fail
     /// [`WebForm::valid`] are left out.
     pub web_forms: Vec<WebForm>,
-    /// `CRM_WEB_FORM_CLIENT_LIMIT`: submissions per client per form in 10 minutes (default 5).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_CLIENT_LIMIT`: submissions per client per form in 10 minutes (default 5).
     pub web_form_client_limit: u32,
-    /// `CRM_WEB_FORM_LIMIT`: submissions per form per hour, all clients (default 300).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_LIMIT`: submissions per form per hour, all clients (default 300).
     pub web_form_limit: u32,
-    /// `CRM_PUBLIC_KB`: serve the published knowledge-base articles to anyone, without a token,
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB`: serve the published knowledge-base articles to anyone, without a token,
     /// under `/kb/` (CRM-R57). Off by default: nothing is public until it is turned on.
     pub public_kb: bool,
-    /// `CRM_PUBLIC_KB_CLIENT_LIMIT`: public knowledge-base requests per client per minute
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB_CLIENT_LIMIT`: public knowledge-base requests per client per minute
     /// (default 120; `0` turns the limit off).
     pub public_kb_client_limit: u32,
-    /// `CRM_ATTACHMENT_DIR`: where attached files are kept. Unset, attachments are off.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR`: where attached files are kept. Unset, attachments are off.
     pub attachment_dir: Option<String>,
-    /// `CRM_ATTACHMENT_MAX_BYTES`: the largest file (default 10 MiB, at most 100 MiB).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_MAX_BYTES`: the largest file (default 10 MiB, at most 100 MiB).
     pub attachment_max_bytes: u64,
-    /// `CRM_ATTACHMENT_SCAN_COMMAND`: a program (and arguments, split on spaces, no shell) run
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_SCAN_COMMAND`: a program (and arguments, split on spaces, no shell) run
     /// with the path of each upload as its last argument: exit 0 clean, 1 infected, anything else
     /// is a failure. Unset, no scan is run.
     pub attachment_scan_command: Option<String>,
@@ -195,80 +195,94 @@ impl Settings {
         let text = |name: &str| get(name).filter(|v| !v.trim().is_empty());
         let flag = |name: &str| get(name).is_some_and(|v| parse_bool(&v));
         Self {
-            require_auth: flag("CRM_REQUIRE_AUTH"),
-            protect_operational: flag("CRM_PROTECT_OPERATIONAL"),
-            allow_insecure: flag("CRM_ALLOW_INSECURE"),
-            require_field_encryption: flag("CRM_REQUIRE_FIELD_ENCRYPTION"),
-            upstream_mode: if get("CRM_UPSTREAM_MODE")
+            require_auth: flag("CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH"),
+            protect_operational: flag("CONTACT_RELATIONSHIP_MANAGEMENT_PROTECT_OPERATIONAL"),
+            allow_insecure: flag("CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE"),
+            require_field_encryption: flag(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION",
+            ),
+            upstream_mode: if get("CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE")
                 .is_some_and(|v| v.trim().eq_ignore_ascii_case("http"))
             {
                 Mode::Http
             } else {
                 Mode::Stub
             },
-            event_retention_days: get("CRM_EVENT_RETENTION_DAYS"),
-            mail_retention_days: get("CRM_MAIL_RETENTION_DAYS"),
-            min_cell_size: get("CRM_MIN_CELL_SIZE")
+            event_retention_days: get("CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS"),
+            mail_retention_days: get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS"),
+            min_cell_size: get("CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE")
                 .and_then(|v| v.trim().parse::<i64>().ok())
                 .map_or(5, |n| n.clamp(0, 1000)),
-            ppm_service_url: text("CRM_PPM_SERVICE_URL"),
-            worker_service_url: text("CRM_WORKER_SERVICE_URL"),
-            ppm_service_token: text("CRM_PPM_SERVICE_TOKEN"),
-            worker_service_token: text("CRM_WORKER_SERVICE_TOKEN"),
-            wpm_organization_ref: text("CRM_WPM_ORGANIZATION_REF")
+            ppm_service_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL"),
+            worker_service_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL"),
+            ppm_service_token: text("CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN"),
+            worker_service_token: text("CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN"),
+            wpm_organization_ref: text("CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF")
                 .map(|v| v.trim().to_string())
                 .filter(|v| {
                     <entity_ref::EntityRef as std::str::FromStr>::from_str(v)
                         .is_ok_and(|r| r.entity_type == entity_ref::EntityType::Organization)
                 }),
-            event_transport: EventTransport::parse(&get("CRM_EVENT_TRANSPORT").unwrap_or_default()),
-            retention_days: get("CRM_RETENTION_DAYS"),
-            mail_batch: get("CRM_MAIL_BATCH")
+            event_transport: EventTransport::parse(
+                &get("CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT").unwrap_or_default(),
+            ),
+            retention_days: get("CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS"),
+            mail_batch: get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH")
                 .and_then(|v| v.trim().parse::<i64>().ok())
                 .map_or(200, |n| n.clamp(1, 5000)),
-            webhook_secret: get("CRM_WEBHOOK_SECRET").filter(|s| s.len() >= MIN_WEBHOOK_SECRET),
-            wpm_webhook_secret: get("CRM_WPM_WEBHOOK_SECRET")
+            webhook_secret: get("CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET")
                 .filter(|s| s.len() >= MIN_WEBHOOK_SECRET),
-            mailgun_signing_key: text("CRM_MAILGUN_SIGNING_KEY"),
-            mail_dev_domain: text("CRM_MAIL_DEV_DOMAIN").map(|v| v.trim().to_string()),
-            paseto_keys: text("CRM_PASETO_KEYS"),
-            paseto_keys_url: text("CRM_PASETO_KEYS_URL").map(|v| v.trim().to_string()),
-            paseto_keys_refresh_secs: get("CRM_PASETO_KEYS_REFRESH_SECS")
-                .and_then(|v| v.trim().parse::<u64>().ok()),
-            token_issuer: text("CRM_TOKEN_ISSUER"),
-            token_audience: text("CRM_TOKEN_AUDIENCE"),
-            abac_policy: text("CRM_ABAC_POLICY"),
-            abac_policy_file: text("CRM_ABAC_POLICY_FILE").map(|v| v.trim().to_string()),
-            field_keys: text("CRM_FIELD_KEYS"),
-            field_keys_file: get("CRM_FIELD_KEYS_FILE"),
-            cors_origin: text("CRM_CORS_ORIGIN"),
-            redis_url: text("CRM_REDIS_URL"),
-            mcp_writes: flag("CRM_MCP_WRITES"),
-            mcp_allowed_origins: text("CRM_MCP_ALLOWED_ORIGINS").map_or_default(|v| {
-                v.split(',')
-                    .map(|o| o.trim().trim_end_matches('/').to_ascii_lowercase())
-                    .filter(|o| !o.is_empty())
-                    .collect()
-            }),
-            web_forms: text("CRM_WEB_FORMS")
+            wpm_webhook_secret: get("CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET")
+                .filter(|s| s.len() >= MIN_WEBHOOK_SECRET),
+            mailgun_signing_key: text("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_SIGNING_KEY"),
+            mail_dev_domain: text("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_DEV_DOMAIN")
+                .map(|v| v.trim().to_string()),
+            paseto_keys: text("CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS"),
+            paseto_keys_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL")
+                .map(|v| v.trim().to_string()),
+            paseto_keys_refresh_secs: get(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS",
+            )
+            .and_then(|v| v.trim().parse::<u64>().ok()),
+            token_issuer: text("CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_ISSUER"),
+            token_audience: text("CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_AUDIENCE"),
+            abac_policy: text("CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY"),
+            abac_policy_file: text("CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE")
+                .map(|v| v.trim().to_string()),
+            field_keys: text("CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS"),
+            field_keys_file: get("CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE"),
+            cors_origin: text("CONTACT_RELATIONSHIP_MANAGEMENT_CORS_ORIGIN"),
+            redis_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL"),
+            mcp_writes: flag("CONTACT_RELATIONSHIP_MANAGEMENT_MCP_WRITES"),
+            mcp_allowed_origins: text("CONTACT_RELATIONSHIP_MANAGEMENT_MCP_ALLOWED_ORIGINS")
+                .map_or_default(|v| {
+                    v.split(',')
+                        .map(|o| o.trim().trim_end_matches('/').to_ascii_lowercase())
+                        .filter(|o| !o.is_empty())
+                        .collect()
+                }),
+            web_forms: text("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS")
                 .and_then(|v| serde_json::from_str::<Vec<WebForm>>(&v).ok())
                 .map_or_default(|forms| forms.into_iter().filter(WebForm::valid).collect()),
-            web_form_client_limit: get("CRM_WEB_FORM_CLIENT_LIMIT")
+            web_form_client_limit: get("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_CLIENT_LIMIT")
                 .and_then(|v| v.trim().parse().ok())
                 .unwrap_or(5),
-            web_form_limit: get("CRM_WEB_FORM_LIMIT")
+            web_form_limit: get("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_LIMIT")
                 .and_then(|v| v.trim().parse().ok())
                 .unwrap_or(300),
-            public_kb: flag("CRM_PUBLIC_KB"),
-            public_kb_client_limit: get("CRM_PUBLIC_KB_CLIENT_LIMIT")
+            public_kb: flag("CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB"),
+            public_kb_client_limit: get("CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB_CLIENT_LIMIT")
                 .and_then(|v| v.trim().parse().ok())
                 .unwrap_or(120),
-            attachment_dir: text("CRM_ATTACHMENT_DIR").map(|v| v.trim().to_string()),
-            attachment_max_bytes: get("CRM_ATTACHMENT_MAX_BYTES")
+            attachment_dir: text("CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR")
+                .map(|v| v.trim().to_string()),
+            attachment_max_bytes: get("CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_MAX_BYTES")
                 .and_then(|v| v.trim().parse::<u64>().ok())
                 .map_or(10 * 1024 * 1024, |n| n.clamp(1, 100 * 1024 * 1024)),
-            attachment_scan_command: text("CRM_ATTACHMENT_SCAN_COMMAND")
-                .map(|v| v.trim().to_string()),
+            attachment_scan_command: text(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_SCAN_COMMAND",
+            )
+            .map(|v| v.trim().to_string()),
         }
     }
 
@@ -368,13 +382,21 @@ mod tests {
     fn flags_are_lenient_and_everything_else_is_off() {
         for on in ["1", "true", "YES", " on "] {
             assert!(
-                Settings::from_lookup(&lookup(&[("CRM_REQUIRE_AUTH", on)])).require_auth,
+                Settings::from_lookup(&lookup(&[(
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH",
+                    on
+                )]))
+                .require_auth,
                 "{on:?}"
             );
         }
         for off in ["", "0", "no", "enabled", "2"] {
             assert!(
-                !Settings::from_lookup(&lookup(&[("CRM_REQUIRE_AUTH", off)])).require_auth,
+                !Settings::from_lookup(&lookup(&[(
+                    "CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH",
+                    off
+                )]))
+                .require_auth,
                 "{off:?}"
             );
         }
@@ -389,7 +411,10 @@ mod tests {
             {"slug": "no-origin", "origins": []},
             {"slug": "odd-purpose", "origins": ["https://a.example"], "purpose": "spam"}
         ]"#;
-        let s = Settings::from_lookup(&lookup(&[("CRM_WEB_FORMS", json)]));
+        let s = Settings::from_lookup(&lookup(&[(
+            "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS",
+            json,
+        )]));
         let slugs: Vec<&str> = s.web_forms.iter().map(|f| f.slug.as_str()).collect();
         assert_eq!(slugs, ["news", "plain"]);
         assert_eq!(s.web_forms[1].purpose, "marketing");
@@ -400,23 +425,29 @@ mod tests {
         assert!(!s.public_kb);
         assert_eq!(s.public_kb_client_limit, 120);
         let on = Settings::from_lookup(&lookup(&[
-            ("CRM_PUBLIC_KB", "yes"),
-            ("CRM_PUBLIC_KB_CLIENT_LIMIT", "7"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB", "yes"),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB_CLIENT_LIMIT",
+                "7",
+            ),
         ]));
         assert!(on.public_kb);
         assert_eq!(on.public_kb_client_limit, 7);
         // Not JSON: no forms, rather than a failed start.
-        let broken = Settings::from_lookup(&lookup(&[("CRM_WEB_FORMS", "news=https://a")]));
+        let broken = Settings::from_lookup(&lookup(&[(
+            "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS",
+            "news=https://a",
+        )]));
         assert!(broken.web_forms.is_empty());
     }
 
     #[test]
     fn a_blank_value_is_the_same_as_unset() {
         let s = Settings::from_lookup(&lookup(&[
-            ("CRM_PASETO_KEYS", "  "),
-            ("CRM_ABAC_POLICY", ""),
-            ("CRM_REDIS_URL", " "),
-            ("CRM_MAILGUN_SIGNING_KEY", "\t"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS", "  "),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY", ""),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL", " "),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_SIGNING_KEY", "\t"),
         ]));
         assert_eq!(s.paseto_keys, None);
         assert_eq!(s.abac_policy, None);
@@ -426,7 +457,13 @@ mod tests {
 
     #[test]
     fn the_mail_batch_is_clamped_and_junk_is_the_default() {
-        let batch = |v: &str| Settings::from_lookup(&lookup(&[("CRM_MAIL_BATCH", v)])).mail_batch;
+        let batch = |v: &str| {
+            Settings::from_lookup(&lookup(&[(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH",
+                v,
+            )]))
+            .mail_batch
+        };
         assert_eq!(batch("50"), 50);
         assert_eq!(batch("0"), 1);
         assert_eq!(batch("-5"), 1);
@@ -439,21 +476,37 @@ mod tests {
         let short = "x".repeat(MIN_WEBHOOK_SECRET - 1);
         let long = "x".repeat(MIN_WEBHOOK_SECRET);
         assert_eq!(
-            Settings::from_lookup(&lookup(&[("CRM_WEBHOOK_SECRET", &short)])).webhook_secret,
+            Settings::from_lookup(&lookup(&[(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET",
+                &short
+            )]))
+            .webhook_secret,
             None
         );
         assert_eq!(
-            Settings::from_lookup(&lookup(&[("CRM_WEBHOOK_SECRET", &long)])).webhook_secret,
+            Settings::from_lookup(&lookup(&[(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET",
+                &long
+            )]))
+            .webhook_secret,
             Some(long.clone())
         );
         // The worker service's secret is its own setting, with the same floor (CRM-R92).
         let wpm = |v: &str| {
-            Settings::from_lookup(&lookup(&[("CRM_WPM_WEBHOOK_SECRET", v)])).wpm_webhook_secret
+            Settings::from_lookup(&lookup(&[(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET",
+                v,
+            )]))
+            .wpm_webhook_secret
         };
         assert_eq!(wpm(&short), None);
         assert_eq!(wpm(&long), Some(long.clone()));
         assert_eq!(
-            Settings::from_lookup(&lookup(&[("CRM_WEBHOOK_SECRET", &long)])).wpm_webhook_secret,
+            Settings::from_lookup(&lookup(&[(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET",
+                &long
+            )]))
+            .wpm_webhook_secret,
             None,
             "the provider secret does not open the worker service's route"
         );
@@ -462,23 +515,35 @@ mod tests {
     #[test]
     fn modes_transports_and_numbers_parse() {
         let s = Settings::from_lookup(&lookup(&[
-            ("CRM_UPSTREAM_MODE", " HTTP "),
-            ("CRM_EVENT_TRANSPORT", "Outbox"),
-            ("CRM_PASETO_KEYS_REFRESH_SECS", " 0 "),
-            ("CRM_ABAC_POLICY_FILE", " /etc/crm/policy.json "),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE", " HTTP "),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT", "Outbox"),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS",
+                " 0 ",
+            ),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE",
+                " /etc/crm/policy.json ",
+            ),
         ]));
         assert_eq!(s.upstream_mode, Mode::Http);
         assert_eq!(s.event_transport, EventTransport::Outbox);
         assert_eq!(s.paseto_keys_refresh_secs, Some(0));
         assert_eq!(s.abac_policy_file.as_deref(), Some("/etc/crm/policy.json"));
-        let junk = Settings::from_lookup(&lookup(&[("CRM_PASETO_KEYS_REFRESH_SECS", "soon")]));
+        let junk = Settings::from_lookup(&lookup(&[(
+            "CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS",
+            "soon",
+        )]));
         assert_eq!(junk.paseto_keys_refresh_secs, None);
     }
 
     #[test]
     fn update_changes_one_setting_and_keeps_the_rest() {
         let holder = Holder::new();
-        holder.install(Settings::from_lookup(&lookup(&[("CRM_MAIL_BATCH", "7")])));
+        holder.install(Settings::from_lookup(&lookup(&[(
+            "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH",
+            "7",
+        )])));
         holder.update(|s| s.require_auth = true);
         let now = holder.current();
         assert!(now.require_auth);
@@ -498,7 +563,11 @@ mod tests {
     #[test]
     fn the_employment_checks_organization_must_be_an_organization_reference() {
         let org = |v: &str| {
-            Settings::from_lookup(&lookup(&[("CRM_WPM_ORGANIZATION_REF", v)])).wpm_organization_ref
+            Settings::from_lookup(&lookup(&[(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF",
+                v,
+            )]))
+            .wpm_organization_ref
         };
         let good = "organization:0c4f1e2a-0000-4000-8000-0000000000aa";
         assert_eq!(org(good), Some(good.to_string()));

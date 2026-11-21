@@ -472,9 +472,9 @@ pub(crate) struct RetentionReport {
     /// Rows past the horizon, by table (tables with none are left out).
     soft_deleted_past_horizon: std::collections::BTreeMap<String, i64>,
     withdrawn_consent_past_horizon: usize,
-    /// Days the event outbox and webhook deliveries are kept (`CRM_EVENT_RETENTION_DAYS`, CRM-R81).
+    /// Days the event outbox and webhook deliveries are kept (`CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`, CRM-R81).
     event_horizon_days: i64,
-    /// Days email deliveries and events are kept (`CRM_MAIL_RETENTION_DAYS`, CRM-R81).
+    /// Days email deliveries and events are kept (`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS`, CRM-R81).
     mail_horizon_days: i64,
     /// Delivery and event rows the sweep would delete for their age, by table (none left out).
     logs_past_horizon: std::collections::BTreeMap<String, i64>,
@@ -487,7 +487,7 @@ pub(crate) struct RetentionReport {
 /// One retention horizon and where its value came from (CRM-T165, CRM-D19).
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct HorizonBasis {
-    /// The environment setting, such as `CRM_RETENTION_DAYS`.
+    /// The environment setting, such as `CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`.
     setting: &'static str,
     /// The horizon in force, in days.
     days: i64,
@@ -506,11 +506,11 @@ fn horizon_basis() -> Vec<HorizonBasis> {
         .iter()
         .map(|entry| {
             let (raw, days) = match entry.setting {
-                "CRM_EVENT_RETENTION_DAYS" => (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS" => (
                     settings.event_retention_days.as_deref(),
                     log_horizon(rules::Horizon::Event),
                 ),
-                "CRM_MAIL_RETENTION_DAYS" => (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS" => (
                     settings.mail_retention_days.as_deref(),
                     log_horizon(rules::Horizon::Mail),
                 ),
@@ -542,7 +542,7 @@ pub(crate) struct RetentionSweep {
     rows_deleted: u64,
 }
 
-/// The retention horizon in days (`CRM_RETENTION_DAYS`, default 365,
+/// The retention horizon in days (`CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`, default 365,
 /// floor 30 — CRM-D14).
 fn horizon_days() -> i64 {
     rules::retention_days(crate::settings::current().retention_days.as_deref())

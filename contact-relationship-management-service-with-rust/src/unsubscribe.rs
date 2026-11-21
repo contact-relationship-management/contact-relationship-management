@@ -18,7 +18,7 @@ use uuid::Uuid;
 
 type Tag = Hmac<Sha256>;
 
-/// Shortest accepted `CRM_UNSUBSCRIBE_SECRET`.
+/// Shortest accepted `CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET`.
 const MIN_SECRET: usize = 32;
 
 /// Makes and checks unsubscribe links.
@@ -38,7 +38,7 @@ impl std::fmt::Debug for Unsubscriber {
 }
 
 impl Unsubscriber {
-    /// Build from `CRM_UNSUBSCRIBE_SECRET` and `CRM_PUBLIC_URL`.
+    /// Build from `CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET` and `CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL`.
     ///
     /// # Errors
     ///
@@ -47,7 +47,7 @@ impl Unsubscriber {
     pub fn new(secret: &str, public_url: &str, production: bool) -> Result<Self, String> {
         if secret.len() < MIN_SECRET {
             return Err(format!(
-                "CRM_UNSUBSCRIBE_SECRET must be at least {MIN_SECRET} characters"
+                "CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET must be at least {MIN_SECRET} characters"
             ));
         }
         let base = public_url.trim().trim_end_matches('/').to_string();
@@ -55,13 +55,16 @@ impl Unsubscriber {
         let local = base.starts_with("http://");
         if !(secure || (local && !production)) {
             return Err(
-                "CRM_PUBLIC_URL must be an https URL (http is allowed outside \
+                "CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL must be an https URL (http is allowed outside \
                         production)"
                     .to_string(),
             );
         }
         if base.contains(char::is_whitespace) {
-            return Err("CRM_PUBLIC_URL must not contain whitespace".to_string());
+            return Err(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL must not contain whitespace"
+                    .to_string(),
+            );
         }
         Ok(Self {
             secret: secret.as_bytes().to_vec(),
@@ -150,15 +153,15 @@ pub fn install(value: Option<Unsubscriber>) {
 /// A message when real mail is on without a usable configuration, or when a
 /// partial configuration is present.
 pub fn init(smtp_mode: bool, production: bool) -> Result<(), String> {
-    let secret = std::env::var("CRM_UNSUBSCRIBE_SECRET").ok();
-    let url = std::env::var("CRM_PUBLIC_URL").ok();
+    let secret = std::env::var("CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET").ok();
+    let url = std::env::var("CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL").ok();
     match (secret, url) {
         (Some(secret), Some(url)) => install(Some(Unsubscriber::new(&secret, &url, production)?)),
         (None, None) if !smtp_mode => install(None),
         _ => {
             return Err(
-                "CRM_UNSUBSCRIBE_SECRET and CRM_PUBLIC_URL are both required, and \
-                        required for CRM_MAIL_MODE=smtp: every message must carry an \
+                "CONTACT_RELATIONSHIP_MANAGEMENT_UNSUBSCRIBE_SECRET and CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_URL are both required, and \
+                        required for CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE=smtp: every message must carry an \
                         unsubscribe link"
                     .to_string(),
             );

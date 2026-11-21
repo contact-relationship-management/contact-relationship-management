@@ -3,7 +3,7 @@
 #
 #   scripts/ci-services.sh run all            # start them, run the stages, always stop them
 #   scripts/ci-services.sh run test-db
-#   CRM_CI_PLATFORM=linux/amd64 scripts/ci-services.sh run test-db   # as CI's architecture
+#   CONTACT_RELATIONSHIP_MANAGEMENT_CI_PLATFORM=linux/amd64 scripts/ci-services.sh run test-db   # as CI's architecture
 #
 # The images and health checks are the ones in compose.test.yaml, pinned by digest. Podman is used
 # when it answers, and docker otherwise. Ports come from the system, so this cannot land on another
@@ -47,14 +47,14 @@ find_engine
 TEST_DB_PORT="$(free_port)"
 TEST_REDIS_PORT="$(free_port)"
 export TEST_DB_PORT TEST_REDIS_PORT
-if [[ -n "${CRM_CI_PLATFORM:-}" ]]; then
-  export DOCKER_DEFAULT_PLATFORM="${CRM_CI_PLATFORM}"
+if [[ -n "${CONTACT_RELATIONSHIP_MANAGEMENT_CI_PLATFORM:-}" ]]; then
+  export DOCKER_DEFAULT_PLATFORM="${CONTACT_RELATIONSHIP_MANAGEMENT_CI_PLATFORM}"
 fi
 
 trap stop_services EXIT
 compose up --detach --wait >&2
 
-export PG_HOST=localhost PG_PORT="${TEST_DB_PORT}" PG_USER=loco PG_PASSWORD=loco
+export PG_HOST=localhost PG_PORT="${TEST_DB_PORT}" PG_USER=postgres PG_PASSWORD=postgres
 export REDIS_HOST=localhost REDIS_PORT="${TEST_REDIS_PORT}"
 
 status=0

@@ -3,7 +3,9 @@
 
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
-const API = process.env.CRM_API_URL ?? "http://localhost:5160";
+const API =
+  process.env.CONTACT_RELATIONSHIP_MANAGEMENT_API_URL ??
+  "http://localhost:5160";
 
 async function create(request: APIRequestContext, path: string, data: unknown) {
   const response = await request.post(`${API}/api/${path}`, { data });

@@ -1,6 +1,6 @@
 //! A Keycloak access token through the real blanket guard: authentication
 //! (`request_claims`), the role map onto ABAC attributes, and the ABAC
-//! decision, with `CRM_REQUIRE_AUTH` on. DB-free: a local OIDC
+//! decision, with `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` on. DB-free: a local OIDC
 //! provider (`authentication_verifier::test_idp`) stands in for Keycloak.
 //!
 //! One test function because the Keycloak verifier lives in a process-wide
@@ -38,11 +38,17 @@ async fn a_keycloak_token_is_authenticated_and_authorized_through_the_real_guard
     contact_relationship_management::app::install_tls_provider();
     let idp = TestIdp::start().await;
     let mut env = ScopedEnv::default();
-    env.set("CRM_KEYCLOAK_URL", &idp.base_url);
-    env.set("CRM_KEYCLOAK_REALM", "mxi");
-    env.set("CRM_KEYCLOAK_AUDIENCES", "mxi-api");
     env.set(
-        "CRM_KEYCLOAK_ROLE_MAP",
+        "CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_URL",
+        &idp.base_url,
+    );
+    env.set("CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_REALM", "mxi");
+    env.set(
+        "CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_AUDIENCES",
+        "mxi-api",
+    );
+    env.set(
+        "CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_ROLE_MAP",
         &json!({ "editor": { "access": ["write"] }, "root": { "access": ["admin"] } }).to_string(),
     );
     auth::init().await;

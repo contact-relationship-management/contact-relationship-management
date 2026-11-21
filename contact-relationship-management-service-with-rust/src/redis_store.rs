@@ -1,4 +1,4 @@
-//! Shared counters in Redis (the same `CRM_REDIS_URL` the response cache uses), so
+//! Shared counters in Redis (the same `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL` the response cache uses), so
 //! the rate limit and failed-authentication lockout count across replicas
 //! rather than per process. Unset URL means no shared state: callers fall
 //! back to the in-process counters in [`crate::rate_limit`].
@@ -21,7 +21,7 @@ pub fn set_global(shared: Shared) {
     let _ = GLOBAL.set(shared);
 }
 
-/// The process-wide handle, if `CRM_REDIS_URL` is set.
+/// The process-wide handle, if `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL` is set.
 #[must_use]
 pub fn global() -> Option<&'static Shared> {
     GLOBAL.get()
@@ -36,7 +36,7 @@ pub struct Shared {
 }
 
 impl Shared {
-    /// Connect using `CRM_REDIS_URL`; `None` when it is unset or empty.
+    /// Connect using `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL`; `None` when it is unset or empty.
     ///
     /// # Errors
     ///
@@ -151,12 +151,12 @@ impl Shared {
 mod tests {
     use super::*;
 
-    /// Needs a Redis on `CRM_REDIS_URL` (`compose.test.yaml` provides one).
+    /// Needs a Redis on `CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL` (`compose.test.yaml` provides one).
     #[tokio::test]
-    #[ignore = "requires Redis on CRM_REDIS_URL"]
+    #[ignore = "requires Redis on CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL"]
     async fn counts_in_a_fixed_window_and_peek_does_not_count() {
         let Some(shared) = Shared::from_env().await.unwrap() else {
-            eprintln!("CRM_REDIS_URL unset; skipping");
+            eprintln!("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL unset; skipping");
             return;
         };
         let key = format!("crm:test:{}", uuid::Uuid::new_v4());
@@ -171,10 +171,10 @@ mod tests {
     /// A published grant is visible through `grants`, is never shortened by
     /// an earlier expiry, and an expired one is not stored.
     #[tokio::test]
-    #[ignore = "requires Redis on CRM_REDIS_URL"]
+    #[ignore = "requires Redis on CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL"]
     async fn grants_are_published_and_never_shortened() {
         let Some(shared) = Shared::from_env().await.unwrap() else {
-            eprintln!("CRM_REDIS_URL unset; skipping");
+            eprintln!("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL unset; skipping");
             return;
         };
         let subject = format!("user-{}", uuid::Uuid::new_v4());
@@ -200,13 +200,13 @@ mod tests {
     /// limit is spent, and a lockout after the allowed `401`s, all in axa's shape. Named for the
     /// `redis_store` filter `test-db` runs against Redis.
     #[tokio::test]
-    #[ignore = "requires Redis on CRM_REDIS_URL"]
+    #[ignore = "requires Redis on CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL"]
     async fn the_abuse_guard_counts_in_redis() {
         use axum::{Router, body::Body, http::Request, http::StatusCode, routing::get};
         use tower::ServiceExt;
 
         let Some(shared) = Shared::from_env().await.unwrap() else {
-            eprintln!("CRM_REDIS_URL unset; skipping");
+            eprintln!("CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL unset; skipping");
             return;
         };
         let app = |guard: crate::rate_limit::Guard| {

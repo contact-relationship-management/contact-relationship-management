@@ -33,11 +33,11 @@ All four are under `/api/bridges`, which is admin only
 (`src/auth/policy.rs`, `ADMIN_ONLY_PREFIXES`). The one exception is
 `/api/bridges/wpm/events`, which needs no session or bearer token, because the
 event's signature authenticates it. The admin rule is enforced only when
-`CRM_REQUIRE_AUTH` is on. It is off by default, so the `curl` calls below need no
+`CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` is on. It is off by default, so the `curl` calls below need no
 token in development.
 
 The three outbound bridges start in **stub mode**. Unless
-`CRM_UPSTREAM_MODE=http` is set, nothing leaves the process, and the answer has
+`CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http` is set, nothing leaves the process, and the answer has
 `"mode": "stub"` and says what would have been sent. The events route does not
 depend on the mode.
 
@@ -52,13 +52,13 @@ The service reads these settings from the environment once, on first use
 
 | Variable | Used by | Meaning |
 |---|---|---|
-| `CRM_UPSTREAM_MODE` | PPM, teams import, employment check | `http` (any case) sends real requests. Anything else, or unset, means stub mode |
-| `CRM_PPM_SERVICE_URL` | PPM bridge | The PPM base URL. The CRM posts `{title, pitch, tags}` to `{url}/api/ideas` |
-| `CRM_PPM_SERVICE_TOKEN` | PPM bridge | Optional bearer token, sent only to PPM (CRM-R87, CRM-T153) |
-| `CRM_WORKER_SERVICE_URL` | teams import, employment check | The WPM base URL. The CRM calls `GET {url}/api/workers?status=active&fields=pid,department,person_ref&limit=200&offset=…` (a WPM without `fields`, from before WPM-R216, answers `422` and the import fails) and `POST {url}/api/bridges/overlap` |
-| `CRM_WORKER_SERVICE_TOKEN` | teams import, employment check | Bearer token, sent only to WPM. The overlap check needs it to belong to an HR identity of the organization below (CRM-D16) |
-| `CRM_WPM_ORGANIZATION_REF` | employment check | The `organization:` URN to ask WPM about. A value that is not an `organization:` URN counts as unset |
-| `CRM_WPM_WEBHOOK_SECRET` | events | The shared HMAC secret, at least 32 characters (a shorter value counts as unset). While it is unset, the events route answers `404`. Set the same value as WPM's `WPM_WEBHOOK_SECRET_<NAME>` for the subscription |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE` | PPM, teams import, employment check | `http` (any case) sends real requests. Anything else, or unset, means stub mode |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL` | PPM bridge | The PPM base URL. The CRM posts `{title, pitch, tags}` to `{url}/api/ideas` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN` | PPM bridge | Optional bearer token, sent only to PPM (CRM-R87, CRM-T153) |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL` | teams import, employment check | The WPM base URL. The CRM calls `GET {url}/api/workers?status=active&fields=pid,department,person_ref&limit=200&offset=…` (a WPM without `fields`, from before WPM-R216, answers `422` and the import fails) and `POST {url}/api/bridges/overlap` |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` | teams import, employment check | Bearer token, sent only to WPM. The overlap check needs it to belong to an HR identity of the organization below (CRM-D16) |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` | employment check | The `organization:` URN to ask WPM about. A value that is not an `organization:` URN counts as unset |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` | events | The shared HMAC secret, at least 32 characters (a shorter value counts as unset). While it is unset, the events route answers `404`. Set the same value as WPM's `WPM_WEBHOOK_SECRET_<NAME>` for the subscription |
 
 How the tokens are sent (`src/clients.rs`, `with_credential`):
 
@@ -75,7 +75,7 @@ for the database. Then:
 
 ```bash
 cd contact-relationship-management-service-with-rust
-export CRM_WPM_WEBHOOK_SECRET='dev-only-wpm-webhook-secret-0123456789'   # 38 characters
+export CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET='dev-only-wpm-webhook-secret-0123456789'   # 38 characters
 cargo run -- start
 ```
 
@@ -128,7 +128,7 @@ The body is `{id, kind, occurred_at, subject, data}`:
 Sign and send a hire with `openssl` and `curl`:
 
 ```bash
-SECRET="$CRM_WPM_WEBHOOK_SECRET"
+SECRET="$CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET"
 
 wpm_send() {   # usage: wpm_send '<json body>'
   local body="$1" t sig
@@ -193,14 +193,14 @@ person and organization. Events are compared by `occurred_at`, then by
 that arrives later wins. The CRM records this order only while the person is a
 contact. The retention sweep (`POST /api/retention/sweep`) prunes a stored
 leave once it is older than the event retention horizon
-(`CRM_EVENT_RETENTION_DAYS`, default 30 days, at least 7). An event that arrives
+(`CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`, default 30 days, at least 7). An event that arrives
 after that is not ordered.
 
 ### Answers
 
 | Status | When |
 |---|---|
-| `404` | `CRM_WPM_WEBHOOK_SECRET` is unset or shorter than 32 characters |
+| `404` | `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` is unset or shorter than 32 characters |
 | `401` | `x-wpm-signature` is missing, wrong, malformed, or more than 300 seconds old or ahead |
 | `400` | The body is not an event (not JSON, no `kind`, or an `id` that is empty or longer than 100 characters) |
 | `413` | The body is over 16 KiB |
@@ -227,15 +227,15 @@ curl -sS -X POST "$CRM/api/bridges/wpm/employment-check"
 To ask WPM, restart the service with:
 
 ```bash
-export CRM_UPSTREAM_MODE=http
-export CRM_WORKER_SERVICE_URL=https://wpm.example.org          # http is allowed only to this machine
-export CRM_WORKER_SERVICE_TOKEN='<token of an HR identity of the organization in WPM>'
-export CRM_WPM_ORGANIZATION_REF='organization:3f0c2b1e-0000-4000-8000-0000000000aa'
+export CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE=http
+export CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL=https://wpm.example.org          # http is allowed only to this machine
+export CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN='<token of an HR identity of the organization in WPM>'
+export CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF='organization:3f0c2b1e-0000-4000-8000-0000000000aa'
 ```
 
 What the CRM sends (`clients::overlap_check`): `POST
-{CRM_WORKER_SERVICE_URL}/api/bridges/overlap` with
-`Authorization: Bearer $CRM_WORKER_SERVICE_TOKEN` and the body
+{CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL}/api/bridges/overlap` with
+`Authorization: Bearer $CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` and the body
 
 ```json
 {"organization_ref": "organization:…", "person_refs": ["person:…", "…"]}
@@ -252,7 +252,7 @@ What happens to the contacts:
   call, a refusal, or a bad answer is `502` and records nothing. A bad answer is
   one for another organization, with no `results`, with a reference that was not
   asked about, or with a reference answered twice. In `http` mode,
-  `CRM_WPM_ORGANIZATION_REF` unset is also `502`.
+  `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` unset is also `502`.
 - For each person WPM says is a worker today, every live contact with that
   reference is marked an employee of the organization from today. This works
   as a hire event does: marketing is paused, consent is unchanged, and the
@@ -269,7 +269,7 @@ The UI has a button for this check on `/quotas`, beside the teams import.
 
 ## 6. With authentication on
 
-With `CRM_REQUIRE_AUTH` on, the PPM bridge, the teams import and the employment
+With `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH` on, the PPM bridge, the teams import and the employment
 check need a bearer token that the ABAC policy allows to perform destructive
 actions. Under the built-in policy, that is `access=admin` or a service token.
 The events route stays public and is authenticated by its signature alone.

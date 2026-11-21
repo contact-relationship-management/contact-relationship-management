@@ -11,7 +11,7 @@ and add any the supplier uses for itself (support tooling, ticketing, monitoring
 | Redis | counters, break-glass grants, cached insight answers | cached answers | | | | |
 | File storage | attachments | attachments | | | | |
 | Backups and recovery copies | copies of the above | everything | | | | |
-| Mail provider or SMTP relay (`CRM_MAIL_MODE`) | messages to contacts | address, name, message | | | | |
+| Mail provider or SMTP relay (`CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE`) | messages to contacts | address, name, message | | | | |
 | Write-once storage for the audit chain head | tamper evidence | none: a hash | | | | |
 | Log storage | service and access logs | what the logs hold (see the runbook) | | | | |
 

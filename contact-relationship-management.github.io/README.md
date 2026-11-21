@@ -25,7 +25,7 @@ here; never work in the exported repository. The specification is
 | `/family-bridges/` | [`docs/tutorial-family-bridges.md`](../docs/tutorial-family-bridges.md) |
 | `/spec/` | [`spec/index.md`](../spec/index.md) |
 | `/locales/` | [`spec/locale/index.md`](../spec/locale/index.md), the locale status |
-| `/<locale>/for/` and `/<locale>/for/<slug>/` | the role briefs, [`locales/<locale>/for/<slug>/index.md`](../locales/) (11 locales, 11 roles) |
+| `/<locale>/for/` and `/<locale>/for/<slug>/` | the role briefs, [`locales/<locale>/for/<slug>/index.md`](../locales/) (16 locales, 11 roles) |
 
 A link between two of these documents stays on the site; a link to any other file in the repository goes to that
 file on GitHub. Raw HTML in the Markdown is shown as text. A brief's slug is in its locale's own script (Arabic,
