@@ -941,8 +941,57 @@ const ur: Record<Key, string> = {
   "footer.after": "یہ سائٹ ریپوزٹری ہی کی ایک ڈائریکٹری سے git subtree کے ذریعے برآمد کی جاتی ہے۔",
 };
 
+const da: Record<Key, string> = {
+  "nav.overview": "Oversigt",
+  "nav.tutorial": "Vejledning",
+  "nav.comparisons": "Sammenligninger",
+  "cta.tutorial": "Start vejledningen",
+  "cta.source": "Se kildekoden",
+  brand: "Contact Relationship Management",
+  translations: "Oversættelser:",
+  skip: "Gå til indholdet",
+  site: "Websted",
+  "nav.home": "Forside",
+  "nav.install": "Installation",
+  "nav.bridges": "Broer til familiens projekter",
+  "nav.spec": "Specifikation",
+  "nav.locales": "Landestandarder",
+  "nav.briefs": "Rolleoversigter",
+  theme: "Tema",
+  themeSystem: "Følg denne enhed",
+  "nav.privacy": "Privatlivserklæring",
+  textSize: "Tekststørrelse",
+  briefLanguage: "Sprog for denne oversigt",
+  language: "Sprog",
+  pages: "Sider",
+  repository: "Repositorium",
+  search: "Søg",
+  "search.input": "Søgeord",
+  "search.submit": "Søg",
+  "search.placeholder": "Søg i dokumentationen",
+  timeZone: "Tidszone",
+  share: "Del",
+  "share.email": "E-mail",
+  "share.copy": "Kopiér link",
+  "share.copied": "Kopieret",
+  "share.copyFailed": "Linket kunne ikke kopieres",
+  "search.prompt": "Brug søgeknappen øverst på siden for at indtaste et søgeord.",
+  "search.none": "Ingen side matcher.",
+  "search.count": "Sider fundet: {n}",
+  "search.failed": "Søgeindekset kunne ikke indlæses.",
+  allBriefs: "Alle rolleoversigter",
+  "briefs.lede":
+    "Én side for hver ledende rolle: hvad softwaren er, hvad den giver dig, hvad den ikke gør, og hvilke beslutninger der er dine. Brug sprogvælgeren øverst på siden for at se den samme oversigt i en anden landestandard.",
+  locale: "Landestandard:",
+  source: "Kilde:",
+  "readiness.estimate": "anslået parathed",
+  "footer.before": "Bygget ud fra dokumenterne i",
+  "footer.link": "repositoriet for Contact Relationship Management",
+  "footer.after": "Dette websted eksporteres fra en mappe i selve repositoriet med git subtree.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, de, es, fr, hi, id, ja, ko, nl, pt, ru, sv, sw, ur, vi, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, da, de, es, fr, hi, id, ja, ko, nl, pt, ru, sv, sw, ur, vi, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -1037,6 +1086,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Nhỏ",
     smaller: "Nhỏ hơn",
     smallest: "Nhỏ nhất",
+  },
+  da: {
+    largest: "Størst",
+    larger: "Større",
+    large: "Stor",
+    normal: "Normal",
+    small: "Lille",
+    smaller: "Mindre",
+    smallest: "Mindst",
   },
   de: {
     largest: "Am größten",

@@ -10,6 +10,7 @@
     "cy-001",
     "cy-ar",
     "cy-gb",
+    "da-001",
     "de-001",
     "de-at",
     "de-de",
@@ -62,6 +63,7 @@
     "cy-001",
     "cy-ar",
     "cy-gb",
+    "da-001",
     "de-001",
     "de-at",
     "de-de",
@@ -114,6 +116,7 @@
     "cy-001",
     "cy-ar",
     "cy-gb",
+    "da-001",
     "de-001",
     "de-at",
     "de-de",
@@ -160,6 +163,7 @@
     "bn-001",
     "bn-bd",
     "bn-in",
+    "da-001",
     "de-001",
     "de-at",
     "de-de",
@@ -697,6 +701,61 @@
     {
       "locale": "cy-gb",
       "slug": "profwr-diogelwch-annibynnol",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "da-001",
+      "slug": "administrerende-direktør",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "da-001",
+      "slug": "driftsdirektør",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "da-001",
+      "slug": "governance-risiko-compliance",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "da-001",
+      "slug": "it-direktør",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "da-001",
+      "slug": "juridisk-direktør",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "da-001",
+      "slug": "personaledirektør",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "da-001",
+      "slug": "risikodirektør",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "da-001",
+      "slug": "sikkerhedsdirektør",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "da-001",
+      "slug": "strategidirektør",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "da-001",
+      "slug": "teknologidirektør",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "da-001",
+      "slug": "uafhængig-sikkerhedstester",
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
     {

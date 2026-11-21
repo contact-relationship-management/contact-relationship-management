@@ -79,7 +79,7 @@ The repository has two sets of locales, for two different things, and they are n
 
 ## Known limits
 
-- Translations into Arabic, Bengali, Chinese, Dutch, French, German, Hindi, Indonesian, Japanese, Korean, Portuguese, Russian, Spanish, Swahili, Swedish, Urdu, Vietnamese and Welsh are machine-produced and
+- Translations into Arabic, Bengali, Chinese, Danish, Dutch, French, German, Hindi, Indonesian, Japanese, Korean, Portuguese, Russian, Spanish, Swahili, Swedish, Urdu, Vietnamese and Welsh are machine-produced and
   **unreviewed**. Legal, risk and compliance wording in particular needs a
   qualified native-speaking reviewer before anyone relies on it.
 - On 2026-11-21 `es-mx` (home, path to production, privacy notice, evaluation checklist, the eleven role briefs and the
@@ -140,6 +140,9 @@ The repository has two sets of locales, for two different things, and they are n
 - On 2026-11-21 `ur-001` (same pages as `pt-br`, and the site's own strings) was translated into Urdu by Claude. It is the
   only Urdu locale, and it is **unreviewed** by an Urdu speaker. It is written right to left, and its directory names are
   in Urdu script (`برائے`, `رازداری`, `جائزہ`, `پیداوار-کا-راستہ`, and the role names) and are found by `.locale-peer-id`.
+- On 2026-11-21 `da-001` (same pages as `de-de`, and the site's own strings) was translated into Danish by Claude. It is the
+  only Danish locale, and it is **unreviewed** by a Danish speaker. Its directory names are in Danish (`til`,
+  `privatliv`, `vurdering`, `vej-til-produktion`, and the role names) and are found by `.locale-peer-id`.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
 - On 2026-11-13 the "demo software" sentences on the locale home pages and in
