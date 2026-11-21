@@ -66,6 +66,9 @@ export function privacyRoute(locale: string | null): string {
   return locale && hasPrivacyPage(locale) ? `/${locale}/privacy/` : "/privacy/";
 }
 
+/** The locales with the evaluation checklist at `/<locale>/evaluate/` (`locales/<locale>/evaluate/index.md`). */
+export const EVALUATE_LOCALES: readonly string[] = index.evaluate;
+
 /** The `*-001` home pages, for the "Translations:" sentence on a hero. */
 export const TRANSLATIONS: readonly string[] = LOCALE_HOMES.filter((l) => l.endsWith("-001"));
 

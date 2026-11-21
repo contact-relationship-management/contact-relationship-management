@@ -31,7 +31,6 @@ const DOCS = [
   "spec/index.md",
   "spec/locale/index.md",
   "docs/privacy-notice.md",
-  "locales/en-001/evaluate/index.md",
 ];
 
 // The comparison pages, /compare/<product>/.
@@ -60,7 +59,7 @@ function sectionDir(locale, name) {
 /** The repository file behind a canonical `locales/<locale>/<section>/...` path. */
 /** @param {string} path */
 function realPath(path) {
-  const m = /^locales\/([^/]+)\/(for|path-to-production|privacy)\/(.*)$/.exec(path);
+  const m = /^locales\/([^/]+)\/(for|path-to-production|privacy|evaluate)\/(.*)$/.exec(path);
   if (!m) return join(ROOT, path);
   const [, locale = "", section = "", rest = ""] = m;
   return join(sectionDir(locale, section) ?? join(ROOT, "locales", locale, section), rest);
@@ -108,6 +107,13 @@ function privacyPages() {
     .filter((locale) => existsSync(join(sectionDir(locale, "privacy") ?? "", "index.md")));
 }
 
+// The evaluation checklist: locales/<locale>/evaluate/index.md, in the locales that have one.
+function evaluatePages() {
+  return readdirSync(join(ROOT, "locales"))
+    .sort()
+    .filter((locale) => existsSync(join(sectionDir(locale, "evaluate") ?? "", "index.md")));
+}
+
 /** @param {unknown} value */
 const json = (value) => JSON.stringify(value, null, 2) + "\n";
 
@@ -116,9 +122,10 @@ function render() {
   const homeLocales = homes();
   const production = productionPages();
   const privacy = privacyPages();
+  const evaluate = evaluatePages();
   /** @type {Record<string, string>} */
   const files = {};
-  for (const p of [...DOCS, ...COMPARE, ...homeLocales.map((l) => `locales/${l}/index.md`), ...production.map((l) => `locales/${l}/path-to-production/index.md`), ...privacy.map((l) => `locales/${l}/privacy/index.md`), ...list.map((b) => b.path)]) files[p] = readFileSync(realPath(p), "utf8");
+  for (const p of [...DOCS, ...COMPARE, ...homeLocales.map((l) => `locales/${l}/index.md`), ...production.map((l) => `locales/${l}/path-to-production/index.md`), ...privacy.map((l) => `locales/${l}/privacy/index.md`), ...evaluate.map((l) => `locales/${l}/evaluate/index.md`), ...list.map((b) => b.path)]) files[p] = readFileSync(realPath(p), "utf8");
   return {
     docs: json({ generated: "by scripts/sync-content.mjs from the monorepo; do not edit by hand", files }),
     briefs: json({
@@ -126,6 +133,7 @@ function render() {
       homes: homeLocales,
       production,
       privacy,
+      evaluate,
       compare: COMPARE.map((p) => p.replace(/^docs\/compare\/|\.md$/g, "")),
       briefs: list.map(({ locale, slug, peer }) => ({ locale, slug, peer })),
     }),

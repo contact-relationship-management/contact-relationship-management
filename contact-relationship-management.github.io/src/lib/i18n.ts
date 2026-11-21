@@ -317,3 +317,21 @@ export function languageOf(locale: string | null): string {
 export function t(locale: string | null, key: Key): string {
   return TABLES[languageOf(locale)]![key];
 }
+
+/** The text-size steps (`largest` … `smallest`) in the languages that have them; the picker's own English otherwise. */
+const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  es: {
+    largest: "Muy muy grande",
+    larger: "Muy grande",
+    large: "Grande",
+    normal: "Normal",
+    small: "Pequeño",
+    smaller: "Muy pequeño",
+    smallest: "Muy muy pequeño",
+  },
+};
+
+/** The label of a text-size step in the language of `locale`, or undefined to keep the picker's default. */
+export function sizeLabel(locale: string | null, size: string): string | undefined {
+  return SIZES[languageOf(locale)]?.[size];
+}

@@ -63,6 +63,12 @@
     "zh-cn",
     "zh-th"
   ],
+  "evaluate": [
+    "en-001",
+    "es-001",
+    "es-es",
+    "es-mx"
+  ],
   "compare": [
     "espocrm",
     "hubspot",

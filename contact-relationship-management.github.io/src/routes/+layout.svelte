@@ -8,7 +8,7 @@
   import type { ShareTarget } from "@lilydesignsystem/svelte-share-picker";
   import { href } from "#lib/href.js";
   import { keptChoice } from "#lib/kept-choice.js";
-  import { t, languageOf } from "#lib/i18n.js";
+  import { t, languageOf, sizeLabel } from "#lib/i18n.js";
   import {
     BRIEF_LOCALES,
     DEFAULT_BRIEF_LOCALE,
@@ -170,7 +170,11 @@
       locales={[...BRIEF_LOCALES]}
       localeProps={{ value: pickedLocale, localeLabels: LOCALE_LABELS, applyDir: false, onChange: switchLocale }}
       timeZoneProps={{ locale: htmlLang, storageKey: "", ...timeZone }}
-      textSizeProps={{ storageKey: "", ...textSize }}
+      textSizeProps={{
+        storageKey: "",
+        labelFor: (size: string) => sizeLabel(locale, size) ?? size.charAt(0).toUpperCase() + size.slice(1),
+        ...textSize,
+      }}
       {shareTargets}
       shareProps={{
         title: pageTitle,

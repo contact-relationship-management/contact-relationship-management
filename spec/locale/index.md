@@ -79,9 +79,15 @@ The repository has two sets of locales, for two different things, and they are n
 
 ## Known limits
 
-- Translations into Arabic, Chinese, Hindi and Welsh are machine-produced and
+- Translations into Arabic, Chinese, Hindi, Spanish and Welsh are machine-produced and
   **unreviewed**. Legal, risk and compliance wording in particular needs a
   qualified native-speaking reviewer before anyone relies on it.
+- On 2026-11-21 `es-mx` (home, path to production, privacy notice, evaluation checklist, the eleven role briefs and the
+  site's own strings) was translated into Spanish by Claude, and `es-001` and `es-es` were made from it with light
+  edits (postal address, "copia de seguridad", "incidencias"). All three are **unreviewed** by a Spanish speaker;
+  `es-es` in particular has had no check for Peninsular usage beyond those edits. Their section directories are in
+  Spanish (`para`, `ruta-a-producción`, `privacidad`, `evaluar`) and are found by `.locale-peer-id`; the site's URLs
+  keep the English names.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
 - On 2026-11-13 the "demo software" sentences on the locale home pages and in
