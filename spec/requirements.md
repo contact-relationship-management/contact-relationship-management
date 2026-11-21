@@ -1674,16 +1674,17 @@ multi-factor authentication, so that a leaver loses access when we disable them 
 control.*
 
 - A deployment can be configured so the **only** human sign-in is federated: OpenID Connect today (Keycloak and the family
-  authentication service), with Microsoft Entra ID as the example's provider; SAML 2.0 where the buyer requires it. The
-  magic-link sign-in can be turned off, and production refuses to start when it is on and federation is required.
+  authentication service), with Microsoft Entra ID as the example's provider. OIDC only: SAML 2.0 is not built until a
+  customer needs it (CRM-D27). The magic-link sign-in can be turned off, and production refuses to start when it is on
+  and federation is required.
 - The service can refuse a session whose token does not show MFA (an `amr` or `acr` the deployer names).
 - **No built-in or vendor account** exists in any build: no default administrator, no shared support account, no
   password. A test fails if a migration, seed or image creates a principal outside the demo.
 - Roles come from the customer's directory (group or role claims mapped to the CRM's personas), so the customer assigns
   them.
-- There today: OIDC through Keycloak behind a feature; production refuses to start without authentication. Not built:
-  SAML 2.0; an MFA check on the claim; turning magic links off; mapping directory groups to personas; a test that no
-  principal is created.
+- There today: OIDC through Keycloak behind a feature; production refuses to start without authentication. Not built: an
+  MFA check on the claim; turning magic links off; mapping directory groups to personas; a test that no principal is
+  created.
 
 ## CRM-R101 — Each role sees only the sensitive fields it needs
 

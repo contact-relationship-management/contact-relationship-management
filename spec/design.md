@@ -547,3 +547,21 @@ authentication or `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET` is: otherwise 
 who remembers to turn it on. A deployment upgrading from before this stops until it sets the name; the first start with
 it then claims the database. The check catches a service pointed at the wrong database; it does not separate file stores, Redis or
 keys, which the [operations runbook](compliance/operations-runbook.md) asks the supplier to give each customer.
+
+## CRM-D27 — Sign-in is OIDC only; SAML 2.0 waits for a customer who needs it
+
+*Decided 2026-11-20 by the owner ("stay OIDC-only, not SAML, until a customer needs it"), for CRM-R100.*
+
+A federated sign-in uses OpenID Connect and nothing else. SAML 2.0 is not built, and is not planned until a customer
+needs it.
+
+- **Why OIDC is enough today.** The identity providers buyers use offer it, Microsoft Entra ID among them, so a buyer
+  on Entra (NHS Wales's provider in the worked example) can connect over OIDC. The CRM already accepts OIDC tokens
+  through Keycloak.
+- **Why not SAML now.** SAML means parsing and verifying signed XML, a long-standing source of authentication bugs
+  (signature wrapping, canonicalisation, entity expansion), and a new dependency to review and keep patched. Building it
+  before anyone needs it adds that attack surface for no user.
+- **What would change it.** A customer, or a buyer's tender, that requires SAML, or uses an identity provider without
+  OIDC. Then SAML is a task of its own, with its own threat model and tests, and this decision is revised.
+- **What the supplier says meanwhile.** The assurance pack and CRM-R100 say sign-in is OIDC only, so a buyer that
+  needs SAML learns it at the start of an assessment, not at go-live.

@@ -2467,7 +2467,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       NIST and ISO references on the two new control rows are not yet read; no one outside the project has read the pack.
 - [ ] CRM-T277 **Federated sign-in only, with MFA (CRM-R100).** A setting that turns magic links off and makes
       production refuse to start without federation; an MFA check on `amr`/`acr`; directory groups mapped to personas; a
-      test that no migration, seed or image creates a principal outside the demo. SAML 2.0 is a separate decision. (L)
+      test that no migration, seed or image creates a principal outside the demo. OIDC only: SAML 2.0 waits for a customer who needs it (CRM-D27). (L)
 - [ ] CRM-T278 **The persona matrix over every route (CRM-R101).** Expected answers per persona and sensitive field,
       checked through reads, lists, search, exports, reports and the timeline; masking of ticket and activity text; a
       support persona with no sensitive fields. (L)
