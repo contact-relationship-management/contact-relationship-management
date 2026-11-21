@@ -5,12 +5,12 @@
 ## The CRM's own licence
 
 Every package in this repository (the service, the domain crate, the matcher and the UI) is offered under
-`MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only`, at the user's choice ([LICENSE.md](../../../LICENSE.md)).
+`MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR OGL-UK-3.0 OR CC-BY-NC-SA-4.0`, at the user's choice ([LICENSE.md](../../../LICENSE.md)).
 
-- **Hosting is allowed.** Each of the five allows use and modification for any purpose, commercial hosting included.
+- **Hosting is allowed.** Each of the first six allows use and modification for any purpose, commercial hosting included. `CC-BY-NC-SA-4.0` allows non-commercial use only, so a commercial host chooses another option.
 - **None asks a hosted service to publish its source.** No package is under the AGPL or another licence whose duties
   start when software is offered over a network. The GPL options attach duties to *distributing* copies, and a supplier
-  that only hosts can choose MIT, Apache-2.0 or BSD-3-Clause instead.
+  that only hosts can choose MIT, Apache-2.0, BSD-3-Clause or OGL-UK-3.0 instead.
 - **Configuration and data are never part of the licensed work.** A customer's settings, keys, records and templates are
   the customer's, whichever option is chosen.
 

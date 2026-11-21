@@ -7,7 +7,7 @@ EspoCRM is a free, open-source CRM written in PHP. Contact Relationship Manageme
 | | EspoCRM | Contact Relationship Management |
 | --- | --- | --- |
 | Category | Free, open-source CRM platform | Open-source demonstration software, driven by its specification |
-| Licence | GNU AGPLv3 | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only or GPL-3.0-only, at the user's option |
+| Licence | GNU AGPLv3 | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-NC-SA-4.0, at the user's option |
 | Hosting | Self-hosted by script, by hand or with Docker | Self-hosted: a Rust service, a Svelte interface and PostgreSQL |
 | Focus | Leads, contacts, sales, marketing and support cases | Sales, marketing, support and analytics, with recorded consent |
 

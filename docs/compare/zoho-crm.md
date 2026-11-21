@@ -7,7 +7,7 @@ Zoho CRM is a commercial CRM with a free edition. Contact Relationship Managemen
 | | Zoho CRM | Contact Relationship Management |
 | --- | --- | --- |
 | Category | CRM combining automation with an accessible interface | Open-source demonstration software, driven by its specification |
-| Licence | Commercial, with a free edition for a small number of users | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only or GPL-3.0-only, at the user's option |
+| Licence | Commercial, with a free edition for a small number of users | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-NC-SA-4.0, at the user's option |
 | Hosting | Hosted by Zoho | Self-hosted: a Rust service, a Svelte interface and PostgreSQL |
 | Focus | Sales automation, CPQ, forecasting and multichannel engagement | Sales, marketing, support and analytics, with recorded consent |
 

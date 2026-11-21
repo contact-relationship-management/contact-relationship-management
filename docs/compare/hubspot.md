@@ -7,7 +7,7 @@ HubSpot is a commercial CRM platform with a free tier. Contact Relationship Mana
 | | HubSpot | Contact Relationship Management |
 | --- | --- | --- |
 | Category | CRM that unifies customer data on one platform, with paid hubs | Open-source demonstration software, driven by its specification |
-| Licence | Commercial, with a free tier and paid editions | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only or GPL-3.0-only, at the user's option |
+| Licence | Commercial, with a free tier and paid editions | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-NC-SA-4.0, at the user's option |
 | Hosting | Browser-based, with no installation | Self-hosted: a Rust service, a Svelte interface and PostgreSQL |
 | Focus | Marketing, sales, service, content, data and revenue hubs | Sales, marketing, support and analytics, with recorded consent |
 

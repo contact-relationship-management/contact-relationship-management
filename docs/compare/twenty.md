@@ -7,7 +7,7 @@ Twenty is an open-source CRM with a hosted option. Contact Relationship Manageme
 | | Twenty | Contact Relationship Management |
 | --- | --- | --- |
 | Category | Open-source CRM, described by its authors as "the open alternative to Salesforce, designed for AI" | Open-source demonstration software, driven by its specification |
-| Licence | Mostly AGPLv3, with some commercially licensed files and some MIT packages | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only or GPL-3.0-only, at the user's option |
+| Licence | Mostly AGPLv3, with some commercially licensed files and some MIT packages | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-NC-SA-4.0, at the user's option |
 | Hosting | Hosted at twenty.com, or self-hosted with Docker Compose | Self-hosted: a Rust service, a Svelte interface and PostgreSQL |
 | Focus | CRM whose objects, views, workflows and agents can be extended as code | Sales, marketing, support and analytics, with recorded consent |
 
@@ -20,7 +20,7 @@ Twenty is an open-source CRM with a hosted option. Contact Relationship Manageme
 ## Where this project differs
 
 - The specification is the single source of truth.
-- Permissive licences are available: MIT, Apache-2.0 or BSD-3-Clause, as well as GPL.
+- Permissive licences are available: MIT, Apache-2.0, BSD-3-Clause or OGL-UK-3.0, as well as GPL.
 - Stores a reference to a person, not a copy of their details, and requires recorded consent.
 
 ## Suitability
