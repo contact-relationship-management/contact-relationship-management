@@ -331,7 +331,7 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   },
 };
 
-/** The label of a text-size step in the language of `locale`, or undefined to keep the picker's default. */
-export function sizeLabel(locale: string | null, size: string): string | undefined {
-  return SIZES[languageOf(locale)]?.[size];
+/** The labels of the text-size steps in the language of `locale`; empty keeps the picker's own English. */
+export function sizeLabels(locale: string | null): Readonly<Record<string, string>> {
+  return SIZES[languageOf(locale)] ?? {};
 }
