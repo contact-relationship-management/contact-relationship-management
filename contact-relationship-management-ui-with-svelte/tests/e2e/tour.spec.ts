@@ -1077,14 +1077,14 @@ test.describe("export, undo and search", () => {
       "placeholder",
       "Ihre Organisation",
     );
-    // Japanese has no built-in fallbacks: the page says so, and saving needs the template's own.
-    await page.getByTestId("template-language").fill("ja");
+    // Turkish has no built-in fallbacks: the page says so, and saving needs the template's own.
+    await page.getByTestId("template-language").fill("tr");
     await expect(page.getByTestId("template-no-built-in")).toBeVisible();
     await expect(page.getByTestId("preview-problems")).toContainText(
       "fallbacks/account_name",
     );
-    await page.getByTestId("fallback-account_name").fill("御社");
-    await expect(page.getByTestId("preview-subject")).toHaveText("御社");
+    await page.getByTestId("fallback-account_name").fill("Şirketiniz");
+    await expect(page.getByTestId("preview-subject")).toHaveText("Şirketiniz");
     await expect(page.getByTestId("preview-problems")).toHaveCount(0);
   });
 
