@@ -93,8 +93,8 @@ export default {
   "dash.overdue": "Forfaldne opfølgninger",
   "demo.title": "Guidet rundvisning:",
   "demo.body":
-    "alt, hvad du ser, er fiktivt. Ændringer gemmes kun i hukommelsen og nulstilles, når du logger ind på rundvisningen igen.",
-  "signin.demo": "Vil du have rundvisningen? Log ind som",
+    "alt, hvad De ser, er fiktivt. Ændringer gemmes kun i hukommelsen og nulstilles, når De logger ind på rundvisningen igen.",
+  "signin.demo": "Vil De have rundvisningen? Log ind som",
   "nav.pages": "Sider",
   "search.label": "Søg i CRM",
   "search.input": "Søgeord",
@@ -199,7 +199,7 @@ export default {
   "contact.duplicates": "Mulige dubletter",
   "contact.duplicatesNone": "Ingen sandsynlige dubletter.",
   "contact.duplicatesHint":
-    "Kun vejledende: intet ændres, før du vælger Flet. Sammenlignet på navn, stillingsbetegnelse og arbejdsgiver; e-mailadresser kontrolleres for de bedste få.",
+    "Kun vejledende: intet ændres, før De vælger Flet. Sammenlignet på navn, stillingsbetegnelse og arbejdsgiver; e-mailadresser kontrolleres for de bedste få.",
   "contact.dupMatch": "Sandsynligvis samme person",
   "contact.dupReview": "Værd at se på",
   "contact.dupCertain": "Samme personpost",
@@ -262,7 +262,7 @@ export default {
   "footer.privacy": "Privatlivspolitik",
   "breakGlass.title": "Nødlæseadgang",
   "breakGlass.intro":
-    "Ophæver maskering kun ved læsning og kun for en begrænset tid. Din begrundelse registreres og gennemgås senere af en anden.",
+    "Ophæver maskering kun ved læsning og kun for en begrænset tid. Deres begrundelse registreres og gennemgås senere af en anden.",
   "breakGlass.reason": "Begrundelse (mindst 20 tegn)",
   "breakGlass.minutes": "Minutter",
   "breakGlass.request": "Anmod om adgang",
@@ -303,16 +303,16 @@ export default {
   "ticket.breached": "Overskredet",
   "help.title": "Hjælpecenter",
   "help.hint":
-    "Søg i de artikler, vores team har udgivet. Du behøver ikke at logge ind, og det, du søger efter, gemmes ikke.",
+    "Søg i de artikler, vores team har udgivet. De behøver ikke at logge ind, og det, De søger efter, gemmes ikke.",
   "help.search": "Søg",
   "help.run": "Søg",
   "help.none": "Ingen artikel matcher. Prøv andre ord.",
   "help.missing": "Den artikel er ikke tilgængelig.",
-  "help.helpful": "Besvarede dette dit spørgsmål?",
+  "help.helpful": "Besvarede dette Deres spørgsmål?",
   "help.yes": "Ja",
   "help.no": "Nej",
   "help.thanks":
-    "Tak. Dit svar bliver talt med, og ingen får at vide, hvem der gav det.",
+    "Tak. Deres svar bliver talt med, og ingen får at vide, hvem der gav det.",
   "kb.title": "Offentligt hjælpecenter",
   "kb.days": "dage",
   "kb.views": "Artikelvisninger",
@@ -335,11 +335,11 @@ export default {
   "share.mastodon": "Del på Mastodon",
   "splash.hero.secondary": "Se, hvad der er indeni",
   "splash.benefits.title": "Hvorfor teams vælger det",
-  "splash.features.title": "Det kan du gøre",
+  "splash.features.title": "Det kan De gøre",
   "splash.trust.title": "Bygget på tillid",
   "splash.trust.1.title": "Adgangskodefri login",
   "splash.trust.1.body":
-    "Et magisk link sendt til din e-mail: ingen adgangskode, der kan lække eller genbruges.",
+    "Et magisk link sendt til Deres e-mail: ingen adgangskode, der kan lække eller genbruges.",
   "splash.trust.2.title": "Attributbaserede tilladelser",
   "splash.trust.2.body":
     "Finkornede regler afgør, hvem der må læse, skrive, flette eller slette.",
@@ -348,16 +348,16 @@ export default {
     "En historik, der kun kan tilføjes til, registrerer hver ændring og hvem der foretog den.",
   "splash.trust.4.title": "Privatlivskontroller",
   "splash.trust.4.body":
-    "Følsomme oplysninger maskeres, medmindre du har ret til at se dem.",
+    "Følsomme oplysninger maskeres, medmindre De har ret til at se dem.",
   "splash.trust.5.title": "Åbne standarder",
   "splash.trust.5.body":
     "REST med OpenAPI og HL7 FHIR, hvor sundhedssystemer har brug for det.",
-  "splash.trust.6.title": "Taler dit sprog",
+  "splash.trust.6.title": "Taler Deres sprog",
   "splash.trust.6.body":
     "Arabisk, bengalsk, kinesisk, dansk, nederlandsk, engelsk, fransk, tysk, hindi, indonesisk, italiensk, japansk, koreansk, portugisisk, russisk, spansk, swahili, svensk, urdu, vietnamesisk og walisisk.",
   "splash.cta.title": "Klar til at komme i gang?",
   "splash.cta.body":
-    "Log ind med et magisk link sendt til din e-mail. Ingen adgangskode nødvendig.",
+    "Log ind med et magisk link sendt til Deres e-mail. Ingen adgangskode nødvendig.",
   "brand.tagline": "Alle kunderelationer samlet ét sted",
   "nav.toggle": "Skift navigation",
   "nav.theme": "Tema",
@@ -373,7 +373,7 @@ export default {
     "Markedsføring går kun til kontakter, der har sagt ja, og et tilbagetrukket samtykke træder i kraft med det samme.",
   "splash.benefits.3.title": "Fokus på det, der betyder noget",
   "splash.benefits.3.body":
-    "Leadscores viser deres regnestykke, så dit team ved, hvorfor nogen er et opkald værd.",
+    "Leadscores viser deres regnestykke, så Deres team ved, hvorfor nogen er et opkald værd.",
   "splash.benefits.4.title": "Ærlige tal",
   "splash.benefits.4.body":
     "Gevinstrater viser antallet bag procenten, og manglende data vises som manglende.",
@@ -408,15 +408,15 @@ export default {
   "tour.open": "Åbn denne skærm",
   "tour.top": "Tilbage til toppen",
   "tour.begin": "Start rundvisningen",
-  "tour.start.title": "Før du begynder",
+  "tour.start.title": "Før De begynder",
   "tour.start.summary":
-    "Du skal have en konto for at arbejde med rigtige data. Det tager under et minut at logge ind og kræver ingen adgangskode.",
+    "De skal have en konto for at arbejde med rigtige data. Det tager under et minut at logge ind og kræver ingen adgangskode.",
   "tour.start.step.1":
-    "Vælg Log ind øverst til højre, og indtast din e-mailadresse.",
+    "Vælg Log ind øverst til højre, og indtast Deres e-mailadresse.",
   "tour.start.step.2":
-    "Åbn det magiske link, vi sender dig på e-mail. Det virker én gang og udløber hurtigt.",
+    "Åbn det magiske link, vi sender Dem på e-mail. Det virker én gang og udløber hurtigt.",
   "tour.start.step.3":
-    "Du vender tilbage til appen som logget ind, uden noget at huske eller nulstille.",
+    "De vender tilbage til appen som logget ind, uden noget at huske eller nulstille.",
   "tour.start.step.4":
     "Brug knapperne ved siden af Log ind til at skifte tema, sprog og tekststørrelse eller til at dele siden.",
   "tour.intro":
@@ -429,7 +429,7 @@ export default {
   "tour.s1.step.2":
     "Vælg en række for at åbne kontaktsiden, der viser tidslinje, Aftaler og Sager samlet.",
   "tour.s1.step.3":
-    "Under Markedsføringssamtykke vælger du Giv samtykke eller Træk tilbage for at registrere kontaktens beslutning; siden indlæses igen med den nye tilstand.",
+    "Under Markedsføringssamtykke vælger De Giv samtykke eller Træk tilbage for at registrere kontaktens beslutning; siden indlæses igen med den nye tilstand.",
   "tour.s1.step.4":
     "Brug Download mine data til at hente kontaktens poster, eller Slet (anonymisér) til at fjerne dem; sletknappen vises kun, når kontakten ikke har åbne aftaler eller sager.",
   "tour.s2.title": "Score og prioritér leads",
@@ -451,7 +451,7 @@ export default {
   "tour.s3.step.2":
     "Læs linjen Prognose over tavlen, som viser det serverberegnede samlede beløb for hver valuta.",
   "tour.s3.step.3":
-    "Træk et aftalekort til en anden fase for at flytte det; hvis du slipper det på en tabsfase, registreres en årsag sammen med flytningen.",
+    "Træk et aftalekort til en anden fase for at flytte det; hvis De slipper det på en tabsfase, registreres en årsag sammen med flytningen.",
   "tour.s3.step.4":
     "Rul ned til tabellen Tragt for at se, hvor mange aftaler der kom ind i hver fase, og konverteringen fra den forrige fase.",
   "tour.s4.title": "Kør en kampagne og aflæs dens ROI",
@@ -460,11 +460,11 @@ export default {
   "tour.s4.step.1":
     "Åbn Kampagner for at se hver kampagnes Navn, Status og Modtagere, vist som modtagere, leveret, åbnet og klikket.",
   "tour.s4.step.2":
-    "For en kladde eller planlagt kampagne vælger du Kør (simuleret); en kladde planlægges først og køres derefter.",
+    "For en kladde eller planlagt kampagne vælger De Kør (simuleret); en kladde planlægges først og køres derefter.",
   "tour.s4.step.3":
     "Vælg Tragt på en kampagne for at åbne dens oversigtsrække.",
   "tour.s4.step.4":
-    "Læs antallet af Leads, den vundne omsætning og ROI-procenten med tallene bag, så du kan vurdere resultatet ærligt.",
+    "Læs antallet af Leads, den vundne omsætning og ROI-procenten med tallene bag, så De kan vurdere resultatet ærligt.",
   "tour.s5.title": "Behandl supportkøen i forhold til SLA'er",
   "tour.s5.summary":
     "Håndtér sager efter prioritet og fang dem, der er ved at overskride fristen.",
@@ -505,7 +505,7 @@ export default {
   "tpl.fellBack": "Brugte reserveværdien for",
   "tpl.language": "Beskedens sprog",
   "tpl.noBuiltIn":
-    "Der er ingen indbyggede reserveværdier på dette sprog: angiv en for hvert flettefelt, du bruger.",
+    "Der er ingen indbyggede reserveværdier på dette sprog: angiv en for hvert flettefelt, De bruger.",
   "campaign.new": "Ny kampagne",
   "campaign.segment": "Målgruppe (segment)",
   "campaign.noSegment": "Ingen endnu",
@@ -578,7 +578,7 @@ export default {
   "cf.delete": "Slet dette felt og dets værdier",
   "cf.deleteConfirm": "Slet dette felt og alle de værdier, det rummer?",
   "cf.none": "Ingen brugerdefinerede felter endnu",
-  "cf.masked": "Skjult for din adgang",
+  "cf.masked": "Skjult for Deres adgang",
   "cf.save": "Gem felter",
   "att.title": "Filer",
   "att.add": "Vedhæft en fil",
@@ -769,7 +769,7 @@ export default {
   "clv.base": "Vundet de seneste 365 dage",
   "clv.projected": "Forventet at indbringe, diskonteret",
   "clv.total": "Vundet plus forventet",
-  "clv.masked": "Skjult for din rolle",
+  "clv.masked": "Skjult for Deres rolle",
   "clv.fromHistory": "Brug fastholdelsen fra året før",
   "clv.historyRetention": "Fastholdelse fundet i året før",
   "clv.inOne": "Lagt sammen i én valuta",
@@ -826,9 +826,9 @@ export default {
   "quota.employmentCheckDone": "Kontakter markeret som medarbejdere",
   "error.generic": "Noget gik galt.",
   "error.invalid":
-    "Det blev ikke accepteret. Kontrollér det, du har indtastet, og prøv igen.",
-  "error.unauthorized": "Du skal logge ind igen.",
-  "error.forbidden": "Du har ikke tilladelse til at gøre det.",
+    "Det blev ikke accepteret. Kontrollér det, De har indtastet, og prøv igen.",
+  "error.unauthorized": "De skal logge ind igen.",
+  "error.forbidden": "De har ikke tilladelse til at gøre det.",
   "error.notFound": "Det kunne ikke findes.",
   "error.conflict": "Det er i konflikt med noget, der allerede findes.",
   "error.tooMany": "For mange forespørgsler. Vent et øjeblik og prøv igen.",

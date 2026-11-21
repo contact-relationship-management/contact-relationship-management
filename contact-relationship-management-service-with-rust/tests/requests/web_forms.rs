@@ -636,7 +636,9 @@ async fn the_confirmation_mail_is_in_the_language_of_the_request_that_asked_for_
             .post("/forms/lang-signup")
             .add_header("origin", ORIGIN)
             .add_header("x-forwarded-for", "192.0.2.12")
-            .json(&json!({ "name": "Orhan Pamuk", "email": "orhan@istanbul.test", "language": "tr" }))
+            .json(
+                &json!({ "name": "Orhan Pamuk", "email": "orhan@istanbul.test", "language": "tr" }),
+            )
             .await;
         assert_eq!(answer.header("content-language").to_str().unwrap(), "en");
         let sent = recorder.sent();

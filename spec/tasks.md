@@ -2744,7 +2744,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       (CHANGELOGs, `spec/plan.md`, earlier tasks) keeps the number it was written with.
       - **Not reviewed:** every string is a **machine-written draft**; no native speaker has read any. These are the words a
       data subject reads about their consent, so they are the first to review (each locale's review record says so). The
-      agents' open questions: Danish uses informal "du"; Italian `nome` and Korean `이름` are given-name only (a bare column of
+      agents' open questions: Danish was changed from informal "du" to formal "De" in the interface and the consent text at the owner's request (2026-11-21); Italian `nome` and Korean `이름` are given-name only (a bare column of
       either maps to the given name, not the full name); Russian `{days} дн.` is not inflected; Bengali, Swahili, Urdu and
       Vietnamese header words and some terms are plausible, not attested.
       - **Not done / not verified:** the site's consent pages are not looked at in a browser in any new language; the import
