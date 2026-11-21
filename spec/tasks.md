@@ -2694,6 +2694,12 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       trail failing before a call (nothing is done, and the agent is told so), the forward to the REST route failing, a
       truncated answer, and the reasons for an answer that is neither a success nor one of the named refusals, which need
       a broken audit table, a route that fails or an answer over the limit.
+      - **Census 2026-11-21, after rounds 11 to 15:** 97.08% of lines (34,614 lines, 1,010 missed; it was 96.56% and
+      1,189 before them, so 179 lines closed). The most missed now: `app.rs` 65 (87%), `marketing/public.rs` 37,
+      `workflows.rs` 32, `marketing/campaign.rs` 31, `insights/sales.rs` 30, `marketing/nurture.rs` 29. The floor in the
+      coverage stage is now 97 (it was 96.5), which that census clears by 0.08 of a point; it is raised as rounds land,
+      never lowered to pass. **Found by the census:** a round-15 test that lacked its `#[ignore]` for the database and
+      would have failed the database-free `test` stage; gated in `0cf6f41`.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
 - [x] CRM-T293 **The site's locale counts follow the five new locales.** `5039bb0` added `zh-th`, `hi-np`, `cy-ar`,
