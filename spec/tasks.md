@@ -2708,6 +2708,15 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       a reason (the API refuses one without), so the pack's "(no reason recorded)" label can only come from a row written
       outside the API; it stays uncovered, as a guard. Left: the window parameters that do not parse (the pack falls back
       to the last thirty days) and a deal moved twice (the later move wins).
+      - **Round 17:** `controllers/marketing/campaign.rs` (95.2%, 31 missed): a campaign refused for each fault it can
+      have at creation (a kind other than email, a negative cost, a subject over two lines, a body over 20,000 characters, a
+      purpose that does not exist, and a template given together with a subject), one with no segment made and scheduled but
+      refused a run ("no segment"), cancelling it recorded as a status change and not as a start or a finish, and a
+      cancelled one refused a new schedule. A small gain, about six lines. **Found:** the run handler's second check for a
+      missing segment (`.ok_or_else(...)` after `check_runnable`) is unreachable, since `check_runnable` has already refused
+      it; it stays as a guard. **Left on purpose:** a contact deleted between listing the audience and sending (the
+      delivery is settled "suppressed"), an employee found at send time, and the funnel's rate-of-the-day conversions,
+      which need a moving clock and a rate history.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
 - [x] CRM-T293 **The site's locale counts follow the five new locales.** `5039bb0` added `zh-th`, `hi-np`, `cy-ar`,

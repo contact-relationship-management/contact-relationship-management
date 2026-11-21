@@ -3,6 +3,7 @@
 //! unsubscribe exits everything and blocks the next send.
 
 use axa_test::prelude::*;
+use axum::http::StatusCode;
 use contact_relationship_management::app::App;
 use contact_relationship_management::db;
 use serde_json::{Value, json};
@@ -469,6 +470,82 @@ async fn a_segment_gives_each_contact_its_own_tier_and_tags() {
         );
         // The consent gate still holds: five consented, the sixth never.
         assert_eq!(preview(json!({})).await.0, 5);
+    })
+    .await;
+}
+
+/// A campaign is refused for each thing wrong with it, a run needs a segment, and a cancelled one
+/// is recorded as a status change and not as a start or a finish (CRM-T292, round 17).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_bad_campaign_is_refused_for_each_fault_and_one_with_no_segment_cannot_run() {
+    request::<App, _, _>(|request, ctx| async move {
+        let good = json!({ "name": "Autumn", "currency": "GBP" });
+        let with = |key: &str, value: Value| {
+            let mut body = good.clone();
+            body[key] = value;
+            body
+        };
+        let too_long = "x".repeat(20_001);
+        for (body, part) in [
+            (with("kind", json!("sms")), "kind must be email"),
+            (
+                with("cost_minor", json!(-1)),
+                "cost_minor must be non-negative",
+            ),
+            (with("subject", json!("two\nlines")), "single line"),
+            (with("body", json!(too_long)), "body exceeds"),
+            (with("purpose", json!("nonsense")), "purpose"),
+        ] {
+            let r = request.post("/api/campaigns").json(&body).await;
+            r.assert_status(StatusCode::UNPROCESSABLE_ENTITY);
+            let text = r.text();
+            assert!(text.contains(part), "{part}: {text}");
+        }
+        let mixed = request
+            .post("/api/campaigns")
+            .json(&json!({ "name": "Both", "currency": "GBP", "subject": "S",
+                           "template_pid": uuid::Uuid::new_v4() }))
+            .await;
+        mixed.assert_status(StatusCode::UNPROCESSABLE_ENTITY);
+
+        // One with no segment can be made and scheduled, but not run.
+        let made: Value = request.post("/api/campaigns").json(&good).await.json();
+        let pid = made["pid"].as_str().unwrap().to_string();
+        request
+            .post(&format!("/api/campaigns/{pid}/status"))
+            .json(&json!({ "to": "scheduled" }))
+            .await
+            .assert_status_ok();
+        let run = request.post(&format!("/api/campaigns/{pid}/run")).await;
+        run.assert_status(StatusCode::UNPROCESSABLE_ENTITY);
+        assert!(run.text().contains("no segment"), "{}", run.text());
+
+        // Cancelling it is a status change in the audit trail, not a start or a finish.
+        request
+            .post(&format!("/api/campaigns/{pid}/status"))
+            .json(&json!({ "to": "cancelled" }))
+            .await
+            .assert_status_ok();
+        let actions: Vec<String> = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+            "SELECT action FROM audit_logs WHERE entity_pid = '{pid}' ORDER BY id"
+        )))
+        .fetch_all(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
+        assert!(
+            actions
+                .iter()
+                .any(|a| a.contains("cancel") || a.contains("status")),
+            "{actions:?}"
+        );
+        // A cancelled campaign cannot be scheduled again.
+        request
+            .post(&format!("/api/campaigns/{pid}/status"))
+            .json(&json!({ "to": "scheduled" }))
+            .await
+            .assert_status(StatusCode::UNPROCESSABLE_ENTITY);
     })
     .await;
 }
