@@ -74,6 +74,7 @@ export const ENDONYMS: Readonly<Record<string, string>> = {
   ar: "العربية",
   cy: "Cymraeg",
   en: "English",
+  es: "Español",
   hi: "हिन्दी",
   zh: "普通话",
 };
@@ -87,6 +88,9 @@ export const LOCALE_LABELS: Readonly<Record<string, string>> = {
   "en-gb": "English (Great Britain)",
   "en-gb-oxendict": "English (Oxford)",
   "en-us": "English (United States)",
+  "es-001": "Español (Mundo)",
+  "es-es": "Español (España)",
+  "es-mx": "Español (México)",
   "hi-001": "हिन्दी (विश्व)",
   "hi-in": "हिन्दी (भारत)",
   "zh-001": "普通话 (世界)",

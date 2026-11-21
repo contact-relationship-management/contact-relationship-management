@@ -4,7 +4,7 @@
 // locale resolved by its language, so `cy-gb` and `cy-001` both read Welsh and `zh-001` reads Chinese.
 //
 // The pages that are a role brief, or a locale's list of briefs, are in that locale; every other page is English,
-// because its document is. The Arabic, Welsh, Hindi and Chinese strings are machine drafts, written by Claude and not
+// because its document is. The Arabic, Welsh, Spanish, Hindi and Chinese strings are machine drafts, written by Claude and not
 // reviewed by a native speaker (as the UI's are; see spec/locale/index.md).
 
 const en = {
@@ -255,8 +255,57 @@ const zh: Record<Key, string> = {
   "footer.after": "本站通过 git subtree 从仓库自身的一个目录导出。",
 };
 
+const es: Record<Key, string> = {
+  "nav.overview": "Resumen",
+  "nav.tutorial": "Tutorial",
+  "nav.comparisons": "Comparar",
+  "cta.tutorial": "Comenzar el tutorial",
+  "cta.source": "Ver el código fuente",
+  brand: "Gestión de Relaciones con Contactos",
+  translations: "Traducciones:",
+  skip: "Saltar al contenido",
+  site: "Sitio",
+  "nav.home": "Inicio",
+  "nav.install": "Instalación",
+  "nav.bridges": "Puentes de la familia",
+  "nav.spec": "Especificación",
+  "nav.locales": "Configuraciones regionales",
+  "nav.briefs": "Resúmenes por rol",
+  theme: "Tema",
+  themeSystem: "Seguir este dispositivo",
+  "nav.privacy": "Aviso de privacidad",
+  textSize: "Tamaño del texto",
+  briefLanguage: "Idioma de este resumen",
+  language: "Idioma",
+  pages: "Páginas",
+  repository: "Repositorio de código fuente",
+  search: "Buscar",
+  "search.input": "Términos de búsqueda",
+  "search.submit": "Buscar",
+  "search.placeholder": "Buscar en la documentación",
+  timeZone: "Zona horaria",
+  share: "Compartir",
+  "share.email": "Correo electrónico",
+  "share.copy": "Copiar enlace",
+  "share.copied": "Copiado",
+  "share.copyFailed": "No se pudo copiar el enlace",
+  "search.prompt": "Use el botón de búsqueda del encabezado para escribir una palabra.",
+  "search.none": "Ninguna página coincide.",
+  "search.count": "Páginas encontradas: {n}",
+  "search.failed": "No se pudo cargar el índice de búsqueda.",
+  allBriefs: "Todos los resúmenes por rol",
+  "briefs.lede":
+    "Una página para cada puesto directivo: qué es el software, qué le ofrece, qué no ofrece y las decisiones que le corresponden. Use el botón de idioma del encabezado para ver el mismo resumen en otra configuración regional.",
+  locale: "Configuración regional:",
+  source: "Fuente:",
+  "readiness.estimate": "preparación estimada",
+  "footer.before": "Construido a partir de los documentos de",
+  "footer.link": "el repositorio de Gestión de Relaciones con Contactos",
+  "footer.after": "Este sitio se exporta desde un directorio del propio repositorio con git subtree.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, cy, hi, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, cy, es, hi, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {

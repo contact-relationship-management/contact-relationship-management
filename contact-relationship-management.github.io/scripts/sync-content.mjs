@@ -40,15 +40,41 @@ const COMPARE = readdirSync(join(ROOT, "docs", "compare"))
   .sort()
   .map((f) => `docs/compare/${f}`);
 
+// A section directory (`for`, `path-to-production`, `privacy`) may be named in the locale's own language
+// (`es-mx/para`). It is found by the `.locale-peer-id` it shares with en-001's directory of the English name. The
+// site's routes and the keys of docs.json keep the English name.
+/** @param {string} locale @param {string} name */
+function sectionDir(locale, name) {
+  const base = join(ROOT, "locales", locale);
+  if (existsSync(join(base, name))) return join(base, name);
+  const peerFile = join(ROOT, "locales", "en-001", name, ".locale-peer-id");
+  if (!existsSync(peerFile)) return null;
+  const peer = readFileSync(peerFile, "utf8").trim();
+  for (const d of readdirSync(base)) {
+    const f = join(base, d, ".locale-peer-id");
+    if (existsSync(f) && readFileSync(f, "utf8").trim() === peer) return join(base, d);
+  }
+  return null;
+}
+
+/** The repository file behind a canonical `locales/<locale>/<section>/...` path. */
+/** @param {string} path */
+function realPath(path) {
+  const m = /^locales\/([^/]+)\/(for|path-to-production|privacy)\/(.*)$/.exec(path);
+  if (!m) return join(ROOT, path);
+  const dir = sectionDir(m[1], m[2]);
+  return join(dir ?? join(ROOT, "locales", m[1], m[2]), m[3]);
+}
+
 function briefs() {
   const out = [];
   for (const locale of readdirSync(join(ROOT, "locales")).sort()) {
-    const forDir = join(ROOT, "locales", locale, "for");
-    if (!existsSync(forDir)) continue;
+    const forDir = sectionDir(locale, "for");
+    if (!forDir) continue;
     for (const slug of readdirSync(forDir).sort()) {
       const path = `locales/${locale}/for/${slug}/index.md`;
       const peerFile = join(forDir, slug, ".locale-peer-id");
-      if (!existsSync(join(ROOT, path))) continue;
+      if (!existsSync(join(forDir, slug, "index.md"))) continue;
       if (!existsSync(peerFile)) throw new Error(`no .locale-peer-id beside ${path}`);
       out.push({ locale, slug, peer: readFileSync(peerFile, "utf8").trim(), path });
     }
@@ -72,14 +98,14 @@ function homes() {
 function productionPages() {
   return readdirSync(join(ROOT, "locales"))
     .sort()
-    .filter((locale) => existsSync(join(ROOT, "locales", locale, "path-to-production", "index.md")));
+    .filter((locale) => existsSync(join(sectionDir(locale, "path-to-production") ?? "", "index.md")));
 }
 
 // The privacy notice in each locale: locales/<locale>/privacy/index.md (English source docs/privacy-notice.md).
 function privacyPages() {
   return readdirSync(join(ROOT, "locales"))
     .sort()
-    .filter((locale) => existsSync(join(ROOT, "locales", locale, "privacy", "index.md")));
+    .filter((locale) => existsSync(join(sectionDir(locale, "privacy") ?? "", "index.md")));
 }
 
 /** @param {unknown} value */
@@ -92,7 +118,7 @@ function render() {
   const privacy = privacyPages();
   /** @type {Record<string, string>} */
   const files = {};
-  for (const p of [...DOCS, ...COMPARE, ...homeLocales.map((l) => `locales/${l}/index.md`), ...production.map((l) => `locales/${l}/path-to-production/index.md`), ...privacy.map((l) => `locales/${l}/privacy/index.md`), ...list.map((b) => b.path)]) files[p] = readFileSync(join(ROOT, p), "utf8");
+  for (const p of [...DOCS, ...COMPARE, ...homeLocales.map((l) => `locales/${l}/index.md`), ...production.map((l) => `locales/${l}/path-to-production/index.md`), ...privacy.map((l) => `locales/${l}/privacy/index.md`), ...list.map((b) => b.path)]) files[p] = readFileSync(realPath(p), "utf8");
   return {
     docs: json({ generated: "by scripts/sync-content.mjs from the monorepo; do not edit by hand", files }),
     briefs: json({

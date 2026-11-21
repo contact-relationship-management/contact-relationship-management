@@ -11,6 +11,9 @@
     "en-gb",
     "en-gb-oxendict",
     "en-us",
+    "es-001",
+    "es-es",
+    "es-mx",
     "hi-001",
     "hi-in",
     "hi-np",
@@ -29,6 +32,9 @@
     "en-gb",
     "en-gb-oxendict",
     "en-us",
+    "es-001",
+    "es-es",
+    "es-mx",
     "hi-001",
     "hi-in",
     "hi-np",
@@ -47,6 +53,9 @@
     "en-gb",
     "en-gb-oxendict",
     "en-us",
+    "es-001",
+    "es-es",
+    "es-mx",
     "hi-001",
     "hi-in",
     "hi-np",
@@ -613,6 +622,171 @@
     {
       "locale": "en-us",
       "slug": "independent-security-tester",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "es-001",
+      "slug": "director-de-estrategia",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "es-001",
+      "slug": "director-de-operaciones",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "es-001",
+      "slug": "director-de-personas",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "es-001",
+      "slug": "director-de-riesgos",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "es-001",
+      "slug": "director-de-seguridad",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "es-001",
+      "slug": "director-de-sistemas-de-información",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "es-001",
+      "slug": "director-de-tecnología",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "es-001",
+      "slug": "director-ejecutivo",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "es-001",
+      "slug": "director-jurídico",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "es-001",
+      "slug": "gobernanza-riesgo-cumplimiento",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "es-001",
+      "slug": "probador-de-seguridad-independiente",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "es-es",
+      "slug": "director-de-estrategia",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "es-es",
+      "slug": "director-de-operaciones",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "es-es",
+      "slug": "director-de-personas",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "es-es",
+      "slug": "director-de-riesgos",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "es-es",
+      "slug": "director-de-seguridad",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "es-es",
+      "slug": "director-de-sistemas-de-información",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "es-es",
+      "slug": "director-de-tecnología",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "es-es",
+      "slug": "director-ejecutivo",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "es-es",
+      "slug": "director-jurídico",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "es-es",
+      "slug": "gobernanza-riesgo-cumplimiento",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "es-es",
+      "slug": "probador-de-seguridad-independiente",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "director-de-estrategia",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "director-de-operaciones",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "director-de-personas",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "director-de-riesgos",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "director-de-seguridad",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "director-de-sistemas-de-información",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "director-de-tecnología",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "director-ejecutivo",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "director-jurídico",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "gobernanza-riesgo-cumplimiento",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "es-mx",
+      "slug": "probador-de-seguridad-independiente",
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
     {
