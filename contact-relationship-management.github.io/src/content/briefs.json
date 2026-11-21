@@ -30,6 +30,8 @@
     "id-001",
     "id-id",
     "id-my",
+    "it-001",
+    "it-it",
     "ja-001",
     "ja-jp",
     "ko-001",
@@ -83,6 +85,8 @@
     "id-001",
     "id-id",
     "id-my",
+    "it-001",
+    "it-it",
     "ja-001",
     "ja-jp",
     "ko-001",
@@ -136,6 +140,8 @@
     "id-001",
     "id-id",
     "id-my",
+    "it-001",
+    "it-it",
     "ja-001",
     "ja-jp",
     "ko-001",
@@ -177,6 +183,8 @@
     "id-001",
     "id-id",
     "id-my",
+    "it-001",
+    "it-it",
     "ja-001",
     "ja-jp",
     "ko-001",
@@ -1802,6 +1810,116 @@
       "locale": "id-my",
       "slug": "tata-kelola-risiko-kepatuhan",
       "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "it-001",
+      "slug": "amministratore-delegato",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "it-001",
+      "slug": "direttore-affari-legali",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "it-001",
+      "slug": "direttore-operativo",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "it-001",
+      "slug": "direttore-rischi",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "it-001",
+      "slug": "direttore-risorse-umane",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "it-001",
+      "slug": "direttore-sicurezza",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "it-001",
+      "slug": "direttore-sistemi-informativi",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "it-001",
+      "slug": "direttore-strategico",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "it-001",
+      "slug": "direttore-tecnologico",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "it-001",
+      "slug": "governance-rischio-conformità",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "it-001",
+      "slug": "tester-di-sicurezza-indipendente",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "it-it",
+      "slug": "amministratore-delegato",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "it-it",
+      "slug": "direttore-affari-legali",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "it-it",
+      "slug": "direttore-operativo",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "it-it",
+      "slug": "direttore-rischi",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "it-it",
+      "slug": "direttore-risorse-umane",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "it-it",
+      "slug": "direttore-sicurezza",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "it-it",
+      "slug": "direttore-sistemi-informativi",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "it-it",
+      "slug": "direttore-strategico",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "it-it",
+      "slug": "direttore-tecnologico",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "it-it",
+      "slug": "governance-rischio-conformità",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "it-it",
+      "slug": "tester-di-sicurezza-indipendente",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
     {
       "locale": "ja-001",

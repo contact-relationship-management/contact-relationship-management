@@ -990,8 +990,57 @@ const da: Record<Key, string> = {
   "footer.after": "Dette websted eksporteres fra en mappe i selve repositoriet med git subtree.",
 };
 
+const it: Record<Key, string> = {
+  "nav.overview": "Panoramica",
+  "nav.tutorial": "Tutorial",
+  "nav.comparisons": "Confronti",
+  "cta.tutorial": "Inizia il tutorial",
+  "cta.source": "Vedi il codice sorgente",
+  brand: "Contact Relationship Management",
+  translations: "Traduzioni:",
+  skip: "Vai al contenuto",
+  site: "Sito",
+  "nav.home": "Home",
+  "nav.install": "Installazione",
+  "nav.bridges": "Ponti verso i progetti della famiglia",
+  "nav.spec": "Specifica",
+  "nav.locales": "Impostazioni locali",
+  "nav.briefs": "Schede per ruolo",
+  theme: "Tema",
+  themeSystem: "Segui questo dispositivo",
+  "nav.privacy": "Informativa sulla privacy",
+  textSize: "Dimensione del testo",
+  briefLanguage: "Lingua di questa scheda",
+  language: "Lingua",
+  pages: "Pagine",
+  repository: "Repository",
+  search: "Cerca",
+  "search.input": "Termini di ricerca",
+  "search.submit": "Cerca",
+  "search.placeholder": "Cerca nella documentazione",
+  timeZone: "Fuso orario",
+  share: "Condividi",
+  "share.email": "Email",
+  "share.copy": "Copia il link",
+  "share.copied": "Copiato",
+  "share.copyFailed": "Impossibile copiare il link",
+  "search.prompt": "Usa il pulsante di ricerca in cima alla pagina per inserire un termine di ricerca.",
+  "search.none": "Nessuna pagina corrisponde.",
+  "search.count": "Pagine trovate: {n}",
+  "search.failed": "Impossibile caricare l'indice di ricerca.",
+  allBriefs: "Tutte le schede per ruolo",
+  "briefs.lede":
+    "Una pagina per ogni ruolo dirigenziale: che cos'è il software, che cosa ti dà, che cosa non fa e quali decisioni spettano a te. Usa il selettore della lingua in cima alla pagina per vedere la stessa scheda in un'altra impostazione locale.",
+  locale: "Impostazione locale:",
+  source: "Fonte:",
+  "readiness.estimate": "prontezza stimata",
+  "footer.before": "Costruito a partire dai documenti nel",
+  "footer.link": "repository di Contact Relationship Management",
+  "footer.after": "Questo sito è esportato con git subtree da una directory del repository stesso.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, da, de, es, fr, hi, id, ja, ko, nl, pt, ru, sv, sw, ur, vi, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, da, de, es, fr, hi, id, it, ja, ko, nl, pt, ru, sv, sw, ur, vi, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -1032,6 +1081,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Kecil",
     smaller: "Lebih kecil",
     smallest: "Terkecil",
+  },
+  it: {
+    largest: "Massima",
+    larger: "Più grande",
+    large: "Grande",
+    normal: "Normale",
+    small: "Piccola",
+    smaller: "Più piccola",
+    smallest: "Minima",
   },
   ja: {
     largest: "最大",
