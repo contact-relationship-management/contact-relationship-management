@@ -2728,5 +2728,6 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       `path-to-production` directory (`bn-001/উৎপাদনের-পথ`) went to the repository, not the site's route; the sync now
       writes `sections` (38 locales) into `briefs.json` and `routeOfRepoPath` maps them back.
       - **Ran:** `site` (687 Playwright tests, build and checks) passes; `lint` passes.
-      - **Not done / not verified:** the privacy notices for the locales that have none are still missing (the test reads
-      only the locales that have one); `ci-check.sh all` was not run, so there is no attestation.
+      - **Not done / not verified:** every one of the 54 locales has a privacy notice (the test requires it), but the 13
+      new ones are machine-written and unreviewed, as is the site text; `ci-check.sh all` was not run, so there is no
+      attestation.
