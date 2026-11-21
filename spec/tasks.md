@@ -2686,3 +2686,20 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       `TestApp::boot_test_with` has nothing to feed; moving them is its own task. `axa_mail`, `Problems`, `SafeInt`
       and `watch_file` were not adopted: the service sends through lettre directly, its `422`s are one message each,
       and its ABAC watcher is its own. `scripts/ci-check.sh all` was not run, so there is no attestation.
+- [x] CRM-T296 **Lily: svelte-headless 0.12.0, picker-bar 0.8.0, themes 0.7.0.** Asked for by the product owner on 2026-11-21
+      ("update lily design system, then update code to use new lily capabilities"). All three were published that morning,
+      inside the two-day minimum release age; the owner permitted the exception for exactly these three versions, so each is
+      added to `minimumReleaseAgeExclude` in both `contact-relationship-management-ui-with-svelte` and
+      `contact-relationship-management.github.io`, which `syncpack` requires to agree. (S)
+      - **What it changes:** the picker bar lists the 36 generic themes first, then the 27 company and public-sector themes,
+      with corrected names ("IBM Carbon", "SAP Fiori", "GOV.UK Design System"); the app passes no `themeLabels`, so both come
+      with `DEFAULT_THEMES` and need no code. The themes break a table's header words at word boundaries (data cells still
+      wrap anywhere) and add a whole-card link section.
+      - **Capabilities not adopted:** `wholeCardLink` on `card` (the UI has no headless `card`), the `tool-bar` key changes and
+      the `range-fieldset` reset fix (neither component is used).
+      - **Ran:** `front-end` (`syncpack`, `svelte-check`, Vitest, build, lint) from a checkout outside `.git`, as Vitest
+      skips test files under `.git/`. 370 of 371 tests pass.
+      - **Not done / not verified:** `tests/unit/crm.test.ts` "reads every locale directory of the role guides" fails for
+      `bn-001`, a role-guide locale with no UI locale; nothing here touches it, but it was not re-run on the base commit.
+      The Playwright suites (`e2e`, including `theme.spec.ts`) were not run, so the new theme order and the themes' CSS were
+      not seen in a browser. `scripts/ci-check.sh all` was not run, so there is no attestation.
