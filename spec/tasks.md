@@ -2717,6 +2717,14 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       it; it stays as a guard. **Left on purpose:** a contact deleted between listing the audience and sending (the
       delivery is settled "suppressed"), an employee found at send time, and the funnel's rate-of-the-day conversions,
       which need a moving clock and a rate history.
+      - **Round 18:** `workflows.rs` (94.6%, 32 missed; about nine closed, measured on the workflow tests alone): a dry run
+      of a lead workflow leaving an owned lead alone ("the lead already has an owner"), naming the worker an unowned lead
+      would go to with the strategy (`least_open`, which reads each worker's open load), and saying "the pool is empty"
+      (the API refuses an empty pool, so the row is written directly); a contact already holding the value a `set_field`
+      would write reported as skipped in a dry run; a real run that names a nurture sequence that has gone skipping
+      that step with "no longer exists". **Left:** a contact or lead deleted between the event and the run, the scheduled
+      sweep's batch limit and its row lock held by another replica, and a failing scheduled workflow, which need a second
+      connection or a stalled one.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
 - [x] CRM-T293 **The site's locale counts follow the five new locales.** `5039bb0` added `zh-th`, `hi-np`, `cy-ar`,

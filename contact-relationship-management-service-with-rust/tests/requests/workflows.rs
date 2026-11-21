@@ -661,3 +661,137 @@ async fn channel_and_status_are_set_a_held_value_is_left_and_an_owned_lead_keeps
     })
     .await;
 }
+
+/// A dry run of a lead workflow says what each step would do without doing it: leave an owned
+/// lead alone, name the worker an unowned lead would go to (the least loaded, for `least_open`),
+/// and say when the pool is empty; a contact that already holds a value is not set again; and a
+/// real run that names a sequence that is gone skips that step with the reason (CRM-T292, round 18).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_dry_run_names_who_a_lead_would_go_to_and_a_gone_sequence_is_skipped_with_the_reason() {
+    request::<App, _, _>(|request, ctx| async move {
+        let pool = contact_relationship_management::db::pool(&ctx);
+        let (first, second) = (a_user(), a_user());
+
+        // Two leads: one owned already, one not.
+        let mut leads = Vec::new();
+        for name in ["Owned Lead", "Free Lead"] {
+            let made: Value = request
+                .post("/api/leads")
+                .json(&json!({ "display_name": name, "source": "web" }))
+                .await
+                .json();
+            leads.push(made["pid"].as_str().unwrap().to_string());
+        }
+        sqlx::query("UPDATE leads SET owner_ref = $2 WHERE pid = $1::uuid")
+            .bind(&leads[0])
+            .bind(&first)
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE leads SET owner_ref = NULL WHERE pid = $1::uuid")
+            .bind(&leads[1])
+            .execute(pool)
+            .await
+            .unwrap();
+
+        let on_leads = workflow!(
+            &request,
+            json!({ "name": "Spread leads", "trigger": "lead_created", "conditions": {},
+                    "actions": [{ "type": "assign_owner", "pool": [first, second],
+                                  "strategy": "least_open" }] })
+        );
+        let dry = |wf: String| {
+            let request = &request;
+            async move {
+                request
+                    .post(&format!("/api/workflows/{wf}/dry-run"))
+                    .await
+                    .json::<Value>()
+            }
+        };
+        let result = dry(on_leads.clone()).await;
+        assert_eq!(result["would_fire"], 2, "{result}");
+        let samples = result["samples"].as_array().unwrap();
+        let steps_of = |pid: &str| {
+            samples
+                .iter()
+                .find(|s| s["subject_pid"] == json!(pid))
+                .unwrap_or_else(|| panic!("{pid} not in {result}"))["steps"][0]
+                .clone()
+        };
+        let owned = steps_of(&leads[0]);
+        assert_eq!(owned["result"], "would_skip");
+        assert_eq!(owned["detail"], "the lead already has an owner");
+        let free = steps_of(&leads[1]);
+        assert_eq!(free["result"], "would_do");
+        assert!(
+            free["detail"].as_str().unwrap().contains("(least_open)"),
+            "{free}"
+        );
+
+        // An empty pool is said so. (The API refuses one, so it is written into the row.)
+        sqlx::query("UPDATE workflows SET actions = $2 WHERE pid = $1::uuid")
+            .bind(&on_leads)
+            .bind(json!([{ "type": "assign_owner", "pool": [], "strategy": "round_robin",
+                           "notify": false }]))
+            .execute(pool)
+            .await
+            .unwrap();
+        let empty = dry(on_leads).await;
+        let empty_steps: Vec<&str> = empty["samples"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|s| s["steps"][0]["detail"].as_str())
+            .collect();
+        assert!(empty_steps.contains(&"the pool is empty"), "{empty}");
+
+        // A contact that already holds the value is not set again, in a dry run.
+        let held = contact!(
+            &request,
+            json!({ "display_name": "Held", "job_title": "Analyst" })
+        );
+        let set_same = workflow!(
+            &request,
+            json!({ "name": "Same title", "trigger": "contact_updated",
+                    "actions": [{ "type": "set_field", "field": "job_title", "value": "Analyst" }] })
+        );
+        let result = dry(set_same).await;
+        let held_step = result["samples"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["subject_pid"] == json!(held))
+            .unwrap_or_else(|| panic!("{result}"))["steps"][0]
+            .clone();
+        assert_eq!(held_step["result"], "would_skip", "{held_step}");
+        assert!(
+            held_step["detail"].as_str().unwrap().contains("already has that value"),
+            "{held_step}"
+        );
+
+        // A real run that names a sequence that has gone skips that step and says why.
+        let gone = workflow!(
+            &request,
+            when_created(
+                "Enrol nobody",
+                json!({}),
+                json!([{ "type": "create_task", "summary": "placeholder" }])
+            )
+        );
+        sqlx::query("UPDATE workflows SET actions = $2 WHERE pid = $1::uuid")
+            .bind(&gone)
+            .bind(json!([{ "type": "enrol_nurture", "sequence_pid": uuid::Uuid::new_v4() }]))
+            .execute(pool)
+            .await
+            .unwrap();
+        contact!(&request, json!({ "display_name": "Wants A Sequence" }));
+        let steps = steps(&runs!(&request, gone)[0]);
+        assert_eq!(steps.len(), 1, "{steps:?}");
+        assert_eq!(steps[0].0, "skipped");
+        assert!(steps[0].1.contains("no longer exists"), "{steps:?}");
+    })
+    .await;
+}
