@@ -2680,6 +2680,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       and for answers that are not JSON or not a list, and cut off after 51 full pages; the overlap check sending only
       references and naming none in its reasons. Left: building a client that cannot be built, the other-person lookups'
       redirect-free client, and the oldest-entry eviction's last branch.
+      - **Round 14:** `controllers/marketing/public.rs` (92.4%; 36 of 497 lines left, measured on the marketing tests
+      together): a spam complaint withdrawing every purpose the contact had granted while leaving one already withdrawn,
+      with the history holding a withdrawal per purpose for the complaint, and the preference page of such a contact saying
+      "You do not receive these." for each; a vendor callback (`brevo`, `mailjet`, `sendgrid`) and an unknown vendor
+      answered `404` while no webhook secret is set. **Left on purpose:** the `500` pages for a database failure
+      (unsubscribe, confirm, preferences), which a test can only cause by breaking the connection; the SNS
+      subscription confirmation, which fetches the vendor's own address; and the unreachable `Content-Language` error.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
 - [x] CRM-T293 **The site's locale counts follow the five new locales.** `5039bb0` added `zh-th`, `hi-np`, `cy-ar`,

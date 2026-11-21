@@ -5,6 +5,7 @@
 //! ignored test in `tests/smtp_live.rs` talks to a real server.
 
 use axa_test::prelude::*;
+use axum::http::StatusCode;
 use contact_relationship_management::app::App;
 use contact_relationship_management::mail::{self, Recorder, Sender};
 use contact_relationship_management::models::deliveries;
@@ -445,6 +446,105 @@ macro_rules! provider_event {
             .bytes(body.into())
             .await
     }};
+}
+
+/// A spam complaint is a no to everything: every purpose the contact had granted is withdrawn, not
+/// only the one the message was sent for, and one already withdrawn is left as it was.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_complaint_withdraws_every_purpose_the_contact_had_granted() {
+    settings::update(|s| s.webhook_secret = Some(WEBHOOK_SECRET.to_string()));
+    request::<App, _, _>(|request, _ctx| async move {
+        let (recorder, _restore) = recording();
+        let pid = seed_contact!(&request, "Many Purposes").await;
+        give_address!(&request, pid, "many@example.test");
+        for purpose in ["newsletter", "events"] {
+            request
+                .post(&format!("/api/contacts/{pid}/consent"))
+                .json(&json!({ "action": "granted", "source": "preference page", "purpose": purpose }))
+                .await
+                .assert_status_ok();
+        }
+        // One purpose already withdrawn before the complaint stays withdrawn, once.
+        request
+            .post(&format!("/api/contacts/{pid}/consent"))
+            .json(&json!({ "action": "withdrawn", "source": "preference page", "purpose": "events" }))
+            .await
+            .assert_status_ok();
+        let campaign = scheduled_campaign!(&request, Some("Hello"));
+        request
+            .post(&format!("/api/campaigns/{campaign}/run"))
+            .await
+            .assert_status_ok();
+        let id = recorder
+            .sent()
+            .into_iter()
+            .find(|m| m.to == "many@example.test")
+            .expect("the contact was mailed")
+            .message_id;
+        provider_event!(&request, &id, "complaint").assert_status_ok();
+
+        let after: Value = request
+            .get(&format!("/api/contacts/{pid}/consents"))
+            .await
+            .json();
+        let states: Vec<(String, String)> = after["purposes"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{after}"))
+            .iter()
+            .map(|p| (p["purpose"].to_string(), p["state"].to_string()))
+            .collect();
+        assert!(!states.is_empty(), "{after}");
+        for (purpose, state) in &states {
+            assert_eq!(state, "\"withdrawn\"", "{purpose} after a complaint: {after}");
+        }
+        // The history holds one withdrawal for the complaint per purpose that was still granted.
+        let history: Value = request
+            .get(&format!("/api/contacts/{pid}/consent"))
+            .await
+            .json();
+        let complaints = history
+            .as_array()
+            .unwrap_or_else(|| panic!("{history}"))
+            .iter()
+            .filter(|h| h["source"] == "complaint")
+            .count();
+        assert!(complaints >= 2, "marketing and newsletter: {history}");
+
+        // The preference page of a contact who has withdrawn from everything says so for each purpose.
+        let link: Value = request
+            .post(&format!("/api/contacts/{pid}/preferences-link"))
+            .await
+            .json();
+        let page = request
+            .get(link["url"].as_str().unwrap().trim_start_matches("https://crm.example.org"))
+            .await
+            .text();
+        assert!(page.contains("You do not receive these."), "{page}");
+        assert!(!page.contains("You receive these."), "{page}");
+    })
+    .await;
+    settings::update(|s| s.webhook_secret = None);
+}
+
+/// A vendor callback is answered `404`, as if the route did not exist, until a secret is set to check
+/// it against; the generic route and an unknown vendor are `404` too.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_vendor_callback_is_not_found_while_no_webhook_secret_is_set() {
+    settings::update(|s| s.webhook_secret = None);
+    request::<App, _, _>(|request, _ctx| async move {
+        for provider in ["brevo", "mailjet", "sendgrid", "no-such-vendor"] {
+            request
+                .post(&format!("/webhooks/email/{provider}"))
+                .json(&json!([]))
+                .await
+                .assert_status(StatusCode::NOT_FOUND);
+        }
+    })
+    .await;
 }
 
 #[tokio::test]
