@@ -148,6 +148,7 @@ export const LOCALE_LABELS: Readonly<Record<string, string>> = {
   "zh-001": "普通话 (世界)",
   "zh-cn": "普通话 (中国)",
   "zh-th": "普通话 (泰国)",
+  "zh-tw": "國語 (臺灣)",
   "hi-np": "हिन्दी (नेपाल)",
   "cy-ar": "Cymraeg (Ariannin)",
   "ar-eg": "العربية (مصر)",

@@ -1039,12 +1039,63 @@ const it: Record<Key, string> = {
   "footer.after": "Questo sito è esportato con git subtree da una directory del repository stesso.",
 };
 
+const zhTw: Record<Key, string> = {
+  "nav.overview": "概覽",
+  "nav.tutorial": "教學",
+  "nav.comparisons": "比較",
+  "cta.tutorial": "開始教學",
+  "cta.source": "檢視原始碼",
+  brand: "聯絡人關係管理",
+  translations: "翻譯：",
+  skip: "跳到內容",
+  site: "網站",
+  "nav.home": "首頁",
+  "nav.install": "安裝",
+  "nav.bridges": "系列橋接",
+  "nav.spec": "規格",
+  "nav.locales": "地區設定",
+  "nav.briefs": "角色簡報",
+  theme: "主題",
+  themeSystem: "跟隨此裝置",
+  "nav.privacy": "隱私聲明",
+  textSize: "文字大小",
+  briefLanguage: "本簡報的語言",
+  language: "語言",
+  pages: "頁面",
+  repository: "原始碼儲存庫",
+  search: "搜尋",
+  "search.input": "搜尋詞",
+  "search.submit": "搜尋",
+  "search.placeholder": "搜尋文件",
+  timeZone: "時區",
+  share: "分享",
+  "share.email": "電子郵件",
+  "share.copy": "複製連結",
+  "share.copied": "已複製",
+  "share.copyFailed": "無法複製連結",
+  "search.prompt": "使用頁首中的搜尋按鈕輸入字詞。",
+  "search.none": "沒有相符的頁面。",
+  "search.count": "找到的頁面：{n}",
+  "search.failed": "無法載入搜尋索引。",
+  allBriefs: "全部角色簡報",
+  "briefs.lede":
+    "每個高階角色一頁：軟體是什麼、它為您提供什麼、不提供什麼，以及由您做出的決定。使用頁首中的語言按鈕以另一種語言閱讀同一份簡報。",
+  locale: "地區設定：",
+  source: "來源：",
+  "readiness.estimate": "預估就緒度",
+  "footer.before": "本站由以下儲存庫中的文件建置：",
+  "footer.link": "聯絡人關係管理儲存庫",
+  "footer.after": "本站透過 git subtree 從儲存庫自身的一個目錄匯出。",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, da, de, es, fr, hi, id, it, ja, ko, nl, pt, ru, sv, sw, ur, vi, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, da, de, es, fr, hi, id, it, ja, ko, nl, pt, ru, sv, sw, ur, vi, zh, "zh-tw": zhTw };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
-  const base = (locale ?? "en").split("-")[0] ?? "en";
+  const full = (locale ?? "en").toLowerCase();
+  if (full === "zh-tw") return full;
+  const base = full.split("-")[0] ?? "en";
   return base in TABLES ? base : "en";
 }
 
@@ -1090,6 +1141,24 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Piccola",
     smaller: "Più piccola",
     smallest: "Minima",
+  },
+  zh: {
+    largest: "最大",
+    larger: "较大",
+    large: "大",
+    normal: "正常",
+    small: "小",
+    smaller: "较小",
+    smallest: "最小",
+  },
+  "zh-tw": {
+    largest: "最大",
+    larger: "較大",
+    large: "大",
+    normal: "標準",
+    small: "小",
+    smaller: "較小",
+    smallest: "最小",
   },
   ja: {
     largest: "最大",

@@ -53,7 +53,8 @@
     "vi-vn",
     "zh-001",
     "zh-cn",
-    "zh-th"
+    "zh-th",
+    "zh-tw"
   ],
   "production": [
     "ar-001",
@@ -108,7 +109,8 @@
     "vi-vn",
     "zh-001",
     "zh-cn",
-    "zh-th"
+    "zh-th",
+    "zh-tw"
   ],
   "privacy": [
     "ar-001",
@@ -163,7 +165,8 @@
     "vi-vn",
     "zh-001",
     "zh-cn",
-    "zh-th"
+    "zh-th",
+    "zh-tw"
   ],
   "evaluate": [
     "bn-001",
@@ -203,7 +206,8 @@
     "sw-tz",
     "ur-001",
     "vi-001",
-    "vi-vn"
+    "vi-vn",
+    "zh-tw"
   ],
   "compare": [
     "espocrm",
@@ -3129,6 +3133,61 @@
     {
       "locale": "zh-th",
       "slug": "首席风险官",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "人資長",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "執行長",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "技術長",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "治理-風險-合規",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "法務長",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "營運長",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "獨立安全測試員",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "策略長",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "資安長",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "資訊長",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "zh-tw",
+      "slug": "風險長",
       "peer": "10ea6fb8d8954b32a486ce26cf57883d"
     }
   ]

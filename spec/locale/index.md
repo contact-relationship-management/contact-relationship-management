@@ -146,6 +146,10 @@ The repository has two sets of locales, for two different things, and they are n
 - On 2026-11-21 `it-it` (same pages as `da-001`, and the site's own strings) was translated into Italian by Claude.
   `it-001` is a copy of it with no wording changed. Both are **unreviewed** by an Italian speaker. Their directory
   names are in Italian and are found by `.locale-peer-id`.
+- On 2026-11-21 `zh-tw` was produced in Traditional Chinese with Taiwan wording, by converting `zh-cn` with OpenCC and then
+  fixing terms by hand, and it gained the evaluation page that `zh-cn` lacks. It is **unreviewed** by a Traditional
+  Chinese speaker. Its directory names are in Traditional Chinese and are found by `.locale-peer-id`. The site has its
+  own `zh-tw` string table.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
 - On 2026-11-13 the "demo software" sentences on the locale home pages and in
