@@ -201,9 +201,16 @@ export function localeOfPath(pathname: string, base = ""): string | null {
   return isBriefLocale(first) ? first : null;
 }
 
+/** A path with a locale's own section name (`locales/bn-001/উৎপাদনের-পথ/…`) put back to the English one. */
+function canonicalSections(path: string): string {
+  const m = /^locales\/([^/]+)\/([^/]+)(\/.*)?$/.exec(path);
+  const own = m?.[1] ? (index.sections as Record<string, Record<string, string>>)[m[1]]?.[m[2] ?? ""] : undefined;
+  return m && own ? `locales/${m[1]}/${own}${m[3] ?? ""}` : path;
+}
+
 /** The site route ("/install/", "/cy-gb/for/prif-swyddog-risg/") of a repository path, or null if it has none. */
 export function routeOfRepoPath(path: string): string | null {
-  const clean = path.replace(/\/+$/, "");
+  const clean = canonicalSections(path.replace(/\/+$/, ""));
   for (const d of DOC_PAGES) {
     const dir = d.path.replace(/\/?[^/]+$/, "");
     if (clean === d.path || (dir && clean === dir && /\/(index|README)\.md$/.test("/" + d.path)))

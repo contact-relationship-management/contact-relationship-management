@@ -114,6 +114,20 @@ function evaluatePages() {
     .filter((locale) => existsSync(join(sectionDir(locale, "evaluate") ?? "", "index.md")));
 }
 
+// The sections a locale names in its own language (`bn-001/উৎপাদনের-পথ` for `path-to-production`), as
+// `{ locale: { localizedName: englishName } }`, so a link in a page to `locales/bn-001/উৎপাদনের-পথ/` finds the site's route.
+function localizedSections() {
+  /** @type {Record<string, Record<string, string>>} */
+  const out = {};
+  for (const locale of readdirSync(join(ROOT, "locales")).sort())
+    for (const name of ["for", "path-to-production", "privacy", "evaluate"]) {
+      const dir = sectionDir(locale, name);
+      const own = dir ? dir.split("/").pop() : undefined;
+      if (own && own !== name) (out[locale] ??= {})[own] = name;
+    }
+  return out;
+}
+
 /** @param {unknown} value */
 const json = (value) => JSON.stringify(value, null, 2) + "\n";
 
@@ -134,6 +148,7 @@ function render() {
       production,
       privacy,
       evaluate,
+      sections: localizedSections(),
       compare: COMPARE.map((p) => p.replace(/^docs\/compare\/|\.md$/g, "")),
       briefs: list.map(({ locale, slug, peer }) => ({ locale, slug, peer })),
     }),

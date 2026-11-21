@@ -209,6 +209,231 @@
     "vi-vn",
     "zh-tw"
   ],
+  "sections": {
+    "bn-001": {
+      "জন্য": "for",
+      "উৎপাদনের-পথ": "path-to-production",
+      "গোপনীয়তা": "privacy",
+      "মূল্যায়ন": "evaluate"
+    },
+    "bn-bd": {
+      "জন্য": "for",
+      "উৎপাদনের-পথ": "path-to-production",
+      "গোপনীয়তা": "privacy",
+      "মূল্যায়ন": "evaluate"
+    },
+    "bn-in": {
+      "জন্য": "for",
+      "উৎপাদনের-পথ": "path-to-production",
+      "গোপনীয়তা": "privacy",
+      "মূল্যায়ন": "evaluate"
+    },
+    "da-001": {
+      "til": "for",
+      "vej-til-produktion": "path-to-production",
+      "privatliv": "privacy",
+      "vurdering": "evaluate"
+    },
+    "de-001": {
+      "für": "for",
+      "weg-in-den-produktivbetrieb": "path-to-production",
+      "datenschutz": "privacy",
+      "bewertung": "evaluate"
+    },
+    "de-at": {
+      "für": "for",
+      "weg-in-den-produktivbetrieb": "path-to-production",
+      "datenschutz": "privacy",
+      "bewertung": "evaluate"
+    },
+    "de-de": {
+      "für": "for",
+      "weg-in-den-produktivbetrieb": "path-to-production",
+      "datenschutz": "privacy",
+      "bewertung": "evaluate"
+    },
+    "es-001": {
+      "para": "for",
+      "ruta-a-producción": "path-to-production",
+      "privacidad": "privacy",
+      "evaluar": "evaluate"
+    },
+    "es-es": {
+      "para": "for",
+      "ruta-a-producción": "path-to-production",
+      "privacidad": "privacy",
+      "evaluar": "evaluate"
+    },
+    "es-mx": {
+      "para": "for",
+      "ruta-a-producción": "path-to-production",
+      "privacidad": "privacy",
+      "evaluar": "evaluate"
+    },
+    "fr-001": {
+      "pour": "for",
+      "chemin-vers-la-production": "path-to-production",
+      "confidentialité": "privacy",
+      "évaluation": "evaluate"
+    },
+    "fr-ca": {
+      "pour": "for",
+      "chemin-vers-la-production": "path-to-production",
+      "confidentialité": "privacy",
+      "évaluation": "evaluate"
+    },
+    "fr-fr": {
+      "pour": "for",
+      "chemin-vers-la-production": "path-to-production",
+      "confidentialité": "privacy",
+      "évaluation": "evaluate"
+    },
+    "id-001": {
+      "untuk": "for",
+      "jalur-ke-produksi": "path-to-production",
+      "privasi": "privacy",
+      "evaluasi": "evaluate"
+    },
+    "id-id": {
+      "untuk": "for",
+      "jalur-ke-produksi": "path-to-production",
+      "privasi": "privacy",
+      "evaluasi": "evaluate"
+    },
+    "id-my": {
+      "untuk": "for",
+      "jalur-ke-produksi": "path-to-production",
+      "privasi": "privacy",
+      "evaluasi": "evaluate"
+    },
+    "it-001": {
+      "per": "for",
+      "percorso-verso-la-produzione": "path-to-production",
+      "valutazione": "evaluate"
+    },
+    "it-it": {
+      "per": "for",
+      "percorso-verso-la-produzione": "path-to-production",
+      "valutazione": "evaluate"
+    },
+    "ja-001": {
+      "役職別概要": "for",
+      "本番運用への道筋": "path-to-production",
+      "プライバシー": "privacy",
+      "評価": "evaluate"
+    },
+    "ja-jp": {
+      "役職別概要": "for",
+      "本番運用への道筋": "path-to-production",
+      "プライバシー": "privacy",
+      "評価": "evaluate"
+    },
+    "ko-001": {
+      "직책별-개요": "for",
+      "운영-전환-경로": "path-to-production",
+      "개인정보": "privacy",
+      "평가": "evaluate"
+    },
+    "ko-kr": {
+      "직책별-개요": "for",
+      "운영-전환-경로": "path-to-production",
+      "개인정보": "privacy",
+      "평가": "evaluate"
+    },
+    "nl-001": {
+      "voor": "for",
+      "pad-naar-productie": "path-to-production",
+      "privacyverklaring": "privacy",
+      "beoordeling": "evaluate"
+    },
+    "nl-nl": {
+      "voor": "for",
+      "pad-naar-productie": "path-to-production",
+      "privacyverklaring": "privacy",
+      "beoordeling": "evaluate"
+    },
+    "pt-001": {
+      "para": "for",
+      "caminho-para-produção": "path-to-production",
+      "privacidade": "privacy",
+      "avaliação": "evaluate"
+    },
+    "pt-br": {
+      "para": "for",
+      "caminho-para-produção": "path-to-production",
+      "privacidade": "privacy",
+      "avaliação": "evaluate"
+    },
+    "pt-pt": {
+      "para": "for",
+      "caminho-para-produção": "path-to-production",
+      "privacidade": "privacy",
+      "avaliação": "evaluate"
+    },
+    "ru-001": {
+      "для": "for",
+      "путь-к-продакшену": "path-to-production",
+      "конфиденциальность": "privacy",
+      "оценка": "evaluate"
+    },
+    "ru-by": {
+      "для": "for",
+      "путь-к-продакшену": "path-to-production",
+      "конфиденциальность": "privacy",
+      "оценка": "evaluate"
+    },
+    "ru-ru": {
+      "для": "for",
+      "путь-к-продакшену": "path-to-production",
+      "конфиденциальность": "privacy",
+      "оценка": "evaluate"
+    },
+    "sv-001": {
+      "för": "for",
+      "väg-till-produktion": "path-to-production",
+      "integritet": "privacy",
+      "utvärdering": "evaluate"
+    },
+    "sv-se": {
+      "för": "for",
+      "väg-till-produktion": "path-to-production",
+      "integritet": "privacy",
+      "utvärdering": "evaluate"
+    },
+    "sw-001": {
+      "kwa": "for",
+      "njia-ya-uzalishaji": "path-to-production",
+      "faragha": "privacy",
+      "tathmini": "evaluate"
+    },
+    "sw-tz": {
+      "kwa": "for",
+      "njia-ya-uzalishaji": "path-to-production",
+      "faragha": "privacy",
+      "tathmini": "evaluate"
+    },
+    "ur-001": {
+      "برائے": "for",
+      "پیداوار-کا-راستہ": "path-to-production",
+      "رازداری": "privacy",
+      "جائزہ": "evaluate"
+    },
+    "vi-001": {
+      "dành-cho": "for",
+      "lộ-trình-lên-sản-xuất": "path-to-production",
+      "quyền-riêng-tư": "privacy",
+      "đánh-giá": "evaluate"
+    },
+    "vi-vn": {
+      "dành-cho": "for",
+      "lộ-trình-lên-sản-xuất": "path-to-production",
+      "quyền-riêng-tư": "privacy",
+      "đánh-giá": "evaluate"
+    },
+    "zh-tw": {
+      "評估": "evaluate"
+    }
+  },
   "compare": [
     "espocrm",
     "hubspot",

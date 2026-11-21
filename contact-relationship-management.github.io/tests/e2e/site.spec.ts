@@ -5,7 +5,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readdirSync, readFileSync } from "node:fs";
-import { BRIEFS, BRIEF_LOCALES, COMPARE_PAGES, DOC_PAGES, ENDONYMS, LOCALE_HOMES, PRIVACY_LOCALES, PRODUCTION_LOCALES, langTag, peerIn, routesOf } from "../../src/lib/site.ts";
+import { BRIEFS, BRIEF_LOCALES, COMPARE_PAGES, DOC_PAGES, ENDONYMS, LOCALE_HOMES, PRIVACY_LOCALES, PRODUCTION_LOCALES, TRANSLATIONS, langTag, peerIn, routesOf } from "../../src/lib/site.ts";
 import { TABLES } from "../../src/lib/i18n.ts";
 
 // The themes the site serves. The picker's own list is in a .svelte module, which Playwright cannot import; the test
@@ -50,8 +50,8 @@ async function axe(page: Page): Promise<string[]> {
 
 test("every page is built and answers 200", async ({ request }) => {
   const all = [...docRoutes, ...indexRoutes, ...briefRoutes, ...productionRoutes, ...privacyRoutes];
-  expect(BRIEF_LOCALES.length).toBe(16);
-  expect(BRIEFS.length).toBe(16 * 11);
+  expect(BRIEF_LOCALES.length).toBe(54);
+  expect(BRIEFS.length).toBe(54 * 11);
   for (const route of all) {
     const res = await request.get(encodeURI(route));
     expect(res.status(), route).toBe(200);
@@ -182,7 +182,9 @@ test("a document keeps its address until the reader picks a locale, which opens 
 });
 
 test("the home page in every language has its hero, its wordmark and the translations", async ({ page }) => {
-  const translations = ["ar-001", "cy-001", "en-001", "hi-001", "zh-001"];
+  // Every `-001` home page, in the order the locale list gives: the sentence names each by its own name.
+  const translations = [...TRANSLATIONS];
+  expect(translations.length).toBe(21);
   for (const [route, lang] of [
     ["/", "en"],
     ["/en-us/", "en"],
@@ -208,7 +210,7 @@ test("the home page in every language has its hero, its wordmark and the transla
     await expect(page.locator('.landing a[href$="/for/"]'), route).toHaveCount(1);
     const line = page.locator(".translations");
     await expect(line, route).toContainText(words.translations);
-    await expect(line, route).toContainText("العربية, Cymraeg, English, हिन्दी, 普通话");
+    await expect(line, route).toContainText(translations.map((code) => ENDONYMS[code.split("-")[0]!]!).join(", "));
     for (const code of translations) {
       const link = line.getByRole("link", { name: ENDONYMS[code.split("-")[0]!]!, exact: true });
       await expect(link, `${route} ${code}`).toHaveAttribute("href", new RegExp(`/${code}/$`));
@@ -293,7 +295,7 @@ test("the path to production shows each readiness estimate as a disabled Lily sl
   const percents = async () =>
     page.locator('[data-testid="readiness"] input[type="range"]').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
   const english = await percents();
-  expect(PRODUCTION_LOCALES.length).toBe(16);
+  expect(PRODUCTION_LOCALES.length).toBe(54);
   for (const locale of PRODUCTION_LOCALES) {
     await page.goto(`/${locale}/path-to-production/`);
     expect(await percents(), locale).toEqual(english);
@@ -537,11 +539,14 @@ test("the privacy notice is in every locale, naming what the English one names",
   expect([...PRIVACY_LOCALES]).toEqual([...BRIEF_LOCALES]);
   const english = codeIn(readFileSync("../docs/privacy-notice.md", "utf8"));
   expect(english).toContain("lily-theme");
+  // A locale may name its `privacy` directory in its own language (`bn-001/গোপনীয়তা`), so read each notice from the
+  // generated content, which the sync keys by the English name.
+  const content = JSON.parse(readFileSync("src/content/docs.json", "utf8")).files as Record<string, string>;
   for (const locale of PRIVACY_LOCALES) {
-    expect(codeIn(readFileSync(`../locales/${locale}/privacy/index.md`, "utf8")), locale).toEqual(english);
+    expect(codeIn(content[`locales/${locale}/privacy/index.md`] ?? ""), locale).toEqual(english);
     await page.goto(`/${locale}/privacy/`);
     await expect(page.locator("html"), locale).toHaveAttribute("lang", langTag(locale));
-    await expect(page.locator("html"), locale).toHaveAttribute("dir", locale.startsWith("ar") ? "rtl" : "ltr");
+    await expect(page.locator("html"), locale).toHaveAttribute("dir", /^(ar|ur)\b/.test(locale) ? "rtl" : "ltr");
     await expect(page.locator("h1"), locale).toBeVisible();
   }
 });

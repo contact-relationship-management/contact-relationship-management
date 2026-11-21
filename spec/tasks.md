@@ -2720,3 +2720,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       UI's languages (`splash.trust.6.body`, the accessibility page) and the Rust comments saying "eight languages" still
       say eight. The site has privacy notices only for `it-001` among the new ones. The Playwright suites, including the
       right-to-left layout for Urdu, were not run. `scripts/ci-check.sh all` was not run, so there is no attestation.
+- [x] CRM-T298 **The site's tests and links follow the 54 locales.** Asked for by the product owner on 2026-11-21 ("push &
+      fix") after `site` was red on `main` from the locale commits before it. (S)
+      - **What it changes:** the site's census tests count 54 locales (not 16) and the 21 `-001` translations the hero
+      names; Urdu is right to left in the privacy test; the privacy test reads each notice from the generated content, as
+      some locales name the directory in their own language. A real gap: a locale's page linking its own-language
+      `path-to-production` directory (`bn-001/উৎপাদনের-পথ`) went to the repository, not the site's route; the sync now
+      writes `sections` (38 locales) into `briefs.json` and `routeOfRepoPath` maps them back.
+      - **Ran:** `site` (687 Playwright tests, build and checks) passes; `lint` passes.
+      - **Not done / not verified:** the privacy notices for the locales that have none are still missing (the test reads
+      only the locales that have one); `ci-check.sh all` was not run, so there is no attestation.
