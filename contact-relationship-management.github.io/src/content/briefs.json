@@ -14,6 +14,9 @@
     "es-001",
     "es-es",
     "es-mx",
+    "fr-001",
+    "fr-ca",
+    "fr-fr",
     "hi-001",
     "hi-in",
     "hi-np",
@@ -35,6 +38,9 @@
     "es-001",
     "es-es",
     "es-mx",
+    "fr-001",
+    "fr-ca",
+    "fr-fr",
     "hi-001",
     "hi-in",
     "hi-np",
@@ -56,6 +62,9 @@
     "es-001",
     "es-es",
     "es-mx",
+    "fr-001",
+    "fr-ca",
+    "fr-fr",
     "hi-001",
     "hi-in",
     "hi-np",
@@ -67,7 +76,10 @@
     "en-001",
     "es-001",
     "es-es",
-    "es-mx"
+    "es-mx",
+    "fr-001",
+    "fr-ca",
+    "fr-fr"
   ],
   "compare": [
     "espocrm",
@@ -793,6 +805,171 @@
     {
       "locale": "es-mx",
       "slug": "probador-de-seguridad-independiente",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "directeur-de-la-stratégie",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "directeur-de-la-sécurité",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "directeur-des-opérations",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "directeur-des-ressources-humaines",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "directeur-des-risques",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "directeur-des-systèmes-d-information",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "directeur-général",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "directeur-juridique",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "directeur-technique",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "gouvernance-risques-conformité",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "fr-001",
+      "slug": "testeur-de-sécurité-indépendant",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "directeur-de-la-stratégie",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "directeur-de-la-sécurité",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "directeur-des-opérations",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "directeur-des-ressources-humaines",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "directeur-des-risques",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "directeur-des-systèmes-d-information",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "directeur-général",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "directeur-juridique",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "directeur-technique",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "gouvernance-risques-conformité",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "fr-ca",
+      "slug": "testeur-de-sécurité-indépendant",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "directeur-de-la-stratégie",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "directeur-de-la-sécurité",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "directeur-des-opérations",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "directeur-des-ressources-humaines",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "directeur-des-risques",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "directeur-des-systèmes-d-information",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "directeur-général",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "directeur-juridique",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "directeur-technique",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "gouvernance-risques-conformité",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "fr-fr",
+      "slug": "testeur-de-sécurité-indépendant",
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
     {

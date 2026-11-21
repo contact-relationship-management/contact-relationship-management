@@ -79,7 +79,7 @@ The repository has two sets of locales, for two different things, and they are n
 
 ## Known limits
 
-- Translations into Arabic, Chinese, Hindi, Spanish and Welsh are machine-produced and
+- Translations into Arabic, Chinese, French, Hindi, Spanish and Welsh are machine-produced and
   **unreviewed**. Legal, risk and compliance wording in particular needs a
   qualified native-speaking reviewer before anyone relies on it.
 - On 2026-11-21 `es-mx` (home, path to production, privacy notice, evaluation checklist, the eleven role briefs and the
@@ -88,6 +88,11 @@ The repository has two sets of locales, for two different things, and they are n
   `es-es` in particular has had no check for Peninsular usage beyond those edits. Their section directories are in
   Spanish (`para`, `ruta-a-producción`, `privacidad`, `evaluar`) and are found by `.locale-peer-id`; the site's URLs
   keep the English names.
+- On 2026-11-21 `fr-fr` (same pages as `es-mx`, and the site's own strings) was translated into French by Claude.
+  `fr-001` was made from it with "courriel" changed to "e-mail", and `fr-ca` with "ticket" changed to "billet",
+  "astreinte" to "garde" and "liste de contrôle" to "liste de vérification". All three are **unreviewed** by a French
+  speaker; `fr-ca` has had no check for Québec usage beyond those edits. Their section directories are in French
+  (`pour`, `chemin-vers-la-production`, `confidentialité`, `évaluation`) and are found by `.locale-peer-id`.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
 - On 2026-11-13 the "demo software" sentences on the locale home pages and in

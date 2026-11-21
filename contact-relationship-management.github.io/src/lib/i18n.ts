@@ -304,8 +304,57 @@ const es: Record<Key, string> = {
   "footer.after": "Este sitio se exporta desde un directorio del propio repositorio con git subtree.",
 };
 
+const fr: Record<Key, string> = {
+  "nav.overview": "Présentation",
+  "nav.tutorial": "Tutoriel",
+  "nav.comparisons": "Comparer",
+  "cta.tutorial": "Commencer le tutoriel",
+  "cta.source": "Voir le code source",
+  brand: "Gestion de la relation client",
+  translations: "Traductions :",
+  skip: "Aller au contenu",
+  site: "Site",
+  "nav.home": "Accueil",
+  "nav.install": "Installation",
+  "nav.bridges": "Passerelles de la famille",
+  "nav.spec": "Spécification",
+  "nav.locales": "Paramètres régionaux",
+  "nav.briefs": "Fiches par rôle",
+  theme: "Thème",
+  themeSystem: "Suivre cet appareil",
+  "nav.privacy": "Avis de confidentialité",
+  textSize: "Taille du texte",
+  briefLanguage: "Langue de cette fiche",
+  language: "Langue",
+  pages: "Pages",
+  repository: "Dépôt du code source",
+  search: "Rechercher",
+  "search.input": "Termes de recherche",
+  "search.submit": "Rechercher",
+  "search.placeholder": "Rechercher dans la documentation",
+  timeZone: "Fuseau horaire",
+  share: "Partager",
+  "share.email": "E-mail",
+  "share.copy": "Copier le lien",
+  "share.copied": "Copié",
+  "share.copyFailed": "Le lien n'a pas pu être copié",
+  "search.prompt": "Utilisez le bouton de recherche de l'en-tête pour saisir un mot.",
+  "search.none": "Aucune page ne correspond.",
+  "search.count": "Pages trouvées : {n}",
+  "search.failed": "L'index de recherche n'a pas pu être chargé.",
+  allBriefs: "Toutes les fiches par rôle",
+  "briefs.lede":
+    "Une page pour chaque poste de direction : ce qu'est le logiciel, ce qu'il offre, ce qu'il n'offre pas et les décisions qui vous reviennent. Utilisez le bouton de langue de l'en-tête pour voir la même fiche dans d'autres paramètres régionaux.",
+  locale: "Paramètres régionaux :",
+  source: "Source :",
+  "readiness.estimate": "préparation estimée",
+  "footer.before": "Construit à partir des documents de",
+  "footer.link": "le dépôt de Gestion de la relation client",
+  "footer.after": "Ce site est exporté depuis un répertoire du dépôt lui-même avec git subtree.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, cy, es, hi, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, cy, es, fr, hi, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -328,6 +377,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Pequeño",
     smaller: "Muy pequeño",
     smallest: "Muy muy pequeño",
+  },
+  fr: {
+    largest: "Très très grand",
+    larger: "Très grand",
+    large: "Grand",
+    normal: "Normal",
+    small: "Petit",
+    smaller: "Très petit",
+    smallest: "Très très petit",
   },
 };
 
