@@ -142,7 +142,7 @@ The repository has two sets of locales, for two different things, and they are n
   in Urdu script (`برائے`, `رازداری`, `جائزہ`, `پیداوار-کا-راستہ`, and the role names) and are found by `.locale-peer-id`.
 - On 2026-11-21 `da-001` (same pages as `de-de`, and the site's own strings) was translated into Danish by Claude. It is the
   only Danish locale, and it is **unreviewed** by a Danish speaker. Its directory names are in Danish (`til`,
-  `privatliv`, `vurdering`, `vej-til-produktion`, and the role names) and are found by `.locale-peer-id`.
+  `privatliv`, `vurdering`, and the role names) and are found by `.locale-peer-id`.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
 - On 2026-11-13 the "demo software" sentences on the locale home pages and in
