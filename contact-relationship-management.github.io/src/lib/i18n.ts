@@ -598,8 +598,57 @@ const ko: Record<Key, string> = {
   "footer.after": "이 사이트는 git subtree를 사용해 해당 저장소 안의 디렉터리에서 내보낸 것입니다.",
 };
 
+const sw: Record<Key, string> = {
+  "nav.overview": "Muhtasari",
+  "nav.tutorial": "Mafunzo",
+  "nav.comparisons": "Linganisha",
+  "cta.tutorial": "Anza mafunzo",
+  "cta.source": "Tazama msimbo chanzo",
+  brand: "Contact Relationship Management",
+  translations: "Tafsiri:",
+  skip: "Ruka hadi maudhui",
+  site: "Tovuti",
+  "nav.home": "Mwanzo",
+  "nav.install": "Sakinisha",
+  "nav.bridges": "Madaraja ya familia",
+  "nav.spec": "Maelezo ya kiufundi",
+  "nav.locales": "Maeneo ya lugha",
+  "nav.briefs": "Muhtasari wa majukumu",
+  theme: "Mandhari",
+  themeSystem: "Fuata kifaa hiki",
+  "nav.privacy": "Notisi ya faragha",
+  textSize: "Ukubwa wa maandishi",
+  briefLanguage: "Lugha ya muhtasari huu",
+  language: "Lugha",
+  pages: "Kurasa",
+  repository: "Hazina ya chanzo",
+  search: "Tafuta",
+  "search.input": "Maneno ya kutafuta",
+  "search.submit": "Tafuta",
+  "search.placeholder": "Tafuta kwenye nyaraka",
+  timeZone: "Saa za eneo",
+  share: "Shiriki",
+  "share.email": "Barua pepe",
+  "share.copy": "Nakili kiungo",
+  "share.copied": "Imenakiliwa",
+  "share.copyFailed": "Haikuweza kunakili kiungo",
+  "search.prompt": "Tumia kitufe cha kutafuta kwenye kichwa ili kuingiza neno.",
+  "search.none": "Hakuna ukurasa unaolingana.",
+  "search.count": "Kurasa zilizopatikana: {n}",
+  "search.failed": "Faharasa ya utafutaji haikuweza kupakiwa.",
+  allBriefs: "Muhtasari wote wa majukumu",
+  "briefs.lede":
+    "Ukurasa mmoja kwa kila jukumu la juu: programu ni nini, inakupa nini, haikupi nini, na maamuzi ambayo ni yako. Tumia kitufe cha lugha kwenye kichwa kupata muhtasari ule ule katika eneo lingine la lugha.",
+  locale: "Eneo la lugha:",
+  source: "Chanzo:",
+  "readiness.estimate": "makadirio ya utayari",
+  "footer.before": "Imejengwa kutokana na hati zilizo katika",
+  "footer.link": "hazina ya Contact Relationship Management",
+  "footer.after": "Tovuti hii inasafirishwa kutoka saraka ya hazina yenyewe kwa git subtree.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ko, ru, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ko, ru, sw, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -658,6 +707,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "작음",
     smaller: "더 작음",
     smallest: "가장 작음",
+  },
+  sw: {
+    largest: "Kubwa zaidi",
+    larger: "Kubwa sana",
+    large: "Kubwa",
+    normal: "Kawaida",
+    small: "Ndogo",
+    smaller: "Ndogo sana",
+    smallest: "Ndogo zaidi",
   },
   ru: {
     largest: "Огромный",

@@ -79,7 +79,7 @@ The repository has two sets of locales, for two different things, and they are n
 
 ## Known limits
 
-- Translations into Arabic, Bengali, Chinese, French, Hindi, Indonesian, Japanese, Korean, Russian, Spanish and Welsh are machine-produced and
+- Translations into Arabic, Bengali, Chinese, French, Hindi, Indonesian, Japanese, Korean, Russian, Spanish, Swahili and Welsh are machine-produced and
   **unreviewed**. Legal, risk and compliance wording in particular needs a
   qualified native-speaking reviewer before anyone relies on it.
 - On 2026-11-21 `es-mx` (home, path to production, privacy notice, evaluation checklist, the eleven role briefs and the
@@ -116,6 +116,9 @@ The repository has two sets of locales, for two different things, and they are n
   `ko-001` is a copy of it with no wording changed, because no usage differs that a non-speaker could name. Both are
   **unreviewed** by a Korean speaker. Their section directories are in Hangul (`직책별-개요`, `운영-전환-경로`,
   `개인정보`, `평가`) and are found by `.locale-peer-id`.
+- On 2026-11-21 `sw-tz` (same pages as `ko-kr`, and the site's own strings) was translated into Swahili by Claude.
+  `sw-001` is a copy of it with no wording changed. Both are **unreviewed** by a Swahili speaker. Their section
+  directories are in Swahili (`kwa`, `njia-ya-uzalishaji`, `faragha`, `tathmini`) and are found by `.locale-peer-id`.
 - The `-001` copies are identical to their regional sibling; no regional
   adaptation was made.
 - On 2026-11-13 the "demo software" sentences on the locale home pages and in

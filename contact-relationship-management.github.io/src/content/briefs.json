@@ -33,6 +33,8 @@
     "ru-001",
     "ru-by",
     "ru-ru",
+    "sw-001",
+    "sw-tz",
     "zh-001",
     "zh-cn",
     "zh-th"
@@ -70,6 +72,8 @@
     "ru-001",
     "ru-by",
     "ru-ru",
+    "sw-001",
+    "sw-tz",
     "zh-001",
     "zh-cn",
     "zh-th"
@@ -107,6 +111,8 @@
     "ru-001",
     "ru-by",
     "ru-ru",
+    "sw-001",
+    "sw-tz",
     "zh-001",
     "zh-cn",
     "zh-th"
@@ -131,7 +137,9 @@
     "ko-kr",
     "ru-001",
     "ru-by",
-    "ru-ru"
+    "ru-ru",
+    "sw-001",
+    "sw-tz"
   ],
   "compare": [
     "espocrm",
@@ -1902,6 +1910,116 @@
     {
       "locale": "ru-ru",
       "slug": "управление-рисками-и-соответствие",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "afisa-mkuu-mtendaji",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "afisa-mkuu-wa-habari",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "afisa-mkuu-wa-hatari",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "afisa-mkuu-wa-mkakati",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "afisa-mkuu-wa-sheria",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "afisa-mkuu-wa-teknolojia",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "afisa-mkuu-wa-uendeshaji",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "afisa-mkuu-wa-usalama",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "afisa-mkuu-wa-watu",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "mjaribu-huru-wa-usalama",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "sw-001",
+      "slug": "utawala-hatari-uzingatiaji",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "afisa-mkuu-mtendaji",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "afisa-mkuu-wa-habari",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "afisa-mkuu-wa-hatari",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "afisa-mkuu-wa-mkakati",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "afisa-mkuu-wa-sheria",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "afisa-mkuu-wa-teknolojia",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "afisa-mkuu-wa-uendeshaji",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "afisa-mkuu-wa-usalama",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "afisa-mkuu-wa-watu",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "mjaribu-huru-wa-usalama",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "sw-tz",
+      "slug": "utawala-hatari-uzingatiaji",
       "peer": "1be05a7d51964cc5ad429ff70c078af6"
     },
     {
