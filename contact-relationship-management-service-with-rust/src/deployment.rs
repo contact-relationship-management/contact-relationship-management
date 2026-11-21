@@ -4,12 +4,31 @@
 //! start that has it writes it to the one-row `deployment` table, and every start after compares.
 //! A start whose name differs from the database's is refused, so a configuration mistake cannot
 //! point one customer's service at another customer's database. So is a start with no name
-//! against a database that has one. With neither, the start goes ahead and says so.
+//! against a database that has one. Production refuses to start with no name at all (CRM-D26);
+//! elsewhere, with neither, the start goes ahead and says so.
 
 use sqlx::PgPool;
 
 /// The longest name accepted; the table's check says the same.
 pub const MAX_NAME: usize = 64;
+
+/// Why a production start with no deployment name is refused (CRM-D26).
+pub const MISSING_IN_PRODUCTION: &str = "refusing to start in production without \
+    CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID (CRM-R105, CRM-D26): name this deployment, the \
+    same on every replica, so a DB_URL that points at another customer's database stops the start";
+
+/// Production needs a deployment name; elsewhere it may be left out.
+///
+/// # Errors
+///
+/// [`MISSING_IN_PRODUCTION`] when `production` and there is no name.
+pub fn required(production: bool, configured: Option<&str>) -> Result<(), &'static str> {
+    if production && configured.is_none() {
+        Err(MISSING_IN_PRODUCTION)
+    } else {
+        Ok(())
+    }
+}
 
 /// What a start should do, from the configured name and the one the database holds.
 #[derive(Debug, PartialEq, Eq)]
@@ -168,5 +187,13 @@ mod tests {
         assert!(!valid(&"a".repeat(MAX_NAME + 1)));
         assert!(decide(Some("a b"), None).is_err());
         assert!(decide(Some("a b"), Some("a b")).is_err());
+    }
+
+    #[test]
+    fn production_needs_a_name_and_elsewhere_it_may_be_left_out() {
+        assert_eq!(required(true, None), Err(MISSING_IN_PRODUCTION));
+        assert_eq!(required(true, Some("acme-example")), Ok(()));
+        assert_eq!(required(false, None), Ok(()));
+        assert!(MISSING_IN_PRODUCTION.contains("CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID"));
     }
 }

@@ -67,6 +67,7 @@ common_env=(
   -e CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY_FILE=/app/config/abac-policy.reference.json -e CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT=outbox
   -e "CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS=k1:$(head -c 32 /dev/zero | tr '\0' 'a' | base64)" -e CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION=1
   -e "CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET=$(head -c 32 /dev/zero | tr '\0' 'c')"
+  -e CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID=smoke-test
 )
 hardened=(--read-only --tmpfs /tmp --cap-drop all --security-opt no-new-privileges --memory 768m --cpus 2 --network "${NET}")
 run_image() { # NAME EXTRA-RUN-ARGS... -- IMAGE-ARGS...

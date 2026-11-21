@@ -2660,3 +2660,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Ran:** `scripts/ci-check.sh site` (307 passed).
       - **Not done / not verified:** the five new locales are sibling-copy drafts, as their commit says; none is
       reviewed, and this change says nothing about their wording.
+- [x] CRM-T294 **Production requires a deployment name (CRM-R105, CRM-D26).** Decided by the product owner on
+      2026-11-20 ("Should production require CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID: yes"). `deployment::required`
+      refuses a production `start` with no name before the database is read; outside production the setting stays
+      optional. The image smoke test now sets one. (S)
+      - **Ran:** `fmt`, `clippy`, `test` (a unit test of `required`), `lint`; the built binary with `APP_ENV=production`
+      and the other production settings: with no name it exited 1 with the reason, with `acme-example` it served and the
+      database held that name.
+      - **Not done / not verified:** `scripts/image-smoke.sh` was not run, so the image was not started with the new
+      setting; `db` commands and tasks still do not check it. **Breaking for operators:** a production deployment that has
+      not set the name stops on upgrade until it does.

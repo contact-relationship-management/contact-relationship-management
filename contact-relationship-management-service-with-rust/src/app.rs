@@ -354,6 +354,11 @@ impl App {
             Command::Start { .. } => {
                 // CRM-R105: refuse a database that belongs to another deployment.
                 let configured = crate::deployment::configured();
+                crate::deployment::required(
+                    ctx.environment.is_production_like(),
+                    configured.as_deref(),
+                )
+                .map_err(Error::string)?;
                 if let Some(note) =
                     crate::deployment::check(crate::db::pool(&ctx), configured.as_deref())
                         .await

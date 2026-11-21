@@ -40,7 +40,7 @@ Evidence paths are relative to the repository root.
 | Request size limits | NIST SC-5 | Implemented | `limit_payload` 2 MB |
 | Input validation | NIST SI-10 | Implemented | `src/validation.rs` |
 | Memory safety | NIST SA-15 | Implemented | `#![forbid(unsafe_code)]` |
-| Tenant isolation | NIST SC-4, SC-32; ISO A.8.22 | Implemented when `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` is set (CRM-R105) | one deployment per database is the only way the service runs; a start against a database claimed by another deployment is refused (CRM-T282, `src/deployment.rs`, `tests/requests/deployment.rs`); not required in production |
+| Tenant isolation | NIST SC-4, SC-32; ISO A.8.22 | Implemented (CRM-R105) | one deployment per database is the only way the service runs; a start against a database claimed by another deployment is refused (CRM-T282, `src/deployment.rs`, `tests/requests/deployment.rs`); production refuses to start without `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` (CRM-T294) |
 | Unauthenticated operational endpoints | NIST AC-3 | Implemented (opt-in) | `CONTACT_RELATIONSHIP_MANAGEMENT_PROTECT_OPERATIONAL=1` requires auth on metrics and OpenAPI; public by default |
 
 ## Supply chain and configuration

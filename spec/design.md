@@ -505,8 +505,8 @@ Still open: publishing. The service is on crates.io, so publishing a new version
 
 ## CRM-D26 — A database belongs to one named deployment
 
-*Written 2026-11-20 at the owner's request ("add to spec"); built by CRM-T282 for CRM-R105.* Whether production must have
-the name is not decided.
+*Written 2026-11-20 at the owner's request ("add to spec"); built by CRM-T282 for CRM-R105.* Production must have the
+name (the owner, 2026-11-20; CRM-T294).
 
 **The problem.** When a supplier hosts the CRM for several customers, each customer has its own database. The only thing
 linking a running service to its database is `DB_URL`. A copied configuration or a typo in a deploy script could start
@@ -527,7 +527,7 @@ A's contacts, deals and consent records. Nothing stopped that before this decisi
 | `acme-example` | `acme-example` | starts |
 | `customer-b` | `acme-example` | refuses to start, naming both, and says to check `DB_URL` |
 | not set | `acme-example` | refuses to start, and says to set it to `acme-example` if this is that deployment |
-| not set | none | starts, and logs a warning that nothing is checked |
+| not set | none | in production, refuses to start; elsewhere starts, and logs a warning that nothing is checked |
 
 - **Why a refusal without a name.** A service with no name against a claimed database is the likeliest form of the
   mistake this guards against, so it is refused rather than let through.
@@ -541,7 +541,9 @@ A's contacts, deals and consent records. Nothing stopped that before this decisi
 - **Where it runs.** In `start` (the server and the background worker), after any migration. `db` commands and tasks do
   not check it.
 
-Still open: making production refuse to start without `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID`, as it refuses without authentication or
-`CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET`. That is the safer default, but every deployment that has not set the name would stop on its next
-upgrade until it does. It catches a service pointed at the wrong database; it does not separate file stores, Redis or
+**Production requires the name** (decided by the product owner, 2026-11-20; built by CRM-T294). A production start
+without `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` is refused before the database is read, as one without
+authentication or `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET` is: otherwise the guard is only as good as the operator
+who remembers to turn it on. A deployment upgrading from before this stops until it sets the name; the first start with
+it then claims the database. The check catches a service pointed at the wrong database; it does not separate file stores, Redis or
 keys, which the [operations runbook](compliance/operations-runbook.md) asks the supplier to give each customer.

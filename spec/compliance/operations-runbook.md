@@ -16,7 +16,7 @@ Commands assume the container images from the repository's `Containerfile`s.
    error; do not use it). Set `CONTACT_RELATIONSHIP_MANAGEMENT_CURSOR_SECRET`, 32 bytes or more and the same
    on every replica: it signs the list cursors, and production refuses to start
    without it. Changing it makes every `Link: rel="next"` already handed out
-   answer `422`, so a client starts its list again. Set `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` to a
+   answer `422`, so a client starts its list again. Set `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` (production refuses to start without it) to a
    name for this customer's deployment, the same on every replica. The first start
    writes it to the database and every later start compares, so a `DB_URL` that
    points at another customer's database stops the start (CRM-R105). The name cannot

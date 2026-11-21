@@ -112,7 +112,8 @@ input and is stored as `person:<id>`.
   region for `GET /api/operations/residency`.
 - **Deployment name:** `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` (1 to 64 letters, digits, `.`, `_`, `-`). The first start
   with it writes it to the database; a later start with another name, or with none, is refused
-  (CRM-R105). Unset against a database that has no name, the start goes ahead and logs a warning.
+  (CRM-R105). **Production requires it.** Elsewhere, unset against a database that has no name, the start
+  goes ahead and logs a warning.
 - **Email** is simulated unless `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE` says otherwise; see
   [INSTALL.md](../INSTALL.md#sending-email).
 - **Bridges:** `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN`,

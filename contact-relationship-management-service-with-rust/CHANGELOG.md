@@ -35,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` names the deployment. The first `start` with it writes it to a new one-row
   `deployment` table (migration `20261120000000`), which refuses any change or delete; every later
   `start` compares, and a different name, or none against a database that has one, stops the start.
-  With neither, the start goes ahead and logs a warning. Not required in production yet.
+  With neither, a start outside production goes ahead and logs a warning. **Breaking for operators:** production
+  refuses to start without it (CRM-T294); set it before upgrading, and the first start claims the database.
 
 ### Changed — send-time consent evidence (CRM-T166)
 

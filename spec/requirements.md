@@ -1759,11 +1759,11 @@ exported which sensitive record, so that we can watch the system and investigate
   and checked at each start), so a configuration mistake cannot join two customers.
 - Built 2026-11-20 (CRM-T282, design CRM-D26): `CONTACT_RELATIONSHIP_MANAGEMENT_DEPLOYMENT_ID` and the one-row `deployment` table, which refuses an update or a
   delete. The first `start` with the setting writes it; a later `start` with another name is refused, and so is one
-  with no name against a database that has one. With neither, the start goes ahead and logs a warning. The runbook
+  with no name against a database that has one. With neither, a start outside production goes ahead and logs a warning. The runbook
   says there is no shared mode.
-- Not built: requiring the setting in production (a decision for the product owner, as it would stop every
-  deployment that has not set it); the check on `db` commands and tasks, which do not run it; renaming a deployment
-  (a database owner's `TRUNCATE` is the only way).
+- Production refuses to start without the setting (decided by the product owner, 2026-11-20; CRM-T294).
+- Not built: the check on `db` commands and tasks, which do not run it; renaming a deployment (a database owner's
+  `TRUNCATE` is the only way).
 
 ## CRM-R106 — Data stays in the region the customer names
 
