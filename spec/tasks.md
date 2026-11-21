@@ -2660,6 +2660,16 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       database; `task` listing `seed` and `rotate_field_keys`, and an unknown task failing. **Not re-measured:** the
       census above is from before these tests. Left in `app.rs`: the background loops (`spawn_*`, which run forever),
       the start-up warnings in `init_sending`, and `Command::Start` itself, which serves until stopped.
+      - **Round 12:** `controllers/relationships.rs` (92.5%, 63 missed): the manual repoint after a registry merge, which no
+      test reached: the contact points at the new person and a read agrees, the audit row keeps where it pointed, where it
+      points and the reason, and it is refused for a reference that is not a person's, a blank reason (pointer `/reason`),
+      both at once (two errors) and a contact that is not there, leaving the contact as it was. A contact edit that sets
+      the given and family names, the title, the owner (a `worker:` reference stored as the `person:` one it names) and the
+      account, then clears the owner, account and given name while a family name not sent stays; the audit row names each
+      field changed. An account renamed and given and then stripped of an owner. Measured on its own module: the repoint
+      handler 42 of 42 lines, the account edit 10 of 10, the contact edit 20 of 22. Left: the masked-detail branches
+      (`mask_json` of deals, tickets and activities for a caller without access) and the duplicate check's lookup of a
+      mailbox from the person service, which need a caller with a narrower role and a stand-in person service.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
 - [x] CRM-T293 **The site's locale counts follow the five new locales.** `5039bb0` added `zh-th`, `hi-np`, `cy-ar`,
