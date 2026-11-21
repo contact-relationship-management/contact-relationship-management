@@ -374,3 +374,120 @@ async fn the_sla_register_lists_late_tickets_worst_first_and_counts_what_is_at_r
     })
     .await;
 }
+
+/// The hygiene findings the first estate does not reach (a deal past its expected close, leads nobody
+/// has worked) and the executive pack's lost reasons, counted per reason (CRM-T292, round 16).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn hygiene_flags_a_deal_past_its_close_and_leads_nobody_worked_and_lost_reasons_are_counted()
+{
+    request::<App, _, _>(|request, ctx| async move {
+        let pool = contact_relationship_management::db::pool(&ctx);
+        let (pipeline_pid, stages) = seed_pipeline!(&request).await;
+
+        // An open deal with an amount and a close date that has gone by.
+        let overdue: Value = request
+            .post("/api/deals")
+            .json(
+                &json!({ "name": "Overdue close", "pipeline_pid": pipeline_pid,
+                           "amount_minor": 90_000_i64, "currency": "GBP",
+                           "expected_close_on": "2020-01-31" }),
+            )
+            .await
+            .json();
+        let overdue_pid = overdue["pid"].as_str().unwrap().to_string();
+
+        // Three leads, all made forty days ago: one never touched, one touched a month and a half
+        // ago, one touched today.
+        let mut leads = Vec::new();
+        for name in ["Never touched", "Touched long ago", "Touched today"] {
+            let made = request
+                .post("/api/leads")
+                .json(&json!({ "display_name": name, "source": "web" }))
+                .await;
+            let text = made.text();
+            let lead: Value = serde_json::from_str(&text).unwrap();
+            leads.push(
+                lead["pid"]
+                    .as_str()
+                    .unwrap_or_else(|| panic!("{text}"))
+                    .to_string(),
+            );
+        }
+        sqlx::query("UPDATE leads SET created_at = now() - interval '40 days'")
+            .execute(pool)
+            .await
+            .unwrap();
+        for (pid, days_ago) in [(&leads[1], 45_i64), (&leads[2], 0)] {
+            request
+                .post("/api/activities")
+                .json(&json!({ "subject_kind": "lead", "subject_pid": pid,
+                               "kind": "call", "summary": "Rang them", "actor_ref": a_user() }))
+                .await
+                .assert_status_ok();
+            sqlx::query(
+                "UPDATE activities SET occurred_at = now() - make_interval(days => $2::int) \
+                 WHERE subject_pid = $1::uuid",
+            )
+            .bind(pid)
+            .bind(days_ago as i32)
+            .execute(pool)
+            .await
+            .unwrap();
+        }
+
+        let hygiene: Value = request
+            .get("/api/insights/pipeline-hygiene?days=30")
+            .await
+            .json();
+        let findings = hygiene["findings"].as_array().unwrap();
+        let by_rule =
+            |rule: &str| -> Vec<&Value> { findings.iter().filter(|f| f["rule"] == rule).collect() };
+        let past = by_rule("open_deal_past_expected_close");
+        assert_eq!(past.len(), 1, "{hygiene}");
+        assert_eq!(past[0]["deal"]["pid"], overdue_pid);
+        assert_eq!(past[0]["expected_close_on"], "2020-01-31");
+        assert!(by_rule("open_deal_without_expected_close").is_empty());
+        let unworked: Vec<&str> = by_rule("unworked_lead")
+            .iter()
+            .map(|f| f["lead_pid"].as_str().unwrap())
+            .collect();
+        assert!(
+            unworked.contains(&leads[0].as_str()),
+            "never touched: {hygiene}"
+        );
+        assert!(
+            unworked.contains(&leads[1].as_str()),
+            "touched long ago: {hygiene}"
+        );
+        assert!(
+            !unworked.contains(&leads[2].as_str()),
+            "touched today: {hygiene}"
+        );
+        assert!(by_rule("unworked_lead")[0]["score"].is_number());
+
+        // Lost deals are counted per reason, the reason kept as it was written.
+        for (name, reason) in [("A", "price"), ("B", "price"), ("C", "timing")] {
+            let deal: Value = request
+                .post("/api/deals")
+                .json(&json!({ "name": name, "pipeline_pid": pipeline_pid,
+                               "amount_minor": 1_000_i64, "currency": "GBP" }))
+                .await
+                .json();
+            request
+                .post(&format!(
+                    "/api/deals/{}/stage",
+                    deal["pid"].as_str().unwrap()
+                ))
+                .json(&json!({ "stage_pid": stages[3], "lost_reason": reason }))
+                .await
+                .assert_status_ok();
+        }
+        let pack: Value = request.get("/api/insights/executive").await.json();
+        assert_eq!(pack["deals_lost"], 3, "{pack}");
+        assert_eq!(pack["lost_reasons"]["price"], 2, "{pack}");
+        assert_eq!(pack["lost_reasons"]["timing"], 1, "{pack}");
+    })
+    .await;
+}

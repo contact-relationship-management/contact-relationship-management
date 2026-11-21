@@ -2700,6 +2700,14 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       coverage stage is now 97 (it was 96.5), which that census clears by 0.08 of a point; it is raised as rounds land,
       never lowered to pass. **Found by the census:** a round-15 test that lacked its `#[ignore]` for the database and
       would have failed the database-free `test` stage; gated in `0cf6f41`.
+      - **Round 16:** `controllers/insights/sales.rs` (90.5%, 29 missed; 6 of 300 lines left, measured on the insight tests
+      alone): pipeline hygiene for an open deal past its expected close (the finding carries the date; a deal with a date is
+      not "without expected close") and for leads nobody has worked: one never touched, one touched forty-five days ago
+      and flagged, one touched today and not, each finding carrying the lead and its score; the executive pack counting lost
+      deals per reason, the reason kept as written (two for "price", one for "timing"). **Found:** a lost close must carry
+      a reason (the API refuses one without), so the pack's "(no reason recorded)" label can only come from a row written
+      outside the API; it stays uncovered, as a guard. Left: the window parameters that do not parse (the pack falls back
+      to the last thirty days) and a deal moved twice (the later move wins).
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
 - [x] CRM-T293 **The site's locale counts follow the five new locales.** `5039bb0` added `zh-th`, `hi-np`, `cy-ar`,
