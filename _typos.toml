@@ -27,6 +27,8 @@ extend-exclude = [
 HELO = "HELO"
 # A deliberately misspelt request member (tests/requests/api_standards.rs, src/json.rs).
 dispaly = "dispaly"
+# "Việt Nam" in the site's Vietnamese locale label (src/lib/site.ts).
+Nam = "Nam"
 # `ANDed` (consent is ANDed), `-yse` British verb endings, nickname tables, test fixtures.
 ded = "ded"
 yse = "yse"

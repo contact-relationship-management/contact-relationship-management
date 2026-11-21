@@ -39,6 +39,8 @@
     "sv-se",
     "sw-001",
     "sw-tz",
+    "vi-001",
+    "vi-vn",
     "zh-001",
     "zh-cn",
     "zh-th"
@@ -82,6 +84,8 @@
     "sv-se",
     "sw-001",
     "sw-tz",
+    "vi-001",
+    "vi-vn",
     "zh-001",
     "zh-cn",
     "zh-th"
@@ -125,6 +129,8 @@
     "sv-se",
     "sw-001",
     "sw-tz",
+    "vi-001",
+    "vi-vn",
     "zh-001",
     "zh-cn",
     "zh-th"
@@ -155,7 +161,9 @@
     "sv-001",
     "sv-se",
     "sw-001",
-    "sw-tz"
+    "sw-tz",
+    "vi-001",
+    "vi-vn"
   ],
   "compare": [
     "espocrm",
@@ -2256,6 +2264,116 @@
     {
       "locale": "sw-tz",
       "slug": "utawala-hatari-uzingatiaji",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "giám-đốc-an-ninh-thông-tin",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "giám-đốc-chiến-lược",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "giám-đốc-công-nghệ",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "giám-đốc-nhân-sự",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "giám-đốc-pháp-chế",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "giám-đốc-rủi-ro",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "giám-đốc-thông-tin",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "giám-đốc-vận-hành",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "giám-đốc-điều-hành",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "người-kiểm-thử-bảo-mật-độc-lập",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "vi-001",
+      "slug": "quản-trị-rủi-ro-tuân-thủ",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "giám-đốc-an-ninh-thông-tin",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "giám-đốc-chiến-lược",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "giám-đốc-công-nghệ",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "giám-đốc-nhân-sự",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "giám-đốc-pháp-chế",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "giám-đốc-rủi-ro",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "giám-đốc-thông-tin",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "giám-đốc-vận-hành",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "giám-đốc-điều-hành",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "người-kiểm-thử-bảo-mật-độc-lập",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "vi-vn",
+      "slug": "quản-trị-rủi-ro-tuân-thủ",
       "peer": "1be05a7d51964cc5ad429ff70c078af6"
     },
     {

@@ -745,8 +745,57 @@ const nl: Record<Key, string> = {
   "footer.after": "Deze website wordt met git subtree geëxporteerd uit een map in de repository zelf.",
 };
 
+const vi: Record<Key, string> = {
+  "nav.overview": "Tổng quan",
+  "nav.tutorial": "Hướng dẫn",
+  "nav.comparisons": "So sánh",
+  "cta.tutorial": "Bắt đầu hướng dẫn",
+  "cta.source": "Xem mã nguồn",
+  brand: "Contact Relationship Management",
+  translations: "Bản dịch:",
+  skip: "Chuyển đến nội dung",
+  site: "Trang web",
+  "nav.home": "Trang chủ",
+  "nav.install": "Cài đặt",
+  "nav.bridges": "Cầu nối họ dự án",
+  "nav.spec": "Đặc tả",
+  "nav.locales": "Vùng ngôn ngữ",
+  "nav.briefs": "Tóm tắt theo vai trò",
+  theme: "Giao diện",
+  themeSystem: "Theo thiết bị này",
+  "nav.privacy": "Thông báo quyền riêng tư",
+  textSize: "Cỡ chữ",
+  briefLanguage: "Ngôn ngữ của bản tóm tắt này",
+  language: "Ngôn ngữ",
+  pages: "Các trang",
+  repository: "Kho mã",
+  search: "Tìm kiếm",
+  "search.input": "Từ khóa tìm kiếm",
+  "search.submit": "Tìm kiếm",
+  "search.placeholder": "Tìm trong tài liệu",
+  timeZone: "Múi giờ",
+  share: "Chia sẻ",
+  "share.email": "Email",
+  "share.copy": "Sao chép liên kết",
+  "share.copied": "Đã sao chép",
+  "share.copyFailed": "Không thể sao chép liên kết",
+  "search.prompt": "Dùng nút tìm kiếm trên đầu trang để nhập một từ khóa.",
+  "search.none": "Không có trang nào khớp.",
+  "search.count": "Số trang tìm thấy: {n}",
+  "search.failed": "Không thể tải chỉ mục tìm kiếm.",
+  allBriefs: "Tất cả bản tóm tắt theo vai trò",
+  "briefs.lede":
+    "Một trang cho mỗi vai trò cấp cao: phần mềm là gì, nó mang lại gì cho bạn, nó không mang lại gì và những quyết định nào thuộc về bạn. Dùng nút ngôn ngữ trên đầu trang để xem cùng bản tóm tắt ở một vùng khác.",
+  locale: "Vùng:",
+  source: "Nguồn:",
+  "readiness.estimate": "mức sẵn sàng ước tính",
+  "footer.before": "Được xây dựng từ các tài liệu trong",
+  "footer.link": "kho mã Contact Relationship Management",
+  "footer.after": "Trang web này được xuất bằng git subtree từ một thư mục trong chính kho mã.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ko, nl, ru, sv, sw, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ko, nl, ru, sv, sw, vi, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -832,6 +881,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Klein",
     smaller: "Kleiner",
     smallest: "Kleinst",
+  },
+  vi: {
+    largest: "Lớn nhất",
+    larger: "Lớn hơn",
+    large: "Lớn",
+    normal: "Bình thường",
+    small: "Nhỏ",
+    smaller: "Nhỏ hơn",
+    smallest: "Nhỏ nhất",
   },
   ru: {
     largest: "Огромный",
