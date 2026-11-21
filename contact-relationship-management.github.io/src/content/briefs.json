@@ -45,6 +45,7 @@
     "sv-se",
     "sw-001",
     "sw-tz",
+    "ur-001",
     "vi-001",
     "vi-vn",
     "zh-001",
@@ -96,6 +97,7 @@
     "sv-se",
     "sw-001",
     "sw-tz",
+    "ur-001",
     "vi-001",
     "vi-vn",
     "zh-001",
@@ -147,6 +149,7 @@
     "sv-se",
     "sw-001",
     "sw-tz",
+    "ur-001",
     "vi-001",
     "vi-vn",
     "zh-001",
@@ -186,6 +189,7 @@
     "sv-se",
     "sw-001",
     "sw-tz",
+    "ur-001",
     "vi-001",
     "vi-vn"
   ],
@@ -2618,6 +2622,61 @@
     {
       "locale": "sw-tz",
       "slug": "utawala-hatari-uzingatiaji",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "آزاد-سیکیورٹی-ٹیسٹر",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "چیف-آپریٹنگ-آفیسر",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "چیف-اسٹریٹجی-آفیسر",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "چیف-انفارمیشن-آفیسر",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "چیف-ایگزیکٹو-آفیسر",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "چیف-رسک-آفیسر",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "چیف-سیکیورٹی-آفیسر",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "چیف-لیگل-آفیسر",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "چیف-ٹیکنالوجی-آفیسر",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "چیف-پیپل-آفیسر",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "ur-001",
+      "slug": "گورننس-رسک-تعمیل",
       "peer": "1be05a7d51964cc5ad429ff70c078af6"
     },
     {

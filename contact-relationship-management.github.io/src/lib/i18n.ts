@@ -892,8 +892,57 @@ const pt: Record<Key, string> = {
   "footer.after": "Este site é exportado de um diretório do próprio repositório com git subtree.",
 };
 
+const ur: Record<Key, string> = {
+  "nav.overview": "جائزہ",
+  "nav.tutorial": "ٹیوٹوریل",
+  "nav.comparisons": "موازنے",
+  "cta.tutorial": "ٹیوٹوریل شروع کریں",
+  "cta.source": "سورس کوڈ دیکھیں",
+  brand: "Contact Relationship Management",
+  translations: "ترجمے:",
+  skip: "مواد پر جائیں",
+  site: "سائٹ",
+  "nav.home": "ہوم",
+  "nav.install": "انسٹالیشن",
+  "nav.bridges": "خاندان کے پروجیکٹس سے پل",
+  "nav.spec": "تصریح",
+  "nav.locales": "لوکیلز",
+  "nav.briefs": "کردار کے خلاصے",
+  theme: "تھیم",
+  themeSystem: "اس آلے کی پیروی کریں",
+  "nav.privacy": "رازداری کا نوٹس",
+  textSize: "متن کا سائز",
+  briefLanguage: "اس خلاصے کی زبان",
+  language: "زبان",
+  pages: "صفحات",
+  repository: "ریپوزٹری",
+  search: "تلاش",
+  "search.input": "تلاش کے الفاظ",
+  "search.submit": "تلاش کریں",
+  "search.placeholder": "دستاویزات میں تلاش کریں",
+  timeZone: "ٹائم زون",
+  share: "شیئر کریں",
+  "share.email": "ای میل",
+  "share.copy": "لنک کاپی کریں",
+  "share.copied": "کاپی ہو گیا",
+  "share.copyFailed": "لنک کاپی نہیں ہو سکا",
+  "search.prompt": "تلاش کا لفظ لکھنے کے لیے صفحے کے اوپر تلاش کا بٹن استعمال کریں۔",
+  "search.none": "کوئی صفحہ میل نہیں کھاتا۔",
+  "search.count": "ملنے والے صفحات: {n}",
+  "search.failed": "تلاش کا اشاریہ لوڈ نہیں ہو سکا۔",
+  allBriefs: "تمام کردار کے خلاصے",
+  "briefs.lede":
+    "ہر سینئر کردار کے لیے ایک صفحہ: سافٹ ویئر کیا ہے، آپ کو کیا دیتا ہے، کیا نہیں دیتا، اور کون سے فیصلے آپ کے ہیں۔ یہی خلاصہ کسی دوسرے لوکیل میں دیکھنے کے لیے صفحے کے اوپر زبان کا بٹن استعمال کریں۔",
+  locale: "لوکیل:",
+  source: "ماخذ:",
+  "readiness.estimate": "تخمینی تیاری",
+  "footer.before": "اس سے بنایا گیا: دستاویزات از",
+  "footer.link": "Contact Relationship Management ریپوزٹری",
+  "footer.after": "یہ سائٹ ریپوزٹری ہی کی ایک ڈائریکٹری سے git subtree کے ذریعے برآمد کی جاتی ہے۔",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, de, es, fr, hi, id, ja, ko, nl, pt, ru, sv, sw, vi, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, de, es, fr, hi, id, ja, ko, nl, pt, ru, sv, sw, ur, vi, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -1006,6 +1055,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Pequeno",
     smaller: "Muito pequeno",
     smallest: "Mínimo",
+  },
+  ur: {
+    largest: "سب سے بڑا",
+    larger: "بہت بڑا",
+    large: "بڑا",
+    normal: "معمول",
+    small: "چھوٹا",
+    smaller: "بہت چھوٹا",
+    smallest: "سب سے چھوٹا",
   },
   ru: {
     largest: "Огромный",
