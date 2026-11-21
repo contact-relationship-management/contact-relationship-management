@@ -806,7 +806,7 @@ async fn the_public_pages_are_in_the_reader_s_language() {
         // A language the pages lack, or none, is English.
         let html = request
             .get("/confirm/garbage")
-            .add_header(accept.clone(), HeaderValue::from_static("ko"))
+            .add_header(accept.clone(), HeaderValue::from_static("tr"))
             .await
             .text();
         assert!(

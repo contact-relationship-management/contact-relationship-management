@@ -27,6 +27,10 @@ extend-exclude = [
 HELO = "HELO"
 # A deliberately misspelt request member (tests/requests/api_standards.rs, src/json.rs).
 dispaly = "dispaly"
+# Header names in other languages, in the tour's list of import headers (the UI's demo.ts, CRM-T299): Italian
+# "nominativo" (a full name) and Dutch "adres" (an address).
+nominativo = "nominativo"
+adres = "adres"
 # "Việt Nam" in the site's Vietnamese locale label (src/lib/site.ts).
 Nam = "Nam"
 # `ANDed` (consent is ANDed), `-yse` British verb endings, nickname tables, test fixtures.
