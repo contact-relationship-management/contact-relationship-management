@@ -7,6 +7,8 @@ extend-exclude = [
   "contact-relationship-management-ui-with-svelte/src/lib/api/schema.d.ts",
   # The site's copy of the documents (the briefs in every language) and its own installed packages.
   "contact-relationship-management.github.io/src/content/**",
+  # The site's own words in other languages (navigation, headings, footer).
+  "contact-relationship-management.github.io/src/lib/i18n.ts",
   "contact-relationship-management.github.io/node_modules/**",
   "contact-relationship-management.github.io/build/**",
   "contact-relationship-management.github.io/.svelte-kit/**",
