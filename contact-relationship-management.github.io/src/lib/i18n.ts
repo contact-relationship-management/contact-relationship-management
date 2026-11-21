@@ -353,8 +353,57 @@ const fr: Record<Key, string> = {
   "footer.after": "Ce site est exporté depuis un répertoire du dépôt lui-même avec git subtree.",
 };
 
+const ru: Record<Key, string> = {
+  "nav.overview": "Обзор",
+  "nav.tutorial": "Руководство",
+  "nav.comparisons": "Сравнения",
+  "cta.tutorial": "Начать руководство",
+  "cta.source": "Посмотреть исходный код",
+  brand: "Управление отношениями с контактами",
+  translations: "Переводы:",
+  skip: "Перейти к содержимому",
+  site: "Сайт",
+  "nav.home": "Главная",
+  "nav.install": "Установка",
+  "nav.bridges": "Мосты семейства",
+  "nav.spec": "Спецификация",
+  "nav.locales": "Локали",
+  "nav.briefs": "Справки по ролям",
+  theme: "Тема",
+  themeSystem: "Как на этом устройстве",
+  "nav.privacy": "Уведомление о конфиденциальности",
+  textSize: "Размер текста",
+  briefLanguage: "Язык этой справки",
+  language: "Язык",
+  pages: "Страницы",
+  repository: "Репозиторий исходного кода",
+  search: "Поиск",
+  "search.input": "Поисковый запрос",
+  "search.submit": "Найти",
+  "search.placeholder": "Поиск по документации",
+  timeZone: "Часовой пояс",
+  share: "Поделиться",
+  "share.email": "Эл. почта",
+  "share.copy": "Скопировать ссылку",
+  "share.copied": "Скопировано",
+  "share.copyFailed": "Не удалось скопировать ссылку",
+  "search.prompt": "Нажмите кнопку поиска в заголовке, чтобы ввести слово.",
+  "search.none": "Подходящих страниц нет.",
+  "search.count": "Найдено страниц: {n}",
+  "search.failed": "Не удалось загрузить поисковый индекс.",
+  allBriefs: "Все справки по ролям",
+  "briefs.lede":
+    "Одна страница для каждой руководящей роли: что представляет собой программа, что она даёт, чего не даёт и какие решения принадлежат вам. Используйте кнопку языка в заголовке, чтобы увидеть ту же справку в других локалях.",
+  locale: "Локаль:",
+  source: "Источник:",
+  "readiness.estimate": "оценка готовности",
+  "footer.before": "Построено из документов",
+  "footer.link": "репозитория «Управление отношениями с контактами»",
+  "footer.after": "Этот сайт экспортируется из каталога самого репозитория с помощью git subtree.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, cy, es, fr, hi, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, cy, es, fr, hi, ru, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -377,6 +426,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Pequeño",
     smaller: "Muy pequeño",
     smallest: "Muy muy pequeño",
+  },
+  ru: {
+    largest: "Огромный",
+    larger: "Очень крупный",
+    large: "Крупный",
+    normal: "Обычный",
+    small: "Мелкий",
+    smaller: "Очень мелкий",
+    smallest: "Крошечный",
   },
   fr: {
     largest: "Très très grand",
