@@ -2670,6 +2670,16 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       handler 42 of 42 lines, the account edit 10 of 10, the contact edit 20 of 22. Left: the masked-detail branches
       (`mask_json` of deals, tickets and activities for a caller without access) and the duplicate check's lookup of a
       mailbox from the person service, which need a caller with a narrower role and a stand-in person service.
+      - **Round 13:** `clients.rs` (91.9% in the census, 96.9% measured on its own tests: 16 of 508 lines left), in
+      `tests/requests/upstream.rs` against stand-ins on this machine, serial: with no upstream an organization gets one
+      reference per name (trimmed, any case) and a mailbox is `<id>@<dev domain>` only while that domain is set and the
+      reference parses; a delivery idea opened in the portfolio service (a `pid` or an `id`) and refused for an
+      unconfigured service, an unreachable one, a `500`, a body that is not JSON, one with no id and one with an id that
+      is not a UUID, with no deal data in any reason; the active workers read page by page (a row without a `pid` dropped,
+      the department trimmed, a short page ending the read), refused for an unconfigured, unreachable or non-2xx service
+      and for answers that are not JSON or not a list, and cut off after 51 full pages; the overlap check sending only
+      references and naming none in its reasons. Left: building a client that cannot be built, the other-person lookups'
+      redirect-free client, and the oldest-entry eviction's last branch.
       - **Not yet:** a gap left on purpose, such as code that only runs against a real outside service, is to be
       named here with its reason rather than counted as covered.
 - [x] CRM-T293 **The site's locale counts follow the five new locales.** `5039bb0` added `zh-th`, `hi-np`, `cy-ar`,
