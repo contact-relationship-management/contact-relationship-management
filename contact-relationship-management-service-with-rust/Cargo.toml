@@ -150,9 +150,9 @@ jsonschema = { version = "0.60", default-features = false }
 [profile.mutants]
 inherits = "test"
 debug = "none"
+incremental = false
 
 # Faster dev/test builds: keep line tables for backtraces, drop the rest of the debug info.
-incremental = false
 [profile.dev]
 debug = "line-tables-only"
 split-debuginfo = "unpacked"
