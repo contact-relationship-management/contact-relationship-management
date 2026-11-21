@@ -353,7 +353,7 @@ export default {
     "REST na OpenAPI, na HL7 FHIR pale mifumo ya afya inapohitaji.",
   "splash.trust.6.title": "Inazungumza lugha yako",
   "splash.trust.6.body":
-    "Kiarabu, Kichina, Kiingereza, Kifaransa, Kijerumani, Kihindi, Kihispania na Kiwelisi.",
+    "Kiarabu, Kibengali, Kichina, Kidenmaki, Kiholanzi, Kiingereza, Kifaransa, Kijerumani, Kihindi, Kiindonesia, Kiitaliano, Kijapani, Kikorea, Kireno, Kirusi, Kihispania, Kiswahili, Kiswidi, Kiurdu, Kivietinamu na Kiwelisi.",
   "splash.cta.title": "Uko tayari kuanza?",
   "splash.cta.body":
     "Ingia kwa kiungo cha kichawi kinachotumwa kwa barua pepe yako. Hakuna nenosiri linalohitajika.",

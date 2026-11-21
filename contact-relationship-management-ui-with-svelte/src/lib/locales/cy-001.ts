@@ -392,7 +392,7 @@ export default {
     "REST gydag OpenAPI, a HL7 FHIR lle mae systemau iechyd ei angen.",
   "splash.trust.6.title": "Yn siarad eich iaith",
   "splash.trust.6.body":
-    "Arabeg, Tsieinëeg, Almaeneg, Saesneg, Ffrangeg, Hindi, Sbaeneg a Chymraeg.",
+    "Arabeg, Bengaleg, Tsieinëeg, Daneg, Iseldireg, Saesneg, Ffrangeg, Almaeneg, Hindi, Indoneseg, Eidaleg, Japaneeg, Corëeg, Portiwgaleg, Rwsieg, Sbaeneg, Swahili, Swedeg, Wrdw, Fietnameg a Chymraeg.",
   "splash.cta.title": "Barod i ddechrau?",
   "splash.cta.body":
     "Mewngofnodwch gyda dolen hud a anfonir i'ch e-bost. Dim angen cyfrinair.",

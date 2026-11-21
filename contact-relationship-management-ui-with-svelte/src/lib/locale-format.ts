@@ -5,7 +5,7 @@
 // (WPM-T375, WPM-T377), from which this file is ported: the same functions, names, rules and fallbacks, so the
 // family formats alike; copy a fix to the other (there is no shared package, by the family convention
 // of copy-adapting between front-ends). The project portfolio management UI has its own port (PPM commit 9cfa173).
-// The CRM's differences: its locales are its own eight (`de-de`, `zh-cn` and six `-001`), and WPM's
+// The CRM's differences: its locales are its own 21 (`de-de`, `zh-cn` and 19 `-001`), and WPM's
 // centi-FTE helper is left out (the CRM has no FTE).
 //
 // Every figure a person reads goes through `Intl` in the page's locale (`i18n.locale`, the one in the

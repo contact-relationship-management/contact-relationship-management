@@ -352,7 +352,7 @@ export default {
     "REST med OpenAPI, och HL7 FHIR där vårdsystem behöver det.",
   "splash.trust.6.title": "Talar ditt språk",
   "splash.trust.6.body":
-    "Arabiska, kinesiska, engelska, franska, tyska, hindi, spanska och walesiska.",
+    "Arabiska, bengali, kinesiska, danska, nederländska, engelska, franska, tyska, hindi, indonesiska, italienska, japanska, koreanska, portugisiska, ryska, spanska, swahili, svenska, urdu, vietnamesiska och walesiska.",
   "splash.cta.title": "Redo att komma igång?",
   "splash.cta.body":
     "Logga in med en magisk länk som skickas till din e-post. Inget lösenord behövs.",

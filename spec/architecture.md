@@ -81,7 +81,7 @@ table names** (the `create_table` pluralization lesson);
 ## Front-end edition
 
 SvelteKit 3 + Svelte 5 runes SPA + same-origin BFF proxy,
-eight-locale i18n from the start. Views per module: contact/account
+21-locale i18n from the start. Views per module: contact/account
 timeline, lead queue (score-sorted with breakdown), deal Kanban
 board, forecast table, campaign funnel + ROI, nurture editor,
 ticket queue with SLA countdowns, KB editor, and the dashboards.

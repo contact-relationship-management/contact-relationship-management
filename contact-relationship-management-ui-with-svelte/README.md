@@ -15,7 +15,7 @@ base, and KPI dashboards.
 The boards, calendar, timeline and tables are Lily Design System
 components (`@lilydesignsystem/svelte-*`), with labels from
 `@lilydesignsystem/svelte-locale-translations`. The header search is
-`/search`, and any page opens under `/<locale>/…` in one of eight
+`/search`, and any page opens under `/<locale>/…` in one of 21
 locales (`src/lib/locales/`).
 
 ## Quick start
@@ -59,7 +59,7 @@ variable reaches the browser.
 
 SvelteKit 3 · Svelte 5 runes · TypeScript strict · SPA mode
 (`ssr = false`) with a same-origin BFF proxy (session cookie →
-short-lived PASETO; no token in browser JS) · eight-locale i18n · Lily
+short-lived PASETO; no token in browser JS) · 21-locale i18n · Lily
 Design System · vitest + Playwright.
 
 ## Views

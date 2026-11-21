@@ -360,7 +360,7 @@ export default {
     "REST met OpenAPI, en HL7 FHIR waar zorgsystemen dat nodig hebben.",
   "splash.trust.6.title": "Spreekt uw taal",
   "splash.trust.6.body":
-    "Arabisch, Chinees, Engels, Frans, Duits, Hindi, Spaans en Welsh.",
+    "Arabisch, Bengaals, Chinees, Deens, Nederlands, Engels, Frans, Duits, Hindi, Indonesisch, Italiaans, Japans, Koreaans, Portugees, Russisch, Spaans, Swahili, Zweeds, Urdu, Vietnamees en Welsh.",
   "splash.cta.title": "Klaar om te beginnen?",
   "splash.cta.body":
     "Meld u aan met een magische link die naar uw e-mail wordt gestuurd. Geen wachtwoord nodig.",

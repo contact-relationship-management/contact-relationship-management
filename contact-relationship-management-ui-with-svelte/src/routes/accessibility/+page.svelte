@@ -62,7 +62,7 @@
       not meet every success criterion. We have not audited them.
     </li>
     <li>
-      The interface is translated into eight languages by machine-assisted
+      The interface is translated into 21 languages by machine-assisted
       translation that has not been reviewed by fluent speakers.
     </li>
   </ul>

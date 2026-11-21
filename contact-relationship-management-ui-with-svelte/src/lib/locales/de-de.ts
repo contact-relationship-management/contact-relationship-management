@@ -361,7 +361,7 @@ export default {
     "REST mit OpenAPI und HL7 FHIR, wo Gesundheitssysteme es benötigen.",
   "splash.trust.6.title": "Spricht Ihre Sprache",
   "splash.trust.6.body":
-    "Arabisch, Chinesisch, Deutsch, Englisch, Französisch, Hindi, Spanisch und Walisisch.",
+    "Arabisch, Bengalisch, Chinesisch, Dänisch, Deutsch, Englisch, Französisch, Hindi, Indonesisch, Italienisch, Japanisch, Koreanisch, Niederländisch, Portugiesisch, Russisch, Schwedisch, Spanisch, Suaheli, Urdu, Vietnamesisch und Walisisch.",
   "splash.cta.title": "Bereit für den Einstieg?",
   "splash.cta.body":
     "Melden Sie sich mit einem Magic-Link an, der an Ihre E-Mail-Adresse gesendet wird. Kein Passwort nötig.",

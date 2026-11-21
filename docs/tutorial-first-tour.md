@@ -45,7 +45,7 @@ The tour page covers six screens.
 
 ## Step 5: change the display settings
 
-The buttons at the top of the page change the language, theme and text size. The interface is available in eight languages. Arabic displays right to left.
+The buttons at the top of the page change the language, theme and text size. The interface is available in 21 languages. Arabic displays right to left.
 
 ## Next steps
 

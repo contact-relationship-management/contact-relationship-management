@@ -89,7 +89,7 @@ Conventional layout, forbid-unsafe + clippy-pedantic, OpenAPI +
 Swagger, `Accepts-version`, OTLP + `/metrics.prom`, Podman, input
 caps, `404` mapping at `find_by_pid` call sites, enforcement tests
 that scope the settings they change (the OnceLock lesson), ETag-conditional
-dashboards, eight-locale i18n in the front-end from the start (the
+dashboards, 21-locale i18n in the front-end from the start (the
 PPM lesson).
 
 ## CRM-D13 — Declared data is never inferred
@@ -382,7 +382,7 @@ consent" (decision 12).
 
 ### Purposes an administrator edits; consent per channel
 
-- **Purposes** move from code to a table: a key, a name and a description per locale (the UI's eight, English fallback marked as such),
+- **Purposes** move from code to a table: a key, a name and a description per locale (the UI's 21, English fallback marked as such),
   `active`, and `soft_opt_in_eligible`. The four of today are its first rows. `marketing` stays (it is `contacts.marketing_consent`
   and the default purpose) and cannot be retired; another purpose can be retired (no new campaign, sequence or preference-page row
   names it) but never deleted, because history names it. A new purpose starts `never` for everyone.

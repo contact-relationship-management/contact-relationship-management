@@ -2731,3 +2731,21 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Not done / not verified:** every one of the 54 locales has a privacy notice (the test requires it), but the 13
       new ones are machine-written and unreviewed, as is the site text; `ci-check.sh all` was not run, so there is no
       attestation.
+- [x] CRM-T299 **The consent text, template fallbacks and import header names in the 13 new languages; "eight languages"
+      wording (CRM-R95).** Asked for by the product owner on 2026-11-21 ("fix": consent text English-only, "eight
+      languages" wording), the two open items of CRM-T297. (M)
+      - **What it changes:** `rules::public_text::TEXTS` (confirmation, preference and unsubscribe pages, the web form's mail,
+      answers and refusals), `rules::templates::FALLBACKS` and `rules::column_names` gain `bn`, `da`, `id`, `it`, `ja`, `ko`,
+      `nl`, `pt`, `ru`, `sv`, `sw`, `ur` (right to left) and `vi`: 21 languages each. Four parallel Claude agents wrote
+      fragments, merged by script. The tests that used `ja` and `pt` as "a language we lack" use Turkish, `TEXTS.len()` is 21,
+      the right-to-left check allows `ur`, and a new test maps each new language's own first Email and GivenName header.
+      "Eight languages" is 21 in the accessibility page, `splash.trust.6.body` (all 21 locales), the tutorial, the
+      requirements, design and architecture specs, the UI README and AGENTS, `_typos.toml` and the code comments. History
+      (CHANGELOGs, `spec/plan.md`, earlier tasks) keeps the number it was written with.
+      - **Not reviewed:** every string is a **machine-written draft**; no native speaker has read any. These are the words a
+      data subject reads about their consent, so they are the first to review (each locale's review record says so). The
+      agents' open questions: Danish uses informal "du"; Italian `nome` and Korean `이름` are given-name only (a bare column of
+      either maps to the given name, not the full name); Russian `{days} дн.` is not inflected; Bengali, Swahili, Urdu and
+      Vietnamese header words and some terms are plausible, not attested.
+      - **Not done / not verified:** the site's consent pages are not looked at in a browser in any new language; the import
+      header names were not checked against real spreadsheets; `ci-check.sh all` was not run, so there is no attestation.

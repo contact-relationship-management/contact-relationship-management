@@ -2280,7 +2280,7 @@ function breakGlass(
 }
 
 /**
- * Header names the tour's imports recognise, in the UI's eight languages: a part of the service's
+ * Header names the tour's imports recognise, in the UI's 21 languages: a part of the service's
  * `rules::column_names` (CRM-T169; a unit test holds each name here to the service's list).
  */
 export const COLUMN_NAMES: Record<"name" | "email" | "company", string[]> = {

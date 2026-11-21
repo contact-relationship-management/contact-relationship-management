@@ -349,7 +349,7 @@ export default {
     "REST dengan OpenAPI, dan HL7 FHIR di tempat sistem kesehatan membutuhkannya.",
   "splash.trust.6.title": "Berbicara dalam bahasa Anda",
   "splash.trust.6.body":
-    "Arab, Mandarin, Inggris, Prancis, Jerman, Hindi, Spanyol, dan Wales.",
+    "Arab, Bengali, Mandarin, Denmark, Belanda, Inggris, Prancis, Jerman, Hindi, Indonesia, Italia, Jepang, Korea, Portugis, Rusia, Spanyol, Swahili, Swedia, Urdu, Vietnam, dan Wales.",
   "splash.cta.title": "Siap memulai?",
   "splash.cta.body":
     "Masuk dengan tautan ajaib yang dikirim ke email Anda. Tanpa kata sandi.",

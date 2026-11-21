@@ -6,7 +6,7 @@
 //!
 //! **Any language (CRM-T169, CRM-R95).** A template may name the language it is written in (a BCP
 //! 47 tag). A missing value takes the template's own fallback, else the built-in fallback in the
-//! template's language ([`FALLBACKS`]: the UI's eight languages, machine drafts but English). A
+//! template's language ([`FALLBACKS`]: the UI's 21 languages, machine drafts but English). A
 //! template in a language with no built-in fallbacks must give its own for every token it uses, so
 //! no English word is put into, say, a Japanese message. A template that names no language keeps
 //! the English fallbacks it was written against. `given_name` is the given name on file only: it
@@ -59,7 +59,7 @@ pub const TOKENS: &[Token] = &[
 pub const UNNAMED_LANGUAGE: &str = "en";
 
 /// The built-in fallback of each token in [`TOKENS`] order, by primary language subtag: the UI's
-/// eight languages. All but English are machine drafts by the AI assistant, not reviewed by a
+/// 21 languages. All but English are machine drafts by the AI assistant, not reviewed by a
 /// native speaker; a template sets its own to replace any of them.
 pub const FALLBACKS: &[(&str, [&str; 6])] = &[
     (
@@ -74,6 +74,17 @@ pub const FALLBACKS: &[(&str, [&str; 6])] = &[
         ],
     ),
     (
+        "bn",
+        [
+            "প্রিয় গ্রাহক",
+            "প্রিয় গ্রাহক",
+            "গ্রাহক",
+            "আপনার প্রতিষ্ঠান",
+            "দল",
+            "আপনার পদ",
+        ],
+    ),
+    (
         "cy",
         [
             "gyfaill",
@@ -82,6 +93,17 @@ pub const FALLBACKS: &[(&str, [&str; 6])] = &[
             "eich sefydliad",
             "y tîm",
             "eich rôl",
+        ],
+    ),
+    (
+        "da",
+        [
+            "kære kunde",
+            "kære kunde",
+            "kunde",
+            "din organisation",
+            "teamet",
+            "din stilling",
         ],
     ),
     (
@@ -131,6 +153,113 @@ pub const FALLBACKS: &[(&str, [&str; 6])] = &[
     (
         "hi",
         ["ग्राहक", "ग्राहक", "ग्राहक", "आपका संगठन", "टीम", "आपकी भूमिका"],
+    ),
+    (
+        "id",
+        [
+            "pelanggan yang terhormat",
+            "pelanggan yang terhormat",
+            "pelanggan",
+            "organisasi Anda",
+            "tim",
+            "jabatan Anda",
+        ],
+    ),
+    (
+        "it",
+        [
+            "gentile cliente",
+            "gentile cliente",
+            "cliente",
+            "la sua organizzazione",
+            "il team",
+            "il suo ruolo",
+        ],
+    ),
+    (
+        "ja",
+        ["お客様", "お客様", "お客様", "貴社", "担当チーム", "ご担当"],
+    ),
+    (
+        "ko",
+        ["고객님", "고객님", "고객님", "귀사", "담당 팀", "직책"],
+    ),
+    (
+        "nl",
+        [
+            "allemaal",
+            "allemaal",
+            "klant",
+            "uw organisatie",
+            "het team",
+            "uw functie",
+        ],
+    ),
+    (
+        "pt",
+        [
+            "pessoal",
+            "pessoal",
+            "cliente",
+            "sua organização",
+            "a equipe",
+            "seu cargo",
+        ],
+    ),
+    (
+        "ru",
+        [
+            "уважаемый клиент",
+            "уважаемый клиент",
+            "клиент",
+            "ваша организация",
+            "команда",
+            "ваша должность",
+        ],
+    ),
+    (
+        "sv",
+        [
+            "kära kund",
+            "kära kund",
+            "kund",
+            "din organisation",
+            "teamet",
+            "din roll",
+        ],
+    ),
+    (
+        "sw",
+        [
+            "mteja wetu",
+            "mteja wetu",
+            "mteja",
+            "shirika lenu",
+            "timu",
+            "wadhifa wenu",
+        ],
+    ),
+    (
+        "ur",
+        [
+            "محترم صارف",
+            "محترم صارف",
+            "صارف",
+            "آپ کا ادارہ",
+            "ٹیم",
+            "آپ کا عہدہ",
+        ],
+    ),
+    (
+        "vi",
+        [
+            "quý khách",
+            "quý khách",
+            "quý khách",
+            "tổ chức của quý vị",
+            "nhóm",
+            "chức vụ của quý vị",
+        ],
     ),
     ("zh", ["您好", "您好", "客户", "贵机构", "团队", "您的职位"]),
 ];
@@ -745,30 +874,30 @@ mod tests {
     #[test]
     fn a_language_with_no_built_in_fallbacks_needs_the_template_s_own() {
         let problems = check(
-            "{{given_name}} 様",
+            "{{given_name}} Bey",
             "{{name}} {{given_name}} {{unsubscribe_url}}",
             &none(),
-            Some("ja"),
+            Some("tr"),
         );
         let fields: Vec<&str> = problems.iter().map(|(f, _)| f.as_str()).collect();
         assert_eq!(fields, ["fallbacks/given_name", "fallbacks/name"]);
-        assert!(problems[0].1.contains("ja"));
-        let own = values(&[("given_name", "お客"), ("name", "お客様")]);
+        assert!(problems[0].1.contains("tr"));
+        let own = values(&[("given_name", "Müşteri"), ("name", "Sayın Müşteri")]);
         assert!(
             check(
-                "{{given_name}} 様",
+                "{{given_name}} Bey",
                 "{{name}} {{unsubscribe_url}}",
                 &own,
-                Some("ja")
+                Some("tr")
             )
             .is_empty()
         );
         let empty = none();
         let mut with = fill_with(&empty, &own);
-        with.language = Some("ja");
+        with.language = Some("tr");
         assert_eq!(
-            render("{{given_name}}様", "{{unsubscribe_url}}", &with).subject,
-            "お客様"
+            render("{{given_name}} Bey", "{{unsubscribe_url}}", &with).subject,
+            "Müşteri Bey"
         );
         // A built-in language, or none, needs nothing more.
         assert!(check("{{given_name}}", "{{unsubscribe_url}}", &none(), Some("hi")).is_empty());

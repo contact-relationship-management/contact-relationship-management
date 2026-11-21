@@ -12,7 +12,7 @@ and automated scans find only some problems. The public statement is
 - Start the UI (`pnpm dev` in `contact-relationship-management-ui-with-svelte`),
   open `/signin`, sign in as `example@example.com`. Every screen then shows
   fictitious data and sends no email. Sign in again to reset the data.
-- Test in the app's eight languages where the auditor reads them
+- Test in the app's 21 languages where the auditor reads them
   (`en-001, de-de, fr-001, es-001, cy-001, ar-001, hi-001, zh-cn`); at least
   `en-001` and `ar-001` (right to left).
 - The labels were translated without native-speaker review. Report wrong or

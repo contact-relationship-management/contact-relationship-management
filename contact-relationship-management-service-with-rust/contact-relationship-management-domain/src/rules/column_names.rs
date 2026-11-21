@@ -1,8 +1,8 @@
 //! The header names an import recognises for each field, by language (CRM-T169, CRM-R95).
 //!
 //! An import guesses its mapping from the file's header row (CRM-R34, CRM-R43); the mapping can
-//! always be set by hand. The names are listed in the UI's eight languages (`ar`, `cy`, `de`, `en`,
-//! `es`, `fr`, `hi`, `zh`), so a spreadsheet exported in any of them is mapped as an English one
+//! always be set by hand. The names are listed in the UI's 21 languages (`ar`, `bn`, `cy`, `da`, `de`, `en`, `es`, `fr`, `hi`, `id`, `it`, `ja`, `ko`, `nl`, `pt`, `ru`, `sv`, `sw`, `ur`, `vi`, `zh`),
+//! so a spreadsheet exported in any of them is mapped as an English one
 //! is. All but English were drafted by the AI assistant and not checked by a native speaker.
 //! Headers are compared in lower case, with `_` and `-` read as spaces, runs of spaces as one, and
 //! the accents of Latin letters ignored (`Prénom` and `prenom` are the same header).
@@ -34,104 +34,270 @@ pub enum Field {
 
 type Names = &'static [(&'static str, &'static [&'static str])];
 
+/// The names of [`Field::Name`], by language.
+const NAME: Names = &[
+    ("en", &["name", "full name", "display name", "contact"]),
+    ("ar", &["الاسم", "الاسم الكامل", "جهة الاتصال"]),
+    ("cy", &["enw", "enw llawn", "cyswllt"]),
+    ("de", &["vollständiger name", "kontakt", "anzeigename"]),
+    ("es", &["nombre", "nombre completo", "contacto"]),
+    ("fr", &["nom", "nom complet", "contact"]),
+    ("hi", &["नाम", "पूरा नाम", "संपर्क"]),
+    ("zh", &["姓名", "全名", "名称", "联系人"]),
+    ("bn", &["নাম", "পুরো নাম", "যোগাযোগ"]),
+    ("da", &["navn", "fulde navn", "kontakt"]),
+    ("id", &["nama", "nama lengkap", "kontak"]),
+    ("it", &["nome completo", "nominativo", "contatto"]),
+    ("ja", &["氏名", "名前", "連絡先"]),
+    ("ko", &["성명", "전체 이름", "연락처"]),
+    ("nl", &["naam", "volledige naam", "weergavenaam"]),
+    ("pt", &["nome", "nome completo", "contato"]),
+    ("ru", &["фио", "полное имя", "контакт", "имя и фамилия"]),
+    (
+        "sv",
+        &["namn", "fullständigt namn", "visningsnamn", "kontakt"],
+    ),
+    ("sw", &["jina", "jina kamili", "mawasiliano"]),
+    ("ur", &["نام", "پورا نام", "رابطہ"]),
+    ("vi", &["họ và tên", "họ tên", "tên đầy đủ", "liên hệ"]),
+];
+
+/// The names of [`Field::Email`], by language.
+const EMAIL: Names = &[
+    ("en", &["email", "e mail", "email address", "mail"]),
+    ("ar", &["البريد الإلكتروني", "بريد إلكتروني"]),
+    ("cy", &["e bost", "ebost", "cyfeiriad e bost"]),
+    ("de", &["e mail adresse", "email adresse"]),
+    ("es", &["correo", "correo electrónico"]),
+    (
+        "fr",
+        &["courriel", "adresse e mail", "adresse électronique"],
+    ),
+    ("hi", &["ईमेल", "ई मेल"]),
+    ("zh", &["电子邮件", "邮箱", "电子邮箱"]),
+    ("bn", &["ইমেইল", "ইমেল", "ই মেইল"]),
+    ("da", &["e mail", "email", "mailadresse"]),
+    ("id", &["email", "surel", "alamat email"]),
+    (
+        "it",
+        &[
+            "email",
+            "indirizzo email",
+            "indirizzo e-mail",
+            "posta elettronica",
+        ],
+    ),
+    ("ja", &["メールアドレス", "メール", "電子メール"]),
+    ("ko", &["이메일", "이메일 주소", "전자우편"]),
+    ("nl", &["e-mail", "e-mailadres", "e-mail adres"]),
+    ("pt", &["e-mail", "email", "endereço de e-mail"]),
+    (
+        "ru",
+        &[
+            "электронная почта",
+            "почта",
+            "e-mail",
+            "адрес электронной почты",
+        ],
+    ),
+    ("sv", &["e-post", "epost", "e-postadress", "mejladress"]),
+    ("sw", &["barua pepe", "anwani ya barua pepe"]),
+    ("ur", &["ای میل", "ای میل ایڈریس", "برقی ڈاک"]),
+    ("vi", &["email", "thư điện tử", "địa chỉ email"]),
+];
+
+/// The names of [`Field::GivenName`], by language.
+const GIVEN_NAME: Names = &[
+    ("en", &["first name", "given name", "forename"]),
+    ("ar", &["الاسم الأول"]),
+    ("cy", &["enw cyntaf"]),
+    ("de", &["vorname"]),
+    ("es", &["nombre de pila"]),
+    ("fr", &["prénom"]),
+    ("hi", &["पहला नाम"]),
+    ("zh", &["名"]),
+    ("bn", &["প্রথম নাম"]),
+    ("da", &["fornavn"]),
+    ("id", &["nama depan"]),
+    ("it", &["nome di battesimo", "primo nome"]),
+    ("ja", &["名"]),
+    ("ko", &["이름"]),
+    ("nl", &["voornaam", "roepnaam"]),
+    ("pt", &["primeiro nome", "nome próprio"]),
+    ("ru", &["имя"]),
+    ("sv", &["förnamn"]),
+    ("sw", &["jina la kwanza"]),
+    ("ur", &["پہلا نام"]),
+    ("vi", &["tên riêng", "tên gọi"]),
+];
+
+/// The names of [`Field::FamilyName`], by language.
+const FAMILY_NAME: Names = &[
+    ("en", &["last name", "family name", "surname"]),
+    ("ar", &["اسم العائلة"]),
+    ("cy", &["cyfenw"]),
+    ("de", &["nachname", "familienname"]),
+    ("es", &["apellido", "apellidos"]),
+    ("fr", &["nom de famille"]),
+    ("hi", &["उपनाम"]),
+    ("zh", &["姓"]),
+    ("bn", &["পদবি", "শেষ নাম"]),
+    ("da", &["efternavn"]),
+    ("id", &["nama belakang", "nama keluarga"]),
+    ("it", &["cognome"]),
+    ("ja", &["姓"]),
+    ("ko", &["성", "성씨"]),
+    ("nl", &["achternaam", "familienaam"]),
+    ("pt", &["sobrenome", "último nome", "nome de família"]),
+    ("ru", &["фамилия"]),
+    ("sv", &["efternamn", "släktnamn"]),
+    ("sw", &["jina la ukoo", "jina la mwisho"]),
+    ("ur", &["آخری نام", "خاندانی نام"]),
+    ("vi", &["họ"]),
+];
+
+/// The names of [`Field::JobTitle`], by language.
+const JOB_TITLE: Names = &[
+    ("en", &["title", "job title", "position", "role"]),
+    ("ar", &["المسمى الوظيفي", "الوظيفة"]),
+    ("cy", &["teitl swydd", "swydd"]),
+    ("de", &["berufsbezeichnung", "titel", "funktion"]),
+    ("es", &["cargo", "puesto"]),
+    ("fr", &["poste", "fonction", "titre"]),
+    ("hi", &["पद"]),
+    ("zh", &["职位", "职务"]),
+    ("bn", &["চাকরির পদ", "পদমর্যাদা"]),
+    ("da", &["stilling", "jobtitel", "titel"]),
+    ("id", &["jabatan", "judul pekerjaan", "posisi"]),
+    (
+        "it",
+        &["qualifica", "posizione", "ruolo", "titolo professionale"],
+    ),
+    ("ja", &["役職", "肩書", "職名"]),
+    ("ko", &["직책", "직위", "직함"]),
+    ("nl", &["functie", "functietitel", "beroep"]),
+    ("pt", &["cargo", "função", "título"]),
+    ("ru", &["должность", "позиция"]),
+    ("sv", &["titel", "befattning", "roll", "yrkestitel"]),
+    ("sw", &["cheo", "nafasi", "wadhifa"]),
+    ("ur", &["عہدہ", "منصب", "ملازمت کا عنوان"]),
+    ("vi", &["chức danh", "chức vụ", "vị trí"]),
+];
+
+/// The names of [`Field::Company`], by language.
+const COMPANY: Names = &[
+    (
+        "en",
+        &["company", "organization", "organisation", "employer"],
+    ),
+    ("ar", &["الشركة", "المؤسسة"]),
+    ("cy", &["cwmni", "sefydliad"]),
+    ("de", &["firma", "unternehmen"]),
+    ("es", &["empresa", "organización", "compañía"]),
+    ("fr", &["entreprise", "société"]),
+    ("hi", &["कंपनी", "संगठन"]),
+    ("zh", &["公司", "单位", "组织"]),
+    ("bn", &["কোম্পানি", "প্রতিষ্ঠান", "সংস্থা"]),
+    ("da", &["virksomhed", "firma", "organisation"]),
+    ("id", &["perusahaan", "organisasi", "instansi"]),
+    ("it", &["azienda", "società", "organizzazione", "ditta"]),
+    ("ja", &["会社", "会社名", "組織", "勤務先"]),
+    ("ko", &["회사", "회사명", "조직", "기업"]),
+    ("nl", &["bedrijf", "organisatie", "werkgever"]),
+    ("pt", &["empresa", "organização", "companhia"]),
+    ("ru", &["компания", "организация", "работодатель"]),
+    ("sv", &["företag", "organisation", "arbetsgivare"]),
+    ("sw", &["kampuni", "shirika", "taasisi"]),
+    ("ur", &["کمپنی", "ادارہ", "تنظیم"]),
+    ("vi", &["công ty", "tổ chức", "doanh nghiệp"]),
+];
+
+/// The names of [`Field::OrganizationRef`], by language.
+const ORGANIZATION_REF: Names = &[
+    ("en", &["organization ref", "organisation ref", "reference"]),
+    ("cy", &["cyfeirnod"]),
+    ("de", &["referenz"]),
+    ("es", &["referencia"]),
+    ("fr", &["référence"]),
+    ("zh", &["编号"]),
+    ("bn", &["রেফারেন্স", "প্রতিষ্ঠানের রেফারেন্স"]),
+    ("da", &["reference", "organisationsreference"]),
+    ("id", &["referensi", "referensi organisasi"]),
+    ("it", &["riferimento organizzazione", "riferimento"]),
+    ("ja", &["組織参照", "組織コード"]),
+    ("ko", &["조직 참조", "조직 코드"]),
+    ("nl", &["organisatiereferentie", "referentie"]),
+    ("pt", &["referência", "referência da organização"]),
+    ("ru", &["ссылка на организацию", "код организации"]),
+    ("sv", &["organisationsreferens", "referens"]),
+    ("sw", &["kumbukumbu ya shirika", "namba ya shirika"]),
+    ("ur", &["ادارے کا حوالہ", "حوالہ نمبر"]),
+    ("vi", &["mã tham chiếu", "mã tổ chức"]),
+];
+
+/// The names of [`Field::Tier`], by language.
+const TIER: Names = &[
+    ("en", &["tier", "type"]),
+    ("ar", &["الفئة"]),
+    ("cy", &["haen", "math"]),
+    ("de", &["stufe", "typ"]),
+    ("es", &["nivel", "tipo"]),
+    ("fr", &["niveau"]),
+    ("hi", &["श्रेणी"]),
+    ("zh", &["级别", "类型"]),
+    ("bn", &["স্তর", "ধরন"]),
+    ("da", &["niveau", "type"]),
+    ("id", &["tingkat", "tipe", "level"]),
+    ("it", &["livello", "fascia", "categoria"]),
+    ("ja", &["ランク", "区分", "ティア"]),
+    ("ko", &["등급", "구분"]),
+    ("nl", &["niveau", "categorie", "soort"]),
+    ("pt", &["nível", "categoria", "tipo"]),
+    ("ru", &["уровень", "категория", "тип"]),
+    ("sv", &["nivå", "kategori", "klass"]),
+    ("sw", &["daraja", "ngazi", "aina"]),
+    ("ur", &["درجہ", "زمرہ", "قسم"]),
+    ("vi", &["hạng", "cấp độ", "loại"]),
+];
+
+/// The names of [`Field::Industry`], by language.
+const INDUSTRY: Names = &[
+    ("en", &["industry", "sector"]),
+    ("ar", &["القطاع", "الصناعة"]),
+    ("cy", &["diwydiant"]),
+    ("de", &["branche", "sektor"]),
+    ("es", &["industria"]),
+    ("fr", &["secteur", "industrie"]),
+    ("hi", &["उद्योग", "क्षेत्र"]),
+    ("zh", &["行业"]),
+    ("bn", &["শিল্প", "খাত"]),
+    ("da", &["branche", "industri", "sektor"]),
+    ("id", &["industri", "sektor", "bidang usaha"]),
+    ("it", &["settore", "industria"]),
+    ("ja", &["業種", "業界"]),
+    ("ko", &["업종", "산업"]),
+    ("nl", &["bedrijfstak", "branche", "sector"]),
+    ("pt", &["setor", "indústria", "ramo", "segmento"]),
+    ("ru", &["отрасль", "сфера", "индустрия", "сектор"]),
+    ("sv", &["bransch", "sektor"]),
+    ("sw", &["sekta", "tasnia"]),
+    ("ur", &["صنعت", "شعبہ"]),
+    ("vi", &["ngành", "lĩnh vực", "ngành nghề"]),
+];
+
 /// The names of `field`, by language.
 #[must_use]
 pub const fn names(field: Field) -> Names {
     match field {
-        Field::Name => &[
-            ("en", &["name", "full name", "display name", "contact"]),
-            ("ar", &["الاسم", "الاسم الكامل", "جهة الاتصال"]),
-            ("cy", &["enw", "enw llawn", "cyswllt"]),
-            ("de", &["vollständiger name", "kontakt", "anzeigename"]),
-            ("es", &["nombre", "nombre completo", "contacto"]),
-            ("fr", &["nom", "nom complet", "contact"]),
-            ("hi", &["नाम", "पूरा नाम", "संपर्क"]),
-            ("zh", &["姓名", "全名", "名称", "联系人"]),
-        ],
-        Field::Email => &[
-            ("en", &["email", "e mail", "email address", "mail"]),
-            ("ar", &["البريد الإلكتروني", "بريد إلكتروني"]),
-            ("cy", &["e bost", "ebost", "cyfeiriad e bost"]),
-            ("de", &["e mail adresse", "email adresse"]),
-            ("es", &["correo", "correo electrónico"]),
-            (
-                "fr",
-                &["courriel", "adresse e mail", "adresse électronique"],
-            ),
-            ("hi", &["ईमेल", "ई मेल"]),
-            ("zh", &["电子邮件", "邮箱", "电子邮箱"]),
-        ],
-        Field::GivenName => &[
-            ("en", &["first name", "given name", "forename"]),
-            ("ar", &["الاسم الأول"]),
-            ("cy", &["enw cyntaf"]),
-            ("de", &["vorname"]),
-            ("es", &["nombre de pila"]),
-            ("fr", &["prénom"]),
-            ("hi", &["पहला नाम"]),
-            ("zh", &["名"]),
-        ],
-        Field::FamilyName => &[
-            ("en", &["last name", "family name", "surname"]),
-            ("ar", &["اسم العائلة"]),
-            ("cy", &["cyfenw"]),
-            ("de", &["nachname", "familienname"]),
-            ("es", &["apellido", "apellidos"]),
-            ("fr", &["nom de famille"]),
-            ("hi", &["उपनाम"]),
-            ("zh", &["姓"]),
-        ],
-        Field::JobTitle => &[
-            ("en", &["title", "job title", "position", "role"]),
-            ("ar", &["المسمى الوظيفي", "الوظيفة"]),
-            ("cy", &["teitl swydd", "swydd"]),
-            ("de", &["berufsbezeichnung", "titel", "funktion"]),
-            ("es", &["cargo", "puesto"]),
-            ("fr", &["poste", "fonction", "titre"]),
-            ("hi", &["पद"]),
-            ("zh", &["职位", "职务"]),
-        ],
-        Field::Company => &[
-            (
-                "en",
-                &["company", "organization", "organisation", "employer"],
-            ),
-            ("ar", &["الشركة", "المؤسسة"]),
-            ("cy", &["cwmni", "sefydliad"]),
-            ("de", &["firma", "unternehmen"]),
-            ("es", &["empresa", "organización", "compañía"]),
-            ("fr", &["entreprise", "société"]),
-            ("hi", &["कंपनी", "संगठन"]),
-            ("zh", &["公司", "单位", "组织"]),
-        ],
-        Field::OrganizationRef => &[
-            ("en", &["organization ref", "organisation ref", "reference"]),
-            ("cy", &["cyfeirnod"]),
-            ("de", &["referenz"]),
-            ("es", &["referencia"]),
-            ("fr", &["référence"]),
-            ("zh", &["编号"]),
-        ],
-        Field::Tier => &[
-            ("en", &["tier", "type"]),
-            ("ar", &["الفئة"]),
-            ("cy", &["haen", "math"]),
-            ("de", &["stufe", "typ"]),
-            ("es", &["nivel", "tipo"]),
-            ("fr", &["niveau"]),
-            ("hi", &["श्रेणी"]),
-            ("zh", &["级别", "类型"]),
-        ],
-        Field::Industry => &[
-            ("en", &["industry", "sector"]),
-            ("ar", &["القطاع", "الصناعة"]),
-            ("cy", &["diwydiant"]),
-            ("de", &["branche", "sektor"]),
-            ("es", &["industria"]),
-            ("fr", &["secteur", "industrie"]),
-            ("hi", &["उद्योग", "क्षेत्र"]),
-            ("zh", &["行业"]),
-        ],
+        Field::Name => NAME,
+        Field::Email => EMAIL,
+        Field::GivenName => GIVEN_NAME,
+        Field::FamilyName => FAMILY_NAME,
+        Field::JobTitle => JOB_TITLE,
+        Field::Company => COMPANY,
+        Field::OrganizationRef => ORGANIZATION_REF,
+        Field::Tier => TIER,
+        Field::Industry => INDUSTRY,
     }
 }
 
@@ -288,5 +454,26 @@ mod tests {
             Some("Lead")
         );
         assert_eq!(find(&h(&["Colour"]), &ALL, &[]), None);
+    }
+
+    #[test]
+    fn each_language_added_in_crm_t299_maps_its_own_email_and_given_name_headers() {
+        for lang in [
+            "bn", "da", "id", "it", "ja", "ko", "nl", "pt", "ru", "sv", "sw", "ur", "vi",
+        ] {
+            for field in [Field::Email, Field::GivenName] {
+                let own = names(field)
+                    .iter()
+                    .find(|(l, _)| *l == lang)
+                    .unwrap_or_else(|| panic!("{lang} has no {field:?}"))
+                    .1;
+                let header = own[0];
+                assert_eq!(
+                    find(&h(&[header]), &[field], &[]).as_deref(),
+                    Some(header),
+                    "{lang} {field:?}"
+                );
+            }
+        }
     }
 }

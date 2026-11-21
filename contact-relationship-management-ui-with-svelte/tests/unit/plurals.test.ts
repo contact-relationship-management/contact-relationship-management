@@ -3,7 +3,7 @@
 // file holds exactly the CLDR categories its language uses.
 //
 // Ported from the workforce planning management UI's `tests/unit/plurals.test.ts` (WPM-T374), whose
-// helpers the CRM's share in behaviour; the cases are WPM's, in the CRM's eight locales.
+// helpers the CRM's share in behaviour; the cases are WPM's, in the CRM's 21 locales.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";

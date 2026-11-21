@@ -342,7 +342,7 @@ export default {
     "REST với OpenAPI, và HL7 FHIR khi các hệ thống y tế cần đến.",
   "splash.trust.6.title": "Nói ngôn ngữ của bạn",
   "splash.trust.6.body":
-    "Tiếng Ả Rập, Trung, Anh, Pháp, Đức, Hindi, Tây Ban Nha và xứ Wales.",
+    "Tiếng Ả Rập, Bengal, Trung, Đan Mạch, Hà Lan, Anh, Pháp, Đức, Hindi, Indonesia, Ý, Nhật, Hàn, Bồ Đào Nha, Nga, Tây Ban Nha, Swahili, Thụy Điển, Urdu, Việt Nam và xứ Wales.",
   "splash.cta.title": "Sẵn sàng bắt đầu?",
   "splash.cta.body":
     "Đăng nhập bằng liên kết ma thuật gửi đến email của bạn. Không cần mật khẩu.",

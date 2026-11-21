@@ -49,8 +49,7 @@ every page round-trips through the API.
    two display-only exceptions are a table's footer total over the
    rows shown and the campaign timeline's critical path
    (`src/lib/critical-path.ts`); neither is a KPI.
-6. **Eight-locale i18n** (`ar-001, cy-001, de-de, en-001, es-001,
-fr-001, hi-001, zh-cn`) with the full-coverage parity test; a
+6. **21-locale i18n** (every code in `LOCALES`, `src/lib/i18n.svelte.ts`: `de-de`, `zh-cn` and 19 `-001`) with the full-coverage parity test; a
    language in the address (`/de-de/contacts`) sets the language.
    Translations are unreviewed by native speakers.
 7. **Tests.** vitest (`tests/unit/`) for the API client, `money()`,

@@ -331,7 +331,7 @@ export default {
   "splash.trust.5.body": "REST 搭配 OpenAPI，并在医疗系统需要时支持 HL7 FHIR。",
   "splash.trust.6.title": "支持你的语言",
   "splash.trust.6.body":
-    "阿拉伯语、中文、德语、英语、法语、印地语、西班牙语和威尔士语。",
+    "阿拉伯语、孟加拉语、中文、丹麦语、荷兰语、英语、法语、德语、印地语、印度尼西亚语、意大利语、日语、韩语、葡萄牙语、俄语、西班牙语、斯瓦希里语、瑞典语、乌尔都语、越南语和威尔士语。",
   "splash.cta.title": "准备好开始了吗？",
   "splash.cta.body": "通过发送到邮箱的魔法链接登录，无需密码。",
   "brand.tagline": "每一段客户关系，尽在一处",

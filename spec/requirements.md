@@ -727,7 +727,7 @@ for records I am allowed to see.*
   `PUT /api/notifications/{pid}/read`, `POST /api/notifications/read-all`. A notification of another
   recipient is `404`. With sign-in off there is no caller, so `recipient=person:…` names whose inbox is read (`worker:…` is read as `person:…`, CRM-D18).
   Marking your own notifications read is open to any signed-in caller, since it changes only your inbox.
-  The UI has an inbox page and an unread count beside its navigation entry, in all eight locales.
+  The UI has an inbox page and an unread count beside its navigation entry, in all 21 locales.
 - **Audit.** A sweep that made or suppressed anything writes `notifications_swept` (counts only);
   marking read writes `read` on the notification.
 - Erasure (CRM-R20) deletes notifications about the contact.
@@ -785,7 +785,7 @@ and undo the whole import if it was a mistake.*
 - **Upload and map.** The file is sent as text in a JSON body (`csv`): a header row, comma separated, quoted fields
   allowed. `POST /api/lead-imports/preview` with no `mapping` answers with the columns, how many rows there are, and a
   suggested mapping (a column named `name`, `full name` or `display name`; `email` or `e-mail`; `company` or
-  `organization`; or the same names in any of the UI's eight languages, such as `Vorname`, `Courriel`, `电子邮件` or `البريد
+  `organization`; or the same names in any of the UI's 21 languages, such as `Vorname`, `Courriel`, `电子邮件` or `البريد
   الإلكتروني`: the service's `rules::column_names`, CRM-T169, with Latin accents, case, `_` and `-` ignored). With a `mapping` of `display_name` (required), `email` and `company` to column names, it answers one report
   line per row. Nothing is saved by a preview.
 - **The row report.** Each row is `valid`, or `invalid` with the reason (no name, a name that is too long or has a line break,
@@ -852,7 +852,7 @@ recipient would get before anything is sent, and be certain every message carrie
   file; never taken from the display name, CRM-T169), `name`, `family_name` (only when the contact has one recorded; never guessed from the display name), `account_name`, `rep_name` (the contact's owner, or the account's when the contact has none),
   `job_title`, and `unsubscribe_url`. Anything else, or a `{{` that is never closed, is `422`; there is no escape for a literal
   `{{`. `GET /api/email-templates/tokens?language=` lists the set with each token's default fallback in that language.
-- **Fallbacks.** Every token except `unsubscribe_url` has a built-in fallback in each of the UI's eight languages (in English
+- **Fallbacks.** Every token except `unsubscribe_url` has a built-in fallback in each of the UI's 21 languages (in English
   `given_name` and `name`: "there"; `account_name`: "your organisation"; `family_name`: "customer"; `rep_name`: "the team";
   `job_title`: "your role"; the other seven are machine drafts, `rules::templates::FALLBACKS`), used in the template's language
   (its primary subtag; `de-AT` takes German). A template that names no language takes the English ones, as templates written
@@ -1346,7 +1346,7 @@ recipient would get before anything is sent, and be certain every message carrie
 
 *As a reader, I see an error in my own language and in plain words, so that nothing the service wrote for a developer (a record's id, a rule, a person) appears on my screen.*
 
-- A failed call becomes a **fixed, translated message chosen by the kind of failure**: not accepted (`400`, `422`), sign in again (`401`), no permission (`403`), not found (`404`), conflicts with what is there (`409`), too many requests (`429`), service unreachable or unavailable (`5xx` and a failed `fetch`), and a generic one for anything else. The same message is shown for the same kind of failure in all eight locales.
+- A failed call becomes a **fixed, translated message chosen by the kind of failure**: not accepted (`400`, `422`), sign in again (`401`), no permission (`403`), not found (`404`), conflicts with what is there (`409`), too many requests (`429`), service unreachable or unavailable (`5xx` and a failed `fetch`), and a generic one for anything else. The same message is shown for the same kind of failure in all 21 locales.
 - The service's `description`, a problem's `title` and `detail`, and an error's own `message` are **never shown**. `fieldErrors` still names which members were not accepted (so a page can mark them) but says only "Not accepted" for each, never the service's `detail`.
 - A page that has a more specific message of its own passes it as the fallback, or throws a `PageError`, whose text is already the page's own and in the reader's language.
 - Enforced three ways: `errorMessage` and `fieldErrors` in `src/lib/errors.ts` are the only code that reads an error; an ESLint rule (`no-restricted-properties` on `message`, `no-restricted-syntax` on `String(error)`) fails lint in the routes and components; and a unit test scans them for the same patterns and checks every kind of failure in every locale.
