@@ -33,6 +33,8 @@
     "ru-001",
     "ru-by",
     "ru-ru",
+    "sv-001",
+    "sv-se",
     "sw-001",
     "sw-tz",
     "zh-001",
@@ -72,6 +74,8 @@
     "ru-001",
     "ru-by",
     "ru-ru",
+    "sv-001",
+    "sv-se",
     "sw-001",
     "sw-tz",
     "zh-001",
@@ -111,6 +115,8 @@
     "ru-001",
     "ru-by",
     "ru-ru",
+    "sv-001",
+    "sv-se",
     "sw-001",
     "sw-tz",
     "zh-001",
@@ -138,6 +144,8 @@
     "ru-001",
     "ru-by",
     "ru-ru",
+    "sv-001",
+    "sv-se",
     "sw-001",
     "sw-tz"
   ],
@@ -1911,6 +1919,116 @@
       "locale": "ru-ru",
       "slug": "управление-рисками-и-соответствие",
       "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "driftchef",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "informationschef",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "juridikchef",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "oberoende-säkerhetstestare",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "personalchef",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "riskchef",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "strategichef",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "styrning-risk-regelefterlevnad",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "säkerhetschef",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "teknikchef",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "sv-001",
+      "slug": "verkställande-direktör",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "driftchef",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "informationschef",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "juridikchef",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "oberoende-säkerhetstestare",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "personalchef",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "riskchef",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "strategichef",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "styrning-risk-regelefterlevnad",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "säkerhetschef",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "teknikchef",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "sv-se",
+      "slug": "verkställande-direktör",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
     },
     {
       "locale": "sw-001",

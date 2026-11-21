@@ -647,8 +647,57 @@ const sw: Record<Key, string> = {
   "footer.after": "Tovuti hii inasafirishwa kutoka saraka ya hazina yenyewe kwa git subtree.",
 };
 
+const sv: Record<Key, string> = {
+  "nav.overview": "Översikt",
+  "nav.tutorial": "Handledning",
+  "nav.comparisons": "Jämför",
+  "cta.tutorial": "Starta handledningen",
+  "cta.source": "Visa källkoden",
+  brand: "Contact Relationship Management",
+  translations: "Översättningar:",
+  skip: "Hoppa till innehållet",
+  site: "Webbplats",
+  "nav.home": "Hem",
+  "nav.install": "Installera",
+  "nav.bridges": "Familjebryggor",
+  "nav.spec": "Specifikation",
+  "nav.locales": "Regioner",
+  "nav.briefs": "Rollsammanfattningar",
+  theme: "Tema",
+  themeSystem: "Följ den här enheten",
+  "nav.privacy": "Integritetsmeddelande",
+  textSize: "Textstorlek",
+  briefLanguage: "Språk för den här sammanfattningen",
+  language: "Språk",
+  pages: "Sidor",
+  repository: "Källkodsarkiv",
+  search: "Sök",
+  "search.input": "Sökord",
+  "search.submit": "Sök",
+  "search.placeholder": "Sök i dokumentationen",
+  timeZone: "Tidszon",
+  share: "Dela",
+  "share.email": "E-post",
+  "share.copy": "Kopiera länk",
+  "share.copied": "Kopierad",
+  "share.copyFailed": "Det gick inte att kopiera länken",
+  "search.prompt": "Använd sökknappen i sidhuvudet för att ange ett ord.",
+  "search.none": "Ingen sida matchar.",
+  "search.count": "Sidor funna: {n}",
+  "search.failed": "Sökindexet kunde inte läsas in.",
+  allBriefs: "Alla rollsammanfattningar",
+  "briefs.lede":
+    "En sida för varje högre roll: vad programvaran är, vad den ger dig, vad den inte ger, och vilka beslut som är dina. Använd språkknappen i sidhuvudet för samma sammanfattning i en annan region.",
+  locale: "Region:",
+  source: "Källa:",
+  "readiness.estimate": "uppskattad beredskap",
+  "footer.before": "Byggd från dokumenten i",
+  "footer.link": "arkivet för Contact Relationship Management",
+  "footer.after": "Den här webbplatsen exporteras från en katalog i själva arkivet med git subtree.",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ko, ru, sw, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ko, ru, sv, sw, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -716,6 +765,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Ndogo",
     smaller: "Ndogo sana",
     smallest: "Ndogo zaidi",
+  },
+  sv: {
+    largest: "Störst",
+    larger: "Större",
+    large: "Stor",
+    normal: "Normal",
+    small: "Liten",
+    smaller: "Mindre",
+    smallest: "Minst",
   },
   ru: {
     largest: "Огромный",
