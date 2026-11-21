@@ -500,8 +500,57 @@ const id: Record<Key, string> = {
   "footer.after": "Situs ini diekspor dari sebuah direktori di repositori itu dengan git subtree.",
 };
 
+const ja: Record<Key, string> = {
+  "nav.overview": "概要",
+  "nav.tutorial": "チュートリアル",
+  "nav.comparisons": "比較",
+  "cta.tutorial": "チュートリアルを始める",
+  "cta.source": "ソースを見る",
+  brand: "Contact Relationship Management",
+  translations: "翻訳：",
+  skip: "本文へスキップ",
+  site: "サイト",
+  "nav.home": "ホーム",
+  "nav.install": "インストール",
+  "nav.bridges": "ファミリーブリッジ",
+  "nav.spec": "仕様",
+  "nav.locales": "ロケール",
+  "nav.briefs": "役職別概要",
+  theme: "テーマ",
+  themeSystem: "この端末に合わせる",
+  "nav.privacy": "プライバシー通知",
+  textSize: "文字サイズ",
+  briefLanguage: "この概要の言語",
+  language: "言語",
+  pages: "ページ",
+  repository: "ソースリポジトリ",
+  search: "検索",
+  "search.input": "検索語",
+  "search.submit": "検索",
+  "search.placeholder": "ドキュメントを検索",
+  timeZone: "タイムゾーン",
+  share: "共有",
+  "share.email": "メール",
+  "share.copy": "リンクをコピー",
+  "share.copied": "コピーしました",
+  "share.copyFailed": "リンクをコピーできませんでした",
+  "search.prompt": "ヘッダーの検索ボタンを使って語句を入力してください。",
+  "search.none": "一致するページはありません。",
+  "search.count": "一致したページ：{n}",
+  "search.failed": "検索インデックスを読み込めませんでした。",
+  allBriefs: "すべての役職別概要",
+  "briefs.lede":
+    "上級職ごとに 1 ページ：このソフトウェアが何か、あなたに何を提供するか、何を提供しないか、そしてどの判断があなたに属するか。ヘッダーの言語ボタンを使うと、同じ概要を別のロケールで読めます。",
+  locale: "ロケール：",
+  source: "ソース：",
+  "readiness.estimate": "準備状況の推定",
+  "footer.before": "このサイトは、次のドキュメントから構築されています：",
+  "footer.link": "Contact Relationship Management リポジトリ",
+  "footer.after": "このサイトは、git subtree を使って、そのリポジトリ内のディレクトリからエクスポートされています。",
+};
+
 /** The tables, by base language. */
-export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ru, zh };
+export const TABLES: Readonly<Record<string, Record<Key, string>>> = { en, ar, bn, cy, es, fr, hi, id, ja, ru, zh };
 
 /** The language whose strings a locale reads: its base language when there is a table for it, else English. */
 export function languageOf(locale: string | null): string {
@@ -542,6 +591,15 @@ const SIZES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     small: "Kecil",
     smaller: "Lebih kecil",
     smallest: "Terkecil",
+  },
+  ja: {
+    largest: "最大",
+    larger: "より大きい",
+    large: "大きい",
+    normal: "標準",
+    small: "小さい",
+    smaller: "より小さい",
+    smallest: "最小",
   },
   ru: {
     largest: "Огромный",

@@ -26,6 +26,8 @@
     "id-001",
     "id-id",
     "id-my",
+    "ja-001",
+    "ja-jp",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -59,6 +61,8 @@
     "id-001",
     "id-id",
     "id-my",
+    "ja-001",
+    "ja-jp",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -92,6 +96,8 @@
     "id-001",
     "id-id",
     "id-my",
+    "ja-001",
+    "ja-jp",
     "ru-001",
     "ru-by",
     "ru-ru",
@@ -113,6 +119,8 @@
     "id-001",
     "id-id",
     "id-my",
+    "ja-001",
+    "ja-jp",
     "ru-001",
     "ru-by",
     "ru-ru"
@@ -1502,6 +1510,116 @@
       "locale": "id-my",
       "slug": "tata-kelola-risiko-kepatuhan",
       "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "ガバナンス・リスク・コンプライアンス",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "最高セキュリティ責任者",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "最高リスク責任者",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "最高人事責任者",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "最高執行責任者",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "最高情報責任者",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "最高戦略責任者",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "最高技術責任者",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "最高法務責任者",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "最高経営責任者",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "ja-001",
+      "slug": "独立セキュリティテスター",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "ガバナンス・リスク・コンプライアンス",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "最高セキュリティ責任者",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "最高リスク責任者",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "最高人事責任者",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "最高執行責任者",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "最高情報責任者",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "最高戦略責任者",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "最高技術責任者",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "最高法務責任者",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "最高経営責任者",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "ja-jp",
+      "slug": "独立セキュリティテスター",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
     {
       "locale": "ru-001",
