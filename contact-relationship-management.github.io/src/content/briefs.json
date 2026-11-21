@@ -10,6 +10,9 @@
     "cy-001",
     "cy-ar",
     "cy-gb",
+    "de-001",
+    "de-at",
+    "de-de",
     "en-001",
     "en-gb",
     "en-gb-oxendict",
@@ -55,6 +58,9 @@
     "cy-001",
     "cy-ar",
     "cy-gb",
+    "de-001",
+    "de-at",
+    "de-de",
     "en-001",
     "en-gb",
     "en-gb-oxendict",
@@ -100,6 +106,9 @@
     "cy-001",
     "cy-ar",
     "cy-gb",
+    "de-001",
+    "de-at",
+    "de-de",
     "en-001",
     "en-gb",
     "en-gb-oxendict",
@@ -139,6 +148,9 @@
     "bn-001",
     "bn-bd",
     "bn-in",
+    "de-001",
+    "de-at",
+    "de-de",
     "en-001",
     "es-001",
     "es-es",
@@ -669,6 +681,171 @@
     {
       "locale": "cy-gb",
       "slug": "profwr-diogelwch-annibynnol",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "de-001",
+      "slug": "betriebsleiter",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "de-001",
+      "slug": "geschäftsführer",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "de-001",
+      "slug": "governance-risiko-compliance",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "de-001",
+      "slug": "informationsleiter",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "de-001",
+      "slug": "personalleiter",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "de-001",
+      "slug": "rechtsleiter",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "de-001",
+      "slug": "risikoleiter",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "de-001",
+      "slug": "sicherheitsleiter",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "de-001",
+      "slug": "strategieleiter",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "de-001",
+      "slug": "technologieleiter",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "de-001",
+      "slug": "unabhängiger-sicherheitstester",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "de-at",
+      "slug": "betriebsleiter",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "de-at",
+      "slug": "geschäftsführer",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "de-at",
+      "slug": "governance-risiko-compliance",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "de-at",
+      "slug": "informationsleiter",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "de-at",
+      "slug": "personalleiter",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "de-at",
+      "slug": "rechtsleiter",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "de-at",
+      "slug": "risikoleiter",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "de-at",
+      "slug": "sicherheitsleiter",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "de-at",
+      "slug": "strategieleiter",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "de-at",
+      "slug": "technologieleiter",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "de-at",
+      "slug": "unabhängiger-sicherheitstester",
+      "peer": "8204f25f461544a6bfa28fb35dd4ac87"
+    },
+    {
+      "locale": "de-de",
+      "slug": "betriebsleiter",
+      "peer": "9f194aaef49f475e8379c3704fd128b8"
+    },
+    {
+      "locale": "de-de",
+      "slug": "geschäftsführer",
+      "peer": "c69f090f6f5244bf866322c2eba05bc1"
+    },
+    {
+      "locale": "de-de",
+      "slug": "governance-risiko-compliance",
+      "peer": "1be05a7d51964cc5ad429ff70c078af6"
+    },
+    {
+      "locale": "de-de",
+      "slug": "informationsleiter",
+      "peer": "d6fad4be66b84a2288ee103c8479b3f7"
+    },
+    {
+      "locale": "de-de",
+      "slug": "personalleiter",
+      "peer": "40d840259af746df9e1ede6f8fdcda9d"
+    },
+    {
+      "locale": "de-de",
+      "slug": "rechtsleiter",
+      "peer": "0f2972a689544a4dae5a4fe9cae8a226"
+    },
+    {
+      "locale": "de-de",
+      "slug": "risikoleiter",
+      "peer": "10ea6fb8d8954b32a486ce26cf57883d"
+    },
+    {
+      "locale": "de-de",
+      "slug": "sicherheitsleiter",
+      "peer": "4f71c6aeb9ec4e65b679c147b0cf34e7"
+    },
+    {
+      "locale": "de-de",
+      "slug": "strategieleiter",
+      "peer": "5cea817d72814a3ab9fb91f66c4f8844"
+    },
+    {
+      "locale": "de-de",
+      "slug": "technologieleiter",
+      "peer": "d94006e0b42c49b6bf021667d0e5557c"
+    },
+    {
+      "locale": "de-de",
+      "slug": "unabhängiger-sicherheitstester",
       "peer": "8204f25f461544a6bfa28fb35dd4ac87"
     },
     {
