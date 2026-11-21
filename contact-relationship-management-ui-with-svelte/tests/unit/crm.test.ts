@@ -46,15 +46,28 @@ describe("i18n", () => {
     }
   });
 
-  it("supports exactly the seven family locales, sorted, no parentheses", () => {
+  it("supports exactly the family locales, sorted, no parentheses", () => {
     expect([...LOCALES]).toEqual([
       "ar-001",
+      "bn-001",
       "cy-001",
+      "da-001",
       "de-de",
       "en-001",
       "es-001",
       "fr-001",
       "hi-001",
+      "id-001",
+      "it-001",
+      "ja-001",
+      "ko-001",
+      "nl-001",
+      "pt-001",
+      "ru-001",
+      "sv-001",
+      "sw-001",
+      "ur-001",
+      "vi-001",
       "zh-cn",
     ]);
     expect(DEFAULT_LOCALE).toBe("en-001");
@@ -119,6 +132,9 @@ describe("i18n", () => {
     i18n.set("de-DE");
     expect(i18n.locale).toBe("de-de");
     i18n.set("ja");
+    expect(i18n.locale).toBe("ja-001");
+    // A language the UI has no strings for falls back to English.
+    i18n.set("tr");
     expect(i18n.locale).toBe("en-001");
   });
 });

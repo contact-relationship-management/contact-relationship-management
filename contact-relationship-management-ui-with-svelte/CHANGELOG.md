@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the interface in 13 more languages (CRM-T297)
+
+- Bengali, Danish, Indonesian, Italian, Japanese, Korean, Dutch, Portuguese, Russian, Swedish, Swahili, Urdu (right to
+  left) and Vietnamese (`bn-001` to `vi-001`), so every language the role guides are in has interface strings. All are
+  machine-written drafts that no native speaker has reviewed; the register and each locale's review record say so.
+
 ### Changed — the guided tour is opt-in (CRM-T92)
 
 - The in-memory tour is disabled unless `CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR=on`. Each visitor still gets an isolated,

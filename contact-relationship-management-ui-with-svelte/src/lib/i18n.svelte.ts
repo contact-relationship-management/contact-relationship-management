@@ -5,11 +5,13 @@
 // cover the same key set (the parity test pins this, and each locale file's
 // type enforces it). Each locale is its own module, loaded on demand. The chosen
 // locale persists to localStorage and drives the UI strings and
-// `<html dir>` (RTL for `ar-001`).
+// `<html dir>` (RTL for `ar-001` and `ur-001`).
 //
-// Supported locales (family-wide set, sorted by code): Arabic (`ar-001`,
-// RTL), Welsh (`cy-001`), German (`de-de`), English (`en-001`, the source of truth),
-// Spanish (`es-001`), French (`fr-001`), Hindi (`hi-001`) and Simplified
+// Supported locales (family-wide set, sorted by code): Arabic (`ar-001`, RTL), Bengali (`bn-001`),
+// Welsh (`cy-001`), Danish (`da-001`), German (`de-de`), English (`en-001`, the source of truth),
+// Spanish (`es-001`), French (`fr-001`), Hindi (`hi-001`), Indonesian (`id-001`), Italian (`it-001`),
+// Japanese (`ja-001`), Korean (`ko-001`), Dutch (`nl-001`), Portuguese (`pt-001`), Russian (`ru-001`),
+// Swedish (`sv-001`), Swahili (`sw-001`), Urdu (`ur-001`, RTL), Vietnamese (`vi-001`) and Simplified
 // Chinese for China (`zh-cn`). `-001` is the UN M.49 code for "world": a
 // language with no regional variant.
 
@@ -21,12 +23,25 @@ import { browser } from "$app/env";
  */
 export const LOCALES = [
   "ar-001",
+  "bn-001",
   "cy-001",
+  "da-001",
   "de-de",
   "en-001",
   "es-001",
   "fr-001",
   "hi-001",
+  "id-001",
+  "it-001",
+  "ja-001",
+  "ko-001",
+  "nl-001",
+  "pt-001",
+  "ru-001",
+  "sv-001",
+  "sw-001",
+  "ur-001",
+  "vi-001",
   "zh-cn",
 ] as const;
 
@@ -43,17 +58,33 @@ export const DEFAULT_LOCALE: Locale = "en-001";
  */
 export const LOCALE_LABELS: Record<Locale, string> = {
   "ar-001": "العربية",
+  "bn-001": "বাংলা",
   "cy-001": "Cymraeg",
+  "da-001": "Dansk",
   "de-de": "Deutsch - Deutschland",
   "en-001": "English",
   "es-001": "Español",
   "fr-001": "Français",
   "hi-001": "हिन्दी",
+  "id-001": "Bahasa Indonesia",
+  "it-001": "Italiano",
+  "ja-001": "日本語",
+  "ko-001": "한국어",
+  "nl-001": "Nederlands",
+  "pt-001": "Português",
+  "ru-001": "Русский",
+  "sv-001": "Svenska",
+  "sw-001": "Kiswahili",
+  "ur-001": "اردو",
+  "vi-001": "Tiếng Việt",
   "zh-cn": "中文 - 中国",
 };
 
 /** Right-to-left locales; the layout mirrors `<html dir>`. */
-export const RTL_LOCALES = ["ar-001"] as const satisfies readonly Locale[];
+export const RTL_LOCALES = [
+  "ar-001",
+  "ur-001",
+] as const satisfies readonly Locale[];
 
 /** Whether `locale` is written right-to-left. */
 export function isRtl(locale: string): boolean {
@@ -79,12 +110,25 @@ type Table = Record<string, string>;
 /** Loads a locale's module. Each `import()` is its own chunk. */
 const LOADERS: Record<Locale, () => Promise<{ default: Table }>> = {
   "ar-001": () => import("./locales/ar-001"),
+  "bn-001": () => import("./locales/bn-001"),
   "cy-001": () => import("./locales/cy-001"),
+  "da-001": () => import("./locales/da-001"),
   "de-de": () => import("./locales/de-de"),
   "en-001": async () => ({ default: en }),
   "es-001": () => import("./locales/es-001"),
   "fr-001": () => import("./locales/fr-001"),
   "hi-001": () => import("./locales/hi-001"),
+  "id-001": () => import("./locales/id-001"),
+  "it-001": () => import("./locales/it-001"),
+  "ja-001": () => import("./locales/ja-001"),
+  "ko-001": () => import("./locales/ko-001"),
+  "nl-001": () => import("./locales/nl-001"),
+  "pt-001": () => import("./locales/pt-001"),
+  "ru-001": () => import("./locales/ru-001"),
+  "sv-001": () => import("./locales/sv-001"),
+  "sw-001": () => import("./locales/sw-001"),
+  "ur-001": () => import("./locales/ur-001"),
+  "vi-001": () => import("./locales/vi-001"),
   "zh-cn": () => import("./locales/zh-cn"),
 };
 

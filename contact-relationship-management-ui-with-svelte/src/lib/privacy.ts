@@ -9,6 +9,7 @@ const NOTICE_LOCALES = [
   "cy-001",
   "en-001",
   "hi-001",
+  "it-001",
   "zh-cn",
 ] as const;
 

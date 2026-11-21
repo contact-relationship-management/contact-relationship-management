@@ -9,12 +9,25 @@ import { defineParams } from "@sveltejs/kit/params";
 /** The UI's languages: the `[locale=locale]` values. */
 export const ROUTE_LOCALES: readonly string[] = [
   "ar-001",
+  "bn-001",
   "cy-001",
+  "da-001",
   "de-de",
   "en-001",
   "es-001",
   "fr-001",
   "hi-001",
+  "id-001",
+  "it-001",
+  "ja-001",
+  "ko-001",
+  "nl-001",
+  "pt-001",
+  "ru-001",
+  "sv-001",
+  "sw-001",
+  "ur-001",
+  "vi-001",
   "zh-cn",
 ];
 

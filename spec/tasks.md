@@ -2703,3 +2703,20 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       `bn-001`, a role-guide locale with no UI locale; nothing here touches it, but it was not re-run on the base commit.
       The Playwright suites (`e2e`, including `theme.spec.ts`) were not run, so the new theme order and the themes' CSS were
       not seen in a browser. `scripts/ci-check.sh all` was not run, so there is no attestation.
+- [x] CRM-T297 **The interface in the 13 languages the role guides have (CRM-R95).** Chosen by the product owner on
+      2026-11-21 (option 1 of three, after `tests/unit/crm.test.ts` "reads every locale directory of the role guides as
+      one of the UI locales" failed on `bn-001` in CI). Bengali, Danish, Indonesian, Italian, Japanese, Korean, Dutch,
+      Portuguese, Russian, Swedish, Swahili, Urdu and Vietnamese, each a `-001` locale. (L)
+      - **What it changes:** 13 files in `src/lib/locales/`, each with English's keys and the CLDR plural forms its language
+      uses; `LOCALES`, `LOCALE_LABELS`, the loaders, `RTL_LOCALES` (Urdu), `ROUTE_LOCALES`, the Lily label packs and the
+      privacy notice (Italian has one on the site) follow; a review record and a register row per locale. Four
+      parallel Claude agents wrote the files; the key sets, placeholders and plural forms are checked by the existing tests.
+      - **Not reviewed:** every one is a **machine-written draft**; no native speaker has read any of them. Each agent
+      listed wording it was unsure of (for example Italian and Portuguese `many` plurals, Swahili sales terms, Urdu
+      `signin.demo` word order, Bengali loanword choices); the review records carry the general caveat, not those lists.
+      - **Not done / not verified:** the service's public consent, preference and unsubscribe pages, the web form's mail and
+      answers, the template fallbacks and the import header names have no text in these 13 languages, so a data subject
+      who reads one of them still reads English there (recorded in each review record). The English strings that count the
+      UI's languages (`splash.trust.6.body`, the accessibility page) and the Rust comments saying "eight languages" still
+      say eight. The site has privacy notices only for `it-001` among the new ones. The Playwright suites, including the
+      right-to-left layout for Urdu, were not run. `scripts/ci-check.sh all` was not run, so there is no attestation.
