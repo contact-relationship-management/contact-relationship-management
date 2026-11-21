@@ -62,8 +62,8 @@ function sectionDir(locale, name) {
 function realPath(path) {
   const m = /^locales\/([^/]+)\/(for|path-to-production|privacy)\/(.*)$/.exec(path);
   if (!m) return join(ROOT, path);
-  const dir = sectionDir(m[1], m[2]);
-  return join(dir ?? join(ROOT, "locales", m[1], m[2]), m[3]);
+  const [, locale = "", section = "", rest = ""] = m;
+  return join(sectionDir(locale, section) ?? join(ROOT, "locales", locale, section), rest);
 }
 
 function briefs() {
