@@ -358,23 +358,25 @@ describe("template fallbacks and import columns in the UI's languages (CRM-T169)
       fallback: string | null;
     }>;
     expect(de.find((x) => x.name === "given_name")?.fallback).toBe("zusammen");
-    const ja = get("email-templates/tokens?language=ja").body as Array<{
+    const tr = get("email-templates/tokens?language=tr").body as Array<{
       fallback: string | null;
     }>;
-    expect(ja.every((x) => x.fallback === null)).toBe(true);
+    expect(tr.every((x) => x.fallback === null)).toBe(true);
   });
 
   it("refuses a template in a language with no built-in fallbacks until it has its own", () => {
     const draft = {
-      name: "Japanese",
-      language: "ja",
-      subject: "{{given_name}}様",
+      name: "Turkish",
+      language: "tr",
+      subject: "{{given_name}} Bey",
       body: "{{unsubscribe_url}}",
     };
     expect(post("email-templates", draft).status).toBe(422);
     expect(
-      post("email-templates", { ...draft, fallbacks: { given_name: "お客" } })
-        .status,
+      post("email-templates", {
+        ...draft,
+        fallbacks: { given_name: "Müşteri" },
+      }).status,
     ).toBe(200);
   });
 

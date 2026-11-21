@@ -764,7 +764,7 @@ async fn the_public_pages_are_in_the_reader_s_language() {
             .get(&path)
             .add_header(
                 accept.clone(),
-                HeaderValue::from_static("ja, de-CH;q=0.9, en;q=0.5"),
+                HeaderValue::from_static("tr, de-CH;q=0.9, en;q=0.5"),
             )
             .await;
         page.assert_status_ok();

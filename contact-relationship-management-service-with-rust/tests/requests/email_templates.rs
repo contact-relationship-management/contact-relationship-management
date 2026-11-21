@@ -381,7 +381,7 @@ async fn fallbacks_are_in_the_template_s_language() {
         let given = tokens.iter().find(|t| t["name"] == "given_name").unwrap();
         assert_eq!(given["fallback"], "zusammen");
         let tokens: Vec<Value> = request
-            .get("/api/email-templates/tokens?language=ja")
+            .get("/api/email-templates/tokens?language=tr")
             .await
             .json();
         assert!(tokens.iter().all(|t| t["fallback"].is_null()), "{tokens:?}");
@@ -402,20 +402,20 @@ async fn fallbacks_are_in_the_template_s_language() {
             .json();
         assert_eq!(shown["subject"], "您好，贵机构", "{shown}");
 
-        // Japanese has no built-in fallbacks: a template must give its own for each token used.
-        let mut template = json!({ "name": "Japanese", "language": "ja",
-            "subject": "{{given_name}}様", "body": "{{name}}様\n{{unsubscribe_url}}" });
+        // Turkish has no built-in fallbacks: a template must give its own for each token used.
+        let mut template = json!({ "name": "Turkish", "language": "tr",
+            "subject": "{{given_name}} Bey", "body": "{{name}} Bey\n{{unsubscribe_url}}" });
         let refused = request.post("/api/email-templates").json(&template).await;
         assert_eq!(refused.status_code(), 422);
         let text = refused.text();
         assert!(text.contains("fallbacks/given_name") && text.contains("fallbacks/name"), "{text}");
-        template["fallbacks"] = json!({ "given_name": "お客", "name": "お客" });
+        template["fallbacks"] = json!({ "given_name": "Müşteri", "name": "Müşteri" });
         let made: Value = request.post("/api/email-templates").json(&template).await.json();
         let one: Value = request
             .get(&format!("/api/email-templates/{}", made["pid"].as_str().unwrap()))
             .await
             .json();
-        assert_eq!(one["language"], "ja");
+        assert_eq!(one["language"], "tr");
 
         // A bad tag is refused; a template naming no language keeps English and says so.
         let bad = json!({ "name": "Bad", "language": "pt_BR", "subject": "s",
