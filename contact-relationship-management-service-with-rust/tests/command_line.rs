@@ -103,3 +103,93 @@ fn the_setting_lets_a_destructive_command_through_in_development() {
     assert!(!attempted.status.success());
     assert!(!text.contains("AXA_DESTROY_DATA"), "{text}");
 }
+
+// The commands below connect, so they need a PostgreSQL database named by `DB_URL`
+// (`cargo test -- --ignored`, as the other database tests do). They run the binary the way an
+// operator does, so `App::run` and `App::db` are exercised end to end (CRM-T292, round 11).
+
+/// The binary in development against the test database, with the guard on destructive commands open.
+fn operate(args: &[&str]) -> Output {
+    let url = std::env::var("DB_URL").expect("DB_URL names a PostgreSQL database");
+    run(
+        args,
+        &[
+            ("APP_ENV", "development"),
+            ("AXA_DESTROY_DATA", "true"),
+            ("DB_URL", &url),
+        ],
+    )
+}
+
+fn out(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+/// The migration lines of `db status`, without the log lines the binary also prints.
+fn migration_lines(output: &Output) -> Vec<String> {
+    out(output)
+        .lines()
+        .filter(|line| line.starts_with("applied") || line.starts_with("pending"))
+        .map(str::to_string)
+        .collect()
+}
+
+fn err(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+#[test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+fn db_status_names_the_baseline_after_a_migrate() {
+    let migrated = operate(&["db", "migrate"]);
+    assert!(migrated.status.success(), "{}", err(&migrated));
+    let status = operate(&["db", "status"]);
+    assert!(status.status.success(), "{}", err(&status));
+    let lines = migration_lines(&status);
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.starts_with("applied") && l.contains("baseline")),
+        "{lines:?}"
+    );
+}
+
+#[test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+fn db_down_says_there_is_no_down_migration_and_changes_nothing() {
+    let before = migration_lines(&operate(&["db", "status"]));
+    assert!(!before.is_empty());
+    let refused = operate(&["db", "down", "1"]);
+    assert!(!refused.status.success());
+    let text = err(&refused);
+    assert!(text.contains("no down migration"), "{text}");
+    assert_eq!(migration_lines(&operate(&["db", "status"])), before);
+}
+
+#[test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+fn db_reset_and_truncate_leave_a_migrated_database() {
+    for command in ["reset", "truncate"] {
+        let done = operate(&["db", command]);
+        assert!(done.status.success(), "db {command}: {}", err(&done));
+    }
+    let lines = migration_lines(&operate(&["db", "status"]));
+    assert!(lines.iter().any(|l| l.contains("baseline")), "{lines:?}");
+}
+
+#[test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+fn task_lists_what_can_be_run_and_refuses_one_it_does_not_have() {
+    let listed = operate(&["task"]);
+    assert!(listed.status.success(), "{}", err(&listed));
+    let text = out(&listed);
+    for name in ["seed", "rotate_field_keys"] {
+        assert!(text.contains(name), "{name} is not listed: {text}");
+    }
+    let unknown = operate(&["task", "no_such_task"]);
+    assert!(!unknown.status.success());
+}

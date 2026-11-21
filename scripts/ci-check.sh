@@ -155,7 +155,7 @@ case "${stage}" in
          --ignored --test-threads=1 \
       && CONTACT_RELATIONSHIP_MANAGEMENT_REDIS_URL="${redis_url}" \
          cargo llvm-cov --no-clean --offline --workspace --lib "${FEATURES[@]}" \
-           --summary-only --fail-under-lines 96 -- \
+           --summary-only --fail-under-lines 96.5 -- \
            redis_store --ignored --test-threads=1)
     ;;
   e2e)
