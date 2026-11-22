@@ -94,11 +94,15 @@ RCA-ERR-4). A `422` says "`<figure>` could not be calculated" (`arith::overflow`
 - `scripts/check-checked-arithmetic.py` runs in the `clippy` stage and fails on `saturating_*`, `wrapping_*`,
   `overflowing_*`, `clamp` and an unwrapped `checked_*` result in production code (RCA-ENF-5).
 - Not yet at the rule:
-  - **`Option::unwrap_or_default`** is still used in 48 places, which RCA-P-3 forbids and `clippy.toml` does not yet
-    ban. Stored JSON that read as an empty value (calendars, webhook patterns, views, custom field choices, template
-    fallbacks, workflows and their runs, consent purposes, segment filters) is now an error that names the field
-    (`json::stored`, RCA-IN-6). What is left: an absent map entry read as an empty list, optional text read as an
-    empty string, and the serialization of the service's own types. Each needs its own look.
+  - **`Option::unwrap_or_default`** is still used in 40-odd places, which RCA-P-3 forbids and `clippy.toml` does not
+    yet ban. Done: stored JSON that read as empty is an error (`json::stored`, RCA-IN-6); a mail request body that
+    cannot be serialized is a permanent send error and is no longer signed as empty; audit-chain snapshots use
+    `Value::to_string`; the chain's first `prev_hash` is the named `GENESIS_PREV_HASH` (AUDIT-GENESIS-1: the first
+    row has no predecessor, so its chain starts from the empty hash); the client key reads its digest by pattern;
+    contact erasure returns exactly 13 counts or an error; the segment filter, the forecast totals and a ticket are
+    checked when serialized. Left, to be decided or excepted one by one: the insight cache's generation stamp
+    (`insight_cache.rs`, 0 after the year 2262), `Decision::record` in `consent_profiles.rs` (writes `null` if a value
+    will not serialize), and the absent-means-empty map entries and optional texts.
   - `as` conversions and the other lints of RCA-ENF-1 (`as_conversions`, `cast_*`, `integer_division`,
     `float_arithmetic`, `string_slice`, `allow_attributes`).
   - The matcher crate has no `clippy.toml`, and its `clamp` of the log-odds is not converted.

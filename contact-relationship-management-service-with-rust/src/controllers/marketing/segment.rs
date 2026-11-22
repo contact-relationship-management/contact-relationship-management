@@ -55,7 +55,8 @@ pub(super) async fn create_segment(
         "INSERT INTO segments (pid, name, filter) VALUES ($1, $2, $3)",
         pid,
         payload.name,
-        serde_json::to_value(&filter).unwrap_or_default(),
+        serde_json::to_value(&filter)
+            .map_err(|_| Error::string("the segment filter could not be stored"))?,
     )
     .execute(&mut *txn)
     .await?;

@@ -1063,7 +1063,8 @@ async fn forecast_snapshot(
             DateTimeWithTimeZone\"",
         Uuid::new_v4(),
         taken_on,
-        serde_json::to_value(&totals).unwrap_or_default(),
+        serde_json::to_value(&totals)
+            .map_err(|_| Error::string("the forecast totals could not be stored"))?,
     )
     .fetch_one(&mut *txn)
     .await?;

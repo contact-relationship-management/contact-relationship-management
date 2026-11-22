@@ -357,14 +357,15 @@ async fn list_tickets(
             let live_resolution = ticket
                 .resolution_due_at
                 .is_some_and(|due| sla::resolution_breached(clock, due, ticket.resolved_at));
-            let mut value = serde_json::to_value(&ticket).unwrap_or_default();
+            let mut value = serde_json::to_value(&ticket)
+                .map_err(|_| Error::string("a ticket could not be shown"))?;
             if let Some(object) = value.as_object_mut() {
                 object.insert("live_first_response_breached".into(), live_first.into());
                 object.insert("live_resolution_breached".into(), live_resolution.into());
             }
-            value
+            Ok(value)
         })
-        .collect();
+        .collect::<Result<Vec<_>>>()?;
     Audit::record_read_on(
         pool,
         "ticket",

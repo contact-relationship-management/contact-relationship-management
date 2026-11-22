@@ -13,6 +13,11 @@ use uuid::Uuid;
 
 pub use super::_entities::audit_logs::{self, Model};
 
+/// The `prev_hash` of the first row: it has no predecessor, so its chain begins from the empty hash
+/// (the genesis of the chain, spec/arithmetic AUDIT-GENESIS-1). Every other row names its
+/// predecessor's hash.
+pub const GENESIS_PREV_HASH: &str = "";
+
 impl Model {
     /// Record one audit entry in the caller's transaction. `actor` is the caller's `sub` when a
     /// verified token was presented, else `None`. It takes a connection, never the pool, so an
@@ -38,7 +43,7 @@ impl Model {
             .fetch_optional(&mut *conn)
             .await?
             .flatten()
-            .unwrap_or_default();
+            .unwrap_or_else(|| GENESIS_PREV_HASH.to_string());
         let entry = sqlx::query_as!(
             Self,
             "INSERT INTO audit_logs (entity, entity_pid, action, actor, snapshot, prev_hash) \
@@ -160,13 +165,10 @@ impl Model {
 /// The chain hash of a stored row.
 #[must_use]
 pub fn chain_hash_of(row: &Model) -> String {
-    let snapshot = row
-        .snapshot
-        .as_ref()
-        .map(|value| serde_json::to_string(value).unwrap_or_default());
+    let snapshot = row.snapshot.as_ref().map(serde_json::Value::to_string);
     audit_chain::hash(&audit_chain::Link {
         id: row.id,
-        prev_hash: row.prev_hash.as_deref().unwrap_or(""),
+        prev_hash: row.prev_hash.as_deref().unwrap_or(GENESIS_PREV_HASH),
         entity: &row.entity,
         entity_pid: &row.entity_pid.to_string(),
         action: &row.action,
@@ -190,10 +192,10 @@ pub async fn verify_chain(pool: &PgPool) -> Result<audit_chain::Verdict, sqlx::E
         .map(|row| {
             (
                 row.entity_pid.to_string(),
-                row.prev_hash.clone().unwrap_or_default(),
-                row.snapshot
-                    .as_ref()
-                    .map(|value| serde_json::to_string(value).unwrap_or_default()),
+                row.prev_hash
+                    .clone()
+                    .unwrap_or_else(|| GENESIS_PREV_HASH.to_string()),
+                row.snapshot.as_ref().map(serde_json::Value::to_string),
             )
         })
         .collect();

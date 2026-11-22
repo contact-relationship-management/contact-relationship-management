@@ -195,10 +195,13 @@ async fn erase_attached(txn: &mut PgConnection, contact: Uuid) -> Result<(Vec<Uu
     Ok((files, tags))
 }
 
+/// The places [`scrub_linked`] scrubs, one statement each.
+const SCRUBBED_PLACES: usize = 13;
+
 /// Scrub what is keyed to the erased contact `cpid` and to the duplicates merged into it, one
 /// statement each, in the order of the audit row's counts. Returns the rows each one changed.
 #[allow(clippy::too_many_lines)] // one statement for each place the contact's data lives
-async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<Vec<u64>> {
+async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<[u64; SCRUBBED_PLACES]> {
     let mut affected = Vec::new();
     // Free text linked to this contact, and rows that are about it only. A plaintext tombstone on
     // purpose: `[erased]` is not personal data.
@@ -349,7 +352,10 @@ async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<Vec<u64>> {
             .await?
             .rows_affected(),
     );
-    Ok(affected)
+    // One count for each statement above; a different number is a mistake in this function, and no
+    // count is invented for a place that is missing.
+    <[u64; SCRUBBED_PLACES]>::try_from(affected)
+        .map_err(|_| Error::string("the erasure counted an unexpected number of places"))
 }
 
 /// `POST /api/contacts/{pid}/erase` — anonymise (CRM-D14): scrub the
@@ -421,7 +427,21 @@ async fn erase(
     .execute(&mut *txn)
     .await?;
     let affected = scrub_linked(&mut txn, cpid).await?;
-    let counted = |at: usize| affected.get(at).copied().unwrap_or_default();
+    let [
+        activities,
+        leads,
+        memberships,
+        notifications,
+        submissions,
+        links,
+        webhooks,
+        merged,
+        _,
+        purposes,
+        tokens,
+        employments,
+        custom_field_values,
+    ] = affected;
     // The rows go in the transaction; the files go once it has committed.
     let (files, tags_removed) = erase_attached(&mut txn, cpid).await?;
     Audit::record_on(
@@ -431,19 +451,19 @@ async fn erase(
         "erased",
         caller.actor(),
         Some(serde_json::json!({
-            "activity_summaries_scrubbed": counted(0),
-            "leads_scrubbed": counted(1),
-            "working_group_memberships_deleted": counted(2),
-            "notifications_deleted": counted(3),
-            "form_submissions_deleted": counted(4),
-            "external_links_deleted": counted(5),
-            "webhook_deliveries_cancelled": counted(6),
-            "merged_duplicates_scrubbed": counted(7),
-            "purposes_withdrawn": counted(9),
-            "link_tokens_deleted": counted(10),
-            "employments_deleted": counted(11),
+            "activity_summaries_scrubbed": activities,
+            "leads_scrubbed": leads,
+            "working_group_memberships_deleted": memberships,
+            "notifications_deleted": notifications,
+            "form_submissions_deleted": submissions,
+            "external_links_deleted": links,
+            "webhook_deliveries_cancelled": webhooks,
+            "merged_duplicates_scrubbed": merged,
+            "purposes_withdrawn": purposes,
+            "link_tokens_deleted": tokens,
+            "employments_deleted": employments,
             "employment_last_events_deleted": employment_events_deleted,
-            "custom_field_values_deleted": affected.last().copied().unwrap_or_default(),
+            "custom_field_values_deleted": custom_field_values,
             "attachments_deleted": files.len(),
             "taggings_deleted": tags_removed,
         })),

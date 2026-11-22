@@ -135,7 +135,11 @@ impl ApiSender {
     /// Build the signed request for one message.
     fn request(&self, message: &Message) -> Result<reqwest::RequestBuilder, SendError> {
         let post = self.client.post(&self.url);
-        let signed_json = |body: &Value| serde_json::to_vec(body).unwrap_or_default();
+        let signed_json = |body: &Value| {
+            serde_json::to_vec(body).map_err(|_| {
+                SendError::Permanent("the request body could not be serialized".into())
+            })
+        };
         Ok(match self.kind {
             Kind::Brevo => post
                 .header("api-key", &self.key)
@@ -154,7 +158,7 @@ impl ApiSender {
                     &self.from,
                     message,
                     self.config_set.as_deref(),
-                ));
+                ))?;
                 let url = self.parsed_url()?;
                 let creds = crate::provider_cloud::SesCredentials {
                     access_key: self.key.clone(),
@@ -172,7 +176,7 @@ impl ApiSender {
                 with_headers(post.header("content-type", "application/json"), headers).body(body)
             }
             Kind::Azure => {
-                let body = signed_json(&crate::provider_cloud::azure_body(&self.from, message));
+                let body = signed_json(&crate::provider_cloud::azure_body(&self.from, message))?;
                 let url = self.parsed_url()?;
                 let path = match url.query() {
                     Some(q) => format!("{}?{q}", url.path()),
