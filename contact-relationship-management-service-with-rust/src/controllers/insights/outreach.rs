@@ -141,7 +141,7 @@ pub(super) async fn cadence(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let threshold = days_or(query.days, 30);
+    let threshold = days_or(query.days, 30)?;
     let now = crate::clock::now();
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
@@ -249,7 +249,7 @@ pub(super) async fn engagement(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let window = days_or(query.days, 90);
+    let window = days_or(query.days, 90)?;
     let now = crate::clock::now();
     let since = now
         .checked_sub_days(window)
@@ -409,7 +409,7 @@ pub(super) async fn members(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let threshold = days_or(query.days, 30);
+    let threshold = days_or(query.days, 30)?;
     let now = crate::clock::now();
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);

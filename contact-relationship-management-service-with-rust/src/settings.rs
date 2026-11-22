@@ -125,6 +125,9 @@ pub struct Settings {
     /// with the path of each upload as its last argument: exit 0 clean, 1 infected, anything else
     /// is a failure. Unset, no scan is run.
     pub attachment_scan_command: Option<String>,
+    /// The numeric settings whose value was not a number or lay outside its range. Each holds its
+    /// default here, and start-up refuses while any is named; the value is never kept.
+    pub unusable: Vec<&'static str>,
 }
 
 /// One web form (CRM-R31).
@@ -187,13 +190,66 @@ pub fn parse_bool(value: &str) -> bool {
     )
 }
 
+/// A numeric setting: `default` when it is not set at all, the value when it is a number in `range`, and
+/// otherwise (a blank value included, RCA-IN-3) `default` with `name` recorded in `unusable` so that start-up refuses. A
+/// setting that cannot be read is an error and is never moved to a bound or quietly defaulted.
+fn number<T: std::str::FromStr + PartialOrd>(
+    get: &dyn Fn(&str) -> Option<String>,
+    name: &'static str,
+    range: std::ops::RangeInclusive<T>,
+    default: T,
+    unusable: &mut Vec<&'static str>,
+) -> T {
+    let Some(raw) = get(name) else {
+        return default;
+    };
+    if let Some(n) = raw.trim().parse::<T>().ok().and_then(|n| within(n, range)) {
+        n
+    } else {
+        unusable.push(name);
+        default
+    }
+}
+
+/// A numeric setting with no default: `None` when it is not set at all, the number when it is one,
+/// and otherwise `None` with `name` recorded in `unusable` so that start-up refuses (RCA-IN-4).
+fn optional_number<T: std::str::FromStr>(
+    get: &dyn Fn(&str) -> Option<String>,
+    name: &'static str,
+    unusable: &mut Vec<&'static str>,
+) -> Option<T> {
+    let raw = get(name)?;
+    let parsed = raw.trim().parse::<T>().ok();
+    if parsed.is_none() {
+        unusable.push(name);
+    }
+    parsed
+}
+
+/// A retention setting, kept as written: not set at all is `None`; a value that is not a whole number
+/// of days at or above `floor` is recorded in `unusable` (RCA-IN-4) and not raised to the floor.
+fn horizon_setting(
+    get: &dyn Fn(&str) -> Option<String>,
+    name: &'static str,
+    floor: i64,
+    unusable: &mut Vec<&'static str>,
+) -> Option<String> {
+    let raw = get(name)?;
+    if !crate::rules::privacy::valid_horizon(&raw, floor) {
+        unusable.push(name);
+    }
+    Some(raw)
+}
+
 impl Settings {
     /// Parse the settings from `get`, a `name -> value` function. Unset and
-    /// blank are the same; an unparsable number falls back to its default,
-    /// as it always did.
+    /// blank are the same; a number that does not parse or lies outside its range
+    /// is named in [`Settings::unusable`], and start-up refuses.
     #[must_use]
+    #[expect(clippy::too_many_lines, reason = "one field for each setting")]
     pub fn from_lookup(get: &dyn Fn(&str) -> Option<String>) -> Self {
         let text = |name: &str| get(name).filter(|v| !v.trim().is_empty());
+        let mut unusable: Vec<&'static str> = Vec::new();
         let flag = |name: &str| get(name).is_some_and(|v| parse_bool(&v));
         Self {
             require_auth: flag("CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH"),
@@ -209,11 +265,25 @@ impl Settings {
             } else {
                 Mode::Stub
             },
-            event_retention_days: get("CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS"),
-            mail_retention_days: get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS"),
-            min_cell_size: get("CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE")
-                .and_then(|v| v.trim().parse::<i64>().ok())
-                .map_or(5, |n| within(n, 0..=1000).unwrap_or(5)), // SETTING-1
+            event_retention_days: horizon_setting(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS",
+                crate::rules::privacy::EVENT_FLOOR_DAYS,
+                &mut unusable,
+            ),
+            mail_retention_days: horizon_setting(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS",
+                crate::rules::privacy::MAIL_FLOOR_DAYS,
+                &mut unusable,
+            ),
+            min_cell_size: number(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE",
+                0..=1000,
+                5,
+                &mut unusable,
+            ),
             ppm_service_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL"),
             worker_service_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL"),
             ppm_service_token: text("CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN"),
@@ -227,10 +297,19 @@ impl Settings {
             event_transport: EventTransport::parse(
                 &get("CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT").unwrap_or_default(),
             ),
-            retention_days: get("CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS"),
-            mail_batch: get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH")
-                .and_then(|v| v.trim().parse::<i64>().ok())
-                .map_or(200, |n| within(n, 1..=5000).unwrap_or(200)), // SETTING-1
+            retention_days: horizon_setting(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS",
+                crate::rules::privacy::RETENTION_FLOOR_DAYS,
+                &mut unusable,
+            ),
+            mail_batch: number(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH",
+                1..=5000,
+                200,
+                &mut unusable,
+            ),
             webhook_secret: get("CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET")
                 .filter(|s| s.len() >= MIN_WEBHOOK_SECRET),
             wpm_webhook_secret: get("CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET")
@@ -241,10 +320,11 @@ impl Settings {
             paseto_keys: text("CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS"),
             paseto_keys_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_URL")
                 .map(|v| v.trim().to_string()),
-            paseto_keys_refresh_secs: get(
+            paseto_keys_refresh_secs: optional_number(
+                get,
                 "CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS",
-            )
-            .and_then(|v| v.trim().parse::<u64>().ok()),
+                &mut unusable,
+            ),
             token_issuer: text("CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_ISSUER"),
             token_audience: text("CONTACT_RELATIONSHIP_MANAGEMENT_TOKEN_AUDIENCE"),
             abac_policy: text("CONTACT_RELATIONSHIP_MANAGEMENT_ABAC_POLICY"),
@@ -265,28 +345,42 @@ impl Settings {
             web_forms: text("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS")
                 .and_then(|v| serde_json::from_str::<Vec<WebForm>>(&v).ok())
                 .map_or_default(|forms| forms.into_iter().filter(WebForm::valid).collect()),
-            web_form_client_limit: get("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_CLIENT_LIMIT")
-                .and_then(|v| v.trim().parse().ok())
-                .unwrap_or(5),
-            web_form_limit: get("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_LIMIT")
-                .and_then(|v| v.trim().parse().ok())
-                .unwrap_or(300),
+            web_form_client_limit: number(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_CLIENT_LIMIT",
+                0..=u32::MAX,
+                5,
+                &mut unusable,
+            ),
+            web_form_limit: number(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_LIMIT",
+                0..=u32::MAX,
+                300,
+                &mut unusable,
+            ),
             public_kb: flag("CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB"),
-            public_kb_client_limit: get("CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB_CLIENT_LIMIT")
-                .and_then(|v| v.trim().parse().ok())
-                .unwrap_or(120),
+            public_kb_client_limit: number(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB_CLIENT_LIMIT",
+                0..=u32::MAX,
+                120,
+                &mut unusable,
+            ),
             attachment_dir: text("CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_DIR")
                 .map(|v| v.trim().to_string()),
-            attachment_max_bytes: get("CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_MAX_BYTES")
-                .and_then(|v| v.trim().parse::<u64>().ok())
-                .map_or(10 * 1024 * 1024, |n| {
-                    // SETTING-1
-                    within(n, 1..=100 * 1024 * 1024).unwrap_or(10 * 1024 * 1024)
-                }),
+            attachment_max_bytes: number(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_MAX_BYTES",
+                1..=100 * 1024 * 1024,
+                10 * 1024 * 1024,
+                &mut unusable,
+            ),
             attachment_scan_command: text(
                 "CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_SCAN_COMMAND",
             )
             .map(|v| v.trim().to_string()),
+            unusable,
         }
     }
 
@@ -459,41 +553,78 @@ mod tests {
         assert_eq!(s.mailgun_signing_key, None);
     }
 
+    /// a number outside its range, or not a number, is named for start-up to refuse; it
+    /// is neither moved to a bound nor quietly defaulted.
     #[test]
-    fn the_mail_batch_out_of_range_or_junk_is_the_default() {
-        let batch = |v: &str| {
-            Settings::from_lookup(&lookup(&[(
-                "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH",
-                v,
-            )]))
-            .mail_batch
-        };
-        assert_eq!(batch("50"), 50);
-        assert_eq!(batch("1"), 1);
-        assert_eq!(batch("5000"), 5000);
-        assert_eq!(batch("0"), 200);
-        assert_eq!(batch("-5"), 200);
-        assert_eq!(batch("999999"), 200);
-        assert_eq!(batch("lots"), 200);
-    }
-
-    /// SETTING-1: a number outside its range is the setting's default, never the nearest bound.
-    #[test]
-    fn the_other_numbers_out_of_range_are_their_defaults() {
-        let get = |key: &str, v: &str| Settings::from_lookup(&lookup(&[(key, v)]));
+    fn a_numeric_setting_out_of_range_or_junk_is_named_unusable() {
+        let batch = "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH";
         let cell = "CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE";
-        assert_eq!(get(cell, "0").min_cell_size, 0);
-        assert_eq!(get(cell, "1000").min_cell_size, 1000);
-        assert_eq!(get(cell, "1001").min_cell_size, 5);
-        assert_eq!(get(cell, "-1").min_cell_size, 5);
         let bytes = "CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_MAX_BYTES";
-        assert_eq!(get(bytes, "1").attachment_max_bytes, 1);
+        let get = |key: &str, v: &str| Settings::from_lookup(&lookup(&[(key, v)]));
+        // In range, at both ends: used, and nothing is named.
+        for (key, v) in [
+            (batch, "50"),
+            (batch, "1"),
+            (batch, "5000"),
+            (cell, "0"),
+            (cell, "1000"),
+            (bytes, "1"),
+            (bytes, "104857600"),
+        ] {
+            assert!(get(key, v).unusable.is_empty(), "{key}={v}");
+        }
+        assert_eq!(get(batch, "5000").mail_batch, 5000);
+        assert_eq!(get(cell, "1000").min_cell_size, 1000);
         assert_eq!(get(bytes, "104857600").attachment_max_bytes, 104_857_600);
-        assert_eq!(get(bytes, "0").attachment_max_bytes, 10 * 1024 * 1024);
-        assert_eq!(
-            get(bytes, "104857601").attachment_max_bytes,
-            10 * 1024 * 1024
-        );
+        // Not set at all is the default and not an error; a blank value is supplied and invalid.
+        assert!(Settings::default().unusable.is_empty());
+        assert_eq!(get(batch, "").unusable, vec![batch]);
+        for (key, bad) in [
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_LIMIT", "many"),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_CLIENT_LIMIT",
+                "-1",
+            ),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_PUBLIC_KB_CLIENT_LIMIT", ""),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS",
+                "soon",
+            ),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS", "29"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS", "6"),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS",
+                "junk",
+            ),
+        ] {
+            assert_eq!(get(key, bad).unusable, vec![key], "{key}={bad}");
+        }
+        for (key, good) in [
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_LIMIT", "0"),
+            (
+                "CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS_REFRESH_SECS",
+                "0",
+            ),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS", "30"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS", "7"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS", "400"),
+        ] {
+            assert!(get(key, good).unusable.is_empty(), "{key}={good}");
+        }
+        assert_eq!(get(batch, "  ").unusable, vec![batch]);
+        // Out of range, or not a number: named.
+        for (key, v) in [
+            (batch, "0"),
+            (batch, "-5"),
+            (batch, "5001"),
+            (batch, "lots"),
+            (cell, "-1"),
+            (cell, "1001"),
+            (bytes, "0"),
+            (bytes, "104857601"),
+        ] {
+            assert_eq!(get(key, v).unusable, vec![key], "{key}={v}");
+        }
     }
 
     #[test]

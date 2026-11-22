@@ -6,6 +6,9 @@
 //! its own length does it through `support/scoped_auth.rs` or `support/scoped_env.rs`, which put
 //! them back, and is `#[serial]`, so they share this process with the others.
 
+// Tests may sum with plain iterators (RCA-SCOPE-4, RCA-EXC-5).
+#![allow(clippy::disallowed_methods)]
+
 #[path = "support/scoped_auth.rs"]
 mod scoped_auth;
 #[path = "support/scoped_env.rs"]

@@ -533,9 +533,8 @@ async fn set_split(
     if payload
         .shares
         .iter()
-        .map(|s| u64::from(s.share_bps))
-        .sum::<u64>()
-        != 10_000
+        .try_fold(0_u64, |sum, s| sum.checked_add(u64::from(s.share_bps)))
+        != Some(10_000)
     {
         problems.push_field("shares", "the shares add up to 10000");
     }

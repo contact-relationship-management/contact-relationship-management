@@ -2854,6 +2854,15 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     `teams_import`), and the service turns `None` into a `422` that names the figure (`arith::overflow`). Counts use
     `arith::Tally` (TALLY-1). Fallbacks are declared in spec/arithmetic/index.md and cited at each `unwrap_or`. No
     `saturating_*` or `wrapping_*` is left in production code. The 286 database tests pass.
-  - **Not done:** `as` conversions and the other RCA-ENF-1 lints, `clippy.toml` `disallowed-methods`, `overflow-checks` in the
-    release profile, the RCA-ENF-5 grep in CI, `try_fold` in place of `sum`, `try_from(..).unwrap_or(..)` on conversions, string
-    slicing by byte index, and `ci-check.sh all`. The integration tests still use plain operators.
+  - **Also done (2026-11-22, after the spec said an invalid input is an error):** a `?days=` outside 1 to 365, a `limit`
+    outside 1 to 100 and a card position outside its column are a `422` that names the figure; a numeric setting that is
+    blank, not a number or out of range (and a retention setting under its floor) stops start-up (`Settings::unusable`);
+    a `From` value with unreadable brackets and a fiscal start month outside 1 to 12 are errors. `clamp` is gone from
+    production code. `clippy.toml` bans `sum`, `product`, `clamp` and the float `Duration` constructors, the release
+    profile checks overflow, and `scripts/check-checked-arithmetic.py` (in the `clippy` stage) fails on saturating,
+    wrapping, overflowing, `clamp` and an unwrapped `checked_*` result.
+  - **Not done:** the rate-limit numbers read in `rate_limit::from_env`, the retention rule functions' lenient parse, a
+    stored search-hit `pid` and `organization::periods_from`/`stalled_from` still replace a bad value (the script lists
+    them as warnings); `Option::unwrap_or_default` in about 80 places; `as` conversions and the other RCA-ENF-1 lints;
+    the matcher crate's `clippy.toml` and `clamp`; `try_from(..).unwrap_or(..)` on conversions; string slicing by byte
+    index; and `ci-check.sh all`. The integration tests still use plain operators.

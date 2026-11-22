@@ -29,13 +29,30 @@ Each call site cites its ID in a comment. A fallback is a valid value of its fig
 | HEADROOM-1 | The rows fetched before the in-app audit filter | Ten times the page overflows | The page itself | No headroom, which is correct if less efficient. |
 | CLAWBACK-1 | A worker's credit on a deal after a clawback (CRM-R68) | Never below nothing | Zero (applied as `max(0)` on a checked result) | A clawback takes from the credit and cannot make it negative. |
 | QUOTA-REMAINING-1 | What is still to win to meet a quota (CRM-R59) | The quota is met | Zero | Nothing is left to win once it is met. |
-| PERIOD-1 | Months a fiscal year starts after January | The start month is 0 | Zero months | January starts the year. |
-| ADDR-1 | The mailbox in a `From` value | A bracket pair that cannot be read | The whole value | The whole value is trimmed and read as the mailbox. |
-| DAYS-1 | A `?days=` window on a request | Outside 1 to 365 | The endpoint's default window | An out-of-range window is not read as the nearest bound; the caller gets the window the endpoint documents. |
-| LIMIT-1 | A page size on the duplicates list | Outside 1 to 100 | 20 | The default page. |
-| SETTING-1 | A numeric setting (`MIN_CELL_SIZE`, `MAIL_BATCH`, `ATTACHMENT_MAX_BYTES`) | Outside its range, or not a number | The setting's default (5, 200, 10 MiB) | A mistyped setting is the default the documentation names, not a bound nobody chose. |
 | SCORE-1 | A lead score (CRM-D5) | The rule weights total below 0 or above 100 | 0 or 100 | The score is defined on 0 to 100; the breakdown still lists every rule. |
-| BOARD-1 | A card's position in a column | Below 0 or past the end | The start or the end | A card dropped past the column is last. |
+
+## Input out of range or malformed is an error
+
+A declaration MUST NOT name a fallback, default or bound for an input that is out of range or malformed
+(RCA-DECL-6, RCA-IN-2). A default applies only to an input that is absent (RCA-IN-3). Such an input is rejected
+where it enters, with an error that names the figure:
+
+- **A `?days=` window** (1 to 365, default per endpoint when absent): a `422` naming `days` and the range
+  (`arith::out_of_range`). `days=0`, `days=9999` and `days=` are refused.
+- **A page size** (`limit`, 1 to 100, 20 when absent) on the duplicates list: a `422`.
+- **A card's position in a column**: outside the column, `board::new_order` returns `None` and the request is a `422`.
+- **A numeric setting** (`MIN_CELL_SIZE`, `MAIL_BATCH`, `ATTACHMENT_MAX_BYTES`, the three client limits,
+  `PASETO_KEYS_REFRESH_SECS`) that is blank, not a number or out of range: `Settings::unusable` names it and
+  start-up refuses (RCA-IN-4). The three retention settings are refused when below their floors (30, 7 and 400
+  days) and are no longer raised to them.
+- **A `From` value** whose brackets cannot be read: `address_in` returns `None`, and the reply is an
+  `unverified_sender`.
+- **A fiscal start month** outside 1 to 12: no period SQL (`fiscal_year_expr` returns `None`), and a report plan
+  refuses with `fiscal_year_start_month`.
+- **A deal probability** outside 0 to 100: the forecast returns an error.
+
+The declarations above are for a computed result, never an input. SCORE-1 stays because the lead score is a total
+of validated rule weights, a computed result.
 
 ## Figures with no fallback
 
@@ -58,9 +75,24 @@ RCA-ERR-4). A `422` says "`<figure>` could not be calculated" (`arith::overflow`
   `unwrap_used` and `expect_used` outside tests (CI runs clippy with `-D warnings`).
 - `Timestamp` and `Date` have no operators in production: `checked_add`, `checked_sub`, `checked_add_days`,
   `checked_sub_days` and `duration_since`. The operators exist only for tests (`time::test_operators`).
-- No `saturating_*`, `wrapping_*` or `overflowing_*`, and no `clamp`, in production code of the service and domain crates. A bound is `rules::bounds::within(n, lo..=hi)` plus `unwrap_or` with a declared fallback above. A deal probability outside 0 to 100 has no forecast (an error, no fallback). The matcher crate's `clamp` of its log-odds (a float bound of its own model) is not yet converted.
-- Not yet at the rule: `as` conversions and the other lints of RCA-ENF-1 (`as_conversions`, `cast_*`,
-  `integer_division`, `float_arithmetic`, `string_slice`, `allow_attributes`); `clippy.toml` `disallowed-methods`
-  (RCA-ENF-2); `overflow-checks` in the release profile (RCA-ENF-4); the CI grep (RCA-ENF-5); `try_fold` in place of
-  `sum` (RCA-AGG-1); `try_from(..).unwrap_or(..)` on conversions, which is a different `Option` from a checked
-  operation but has the same fault; the integration tests in `tests/` still use plain operators (RCA-EXC-5 allows it).
+- No `saturating_*`, `wrapping_*`, `overflowing_*` or `clamp` in production code of the service and domain crates.
+  `rules::bounds::within(n, lo..=hi)` tests a range; out of range is an error.
+- `clippy.toml` bans `Iterator::sum` and `product`, `Duration::from_secs_f*`, `Instant::duration_since`,
+  `Instant::saturating_duration_since`, `Ord::clamp`, `Saturating` and `Wrapping` (RCA-ENF-2). Tests, the benchmark
+  and the integration tests allow `disallowed_methods`.
+- The release profile sets `overflow-checks = true` (RCA-ENF-4).
+- `scripts/check-checked-arithmetic.py` runs in the `clippy` stage and fails on `saturating_*`, `wrapping_*`,
+  `overflowing_*`, `clamp` and an unwrapped `checked_*` result in production code (RCA-ENF-5).
+- Not yet at the rule:
+  - **Inputs still replaced** (RCA-ENF-7; the script lists them as warnings): the auth rate-limit numbers read
+    in `rate_limit::from_env`, the retention rule functions' own lenient parse (`privacy::retention_days` and the
+    two like it, whose input the settings now refuse before they are read), a stored search-hit `pid` that
+    fails to parse (`search.rs`), and stored values that fall back (`organization::periods_from` and
+    `stalled_from`, RCA-IN-6).
+  - **`Option::unwrap_or_default`** is used in about 80 places (stored JSON, optional text), which RCA-P-3 forbids and
+    `clippy.toml` does not yet ban. Each needs its own look.
+  - `as` conversions and the other lints of RCA-ENF-1 (`as_conversions`, `cast_*`, `integer_division`,
+    `float_arithmetic`, `string_slice`, `allow_attributes`).
+  - The matcher crate has no `clippy.toml`, and its `clamp` of the log-odds is not converted.
+  - `try_from(..).unwrap_or(..)` on conversions; the integration tests in `tests/` still use plain operators
+    (RCA-EXC-5 allows it).

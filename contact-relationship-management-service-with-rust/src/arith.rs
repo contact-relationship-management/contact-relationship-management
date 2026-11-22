@@ -15,6 +15,13 @@ pub fn overflow(figure: &str) -> Error {
     unprocessable(&format!("{figure} could not be calculated"))
 }
 
+/// A `422` for a figure the caller sent outside its legal range: it names the figure and the range,
+/// and never echoes the value (RCA-ERR-2). The figure is refused, not moved to a bound.
+#[must_use]
+pub fn out_of_range(figure: &str, lo: i64, hi: i64) -> Error {
+    unprocessable(&format!("{figure} must be from {lo} to {hi}"))
+}
+
 /// Counting that stops at the type's largest value rather than wrapping or stopping the process.
 ///
 /// TALLY-1: a count of rows, events or attempts is the number of things seen; past the largest

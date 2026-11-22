@@ -51,6 +51,13 @@ pub const MAIL_DEFAULT_DAYS: i64 = 730;
 /// from a deal's close, so events must outlive that window with room to spare.
 pub const MAIL_FLOOR_DAYS: i64 = 400;
 
+/// Whether a supplied retention setting is a whole number of days at or above `floor`. A value that
+/// is not is invalid configuration, and start-up refuses it (RCA-IN-4); it is never raised to the floor.
+#[must_use]
+pub fn valid_horizon(raw: &str, floor: i64) -> bool {
+    raw.trim().parse::<i64>().is_ok_and(|days| days >= floor)
+}
+
 fn horizon(raw: Option<&str>, default: i64, floor: i64) -> i64 {
     raw.and_then(|value| value.trim().parse::<i64>().ok())
         .unwrap_or(default)
@@ -257,6 +264,17 @@ mod tests {
 
     /// Erasure requires no live engagement in any of the three forms;
     /// any one of them refuses it.
+    #[test]
+    fn a_supplied_horizon_is_valid_or_refused_never_raised_to_the_floor() {
+        assert!(valid_horizon("30", RETENTION_FLOOR_DAYS));
+        assert!(valid_horizon(" 730 ", RETENTION_FLOOR_DAYS));
+        for bad in ["29", "0", "-5", "junk", "", " ", "30.5"] {
+            assert!(!valid_horizon(bad, RETENTION_FLOOR_DAYS), "{bad:?}");
+        }
+        assert!(valid_horizon("7", EVENT_FLOOR_DAYS) && !valid_horizon("6", EVENT_FLOOR_DAYS));
+        assert!(valid_horizon("400", MAIL_FLOOR_DAYS) && !valid_horizon("399", MAIL_FLOOR_DAYS));
+    }
+
     #[test]
     fn erasure_requires_no_live_engagement() {
         assert!(erasable(false, false, false));

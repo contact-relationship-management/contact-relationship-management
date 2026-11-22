@@ -821,11 +821,11 @@ async fn contact_duplicates(
         &auth::contact_resource_attrs(&target),
     )
     .map_err(record_rejection)?;
-    // LIMIT-1: a page size outside 1 to 100 is the default of 20.
-    let limit = params
-        .limit
-        .and_then(|n| crate::rules::bounds::within(n, 1..=100))
-        .unwrap_or(20);
+    let limit = match params.limit {
+        None => 20,
+        Some(n) => crate::rules::bounds::within(n, 1..=100)
+            .ok_or_else(|| crate::arith::out_of_range("limit", 1, 100))?,
+    };
 
     let mut rows = rows::other_contacts(
         pool,

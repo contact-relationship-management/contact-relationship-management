@@ -234,7 +234,7 @@ pub(super) async fn memberships_view(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let window = days_or(query.days, 90);
+    let window = days_or(query.days, 90)?;
     // The caller's day (CRM-T179), as attainment's.
     let today =
         crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;

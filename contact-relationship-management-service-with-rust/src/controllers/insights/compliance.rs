@@ -72,7 +72,7 @@ pub(super) async fn dpo(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let window_days = days_or(query.days, 30);
+    let window_days = days_or(query.days, 30)?;
     let now = crate::clock::now();
     let since = now
         .checked_sub_days(window_days)
@@ -142,7 +142,7 @@ pub(super) async fn consent_by_account(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let window = days_or(query.days, 30);
+    let window = days_or(query.days, 30)?;
     let now = crate::clock::now();
     let since = now
         .checked_sub_days(window)

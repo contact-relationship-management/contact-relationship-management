@@ -261,18 +261,18 @@ fn is_period(field: &str) -> bool {
 /// `@fiscal_year(column)` in the table and resolved here in the organization's zone and fiscal
 /// year (CRM-T171); a missing timestamp (an open deal's close) is `(open)`.
 #[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
-fn resolve(expr: &str, periods: &Periods) -> String {
+fn resolve(expr: &str, periods: &Periods) -> Option<String> {
     let Some(marker) = expr.strip_prefix('@') else {
-        return expr.to_string();
+        return Some(expr.to_string());
     };
     let (kind, rest) = marker.split_once('(').unwrap_or((marker, ""));
     let column = rest.trim_end_matches(')');
     let sql = match kind {
         "month" => period::month_expr(column, periods),
-        "fiscal_quarter" => period::fiscal_quarter_expr(column, periods),
-        _ => period::fiscal_year_expr(column, periods),
+        "fiscal_quarter" => period::fiscal_quarter_expr(column, periods)?,
+        _ => period::fiscal_year_expr(column, periods)?,
     };
-    format!("coalesce({sql}, '(open)')")
+    Some(format!("coalesce({sql}, '(open)')"))
 }
 
 /// Everything wrong with a specification, as `(member, message)`.
@@ -393,6 +393,13 @@ pub fn plan_in(spec: &Spec, periods: &Periods) -> Result<Plan, Vec<(String, Stri
         return Err(problems);
     }
 
+    // A fiscal start month outside 1 to 12 is invalid data, so no period expression is built.
+    let unresolved = || {
+        vec![(
+            "fiscal_year_start_month".to_string(),
+            "must be from 1 to 12".to_string(),
+        )]
+    };
     let mut binds = Vec::new();
     let mut conditions = vec![table.live.to_string()];
     for (field, values) in &spec.filter {
@@ -408,7 +415,7 @@ pub fn plan_in(spec: &Spec, periods: &Periods) -> Result<Plan, Vec<(String, Stri
         } else if let Some((_, expr)) = table.fields.iter().find(|(name, _)| name == field) {
             conditions.push(format!(
                 "{} IN (SELECT jsonb_array_elements_text(${n}::jsonb))",
-                resolve(expr, periods)
+                resolve(expr, periods).ok_or_else(unresolved)?
             ));
         }
     }
@@ -445,7 +452,10 @@ pub fn plan_in(spec: &Spec, periods: &Periods) -> Result<Plan, Vec<(String, Stri
             .iter()
             .find(|(name, _)| *name == spec.group_by)
             .map_or("''", |(_, expr)| *expr);
-        (String::new(), resolve(expr, periods))
+        (
+            String::new(),
+            resolve(expr, periods).ok_or_else(unresolved)?,
+        )
     };
     let sum = spec.measure == "sum_amount";
     let by_day = sum && spec.rate_basis.is_some();
@@ -700,8 +710,8 @@ mod tests {
             fiscal_start_month: 4,
         };
         let month = period::month_expr("d.closed_at", &periods);
-        let quarter = period::fiscal_quarter_expr("d.closed_at", &periods);
-        let year = period::fiscal_year_expr("d.closed_at", &periods);
+        let quarter = period::fiscal_quarter_expr("d.closed_at", &periods).unwrap();
+        let year = period::fiscal_year_expr("d.closed_at", &periods).unwrap();
         assert!(month != quarter && quarter != year && year != month);
         for (marker, sql) in [
             ("@month(d.closed_at)", month),
@@ -710,7 +720,7 @@ mod tests {
         ] {
             assert_eq!(
                 resolve(marker, &periods),
-                format!("coalesce({sql}, '(open)')")
+                Some(format!("coalesce({sql}, '(open)')"))
             );
         }
     }
@@ -928,6 +938,18 @@ mod tests {
         let (kept, left) = suppress(cells, 5, true);
         assert_eq!(kept.iter().filter(|c| c.group == "won").count(), 2);
         assert_eq!(left, 1, "one group, not one cell, is counted");
+    }
+
+    #[test]
+    fn a_fiscal_start_month_outside_1_to_12_is_an_error_not_january() {
+        for month in [0, 13] {
+            let periods = Periods {
+                fiscal_start_month: month,
+                ..Periods::default()
+            };
+            let refused = plan_in(&spec("deal", "closed_fiscal_quarter"), &periods).unwrap_err();
+            assert_eq!(refused[0].0, "fiscal_year_start_month", "{month}");
+        }
     }
 
     #[test]

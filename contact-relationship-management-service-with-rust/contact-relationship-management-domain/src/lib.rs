@@ -29,7 +29,8 @@
         clippy::panic,
         clippy::unreachable,
         clippy::indexing_slicing,
-        clippy::arithmetic_side_effects
+        clippy::arithmetic_side_effects,
+        clippy::disallowed_methods
     )
 )]
 // New in Rust 1.99. The tests write `assert!(x.is_empty())`, which reads plainly;

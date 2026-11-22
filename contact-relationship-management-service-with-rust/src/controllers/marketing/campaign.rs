@@ -762,7 +762,10 @@ pub(super) async fn campaign_deliveries(
     let pool = db::pool(&ctx);
     let campaign = find_campaign(pool, pid).await?;
     let by_state = deliveries::summary(pool, campaign.pid).await?;
-    let total: i64 = by_state.values().sum();
+    let total = by_state
+        .values()
+        .try_fold(0_i64, |sum, n| sum.checked_add(*n))
+        .ok_or_else(|| crate::arith::overflow("deliveries_total"))?;
     let remaining = deliveries::retriable(pool, campaign.pid).await?;
     format::json(Deliveries {
         campaign_pid: campaign.pid,

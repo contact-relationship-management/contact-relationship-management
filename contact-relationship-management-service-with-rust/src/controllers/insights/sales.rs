@@ -172,7 +172,7 @@ pub(super) async fn stale_deals(
     caller: MaybeAuthUser,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let threshold = days_or(query.days, 14);
+    let threshold = days_or(query.days, 14)?;
     let now = crate::clock::now();
     let open: Vec<deals::Model> = rows::open_deals(db::pool(&ctx)).await?;
     let stage_names: std::collections::BTreeMap<Uuid, String> = live!(pipeline_stages, &ctx)
@@ -317,7 +317,7 @@ pub(super) async fn pipeline_hygiene(
     State(ctx): State<AppContext>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    let threshold = days_or(query.days, 14);
+    let threshold = days_or(query.days, 14)?;
     let now = crate::clock::now();
     // An expected close day is a civil date: compared with the caller's day (CRM-T179).
     let today =

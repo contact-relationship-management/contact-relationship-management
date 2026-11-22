@@ -276,7 +276,7 @@ async fn read_responses_match_the_documented_schemas() {
             ("/api/insights/forecast-trends".into(), "ForecastTrends"),
             ("/api/insights/sla".into(), "SlaRegister"),
             ("/api/insights/dpo".into(), "DpoView"),
-            ("/api/insights/cadence?days=0".into(), "Cadence"),
+            ("/api/insights/cadence?days=1".into(), "Cadence"),
             ("/api/insights/engagement".into(), "EngagementView"),
             (
                 format!("/api/insights/funnel?pipeline={pipeline_pid}"),
@@ -290,7 +290,7 @@ async fn read_responses_match_the_documented_schemas() {
             ("/api/insights/stakeholders".into(), "StakeholderRegister"),
             ("/api/insights/partnerships".into(), "PartnershipsRegister"),
             (
-                "/api/insights/memberships?days=36500".into(),
+                "/api/insights/memberships?days=365".into(),
                 "MembershipsView",
             ),
         ];

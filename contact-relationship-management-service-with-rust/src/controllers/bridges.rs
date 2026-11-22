@@ -466,7 +466,10 @@ async fn employment_check(
         employments::live_person_refs(&mut *conn).await?
     };
     let batches = rules::batches(refs, super::privacy::TOMBSTONE_PERSON);
-    let asked = batches.iter().map(Vec::len).sum();
+    let asked = batches
+        .iter()
+        .try_fold(0_usize, |sum, batch| sum.checked_add(batch.len()))
+        .ok_or_else(|| crate::arith::overflow("people_asked"))?;
     let mut view = EmploymentCheckView {
         mode: "stub",
         organization_ref: organization_ref.clone(),

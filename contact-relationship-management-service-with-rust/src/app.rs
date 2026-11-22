@@ -409,6 +409,14 @@ impl App {
         // CRM-T30: fail closed. (Here because every server start reaches it.)
         crate::hardening::check_process(ctx.environment.is_production_like())
             .map_err(Error::string)?;
+        // a numeric setting out of range or unreadable stops the start; the value is not shown.
+        let unusable = crate::settings::current().unusable.clone();
+        if !unusable.is_empty() {
+            return Err(Error::string(&format!(
+                "{} must be a number within its range",
+                unusable.join(", ")
+            )));
+        }
         // CRM-T221: record times follow the database's clock; measure it before serving.
         crate::clock::start(crate::db::pool(ctx).clone()).await;
         init_sending(ctx)?;

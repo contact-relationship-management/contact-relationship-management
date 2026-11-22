@@ -639,16 +639,15 @@ fn reference_in(subject: &str) -> Option<String> {
 }
 
 /// The mailbox in a `From` value: what is inside `<...>` when there is such a part, in lower case.
-fn address_in(from: &str) -> String {
+/// `None` for a value whose brackets cannot be read (one alone, or `>` before `<`): malformed input
+/// is rejected and never guessed at.
+fn address_in(from: &str) -> Option<String> {
     let inner = match (from.rfind('<'), from.rfind('>')) {
-        (Some(open), Some(close)) if open < close => open
-            .checked_add(1)
-            .and_then(|start| from.get(start..close))
-            // ADDR-1: a bracket pair that cannot be read leaves the whole value to be trimmed.
-            .unwrap_or(from),
-        _ => from,
+        (Some(open), Some(close)) if open < close => from.get(open.checked_add(1)?..close)?,
+        (None, None) => from,
+        _ => return None,
     };
-    inner.trim().to_ascii_lowercase()
+    Some(inner.trim().to_ascii_lowercase())
 }
 
 /// `POST /webhooks/inbound-email` body: the two things a reply is recognised by. Anything else a
@@ -689,7 +688,8 @@ async fn recognise_reply(ctx: &AppContext, mail: &InboundMail) -> Result<&'stati
         Some(contact) => crate::clients::email_address(&contact.person_ref).await,
         None => None,
     };
-    if known.is_none_or(|address| address_in(&address) != address_in(&mail.from)) {
+    let sender = address_in(&mail.from);
+    if sender.is_none() || known.and_then(|address| address_in(&address)) != sender {
         return Ok("unverified_sender");
     }
     match ticket.status.as_str() {
@@ -1244,14 +1244,33 @@ mod tests {
     #[test]
     fn the_sender_is_the_address_not_the_display_name() {
         assert_eq!(
-            address_in("Ada Lovelace <Ada@Example.test>"),
-            "ada@example.test"
+            address_in("Ada Lovelace <Ada@Example.test>").as_deref(),
+            Some("ada@example.test")
         );
-        assert_eq!(address_in("  ada@example.test "), "ada@example.test");
         assert_eq!(
-            address_in("\"Ada <x@y.z>\" <ada@example.test>"),
-            "ada@example.test"
+            address_in("  ada@example.test ").as_deref(),
+            Some("ada@example.test")
         );
-        assert_eq!(address_in("<ada@example.test>"), "ada@example.test");
+        assert_eq!(
+            address_in("\"Ada <x@y.z>\" <ada@example.test>").as_deref(),
+            Some("ada@example.test")
+        );
+        assert_eq!(
+            address_in("<ada@example.test>").as_deref(),
+            Some("ada@example.test")
+        );
+    }
+
+    /// A value whose brackets cannot be read is no mailbox, never the whole value (RCA-IN-2).
+    #[test]
+    fn a_from_value_with_unreadable_brackets_has_no_address() {
+        for malformed in [
+            "ada@example.test>",
+            "<ada@example.test",
+            "> ada@example.test <",
+            "a<b",
+        ] {
+            assert_eq!(address_in(malformed), None, "{malformed}");
+        }
     }
 }

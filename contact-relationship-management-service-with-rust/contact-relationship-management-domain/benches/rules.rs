@@ -5,6 +5,8 @@
 //! request's rule step, not a request's latency (the k6 tests in `tests/load/` measure that).
 //! Run `cargo bench --bench rules`; see `BENCHMARKS.md` for results.
 
+// A benchmark is not production code (RCA-SCOPE-4): it may sum with plain operators.
+#![allow(clippy::disallowed_methods)]
 #![allow(
     clippy::expect_used,
     clippy::unwrap_used,

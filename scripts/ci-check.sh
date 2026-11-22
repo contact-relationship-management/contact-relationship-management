@@ -34,6 +34,8 @@ case "${stage}" in
     # The domain crate without its `postgres` feature, as its own tests and benchmarks build it.
     (cd "${DOMAIN}" && cargo clippy --all-targets -- -D warnings)
     (cd "${MATCHER}" && cargo clippy --all-targets -- -D warnings)
+    # RCA-ENF-5: no saturating, wrapping or clamp, and no unwrapped checked_* result, in production code.
+    python3 scripts/check-checked-arithmetic.py
     ;;
   test)
     (cd "${SVC}" && cargo test --workspace "${FEATURES[@]}")

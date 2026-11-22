@@ -215,7 +215,7 @@ async fn insight_cache_hits_then_write_invalidates() {
                 .assert_status_ok();
         }
         let count = |v: &Value| v["open_deals"].as_u64().unwrap_or(99);
-        let first: Value = request.get("/api/insights/stale-deals?days=0").await.json();
+        let first: Value = request.get("/api/insights/stale-deals?days=1").await.json();
         assert_eq!(count(&first), 2, "{first}");
 
         // Behind the API's back (no generation bump) the cached body stays.
@@ -223,7 +223,7 @@ async fn insight_cache_hits_then_write_invalidates() {
             .execute(contact_relationship_management::db::pool(&ctx))
             .await
             .unwrap();
-        let second: Value = request.get("/api/insights/stale-deals?days=0").await.json();
+        let second: Value = request.get("/api/insights/stale-deals?days=1").await.json();
         assert_eq!(count(&second), 2, "second read must come from cache");
 
         // A write through the API bumps the generation: fresh again.
@@ -233,7 +233,7 @@ async fn insight_cache_hits_then_write_invalidates() {
                             "amount_minor": 1_i64, "currency": "GBP" }))
             .await
             .assert_status_ok();
-        let third: Value = request.get("/api/insights/stale-deals?days=0").await.json();
+        let third: Value = request.get("/api/insights/stale-deals?days=1").await.json();
         assert_eq!(count(&third), 1, "write must invalidate: {third}");
     })
     .await;
@@ -488,6 +488,49 @@ async fn hygiene_flags_a_deal_past_its_close_and_leads_nobody_worked_and_lost_re
         assert_eq!(pack["deals_lost"], 3, "{pack}");
         assert_eq!(pack["lost_reasons"]["price"], 2, "{pack}");
         assert_eq!(pack["lost_reasons"]["timing"], 1, "{pack}");
+    })
+    .await;
+}
+
+/// A window or page size outside its range is refused with a `422` that names the figure and never
+/// the value; it is not moved to a bound or read as a default (DAYS-1, LIMIT-1).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_window_or_page_size_out_of_range_is_refused() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let contact_pid = seed_contact!(&request, "Ranged Contact").await;
+        for path in [
+            "/api/insights/stale-deals?days=0".to_string(),
+            "/api/insights/members?days=366".to_string(),
+            "/api/insights/cadence?days=9999".to_string(),
+            "/api/insights/memberships?days=36500".to_string(),
+            "/api/dashboards/activity?days=0".to_string(),
+            "/api/dashboards/activity?days=366".to_string(),
+            format!("/api/contacts/{contact_pid}/duplicates?limit=0"),
+            format!("/api/contacts/{contact_pid}/duplicates?limit=101"),
+        ] {
+            let refused = request.get(&path).await;
+            refused.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            let body = refused.text();
+            let figure = if path.contains("limit") {
+                "limit"
+            } else {
+                "days"
+            };
+            assert!(
+                body.contains(&format!("{figure} must be from 1 to")),
+                "{path}: {body}"
+            );
+        }
+        for path in [
+            "/api/insights/stale-deals?days=1".to_string(),
+            "/api/insights/stale-deals?days=365".to_string(),
+            "/api/dashboards/activity?days=365".to_string(),
+            format!("/api/contacts/{contact_pid}/duplicates?limit=100"),
+        ] {
+            request.get(&path).await.assert_status_ok();
+        }
     })
     .await;
 }

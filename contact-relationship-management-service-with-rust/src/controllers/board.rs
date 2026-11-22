@@ -104,15 +104,17 @@ pub(crate) struct ActivityEditPayload {
     remind_at: Option<crate::time::Timestamp>,
 }
 
-/// The column's pids with `pid` moved to `position` (0-based; clamped to the
-/// column). Positions may have gaps or repeats (they start at 0), so callers
-/// renumber the whole column from the result.
-fn new_order(order: &[Uuid], pid: Uuid, position: i32) -> Vec<Uuid> {
+/// The column's pids with `pid` moved to `position` (0-based, from the start to just past the last
+/// card of the others); `None` for a position outside that, which is invalid data and no place at all.
+/// Positions may have gaps or repeats (they start at 0), so callers renumber the whole column from
+/// the result.
+fn new_order(order: &[Uuid], pid: Uuid, position: i32) -> Option<Vec<Uuid>> {
     let mut next: Vec<Uuid> = order.iter().copied().filter(|p| *p != pid).collect();
-    // BOARD-1: a position below the column is its start; one past it is its end.
-    let at = usize::try_from(position).unwrap_or(0).min(next.len());
+    let at = usize::try_from(position)
+        .ok()
+        .filter(|at| *at <= next.len())?;
     next.insert(at, pid);
-    next
+    Some(next)
 }
 
 /// A column index as a stored place.
@@ -121,9 +123,11 @@ fn place(index: usize) -> i32 {
 }
 
 /// The cards of a column, by `id`, whose stored place is not the one `order` gives them.
-fn moves(column: &[(i32, Uuid, i32)], pid: Uuid, position: i32) -> Vec<(i32, i32)> {
+fn moves(column: &[(i32, Uuid, i32)], pid: Uuid, position: i32) -> Result<Vec<(i32, i32)>> {
     let order: Vec<Uuid> = column.iter().map(|(_, p, _)| *p).collect();
-    new_order(&order, pid, position)
+    let next = new_order(&order, pid, position)
+        .ok_or_else(|| super::unprocessable("position is outside the column"))?;
+    Ok(next
         .iter()
         .enumerate()
         .filter_map(|(index, p)| {
@@ -133,7 +137,7 @@ fn moves(column: &[(i32, Uuid, i32)], pid: Uuid, position: i32) -> Vec<(i32, i32
                 .filter(|(_, _, at)| *at != place(index))
                 .map(|(id, _, _)| (*id, place(index)))
         })
-        .collect()
+        .collect())
 }
 
 /// The open deal `pid`, locked, that `caller` may change.
@@ -340,7 +344,7 @@ async fn deal_position(
         .into_iter()
         .map(|r| (r.id, r.pid, r.kanban_position))
         .collect();
-    for (id, at) in moves(&column, pid, payload.position) {
+    for (id, at) in moves(&column, pid, payload.position)? {
         sqlx::query!(
             "UPDATE deals SET kanban_position = $2 WHERE id = $1 AND deleted_at IS NULL",
             id,
@@ -372,7 +376,7 @@ async fn lead_position(
         .into_iter()
         .map(|r| (r.id, r.pid, r.board_position))
         .collect();
-    for (id, at) in moves(&column, pid, payload.position) {
+    for (id, at) in moves(&column, pid, payload.position)? {
         sqlx::query!(
             "UPDATE leads SET board_position = $2 WHERE id = $1 AND deleted_at IS NULL",
             id,
@@ -404,7 +408,7 @@ async fn ticket_position(
         .into_iter()
         .map(|r| (r.id, r.pid, r.board_position))
         .collect();
-    for (id, at) in moves(&column, pid, payload.position) {
+    for (id, at) in moves(&column, pid, payload.position)? {
         sqlx::query!(
             "UPDATE tickets SET board_position = $2 WHERE id = $1 AND deleted_at IS NULL",
             id,
@@ -536,26 +540,35 @@ mod tests {
     #[test]
     fn moving_a_card_down_puts_it_after_the_ones_it_passed() {
         let o = ids(4);
-        assert_eq!(new_order(&o, o[0], 2), vec![o[1], o[2], o[0], o[3]]);
+        assert_eq!(new_order(&o, o[0], 2), Some(vec![o[1], o[2], o[0], o[3]]));
     }
 
     #[test]
     fn moving_to_the_same_place_keeps_the_order() {
         let o = ids(3);
-        assert_eq!(new_order(&o, o[1], 1), o);
+        assert_eq!(new_order(&o, o[1], 1), Some(o));
     }
 
     #[test]
-    fn a_position_past_the_end_goes_last_and_a_negative_one_first() {
+    fn the_first_and_last_places_are_valid() {
         let o = ids(3);
-        assert_eq!(new_order(&o, o[0], 99), vec![o[1], o[2], o[0]]);
-        assert_eq!(new_order(&o, o[2], -5), vec![o[2], o[0], o[1]]);
+        assert_eq!(new_order(&o, o[0], 2), Some(vec![o[1], o[2], o[0]]));
+        assert_eq!(new_order(&o, o[2], 0), Some(vec![o[2], o[0], o[1]]));
+    }
+
+    #[test]
+    fn a_position_outside_the_column_is_none_never_moved_to_an_end() {
+        let o = ids(3);
+        assert_eq!(new_order(&o, o[0], 3), None);
+        assert_eq!(new_order(&o, o[0], 99), None);
+        assert_eq!(new_order(&o, o[2], -1), None);
+        assert_eq!(new_order(&o, o[2], i32::MIN), None);
     }
 
     #[test]
     fn a_card_not_in_the_column_is_inserted() {
         let o = ids(2);
         let extra = Uuid::new_v4();
-        assert_eq!(new_order(&o, extra, 1), vec![o[0], extra, o[1]]);
+        assert_eq!(new_order(&o, extra, 1), Some(vec![o[0], extra, o[1]]));
     }
 }

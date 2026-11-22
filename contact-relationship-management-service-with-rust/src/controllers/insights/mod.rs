@@ -47,13 +47,14 @@ use relationships::{memberships_view, partnerships_register, stakeholders};
 use sales::{executive, followups, forecast_trends, pipeline_hygiene, stale_deals};
 use support::sla_register;
 
-/// A `?days=` recency threshold: `default` when absent, and also when outside 1 to 365 (DAYS-1).
-fn days_or(query_days: Option<u32>, default: u32) -> i64 {
-    // DAYS-1: a window outside 1 to 365 days is read as the endpoint's default window.
-    let days = query_days.map_or(default, |n| {
-        crate::rules::bounds::within(n, 1..=365).unwrap_or(default)
-    });
-    i64::from(days)
+/// A `?days=` recency threshold: `default` when absent, a `422` when outside 1 to 365.
+fn days_or(query_days: Option<u32>, default: u32) -> Result<i64> {
+    match query_days {
+        None => Ok(i64::from(default)),
+        Some(n) => crate::rules::bounds::within(n, 1..=365)
+            .map(i64::from)
+            .ok_or_else(|| crate::arith::out_of_range("days", 1, 365)),
+    }
 }
 
 /// Query carrying an optional `days` threshold.
@@ -108,14 +109,19 @@ pub fn routes() -> Routes {
 mod tests {
     use super::days_or;
 
-    /// DAYS-1: a window outside 1 to 365 is the default, never the nearest bound.
+    /// A window outside 1 to 365 is an error that names the figure, never the nearest bound.
     #[test]
-    fn a_window_outside_one_to_365_days_is_the_default() {
-        assert_eq!(days_or(None, 90), 90);
-        assert_eq!(days_or(Some(1), 90), 1);
-        assert_eq!(days_or(Some(365), 90), 365);
-        assert_eq!(days_or(Some(0), 90), 90);
-        assert_eq!(days_or(Some(366), 90), 90);
-        assert_eq!(days_or(Some(u32::MAX), 30), 30);
+    fn a_window_outside_one_to_365_days_is_refused() {
+        assert_eq!(days_or(None, 90).unwrap(), 90);
+        assert_eq!(days_or(Some(1), 90).unwrap(), 1);
+        assert_eq!(days_or(Some(365), 90).unwrap(), 365);
+        for bad in [0, 366, u32::MAX] {
+            let refused = days_or(Some(bad), 90).unwrap_err().to_string();
+            assert!(refused.contains("days must be from 1 to 365"), "{refused}");
+            assert!(
+                !refused.contains(&bad.to_string()),
+                "the value is not echoed"
+            );
+        }
     }
 }

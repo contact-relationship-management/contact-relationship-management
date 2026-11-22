@@ -150,40 +150,44 @@ pub fn month_expr(column: &str, periods: &Periods) -> String {
     format!("to_char({}, 'YYYY-MM')", local(column, periods))
 }
 
-/// SQL for the fiscal year label of `column` (see [`fiscal_year_label`]).
+/// SQL for the fiscal year label of `column` (see [`fiscal_year_label`]); `None` when the start month
+/// is not 1 to 12, which is invalid data and has no SQL.
 #[must_use]
-pub fn fiscal_year_expr(column: &str, periods: &Periods) -> String {
-    let shifted = shifted(column, periods);
-    if periods.fiscal_start_month == 1 {
+pub fn fiscal_year_expr(column: &str, periods: &Periods) -> Option<String> {
+    let shifted = shifted(column, periods)?;
+    Some(if periods.fiscal_start_month == 1 {
         format!("to_char({shifted}, 'YYYY')")
     } else {
         format!(
             "(to_char({shifted}, 'YYYY') || '/' || \
              lpad(((extract(year FROM {shifted})::int + 1) % 100)::text, 2, '0'))"
         )
-    }
+    })
 }
 
 /// SQL for the fiscal quarter label of `column`: the fiscal year, `-Q`, and 1 to 4.
 #[must_use]
-pub fn fiscal_quarter_expr(column: &str, periods: &Periods) -> String {
-    format!(
+pub fn fiscal_quarter_expr(column: &str, periods: &Periods) -> Option<String> {
+    Some(format!(
         "({} || '-Q' || extract(quarter FROM {})::int)",
-        fiscal_year_expr(column, periods),
-        shifted(column, periods)
-    )
+        fiscal_year_expr(column, periods)?,
+        shifted(column, periods)?
+    ))
 }
 
 /// The local time moved back by the months before the fiscal year starts, so its calendar year
 /// and quarter are the fiscal ones.
-fn shifted(column: &str, periods: &Periods) -> String {
-    // PERIOD-1: January starts the fiscal year no earlier than the calendar one, so no months.
-    let months = periods.fiscal_start_month.checked_sub(1).unwrap_or(0);
-    if months == 0 {
+fn shifted(column: &str, periods: &Periods) -> Option<String> {
+    // A start month outside 1 to 12 is invalid data (RCA-IN-6), not January: no SQL.
+    let months = periods
+        .fiscal_start_month
+        .checked_sub(1)
+        .filter(|months| *months < 12)?;
+    Some(if months == 0 {
         local(column, periods)
     } else {
         format!("({} - interval '{months} months')", local(column, periods))
-    }
+    })
 }
 
 #[cfg(test)]
@@ -304,10 +308,22 @@ mod tests {
             month_expr("d.created_at", &p),
             "to_char((d.created_at AT TIME ZONE 'Australia/Sydney'), 'YYYY-MM')"
         );
-        assert!(fiscal_quarter_expr("d.closed_at", &p).contains("interval '6 months'"));
+        assert!(
+            fiscal_quarter_expr("d.closed_at", &p)
+                .unwrap()
+                .contains("interval '6 months'")
+        );
+        for month in [0, 13, u32::MAX] {
+            let bad = Periods {
+                fiscal_start_month: month,
+                ..Periods::default()
+            };
+            assert_eq!(fiscal_year_expr("k.opened_at", &bad), None, "{month}");
+            assert_eq!(fiscal_quarter_expr("k.opened_at", &bad), None, "{month}");
+        }
         let january = Periods::default();
         assert_eq!(
-            fiscal_year_expr("k.opened_at", &january),
+            fiscal_year_expr("k.opened_at", &january).unwrap(),
             "to_char((k.opened_at AT TIME ZONE 'UTC'), 'YYYY')"
         );
     }

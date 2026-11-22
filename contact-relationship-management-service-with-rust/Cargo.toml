@@ -156,6 +156,11 @@ debug = "none"
 incremental = false
 
 # Faster dev/test builds: keep line tables for backtraces, drop the rest of the debug info.
+# RCA-ENF-4: a release build checks overflow, so an operator the lints miss panics, which can be
+# seen, and never wraps, which cannot. A backstop only; the code still uses checked_* (RCA-P-1).
+[profile.release]
+overflow-checks = true
+
 [profile.dev]
 debug = "line-tables-only"
 split-debuginfo = "unpacked"

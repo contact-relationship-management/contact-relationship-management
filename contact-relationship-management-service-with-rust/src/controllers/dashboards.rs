@@ -642,8 +642,8 @@ async fn activity_dashboard(
 ) -> Result<Response> {
     let since = crate::clock::now()
         .checked_sub_days(
-            // DAYS-1: a window outside 1 to 365 days is read as the default window.
-            crate::rules::bounds::within(params.days, 1..=365).unwrap_or_else(default_days),
+            crate::rules::bounds::within(params.days, 1..=365)
+                .ok_or_else(|| crate::arith::out_of_range("days", 1, 365))?,
         )
         .ok_or_else(|| crate::arith::overflow("since"))?;
     let counts: Vec<(String, i64)> = sqlx::query!(
@@ -656,7 +656,10 @@ async fn activity_dashboard(
     .into_iter()
     .map(|row| (row.kind, row.n))
     .collect();
-    let total: i64 = counts.iter().map(|(_, n)| n).sum();
+    let total = counts
+        .iter()
+        .try_fold(0_i64, |sum, (_, n)| sum.checked_add(*n))
+        .ok_or_else(|| crate::arith::overflow("activity_total"))?;
     let by_kind: std::collections::BTreeMap<String, i64> = counts.into_iter().collect();
     format::json(ActivityDashboard {
         window_days: params.days,
