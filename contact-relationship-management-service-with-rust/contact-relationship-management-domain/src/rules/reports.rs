@@ -529,7 +529,11 @@ pub fn suppress(cells: Vec<Cell>, min: i64, by_group: bool) -> (Vec<Cell>, usize
         *slot = slot.saturating_add(cell.n);
     }
     let big_enough = |cell: &Cell| {
-        let n = if by_group { size[&cell.group] } else { cell.n };
+        let n = if by_group {
+            size.get(&cell.group).copied().unwrap_or(cell.n)
+        } else {
+            cell.n
+        };
         n >= min
     };
     let mut left_out: BTreeSet<(String, Option<String>)> = BTreeSet::new();

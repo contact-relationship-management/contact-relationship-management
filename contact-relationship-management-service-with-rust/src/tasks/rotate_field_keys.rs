@@ -42,7 +42,11 @@ pub async fn rotate(pool: &PgPool) -> std::result::Result<Vec<(String, u64)>, St
                 let plain = ring
                     .open(stored)
                     .map_err(|e| format!("{table}.{column} row {id}: {e}"))?;
-                updates.push((*id, ring.seal(&plain)));
+                updates.push((
+                    *id,
+                    ring.seal(&plain)
+                        .map_err(|e| format!("{table}.{column} row {id}: {e}"))?,
+                ));
             }
         }
         let update = format!("UPDATE {table} SET {column} = $1 WHERE id = $2");
@@ -79,7 +83,11 @@ async fn rotate_custom(pool: &PgPool, ring: &crypto::Keyring) -> std::result::Re
             let plain = ring
                 .open(&row.value)
                 .map_err(|e| format!("custom_field_values row {}: {e}", row.id))?;
-            updates.push((row.id, ring.seal(&plain)));
+            updates.push((
+                row.id,
+                ring.seal(&plain)
+                    .map_err(|e| format!("custom_field_values row {}: {e}", row.id))?,
+            ));
         }
     }
     for (id, sealed) in &updates {

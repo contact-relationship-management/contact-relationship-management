@@ -78,7 +78,7 @@ impl Type<Postgres> for EncryptedText {
 
 impl Encode<'_, Postgres> for EncryptedText {
     fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> Result<IsNull, BoxDynError> {
-        <String as Encode<'_, Postgres>>::encode(crypto::seal(&self.0), buf)
+        <String as Encode<'_, Postgres>>::encode(crypto::seal(&self.0)?, buf)
     }
 }
 

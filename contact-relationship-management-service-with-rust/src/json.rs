@@ -11,6 +11,34 @@ use axum::response::{IntoResponse, Response};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+/// Set the member at `path` of `root` to `new`, making each object on the way that is `null` or
+/// missing. A step that is not an object (a number, a string, an array) is left as it is and
+/// nothing is set, where `value["key"] = ...` would stop the process. For a document this service
+/// builds itself, so the steps are always objects.
+pub fn put(root: &mut serde_json::Value, path: &[&str], new: serde_json::Value) {
+    use serde_json::Value;
+    let Some((last, parents)) = path.split_last() else {
+        *root = new;
+        return;
+    };
+    let mut node = root;
+    for key in parents {
+        if node.is_null() {
+            *node = Value::Object(serde_json::Map::new());
+        }
+        let Some(map) = node.as_object_mut() else {
+            return;
+        };
+        node = map.entry((*key).to_string()).or_insert(Value::Null);
+    }
+    if node.is_null() {
+        *node = Value::Object(serde_json::Map::new());
+    }
+    if let Some(map) = node.as_object_mut() {
+        map.insert((*last).to_string(), new);
+    }
+}
+
 /// A JSON body, in or out.
 #[derive(Debug)]
 pub struct Json<T>(pub T);
@@ -37,11 +65,15 @@ impl IntoResponse for Rejected {
         let text = scrub(&raw);
         let mut body = serde_json::json!({ "description": text });
         if status == StatusCode::UNPROCESSABLE_ENTITY {
-            body["error"] = "validation".into();
-            body["errors"] = serde_json::json!([match member(&raw) {
-                Some(pointer) => serde_json::json!({ "pointer": pointer, "detail": text }),
-                None => serde_json::json!({ "detail": text }),
-            }]);
+            crate::json::put(&mut body, &["error"], "validation".into());
+            crate::json::put(
+                &mut body,
+                &["errors"],
+                serde_json::json!([match member(&raw) {
+                    Some(pointer) => serde_json::json!({ "pointer": pointer, "detail": text }),
+                    None => serde_json::json!({ "detail": text }),
+                }]),
+            );
         }
         (status, axum::Json(body)).into_response()
     }

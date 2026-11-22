@@ -522,7 +522,7 @@ async fn put_values(
         match value {
             Some(text) => {
                 let kept = if def.sealed() {
-                    crypto::seal(text)
+                    crypto::seal(text).map_err(|e| Error::string(&e.to_string()))?
                 } else {
                     text.clone()
                 };

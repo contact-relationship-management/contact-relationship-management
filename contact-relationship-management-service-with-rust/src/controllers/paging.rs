@@ -29,11 +29,11 @@ static KEY: OnceLock<CursorKey> = OnceLock::new();
 
 /// A key for this process alone, for development and tests: its cursors stop working when the
 /// process stops, and another replica refuses them.
-fn process_key() -> CursorKey {
+fn process_key() -> Result<CursorKey, String> {
     let mut secret = Vec::with_capacity(32);
     secret.extend_from_slice(uuid::Uuid::new_v4().as_bytes());
     secret.extend_from_slice(uuid::Uuid::new_v4().as_bytes());
-    CursorKey::new(&secret).unwrap_or_else(|_| unreachable!("32 bytes is long enough"))
+    CursorKey::new(&secret).map_err(|e| format!("{SECRET_VAR}: {e}"))
 }
 
 /// The cursor key from `secret`. In production a key is required, because replicas must
@@ -49,7 +49,7 @@ pub fn key_from(secret: Option<&str>, production: bool) -> Result<CursorKey, Str
             "{SECRET_VAR} is required in production: it signs the list cursors, and every \
              replica must hold the same one"
         )),
-        None => Ok(process_key()),
+        None => process_key(),
     }
 }
 
@@ -67,8 +67,16 @@ pub fn init(production: bool) -> Result<(), String> {
 
 /// The installed key. A process that never ran [`init`], such as a unit test, gets a key of
 /// its own; a server always runs it, and production refuses to start without a setting.
-fn key() -> &'static CursorKey {
-    KEY.get_or_init(process_key)
+///
+/// # Errors
+///
+/// When a key of its own cannot be made, which a 32-byte key never fails.
+fn key() -> Result<&'static CursorKey> {
+    if let Some(key) = KEY.get() {
+        return Ok(key);
+    }
+    let made = process_key().map_err(|e| Error::string(&e))?;
+    Ok(KEY.get_or_init(|| made))
 }
 
 /// A validated page request.
@@ -84,7 +92,7 @@ impl Page {
     /// service did not sign for this path and these filters. The `detail` quotes nothing the
     /// caller sent.
     pub fn new(uri: &Uri, cap: u64) -> Result<Self> {
-        Self::with_key(key(), uri, cap)
+        Self::with_key(key()?, uri, cap)
     }
 
     fn with_key(key: &CursorKey, uri: &Uri, cap: u64) -> Result<Self> {

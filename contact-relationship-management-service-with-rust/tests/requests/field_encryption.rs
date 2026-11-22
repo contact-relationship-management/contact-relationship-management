@@ -370,7 +370,7 @@ async fn the_rotation_task_re_seals_and_stops_on_a_value_it_cannot_open() {
             .json(&json!({ "values": { "diagnosis": "private words" } }))
             .await
             .assert_status_ok();
-        let gone = keyring(&[("k9", 9)]).seal("private words");
+        let gone = keyring(&[("k9", 9)]).seal("private words").unwrap();
         sqlx::query("UPDATE custom_field_values SET value = $1")
             .bind(&gone)
             .execute(pool)
@@ -381,7 +381,7 @@ async fn the_rotation_task_re_seals_and_stops_on_a_value_it_cannot_open() {
 
         // A sealed column under a key that is gone: the same, naming the column.
         sqlx::query("UPDATE activities SET summary = $1 WHERE subject_pid = $2::uuid")
-            .bind(keyring(&[("k9", 9)]).seal("lost words"))
+            .bind(keyring(&[("k9", 9)]).seal("lost words").unwrap())
             .bind(&pid)
             .execute(pool)
             .await

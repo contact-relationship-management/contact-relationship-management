@@ -2829,3 +2829,19 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       Vietnamese header words and some terms are plausible, not attested.
       - **Not done / not verified:** the site's consent pages are not looked at in a browser in any new language; the import
       header names were not checked against real spreadsheets; `ci-check.sh all` was not run, so there is no attestation.
+- [x] CRM-T300 **No panic in production code.** Asked for by the product owner on 2026-11-22 ("eliminate panic in production"). (L)
+      - **What it changes:** both crates now warn (so CI's `-D warnings` fails) on `clippy::panic`, `unreachable`, `todo`,
+      `unimplemented` and `indexing_slicing`, besides `unwrap_used` and `expect_used`, outside `#[cfg(test)]`. About 90
+      sites went: `time::days` and the `Timestamp` and `Date` `+` and `-` **saturate** at the ends of the range where
+      they panicked (a very large `days` in a request can no longer stop the process); `crypto::seal` and
+      `Keyring::seal` return `Result` (new `CryptoError::Seal`) and the webhook, custom-field, field-key rotation and
+      encrypted-column callers pass it on; the HMAC helpers (webhook, WPM events, unsubscribe token, SigV4) fail closed
+      (an empty signature, a `false`, a `None`) where they `expect`ed; the cursor key, JSON documents (`json::put`
+      replaces `value["k"] = ...`), quota, attribution and calendar loops, the duplicate and suggestion lists, the seed
+      and the erasure audit use `get`, `zip`, `first_chunk` or `split_at_checked`.
+      - **Not done / not verified:** one `expect` stays, allowed in place with its reason: `auth::verifier::empty_verifier`
+      (a start-up literal `{"keys": []}`; the verifier crate has no constructor that cannot fail). `signed_json` in
+      `provider.rs` sends an empty body if a JSON value did not serialize (it always does). `clippy::arithmetic_side_effects`
+      is not enabled (249 sites): release builds wrap on overflow and the `% len()` sites were guarded where seen, but
+      integer overflow in debug builds and division by a zero length elsewhere are not audited. String slicing by byte
+      index (`&s[a..b]`) is not covered by the lint and was not audited. Tests, examples and benches may still panic.

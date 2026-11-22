@@ -150,11 +150,11 @@ pub fn mailgun_outcomes(body: &[u8]) -> Option<Vec<Outcome>> {
 pub fn sendgrid_body(from: &lettre::message::Mailbox, message: &Message) -> Value {
     let mut to = json!({ "email": message.to });
     if !message.to_name.is_empty() {
-        to["name"] = json!(message.to_name);
+        crate::json::put(&mut to, &["name"], json!(message.to_name));
     }
     let mut sender = json!({ "email": from.email.to_string() });
     if let Some(name) = from.name.as_deref().filter(|n| !n.is_empty()) {
-        sender["name"] = json!(name);
+        crate::json::put(&mut sender, &["name"], json!(name));
     }
     let mut body = json!({
         "personalizations": [{ "to": [to], "custom_args": { VAR: tag_of(&message.message_id) } }],
@@ -172,7 +172,7 @@ pub fn sendgrid_body(from: &lettre::message::Mailbox, message: &Message) -> Valu
         .map(|(name, value)| (name, Value::String(value)))
         .collect();
     if !headers.is_empty() {
-        body["headers"] = Value::Object(headers);
+        crate::json::put(&mut body, &["headers"], Value::Object(headers));
     }
     body
 }

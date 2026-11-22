@@ -92,54 +92,57 @@ pub struct Text {
     pub form_unavailable: &'static str,
 }
 
+/// The English text, the fallback.
+const ENGLISH: Text = Text {
+    lang: "en",
+    dir: "ltr",
+    endonym: "English",
+    unsubscribe_title: "Unsubscribe",
+    unsubscribe_ask: "Stop receiving marketing email?",
+    unsubscribe_button: "Unsubscribe",
+    unsubscribed: "You are unsubscribed.",
+    link_not_valid: "This link is not valid.",
+    link_title: "Link not valid",
+    link_expired: "This link is not valid or has expired.",
+    went_wrong: "Something went wrong. Please try again.",
+    confirm_title: "Confirm",
+    confirm_heading: "Confirm: {purpose}",
+    confirm_button: "Yes, send me these",
+    confirmed_title: "Confirmed",
+    confirmed: "Thank you. You will receive: {purpose}.",
+    preferences_title: "Your preferences",
+    preferences_heading: "What you would like to receive",
+    stop: "Stop",
+    start: "Start",
+    receiving: "You receive these.",
+    pending: "Waiting for you to confirm.",
+    not_receiving: "You do not receive these.",
+    not_available: "That choice is not available.",
+    other_languages: "Other languages",
+    purposes: [
+        "Marketing messages",
+        "The newsletter",
+        "Invitations to events",
+        "Product updates",
+        "Messages",
+    ],
+    mail_subject: "Please confirm your subscription",
+    mail_body: "Hello {name},\n\nSomeone asked for this address to receive: {purpose}.\nTo confirm, open this link and press the button:\n\n{link}\n\nThe link works for {days} days. If you did not ask for this, ignore this message and nothing will be sent to you.\n",
+    form_received: "If the address is valid, a confirmation message is on its way.",
+    form_invalid_title: "Check the form",
+    form_name_invalid: "Please enter a name of at most 200 characters, on one line.",
+    form_email_invalid: "Please enter an email address that can receive mail.",
+    form_refused_title: "Not allowed",
+    form_refused: "This form cannot be sent from this website.",
+    form_busy_title: "Too many submissions",
+    form_busy: "Too many submissions. Please wait a little and try again.",
+    form_unavailable_title: "Not available",
+    form_unavailable: "The form cannot be sent just now. Please try again later.",
+};
+
 /// The pages' languages; English first, as the fallback.
 pub const TEXTS: &[Text] = &[
-    Text {
-        lang: "en",
-        dir: "ltr",
-        endonym: "English",
-        unsubscribe_title: "Unsubscribe",
-        unsubscribe_ask: "Stop receiving marketing email?",
-        unsubscribe_button: "Unsubscribe",
-        unsubscribed: "You are unsubscribed.",
-        link_not_valid: "This link is not valid.",
-        link_title: "Link not valid",
-        link_expired: "This link is not valid or has expired.",
-        went_wrong: "Something went wrong. Please try again.",
-        confirm_title: "Confirm",
-        confirm_heading: "Confirm: {purpose}",
-        confirm_button: "Yes, send me these",
-        confirmed_title: "Confirmed",
-        confirmed: "Thank you. You will receive: {purpose}.",
-        preferences_title: "Your preferences",
-        preferences_heading: "What you would like to receive",
-        stop: "Stop",
-        start: "Start",
-        receiving: "You receive these.",
-        pending: "Waiting for you to confirm.",
-        not_receiving: "You do not receive these.",
-        not_available: "That choice is not available.",
-        other_languages: "Other languages",
-        purposes: [
-            "Marketing messages",
-            "The newsletter",
-            "Invitations to events",
-            "Product updates",
-            "Messages",
-        ],
-        mail_subject: "Please confirm your subscription",
-        mail_body: "Hello {name},\n\nSomeone asked for this address to receive: {purpose}.\nTo confirm, open this link and press the button:\n\n{link}\n\nThe link works for {days} days. If you did not ask for this, ignore this message and nothing will be sent to you.\n",
-        form_received: "If the address is valid, a confirmation message is on its way.",
-        form_invalid_title: "Check the form",
-        form_name_invalid: "Please enter a name of at most 200 characters, on one line.",
-        form_email_invalid: "Please enter an email address that can receive mail.",
-        form_refused_title: "Not allowed",
-        form_refused: "This form cannot be sent from this website.",
-        form_busy_title: "Too many submissions",
-        form_busy: "Too many submissions. Please wait a little and try again.",
-        form_unavailable_title: "Not available",
-        form_unavailable: "The form cannot be sent just now. Please try again later.",
-    },
+    ENGLISH,
     Text {
         lang: "ar",
         dir: "rtl",
@@ -1086,7 +1089,7 @@ impl Text {
             .iter()
             .position(|p| *p == purpose)
             .unwrap_or(PURPOSE_ORDER.len());
-        self.purposes[index]
+        self.purposes.get(index).copied().unwrap_or_default()
     }
 }
 
@@ -1100,7 +1103,7 @@ pub fn text_for(tag: &str) -> Option<&'static Text> {
 /// The English text, the fallback.
 #[must_use]
 pub fn english() -> &'static Text {
-    &TEXTS[0]
+    &ENGLISH
 }
 
 /// The page's language: `chosen` (the address's `?lang=`) if the pages have it, else the best

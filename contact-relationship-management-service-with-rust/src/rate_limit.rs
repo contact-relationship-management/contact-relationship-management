@@ -181,7 +181,7 @@ pub fn client_key(subject: Option<&str>, address: Option<IpAddr>) -> String {
     use sha2::{Digest, Sha256};
     if let Some(subject) = subject {
         let digest = Sha256::digest(subject.as_bytes());
-        let first: [u8; 8] = digest[..8].try_into().unwrap_or_default();
+        let first: [u8; 8] = digest.first_chunk().copied().unwrap_or_default();
         return format!("sub:{:016x}", u64::from_be_bytes(first));
     }
     match address.map(|address| address.to_canonical()) {

@@ -652,7 +652,7 @@ async fn credit_of(
         split
             .iter()
             .position(|s| s.owner_ref == owner)
-            .map(|i| quota::split(row.amount_minor, &bps)[i])
+            .and_then(|i| quota::split(row.amount_minor, &bps).get(i).copied())
     };
     Ok(part.map(|p| (row.currency, p)))
 }
@@ -866,7 +866,7 @@ async fn credited_deals(
             shares
                 .iter()
                 .position(|s| s.owner_ref == owner)
-                .map(|i| quota::split(deal.amount_minor, &bps)[i])
+                .and_then(|i| quota::split(deal.amount_minor, &bps).get(i).copied())
         };
         // A clawback takes from the worker's credit, never below nothing; a deal wholly clawed back
         // no longer counts (CRM-R68).

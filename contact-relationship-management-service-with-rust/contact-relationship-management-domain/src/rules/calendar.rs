@@ -103,6 +103,13 @@ fn digits(text: &str) -> Option<(i8, &str)> {
 }
 
 impl Calendar {
+    /// The opening windows on `date`'s weekday, none if the weekday has no slot.
+    fn windows_on(&self, date: Date) -> std::slice::Iter<'_, (Time, Time)> {
+        self.windows
+            .get(weekday_index(date))
+            .map_or([].iter(), |day| day.iter())
+    }
+
     /// Build a calendar from what was stored or sent, or say what is wrong, as `(member, message)`.
     ///
     /// # Errors
@@ -124,7 +131,7 @@ impl Calendar {
             TimeZone::UTC
         });
         let mut windows: [Vec<(Time, Time)>; 7] = Default::default();
-        for (index, (day, hours)) in week.days().into_iter().enumerate() {
+        for (slot, (day, hours)) in windows.iter_mut().zip(week.days()) {
             if hours.len() > MAX_WINDOWS {
                 problems.push((
                     format!("week.{day}"),
@@ -134,15 +141,18 @@ impl Calendar {
             }
             for window in hours {
                 match (time_of(&window.start), time_of(&window.end)) {
-                    (Some(start), Some(end)) if start < end => windows[index].push((start, end)),
+                    (Some(start), Some(end)) if start < end => slot.push((start, end)),
                     _ => problems.push((
                         format!("week.{day}"),
                         "each window needs a start and a later end, written HH:MM".to_string(),
                     )),
                 }
             }
-            windows[index].sort();
-            if windows[index].windows(2).any(|pair| pair[0].1 > pair[1].0) {
+            slot.sort();
+            if slot
+                .windows(2)
+                .any(|pair| matches!(pair, [a, b] if a.1 > b.0))
+            {
                 problems.push((format!("week.{day}"), "windows overlap".to_string()));
             }
         }
@@ -184,7 +194,7 @@ impl Calendar {
         let mut date = self.tz.to_datetime(start).date();
         for _ in 0..HORIZON_DAYS {
             if !self.holidays.contains(&date) {
-                for (from, to) in &self.windows[weekday_index(date)] {
+                for (from, to) in self.windows_on(date) {
                     // A clock time the zone skips (the hour a clock goes forward) has no instant;
                     // that end of the window is dropped.
                     let (Some(opens), Some(closes)) =
@@ -221,7 +231,7 @@ impl Calendar {
                 break;
             }
             if !self.holidays.contains(&date) {
-                for (opens, closes) in &self.windows[weekday_index(date)] {
+                for (opens, closes) in self.windows_on(date) {
                     let (Some(opens), Some(closes)) =
                         (self.instant(date, *opens), self.instant(date, *closes))
                     else {

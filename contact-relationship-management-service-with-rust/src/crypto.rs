@@ -37,6 +37,9 @@ pub enum CryptoError {
     UnknownKey(String),
     /// Authentication failed: wrong key or tampered data.
     Authentication,
+    /// The value could not be sealed, which AES-GCM does only for a value past its length limit
+    /// or a key id the ring does not hold.
+    Seal,
 }
 
 impl std::fmt::Display for CryptoError {
@@ -45,6 +48,7 @@ impl std::fmt::Display for CryptoError {
             Self::Malformed => write!(f, "malformed encrypted field"),
             Self::UnknownKey(id) => write!(f, "no field key with id `{id}` is configured"),
             Self::Authentication => write!(f, "encrypted field failed authentication"),
+            Self::Seal => write!(f, "field could not be encrypted"),
         }
     }
 }
@@ -121,17 +125,14 @@ impl Keyring {
 
     /// Seal `plain` under the active key.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Never in practice: AES-GCM encryption of in-memory data does not fail.
-    #[must_use]
-    pub fn seal(&self, plain: &str) -> String {
-        let cipher = Aes256Gcm::new(&self.keys[&self.active]);
+    /// [`CryptoError::Seal`] when the cipher refuses the value, which in-memory text does not
+    /// provoke. The value is never stored unsealed on this path.
+    pub fn seal(&self, plain: &str) -> Result<String, CryptoError> {
+        let key = self.keys.get(&self.active).ok_or(CryptoError::Seal)?;
+        let cipher = Aes256Gcm::new(key);
         let nonce = Nonce::generate();
-        #[allow(
-            clippy::expect_used,
-            reason = "AES-GCM encryption of in-memory data cannot fail"
-        )]
         let sealed = cipher
             .encrypt(
                 &nonce,
@@ -140,10 +141,14 @@ impl Keyring {
                     aad: &Self::aad(&self.active),
                 },
             )
-            .expect("AES-GCM encryption of in-memory data does not fail");
+            .map_err(|_| CryptoError::Seal)?;
         let mut blob = nonce.to_vec();
         blob.extend_from_slice(&sealed);
-        format!("{PREFIX}{}:{}", self.active, URL_SAFE_NO_PAD.encode(blob))
+        Ok(format!(
+            "{PREFIX}{}:{}",
+            self.active,
+            URL_SAFE_NO_PAD.encode(blob)
+        ))
     }
 
     /// Open a stored value; legacy plaintext (no prefix) is returned as is.
@@ -229,9 +234,12 @@ pub fn install(ring: Option<Keyring>) {
 }
 
 /// Seal with the process keyring; plaintext when none is configured.
-#[must_use]
-pub fn seal(plain: &str) -> String {
-    current().map_or_else(|| plain.to_string(), |ring| ring.seal(plain))
+///
+/// # Errors
+///
+/// As [`Keyring::seal`].
+pub fn seal(plain: &str) -> Result<String, CryptoError> {
+    current().map_or_else(|| Ok(plain.to_string()), |ring| ring.seal(plain))
 }
 
 /// Open with the process keyring. A sealed value with no keyring configured
@@ -269,7 +277,7 @@ mod tests {
     #[test]
     fn round_trips_and_is_not_plaintext() {
         let ring = ring(&[("k1", 1)]);
-        let sealed = ring.seal("dana@example.org");
+        let sealed = ring.seal("dana@example.org").unwrap();
         assert!(sealed.starts_with("enc:v1:k1:"));
         assert!(!sealed.contains("dana"));
         assert_eq!(ring.open(&sealed).unwrap(), "dana@example.org");
@@ -278,21 +286,21 @@ mod tests {
     #[test]
     fn every_seal_uses_a_fresh_nonce() {
         let ring = ring(&[("k1", 1)]);
-        assert_ne!(ring.seal("same"), ring.seal("same"));
+        assert_ne!(ring.seal("same").unwrap(), ring.seal("same").unwrap());
     }
 
     #[test]
     fn unicode_and_empty_round_trip() {
         let ring = ring(&[("k1", 1)]);
         for text in ["", "héllo — 你好", "line\nbreak"] {
-            assert_eq!(ring.open(&ring.seal(text)).unwrap(), text);
+            assert_eq!(ring.open(&ring.seal(text).unwrap()).unwrap(), text);
         }
     }
 
     #[test]
     fn tampering_is_detected() {
         let ring = ring(&[("k1", 1)]);
-        let sealed = ring.seal("secret");
+        let sealed = ring.seal("secret").unwrap();
         let mut bytes = sealed.into_bytes();
         let last = bytes.len() - 2;
         bytes[last] = if bytes[last] == b'A' { b'B' } else { b'A' };
@@ -302,7 +310,7 @@ mod tests {
 
     #[test]
     fn a_wrong_key_fails_authentication() {
-        let sealed = ring(&[("k1", 1)]).seal("secret");
+        let sealed = ring(&[("k1", 1)]).seal("secret").unwrap();
         assert_eq!(
             ring(&[("k1", 2)]).open(&sealed),
             Err(CryptoError::Authentication)
@@ -313,7 +321,7 @@ mod tests {
     fn the_key_id_is_authenticated() {
         // Same key bytes under two ids: moving a value to another id must fail.
         let ring = ring(&[("a", 7), ("b", 7)]);
-        let sealed = ring.seal("secret"); // under `a`
+        let sealed = ring.seal("secret").unwrap(); // under `a`
         let relabeled = sealed.replacen(":a:", ":b:", 1);
         assert_eq!(ring.open(&relabeled), Err(CryptoError::Authentication));
     }
@@ -326,13 +334,13 @@ mod tests {
     #[test]
     fn rotation_reads_old_keys_and_seals_with_the_new_one() {
         let old = ring(&[("k1", 1)]);
-        let sealed_old = old.seal("secret");
+        let sealed_old = old.seal("secret").unwrap();
         let rotated = ring(&[("k2", 2), ("k1", 1)]);
         assert_eq!(rotated.active_id(), "k2");
         assert_eq!(rotated.open(&sealed_old).unwrap(), "secret");
         assert!(rotated.needs_rotation(&sealed_old));
         assert!(rotated.needs_rotation("plain"));
-        assert!(!rotated.needs_rotation(&rotated.seal("secret")));
+        assert!(!rotated.needs_rotation(&rotated.seal("secret").unwrap()));
         // Once k1 is retired, its data is unreadable: fail loudly.
         let retired = ring(&[("k2", 2)]);
         assert_eq!(

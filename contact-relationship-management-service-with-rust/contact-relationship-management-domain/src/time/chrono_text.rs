@@ -49,7 +49,7 @@ fn number(s: &str, min: usize, max: usize) -> Option<(&str, i64)> {
         return None;
     }
     let mut value: i64 = 0;
-    for digit in &s.as_bytes()[..digits] {
+    for digit in s.as_bytes().iter().take(digits) {
         value = value
             .checked_mul(10)?
             .checked_add(i64::from(digit - b'0'))?;
@@ -186,8 +186,11 @@ pub fn timestamp(text: &str) -> Option<Timestamp> {
         None => (s, 0),
     };
     let s = s.trim_start();
-    let (s, offset) = if s.len() >= 3 && s.as_bytes()[..3].eq_ignore_ascii_case(b"UTC") {
-        (&s[3..], 0)
+    let (s, offset) = if let Some((_, rest)) = s
+        .split_at_checked(3)
+        .filter(|(utc, _)| utc.eq_ignore_ascii_case("UTC"))
+    {
+        (rest, 0)
     } else {
         offset(s, true)?
     };

@@ -170,22 +170,27 @@ impl From<Timestamp> for jiff::Timestamp {
 impl std::ops::Add<SignedDuration> for Timestamp {
     type Output = Self;
 
-    /// # Panics
-    ///
-    /// When the result is outside `jiff`'s range, as `chrono`'s `+` did outside its own.
+    /// Saturates at the earliest or latest instant `jiff` holds when the result is outside its
+    /// range, so a very long period asked for in a request cannot stop the process.
     fn add(self, by: SignedDuration) -> Self {
-        Self(self.0 + by)
+        Self(self.0.checked_add(by).unwrap_or(if by.is_negative() {
+            jiff::Timestamp::MIN
+        } else {
+            jiff::Timestamp::MAX
+        }))
     }
 }
 
 impl std::ops::Sub<SignedDuration> for Timestamp {
     type Output = Self;
 
-    /// # Panics
-    ///
-    /// When the result is outside `jiff`'s range.
+    /// Saturates, as [`Add`](std::ops::Add) does.
     fn sub(self, by: SignedDuration) -> Self {
-        Self(self.0 - by)
+        Self(self.0.checked_sub(by).unwrap_or(if by.is_negative() {
+            jiff::Timestamp::MAX
+        } else {
+            jiff::Timestamp::MIN
+        }))
     }
 }
 
@@ -206,15 +211,11 @@ impl std::ops::AddAssign<SignedDuration> for Timestamp {
 
 /// `n` days of 24 hours, as `chrono::Duration::days` counted them.
 ///
-/// # Panics
-///
-/// When `n` days do not fit a [`SignedDuration`], as `chrono` panicked outside its range.
+/// Saturates when `n` days do not fit a [`SignedDuration`], so a very large count from a request
+/// cannot stop the process; the sums it feeds saturate too.
 #[must_use]
 pub fn days(n: i64) -> SignedDuration {
-    match n.checked_mul(86_400) {
-        Some(seconds) => SignedDuration::from_secs(seconds),
-        None => panic!("{n} days do not fit a duration"),
-    }
+    SignedDuration::from_secs(n.saturating_mul(86_400))
 }
 
 /// The whole days in `duration`, toward zero, as `chrono`'s `num_days` counted them.
@@ -327,11 +328,13 @@ impl std::ops::Add<SignedDuration> for Date {
     /// The day `by` later, in whole days of 24 hours (a part day is dropped, as `chrono` dropped
     /// it).
     ///
-    /// # Panics
-    ///
-    /// When the result is outside `jiff`'s range.
+    /// Saturates at the earliest or latest day `jiff` holds.
     fn add(self, by: SignedDuration) -> Self {
-        Self(self.0 + by)
+        Self(self.0.checked_add(by).unwrap_or(if by.is_negative() {
+            civil::Date::MIN
+        } else {
+            civil::Date::MAX
+        }))
     }
 }
 
@@ -340,11 +343,13 @@ impl std::ops::Sub<SignedDuration> for Date {
 
     /// The day `by` earlier, in whole days of 24 hours.
     ///
-    /// # Panics
-    ///
-    /// When the result is outside `jiff`'s range.
+    /// Saturates, as [`Add`](std::ops::Add) does.
     fn sub(self, by: SignedDuration) -> Self {
-        Self(self.0 - by)
+        Self(self.0.checked_sub(by).unwrap_or(if by.is_negative() {
+            civil::Date::MAX
+        } else {
+            civil::Date::MIN
+        }))
     }
 }
 
@@ -422,6 +427,25 @@ mod tests {
 
     fn at(text: &str) -> Timestamp {
         text.parse().unwrap()
+    }
+
+    #[test]
+    fn arithmetic_past_the_range_saturates_and_never_panics() {
+        let end = Timestamp(jiff::Timestamp::MAX);
+        let start = Timestamp(jiff::Timestamp::MIN);
+        assert_eq!(end + days(1), end);
+        assert_eq!(start - days(1), start);
+        assert_eq!(end - days(-1), end);
+        assert_eq!(start + days(-1), start);
+        assert_eq!(at("2026-11-16T00:00:00Z") + days(i64::MAX), end);
+        assert_eq!(at("2026-11-16T00:00:00Z") - days(i64::MAX), start);
+        assert_eq!(days(i64::MAX), SignedDuration::from_secs(i64::MAX));
+        let last = Date(civil::Date::MAX);
+        let first = Date(civil::Date::MIN);
+        assert_eq!(last + days(1), last);
+        assert_eq!(first - days(1), first);
+        assert_eq!(last - days(-1), last);
+        assert_eq!(first + days(-1), first);
     }
 
     // The JSON a record carried under `chrono`, so no API response changes (CRM-T258).

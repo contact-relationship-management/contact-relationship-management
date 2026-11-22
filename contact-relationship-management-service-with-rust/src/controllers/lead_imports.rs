@@ -223,20 +223,18 @@ pub(super) async fn advise(
             .filter(|i| seen.insert(*i))
             .take(PER_ROW)
             .collect();
-        let compared: Vec<MatchContact> = candidates
-            .iter()
-            .map(|i| pool[*i].matched.clone())
-            .collect();
+        let picked: Vec<&Known> = candidates.iter().filter_map(|i| pool.get(*i)).collect();
+        let compared: Vec<MatchContact> = picked.iter().map(|p| p.matched.clone()).collect();
         let mut likely: Vec<Likeness> = matcher()
             .compare_one_to_many(&query, &compared)
             .into_iter()
-            .zip(&candidates)
+            .zip(&picked)
             .filter(|(result, _)| result.verdict != Verdict::NonMatch)
-            .map(|(result, i)| Likeness {
-                kind: pool[*i].kind,
-                pid: pool[*i].pid,
-                row: pool[*i].row,
-                name: pool[*i].name.clone(),
+            .map(|(result, p)| Likeness {
+                kind: p.kind,
+                pid: p.pid,
+                row: p.row,
+                name: p.name.clone(),
                 probability: result.probability,
                 verdict: result.verdict,
             })

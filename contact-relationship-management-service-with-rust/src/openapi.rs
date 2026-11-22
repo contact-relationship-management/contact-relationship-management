@@ -90,7 +90,7 @@ fn operation(method: &str, path: &str, public: &Value) -> Option<Value> {
     let mut operation = json!({ "tags": [tag], "summary": summary, "responses": responses });
     // Signed by the worker service, not sent with a bearer token (CRM-R92).
     if path == "/api/bridges/wpm/events" {
-        operation["security"] = json!([]);
+        crate::json::put(&mut operation, &["security"], json!([]));
     }
     Some(operation)
 }
@@ -134,8 +134,10 @@ pub fn spec() -> Value {
 fn add_uploads(doc: &mut Value) {
     for kind in ["contacts", "accounts", "leads", "deals"] {
         let path = format!("/api/{kind}/{{pid}}/attachments");
-        let Some(operation) = doc["paths"][&path]
-            .get_mut("post")
+        let Some(operation) = doc
+            .get_mut("paths")
+            .and_then(|paths| paths.get_mut(&path))
+            .and_then(|item| item.get_mut("post"))
             .filter(|o| o.is_object())
         else {
             continue;
@@ -147,16 +149,25 @@ fn add_uploads(doc: &mut Value) {
         parameters.push(json!({ "name": "name", "in": "query", "required": true,
             "description": "The file's name with its extension; the extension must be on the allow-list",
             "schema": { "type": "string" } }));
-        operation["parameters"] = Value::Array(parameters);
-        operation["requestBody"] = json!({ "required": true, "content": {
-            "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } });
+        crate::json::put(operation, &["parameters"], Value::Array(parameters));
+        crate::json::put(
+            operation,
+            &["requestBody"],
+            json!({ "required": true, "content": {
+            "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } }),
+        );
     }
 }
 
 /// Document `?tag=` on the lists it narrows (CRM-R47).
 fn add_tag_filters(doc: &mut Value) {
     for path in ["/api/contacts", "/api/accounts", "/api/leads", "/api/deals"] {
-        let Some(operation) = doc["paths"][path].get_mut("get").filter(|o| o.is_object()) else {
+        let Some(operation) = doc
+            .get_mut("paths")
+            .and_then(|paths| paths.get_mut(path))
+            .and_then(|item| item.get_mut("get"))
+            .filter(|o| o.is_object())
+        else {
             continue;
         };
         let mut parameters = operation["parameters"]
@@ -166,7 +177,7 @@ fn add_tag_filters(doc: &mut Value) {
         parameters.push(json!({ "name": "tag", "in": "query", "required": false,
             "description": "Only the records that carry this tag (any case); a record the caller sees masked is left out",
             "schema": { "type": "string" } }));
-        operation["parameters"] = Value::Array(parameters);
+        crate::json::put(operation, &["parameters"], Value::Array(parameters));
     }
 }
 
@@ -202,8 +213,12 @@ fn add_idempotency(doc: &mut Value) {
         parameters.push(json!({ "name": "Idempotency-Key", "in": "header", "required": false,
             "description": "Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After.",
             "schema": { "type": "string", "minLength": 1, "maxLength": 255 } }));
-        operation["parameters"] = Value::Array(parameters);
-        operation["responses"]["409"] = json!({ "description": "Idempotency-Key: the original request is still running; retry shortly" });
+        crate::json::put(operation, &["parameters"], Value::Array(parameters));
+        crate::json::put(
+            operation,
+            &["responses", "409"],
+            json!({ "description": "Idempotency-Key: the original request is still running; retry shortly" }),
+        );
     }
 }
 
@@ -229,10 +244,14 @@ fn add_paging(doc: &mut Value) {
         parameters.push(json!({ "name": "cursor", "in": "query", "required": false,
             "description": "Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422.",
             "schema": { "type": "string" } }));
-        operation["parameters"] = Value::Array(parameters);
-        operation["responses"]["200"]["headers"] = json!({ "Link": {
+        crate::json::put(operation, &["parameters"], Value::Array(parameters));
+        crate::json::put(
+            operation,
+            &["responses", "200", "headers"],
+            json!({ "Link": {
             "description": "Present when more rows exist: </path?...&cursor=...>; rel=\"next\". Follow it until it is absent.",
-            "schema": { "type": "string" } } });
+            "schema": { "type": "string" } } }),
+        );
     }
 }
 

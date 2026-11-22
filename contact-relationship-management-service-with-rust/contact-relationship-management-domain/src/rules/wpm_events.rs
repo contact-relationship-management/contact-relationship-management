@@ -27,13 +27,13 @@ pub const MAX_BODY: usize = 16 * 1024;
 /// The longest event id kept. WPM's are UUIDs.
 pub const MAX_ID: usize = 100;
 
-fn tag(secret: &[u8], timestamp: &str, body: &[u8]) -> Hmac<Sha256> {
-    #[allow(clippy::expect_used, reason = "HMAC accepts a key of any length")]
-    let mut mac = Hmac::<Sha256>::new_from_slice(secret).expect("any key length");
+/// `None` when the key is refused, which HMAC does for no length; a caller then fails closed.
+fn tag(secret: &[u8], timestamp: &str, body: &[u8]) -> Option<Hmac<Sha256>> {
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret).ok()?;
     mac.update(timestamp.as_bytes());
     mac.update(b".");
     mac.update(body);
-    mac
+    Some(mac)
 }
 
 /// The `x-wpm-signature` value WPM would send for `body` at `timestamp` (used by tests and by
@@ -41,9 +41,10 @@ fn tag(secret: &[u8], timestamp: &str, body: &[u8]) -> Hmac<Sha256> {
 #[must_use]
 pub fn sign(secret: &[u8], timestamp: i64, body: &[u8]) -> String {
     use std::fmt::Write as _;
-    let bytes = tag(secret, &timestamp.to_string(), body)
-        .finalize()
-        .into_bytes();
+    let Some(mac) = tag(secret, &timestamp.to_string(), body) else {
+        return String::new();
+    };
+    let bytes = mac.finalize().into_bytes();
     let hex = bytes.iter().fold(String::new(), |mut out, b| {
         let _ = write!(out, "{b:02x}");
         out
@@ -88,7 +89,7 @@ pub fn verify(secret: &[u8], header: &str, body: &[u8], now: i64) -> bool {
     let Some(given) = unhex(v1) else {
         return false;
     };
-    tag(secret, t, body).verify_slice(&given).is_ok()
+    tag(secret, t, body).is_some_and(|mac| mac.verify_slice(&given).is_ok())
 }
 
 /// The event as WPM sends it. Members not named here are ignored.

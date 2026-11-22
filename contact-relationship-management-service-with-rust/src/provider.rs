@@ -135,8 +135,7 @@ impl ApiSender {
     /// Build the signed request for one message.
     fn request(&self, message: &Message) -> Result<reqwest::RequestBuilder, SendError> {
         let post = self.client.post(&self.url);
-        #[allow(clippy::expect_used, reason = "a serde_json Value always serializes")]
-        let signed_json = |body: &Value| serde_json::to_vec(body).expect("a JSON value serializes");
+        let signed_json = |body: &Value| serde_json::to_vec(body).unwrap_or_default();
         Ok(match self.kind {
             Kind::Brevo => post
                 .header("api-key", &self.key)
@@ -455,7 +454,7 @@ pub fn brevo_body(from: &Mailbox, message: &Message) -> Value {
         "tags": [tag_of(&message.message_id)],
     });
     if let Some(headers) = unsubscribe_headers(message) {
-        body["headers"] = headers;
+        crate::json::put(&mut body, &["headers"], headers);
     }
     body
 }
@@ -471,7 +470,7 @@ pub fn mailjet_body(from: &Mailbox, message: &Message) -> Value {
         "CustomID": tag_of(&message.message_id),
     });
     if let Some(headers) = unsubscribe_headers(message) {
-        one["Headers"] = headers;
+        crate::json::put(&mut one, &["Headers"], headers);
     }
     json!({ "Messages": [one] })
 }

@@ -58,12 +58,12 @@ pub fn check_tiers(tiers: &[Tier]) -> Result<(), String> {
     if tiers.is_empty() || tiers.len() > MAX_TIERS {
         return Err(format!("a plan has 1 to {MAX_TIERS} tiers"));
     }
-    if tiers[0].from_percent != 0 {
+    if tiers.first().is_none_or(|first| first.from_percent != 0) {
         return Err("the first tier starts at 0".to_string());
     }
     if tiers
         .windows(2)
-        .any(|p| p[1].from_percent <= p[0].from_percent)
+        .any(|p| matches!(p, [a, b] if b.from_percent <= a.from_percent))
     {
         return Err("each tier starts above the one before".to_string());
     }
@@ -140,19 +140,20 @@ pub fn split(amount_minor: i64, shares_bps: &[u32]) -> Vec<i64> {
     let exact: Vec<i128> = shares_bps.iter().map(|s| amount * i128::from(*s)).collect();
     let mut parts: Vec<i128> = exact.iter().map(|e| e.div_euclid(10_000)).collect();
     let mut left = amount - parts.iter().sum::<i128>();
-    let mut order: Vec<usize> = (0..shares_bps.len()).collect();
-    order.sort_by(|a, b| {
-        exact[*b]
-            .rem_euclid(10_000)
-            .cmp(&exact[*a].rem_euclid(10_000))
-            .then(a.cmp(b))
-    });
-    for i in order {
+    let mut order: Vec<(usize, i128)> = exact
+        .iter()
+        .map(|e| e.rem_euclid(10_000))
+        .enumerate()
+        .collect();
+    order.sort_by(|(a, ra), (b, rb)| rb.cmp(ra).then(a.cmp(b)));
+    for (i, _) in order {
         if left <= 0 {
             break;
         }
-        parts[i] += 1;
-        left -= 1;
+        if let Some(part) = parts.get_mut(i) {
+            *part += 1;
+            left -= 1;
+        }
     }
     parts
         .into_iter()

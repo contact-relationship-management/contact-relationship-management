@@ -27,9 +27,12 @@ fn hex(bytes: &[u8]) -> String {
     })
 }
 
+/// Empty when the key is refused, which HMAC does for no length; the provider then rejects the
+/// request's signature.
 fn hmac(key: &[u8], data: &[u8]) -> Vec<u8> {
-    #[allow(clippy::expect_used, reason = "HMAC accepts a key of any length")]
-    let mut mac = Hmac::<Sha256>::new_from_slice(key).expect("any key length");
+    let Ok(mut mac) = Hmac::<Sha256>::new_from_slice(key) else {
+        return Vec::new();
+    };
     mac.update(data);
     mac.finalize().into_bytes().to_vec()
 }
@@ -67,7 +70,7 @@ pub fn ses_body(
         .map(|(name, value)| json!({ "Name": name, "Value": value }))
         .collect();
     if !headers.is_empty() {
-        simple["Headers"] = Value::Array(headers);
+        crate::json::put(&mut simple, &["Headers"], Value::Array(headers));
     }
     let mut body = json!({
         "FromEmailAddress": person_text(from.name.as_deref().unwrap_or(""), from.email.as_ref()),
@@ -76,7 +79,7 @@ pub fn ses_body(
         "EmailTags": [{ "Name": SES_TAG, "Value": ses_tag(&message.message_id) }],
     });
     if let Some(set) = config_set {
-        body["ConfigurationSetName"] = json!(set);
+        crate::json::put(&mut body, &["ConfigurationSetName"], json!(set));
     }
     body
 }
@@ -309,7 +312,7 @@ pub fn subscribe_url_ok(url: &str) -> bool {
 pub fn azure_body(from: &lettre::message::Mailbox, message: &Message) -> Value {
     let mut to = json!({ "address": message.to });
     if !message.to_name.is_empty() {
-        to["displayName"] = json!(message.to_name);
+        crate::json::put(&mut to, &["displayName"], json!(message.to_name));
     }
     let mut body = json!({
         "senderAddress": from.email.to_string(),
@@ -322,7 +325,7 @@ pub fn azure_body(from: &lettre::message::Mailbox, message: &Message) -> Value {
         .map(|(name, value)| (name, Value::String(value)))
         .collect();
     if !headers.is_empty() {
-        body["headers"] = Value::Object(headers);
+        crate::json::put(&mut body, &["headers"], Value::Object(headers));
     }
     body
 }

@@ -764,10 +764,14 @@ async fn recheck_with_email(
     };
     let query = query.clone().email(target_email);
     for entry in ranked.iter_mut().take(DUPLICATE_EMAIL_CHECKS) {
-        let Some(email) = crate::clients::email_address(&rows[entry.index].person_ref).await else {
+        let (Some(row), Some(candidate)) = (rows.get(entry.index), candidates.get(entry.index))
+        else {
             continue;
         };
-        entry.result = matcher().compare(&query, &candidates[entry.index].clone().email(email));
+        let Some(email) = crate::clients::email_address(&row.person_ref).await else {
+            continue;
+        };
+        entry.result = matcher().compare(&query, &candidate.clone().email(email));
         emailed.insert(entry.index);
     }
     sort_ranked(ranked);
@@ -859,9 +863,9 @@ async fn contact_duplicates(
         .iter()
         .filter(|entry| entry.result.verdict != Verdict::NonMatch)
         .take(limit)
-        .map(|entry| {
-            let row = &rows[entry.index];
-            DuplicateEntry {
+        .filter_map(|entry| {
+            let row = rows.get(entry.index)?;
+            Some(DuplicateEntry {
                 contact: DuplicateContact {
                     pid: row.pid,
                     display_name: row.display_name.clone(),
@@ -874,7 +878,7 @@ async fn contact_duplicates(
                 deterministic: entry.result.deterministic,
                 email_checked: emailed.contains(&entry.index),
                 fields: entry.result.fields.clone(),
-            }
+            })
         })
         .collect();
     Audit::record_read_on(

@@ -88,7 +88,7 @@ fn rpc_error(
 ) -> Response {
     let mut error = json!({ "code": code, "message": message });
     if let Some(data) = data {
-        error["data"] = data;
+        crate::json::put(&mut error, &["data"], data);
     }
     let body = json!({ "jsonrpc": "2.0", "id": id, "error": error });
     (
@@ -101,7 +101,7 @@ fn rpc_error(
 
 fn rpc_result(id: &Value, mut result: Value, era: Era) -> Response {
     if era == Era::Modern {
-        result["resultType"] = json!("complete");
+        crate::json::put(&mut result, &["resultType"], json!("complete"));
     }
     let body = json!({ "jsonrpc": "2.0", "id": id, "result": result });
     (
@@ -390,7 +390,7 @@ fn tool_result(
         "isError": is_error,
     });
     if let Some(structured) = structured {
-        result["structuredContent"] = structured;
+        crate::json::put(&mut result, &["structuredContent"], structured);
     }
     rpc_result(id, result, era)
 }
@@ -440,7 +440,7 @@ async fn forward(
         .await
         .unwrap_or_default();
     let truncated = bytes.len() > MAX_RESULT;
-    let text = String::from_utf8_lossy(&bytes[..bytes.len().min(MAX_RESULT)]).into_owned();
+    let text = String::from_utf8_lossy(bytes.get(..MAX_RESULT).unwrap_or(&bytes)).into_owned();
     Ok((status, text, truncated))
 }
 

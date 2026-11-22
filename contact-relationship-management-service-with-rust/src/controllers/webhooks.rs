@@ -148,7 +148,7 @@ async fn create(
         pid,
         address,
         serde_json::json!(events),
-        crate::crypto::seal(&secret),
+        crate::crypto::seal(&secret).map_err(|e| Error::string(&e.to_string()))?,
         caller.actor(),
         crate::clock::now(),
     )
@@ -250,7 +250,7 @@ async fn rotate_secret(
         "UPDATE webhook_subscriptions SET previous_secret = secret, \
          previous_secret_expires_at = $3, secret = $2, updated_at = now() WHERE pid = $1",
         pid,
-        crate::crypto::seal(&secret),
+        crate::crypto::seal(&secret).map_err(|e| Error::string(&e.to_string()))?,
         until,
     )
     .execute(&mut *txn)

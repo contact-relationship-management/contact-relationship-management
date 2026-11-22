@@ -495,10 +495,10 @@ impl Tool {
                 "description": param.desc,
             });
             if !param.one_of.is_empty() {
-                property["enum"] = json!(param.one_of);
+                crate::json::put(&mut property, &["enum"], json!(param.one_of));
             }
             if param.ty == Ty::Str && (param.target == "pid" || param.arg.ends_with("_pid")) {
-                property["format"] = json!("uuid");
+                crate::json::put(&mut property, &["format"], json!("uuid"));
             }
             properties.insert(param.arg.to_string(), property);
             if param.required {
@@ -511,7 +511,7 @@ impl Tool {
             "additionalProperties": false,
         });
         if !required.is_empty() {
-            schema["required"] = json!(required);
+            crate::json::put(&mut schema, &["required"], json!(required));
         }
         schema
     }

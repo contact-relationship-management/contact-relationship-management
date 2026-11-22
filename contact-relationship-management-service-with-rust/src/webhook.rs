@@ -21,20 +21,22 @@ pub fn secret() -> Option<String> {
     crate::settings::current().webhook_secret.clone()
 }
 
-fn tag(secret: &str, timestamp: &str, body: &[u8]) -> Hmac<Sha256> {
-    #[allow(clippy::expect_used, reason = "HMAC accepts a key of any length")]
-    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("any key length");
+/// `None` when the key is refused, which HMAC does for no length; a caller then fails closed.
+fn tag(secret: &str, timestamp: &str, body: &[u8]) -> Option<Hmac<Sha256>> {
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).ok()?;
     mac.update(timestamp.as_bytes());
     mac.update(b".");
     mac.update(body);
-    mac
+    Some(mac)
 }
 
-/// The signature header value for a request (used by tests and by a sender).
+/// The signature header value for a request (used by tests and by a sender). Empty when the key
+/// is refused, which no receiver accepts.
 #[must_use]
 pub fn sign(secret: &str, timestamp: &str, body: &[u8]) -> String {
-    let bytes = tag(secret, timestamp, body).finalize().into_bytes();
-    format!("sha256={}", hex(&bytes))
+    tag(secret, timestamp, body).map_or_else(String::new, |mac| {
+        format!("sha256={}", hex(&mac.finalize().into_bytes()))
+    })
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -67,9 +69,7 @@ pub fn verify(secret: &str, timestamp: &str, signature: &str, body: &[u8], now: 
     let Some(given) = signature.strip_prefix("sha256=").and_then(unhex) else {
         return false;
     };
-    tag(secret, timestamp.trim(), body)
-        .verify_slice(&given)
-        .is_ok()
+    tag(secret, timestamp.trim(), body).is_some_and(|mac| mac.verify_slice(&given).is_ok())
 }
 
 /// Whether a request to a signed webhook is authentic: `None` when no secret is configured (the
@@ -119,22 +119,23 @@ pub fn presented(authorization: Option<&str>, token_header: Option<&str>) -> Vec
 
 /// HMAC of a credential under the secret, so a comparison is over fixed-size
 /// digests whatever the credential's length.
-fn credential_mac(secret: &str, credential: &str) -> Hmac<Sha256> {
-    #[allow(clippy::expect_used, reason = "HMAC accepts a key of any length")]
-    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("any key length");
+fn credential_mac(secret: &str, credential: &str) -> Option<Hmac<Sha256>> {
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).ok()?;
     mac.update(b"token.");
     mac.update(credential.as_bytes());
-    mac
+    Some(mac)
 }
 
 /// Whether any presented credential is the secret (compared in constant time).
 #[must_use]
 pub fn token_ok(secret: &str, presented: &[String]) -> bool {
-    let expected = credential_mac(secret, secret).finalize().into_bytes();
+    let Some(expected) = credential_mac(secret, secret).map(|mac| mac.finalize().into_bytes())
+    else {
+        return false;
+    };
     presented.iter().fold(false, |ok, candidate| {
         ok | credential_mac(secret, candidate)
-            .verify_slice(&expected)
-            .is_ok()
+            .is_some_and(|mac| mac.verify_slice(&expected).is_ok())
     })
 }
 

@@ -538,7 +538,7 @@ pub fn resolve_entry(
         Combine::MostSpecific => *first,
         Combine::Strictest | Combine::StrictestMax => {
             let mut best = *first;
-            for row in &found[1..] {
+            for row in found.iter().skip(1) {
                 if let (Some(now), Some(new)) = (rank(entry, &best.value), rank(entry, &row.value))
                     && new < now
                 {

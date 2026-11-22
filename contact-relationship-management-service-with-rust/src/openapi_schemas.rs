@@ -25,7 +25,7 @@ fn object(required: &[&str], properties: &Value) -> Value {
 }
 fn resource(required: &[&str], properties: &Value) -> Value {
     let mut schema = object(required, properties);
-    schema["additionalProperties"] = json!(true);
+    crate::json::put(&mut schema, &["additionalProperties"], json!(true));
     schema
 }
 fn reference(name: &str) -> Value {
@@ -596,7 +596,7 @@ pub fn list_schema(path: &str) -> Option<&'static str> {
 /// Attach `requestBody`, typed list responses, the `Error` body and the
 /// `Created` response to the operations in `doc`.
 pub fn attach(doc: &mut Value) {
-    doc["components"]["schemas"] = schemas();
+    crate::json::put(doc, &["components", "schemas"], schemas());
     let json_body = |schema: Value| json!({ "application/json": { "schema": schema } });
     let Some(paths) = doc["paths"].as_object_mut() else {
         return;
@@ -607,20 +607,36 @@ pub fn attach(doc: &mut Value) {
         };
         for (method, operation) in item.iter_mut() {
             if let Some(name) = request_schema(method, path) {
-                operation["requestBody"] = json!({
-                    "required": true, "content": json_body(reference(name)) });
+                crate::json::put(
+                    operation,
+                    &["requestBody"],
+                    json!({
+                    "required": true, "content": json_body(reference(name)) }),
+                );
                 if method == "post" && path.matches('{').count() == 0 && name.ends_with("Payload") {
-                    operation["responses"]["200"]["content"] = json_body(reference("Created"));
+                    crate::json::put(
+                        operation,
+                        &["responses", "200", "content"],
+                        json_body(reference("Created")),
+                    );
                 }
             }
             if let Some(name) = response_schema(method, path) {
-                operation["responses"]["200"]["content"] = json_body(reference(name));
+                crate::json::put(
+                    operation,
+                    &["responses", "200", "content"],
+                    json_body(reference(name)),
+                );
             }
             if method == "get"
                 && let Some(name) = list_schema(path)
             {
-                operation["responses"]["200"]["content"] = json_body(json!({
-                    "type": "array", "items": reference(name) }));
+                crate::json::put(
+                    operation,
+                    &["responses", "200", "content"],
+                    json_body(json!({
+                    "type": "array", "items": reference(name) })),
+                );
             }
             if path.starts_with("/api/")
                 && let Some(responses) = operation["responses"].as_object_mut()
@@ -630,8 +646,12 @@ pub fn attach(doc: &mut Value) {
                         && !status.starts_with('2')
                         && response.get("content").is_none()
                     {
-                        response["content"] = json!({
-                            "application/problem+json": { "schema": reference("Error") } });
+                        crate::json::put(
+                            response,
+                            &["content"],
+                            json!({
+                            "application/problem+json": { "schema": reference("Error") } }),
+                        );
                     }
                 }
             }

@@ -146,14 +146,16 @@ fn apportion(amount: i64, weights: &[i128]) -> Vec<i64> {
     let amount = i128::from(amount);
     let mut shares: Vec<i128> = weights.iter().map(|w| amount * w / total).collect();
     let mut left = amount - shares.iter().sum::<i128>();
-    let mut order: Vec<usize> = (0..weights.len()).collect();
-    order.sort_by_key(|&i| (std::cmp::Reverse(amount * weights[i] % total), i));
-    for i in order {
+    let mut order: Vec<(usize, i128)> = weights.iter().copied().enumerate().collect();
+    order.sort_by_key(|&(i, w)| (std::cmp::Reverse(amount * w % total), i));
+    for (i, _) in order {
         if left == 0 {
             break;
         }
-        shares[i] += 1;
-        left -= 1;
+        if let Some(share) = shares.get_mut(i) {
+            *share += 1;
+            left -= 1;
+        }
     }
     shares
         .into_iter()

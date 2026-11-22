@@ -1146,11 +1146,14 @@ async fn suggested_articles(
     format::json(
         crate::rules::suggest::suggest(&ticket.title, &texts)
             .into_iter()
-            .map(|m| SuggestedArticle {
-                article_pid: published[m.index].pid.to_string(),
-                title: published[m.index].title.clone(),
-                score: m.score,
-                matched: m.matched,
+            .filter_map(|m| {
+                let article = published.get(m.index)?;
+                Some(SuggestedArticle {
+                    article_pid: article.pid.to_string(),
+                    title: article.title.clone(),
+                    score: m.score,
+                    matched: m.matched,
+                })
             })
             .collect::<Vec<_>>(),
     )

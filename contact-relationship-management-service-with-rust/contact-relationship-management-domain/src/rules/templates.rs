@@ -308,7 +308,7 @@ pub fn fallbacks_in(language: Option<&str>) -> Option<&'static [&'static str; 6]
 #[must_use]
 pub fn built_in_fallback(token: &str, language: Option<&str>) -> Option<&'static str> {
     let index = TOKENS.iter().position(|t| t.name == token)?;
-    fallbacks_in(language).map(|texts| texts[index])
+    fallbacks_in(language).and_then(|texts| texts.get(index).copied())
 }
 
 /// Longest subject a template may have.

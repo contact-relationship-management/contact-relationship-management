@@ -107,7 +107,11 @@ impl Task for Seed {
             .await?;
             account_pids.push(account);
             for c in 0..3 {
-                let (display, given, family) = CONTACT_NAMES[(index * 3 + c) % CONTACT_NAMES.len()];
+                let Some(&(display, given, family)) =
+                    CONTACT_NAMES.get((index * 3 + c) % CONTACT_NAMES.len().max(1))
+                else {
+                    continue;
+                };
                 // Two of three consented, one never — the segment gate is visible in the demo.
                 // `preferred_channel` is sealed: binding `EncryptedText` seals it (CRM-T41).
                 sqlx::query!(
@@ -164,15 +168,21 @@ impl Task for Seed {
         for (i, (currency, amount_minor)) in DEAL_AMOUNTS.iter().enumerate() {
             let stage_index = i % 5;
             let closed = stage_index >= 3;
+            let (Some(&account_pid), Some(&stage_pid)) = (
+                account_pids.get(i % account_pids.len().max(1)),
+                stage_pids.get(stage_index),
+            ) else {
+                continue;
+            };
             sqlx::query!(
                 "INSERT INTO deals (pid, account_pid, owner_ref, pipeline_pid, stage_pid, name, \
                  amount_minor, currency, expected_close_on, kanban_position, closed_at, won, \
                  lost_reason) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
                 Uuid::new_v4(),
-                account_pids[i % account_pids.len()],
+                account_pid,
                 format!("person:{}", Uuid::new_v4()),
                 pipeline,
-                stage_pids[stage_index],
+                stage_pid,
                 format!("Demo Deal {:02}", i + 1),
                 amount_minor,
                 currency,

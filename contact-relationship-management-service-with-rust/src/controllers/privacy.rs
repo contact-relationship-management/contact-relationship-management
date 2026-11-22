@@ -419,6 +419,7 @@ async fn erase(
     .execute(&mut *txn)
     .await?;
     let affected = scrub_linked(&mut txn, cpid).await?;
+    let counted = |at: usize| affected.get(at).copied().unwrap_or_default();
     // The rows go in the transaction; the files go once it has committed.
     let (files, tags_removed) = erase_attached(&mut txn, cpid).await?;
     Audit::record_on(
@@ -428,19 +429,19 @@ async fn erase(
         "erased",
         caller.actor(),
         Some(serde_json::json!({
-            "activity_summaries_scrubbed": affected[0],
-            "leads_scrubbed": affected[1],
-            "working_group_memberships_deleted": affected[2],
-            "notifications_deleted": affected[3],
-            "form_submissions_deleted": affected[4],
-            "external_links_deleted": affected[5],
-            "webhook_deliveries_cancelled": affected[6],
-            "merged_duplicates_scrubbed": affected[7],
-            "purposes_withdrawn": affected[9],
-            "link_tokens_deleted": affected[10],
-            "employments_deleted": affected[11],
+            "activity_summaries_scrubbed": counted(0),
+            "leads_scrubbed": counted(1),
+            "working_group_memberships_deleted": counted(2),
+            "notifications_deleted": counted(3),
+            "form_submissions_deleted": counted(4),
+            "external_links_deleted": counted(5),
+            "webhook_deliveries_cancelled": counted(6),
+            "merged_duplicates_scrubbed": counted(7),
+            "purposes_withdrawn": counted(9),
+            "link_tokens_deleted": counted(10),
+            "employments_deleted": counted(11),
             "employment_last_events_deleted": employment_events_deleted,
-            "custom_field_values_deleted": affected[affected.len() - 1],
+            "custom_field_values_deleted": affected.last().copied().unwrap_or_default(),
             "attachments_deleted": files.len(),
             "taggings_deleted": tags_removed,
         })),

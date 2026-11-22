@@ -72,12 +72,11 @@ impl Unsubscriber {
         })
     }
 
-    fn mac(&self, payload: &[u8]) -> Tag {
-        // HMAC accepts any key length, so this cannot fail.
-        #[allow(clippy::expect_used, reason = "HMAC accepts a key of any length")]
-        let mut mac = Tag::new_from_slice(&self.secret).expect("hmac takes any key length");
+    /// `None` when the key is refused, which HMAC does for no length; the token then fails closed.
+    fn mac(&self, payload: &[u8]) -> Option<Tag> {
+        let mut mac = Tag::new_from_slice(&self.secret).ok()?;
         mac.update(payload);
-        mac
+        Some(mac)
     }
 
     /// The token for one recipient of one campaign.
@@ -86,8 +85,10 @@ impl Unsubscriber {
         let mut payload = Vec::with_capacity(32);
         payload.extend_from_slice(contact.as_bytes());
         payload.extend_from_slice(campaign.as_bytes());
-        let tag = self.mac(&payload).finalize().into_bytes();
-        payload.extend_from_slice(&tag);
+        let Some(mac) = self.mac(&payload) else {
+            return String::new();
+        };
+        payload.extend_from_slice(&mac.finalize().into_bytes());
         URL_SAFE_NO_PAD.encode(payload)
     }
 
@@ -100,9 +101,10 @@ impl Unsubscriber {
             return None;
         }
         let (payload, tag) = bytes.split_at(32);
-        self.mac(payload).verify_slice(tag).ok()?;
-        let contact = Uuid::from_slice(&payload[..16]).ok()?;
-        let campaign = Uuid::from_slice(&payload[16..]).ok()?;
+        self.mac(payload)?.verify_slice(tag).ok()?;
+        let (contact, campaign) = payload.split_at_checked(16)?;
+        let contact = Uuid::from_slice(contact).ok()?;
+        let campaign = Uuid::from_slice(campaign).ok()?;
         Some((contact, campaign))
     }
 
