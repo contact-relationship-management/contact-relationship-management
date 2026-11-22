@@ -31,6 +31,11 @@ Each call site cites its ID in a comment. A fallback is a valid value of its fig
 | QUOTA-REMAINING-1 | What is still to win to meet a quota (CRM-R59) | The quota is met | Zero | Nothing is left to win once it is met. |
 | PERIOD-1 | Months a fiscal year starts after January | The start month is 0 | Zero months | January starts the year. |
 | ADDR-1 | The mailbox in a `From` value | A bracket pair that cannot be read | The whole value | The whole value is trimmed and read as the mailbox. |
+| DAYS-1 | A `?days=` window on a request | Outside 1 to 365 | The endpoint's default window | An out-of-range window is not read as the nearest bound; the caller gets the window the endpoint documents. |
+| LIMIT-1 | A page size on the duplicates list | Outside 1 to 100 | 20 | The default page. |
+| SETTING-1 | A numeric setting (`MIN_CELL_SIZE`, `MAIL_BATCH`, `ATTACHMENT_MAX_BYTES`) | Outside its range, or not a number | The setting's default (5, 200, 10 MiB) | A mistyped setting is the default the documentation names, not a bound nobody chose. |
+| SCORE-1 | A lead score (CRM-D5) | The rule weights total below 0 or above 100 | 0 or 100 | The score is defined on 0 to 100; the breakdown still lists every rule. |
+| BOARD-1 | A card's position in a column | Below 0 or past the end | The start or the end | A card dropped past the column is last. |
 
 ## Figures with no fallback
 
@@ -53,7 +58,7 @@ RCA-ERR-4). A `422` says "`<figure>` could not be calculated" (`arith::overflow`
   `unwrap_used` and `expect_used` outside tests (CI runs clippy with `-D warnings`).
 - `Timestamp` and `Date` have no operators in production: `checked_add`, `checked_sub`, `checked_add_days`,
   `checked_sub_days` and `duration_since`. The operators exist only for tests (`time::test_operators`).
-- No `saturating_*`, `wrapping_*` or `overflowing_*` in production code.
+- No `saturating_*`, `wrapping_*` or `overflowing_*`, and no `clamp`, in production code of the service and domain crates. A bound is `rules::bounds::within(n, lo..=hi)` plus `unwrap_or` with a declared fallback above. A deal probability outside 0 to 100 has no forecast (an error, no fallback). The matcher crate's `clamp` of its log-odds (a float bound of its own model) is not yet converted.
 - Not yet at the rule: `as` conversions and the other lints of RCA-ENF-1 (`as_conversions`, `cast_*`,
   `integer_division`, `float_arithmetic`, `string_slice`, `allow_attributes`); `clippy.toml` `disallowed-methods`
   (RCA-ENF-2); `overflow-checks` in the release profile (RCA-ENF-4); the CI grep (RCA-ENF-5); `try_fold` in place of

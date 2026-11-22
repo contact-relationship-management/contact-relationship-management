@@ -159,7 +159,8 @@ pub fn score(facts: &LeadFacts, weights: &Weights) -> Option<ScoreBreakdown> {
     let total = rules
         .iter()
         .try_fold(0_i32, |sum, rule| sum.checked_add(rule.points))?;
-    let score = total.clamp(0, 100);
+    // SCORE-1: a total outside 0 to 100 takes the score's own floor or ceiling.
+    let score = super::bounds::within(total, 0..=100).unwrap_or(if total < 0 { 0 } else { 100 });
     let label = if score >= 70 {
         "hot"
     } else if score >= 40 {

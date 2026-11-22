@@ -9,6 +9,7 @@ pub mod analytics;
 pub mod attachments;
 pub mod attribution;
 pub mod audit_chain;
+pub mod bounds;
 pub mod calendar;
 pub mod column_names;
 pub mod consent_regime;

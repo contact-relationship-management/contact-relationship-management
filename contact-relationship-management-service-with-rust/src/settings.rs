@@ -18,6 +18,7 @@
 use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::clients::Mode;
+use crate::rules::bounds::within;
 use crate::streaming::EventTransport;
 
 /// Shortest accepted inbound-webhook secret.
@@ -212,7 +213,7 @@ impl Settings {
             mail_retention_days: get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS"),
             min_cell_size: get("CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE")
                 .and_then(|v| v.trim().parse::<i64>().ok())
-                .map_or(5, |n| n.clamp(0, 1000)),
+                .map_or(5, |n| within(n, 0..=1000).unwrap_or(5)), // SETTING-1
             ppm_service_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL"),
             worker_service_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL"),
             ppm_service_token: text("CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN"),
@@ -229,7 +230,7 @@ impl Settings {
             retention_days: get("CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS"),
             mail_batch: get("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH")
                 .and_then(|v| v.trim().parse::<i64>().ok())
-                .map_or(200, |n| n.clamp(1, 5000)),
+                .map_or(200, |n| within(n, 1..=5000).unwrap_or(200)), // SETTING-1
             webhook_secret: get("CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET")
                 .filter(|s| s.len() >= MIN_WEBHOOK_SECRET),
             wpm_webhook_secret: get("CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET")
@@ -278,7 +279,10 @@ impl Settings {
                 .map(|v| v.trim().to_string()),
             attachment_max_bytes: get("CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_MAX_BYTES")
                 .and_then(|v| v.trim().parse::<u64>().ok())
-                .map_or(10 * 1024 * 1024, |n| n.clamp(1, 100 * 1024 * 1024)),
+                .map_or(10 * 1024 * 1024, |n| {
+                    // SETTING-1
+                    within(n, 1..=100 * 1024 * 1024).unwrap_or(10 * 1024 * 1024)
+                }),
             attachment_scan_command: text(
                 "CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_SCAN_COMMAND",
             )
@@ -456,7 +460,7 @@ mod tests {
     }
 
     #[test]
-    fn the_mail_batch_is_clamped_and_junk_is_the_default() {
+    fn the_mail_batch_out_of_range_or_junk_is_the_default() {
         let batch = |v: &str| {
             Settings::from_lookup(&lookup(&[(
                 "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH",
@@ -465,10 +469,31 @@ mod tests {
             .mail_batch
         };
         assert_eq!(batch("50"), 50);
-        assert_eq!(batch("0"), 1);
-        assert_eq!(batch("-5"), 1);
-        assert_eq!(batch("999999"), 5000);
+        assert_eq!(batch("1"), 1);
+        assert_eq!(batch("5000"), 5000);
+        assert_eq!(batch("0"), 200);
+        assert_eq!(batch("-5"), 200);
+        assert_eq!(batch("999999"), 200);
         assert_eq!(batch("lots"), 200);
+    }
+
+    /// SETTING-1: a number outside its range is the setting's default, never the nearest bound.
+    #[test]
+    fn the_other_numbers_out_of_range_are_their_defaults() {
+        let get = |key: &str, v: &str| Settings::from_lookup(&lookup(&[(key, v)]));
+        let cell = "CONTACT_RELATIONSHIP_MANAGEMENT_MIN_CELL_SIZE";
+        assert_eq!(get(cell, "0").min_cell_size, 0);
+        assert_eq!(get(cell, "1000").min_cell_size, 1000);
+        assert_eq!(get(cell, "1001").min_cell_size, 5);
+        assert_eq!(get(cell, "-1").min_cell_size, 5);
+        let bytes = "CONTACT_RELATIONSHIP_MANAGEMENT_ATTACHMENT_MAX_BYTES";
+        assert_eq!(get(bytes, "1").attachment_max_bytes, 1);
+        assert_eq!(get(bytes, "104857600").attachment_max_bytes, 104_857_600);
+        assert_eq!(get(bytes, "0").attachment_max_bytes, 10 * 1024 * 1024);
+        assert_eq!(
+            get(bytes, "104857601").attachment_max_bytes,
+            10 * 1024 * 1024
+        );
     }
 
     #[test]

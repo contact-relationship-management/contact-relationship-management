@@ -24,9 +24,12 @@ pub struct OpenDeal {
 pub fn forecast_by_currency(deals: &[OpenDeal]) -> Result<BTreeMap<String, i64>, String> {
     let mut totals: BTreeMap<String, i64> = BTreeMap::new();
     for deal in deals {
+        // A probability is a percentage; one outside 0 to 100 has no forecast, and no fallback.
+        let percent = super::bounds::within(deal.probability_percent, 0..=100)
+            .ok_or_else(|| "a deal probability is outside 0 to 100".to_string())?;
         let weighted = deal
             .amount_minor
-            .checked_mul(i64::from(deal.probability_percent.clamp(0, 100)))
+            .checked_mul(i64::from(percent))
             .map(|v| v / 100)
             .ok_or_else(|| "forecast arithmetic overflows".to_string())?;
         let slot = totals.entry(deal.currency.clone()).or_insert(0);
@@ -180,6 +183,20 @@ mod tests {
         assert_eq!(super::win_rate(i64::MAX, 1), None);
         assert!(margin(i64::MAX, MAX_BPS).is_ok());
         assert!(projected(i64::MAX, MAX_BPS, 0, MAX_YEARS).is_err());
+    }
+
+    #[test]
+    fn a_probability_outside_zero_to_100_has_no_forecast() {
+        assert!(forecast_by_currency(&[deal(100, "EUR", 101)]).is_err());
+        assert!(forecast_by_currency(&[deal(100, "EUR", -1)]).is_err());
+        assert_eq!(
+            forecast_by_currency(&[deal(100, "EUR", 100)]).unwrap()["EUR"],
+            100
+        );
+        assert_eq!(
+            forecast_by_currency(&[deal(100, "EUR", 0)]).unwrap()["EUR"],
+            0
+        );
     }
 
     fn deal(amount: i64, currency: &str, p: i32) -> OpenDeal {

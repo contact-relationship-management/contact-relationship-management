@@ -109,9 +109,8 @@ pub(crate) struct ActivityEditPayload {
 /// renumber the whole column from the result.
 fn new_order(order: &[Uuid], pid: Uuid, position: i32) -> Vec<Uuid> {
     let mut next: Vec<Uuid> = order.iter().copied().filter(|p| *p != pid).collect();
-    let at = usize::try_from(position.max(0))
-        .unwrap_or(0)
-        .min(next.len());
+    // BOARD-1: a position below the column is its start; one past it is its end.
+    let at = usize::try_from(position).unwrap_or(0).min(next.len());
     next.insert(at, pid);
     next
 }
