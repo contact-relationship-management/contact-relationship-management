@@ -218,10 +218,11 @@ async fn sales_dashboard(
 ) -> Result<Response> {
     let masked = crate::auth::aggregate_masked(&caller).map_err(super::record_rejection)?;
     let (won, lost) = sales::closed_counts(crate::db::pool(&ctx)).await?;
-    let rate = analytics::win_rate(
-        i64::try_from(won).unwrap_or(i64::MAX),
-        i64::try_from(lost).unwrap_or(i64::MAX),
-    );
+    let rate = i64::try_from(won)
+        .ok()
+        .zip(i64::try_from(lost).ok())
+        .and_then(|(won, lost)| analytics::win_rate(won, lost))
+        .ok_or_else(super::too_large)?;
     // Pipeline value by stage, per currency.
     let (totals, open_deals) = open_deals_by_stage(crate::db::pool(&ctx)).await?;
     // Counts and structure stay visible when masked; the money is absent, never zero.

@@ -5,6 +5,8 @@
 //! amount is converted with integer arithmetic, scaled by the two currencies' own minor units
 //! (ISO 4217, [`super::currency`]) and rounded half to even.
 
+#![cfg_attr(not(test), deny(clippy::arithmetic_side_effects))]
+
 use crate::time::Date;
 
 /// Billionths in one: a rate is held as `rate * 1_000_000_000`.
@@ -68,7 +70,10 @@ pub fn parse_rate(text: &str) -> Result<i64, String> {
     }
     let padded = format!("{fraction:0<PLACES$}");
     let parts: i64 = padded.parse().map_err(|_| bad())?;
-    let ppb = whole * ONE + parts;
+    let ppb = whole
+        .checked_mul(ONE)
+        .and_then(|scaled| scaled.checked_add(parts))
+        .ok_or_else(bad)?;
     if ppb <= 0 { Err(bad()) } else { Ok(ppb) }
 }
 
@@ -135,16 +140,17 @@ pub fn pick(rates: &[Rate], from: &str, to: &str, day: Date) -> Option<Picked> {
     }
 }
 
-/// `numerator / denominator` rounded half to even.
-pub(crate) fn divide(numerator: i128, denominator: i128) -> i128 {
-    let (quotient, remainder) = (numerator / denominator, numerator % denominator);
-    let twice = remainder.abs() * 2;
+/// `numerator / denominator` rounded half to even; `None` for a zero denominator or an overflow.
+pub(crate) fn divide(numerator: i128, denominator: i128) -> Option<i128> {
+    let quotient = numerator.checked_div(denominator)?;
+    let remainder = numerator.checked_rem(denominator)?;
+    let twice = remainder.checked_abs()?.checked_mul(2)?;
     // The step is only taken when there is a remainder, so the numerator is never zero then.
     let step = numerator.signum();
     if twice > denominator || (twice == denominator && quotient % 2 != 0) {
-        quotient + step
+        quotient.checked_add(step)
     } else {
-        quotient
+        Some(quotient)
     }
 }
 
@@ -154,8 +160,10 @@ pub(crate) fn divide(numerator: i128, denominator: i128) -> i128 {
 /// currencies' own exponents (CRM-T167): USD 1.00 (100 minor) at 150 is JPY 150 (150 minor), not
 /// 15,000. The scaling and the rate are applied in one division, so the result is rounded once.
 /// A code the table does not hold (stored before CRM-T168) counts as exponent 2.
+///
+/// `None` when the amount does not fit the other currency's `i64`, or a power or product overflows.
 #[must_use]
-pub fn convert(amount_minor: i64, picked: &Picked) -> i64 {
+pub fn convert(amount_minor: i64, picked: &Picked) -> Option<i64> {
     use super::currency::stored_exponent;
     let (amount, ppb, one) = (
         i128::from(amount_minor),
@@ -172,18 +180,20 @@ pub fn convert(amount_minor: i64, picked: &Picked) -> i64 {
     } else {
         (from, to)
     };
-    let (up, down) = (10_i128.pow(target), 10_i128.pow(source));
+    let (up, down) = (10_i128.checked_pow(target)?, 10_i128.checked_pow(source)?);
     // |amount| < 2^63, ppb and ONE < 2^50, 10^4 < 2^14: every product fits in an i128.
     let converted = if picked.inverted {
-        divide(amount * one * up, ppb * down)
+        divide(
+            amount.checked_mul(one)?.checked_mul(up)?,
+            ppb.checked_mul(down)?,
+        )?
     } else {
-        divide(amount * ppb * up, one * down)
+        divide(
+            amount.checked_mul(ppb)?.checked_mul(up)?,
+            one.checked_mul(down)?,
+        )?
     };
-    i64::try_from(converted).unwrap_or(if converted.is_negative() {
-        i64::MIN
-    } else {
-        i64::MAX
-    })
+    i64::try_from(converted).ok()
 }
 
 /// Sums in one currency that could not be converted, because no rate was in force.
@@ -213,13 +223,15 @@ pub struct Converted {
 /// Each sum is converted **once**, so the rounding is at most half a minor unit per group and
 /// currency; a sum already in the target is kept as it is; a sum with no rate is left out and
 /// counted, never dropped quietly and never taken at one-to-one. Groups then merge.
+///
+/// `None` when a conversion or a sum overflows, so no figure is shown that is not the real one.
 #[must_use]
 pub fn convert_rows(
     rows: &[(String, String, i64)],
     target: &str,
     day: Date,
     rates: &[Rate],
-) -> Converted {
+) -> Option<Converted> {
     use std::collections::BTreeMap;
     let mut chosen: BTreeMap<&str, Option<Picked>> = BTreeMap::new();
     let mut merged: BTreeMap<&str, i64> = BTreeMap::new();
@@ -228,19 +240,22 @@ pub fn convert_rows(
         let converted = if currency == target {
             Some(*value)
         } else {
-            chosen
+            match chosen
                 .entry(currency.as_str())
                 .or_insert_with(|| pick(rates, currency, target, day))
                 .as_ref()
-                .map(|picked| convert(*value, picked))
+            {
+                Some(picked) => Some(convert(*value, picked)?),
+                None => None,
+            }
         };
         if let Some(value) = converted {
             let total = merged.entry(group.as_str()).or_default();
-            *total = total.saturating_add(value);
+            *total = total.checked_add(value)?;
         } else {
             let entry = left.entry(currency.as_str()).or_default();
-            entry.0 += 1;
-            entry.1 = entry.1.saturating_add(*value);
+            entry.0 = entry.0.checked_add(1)?;
+            entry.1 = entry.1.checked_add(*value)?;
         }
     }
     let mut rows: Vec<(String, i64)> = merged
@@ -260,11 +275,11 @@ pub fn convert_rows(
             amount_minor,
         })
         .collect();
-    Converted {
+    Some(Converted {
         rows,
         used,
         left_out,
-    }
+    })
 }
 
 /// Convert `(group, day, currency, sum)` rows into `target`, **each at the rate in force on its own
@@ -273,12 +288,13 @@ pub fn convert_rows(
 /// deal, which the database has already added up). A sum already in the target is kept; one with
 /// no rate on its day is left out and counted, never taken at one-to-one; a group with nothing
 /// converted has no row, as in [`convert_rows`].
+/// `None` when a conversion or a sum overflows.
 #[must_use]
 pub fn convert_rows_dated(
     rows: &[(String, Date, String, i64)],
     target: &str,
     rates: &[Rate],
-) -> Converted {
+) -> Option<Converted> {
     use std::collections::BTreeMap;
     let mut used: BTreeMap<(String, Date, bool), Picked> = BTreeMap::new();
     let mut merged: BTreeMap<&str, i64> = BTreeMap::new();
@@ -287,7 +303,7 @@ pub fn convert_rows_dated(
         let converted = if currency == target {
             Some(*value)
         } else if let Some(picked) = pick(rates, currency, target, *day) {
-            let value = convert(*value, &picked);
+            let value = convert(*value, &picked)?;
             used.insert(
                 (currency.clone(), picked.rate.effective_on, picked.inverted),
                 picked,
@@ -298,11 +314,11 @@ pub fn convert_rows_dated(
         };
         if let Some(value) = converted {
             let total = merged.entry(group.as_str()).or_default();
-            *total = total.saturating_add(value);
+            *total = total.checked_add(value)?;
         } else {
             let entry = left.entry(currency.as_str()).or_default();
-            entry.0 += 1;
-            entry.1 = entry.1.saturating_add(*value);
+            entry.0 = entry.0.checked_add(1)?;
+            entry.1 = entry.1.checked_add(*value)?;
         }
     }
     let mut rows: Vec<(String, i64)> = merged
@@ -310,7 +326,7 @@ pub fn convert_rows_dated(
         .map(|(group, value)| (group.to_string(), value))
         .collect();
     rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-    Converted {
+    Some(Converted {
         rows,
         used: used
             .into_iter()
@@ -324,7 +340,7 @@ pub fn convert_rows_dated(
                 amount_minor,
             })
             .collect(),
-    }
+    })
 }
 
 /// Deals converted each at the rate in force on its own day.
@@ -341,32 +357,33 @@ pub struct DatedConverted {
 /// Convert `(day, currency, amount)` deals into `target`, **each at the rate in force on its own
 /// day** (CRM-R70) and rounded once per deal, then add them. An amount already in the target is
 /// kept as it is; one with no rate on its day is left out and counted, never taken at one-to-one.
+/// `None` when a conversion or the total overflows.
 #[must_use]
 pub fn convert_dated(
     deals: &[(Date, String, i64)],
     target: &str,
     rates: &[Rate],
-) -> DatedConverted {
+) -> Option<DatedConverted> {
     use std::collections::BTreeMap;
     let mut total = 0_i64;
     let mut used: BTreeMap<(String, Date, bool), Picked> = BTreeMap::new();
     let mut left: BTreeMap<&str, (usize, i64)> = BTreeMap::new();
     for (day, currency, amount) in deals {
         if currency == target {
-            total = total.saturating_add(*amount);
+            total = total.checked_add(*amount)?;
         } else if let Some(picked) = pick(rates, currency, target, *day) {
-            total = total.saturating_add(convert(*amount, &picked));
+            total = total.checked_add(convert(*amount, &picked)?)?;
             used.insert(
                 (currency.clone(), picked.rate.effective_on, picked.inverted),
                 picked,
             );
         } else {
             let entry = left.entry(currency.as_str()).or_default();
-            entry.0 += 1;
-            entry.1 = entry.1.saturating_add(*amount);
+            entry.0 = entry.0.checked_add(1)?;
+            entry.1 = entry.1.checked_add(*amount)?;
         }
     }
-    DatedConverted {
+    Some(DatedConverted {
         total,
         used: used
             .into_iter()
@@ -380,12 +397,52 @@ pub fn convert_dated(
                 amount_minor,
             })
             .collect(),
-    }
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The conversions answer `None` on overflow; most of these tests are about the figures.
+    fn convert(amount: i64, picked: &Picked) -> i64 {
+        super::convert(amount, picked).unwrap()
+    }
+    fn convert_rows(
+        rows: &[(String, String, i64)],
+        target: &str,
+        day: Date,
+        rates: &[Rate],
+    ) -> Converted {
+        super::convert_rows(rows, target, day, rates).unwrap()
+    }
+    fn convert_rows_dated(
+        rows: &[(String, Date, String, i64)],
+        target: &str,
+        rates: &[Rate],
+    ) -> Converted {
+        super::convert_rows_dated(rows, target, rates).unwrap()
+    }
+    fn convert_dated(
+        deals: &[(Date, String, i64)],
+        target: &str,
+        rates: &[Rate],
+    ) -> DatedConverted {
+        super::convert_dated(deals, target, rates).unwrap()
+    }
+
+    #[test]
+    fn arithmetic_that_does_not_fit_is_none_not_a_panic_or_a_wrap() {
+        assert_eq!(divide(1, 0), None, "a zero denominator");
+        assert_eq!(
+            divide(i128::MIN, -1),
+            None,
+            "the one quotient that does not fit"
+        );
+        assert_eq!(divide(7, 2), Some(4), "3.5 rounds to the even 4");
+        assert_eq!(divide(5, 2), Some(2), "2.5 rounds to the even 2");
+        assert_eq!(parse_rate("999999.999999999").map(|ppb| ppb > 0), Ok(true));
+    }
 
     // CRM-T259: a sign is not a digit, before the point or after it, though the integer parser
     // would take one.
@@ -556,12 +613,16 @@ mod tests {
             rate: rate("A", "B", "999999.999999999", day(1, 1)),
             inverted: false,
         };
-        assert_eq!(convert(i64::MAX, &big), i64::MAX, "it saturates, not wraps");
+        assert_eq!(
+            super::convert(i64::MAX, &big),
+            None,
+            "it is None, not a wrapped or clamped figure"
+        );
         let back = Picked {
             rate: rate("A", "B", "0.000000001", day(1, 1)),
             inverted: true,
         };
-        assert_eq!(convert(i64::MAX, &back), i64::MAX);
+        assert_eq!(super::convert(i64::MAX, &back), None);
         let ordinary = Picked {
             rate: rate("A", "B", "1.5", day(1, 1)),
             inverted: false,
@@ -631,10 +692,10 @@ mod tests {
     }
 
     #[test]
-    fn a_large_amount_into_a_four_place_currency_saturates_rather_than_wraps() {
+    fn a_large_amount_into_a_four_place_currency_is_none_rather_than_wrapped() {
         let big = picked("JPY", "CLF", "999999.999999999", false);
-        assert_eq!(convert(i64::MAX, &big), i64::MAX);
-        assert_eq!(convert(i64::MIN + 1, &big), i64::MIN);
+        assert_eq!(super::convert(i64::MAX, &big), None);
+        assert_eq!(super::convert(i64::MIN + 1, &big), None);
     }
 
     fn row(group: &str, currency: &str, value: i64) -> (String, String, i64) {

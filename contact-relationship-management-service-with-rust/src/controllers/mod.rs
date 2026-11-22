@@ -153,6 +153,14 @@ pub fn unprocessable(message: &str) -> Error {
     )
 }
 
+/// A `422` for a figure that does not fit, where the arithmetic (`checked_*`, CRM-T301) returned
+/// `None`: a number the caller sent, or a sum of stored ones, is too large to be worked out
+/// exactly. Nothing is clamped or wrapped.
+#[must_use]
+pub fn too_large() -> Error {
+    unprocessable("a figure is too large to calculate exactly")
+}
+
 /// Map a record-level authorization rejection (`(status, reason)`) to a
 /// error response: `403` = policy denied; `401` = fail-safe when
 /// claims are missing behind the guard.

@@ -409,10 +409,11 @@ async fn names_of(ctx: &AppContext, ids: &BTreeSet<Uuid>) -> Result<HashMap<Uuid
     Ok(rows.into_iter().map(|row| (row.pid, row.name)).collect())
 }
 
-/// Add `amount` to a currency's total.
-fn add(totals: &mut BTreeMap<String, i64>, currency: &str, amount: i64) {
+/// Add `amount` to a currency's total; `None` when the total would not fit.
+fn add(totals: &mut BTreeMap<String, i64>, currency: &str, amount: i64) -> Option<()> {
     let total = totals.entry(currency.to_string()).or_default();
-    *total = total.saturating_add(amount);
+    *total = total.checked_add(amount)?;
+    Some(())
 }
 
 fn amounts(totals: BTreeMap<String, i64>) -> Vec<Amount> {
@@ -444,17 +445,18 @@ struct Shared {
 }
 
 /// Share every deal among its touches: each campaign's tally, and what no campaign touched.
+/// `None` when a count, a share or a total does not fit.
 fn share_out(
     model: Model,
     half_life_days: i64,
     end_percent: i64,
     deals: &[Won],
     touches: &mut HashMap<Uuid, Vec<Touch>>,
-) -> Shared {
+) -> Option<Shared> {
     let mut tallies: BTreeMap<Uuid, Tally> = BTreeMap::new();
     let mut unattributed: BTreeMap<String, i64> = BTreeMap::new();
     let mut unattributed_dated = Vec::new();
-    let mut unattributed_deals = 0;
+    let mut unattributed_deals = 0_usize;
     for deal in deals {
         let mut list = touches.remove(&deal.pid).unwrap_or_default();
         // The recorded source campaign is always a touch, at the deal's creation (CRM-R49).
@@ -465,16 +467,18 @@ fn share_out(
             });
         }
         if list.is_empty() {
-            unattributed_deals += 1;
-            add(&mut unattributed, &deal.currency, deal.amount_minor);
+            unattributed_deals = unattributed_deals.checked_add(1)?;
+            add(&mut unattributed, &deal.currency, deal.amount_minor)?;
             unattributed_dated.push((deal.closed_on, deal.currency.clone(), deal.amount_minor));
             continue;
         }
         for touch in &list {
-            tallies.entry(touch.campaign).or_default().touches += 1;
+            let tally = tallies.entry(touch.campaign).or_default();
+            tally.touches = tally.touches.checked_add(1)?;
         }
         for campaign in list.iter().map(|t| t.campaign).collect::<BTreeSet<_>>() {
-            tallies.entry(campaign).or_default().deals += 1;
+            let tally = tallies.entry(campaign).or_default();
+            tally.deals = tally.deals.checked_add(1)?;
         }
         for (campaign, share) in rules::credit_tuned(
             model,
@@ -483,20 +487,20 @@ fn share_out(
             deal.closed_at,
             half_life_days,
             end_percent,
-        ) {
+        )? {
             let tally = tallies.entry(campaign).or_default();
-            add(&mut tally.credit, &deal.currency, share);
+            add(&mut tally.credit, &deal.currency, share)?;
             tally
                 .dated
                 .push((deal.closed_on, deal.currency.clone(), share));
         }
     }
-    Shared {
+    Some(Shared {
         tallies,
         unattributed,
         unattributed_dated,
         unattributed_deals,
-    }
+    })
 }
 
 /// With `convert_to`, each campaign's credit in each currency is converted once and merged.
@@ -586,7 +590,8 @@ async fn run(
     )
     .await?;
 
-    let shared = share_out(model, half_life_days, end_percent, &deals, &mut touches);
+    let shared = share_out(model, half_life_days, end_percent, &deals, &mut touches)
+        .ok_or_else(super::too_large)?;
     let mut conversion = convert_credit(&ctx, &query, &shared).await?;
     let Shared {
         tallies,

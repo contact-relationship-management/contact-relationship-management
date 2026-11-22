@@ -652,7 +652,7 @@ async fn credit_of(
         split
             .iter()
             .position(|s| s.owner_ref == owner)
-            .and_then(|i| quota::split(row.amount_minor, &bps).get(i).copied())
+            .and_then(|i| quota::split(row.amount_minor, &bps)?.get(i).copied())
     };
     Ok(part.map(|p| (row.currency, p)))
 }
@@ -866,7 +866,7 @@ async fn credited_deals(
             shares
                 .iter()
                 .position(|s| s.owner_ref == owner)
-                .and_then(|i| quota::split(deal.amount_minor, &bps).get(i).copied())
+                .and_then(|i| quota::split(deal.amount_minor, &bps)?.get(i).copied())
         };
         // A clawback takes from the worker's credit, never below nothing; a deal wholly clawed back
         // no longer counts (CRM-R68).
@@ -926,9 +926,14 @@ pub(super) async fn standings(
             .map(serde_json::from_value)
             .transpose()
             .map_err(|e| Error::string(&e.to_string()))?;
-        let bands = tiers
-            .as_deref()
-            .map_or_default(|t| quota::bands(quota_minor, revenue, t));
+        let bands = match tiers.as_deref() {
+            Some(t) => quota::bands(quota_minor, revenue, t).ok_or_else(super::too_large)?,
+            None => Vec::new(),
+        };
+        let commission_minor = match tiers {
+            Some(_) => Some(quota::commission(&bands).ok_or_else(super::too_large)?),
+            None => None,
+        };
         rows.push(Attainment {
             quota_pid: q.pid.to_string(),
             owner_ref: owner,
@@ -942,7 +947,7 @@ pub(super) async fn standings(
             remaining_minor: quota::remaining(quota_minor, revenue),
             other_currencies: other,
             plan: q.plan_name,
-            commission_minor: tiers.as_ref().map(|_| quota::commission(&bands)),
+            commission_minor,
             bands,
         });
     }

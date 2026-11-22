@@ -2845,3 +2845,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       is not enabled (249 sites): release builds wrap on overflow and the `% len()` sites were guarded where seen, but
       integer overflow in debug builds and division by a zero length elsewhere are not audited. String slicing by byte
       index (`&s[a..b]`) is not covered by the lint and was not audited. Tests, examples and benches may still panic.
+- [ ] CRM-T301 **Integer arithmetic uses `checked_*` and returns `None` (spec/arithmetic/index.md).** Asked for by the product
+      owner on 2026-11-22. (L)
+      - **Done (phase 1):** `fx`, `analytics`, `quota` and `attribution` in the domain crate (`deny(clippy::arithmetic_side_effects)`
+        per module); `divide`, `convert*`, `split`, `bands`, `commission`, `win_rate` and `credit*` return `Option`, where
+        they clamped to `i64::MAX` before; the service turns `None` into a `422` (`controllers::too_large`). Overflow tests
+        in each module; the 286 database tests pass.
+      - **Not done:** about 200 sites of `clippy::arithmetic_side_effects` in `sla`, `scoring`, `periods`, `calendar`,
+        `chrono_text`, `time` and the service's counters; `Timestamp` and `Date` operators and `time::days` still saturate
+        (CRM-T300) and are to become `checked_*`; `saturating_*` and `unwrap_or(i64::MAX)` calls the lint does not flag; the
+        crate-wide lint is off until every module is converted.

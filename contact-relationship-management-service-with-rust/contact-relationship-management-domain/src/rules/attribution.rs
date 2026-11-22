@@ -3,6 +3,8 @@
 //!
 //! Pure and DB-free. The shares of one deal add up to its amount exactly, to the minor unit.
 
+#![cfg_attr(not(test), deny(clippy::arithmetic_side_effects))]
+
 use std::collections::BTreeMap;
 
 use crate::time::Timestamp;
@@ -138,42 +140,56 @@ pub struct Touch {
 /// Share `amount` among `weights` in proportion, exactly: each gets its floor, and the minor units
 /// left over go one each to the largest remainders, the earliest first on a tie. Weights are not
 /// all zero (one is taken as one if they are).
-fn apportion(amount: i64, weights: &[i128]) -> Vec<i64> {
-    let total: i128 = weights.iter().sum();
+///
+/// `None` when a product, a sum or a share overflows.
+fn apportion(amount: i64, weights: &[i128]) -> Option<Vec<i64>> {
+    let total = weights
+        .iter()
+        .try_fold(0_i128, |sum, weight| sum.checked_add(*weight))?;
     if total <= 0 {
         return apportion(amount, &vec![1; weights.len()]);
     }
     let amount = i128::from(amount);
-    let mut shares: Vec<i128> = weights.iter().map(|w| amount * w / total).collect();
-    let mut left = amount - shares.iter().sum::<i128>();
-    let mut order: Vec<(usize, i128)> = weights.iter().copied().enumerate().collect();
-    order.sort_by_key(|&(i, w)| (std::cmp::Reverse(amount * w % total), i));
+    let mut shares: Vec<i128> = weights
+        .iter()
+        .map(|w| amount.checked_mul(*w)?.checked_div(total))
+        .collect::<Option<_>>()?;
+    let mut left = shares
+        .iter()
+        .try_fold(0_i128, |sum, share| sum.checked_add(*share))
+        .and_then(|sum| amount.checked_sub(sum))?;
+    let mut order: Vec<(usize, i128)> = weights
+        .iter()
+        .enumerate()
+        .map(|(i, w)| Some((i, amount.checked_mul(*w)?.checked_rem(total)?)))
+        .collect::<Option<_>>()?;
+    order.sort_by_key(|&(i, remainder)| (std::cmp::Reverse(remainder), i));
     for (i, _) in order {
         if left == 0 {
             break;
         }
         if let Some(share) = shares.get_mut(i) {
-            *share += 1;
-            left -= 1;
+            *share = share.checked_add(1)?;
+            left = left.checked_sub(1)?;
         }
     }
-    shares
-        .into_iter()
-        .map(|s| i64::try_from(s).unwrap_or(i64::MAX))
-        .collect()
+    shares.into_iter().map(|s| i64::try_from(s).ok()).collect()
 }
 
 /// A touch's weight under time decay: `2^-(age / half-life)`, held as an integer. Between whole
 /// half-lives it falls in a straight line (so it is exact integer arithmetic, within about 6% of
 /// the true curve); a touch from after the close counts as having just happened.
-fn decay_weight(age_seconds: i64, half_life_days: i64) -> i128 {
-    let half_life = i128::from(half_life_days) * 86_400;
+fn decay_weight(age_seconds: i64, half_life_days: i64) -> Option<i128> {
+    let half_life = i128::from(half_life_days).checked_mul(86_400)?;
     let age = i128::from(age_seconds.max(0));
-    let (whole, part) = (age / half_life, age % half_life);
+    let (whole, part) = (age.checked_div(half_life)?, age.checked_rem(half_life)?);
     // 2^100 leaves room for the 92 halvings of the longest window and the shortest half-life.
     let base: i128 = 1 << 100;
-    let at_start = base >> whole.min(100);
-    at_start * (2 * half_life - part) / (2 * half_life)
+    let at_start = base.checked_shr(u32::try_from(whole.min(100)).ok()?)?;
+    let twice = half_life.checked_mul(2)?;
+    at_start
+        .checked_mul(twice.checked_sub(part)?)?
+        .checked_div(twice)
 }
 
 /// The credit each campaign earns for `amount_minor` of a deal closed at `closed_at`, in campaign
@@ -189,7 +205,7 @@ pub fn credit(
     amount_minor: i64,
     touches: &[Touch],
     closed_at: Timestamp,
-) -> Vec<(Uuid, i64)> {
+) -> Option<Vec<(Uuid, i64)>> {
     credit_with(model, amount_minor, touches, closed_at, HALF_LIFE_DAYS)
 }
 
@@ -202,7 +218,7 @@ pub fn credit_with(
     touches: &[Touch],
     closed_at: Timestamp,
     half_life_days: i64,
-) -> Vec<(Uuid, i64)> {
+) -> Option<Vec<(Uuid, i64)>> {
     credit_tuned(
         model,
         amount_minor,
@@ -224,36 +240,40 @@ pub fn credit_tuned(
     closed_at: Timestamp,
     half_life_days: i64,
     end_percent: i64,
-) -> Vec<(Uuid, i64)> {
+) -> Option<Vec<(Uuid, i64)>> {
     if touches.is_empty() || amount_minor < 0 {
-        return Vec::new();
+        return Some(Vec::new());
     }
     let mut ordered = touches.to_vec();
     ordered.sort_by_key(|t| (t.at, t.campaign));
     let n = ordered.len();
+    let last = n.checked_sub(1)?;
     let weights: Vec<i128> = match model {
         Model::First => (0..n).map(|i| i128::from(i == 0)).collect(),
-        Model::Last => (0..n).map(|i| i128::from(i == n - 1)).collect(),
+        Model::Last => (0..n).map(|i| i128::from(i == last)).collect(),
         Model::Linear => vec![1; n],
         Model::TimeDecay => ordered
             .iter()
-            .map(|t| decay_weight((closed_at - t.at).as_secs(), half_life_days))
-            .collect(),
+            .map(|t| decay_weight(closed_at.duration_since(t.at).as_secs(), half_life_days))
+            .collect::<Option<_>>()?,
         Model::Position => match n {
             1 | 2 => vec![1; n],
             _ => {
                 // end : end : (100 - 2 end) shared by the middle, in whole numbers.
-                let middle = i128::try_from(n - 2).unwrap_or(i128::MAX);
+                let middle = i128::try_from(n.checked_sub(2)?).ok()?;
                 let end = i128::from(end_percent);
+                let each_middle = end
+                    .checked_mul(2)
+                    .and_then(|twice| 100_i128.checked_sub(twice))?;
                 (0..n)
                     .map(|i| {
-                        if i == 0 || i == n - 1 {
-                            end * middle
+                        if i == 0 || i == last {
+                            end.checked_mul(middle)
                         } else {
-                            100 - 2 * end
+                            Some(each_middle)
                         }
                     })
-                    .collect()
+                    .collect::<Option<_>>()?
             }
         },
     };
@@ -261,20 +281,79 @@ pub fn credit_tuned(
     for ((touch, weight), share) in ordered
         .iter()
         .zip(&weights)
-        .zip(apportion(amount_minor, &weights))
+        .zip(apportion(amount_minor, &weights)?)
     {
         // A touch with no weight takes no part (first and last give all to one), but one that
         // has weight is listed even when its share rounds to nothing.
         if *weight > 0 {
-            *shares.entry(touch.campaign).or_default() += share;
+            let credited = shares.entry(touch.campaign).or_default();
+            *credited = credited.checked_add(share)?;
         }
     }
-    shares.into_iter().collect()
+    Some(shares.into_iter().collect())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The rules answer `None` on overflow; most of these tests are about the figures, so they
+    // read the answer.
+    fn credit(
+        model: Model,
+        amount: i64,
+        touches: &[Touch],
+        closed_at: Timestamp,
+    ) -> Vec<(Uuid, i64)> {
+        super::credit(model, amount, touches, closed_at).unwrap()
+    }
+    fn credit_with(
+        model: Model,
+        amount: i64,
+        touches: &[Touch],
+        closed_at: Timestamp,
+        half_life_days: i64,
+    ) -> Vec<(Uuid, i64)> {
+        super::credit_with(model, amount, touches, closed_at, half_life_days).unwrap()
+    }
+    fn credit_tuned(
+        model: Model,
+        amount: i64,
+        touches: &[Touch],
+        closed_at: Timestamp,
+        half_life_days: i64,
+        end_percent: i64,
+    ) -> Vec<(Uuid, i64)> {
+        super::credit_tuned(
+            model,
+            amount,
+            touches,
+            closed_at,
+            half_life_days,
+            end_percent,
+        )
+        .unwrap()
+    }
+    fn apportion(amount: i64, weights: &[i128]) -> Vec<i64> {
+        super::apportion(amount, weights).unwrap()
+    }
+    fn decay_weight(age: i64, half_life_days: i64) -> i128 {
+        super::decay_weight(age, half_life_days).unwrap()
+    }
+
+    #[test]
+    fn arithmetic_that_does_not_fit_is_none_not_a_panic_or_a_wrap() {
+        // A weight sum past i128, a half-life that overflows, a share past i64.
+        assert_eq!(super::apportion(1, &[i128::MAX, 1]), None);
+        assert_eq!(super::apportion(i64::MAX, &[i128::MAX]), None);
+        assert_eq!(super::decay_weight(1, i64::MAX), None);
+        assert_eq!(
+            super::decay_weight(1, 0),
+            None,
+            "a zero half-life divides by zero"
+        );
+        assert_eq!(super::apportion(i64::MAX, &[1]), Some(vec![i64::MAX]));
+    }
     fn utc(y: i16, m: i8, d: i8, h: i8) -> Timestamp {
         format!(
             "{}T{h:02}:00:00Z",

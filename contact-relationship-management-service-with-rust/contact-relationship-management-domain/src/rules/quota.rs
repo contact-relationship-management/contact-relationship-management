@@ -7,6 +7,8 @@
 //! units of the quota (rounded down), so the bands tile exactly: no revenue is in two bands and
 //! none is in neither.
 
+#![cfg_attr(not(test), deny(clippy::arithmetic_side_effects))]
+
 use serde::{Deserialize, Serialize};
 
 use super::analytics::{self, Ratio};
@@ -97,52 +99,74 @@ pub struct Band {
 /// A band's revenue is the part of `revenue_minor` between its start and the next one's, where a
 /// start is the quota times its percentage, rounded down. Each band's commission is rounded half to
 /// even, then they add up. A negative revenue earns nothing.
+///
+/// `None` when a threshold, a band or a commission overflows.
 #[must_use]
-pub fn bands(quota_minor: i64, revenue_minor: i64, tiers: &[Tier]) -> Vec<Band> {
-    let start = |percent: u32| i128::from(quota_minor) * i128::from(percent) / 100;
+pub fn bands(quota_minor: i64, revenue_minor: i64, tiers: &[Tier]) -> Option<Vec<Band>> {
+    let start = |percent: u32| {
+        i128::from(quota_minor)
+            .checked_mul(i128::from(percent))?
+            .checked_div(100)
+    };
     let revenue = i128::from(revenue_minor.max(0));
     tiers
         .iter()
         .enumerate()
         .map(|(i, tier)| {
-            let low = start(tier.from_percent);
-            let next = tiers.get(i + 1);
+            let low = start(tier.from_percent)?;
+            let next = tiers.get(i.checked_add(1)?);
             let in_band = match next {
-                Some(next) => (revenue.min(start(next.from_percent)) - low).max(0),
-                None => (revenue - low).max(0),
+                Some(next) => revenue
+                    .min(start(next.from_percent)?)
+                    .checked_sub(low)?
+                    .max(0),
+                None => revenue.checked_sub(low)?.max(0),
             };
-            let paid = divide(in_band * i128::from(tier.rate_bps), 10_000);
-            Band {
+            let paid = divide(in_band.checked_mul(i128::from(tier.rate_bps))?, 10_000)?;
+            Some(Band {
                 from_percent: tier.from_percent,
                 to_percent: next.map(|n| n.from_percent),
-                revenue_minor: i64::try_from(in_band).unwrap_or(i64::MAX),
+                revenue_minor: i64::try_from(in_band).ok()?,
                 rate_bps: tier.rate_bps,
-                commission_minor: i64::try_from(paid).unwrap_or(i64::MAX),
-            }
+                commission_minor: i64::try_from(paid).ok()?,
+            })
         })
         .collect()
 }
 
-/// What the bands paid in all.
+/// What the bands paid in all; `None` when the sum overflows.
 #[must_use]
-pub fn commission(bands: &[Band]) -> i64 {
+pub fn commission(bands: &[Band]) -> Option<i64> {
     bands
         .iter()
-        .fold(0_i64, |sum, b| sum.saturating_add(b.commission_minor))
+        .try_fold(0_i64, |sum, b| sum.checked_add(b.commission_minor))
 }
 
 /// Share `amount_minor` by `shares_bps` (which add up to 10000), to the minor unit (CRM-R65): each
 /// share gets the floor of its proportion and the leftover minor units go one each to the largest
 /// remainders, the earliest share first on a tie. The parts always add up to the amount.
+///
+/// `None` when a product or a part overflows.
 #[must_use]
-pub fn split(amount_minor: i64, shares_bps: &[u32]) -> Vec<i64> {
+pub fn split(amount_minor: i64, shares_bps: &[u32]) -> Option<Vec<i64>> {
     let amount = i128::from(amount_minor);
-    let exact: Vec<i128> = shares_bps.iter().map(|s| amount * i128::from(*s)).collect();
-    let mut parts: Vec<i128> = exact.iter().map(|e| e.div_euclid(10_000)).collect();
-    let mut left = amount - parts.iter().sum::<i128>();
+    let exact: Vec<i128> = shares_bps
+        .iter()
+        .map(|s| amount.checked_mul(i128::from(*s)))
+        .collect::<Option<_>>()?;
+    let mut parts: Vec<i128> = exact
+        .iter()
+        .map(|e| e.checked_div_euclid(10_000))
+        .collect::<Option<_>>()?;
+    let mut left = parts
+        .iter()
+        .try_fold(0_i128, |sum, part| sum.checked_add(*part))
+        .and_then(|sum| amount.checked_sub(sum))?;
     let mut order: Vec<(usize, i128)> = exact
         .iter()
-        .map(|e| e.rem_euclid(10_000))
+        .map(|e| e.checked_rem_euclid(10_000))
+        .collect::<Option<Vec<_>>>()?
+        .into_iter()
         .enumerate()
         .collect();
     order.sort_by(|(a, ra), (b, rb)| rb.cmp(ra).then(a.cmp(b)));
@@ -151,14 +175,11 @@ pub fn split(amount_minor: i64, shares_bps: &[u32]) -> Vec<i64> {
             break;
         }
         if let Some(part) = parts.get_mut(i) {
-            *part += 1;
-            left -= 1;
+            *part = part.checked_add(1)?;
+            left = left.checked_sub(1)?;
         }
     }
-    parts
-        .into_iter()
-        .map(|p| i64::try_from(p).unwrap_or(i64::MAX))
-        .collect()
+    parts.into_iter().map(|p| i64::try_from(p).ok()).collect()
 }
 
 /// The share of a quota reached, with its numerator and denominator (`null` value on a zero quota).
@@ -176,6 +197,53 @@ pub fn remaining(quota_minor: i64, revenue_minor: i64) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The rules answer `None` on overflow; most of these tests are about the figures.
+    fn bands(quota: i64, revenue: i64, tiers: &[Tier]) -> Vec<Band> {
+        super::bands(quota, revenue, tiers).unwrap()
+    }
+    fn split(amount: i64, shares_bps: &[u32]) -> Vec<i64> {
+        super::split(amount, shares_bps).unwrap()
+    }
+    fn commission(bands: &[Band]) -> i64 {
+        super::commission(bands).unwrap()
+    }
+
+    #[test]
+    fn arithmetic_that_does_not_fit_is_none_not_a_panic_or_a_wrap() {
+        let two = [
+            Tier {
+                from_percent: 0,
+                rate_bps: 100,
+            },
+            Tier {
+                from_percent: 100,
+                rate_bps: 200,
+            },
+        ];
+        assert_eq!(
+            super::bands(i64::MAX, i64::MAX, &two).map(|b| b.len()),
+            Some(2)
+        );
+        let all = Band {
+            from_percent: 0,
+            to_percent: None,
+            revenue_minor: 1,
+            rate_bps: 1,
+            commission_minor: i64::MAX,
+        };
+        assert_eq!(
+            super::commission(&[all.clone(), all]),
+            None,
+            "the sum does not fit"
+        );
+        assert_eq!(
+            super::split(i64::MAX, &[u32::MAX]),
+            None,
+            "a share of 42,949,672% does not fit"
+        );
+        assert_eq!(super::split(100, &[5_000, 5_000]), Some(vec![50, 50]));
+    }
 
     // CRM-T259: each limit at its value is allowed and one more is refused.
     #[test]

@@ -19,11 +19,16 @@ assert_eq!(7_u32.checked_div(0), None); // division by zero: None, not a panic
 2. **`None` is the answer.** A function whose arithmetic can fail returns `Option<T>`, or a `Result` made from the
    `Option` (`ok_or(...)`) when the caller needs a reason. The caller decides what `None` means: a refusal (`422`), a
    refused start, or a documented default. It is never a wrapped or clamped number that looks like a real result.
-3. **No wrapping.** `wrapping_*` and `overflowing_*` are not used for a value that is stored, shown or compared.
+3. **Never unwrap a checked result.** The `Option` that `checked_*` returns is handled, not forced: no `.unwrap()`,
+   `.expect(...)`, `unwrap_unchecked()`, and no `.unwrap_or(...)`, `.unwrap_or_default()` or `.unwrap_or_else(...)` that
+   turns `None` into a number (`i64::MAX`, `0`), because that is the clamp or the wrap by another name. Handle `None`
+   with `?`, `ok_or(...)?`, `let ... else`, `match`, or `is_some_and`, and let the caller decide.
+4. **No wrapping.** `wrapping_*` and `overflowing_*` are not used for a value that is stored, shown or compared.
    Release builds wrap on overflow unless told otherwise; the checked function makes the failure visible in every build.
-4. **Indexing and slicing are arithmetic too.** `slice[i]` and `&text[a..b]` panic past the end; use `get`, `first_chunk`,
+5. **Indexing and slicing are arithmetic too.** `slice[i]` and `&text[a..b]` panic past the end; use `get`, `first_chunk`,
    `split_at_checked` or `strip_prefix`.
-5. **Tests may panic.** Test code, examples and benchmarks may use bare operators and `unwrap`; the lints are off there.
+6. **Tests may panic.** Test code, examples and benchmarks may use bare operators and `unwrap` to read a figure, and the
+   lints are off there; a test that is about overflow asserts `None`.
 
 ## How it is enforced
 

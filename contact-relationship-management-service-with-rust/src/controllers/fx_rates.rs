@@ -165,7 +165,7 @@ pub(crate) async fn convert_sums(
         problems.finish()?;
     }
     let rates = rates_involving(db::pool(ctx), target).await?;
-    let done = fx::convert_rows(sums, target, day, &rates);
+    let done = fx::convert_rows(sums, target, day, &rates).ok_or_else(super::too_large)?;
     Ok(Done {
         rows: done.rows,
         rate_date: day,
@@ -205,7 +205,7 @@ pub(crate) async fn convert_dated(
     deals: &[(Date, String, i64)],
 ) -> Result<(i64, Vec<RateUsed>, Vec<Unconverted>)> {
     let rates = rates_involving(db::pool(ctx), target).await?;
-    let done = fx::convert_dated(deals, target, &rates);
+    let done = fx::convert_dated(deals, target, &rates).ok_or_else(super::too_large)?;
     Ok((
         done.total,
         done.used
@@ -242,7 +242,7 @@ pub(crate) async fn convert_rows_dated(
     rows: &[(String, Date, String, i64)],
 ) -> Result<(Vec<(String, i64)>, Vec<RateUsed>, Vec<Unconverted>)> {
     let rates = rates_involving(db::pool(ctx), target).await?;
-    let done = fx::convert_rows_dated(rows, target, &rates);
+    let done = fx::convert_rows_dated(rows, target, &rates).ok_or_else(super::too_large)?;
     Ok((
         done.rows,
         done.used

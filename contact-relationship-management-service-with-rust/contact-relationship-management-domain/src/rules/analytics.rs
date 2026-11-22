@@ -3,6 +3,8 @@
 //! never silently sum), overflow-refusing, ratios reported with their
 //! numerator/denominator and `null` on a zero denominator.
 
+#![cfg_attr(not(test), deny(clippy::arithmetic_side_effects))]
+
 use std::collections::BTreeMap;
 
 /// One open deal's forecast inputs.
@@ -64,10 +66,10 @@ pub fn ratio(numerator: i64, denominator: i64) -> Ratio {
     }
 }
 
-/// Win rate = won / (won + lost) over closed deals.
+/// Win rate = won / (won + lost) over closed deals; `None` when the two do not add.
 #[must_use]
-pub fn win_rate(won: i64, lost: i64) -> Ratio {
-    ratio(won, won + lost)
+pub fn win_rate(won: i64, lost: i64) -> Option<Ratio> {
+    Some(ratio(won, won.checked_add(lost)?))
 }
 
 /// Campaign ROI = (attributed won revenue − cost) / cost, per the
@@ -108,7 +110,10 @@ pub const MAX_BPS: u32 = 10_000;
 ///
 /// On arithmetic overflow.
 pub fn margin(amount_minor: i64, bps: u32) -> Result<i64, String> {
-    let scaled = super::fx::divide(i128::from(amount_minor) * i128::from(bps), 10_000);
+    let scaled = i128::from(amount_minor)
+        .checked_mul(i128::from(bps))
+        .and_then(|product| super::fx::divide(product, 10_000))
+        .ok_or_else(|| "margin overflows".to_string())?;
     i64::try_from(scaled).map_err(|_| "margin overflows".to_string())
 }
 
@@ -123,10 +128,10 @@ pub fn retention_from_history(current_minor: i64, prior_minor: i64) -> Result<Op
     if prior_minor <= 0 {
         return Ok(None);
     }
-    let scaled = super::fx::divide(
-        i128::from(current_minor.max(0)) * i128::from(MAX_BPS),
-        i128::from(prior_minor),
-    );
+    let scaled = i128::from(current_minor.max(0))
+        .checked_mul(i128::from(MAX_BPS))
+        .and_then(|product| super::fx::divide(product, i128::from(prior_minor)))
+        .ok_or_else(|| "retention overflows".to_string())?;
     Ok(Some(
         u32::try_from(scaled.min(i128::from(MAX_BPS)))
             .map_err(|_| "retention overflows".to_string())?,
@@ -147,10 +152,16 @@ pub fn projected(
     years: u32,
 ) -> Result<i64, String> {
     let (mut year, mut total) = (i128::from(annual_minor), 0_i128);
-    let denominator = i128::from(MAX_BPS) + i128::from(discount_bps);
+    let overflows = || "projection overflows".to_string();
+    let denominator = i128::from(MAX_BPS)
+        .checked_add(i128::from(discount_bps))
+        .ok_or_else(overflows)?;
     for _ in 0..years {
-        year = super::fx::divide(year * i128::from(retention_bps), denominator);
-        total += year;
+        year = year
+            .checked_mul(i128::from(retention_bps))
+            .and_then(|product| super::fx::divide(product, denominator))
+            .ok_or_else(overflows)?;
+        total = total.checked_add(year).ok_or_else(overflows)?;
     }
     i64::try_from(total).map_err(|_| "projection overflows".to_string())
 }
@@ -158,6 +169,17 @@ pub fn projected(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn win_rate(won: i64, lost: i64) -> Ratio {
+        super::win_rate(won, lost).unwrap()
+    }
+
+    #[test]
+    fn arithmetic_that_does_not_fit_is_none_not_a_panic_or_a_wrap() {
+        assert_eq!(super::win_rate(i64::MAX, 1), None);
+        assert!(margin(i64::MAX, MAX_BPS).is_ok());
+        assert!(projected(i64::MAX, MAX_BPS, 0, MAX_YEARS).is_err());
+    }
 
     fn deal(amount: i64, currency: &str, p: i32) -> OpenDeal {
         OpenDeal {
