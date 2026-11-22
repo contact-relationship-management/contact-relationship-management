@@ -89,8 +89,8 @@ pub(crate) struct DeliveryView {
     created_at: Timestamp,
 }
 
-fn patterns_of(value: serde_json::Value) -> Vec<String> {
-    serde_json::from_value(value).unwrap_or_default()
+fn patterns_of(value: serde_json::Value) -> Result<Vec<String>> {
+    crate::json::stored(value, "event patterns")
 }
 
 /// `POST /api/webhook-subscriptions`.
@@ -187,16 +187,18 @@ async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     .await?;
     let out: Vec<SubscriptionView> = rows
         .into_iter()
-        .map(|row| SubscriptionView {
-            pid: row.pid,
-            url: row.url,
-            events: patterns_of(row.events),
-            enabled: row.enabled,
-            disabled_reason: row.disabled_reason,
-            rotating: row.rotating,
-            created_at: row.created_at,
+        .map(|row| {
+            Ok(SubscriptionView {
+                pid: row.pid,
+                url: row.url,
+                events: patterns_of(row.events)?,
+                enabled: row.enabled,
+                disabled_reason: row.disabled_reason,
+                rotating: row.rotating,
+                created_at: row.created_at,
+            })
         })
-        .collect();
+        .collect::<Result<_>>()?;
     format::json(out)
 }
 

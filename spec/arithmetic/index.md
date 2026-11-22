@@ -94,8 +94,11 @@ RCA-ERR-4). A `422` says "`<figure>` could not be calculated" (`arith::overflow`
 - `scripts/check-checked-arithmetic.py` runs in the `clippy` stage and fails on `saturating_*`, `wrapping_*`,
   `overflowing_*`, `clamp` and an unwrapped `checked_*` result in production code (RCA-ENF-5).
 - Not yet at the rule:
-  - **`Option::unwrap_or_default`** is used in about 80 places (stored JSON, optional text), which RCA-P-3 forbids and
-    `clippy.toml` does not yet ban. Each needs its own look.
+  - **`Option::unwrap_or_default`** is still used in 48 places, which RCA-P-3 forbids and `clippy.toml` does not yet
+    ban. Stored JSON that read as an empty value (calendars, webhook patterns, views, custom field choices, template
+    fallbacks, workflows and their runs, consent purposes, segment filters) is now an error that names the field
+    (`json::stored`, RCA-IN-6). What is left: an absent map entry read as an empty list, optional text read as an
+    empty string, and the serialization of the service's own types. Each needs its own look.
   - `as` conversions and the other lints of RCA-ENF-1 (`as_conversions`, `cast_*`, `integer_division`,
     `float_arithmetic`, `string_slice`, `allow_attributes`).
   - The matcher crate has no `clippy.toml`, and its `clamp` of the log-odds is not converted.

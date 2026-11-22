@@ -2865,5 +2865,5 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     organization calendar and the search hit's record id no longer substitute a bad value (the first stops start-up,
     the next two are errors that name the setting or field, the last carries the `Uuid` instead of parsing it back).
   - **Decided:** a malformed `Accept-Language` `q` value, or a header that is not text, is a `422` (owner, 2026-11-22).
-  - **Not done:** `Option::unwrap_or_default` in about 80 places; `as` conversions and the other RCA-ENF-1 lints; the matcher crate's `clippy.toml` and `clamp`; `try_from(..).unwrap_or(..)` on
+  - **Not done:** `Option::unwrap_or_default` in 48 places (stored JSON that read as empty is now an error, `json::stored`); `as` conversions and the other RCA-ENF-1 lints; the matcher crate's `clippy.toml` and `clamp`; `try_from(..).unwrap_or(..)` on
     conversions; string slicing by byte index; and `ci-check.sh all`. The integration tests still use plain operators.

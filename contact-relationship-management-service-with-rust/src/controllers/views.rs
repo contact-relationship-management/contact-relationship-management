@@ -117,22 +117,25 @@ struct Row {
     updated_at: crate::time::Timestamp,
 }
 
-fn view(row: Row, me: &str) -> View {
-    View {
+fn view(row: Row, me: &str) -> Result<View> {
+    Ok(View {
         pid: row.pid.to_string(),
         mine: row.owner_ref == me,
         owner_ref: row.owner_ref,
         kind: row.kind,
         name: row.name,
-        filter: serde_json::from_value(row.filter).unwrap_or_default(),
+        filter: crate::json::stored(row.filter, "filter")?,
         sort: row
             .sort_field
             .zip(row.sort_direction)
             .map(|(field, direction)| SortSpec { field, direction }),
-        columns: row.columns.and_then(|c| serde_json::from_value(c).ok()),
+        columns: row
+            .columns
+            .map(|c| crate::json::stored(c, "columns"))
+            .transpose()?,
         shared: row.shared,
         updated_at: row.updated_at,
-    }
+    })
 }
 
 fn validate(payload: &ViewPayload) -> Result<()> {
@@ -187,7 +190,11 @@ async fn list(
     )
     .fetch_all(db::pool(&ctx))
     .await?;
-    format::json(rows.into_iter().map(|r| view(r, &me)).collect::<Vec<_>>())
+    format::json(
+        rows.into_iter()
+            .map(|r| view(r, &me))
+            .collect::<Result<Vec<_>>>()?,
+    )
 }
 
 fn sort_of(payload: &ViewPayload) -> (Option<&str>, Option<&str>) {

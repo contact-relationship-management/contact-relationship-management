@@ -174,22 +174,29 @@ pub struct Purpose {
 ///
 /// A database error.
 pub async fn purposes<'e>(db: impl PgExecutor<'e>) -> Result<Vec<Purpose>, sqlx::Error> {
-    Ok(sqlx::query!(
+    sqlx::query!(
         "SELECT key, position, names, descriptions, active, soft_opt_in_eligible \
          FROM consent_purposes ORDER BY position"
     )
     .fetch_all(db)
     .await?
     .into_iter()
-    .map(|row| Purpose {
-        key: row.key,
-        position: row.position,
-        names: serde_json::from_value(row.names).unwrap_or_default(),
-        descriptions: serde_json::from_value(row.descriptions).unwrap_or_default(),
-        active: row.active,
-        soft_opt_in_eligible: row.soft_opt_in_eligible,
+    .map(|row| {
+        // Stored text that does not read is corrupt data (RCA-IN-6), not an empty set of words.
+        let unreadable = |field: &str| {
+            sqlx::Error::Decode(format!("the stored purpose {field} could not be read").into())
+        };
+        Ok(Purpose {
+            key: row.key,
+            position: row.position,
+            names: serde_json::from_value(row.names).map_err(|_| unreadable("names"))?,
+            descriptions: serde_json::from_value(row.descriptions)
+                .map_err(|_| unreadable("descriptions"))?,
+            active: row.active,
+            soft_opt_in_eligible: row.soft_opt_in_eligible,
+        })
     })
-    .collect())
+    .collect::<Result<Vec<_>, sqlx::Error>>()
 }
 
 /// The purpose named `key`, if it exists.

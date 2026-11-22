@@ -121,18 +121,20 @@ struct DefRow {
     position: i32,
 }
 
-impl From<DefRow> for Def {
-    fn from(row: DefRow) -> Self {
-        Self {
+impl TryFrom<DefRow> for Def {
+    type Error = axa::Error;
+
+    fn try_from(row: DefRow) -> Result<Self> {
+        Ok(Self {
             pid: row.pid,
             entity: row.entity,
             key: row.key,
             label: row.label,
             kind: row.kind,
-            choices: serde_json::from_value(row.choices).unwrap_or_default(),
+            choices: crate::json::stored(row.choices, "choices")?,
             sensitivity: row.sensitivity,
             position: row.position,
-        }
+        })
     }
 }
 
@@ -172,7 +174,7 @@ async fn defs(conn: &mut PgConnection, entity: Option<&str>) -> Result<Vec<Def>>
     )
     .fetch_all(conn)
     .await?;
-    Ok(rows.into_iter().map(Def::from).collect())
+    rows.into_iter().map(Def::try_from).collect()
 }
 
 async fn def_by_pid(conn: &mut PgConnection, pid: Uuid) -> Result<Def> {
@@ -184,8 +186,8 @@ async fn def_by_pid(conn: &mut PgConnection, pid: Uuid) -> Result<Def> {
     )
     .fetch_optional(conn)
     .await?
-    .map(Def::from)
-    .ok_or(Error::NotFound)
+    .ok_or(Error::NotFound)?
+    .try_into()
 }
 
 fn problems_of(found: Vec<(String, String)>) -> Result<()> {

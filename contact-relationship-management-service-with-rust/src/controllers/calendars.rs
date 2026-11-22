@@ -62,15 +62,15 @@ struct Row {
     in_use: i64,
 }
 
-fn view(row: Row) -> CalendarView {
-    CalendarView {
+fn view(row: Row) -> Result<CalendarView> {
+    Ok(CalendarView {
         pid: row.pid.to_string(),
         name: row.name,
         timezone: row.timezone,
-        week: serde_json::from_value(row.week).unwrap_or_default(),
-        holidays: serde_json::from_value(row.holidays).unwrap_or_default(),
+        week: crate::json::stored(row.week, "week")?,
+        holidays: crate::json::stored(row.holidays, "holidays")?,
         in_use: row.in_use,
-    }
+    })
 }
 
 /// The calendar `pid`, ready to count on; `None` when it is gone or no longer builds.
@@ -88,8 +88,8 @@ pub(crate) async fn load<'e>(db: impl PgExecutor<'e>, pid: Uuid) -> Result<Optio
     else {
         return Ok(None);
     };
-    let week: Week = serde_json::from_value(row.week).unwrap_or_default();
-    let holidays: Vec<Date> = serde_json::from_value(row.holidays).unwrap_or_default();
+    let week: Week = crate::json::stored(row.week, "week")?;
+    let holidays: Vec<Date> = crate::json::stored(row.holidays, "holidays")?;
     let holidays: Vec<jiff::civil::Date> = holidays.into_iter().map(Into::into).collect();
     Ok(Calendar::build(&row.timezone, &week, &holidays).ok())
 }
@@ -140,7 +140,7 @@ async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     )
     .fetch_all(db::pool(&ctx))
     .await?;
-    format::json(rows.into_iter().map(view).collect::<Vec<_>>())
+    format::json(rows.into_iter().map(view).collect::<Result<Vec<_>>>()?)
 }
 
 /// `GET /api/business-calendars/{pid}`.
@@ -157,7 +157,7 @@ async fn show(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Re
     .fetch_optional(db::pool(&ctx))
     .await?
     .ok_or(Error::NotFound)?;
-    format::json(view(row))
+    format::json(view(row)?)
 }
 
 /// `POST /api/business-calendars`.

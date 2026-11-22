@@ -72,8 +72,7 @@ pub(super) async fn evaluate_segment(
     segment: &segments::Model,
     purpose: &str,
 ) -> Result<Vec<contacts::Model>> {
-    let filter: segment_rules::Filter =
-        serde_json::from_value(segment.filter.clone()).unwrap_or_default();
+    let filter: segment_rules::Filter = crate::json::stored(segment.filter.clone(), "filter")?;
     let all = rows::contacts(pool).await?;
     let facts = facts_of_all(pool, &all, purpose).await?;
     Ok(all

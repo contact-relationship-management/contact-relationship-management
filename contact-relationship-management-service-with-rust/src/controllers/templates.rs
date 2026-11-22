@@ -130,18 +130,20 @@ struct Row {
     updated_at: crate::time::Timestamp,
 }
 
-impl From<Row> for TemplateView {
-    fn from(row: Row) -> Self {
-        Self {
+impl TryFrom<Row> for TemplateView {
+    type Error = axa::Error;
+
+    fn try_from(row: Row) -> Result<Self> {
+        Ok(Self {
             pid: row.pid.to_string(),
             name: row.name,
             subject: row.subject,
             body: row.body,
-            fallbacks: serde_json::from_value(row.fallbacks).unwrap_or_default(),
+            fallbacks: crate::json::stored(row.fallbacks, "fallbacks")?,
             language: row.language,
             in_use: row.in_use,
             updated_at: row.updated_at,
-        }
+        })
     }
 }
 
@@ -219,7 +221,11 @@ async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     )
     .fetch_all(db::pool(&ctx))
     .await?;
-    format::json(rows.into_iter().map(TemplateView::from).collect::<Vec<_>>())
+    format::json(
+        rows.into_iter()
+            .map(TemplateView::try_from)
+            .collect::<Result<Vec<_>>>()?,
+    )
 }
 
 /// `GET /api/email-templates/{pid}`.
@@ -238,7 +244,7 @@ async fn show(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Re
     .fetch_optional(db::pool(&ctx))
     .await?
     .ok_or(Error::NotFound)?;
-    format::json(TemplateView::from(row))
+    format::json(TemplateView::try_from(row)?)
 }
 
 /// The language as stored: trimmed, and absent when blank.
@@ -429,18 +435,21 @@ const PREVIEW_UNSUBSCRIBE: &str = "https://example.invalid/unsubscribe/preview";
 
 /// A saved template, or `None` when it is gone.
 pub(crate) async fn load<'e>(db: impl PgExecutor<'e>, pid: Uuid) -> Result<Option<Template>> {
-    Ok(sqlx::query!(
+    sqlx::query!(
         "SELECT subject, body, fallbacks, language FROM email_templates WHERE pid = $1",
         pid,
     )
     .fetch_optional(db)
     .await?
-    .map(|row| Template {
-        subject: row.subject,
-        body: row.body,
-        fallbacks: serde_json::from_value(row.fallbacks).unwrap_or_default(),
-        language: row.language,
-    }))
+    .map(|row| {
+        Ok(Template {
+            subject: row.subject,
+            body: row.body,
+            fallbacks: crate::json::stored(row.fallbacks, "fallbacks")?,
+            language: row.language,
+        })
+    })
+    .transpose()
 }
 
 /// The values a contact supplies to the tokens. A token the contact has no value for is left out.

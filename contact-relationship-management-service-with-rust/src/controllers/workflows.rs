@@ -108,17 +108,17 @@ struct Stored {
     updated_at: crate::time::Timestamp,
 }
 
-fn view(row: Stored) -> WorkflowView {
-    WorkflowView {
+fn view(row: Stored) -> Result<WorkflowView> {
+    Ok(WorkflowView {
         pid: row.pid.to_string(),
         name: row.name,
         enabled: row.enabled,
         trigger: row.trigger,
         every_minutes: row.every_minutes,
-        conditions: serde_json::from_value(row.conditions).unwrap_or_default(),
-        actions: serde_json::from_value(row.actions).unwrap_or_default(),
+        conditions: crate::json::stored(row.conditions, "conditions")?,
+        actions: crate::json::stored(row.actions, "actions")?,
         updated_at: row.updated_at,
-    }
+    })
 }
 
 /// The user references in the actions as the CRM stores them (CRM-D18).
@@ -180,7 +180,7 @@ async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     )
     .fetch_all(db::pool(&ctx))
     .await?;
-    format::json(rows.into_iter().map(view).collect::<Vec<_>>())
+    format::json(rows.into_iter().map(view).collect::<Result<Vec<_>>>()?)
 }
 
 async fn fetch(pool: &PgPool, pid: Uuid) -> Result<Stored> {
@@ -198,7 +198,7 @@ async fn fetch(pool: &PgPool, pid: Uuid) -> Result<Stored> {
 /// `GET /api/workflows/{pid}`.
 #[debug_handler]
 async fn show(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Response> {
-    format::json(view(fetch(db::pool(&ctx), pid).await?))
+    format::json(view(fetch(db::pool(&ctx), pid).await?)?)
 }
 
 /// `POST /api/workflows`.
@@ -325,7 +325,7 @@ async fn dry_run(
     PidPath(pid): PidPath,
 ) -> Result<Response> {
     let pool = db::pool(&ctx);
-    let stored = view(fetch(pool, pid).await?);
+    let stored = view(fetch(pool, pid).await?)?;
     let workflow = Workflow {
         pid,
         name: stored.name,
@@ -362,20 +362,22 @@ async fn runs(State(ctx): State<AppContext>, PidPath(pid): PidPath) -> Result<Re
     .await?;
     let out: Vec<RunView> = rows
         .into_iter()
-        .map(|row| RunView {
-            pid: row.pid.to_string(),
-            workflow_pid: row.workflow_pid.to_string(),
-            workflow_name: row.workflow_name,
-            trigger: row.trigger,
-            subject_kind: row.subject_kind,
-            subject_pid: row.subject_pid.to_string(),
-            depth: row.depth,
-            outcome: row.outcome,
-            reason: row.reason,
-            steps: serde_json::from_value(row.steps).unwrap_or_default(),
-            created_at: row.created_at,
+        .map(|row| {
+            Ok(RunView {
+                pid: row.pid.to_string(),
+                workflow_pid: row.workflow_pid.to_string(),
+                workflow_name: row.workflow_name,
+                trigger: row.trigger,
+                subject_kind: row.subject_kind,
+                subject_pid: row.subject_pid.to_string(),
+                depth: row.depth,
+                outcome: row.outcome,
+                reason: row.reason,
+                steps: crate::json::stored(row.steps, "steps")?,
+                created_at: row.created_at,
+            })
         })
-        .collect();
+        .collect::<Result<_>>()?;
     format::json(out)
 }
 

@@ -127,21 +127,23 @@ struct Stored {
     actions: serde_json::Value,
 }
 
-impl From<Stored> for Workflow {
-    fn from(row: Stored) -> Self {
-        Self {
+impl TryFrom<Stored> for Workflow {
+    type Error = axa::Error;
+
+    fn try_from(row: Stored) -> Result<Self> {
+        Ok(Self {
             pid: row.pid,
             name: row.name,
             trigger: row.trigger,
-            conditions: serde_json::from_value(row.conditions).unwrap_or_default(),
-            actions: serde_json::from_value(row.actions).unwrap_or_default(),
-        }
+            conditions: crate::json::stored(row.conditions, "conditions")?,
+            actions: crate::json::stored(row.actions, "actions")?,
+        })
     }
 }
 
 /// The enabled workflows with this trigger.
 async fn enabled<'e>(db: impl sqlx::PgExecutor<'e>, trigger: &str) -> Result<Vec<Workflow>> {
-    Ok(sqlx::query_as!(
+    sqlx::query_as!(
         Stored,
         "SELECT pid, name, trigger, conditions, actions FROM workflows \
          WHERE enabled AND trigger = $1 ORDER BY id",
@@ -150,8 +152,8 @@ async fn enabled<'e>(db: impl sqlx::PgExecutor<'e>, trigger: &str) -> Result<Vec
     .fetch_all(db)
     .await?
     .into_iter()
-    .map(Into::into)
-    .collect())
+    .map(Workflow::try_from)
+    .collect()
 }
 
 /// A contact and the tier of its account, if it is live.

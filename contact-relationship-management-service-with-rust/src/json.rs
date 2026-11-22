@@ -39,6 +39,17 @@ pub fn put(root: &mut serde_json::Value, path: &[&str], new: serde_json::Value) 
     }
 }
 
+/// A stored JSON value read as `T`. A value that does not read is corrupt data (RCA-IN-6): an error
+/// that names the field and never an empty value in its place.
+///
+/// # Errors
+///
+/// An internal error that names `field`; it shows nothing of the value.
+pub fn stored<T: DeserializeOwned>(value: serde_json::Value, field: &str) -> axa::Result<T> {
+    serde_json::from_value(value)
+        .map_err(|_| axa::Error::string(&format!("the stored {field} could not be read")))
+}
+
 /// A JSON body, in or out.
 #[derive(Debug)]
 pub struct Json<T>(pub T);
@@ -211,6 +222,22 @@ where
 
 #[cfg(test)]
 mod tests {
+    /// Stored JSON that does not read is an error naming the field, never an empty value, and the
+    /// message shows nothing of what was stored (RCA-IN-6).
+    #[test]
+    fn unreadable_stored_json_is_an_error_naming_the_field_and_not_an_empty_value() {
+        let words: Vec<String> = super::stored(serde_json::json!(["a", "b"]), "words").unwrap();
+        assert_eq!(words, ["a", "b"]);
+        let refused = super::stored::<Vec<String>>(serde_json::json!("secret-text"), "words")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            refused.contains("the stored words could not be read"),
+            "{refused}"
+        );
+        assert!(!refused.contains("secret-text"), "{refused}");
+    }
+
     #[test]
     fn put_builds_the_objects_on_the_way_and_leaves_a_non_object_step_alone() {
         let mut doc = serde_json::json!(null);
