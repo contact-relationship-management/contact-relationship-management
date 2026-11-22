@@ -478,6 +478,7 @@ mod tests {
         assert_eq!(last.checked_sub_days(-1), None);
         assert_eq!(first.checked_add_days(-1), None);
         assert_eq!(first.checked_add_days(1).map(|d| d > first), Some(true));
+        assert_eq!(last.checked_sub_days(1).map(|d| d < last), Some(true));
     }
 
     // The JSON a record carried under `chrono`, so no API response changes (CRM-T258).
