@@ -6,6 +6,7 @@
 //! refused, so a captured request cannot be replayed later; within the window
 //! a replay is harmless because each (message, event) is recorded once.
 
+use crate::rules::absent::OrEmpty;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha256;
 
@@ -74,12 +75,7 @@ pub fn verify(secret: &str, timestamp: &str, signature: &str, body: &[u8], now: 
 #[must_use]
 pub fn signed_request(headers: &axum::http::HeaderMap, body: &[u8]) -> Option<bool> {
     let secret = secret()?;
-    let header = |name: &str| {
-        headers
-            .get(name)
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or_default()
-    };
+    let header = |name: &str| headers.get(name).and_then(|v| v.to_str().ok()).or_empty();
     Some(verify(
         &secret,
         header("x-crm-timestamp"),

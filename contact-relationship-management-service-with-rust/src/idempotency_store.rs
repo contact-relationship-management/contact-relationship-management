@@ -5,6 +5,7 @@
 //! The row is guarded by the `(scope, key)` primary key, so the guarantee
 //! holds across replicas.
 
+use crate::rules::absent::OrEmpty;
 use sqlx::PgPool;
 
 /// What an earlier attempt with the same key left behind.
@@ -74,7 +75,7 @@ pub async fn lookup(db: &PgPool, scope: &str, key: &str) -> Result<Option<Stored
         state: row.state,
         status: row.status.unwrap_or(200),
         content_type: row.content_type,
-        body: row.body.unwrap_or_default(),
+        body: row.body.or_empty(),
     }))
 }
 

@@ -6,6 +6,9 @@
 //! Writes the published-key-set JSON to KEYS_FILE (give it to the service as
 //! `CONTACT_RELATIONSHIP_MANAGEMENT_PASETO_KEYS`) and prints one token on stdout. The Ed25519 seed is fixed and public:
 //! these tokens prove nothing outside a test, so never trust this key anywhere real.
+
+// An example is not production code (RCA-SCOPE-4).
+#![allow(clippy::disallowed_methods)]
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use ed25519_dalek::SigningKey;

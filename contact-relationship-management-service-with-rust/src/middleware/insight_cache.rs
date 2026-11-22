@@ -1,5 +1,6 @@
 //! Redis-backed response cache for insight reads.
 
+use crate::rules::absent::OrEmpty;
 use axa::redis::Cache;
 use axum::{
     extract::Request,
@@ -42,7 +43,9 @@ fn insight_key(
 
 /// Make every cached insight stale: a write has happened.
 async fn bump_cache_generation(cache: &Cache) {
-    let stamp = i64::try_from(crate::clock::now().0.as_nanosecond()).unwrap_or_default();
+    // CACHE-3: nanoseconds since the epoch do not fit an `i64` after the year 2262; the stamp is then
+    // the largest, which is still a stamp.
+    let stamp = i64::try_from(crate::clock::now().0.as_nanosecond()).unwrap_or(i64::MAX);
     match tokio::time::timeout(
         CACHE_WAIT,
         cache.set_with_ttl(
@@ -103,7 +106,7 @@ pub(crate) async fn insight_cache_mw(
         .ok()
         .and_then(Result::ok)
         .flatten()
-        .unwrap_or_default();
+        .or_empty();
     let zone = req
         .headers()
         .get(crate::rules::periods::USER_ZONE_HEADER)

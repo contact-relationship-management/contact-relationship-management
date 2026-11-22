@@ -4,6 +4,7 @@ use super::{
     AppContext, Audit, Deserialize, Error, MaybeAuthUser, PidRef, Problems, Response, Result,
     State, Uuid, contacts, debug_handler, format, segment_rules, segments, tokens,
 };
+use crate::rules::absent::OrEmpty;
 use std::collections::{HashMap, HashSet};
 
 use sqlx::PgPool;
@@ -154,7 +155,7 @@ pub(super) async fn facts_of_all(
             status: contact.status.clone(),
             channel: contact.preferred_channel.as_str().to_string(),
             account_tier: contact.account_pid.and_then(|a| tiers.get(&a).cloned()),
-            tags: tags.remove(&contact.pid).unwrap_or_default(),
+            tags: tags.remove(&contact.pid).or_empty(),
             employee: employees.contains(&contact.pid),
         })
         .collect())

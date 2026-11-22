@@ -9,6 +9,7 @@ disallowed-methods = [
     { path = "core::iter::Iterator::product", reason = "RCA-AGG-1: use try_fold with checked_mul" },
     { path = "core::time::Duration::from_secs_f64", reason = "RCA-TIME-2: use try_from_secs_f64" },
     { path = "core::time::Duration::from_secs_f32", reason = "RCA-TIME-2: use try_from_secs_f32" },
+    { path = "core::option::Option::unwrap_or_default", reason = "RCA-P-3: an unknown is never a zero; an absent value that means empty is OrEmpty::or_empty" },
     { path = "std::time::Instant::duration_since", reason = "RCA-TIME-1: use checked_duration_since" },
     { path = "std::time::Instant::saturating_duration_since", reason = "RCA-INT-4: no saturation" },
     { path = "core::cmp::Ord::clamp", reason = "RCA-INT-6, RCA-IN-2: an out-of-range value is an error, not a bound" },

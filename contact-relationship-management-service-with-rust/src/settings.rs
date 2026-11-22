@@ -211,6 +211,23 @@ fn number<T: std::str::FromStr + PartialOrd>(
     }
 }
 
+/// The event transport: `memory` when it is not set at all, the one named when it is `memory` or
+/// `outbox`, and otherwise `memory` with the setting recorded in `unusable`, so that start-up refuses
+/// (RCA-IN-4).
+fn event_transport(
+    get: &dyn Fn(&str) -> Option<String>,
+    unusable: &mut Vec<&'static str>,
+) -> EventTransport {
+    const NAME: &str = "CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT";
+    let Some(raw) = get(NAME) else {
+        return EventTransport::Memory;
+    };
+    EventTransport::parse(&raw).unwrap_or_else(|| {
+        unusable.push(NAME);
+        EventTransport::Memory
+    })
+}
+
 /// A numeric setting with no default: `None` when it is not set at all, the number when it is one,
 /// and otherwise `None` with `name` recorded in `unusable` so that start-up refuses (RCA-IN-4).
 fn optional_number<T: std::str::FromStr>(
@@ -294,9 +311,7 @@ impl Settings {
                     <entity_ref::EntityRef as std::str::FromStr>::from_str(v)
                         .is_ok_and(|r| r.entity_type == entity_ref::EntityType::Organization)
                 }),
-            event_transport: EventTransport::parse(
-                &get("CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT").unwrap_or_default(),
-            ),
+            event_transport: event_transport(get, &mut unusable),
             retention_days: horizon_setting(
                 get,
                 "CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS",
@@ -645,6 +660,19 @@ mod tests {
             (bytes, "104857601"),
         ] {
             assert_eq!(get(key, v).unusable, vec![key], "{key}={v}");
+        }
+    }
+
+    #[test]
+    fn the_event_transport_is_memory_unset_and_a_junk_one_is_refused() {
+        let name = "CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT";
+        let get = |v: &str| Settings::from_lookup(&lookup(&[(name, v)]));
+        assert_eq!(Settings::default().event_transport, EventTransport::Memory);
+        assert!(Settings::default().unusable.is_empty());
+        assert_eq!(get(" Outbox ").event_transport, EventTransport::Outbox);
+        assert!(get("memory").unusable.is_empty());
+        for bad in ["", "junk", "kafka"] {
+            assert_eq!(get(bad).unusable, vec![name], "{bad:?}");
         }
     }
 

@@ -136,13 +136,15 @@ pub enum EventTransport {
 }
 
 impl EventTransport {
-    /// Parse a transport token (case-insensitive; unknown ⇒ `Memory`).
+    /// Parse a transport token (case-insensitive): `memory` or `outbox`. Anything else, an empty
+    /// value included, is `None`: an unknown transport is invalid configuration, not `Memory`
+    /// (RCA-IN-2).
     #[must_use]
-    pub fn parse(s: &str) -> Self {
-        if s.trim().eq_ignore_ascii_case("outbox") {
-            Self::Outbox
-        } else {
-            Self::Memory
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "outbox" => Some(Self::Outbox),
+            "memory" => Some(Self::Memory),
+            _ => None,
         }
     }
 
@@ -225,11 +227,20 @@ mod tests {
     /// (any case) selects the outbox.
     #[test]
     fn transport_parse_defaults_to_memory() {
-        assert_eq!(EventTransport::parse(""), EventTransport::Memory);
-        assert_eq!(EventTransport::parse("junk"), EventTransport::Memory);
-        assert_eq!(EventTransport::parse("memory"), EventTransport::Memory);
-        assert_eq!(EventTransport::parse("outbox"), EventTransport::Outbox);
-        assert_eq!(EventTransport::parse(" OUTBOX "), EventTransport::Outbox);
+        assert_eq!(EventTransport::parse(""), None);
+        assert_eq!(EventTransport::parse("junk"), None);
+        assert_eq!(
+            EventTransport::parse("memory"),
+            Some(EventTransport::Memory)
+        );
+        assert_eq!(
+            EventTransport::parse("outbox"),
+            Some(EventTransport::Outbox)
+        );
+        assert_eq!(
+            EventTransport::parse(" OUTBOX "),
+            Some(EventTransport::Outbox)
+        );
         assert!(EventTransport::Outbox.is_outbox());
         assert!(!EventTransport::Memory.is_outbox());
     }

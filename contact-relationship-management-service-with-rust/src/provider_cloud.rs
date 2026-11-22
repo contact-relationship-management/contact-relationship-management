@@ -7,6 +7,7 @@
 //! implementation. Nothing has run against a live AWS or Azure account.
 //! Read [`crate::provider`] for the shared caveats.
 
+use crate::rules::absent::OrEmpty;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use hmac::{Hmac, KeyInit, Mac};
@@ -379,7 +380,7 @@ pub fn interpret_azure(status: u16, body: &str) -> Result<Option<String>, SendEr
                 .and_then(Value::as_str)
                 .map(str::to_string)
         })
-        .unwrap_or_default();
+        .or_empty();
     Err(classify(status, &detail))
 }
 

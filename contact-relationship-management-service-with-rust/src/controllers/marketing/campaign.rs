@@ -8,6 +8,7 @@ use super::{
 };
 use crate::arith::OrOverflow;
 use crate::arith::Tally;
+use crate::rules::absent::OrEmpty;
 use sqlx::PgConnection;
 
 use crate::controllers::PidPath;
@@ -260,7 +261,7 @@ async fn campaign_content(
             .subject
             .clone()
             .unwrap_or_else(|| campaign.name.clone()),
-        with_unsubscribe(campaign.body.clone().unwrap_or_default(), unsubscribe_url),
+        with_unsubscribe(campaign.body.clone().or_empty(), unsubscribe_url),
     )))
 }
 
@@ -336,7 +337,9 @@ pub(super) async fn deliver_one(
         as_of,
     )
     .await?;
-    let basis = decision.record();
+    let basis = decision
+        .record()
+        .map_err(|_| Error::string("the consent basis could not be recorded"))?;
     deliveries::note_basis(&mut *conn, item.id, &basis).await?;
     if !decision.sends() {
         deliveries::settle(
@@ -950,7 +953,9 @@ pub(super) async fn campaign_funnel(
     }
     let (rate_date, rates, unconverted) = match conversion {
         _ if query.rate_basis.is_some() => {
-            let (rates, unconverted) = dated.unwrap_or_default();
+            // `dated` is made whenever a rate basis is asked for; its absence is a mistake here.
+            let (rates, unconverted) =
+                dated.ok_or_else(|| Error::string("the rate-basis conversion was not made"))?;
             (None, rates, unconverted)
         }
         Some(done) => (Some(done.rate_date), done.rates, done.unconverted),

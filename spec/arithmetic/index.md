@@ -29,6 +29,8 @@ Each call site cites its ID in a comment. A fallback is a valid value of its fig
 | HEADROOM-1 | The rows fetched before the in-app audit filter | Ten times the page overflows | The page itself | No headroom, which is correct if less efficient. |
 | CLAWBACK-1 | A worker's credit on a deal after a clawback (CRM-R68) | Never below nothing | Zero (applied as `max(0)` on a checked result) | A clawback takes from the credit and cannot make it negative. |
 | QUOTA-REMAINING-1 | What is still to win to meet a quota (CRM-R59) | The quota is met | Zero | Nothing is left to win once it is met. |
+| CACHE-3 | The generation stamp of the insight cache | Nanoseconds since the epoch do not fit an `i64` (after 2262) | The largest `i64` | It is still a stamp; the horizon is past any deployment's life. |
+| AUDIT-GENESIS-1 | The `prev_hash` of the first audit row | There is no previous row | The empty hash (`GENESIS_PREV_HASH`) | The chain begins there; every other row names its predecessor's hash. |
 | SCORE-1 | A lead score (CRM-D5) | The rule weights total below 0 or above 100 | 0 or 100 | The score is defined on 0 to 100; the breakdown still lists every rule. |
 
 ## Input out of range or malformed is an error
@@ -94,15 +96,17 @@ RCA-ERR-4). A `422` says "`<figure>` could not be calculated" (`arith::overflow`
 - `scripts/check-checked-arithmetic.py` runs in the `clippy` stage and fails on `saturating_*`, `wrapping_*`,
   `overflowing_*`, `clamp` and an unwrapped `checked_*` result in production code (RCA-ENF-5).
 - Not yet at the rule:
-  - **`Option::unwrap_or_default`** is still used in 40-odd places, which RCA-P-3 forbids and `clippy.toml` does not
-    yet ban. Done: stored JSON that read as empty is an error (`json::stored`, RCA-IN-6); a mail request body that
-    cannot be serialized is a permanent send error and is no longer signed as empty; audit-chain snapshots use
-    `Value::to_string`; the chain's first `prev_hash` is the named `GENESIS_PREV_HASH` (AUDIT-GENESIS-1: the first
-    row has no predecessor, so its chain starts from the empty hash); the client key reads its digest by pattern;
-    contact erasure returns exactly 13 counts or an error; the segment filter, the forecast totals and a ticket are
-    checked when serialized. Left, to be decided or excepted one by one: the insight cache's generation stamp
-    (`insight_cache.rs`, 0 after the year 2262), `Decision::record` in `consent_profiles.rs` (writes `null` if a value
-    will not serialize), and the absent-means-empty map entries and optional texts.
+  - **`Option::unwrap_or_default`** is banned in `clippy.toml` (RCA-P-3). Where an absent value really is empty, a
+    header not sent, an optional text, a list with no entries yet, the code says so with
+    `rules::absent::OrEmpty::or_empty`; a value that failed to read is an error. Done: stored JSON (`json::stored`,
+    RCA-IN-6); a mail request body that cannot be serialized (a permanent send error); audit-chain snapshots
+    (`Value::to_string`) and the first `prev_hash` (AUDIT-GENESIS-1); the client key; the contact erasure counts
+    (exactly 13 or an error); the segment filter, the forecast totals and a ticket when serialized; the consent basis
+    record (`Decision::record` is a `Result`); an action that sets `status` or `preferred_channel` with no value; the
+    rate-basis conversion; an MCP tool answer over its limit (reported as truncated, not as empty); and the
+    event transport, where a name that is not `memory` or `outbox` stops start-up. `OrEmpty` still stands at about 30
+    sites that were not each re-read for whether "absent" is the whole story (`reports.rs` reads a missing currency
+    as `""`; `clients.rs` a missing department as `""`).
   - `as` conversions and the other lints of RCA-ENF-1 (`as_conversions`, `cast_*`, `integer_division`,
     `float_arithmetic`, `string_slice`, `allow_attributes`).
   - The matcher crate has no `clippy.toml`, and its `clamp` of the log-odds is not converted.

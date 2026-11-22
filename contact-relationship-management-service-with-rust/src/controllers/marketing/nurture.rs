@@ -440,7 +440,9 @@ async fn send_gate(
     if crate::models::employments::is_employee(&mut *txn, contact.pid).await? {
         return Ok(Gate::Hold);
     }
-    Ok(Gate::Go(decision.record()))
+    Ok(Gate::Go(decision.record().map_err(|_| {
+        axa::Error::string("the consent basis could not be recorded")
+    })?))
 }
 
 /// `POST /api/nurture/advance` — the **idempotent advance sweep**

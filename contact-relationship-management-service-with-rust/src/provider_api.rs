@@ -8,6 +8,7 @@
 //! `SendGrid`'s signed Event Webhook uses ECDSA; that check is **not built**, so
 //! a `SendGrid` callback is authenticated by the shared secret instead.
 
+use crate::rules::absent::OrEmpty;
 use hmac::{Hmac, KeyInit, Mac};
 use serde_json::{Value, json};
 use sha2::Sha256;
@@ -54,7 +55,7 @@ pub fn interpret_mailgun(status: u16, body: &str) -> Result<Option<String>, Send
     }
     let detail = parsed
         .and_then(|v| v.get("message").and_then(Value::as_str).map(str::to_string))
-        .unwrap_or_default();
+        .or_empty();
     if status == 404 {
         return Err(SendError::Transient(format!("HTTP 404: {detail}")));
     }
@@ -189,7 +190,7 @@ pub fn interpret_sendgrid(status: u16, body: &str) -> Result<Option<String>, Sen
                 .and_then(Value::as_str)
                 .map(str::to_string)
         })
-        .unwrap_or_default();
+        .or_empty();
     Err(classify(status, &detail))
 }
 

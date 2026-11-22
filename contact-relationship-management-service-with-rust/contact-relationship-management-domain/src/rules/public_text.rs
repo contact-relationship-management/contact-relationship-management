@@ -9,6 +9,8 @@
 //! limit. The 21 languages are the UI's; every one but English is a machine draft by the AI
 //! assistant, unreviewed by a native speaker (the UI's `spec/translation-register.md`).
 
+use crate::rules::absent::OrEmpty;
+
 /// One language's words. `{purpose}` in a template is replaced by the purpose's words.
 #[derive(Debug, Clone, Copy)]
 pub struct Text {
@@ -1089,7 +1091,7 @@ impl Text {
             .iter()
             .position(|p| *p == purpose)
             .unwrap_or(PURPOSE_ORDER.len());
-        self.purposes.get(index).copied().unwrap_or_default()
+        self.purposes.get(index).copied().or_empty()
     }
 }
 
@@ -1124,9 +1126,9 @@ pub fn negotiate(
         return Ok(text);
     }
     let mut ranges: Vec<(u16, usize, &str)> = Vec::new();
-    for (position, item) in accept_language.unwrap_or_default().split(',').enumerate() {
+    for (position, item) in accept_language.or_empty().split(',').enumerate() {
         let mut parts = item.split(';');
-        let range = parts.next().unwrap_or_default().trim();
+        let range = parts.next().or_empty().trim();
         let weight = match parts.find_map(|p| p.trim().strip_prefix("q=")) {
             None => 1000,
             Some(q) => quality(q).ok_or_else(|| {

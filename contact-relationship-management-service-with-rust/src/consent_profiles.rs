@@ -246,10 +246,14 @@ impl Decision {
 
     /// What a delivery records (CRM-R6): the basis, the code, the regime and the row it came from (with its status
     /// and source), and a regime that could not apply for want of an acknowledgement.
-    #[must_use]
-    pub fn record(&self) -> serde_json::Value {
+    ///
+    /// # Errors
+    ///
+    /// When a value of the record will not serialize; the record is then not made, and is not
+    /// written as `null`.
+    pub fn record(&self) -> Result<serde_json::Value, serde_json::Error> {
         let mut out = match &self.outcome {
-            Ok(basis) => serde_json::to_value(basis).unwrap_or_default(),
+            Ok(basis) => serde_json::to_value(basis)?,
             Err(blocked) => serde_json::json!({ "blocked": blocked }),
         };
         if let Some(map) = out.as_object_mut() {
@@ -257,13 +261,13 @@ impl Decision {
             map.insert("regime".into(), self.rules.regime.as_str().into());
             map.insert(
                 "profile".into(),
-                serde_json::to_value(&self.rules.regime_from).unwrap_or_default(),
+                serde_json::to_value(&self.rules.regime_from)?,
             );
             if let Some(stated) = self.rules.unacknowledged {
                 map.insert("unacknowledged_regime".into(), stated.as_str().into());
             }
         }
-        out
+        Ok(out)
     }
 }
 

@@ -13,6 +13,7 @@
 //! from rows an administrator loaded, and from an `example` or `unverified` row only once an administrator has
 //! acknowledged that code's rows (decision 9); an unacknowledged row can tighten, never loosen.
 
+use crate::rules::absent::OrEmpty;
 use std::collections::BTreeMap;
 
 use crate::time::{Date, Timestamp};
@@ -763,7 +764,7 @@ pub fn message_rules(chain: Option<&[Step]>, rows: &[Row], as_of: Date) -> Messa
 #[must_use]
 pub fn label_for<'a>(labels: &'a BTreeMap<String, String>, language: &str) -> Option<&'a str> {
     let lower = language.to_ascii_lowercase();
-    let primary = lower.split('-').next().unwrap_or_default().to_string();
+    let primary = lower.split('-').next().or_empty().to_string();
     labels
         .iter()
         .find(|(tag, _)| tag.to_ascii_lowercase() == lower)

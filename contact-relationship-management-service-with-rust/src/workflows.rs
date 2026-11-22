@@ -661,8 +661,19 @@ async fn set_field(
     match field {
         "job_title" => next.job_title = value.cloned(),
         "owner_ref" => next.owner_ref = value.cloned(),
-        "preferred_channel" => next.preferred_channel = value.cloned().unwrap_or_default().into(),
-        _ => next.status = value.cloned().unwrap_or_default(),
+        "preferred_channel" => {
+            next.preferred_channel = value
+                .cloned()
+                .ok_or_else(|| {
+                    axa::Error::string("the action sets preferred_channel with no value")
+                })?
+                .into();
+        }
+        _ => {
+            next.status = value
+                .cloned()
+                .ok_or_else(|| axa::Error::string("the action sets status with no value"))?;
+        }
     }
     // The four fields an action may set, from the contact as the run read it; `preferred_channel`
     // is sealed, and binding `EncryptedText` seals it (CRM-T41).

@@ -12,6 +12,7 @@
 //! the English fallbacks it was written against. `given_name` is the given name on file only: it
 //! is never taken from the display name, whose first word is the family name in many orders.
 
+use crate::rules::absent::OrEmpty;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
@@ -296,7 +297,7 @@ pub fn fallbacks_in(language: Option<&str>) -> Option<&'static [&'static str; 6]
         .unwrap_or(UNNAMED_LANGUAGE)
         .split('-')
         .next()
-        .unwrap_or_default()
+        .or_empty()
         .to_ascii_lowercase();
     FALLBACKS
         .iter()
@@ -457,7 +458,7 @@ pub fn check(
                     &format!("fallbacks/{token}"),
                     format!(
                         "is required: there is no built-in fallback in {}",
-                        language_tag.unwrap_or_default().trim()
+                        language_tag.or_empty().trim()
                     ),
                 );
                 asked.push(token);
@@ -542,7 +543,7 @@ impl Fill<'_> {
             return (value, false);
         }
         let own = self.fallbacks.get(token).and_then(|v| clean(v));
-        let declared = built_in_fallback(token, self.language).unwrap_or_default();
+        let declared = built_in_fallback(token, self.language).or_empty();
         (own.unwrap_or_else(|| declared.to_string()), true)
     }
 }

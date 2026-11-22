@@ -436,10 +436,14 @@ async fn forward(
         Err(never) => match never {},
     };
     let status = response.status();
-    let bytes = axum::body::to_bytes(response.into_body(), MAX_RESULT + 1)
-        .await
-        .unwrap_or_default();
-    let truncated = bytes.len() > MAX_RESULT;
+    // An answer over the limit cannot be read whole: it is reported as truncated, with no text, and
+    // is not taken for an empty answer.
+    let (bytes, over_limit) = match axum::body::to_bytes(response.into_body(), MAX_RESULT + 1).await
+    {
+        Ok(bytes) => (bytes, false),
+        Err(_) => (axum::body::Bytes::new(), true),
+    };
+    let truncated = over_limit || bytes.len() > MAX_RESULT;
     let text = String::from_utf8_lossy(bytes.get(..MAX_RESULT).unwrap_or(&bytes)).into_owned();
     Ok((status, text, truncated))
 }

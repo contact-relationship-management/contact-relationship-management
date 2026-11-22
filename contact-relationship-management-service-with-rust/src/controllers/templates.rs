@@ -7,6 +7,7 @@
 //! The routes run on `sqlx` (CRM-D24, CRM-T205), and so, since CRM-T216, do [`load`],
 //! [`contact_values`], [`content_for`] and [`exists`], which campaigns and nurture steps call.
 
+use crate::rules::absent::OrEmpty;
 use std::collections::BTreeMap;
 
 use axa::extract::Query;
@@ -510,7 +511,7 @@ pub(crate) async fn content_for(
             values: &values,
             fallbacks: &template.fallbacks,
             language: template.language.as_deref(),
-            unsubscribe_url: unsubscribe_url.unwrap_or_default(),
+            unsubscribe_url: unsubscribe_url.or_empty(),
         },
     );
     Ok(Some((rendered.subject, rendered.text)))

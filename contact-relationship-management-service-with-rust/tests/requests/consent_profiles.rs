@@ -156,7 +156,7 @@ async fn stored_profiles_drive_one_auditable_decision_per_channel() {
         .unwrap();
         assert!(decision.sends());
         assert!(matches!(decision.outcome, Ok(Basis::Implied { .. })));
-        let record = decision.record();
+        let record = decision.record().unwrap();
         assert_eq!(record["basis"], "implied");
         assert_eq!(record["consent_jurisdiction"], "ZZ-1");
         assert_eq!(record["regime"], "implied");
@@ -167,7 +167,7 @@ async fn stored_profiles_drive_one_auditable_decision_per_channel() {
             outcome: Err(Blocked::Withdrawn),
         };
         assert!(!blocked.sends());
-        assert_eq!(blocked.record()["blocked"], "withdrawn");
+        assert_eq!(blocked.record().unwrap()["blocked"], "withdrawn");
 
         tx.rollback().await.unwrap();
     })

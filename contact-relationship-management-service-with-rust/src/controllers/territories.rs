@@ -5,6 +5,7 @@
 //! prefix, like the quotas themselves.
 
 use crate::arith::Tally;
+use crate::rules::absent::OrEmpty;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
 
@@ -86,7 +87,7 @@ async fn territories(conn: &mut PgConnection) -> Result<Vec<TerritoryView>> {
             pid: row.pid.to_string(),
             name: row.name,
             owner_ref: row.owner_ref,
-            accounts: by_pid.remove(&row.pid).unwrap_or_default(),
+            accounts: by_pid.remove(&row.pid).or_empty(),
             set_by: row.set_by,
         })
         .collect())

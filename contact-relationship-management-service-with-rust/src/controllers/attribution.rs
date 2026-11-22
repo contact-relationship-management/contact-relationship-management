@@ -4,6 +4,7 @@
 //! among them under a model the caller chooses. The sharing itself is [`crate::rules::attribution`];
 //! this reads the touches and adds the shares up, per campaign and per currency.
 
+use crate::rules::absent::OrEmpty;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::time::{Date, Timestamp};
@@ -458,7 +459,7 @@ fn share_out(
     let mut unattributed_dated = Vec::new();
     let mut unattributed_deals = 0_usize;
     for deal in deals {
-        let mut list = touches.remove(&deal.pid).unwrap_or_default();
+        let mut list = touches.remove(&deal.pid).or_empty();
         // The recorded source campaign is always a touch, at the deal's creation (CRM-R49).
         if let Some(campaign) = deal.source_campaign {
             list.push(Touch {
@@ -605,7 +606,7 @@ async fn run(
         .as_ref()
         .map_or_default(|done| done.rows.iter().cloned().collect());
     let in_target = |key: &str| {
-        let target = query.convert_to.clone().unwrap_or_default();
+        let target = query.convert_to.clone().or_empty();
         converted.get(key).map_or_default(|amount_minor| {
             vec![Amount {
                 currency: target,

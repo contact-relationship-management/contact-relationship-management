@@ -15,6 +15,7 @@
 //!   reading a best-effort `name`-ish field. (Thin by design; the
 //!   family front-ends do the rich rendering.)
 
+use crate::rules::absent::OrEmpty;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -464,7 +465,7 @@ pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
             if let Some(pid) = text("pid") {
                 workers.push(UpstreamWorker {
                     pid: pid.to_string(),
-                    department: text("department").unwrap_or_default().trim().to_string(),
+                    department: text("department").or_empty().trim().to_string(),
                     person_ref: text("person_ref").map(str::to_string),
                 });
             }

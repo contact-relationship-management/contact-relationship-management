@@ -12,6 +12,7 @@
 
 use crate::arith::OrOverflow;
 use crate::arith::Tally;
+use crate::rules::absent::OrEmpty;
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
@@ -306,7 +307,7 @@ async fn wpm_event(
     let signature = headers
         .get("x-wpm-signature")
         .and_then(|v| v.to_str().ok())
-        .unwrap_or_default();
+        .or_empty();
     if !wpm_events::verify(
         secret.as_bytes(),
         signature,

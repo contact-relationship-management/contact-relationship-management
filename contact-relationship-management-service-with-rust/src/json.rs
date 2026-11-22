@@ -5,6 +5,7 @@
 //! which is missing, which has the wrong type. The names it quotes are the
 //! API's own, already public in the `OpenAPI` document.
 
+use crate::rules::absent::OrEmpty;
 use axum::extract::{FromRequest, Request, rejection::JsonRejection};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -105,7 +106,7 @@ fn member(text: &str) -> Option<String> {
             // `stages[0]` is the member `stages`, then entry `0`.
             let mut pieces = part.split('[');
             pointer.push('/');
-            pointer.push_str(pieces.next().unwrap_or_default());
+            pointer.push_str(pieces.next().or_empty());
             for index in pieces {
                 pointer.push('/');
                 pointer.push_str(index.trim_end_matches(']'));

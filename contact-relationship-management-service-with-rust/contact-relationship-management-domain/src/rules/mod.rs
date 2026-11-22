@@ -5,6 +5,7 @@
 //! exhaustively unit-tested. Controllers wire these; they never
 //! re-implement them.
 
+pub mod absent;
 pub mod analytics;
 pub mod attachments;
 pub mod attribution;

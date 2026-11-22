@@ -7,6 +7,7 @@
 //! and response bodies come from the Rust types ([`crate::openapi_schemas`]). The field-by-field
 //! meaning lives in the spec (`../spec/domain-model.md`).
 
+use crate::rules::absent::OrEmpty;
 use serde_json::{Value, json};
 
 /// `{pid}` and `{entity_pid}` are the same route shape.
@@ -142,10 +143,7 @@ fn add_uploads(doc: &mut Value) {
         else {
             continue;
         };
-        let mut parameters = operation["parameters"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let mut parameters = operation["parameters"].as_array().cloned().or_empty();
         parameters.push(json!({ "name": "name", "in": "query", "required": true,
             "description": "The file's name with its extension; the extension must be on the allow-list",
             "schema": { "type": "string" } }));
@@ -170,10 +168,7 @@ fn add_tag_filters(doc: &mut Value) {
         else {
             continue;
         };
-        let mut parameters = operation["parameters"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let mut parameters = operation["parameters"].as_array().cloned().or_empty();
         parameters.push(json!({ "name": "tag", "in": "query", "required": false,
             "description": "Only the records that carry this tag (any case); a record the caller sees masked is left out",
             "schema": { "type": "string" } }));
@@ -206,10 +201,7 @@ fn add_idempotency(doc: &mut Value) {
         let Some(operation) = item.get_mut("post").filter(|o| o.is_object()) else {
             continue;
         };
-        let mut parameters = operation["parameters"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let mut parameters = operation["parameters"].as_array().cloned().or_empty();
         parameters.push(json!({ "name": "Idempotency-Key", "in": "header", "required": false,
             "description": "Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After.",
             "schema": { "type": "string", "minLength": 1, "maxLength": 255 } }));
@@ -234,10 +226,7 @@ fn add_paging(doc: &mut Value) {
         else {
             continue;
         };
-        let mut parameters = operation["parameters"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let mut parameters = operation["parameters"].as_array().cloned().or_empty();
         parameters.push(json!({ "name": "limit", "in": "query", "required": false,
             "description": format!("Rows per page, 1 to {cap}; default {cap}. Out of range is 422."),
             "schema": { "type": "integer", "minimum": 1, "maximum": cap } }));

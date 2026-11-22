@@ -16,6 +16,7 @@
 use crate::arith::Tally;
 use crate::controllers::PidPath;
 use crate::json::Json;
+use crate::rules::absent::OrEmpty;
 use axa::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, json};
@@ -149,7 +150,7 @@ async fn restore_dropped(
             .and_then(|d| d.get(key))
             .and_then(serde_json::Value::as_array)
             .cloned()
-            .unwrap_or_default()
+            .or_empty()
     };
     let mut enrolments = 0;
     for row in rows("nurture_enrollments") {
@@ -200,7 +201,7 @@ async fn clear_filled(
         .get("filled")
         .and_then(serde_json::Value::as_array)
         .cloned()
-        .unwrap_or_default();
+        .or_empty();
     for name in names.iter().filter_map(serde_json::Value::as_str) {
         // The name goes into SQL, so it must be one the merge can fill.
         if !FILLABLE.contains(&name) {

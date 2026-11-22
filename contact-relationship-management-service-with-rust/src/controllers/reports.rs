@@ -11,6 +11,7 @@
 //! record to its live rows (`deleted_at IS NULL`).
 
 use crate::arith::OrOverflow;
+use crate::rules::absent::OrEmpty;
 use serde::{Deserialize, Serialize};
 use sqlx::{AssertSqlSafe, PgConnection, Row as _};
 use uuid::Uuid;
@@ -127,7 +128,7 @@ async fn converted(ctx: &AppContext, spec: &Spec, raw: Vec<rules::Cell>) -> Resu
         // Each closing day at its own rate (CRM-R83): no one date stands for the answer.
         let dated: Vec<(String, crate::time::Date, String, i64)> = raw
             .into_iter()
-            .filter_map(|c| Some((c.group, c.day?, c.currency.unwrap_or_default(), c.value)))
+            .filter_map(|c| Some((c.group, c.day?, c.currency.or_empty(), c.value)))
             .collect();
         let (rows, rates, unconverted) =
             super::fx_rates::convert_rows_dated(ctx, target, &dated).await?;
@@ -147,7 +148,7 @@ async fn converted(ctx: &AppContext, spec: &Spec, raw: Vec<rules::Cell>) -> Resu
     }
     let sums: Vec<(String, String, i64)> = raw
         .into_iter()
-        .map(|c| (c.group, c.currency.unwrap_or_default(), c.value))
+        .map(|c| (c.group, c.currency.or_empty(), c.value))
         .collect();
     let done =
         super::fx_rates::convert_sums(ctx, target, spec.rate_date, "spec.rate_date", &sums).await?;

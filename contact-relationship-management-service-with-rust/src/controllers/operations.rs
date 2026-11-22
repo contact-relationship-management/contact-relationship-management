@@ -1,6 +1,7 @@
 //! Operational facts for an assurance review (CRM-R106, CRM-T283). Admin only: the routes are
 //! under `/api/operations`, an [`crate::auth::policy::ADMIN_ONLY_PREFIXES`] entry.
 
+use crate::rules::absent::OrEmpty;
 use axa::prelude::*;
 use serde::Serialize;
 
@@ -46,7 +47,7 @@ async fn residency() -> Result<Response> {
     format::json(Residency {
         region: crate::residency::region(),
         limited: declared.is_some(),
-        declared_hosts: declared.unwrap_or_default(),
+        declared_hosts: declared.or_empty(),
         configured,
         not_covered: "the database, Redis and the file store (the deployment's own \
                       infrastructure), and webhook addresses, which are checked when \

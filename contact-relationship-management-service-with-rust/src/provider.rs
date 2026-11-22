@@ -16,6 +16,7 @@
 //! Run one real message and one real event of each kind before relying on
 //! this.
 
+use crate::rules::absent::OrEmpty;
 use std::time::Duration;
 
 use lettre::message::Mailbox;
@@ -203,7 +204,7 @@ impl ApiSender {
 
 /// The `Host` header value for a URL (the port only when it is not the default).
 fn host_header(url: &reqwest::Url) -> String {
-    let host = url.host_str().unwrap_or_default();
+    let host = url.host_str().or_empty();
     match url.port() {
         Some(port) => format!("{host}:{port}"),
         None => host.to_string(),
@@ -502,7 +503,7 @@ pub fn interpret_brevo(status: u16, body: &str) -> Result<(), SendError> {
     let detail = serde_json::from_str::<Value>(body)
         .ok()
         .and_then(|v| v.get("message").and_then(Value::as_str).map(str::to_string))
-        .unwrap_or_default();
+        .or_empty();
     Err(classify(status, &detail))
 }
 
@@ -540,7 +541,7 @@ pub fn interpret_mailjet(status: u16, body: &str) -> Result<(), SendError> {
                 .and_then(Value::as_str)
                 .map(str::to_string)
         })
-        .unwrap_or_default();
+        .or_empty();
     Err(classify(status, &detail))
 }
 
